@@ -28,3 +28,9 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+config :aecore, :keys,
+  keys_dir: "/tmp/keys",
+  password: "secret"
+
+config :aecore, :env,
+  nif_path: "/home/ivan/work/aeternity/epoch-elixir/apps/aecore/priv/aec_pow_cuckoo20_nif"
