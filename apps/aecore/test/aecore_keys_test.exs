@@ -21,9 +21,7 @@ defmodule AecoreKeysTest do
 
   test "sign coinbase transaction and verify the signed transaction" do
     {:ok, from_acc} = Keys.pubkey()
-    coinbase_tx = %CoinBaseTx{:from_acc => from_acc,
-                              :to_acc   => "to account",
-                              :value    => 5}
+    coinbase_tx = %CoinBaseTx{from_acc: from_acc, to_acc: "to account",value: 5}
     assert {:ok, %SignedTx{data: data,signature: signature}} = Keys.sign(coinbase_tx)
     assert :true = Keys.verify(data,signature,data.from_acc)
   end
