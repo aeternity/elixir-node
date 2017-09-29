@@ -4,8 +4,6 @@ defmodule Aecore.Keys.Worker do
   """
   use GenServer
 
-  alias Aecore.Structures.SignedTx
-
   @filename_pub "key.pub"
   @filename_priv "key"
 
@@ -114,7 +112,7 @@ defmodule Aecore.Keys.Worker do
         digest,
         :erlang.term_to_binary(term),
         [priv_key, :crypto.ec_curve(curve)])
-    {:reply, {:ok, %SignedTx{data: term, signature: signature}}, state}
+    {:reply, {:ok, signature}, state}
   end
 
   def handle_call(:pubkey, _from, %{pub: nil}=state) do

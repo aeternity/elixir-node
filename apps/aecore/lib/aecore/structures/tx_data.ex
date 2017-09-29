@@ -1,13 +1,13 @@
-defmodule Aecore.Structures.CoinBaseTx do
+defmodule Aecore.Structures.TxData do
   @moduledoc """
-  Aecore structure of a coinbase transaction.
+  Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.CoinBaseTx
-  @type coinbase_tx() :: %CoinBaseTx{}
+  alias Aecore.Structures.TxData
+  @type tx_data() :: %TxData{}
 
   @doc """
-  Definition of Aecore CoinBaseTx structure
+  Definition of Aecore TxData structure
 
   ## Parameters
      - nonce: A random integer generated on initialisation of a transaction.Must be unique
@@ -20,10 +20,9 @@ defmodule Aecore.Structures.CoinBaseTx do
             to_acc: "",
             value: 10
   use ExConstructor
-  alias Aecore.Structures.CoinBaseTx
 
-  @spec create() :: coinbase_tx()
+  @spec create() :: tx_data()
   def create do
-    CoinBaseTx.new(%{})
+    TxData.new(%{})
   end
 end

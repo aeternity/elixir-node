@@ -10,8 +10,8 @@ defmodule Aecore.Structures.SignedTx do
     Definition of Aecore SignedTx structure
 
   ## Parameters
-     - data: Aecore CoinbaseTx structure
-     - signature: Signed CoinBaseTx.coinbase_tx() with the private key of the sender
+     - data: Aecore %TxData{} structure
+     - signature: Signed %TxData{} with the private key of the sender
   """
   defstruct data: nil,
             signature: nil
