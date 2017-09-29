@@ -26,6 +26,16 @@ defmodule Aecore.Tx do
     %SignedTx{data: tx_data, signature: signature}
   end
 
+  @doc """
+  Takes signed a transaction and then
+  verify its signature against the public key
+
+  """
+  @spec verify(SignedTx.signed_tx()) :: boolean()
+  def verify(%SignedTx{data: data, signature: signature}) do
+    Keys.verify(data,signature,data.from_acc)
+  end
+
   @spec create_tx_data(map()) :: {:ok, TxData.tx_data()}
   defp create_tx_data(%{from_acc: from_pubkey, to_acc: to_pubkey, value: value}) do
     nonce = Enum.random(0..1000000000000)

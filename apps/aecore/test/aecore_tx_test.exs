@@ -15,9 +15,10 @@ defmodule AecoreTxTest do
     []
   end
 
-  test "create a signed tx" do
+  test "create and verify a signed tx" do
     tx = Tx.create("to_account",5)
     assert %SignedTx{} = tx
+    assert :true = Tx.verify(tx)
   end
 
 end
