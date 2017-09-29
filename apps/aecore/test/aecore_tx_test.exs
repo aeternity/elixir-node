@@ -16,7 +16,8 @@ defmodule AecoreTxTest do
   end
 
   test "create a signed tx" do
-    assert %SignedTx{} = Tx.create("to_account",5)
+    tx = Tx.create("to_account",5)
+    assert %SignedTx{} = tx
   end
 
 end

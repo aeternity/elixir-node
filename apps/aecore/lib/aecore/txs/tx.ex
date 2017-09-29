@@ -4,6 +4,8 @@ defmodule Aecore.Tx do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
+  alias Aecore.Keys.Worker, as: Keys
 
   @doc """
   Takes the public key of the receiver and
@@ -16,12 +18,22 @@ defmodule Aecore.Tx do
   """
   @spec create(binary(), integer()) :: SignedTx.signed_tx()
   def create(to_acc, value) do
-    {:ok, from_acc}   = Aecore.Keys.Worker.pubkey()
-    {:ok, coinbasetx} = Aecore.CoinBaseTx.new(%{:from_acc => from_acc,
-                                                :to_acc   => to_acc,
-                                                :value    => value})
-    {:ok, signed_tx} = Aecore.Keys.Worker.sign(coinbasetx)
-    signed_tx
+    {:ok, from_acc} = Keys.pubkey()
+    {:ok, tx_data}  = create_tx_data(%{:from_acc => from_acc,
+                                       :to_acc   => to_acc,
+                                       :value    => value})
+    {:ok, signature} = Keys.sign(tx_data)
+    %SignedTx{data: tx_data, signature: signature}
+  end
+
+  @spec create_tx_data(map()) :: {:ok, TxData.tx_data()}
+  defp create_tx_data(%{from_acc: from_pubkey, to_acc: to_pubkey, value: value}) do
+    nonce = Enum.random(0..1000000000000)
+    {:ok, %{TxData.create |
+            from_acc: from_pubkey,
+            to_acc: to_pubkey,
+            value: value,
+            nonce: nonce}}
   end
 
 end
