@@ -13,6 +13,6 @@ defmodule Aecore.Structures.Block do
   use ExConstructor
 
   def create() do
-    new(%{})
+    Block.new(%{})
   end
 end
