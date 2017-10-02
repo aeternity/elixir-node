@@ -6,10 +6,11 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
 
-  @type block() :: %Block{}
+  @type block :: %Block{}
 
-  defstruct header: Header.create,
-            txs: []
+  defstruct [:header,
+            :txs
+            ]
   use ExConstructor
 
   def create() do
