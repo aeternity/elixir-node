@@ -3,7 +3,6 @@ defmodule Aecore.Structures.GenesisBlock do
   Genesis Block
   """
 
-
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
 
@@ -12,9 +11,9 @@ defmodule Aecore.Structures.GenesisBlock do
       height: 0,
       prev_hash: <<0::size(256)>>,
       txs_hash: <<0::size(256)>>,
-      difficulty_target: 0,
+      difficulty_target: 1,
       nonce: 0,
-      timestamp: 0,
+      timestamp: System.system_time(:milliseconds),
       version: 1
     }
   end
@@ -26,4 +25,4 @@ defmodule Aecore.Structures.GenesisBlock do
 
 end
 
-#%Block{header: %Header{height: 0, prev_hash: <<1, 24, 45>>, txs_hash: <<12, 123, 12>>, difficulty_target: 0, nonce: 0, timestamp: System.system_time(:second), version: 1}, txs: []}
+#%Block{header: %Header{height: 0, prev_hash: <<1, 24, 45>>, txs_hash: <<12, 123, 12>>, difficulty_target: 0, nonce: 0, timestamp: System.system_time(:milliseconds), version: 1}, txs: []}

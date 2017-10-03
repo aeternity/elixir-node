@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.Chain do
+defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.GenesisBlock
   alias Aecore.Structures.Block
