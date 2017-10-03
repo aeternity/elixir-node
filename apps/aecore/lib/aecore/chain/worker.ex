@@ -1,4 +1,7 @@
 defmodule Aecore.Chain.Worker do
+  @moduledoc """
+  Module for working with chain
+  """
 
   alias Aecore.Structures.GenesisBlock
   alias Aecore.Structures.Block
