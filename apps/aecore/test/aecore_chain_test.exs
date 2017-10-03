@@ -15,7 +15,9 @@ defmodule AecoreChainTest do
   end
 
   test "add block" do
-    block = %Block{header: %Header{height: 1, prev_hash: <<1, 24, 45>>, txs_hash: <<12, 123, 12>>, difficulty_target: 0, nonce: 0, timestamp: System.system_time(:milliseconds), version: 1}, txs: []}
+    block = %Block{header: %Header{height: 1, prev_hash: <<1, 24, 45>>,
+            txs_hash: <<12, 123, 12>>, difficulty_target: 0, nonce: 0,
+            timestamp: System.system_time(:milliseconds), version: 1}, txs: []}
     assert :ok = Chain.add_block(block)
     assert latest_block = Chain.latest_block()
     assert latest_block.header.height == block.header.height
