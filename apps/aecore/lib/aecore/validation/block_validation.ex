@@ -1,5 +1,4 @@
-defmodule Aecore.Validation.Worker do
-  use GenServer
+defmodule Aecore.Validation.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
 
@@ -18,7 +17,6 @@ defmodule Aecore.Validation.Worker do
       !new_block |> validate_block_transactions |> Enum.all? ->
         {:error, "One or more transactions not valid"}
       new_block.header.txs_hash != calculate_root_hash(new_block)
-
     end
   end
 
@@ -30,7 +28,7 @@ defmodule Aecore.Validation.Worker do
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       signed = KeyManager.sign(transaction.data)
-      {_,pubkey} = KeyManager.pubkey()
+      {_, pubkey} = KeyManager.pubkey()
       KeyManager.verify(transaction.data, signed.signature, pubkey)
     end
   end
