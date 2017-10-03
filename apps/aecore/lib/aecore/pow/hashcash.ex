@@ -6,8 +6,9 @@ defmodule Aecore.Pow.Hashcash do
   @nonce_range 1000000000000000000000000
 
   @doc """
-  Verify a nonce
+  Verify a nonce, returns :true | :false
   """
+  @spec verify(binary() | term(), integer(), integer()) :: boolean()
   def verify(challenge, nonce, diff) when is_binary(challenge) do
     target = get_target(diff)
     data   = <<challenge :: binary, nonce :: 256>>
@@ -51,9 +52,12 @@ defmodule Aecore.Pow.Hashcash do
     :rand.uniform(@nonce_range)
   end
 
+  ## takes an integer and returns
+  ## concatenated zeros depending
+  ## on that integer
   defp get_target(diff) do
     to_string(
-      for z <- 1..diff, do: "0")
+      for zeros <- 1..diff, do: "0")
   end
 
 end
