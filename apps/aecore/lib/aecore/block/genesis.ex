@@ -7,7 +7,14 @@ defmodule Aecore.Block.Genesis do
   alias Aecore.Structures.Block
 
   def genesis_header() do
-    Aecore.Block.Headers.new(0,<<0::size(256)>>,<<0::size(256)>>,1,0,1)
+    %{Header.create
+      | height: 0,
+        prev_hash: <<0::256>>,
+        txs_hash: <<0::256>>,
+        timestamp: 1507121458671,
+        nonce: 17,
+        version: 1,
+        difficulty_target: 1}
   end
 
   def genesis_block() do
