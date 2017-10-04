@@ -10,7 +10,7 @@ defmodule HashcashTest do
   test "successfull test" do
     block = Genesis.genesis_block
     difficulty = Headers.difficulty(block.header)
-    assert {:ok, nonce} = Hashcash.generate(block, difficulty)
-    assert :true = Hashcash.verify(block, nonce, difficulty)
+    assert {:ok, new_block_header} = Hashcash.generate(block.header, difficulty)
+    assert :true = Hashcash.verify(new_block_header, difficulty)
   end
 end

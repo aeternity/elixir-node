@@ -3,53 +3,31 @@ defmodule Aecore.Pow.Hashcash do
   Hashcash proof of work
   """
 
-  @nonce_range 1000000000000000000000000
-
   @doc """
   Verify a nonce, returns :true | :false
   """
-  @spec verify(binary() | term(), integer(), integer()) :: boolean()
-  def verify(challenge, nonce, diff) when is_binary(challenge) do
-    target = get_target(diff)
-    data   = <<challenge :: binary, nonce :: 256>>
-    hash   = :crypto.hash(:sha256, data)
-    answer = Base.encode16(hash)
+  @spec verify(map(),  integer()) :: boolean()
+  def verify(%Aecore.Structures.Header{}=block_header, diff) do
+    {answer, target} = do_generate(block_header, diff)
     verify(answer, target)
   end
-  def verify(challenge, nonce, diff) do
-    verify(:erlang.term_to_binary(challenge), nonce, diff)
-  end
 
-  defp verify(answer, target) do
+  def verify(answer, target) do
     String.starts_with?(answer, target)
   end
 
   @doc """
   Find a nonce
   """
-  @spec generate(binary() | term(), integer()) ::
-  {:ok, nonce :: integer()} | {:error, term()}
-  def generate(challenge, diff) when is_binary(challenge) do
-    nonce  = generate_nonce()
-    target = get_target(diff)
-    generate(challenge, target, nonce)
-  end
-  def generate(challenge, diff) do
-    generate(:erlang.term_to_binary(challenge), diff)
-  end
-
-  defp generate(challenge, target, nonce) do
-    data   = <<challenge :: binary, nonce :: 256>>
-    hash   = :crypto.hash(:sha256, data)
-    answer = Base.encode16(hash)
+  @spec generate(map(), integer()) ::
+  {:ok, %Aecore.Structures.Header{} } | {:error, term()}
+  def generate(%Aecore.Structures.Header{nonce: nonce}=block_header, diff) do
+    {answer, target} = do_generate(block_header, diff)
     case verify(answer, target) do
-      true  -> {:ok, nonce}
-      false -> generate(challenge, target, nonce + 1)
+      true  -> {:ok, block_header}
+      false -> generate(%{block_header |
+                         nonce: nonce + 1}, diff)
     end
-  end
-
-  defp generate_nonce() do
-    :rand.uniform(@nonce_range)
   end
 
   ## takes an integer and returns
@@ -58,6 +36,14 @@ defmodule Aecore.Pow.Hashcash do
   defp get_target(diff) do
     to_string(
       for zeros <- 1..diff, do: "0")
+  end
+
+  defp do_generate(block_header, diff) do
+    target = get_target(diff)
+    data   = :erlang.term_to_binary(block_header)
+    hash   = :crypto.hash(:sha256, data)
+    answer = Base.encode16(hash)
+    {answer, target}
   end
 
 end
