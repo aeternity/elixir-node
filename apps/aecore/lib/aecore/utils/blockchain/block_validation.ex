@@ -30,7 +30,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(%Aecore.Structures.Block{}) :: term()
+  @spec block_header_hash(%Aecore.Structures.Block{}) :: binary()
   def block_header_hash (block) do
     block_header_bin = :erlang.term_to_binary(block.header)
     :crypto.hash(:sha256, block_header_bin)
@@ -45,7 +45,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(%Aecore.Structures.Block{}) :: term()
+  @spec calculate_root_hash(%Aecore.Structures.Block{}) :: binary()
   def calculate_root_hash(block) do
     if(length(block.txs ) == 0) do
       <<0::256>>
