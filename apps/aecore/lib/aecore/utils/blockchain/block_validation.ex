@@ -8,8 +8,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block(new_block, previous_block) do
     new_block_header_hash = block_header_hash(new_block)
     prev_block_header_hash = block_header_hash(previous_block)
-    is_difficulty_target_met = Hashcash.verify(new_block.header,
-      new_block.header.difficulty_target)
+    is_difficulty_target_met = Hashcash.verify(new_block.header)
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash ->
