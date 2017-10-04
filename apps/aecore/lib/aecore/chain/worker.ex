@@ -1,12 +1,15 @@
-defmodule Aecore.Structures.Chain do
+defmodule Aecore.Chain.Worker do
+  @moduledoc """
+  Module for working with chain
+  """
 
-  alias Aecore.Structures.GenesisBlock
+  alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
 
   use GenServer
 
   def start_link do
-    GenServer.start_link(__MODULE__, [GenesisBlock.genesis_block()], name: __MODULE__)
+    GenServer.start_link(__MODULE__, [Genesis.genesis_block()], name: __MODULE__)
   end
 
   def init([%Block{}] = initial_chain) do

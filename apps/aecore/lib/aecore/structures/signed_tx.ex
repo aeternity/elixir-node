@@ -22,3 +22,5 @@ defmodule Aecore.Structures.SignedTx do
     SignedTx.new(%{})
   end
 end
+
+# [%signed_tx{nonce: 0, from_acc: "", to_acc: "",value: 10}]
