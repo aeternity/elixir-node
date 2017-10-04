@@ -15,6 +15,11 @@ defmodule Aecore.Block.Headers do
     difficulty
   end
 
+  @spec set_difficulty(Header.header(), integer()) :: Header.header()
+  def set_difficulty(%Header{}=header, new_difficulty) do
+    %{header | difficulty_target: new_difficulty}
+  end
+
   @spec timestamp(Header.header()) :: integer()
   def timestamp(%Header{timestamp: timestamp}=header) do
     timestamp
@@ -45,11 +50,18 @@ defmodule Aecore.Block.Headers do
     %{header | nonce: nonce}
   end
 
+  @spec increment_nonce(Header.header()) :: Header.header()
+  def increment_nonce(%Header{nonce: nonce}=header) do
+    %{header | nonce: nonce + 1}
+  end
+
   @spec txs_hash(Header.header()) :: binary()
   def txs_hash(%Header{txs_hash: txs_hash}=header) do
     txs_hash
   end
 
+  @spec new(integer(), binary(), binary(), integer(),integer(),integer())
+  :: Header.header()
   def new(height,
           prev_hash,
           txs_hash,
@@ -64,6 +76,16 @@ defmodule Aecore.Block.Headers do
         nonce: nonce,
         version: version,
         difficulty_target: difficulty}
+  end
+
+  @spec serialize_header(Header.header()) :: binary()
+  def serialize_header(%Header{}=header) do
+    :erlang.term_to_binary(header)
+  end
+
+  @spec deserialize_header(binary()) :: Header.header()
+  def deserialize_header(header_bin) do
+    :erlang.binary_to_term(header_bin)
   end
 
 end
