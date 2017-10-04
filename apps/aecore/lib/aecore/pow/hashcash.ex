@@ -20,7 +20,7 @@ defmodule Aecore.Pow.Hashcash do
   Find a nonce
   """
   @spec generate(map(), integer()) ::
-  {:ok, nonce :: integer()} | {:error, term()}
+  {:ok, %Aecore.Structures.Header{} } | {:error, term()}
   def generate(%Aecore.Structures.Header{nonce: nonce}=block_header, diff) do
     {answer, target} = do_generate(block_header, diff)
     case verify(answer, target) do
