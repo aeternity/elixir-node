@@ -1,7 +1,6 @@
 defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
-  alias Aecore.Utils.Bits
   alias Aecore.Pow.Hashcash
 
   @spec validate_block(%Aecore.Structures.Block{},
