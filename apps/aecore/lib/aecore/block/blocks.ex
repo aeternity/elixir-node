@@ -35,16 +35,15 @@ defmodule Aecore.Block.Blocks do
     %{block | txs: txs}
   end
 
-  @spec new(Block.block(), txs :: list(), binary())
+  @spec new(Block.block(), txs :: list(), binary(), integer())
   :: {:ok, Block.block()} | {:error, term()}
-  def new(last_block, txs, txs_hash) do
+  def new(last_block, txs, txs_hash, difficulty) do
     last_header = header(last_block)
     prev_hash   = Aecore.Block.Headers.prev_hash(last_header)
     height      = Aecore.Block.Headers.height(last_header) + 1
-    difficulty  = Aecore.Block.Headers.difficulty(last_header)
     new_header  =
       Aecore.Block.Headers.new(height, prev_hash, txs_hash, difficulty, 0, 1)
-    %{Block.create | header: new_header, txs: txs}
+    {:ok, %{Block.create | header: new_header, txs: txs}}
   end
 
 end
