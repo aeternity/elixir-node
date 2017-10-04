@@ -9,6 +9,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Utils.Blockchain.BlockValidation, as: BlockValidation
   alias Aecore.Structures.Block, as: Block
   alias Aecore.Structures.Header, as: Header
+  alias Aecore.Structures.SignedTx, as: SignedTx
 
   test "validate new block" do
     new_block = %Block{header: %Header
@@ -28,6 +29,15 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     assert BlockValidation.validate_block(new_block,prev_block) == :ok
+  end
+
+  test "validate transactions in a block" do
+    txs = [Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
+           Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
+    block = Block.create()
+    block = %{block | txs: txs}
+    assert block |> BlockValidation.validate_block_transactions
+                 |> Enum.all? == true
   end
 
 end
