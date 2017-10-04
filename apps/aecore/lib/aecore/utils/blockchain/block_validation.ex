@@ -17,7 +17,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         {:error, "Incorrect height"}
       !is_difficulty_target_met ->
         {:error, "Header hash doesnt meet the difficulty target"}
-      new_block.header.txs_hash != calculate_root_hash(new_block) ->
+      new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
         {:error, "Root hash of transactions does not match the one in header"}
       !(new_block |> validate_block_transactions |> Enum.all?) ->
         {:error, "One or more transactions not valid"}
@@ -32,7 +32,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: term()
+  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       KeyManager.verify(transaction.data,
@@ -41,13 +41,13 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(%Aecore.Structures.Block{}) :: binary()
-  def calculate_root_hash(block) do
-    if(length(block.txs ) == 0) do
+  @spec calculate_root_hash(list()) :: binary()
+  def calculate_root_hash(txs) do
+    if(length(txs) == 0) do
       <<0::256>>
     else
       merkle_tree = :gb_merkle_trees.empty
-      merkle_tree = for transaction <- block.txs do
+      merkle_tree = for transaction <- txs do
         transaction_data_bin = :erlang.term_to_binary(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
       end

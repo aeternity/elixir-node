@@ -18,7 +18,7 @@ defmodule Aecore.Utils.Blockchain.Difficulty do
       latest_block.header.difficulty_target
     else
       distance = calculate_distance(list)
-      next_difficulty = latest_block.header.difficulty_target * (@target_distance / distance)
+      next_difficulty = latest_block.header.difficulty_target * (@target_distance / distance) |> Float.ceil() |> round()
     end
   end
 
