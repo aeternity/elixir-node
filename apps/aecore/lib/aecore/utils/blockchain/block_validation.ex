@@ -2,24 +2,22 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Utils.Bits
+  alias Aecore.Pow.Hashcash
 
   @spec validate_block(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
   def validate_block(new_block, previous_block) do
     new_block_header_hash = block_header_hash(new_block)
     prev_block_header_hash = block_header_hash(previous_block)
-
-    new_block_header_hash_zero_count = new_block_header_hash
-      |> Bits.extract()
-      |> Enum.take_while(fn(x) -> x == "0" end)
-      |> Enum.count()
+    is_difficulty_target_met = Hashcash.verify(new_block.header,
+      new_block.header.difficulty_target)
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash ->
         {:error, "Incorrect previous hash"}
       previous_block.header.height + 1 != new_block.header.height ->
         {:error, "Incorrect height"}
-      new_block_header_hash_zero_count < new_block.header.difficulty_target ->
+      !is_difficulty_target_met ->
         {:error, "Header hash doesnt meet the difficulty target"}
       new_block.header.txs_hash != calculate_root_hash(new_block) ->
         {:error, "Root hash of transactions does not match the one in header"}
