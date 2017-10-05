@@ -17,12 +17,36 @@ defmodule Aecore.Miner.Worker do
   use GenServer
 
   def start_link() do
-    GenServer.start_link(__MODULE__, [])
+    GenServer.start_link(__MODULE__, :not_running, name: __MODULE__)
   end
 
-  def init([]) do
+  def init(:not_running) do
+    {:ok, :not_running}
+  end
+
+  def start_miner() do
+    GenServer.call(__MODULE__, :start_miner)
+  end
+
+  def stop_miner() do
+    GenServer.call(__MODULE__, :stop_miner, :infinity)
+  end
+
+  def get_status() do
+    GenServer.call(__MODULE__, :get_status, :infinity)
+  end
+
+  def handle_call(:start_miner, _from, :not_running) do
     schedule_work()
-    {:ok, []}
+    {:reply, :running, :running}
+  end
+
+  def handle_call(:stop_miner, _from, :running) do
+    {:reply, :will_stop, :not_running}
+  end
+
+  def handle_call(:get_status, _from, status) do
+    {:reply, status, status}
   end
 
   @spec mine_next_block(list()) :: :ok
@@ -43,18 +67,20 @@ defmodule Aecore.Miner.Worker do
     block_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
     {:ok, mined_header} = Hashcash.generate(block_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
-    IO.inspect(block)
     Chain.add_block(block)
   end
 
   def handle_info(:work, state) do
-    mine_next_block([])
-    schedule_work()
+    if(state == :running) do
+      mine_next_block([])
+      schedule_work()
+
+    end
     {:noreply, state}
   end
 
   defp schedule_work do
-    Process.send_after(self(), :work, 0)
+    Process.send_after(self(), :work, 1000)
   end
 
 end
