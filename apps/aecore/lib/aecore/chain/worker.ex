@@ -8,6 +8,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
@@ -52,23 +53,22 @@ defmodule Aecore.Chain.Worker do
     {:reply, :ok, [b | chain]}
   end
 
-  def miner_1() do
-    mine_next_block([])
-    miner_2
-  end
-
-  def miner_2() do
-    mine_next_block([])
-    miner_1()
-  end
-
   def handle_call({:txs, txs}, _from, chain) do
     difficulty = Difficulty.calculate_next_difficulty(chain)
-    [latest_block | _] = chain
-    root_hash = BlockValidation.calculate_root_hash(txs)
-    block_header = Headers.new(latest_block.header.height + 1, latest_block.header.prev_hash, root_hash, difficulty, 0, 1)
+    valid_txs = BlockValidation.filter_invalid_transactions(txs)
+    latest_block = if(length(chain) == 1) do
+      [latest_block | _] = chain
+      latest_block
+    else
+      [latest_block, previous_block | _] = chain
+      BlockValidation.validate_block!(latest_block, previous_block)
+      latest_block
+    end
+    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+    latest_block_hash = BlockValidation.block_header_hash(latest_block)
+    block_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
     {:ok, mined_header} = Hashcash.generate(block_header)
-    {:ok, block} = Blocks.new(mined_header, txs)
+    {:ok, block} = Blocks.new(mined_header, valid_txs)
     IO.inspect(block)
     {:reply, :ok, [block | chain]}
   end

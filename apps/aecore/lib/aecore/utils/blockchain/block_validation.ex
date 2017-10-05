@@ -2,25 +2,27 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
+  alias Aecore.Block.Genesis
 
-  @spec validate_block(%Aecore.Structures.Block{},
+  @spec validate_block!(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
-  def validate_block(new_block, previous_block) do
+  def validate_block!(new_block, previous_block) do
     new_block_header_hash = block_header_hash(new_block)
     prev_block_header_hash = block_header_hash(previous_block)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
 
     cond do
-      new_block.header.prev_hash != prev_block_header_hash ->
-        {:error, "Incorrect previous hash"}
+      new_block.header.prev_hash != prev_block_header_hash &&
+        previous_block != Genesis.genesis_block ->
+        throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
-        {:error, "Incorrect height"}
+        throw({:error, "Incorrect height"})
       !is_difficulty_target_met ->
-        {:error, "Header hash doesnt meet the difficulty target"}
+        throw({:error, "Header hash doesnt meet the difficulty target"})
       new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
-        {:error, "Root hash of transactions does not match the one in header"}
+        throw({:error, "Root hash of transactions does not match the one in header"})
       !(new_block |> validate_block_transactions |> Enum.all?) ->
-        {:error, "One or more transactions not valid"}
+        throw({:error, "One or more transactions not valid"})
       true ->
         :ok
     end
@@ -32,13 +34,20 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
-  def validate_block_transactions(block) do
-    for transaction <- block.txs do
+  @spec validate_block_transactions(list()) :: list()
+  def validate_block_transactions(txs) do
+    for transaction <-txs do
       KeyManager.verify(transaction.data,
                         transaction.signature,
                         transaction.data.from_acc)
     end
+  end
+
+  @spec filter_invalid_transactions(list()) :: list()
+  def filter_invalid_transactions(txs) do
+    Enum.filter(txs, fn(transaction) -> KeyManager.verify(transaction.data,
+                      transaction.signature,
+                      transaction.data.from_acc) end)
   end
 
   @spec calculate_root_hash(list()) :: binary()
