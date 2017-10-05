@@ -34,9 +34,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(list()) :: list()
-  def validate_block_transactions(txs) do
-    for transaction <-txs do
+  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
+  def validate_block_transactions(block) do
+    for transaction <- block.txs do
       KeyManager.verify(transaction.data,
                         transaction.signature,
                         transaction.data.from_acc)
