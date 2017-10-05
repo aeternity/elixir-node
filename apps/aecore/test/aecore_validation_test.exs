@@ -31,8 +31,8 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    txs = [Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
-           Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
+    txs = [Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
+           Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
     block = Block.create()
     block = %{block | txs: txs}
     assert block |> BlockValidation.validate_block_transactions
