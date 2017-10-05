@@ -6,6 +6,9 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Verify a nonce, returns :true | :false
   """
+
+  alias Aecore.Utils.Bits
+
   @spec verify(map()) :: boolean()
   def verify(%Aecore.Structures.Header{}=block_header) do
     block_header_hash   = generate_hash(block_header)
@@ -14,7 +17,10 @@ defmodule Aecore.Pow.Hashcash do
 
   @spec verify(string()::integer()) :: boolean()
   def verify(block_header_hash, difficulty) do
-    String.starts_with?(block_header_hash, get_target_zeros(difficulty))
+    block_header_hash
+    |> Bits.extract
+    |> Enum.take_while(fn(bit) -> bit == 0 end)
+    |> Enum.count >= difficulty
   end
 
   @doc """
@@ -40,8 +46,7 @@ defmodule Aecore.Pow.Hashcash do
 
   defp generate_hash(block_header) do
     data   = :erlang.term_to_binary(block_header)
-    hash   = :crypto.hash(:sha256, data)
-    block_header_hash = Base.encode16(hash)
+    :crypto.hash(:sha256, data)
   end
 
 end
