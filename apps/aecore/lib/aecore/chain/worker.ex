@@ -9,11 +9,11 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   def start_link do
-    GenServer.start_link(__MODULE__, [Genesis.genesis_block()], name: __MODULE__)
+    GenServer.start_link(__MODULE__, {[Genesis.genesis_block()], %{}}, name: __MODULE__)
   end
 
-  def init([%Block{}] = initial_chain) do
-    {:ok, initial_chain}
+  def init(initial_state) do
+    {:ok, initial_state}
   end
 
   def latest_block() do
@@ -28,18 +28,25 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_block, b})
   end
 
-  def handle_call(:latest_block, _from, chain) do
-    [lb | _] = chain
-    {:reply, lb, chain}
+  def calculate_chain_state(block) do
+    GenServer.call(__MODULE__, {:calculate_chain_state, block})
   end
 
-  def handle_call(:all_blocks, _from, chain) do
-    {:reply, chain, chain}
+  def handle_call(:latest_block, _from, state) do
+    [lb | _] = elem(state, 0)
+    {:reply, lb, state}
   end
 
-  def handle_call({:add_block, %Block{} = b}, _from, chain) do
+  def handle_call(:all_blocks, _from, state) do
+    chain = elem(state, 0)
+    {:reply, chain, state}
+  end
+
+  def handle_call({:add_block, %Block{} = b}, _from, state) do
     #TODO validations
-    {:reply, :ok, [b | chain]}
+    chain_state = elem(state, 1)
+    chain = elem(state, 0)
+    {:reply, :ok, {[b | chain], chain_state}}
   end
 
 end
