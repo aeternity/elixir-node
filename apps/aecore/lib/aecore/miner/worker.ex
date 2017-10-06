@@ -25,10 +25,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def stop_miner() do
+    #TODO force stop miner, do not wait for next block
     GenServer.call(__MODULE__, :stop_miner, :infinity)
   end
 
   def get_status() do
+    #TODO force answer, do not wait for next block
     GenServer.call(__MODULE__, :get_status, :infinity)
   end
 
@@ -48,8 +50,8 @@ defmodule Aecore.Miner.Worker do
   @spec mine_next_block(list()) :: :ok
   def mine_next_block(txs) do
     chain = Chain.all_blocks()
-    difficulty = Difficulty.calculate_next_difficulty(chain)
-    valid_txs = BlockValidation.filter_invalid_transactions(txs)
+
+    #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
       latest_block
@@ -58,10 +60,15 @@ defmodule Aecore.Miner.Worker do
       BlockValidation.validate_block!(latest_block, previous_block)
       latest_block
     end
+
+    valid_txs = BlockValidation.filter_invalid_transactions(txs)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
-    latest_block_hash = BlockValidation.block_header_hash(latest_block)
-    block_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
-    {:ok, mined_header} = Hashcash.generate(block_header)
+
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    difficulty = Difficulty.calculate_next_difficulty(chain)
+
+    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
+    {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
     Chain.add_block(block)
   end
@@ -70,7 +77,6 @@ defmodule Aecore.Miner.Worker do
     if(state == :running) do
       mine_next_block([])
       schedule_work()
-
     end
     {:noreply, state}
   end

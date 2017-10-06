@@ -8,10 +8,11 @@ defmodule Aecore.Pow.Hashcash do
   """
 
   alias Aecore.Utils.Bits
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   @spec verify(map()) :: boolean()
   def verify(%Aecore.Structures.Header{}=block_header) do
-    block_header_hash   = generate_hash(block_header)
+    block_header_hash = BlockValidation.block_header_hash(block_header)
     verify(block_header_hash, block_header.difficulty_target)
   end
 
@@ -28,17 +29,11 @@ defmodule Aecore.Pow.Hashcash do
   """
   @spec generate(map()) :: {:ok, %Aecore.Structures.Header{} } | {:error, term()}
   def generate(%Aecore.Structures.Header{nonce: nonce}=block_header) do
-    block_header_hash = generate_hash(block_header)
+    block_header_hash = BlockValidation.block_header_hash(block_header)
     case verify(block_header_hash, block_header.difficulty_target) do
       true  -> {:ok, block_header}
-      false -> generate(%{block_header |
-                         nonce: nonce + 1})
+      false -> generate(%{block_header | nonce: nonce + 1})
     end
-  end
-
-  defp generate_hash(block_header) do
-    data   = :erlang.term_to_binary(block_header)
-    :crypto.hash(:sha256, data)
   end
 
 end

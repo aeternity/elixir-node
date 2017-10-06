@@ -7,8 +7,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   @spec validate_block!(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block) do
-    new_block_header_hash = block_header_hash(new_block)
-    prev_block_header_hash = block_header_hash(previous_block)
+    prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
 
     cond do
@@ -28,9 +27,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(%Aecore.Structures.Block{}) :: binary()
-  def block_header_hash (block) do
-    block_header_bin = :erlang.term_to_binary(block.header)
+  @spec block_header_hash(%Aecore.Structures.Header{}) :: binary()
+  def block_header_hash(header) do
+    block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
@@ -55,7 +54,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     if(length(txs) == 0) do
       <<0::256>>
     else
-      merkle_tree = :gb_merkle_trees.empty
       merkle_tree = for transaction <- txs do
         transaction_data_bin = :erlang.term_to_binary(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
