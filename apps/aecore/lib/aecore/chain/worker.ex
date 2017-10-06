@@ -16,14 +16,17 @@ defmodule Aecore.Chain.Worker do
     {:ok, initial_chain}
   end
 
+  @spec latest_block() :: %Block{}
   def latest_block() do
     GenServer.call(__MODULE__, :latest_block)
   end
 
+  @spec all_blocks() :: list()
   def all_blocks() do
     GenServer.call(__MODULE__, :all_blocks)
   end
 
+  @spec add_block(%Block{}) :: :ok
   def add_block(%Block{} = b) do
     GenServer.call(__MODULE__, {:add_block, b})
   end
@@ -38,7 +41,6 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = b}, _from, chain) do
-    #TODO validations
     {:reply, :ok, [b | chain]}
   end
 

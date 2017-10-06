@@ -5,7 +5,7 @@ defmodule EpochElixir.Mixfile do
     [app: :epoch_elixir,
      apps_path: "apps",
      version: "0.1.0",
-     elixir: "~> 1.4.5",
+     elixir: "~> 1.5.1",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps()]
@@ -32,6 +32,9 @@ defmodule EpochElixir.Mixfile do
   # Dependencies listed here are available only for this project
   # and cannot be accessed from applications inside the apps folder
   defp deps do
-    [{:mock, "~> 0.2.0", only: :test}]
+    [
+      {:mock, "~> 0.2.0", only: :test},
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}
+    ]
   end
 end
