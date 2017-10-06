@@ -8,7 +8,6 @@ defmodule AecoreKeysTest do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData, as: TxData
-  alias Aecore.Structures.SignedTx, as: SignedTx
 
   setup do
     Keys.start_link()

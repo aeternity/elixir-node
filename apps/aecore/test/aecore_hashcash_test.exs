@@ -3,7 +3,6 @@ defmodule HashcashTest do
   doctest Aecore.Pow.Hashcash
 
   alias Aecore.Pow.Hashcash
-  alias Aecore.Block.Headers
   alias Aecore.Block.Genesis
 
   @tag timeout: 10000000

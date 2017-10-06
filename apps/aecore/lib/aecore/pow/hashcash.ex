@@ -15,7 +15,7 @@ defmodule Aecore.Pow.Hashcash do
     verify(block_header_hash, block_header.difficulty_target)
   end
 
-  @spec verify(string()::integer()) :: boolean()
+  @spec verify(charlist() :: integer()) :: boolean()
   def verify(block_header_hash, difficulty) do
     block_header_hash
     |> Bits.extract
@@ -26,8 +26,7 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Find a nonce
   """
-  @spec generate(map()) ::
-  {:ok, %Aecore.Structures.Header{} } | {:error, term()}
+  @spec generate(map()) :: {:ok, %Aecore.Structures.Header{} } | {:error, term()}
   def generate(%Aecore.Structures.Header{nonce: nonce}=block_header) do
     block_header_hash = generate_hash(block_header)
     case verify(block_header_hash, block_header.difficulty_target) do
@@ -35,13 +34,6 @@ defmodule Aecore.Pow.Hashcash do
       false -> generate(%{block_header |
                          nonce: nonce + 1})
     end
-  end
-
-  ## takes an integer and returns
-  ## concatenated zeros depending
-  ## on that integer
-  defp get_target_zeros(difficulty) do
-    to_string(for zeros <- 1..difficulty, do: "0")
   end
 
   defp generate_hash(block_header) do

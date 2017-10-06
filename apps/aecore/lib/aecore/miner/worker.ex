@@ -4,12 +4,8 @@ defmodule Aecore.Miner.Worker do
   """
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Block.Genesis
-  alias Aecore.Structures.Block
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
-  alias Aecore.Structures.TxData
-  alias Aecore.Structures.SignedTx
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
