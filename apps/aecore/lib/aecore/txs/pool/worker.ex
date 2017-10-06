@@ -1,4 +1,9 @@
 defmodule Aecore.Txs.Pool.Worker do
+  @moduledoc """
+  Module for working with the transaction pool.
+  The pool itself is a map with an empty initial state.
+  """
+
   use GenServer
 
   alias Aecore.Keys.Worker, as: KeyManager
