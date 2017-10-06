@@ -10,41 +10,26 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
 
-  use GenServer
+  use GenStateMachine
 
   def start_link() do
-    GenServer.start_link(__MODULE__, :not_running, name: __MODULE__)
+    GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def init(:not_running) do
-    {:ok, :not_running}
+  def resume() do
+    GenStateMachine.cast(__MODULE__, :mine)
   end
 
-  def start_miner() do
-    GenServer.call(__MODULE__, :start_miner)
+  def suspend() do
+    GenStateMachine.call(__MODULE__, :suspend)
   end
 
-  def stop_miner() do
-    #TODO force stop miner, do not wait for next block
-    GenServer.call(__MODULE__, :stop_miner, :infinity)
-  end
+  # Server (callbacks)
 
-  def get_status() do
-    #TODO force answer, do not wait for next block
-    GenServer.call(__MODULE__, :get_status, :infinity)
-  end
-
-  def handle_call(:start_miner, _from, :not_running) do
-    schedule_work()
-    {:reply, :running, :running}
-  end
-
-  def handle_call(:stop_miner, _from, :running) do
-    {:reply, :will_stop, :not_running}
-  end
-
-  def handle_call(:get_status, _from, status) do
-    {:reply, status, status}
+  def init(data) do
+    IO.inspect "initial start of the Miner"
+    resume()
+    {:ok, :running, data}
   end
 
   @spec mine_next_block(list()) :: :ok
@@ -73,16 +58,29 @@ defmodule Aecore.Miner.Worker do
     Chain.add_block(block)
   end
 
-  def handle_info(:work, state) do
-    if(state == :running) do
-      mine_next_block([])
-      schedule_work()
-    end
-    {:noreply, state}
+  def handle_event(:cast, :mine, :idle, data) do
+    IO.inspect "[cast] to mine from idle"
+    mine_next_block([])
+    resume()
+    {:next_state, :running, data}
   end
 
-  defp schedule_work do
-    Process.send_after(self(), :work, 0)
+  def handle_event(:cast, :mine, :running, data) do
+    IO.inspect "[cast] to mine from running"
+    mine_next_block([])
+    resume()
+    {:next_state, :running, data}
+  end
+
+  def handle_event({:call, from}, :suspend, :running, data) do
+    IO.inspect "[call] to suspend from running"
+    {:next_state, :idle, data, [{:reply, from, :ok}]}
+  end
+
+  def handle_event(event_type, event_content, state, data) do
+    # Call the default implementation from GenStateMachine
+    IO.inspect ".......Any............"
+    super(event_type, event_content, state, data)
   end
 
 end
