@@ -2,38 +2,38 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
+  alias Aecore.Block.Genesis
 
-  @spec validate_block(%Aecore.Structures.Block{},
+  @spec validate_block!(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
-  def validate_block(new_block, previous_block) do
-    new_block_header_hash = block_header_hash(new_block)
-    prev_block_header_hash = block_header_hash(previous_block)
-    is_difficulty_target_met = Hashcash.verify(new_block.header,
-      new_block.header.difficulty_target)
+  def validate_block!(new_block, previous_block) do
+    prev_block_header_hash = block_header_hash(previous_block.header)
+    is_difficulty_target_met = Hashcash.verify(new_block.header)
 
     cond do
-      new_block.header.prev_hash != prev_block_header_hash ->
-        {:error, "Incorrect previous hash"}
+      new_block.header.prev_hash != prev_block_header_hash &&
+        previous_block != Genesis.genesis_block ->
+        throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
-        {:error, "Incorrect height"}
+        throw({:error, "Incorrect height"})
       !is_difficulty_target_met ->
-        {:error, "Header hash doesnt meet the difficulty target"}
-      new_block.header.txs_hash != calculate_root_hash(new_block) ->
-        {:error, "Root hash of transactions does not match the one in header"}
+        throw({:error, "Header hash doesnt meet the difficulty target"})
+      new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
+        throw({:error, "Root hash of transactions does not match the one in header"})
       !(new_block |> validate_block_transactions |> Enum.all?) ->
-        {:error, "One or more transactions not valid"}
+        throw({:error, "One or more transactions not valid"})
       true ->
         :ok
     end
   end
 
-  @spec block_header_hash(%Aecore.Structures.Block{}) :: binary()
-  def block_header_hash (block) do
-    block_header_bin = :erlang.term_to_binary(block.header)
+  @spec block_header_hash(%Aecore.Structures.Header{}) :: binary()
+  def block_header_hash(header) do
+    block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: term()
+  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       KeyManager.verify(transaction.data,
@@ -42,13 +42,19 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(%Aecore.Structures.Block{}) :: binary()
-  def calculate_root_hash(block) do
-    if(length(block.txs ) == 0) do
+  @spec filter_invalid_transactions(list()) :: list()
+  def filter_invalid_transactions(txs) do
+    Enum.filter(txs, fn(transaction) -> KeyManager.verify(transaction.data,
+                      transaction.signature,
+                      transaction.data.from_acc) end)
+  end
+
+  @spec calculate_root_hash(list()) :: binary()
+  def calculate_root_hash(txs) do
+    if(length(txs) == 0) do
       <<0::256>>
     else
-      merkle_tree = :gb_merkle_trees.empty
-      merkle_tree = for transaction <- block.txs do
+      merkle_tree = for transaction <- txs do
         transaction_data_bin = :erlang.term_to_binary(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
       end
