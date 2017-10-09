@@ -1,7 +1,6 @@
 defmodule Aecore.Miner.Worker do
-  @moduledoc """
-  Module for the miner
-  """
+
+  use GenStateMachine, callback_mode: :state_functions
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
@@ -10,32 +9,72 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
 
-  use GenStateMachine
-
   def start_link() do
-    GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenStateMachine.start_link(__MODULE__, {:off, 0}, name: __MODULE__)
   end
 
   def resume() do
-    GenStateMachine.cast(__MODULE__, :mine)
+    GenStateMachine.call(__MODULE__,:start)
   end
 
   def suspend() do
-    GenStateMachine.call(__MODULE__, :suspend)
+    GenStateMachine.call(__MODULE__,:suspend)
   end
 
-  # Server (callbacks)
-
-  def init(data) do
-    IO.inspect "initial start of the Miner"
-    resume()
-    {:ok, :running, data}
+  def init(_) do
+    GenStateMachine.cast(__MODULE__,:mine)
+    {:ok, :running, 0}
   end
 
-  @spec mine_next_block(list()) :: :ok
-  def mine_next_block(txs) do
+  ## Idle ##
+  def idle({:call, from}, start , data) do
+    IO.inspect "Mining resuming by user"
+    GenStateMachine.cast(__MODULE__,:mine)
+    {:next_state, :running, data, [{:reply, from, :ok}]}
+  end
+
+  def idle({:call, from}, suspend , data) do
+    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  end
+
+  def idle({:call, from}, _ , data) do
+    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  end
+
+  def idle(type, state , data) do
+    IO.inspect type
+    IO.inspect state
+    {:next_state, :idle, data}
+  end
+  ## Running ##
+  def running(:cast, :mine, data) do
+    IO.inspect "begin new block"
+    mine([])
+    GenStateMachine.cast(__MODULE__,:mine)
+    {:next_state, :running, data + 1}
+  end
+
+  def running({:call, from}, :start, data) do
+    {:next_state, :running, data, [{:reply, from, :already_started}]}
+  end
+
+  def running({:call, from}, :suspend, data) do
+    IO.inspect "report suspending"
+    {:next_state, :idle, data, [{:reply, from, :ok}]}
+  end
+
+  def running({:call, from}, _, data) do
+    {:next_state, :running, data, [{:reply, from, :not_suported}]}
+  end
+
+  def running(_, _, data) do
+    {:next_state, :idle, data}
+  end
+
+  ## Internal
+  @spec mine(list()) :: :ok
+  defp mine(txs) do
     chain = Chain.all_blocks()
-
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
@@ -56,31 +95,8 @@ defmodule Aecore.Miner.Worker do
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
     Chain.add_block(block)
-  end
-
-  def handle_event(:cast, :mine, :idle, data) do
-    IO.inspect "[cast] to mine from idle"
-    mine_next_block([])
-    resume()
-    {:next_state, :running, data}
-  end
-
-  def handle_event(:cast, :mine, :running, data) do
-    IO.inspect "[cast] to mine from running"
-    mine_next_block([])
-    resume()
-    {:next_state, :running, data}
-  end
-
-  def handle_event({:call, from}, :suspend, :running, data) do
-    IO.inspect "[call] to suspend from running"
-    {:next_state, :idle, data, [{:reply, from, :ok}]}
-  end
-
-  def handle_event(event_type, event_content, state, data) do
-    # Call the default implementation from GenStateMachine
-    IO.inspect ".......Any............"
-    super(event_type, event_content, state, data)
+    :timer.sleep(2000)
+    IO.inspect "2 sec work done !"
   end
 
 end
