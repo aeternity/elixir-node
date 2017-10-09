@@ -3,14 +3,11 @@ defmodule HashcashTest do
   doctest Aecore.Pow.Hashcash
 
   alias Aecore.Pow.Hashcash
-  alias Aecore.Block.Headers
   alias Aecore.Block.Genesis
 
   @tag timeout: 10000000
   test "successfull test" do
-    block = Genesis.genesis_block
-    difficulty = Headers.difficulty(block.header)
-    assert {:ok, new_block_header} = Hashcash.generate(block.header, difficulty)
-    assert :true = Hashcash.verify(new_block_header, difficulty)
+    assert {:ok, mined_header} = Hashcash.generate(Genesis.genesis_block.header)
+    assert :true = Hashcash.verify(mined_header)
   end
 end

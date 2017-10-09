@@ -5,10 +5,10 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  @spec calculate_block_state(%Aecore.Structures.Block{}) :: map()
-  def calculate_block_state(block) do
+  @spec calculate_block_state(list()) :: map()
+  def calculate_block_state(txs) do
     block_state = %{}
-    block_state = for transaction <- block.txs do
+    block_state = for transaction <- txs do
       if(transaction.data.from_acc != nil) do
         block_state = update_block_state(block_state,
                                          transaction.data.from_acc,
@@ -36,10 +36,14 @@ defmodule Aecore.Chain.ChainState do
     merkle_tree_data = for {account, balance} <- chain_state do
       {account, :erlang.term_to_binary(balance)}
     end
-    merkle_tree = merkle_tree_data |>
-      List.foldl(:gb_merkle_trees.empty, fn(node, merkle_tree)
-      -> :gb_merkle_trees.enter(elem(node,0), elem(node,1) , merkle_tree) end)
-    :gb_merkle_trees.root_hash(merkle_tree)
+    if(length(merkle_tree_data) == 0) do
+      <<0::256>>
+    else
+      merkle_tree = merkle_tree_data |>
+        List.foldl(:gb_merkle_trees.empty, fn(node, merkle_tree)
+        -> :gb_merkle_trees.enter(elem(node,0), elem(node,1) , merkle_tree) end)
+      :gb_merkle_trees.root_hash(merkle_tree)
+    end
   end
 
   @spec update_block_state(map(), binary(), integer()) :: map()

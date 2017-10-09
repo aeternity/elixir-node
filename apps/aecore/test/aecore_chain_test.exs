@@ -22,7 +22,7 @@ defmodule AecoreChainTest do
     assert latest_block = Chain.latest_block()
     assert latest_block.header.height == block.header.height
     length = length(Chain.all_blocks())
-    assert length == 2
+    assert length > 1
   end
 
 end
