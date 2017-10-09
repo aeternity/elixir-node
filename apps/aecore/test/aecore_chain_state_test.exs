@@ -18,11 +18,10 @@ defmodule AecoreChainStateTest do
   end
 
   test "chain state" do
-    block = get_block()
-
-    assert %{"a" => 6, "b" => 4, "c" => 2} ==
+    chain_state =
       ChainState.calculate_chain_state(%{"a" => 3, "b" => 5, "c" => 4},
-        %{"a" => 3, "b" => -1, "c" => -2})
+      %{"a" => 3, "b" => -1, "c" => -2})
+    assert %{"a" => 6, "b" => 4, "c" => 2} == chain_state
   end
 
   defp get_block() do

@@ -30,6 +30,18 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
+  @spec calculate_chain_state_hash(map()) :: binary()
+  def calculate_chain_state_hash(chain_state) do
+    merkle_tree_data = []
+    merkle_tree_data = for {account, balance} <- chain_state do
+      {account, :erlang.term_to_binary(balance)}
+    end
+    merkle_tree = merkle_tree_data |>
+      List.foldl(:gb_merkle_trees.empty, fn(node, merkle_tree)
+      -> :gb_merkle_trees.enter(elem(node,0), elem(node,1) , merkle_tree) end)
+    :gb_merkle_trees.root_hash(merkle_tree)
+  end
+
   @spec update_block_state(map(), binary(), integer()) :: map()
   defp update_block_state(block_state, account, value) do
     if(!Map.has_key?(block_state, account)) do
