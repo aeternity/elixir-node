@@ -28,3 +28,7 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
+
+config :aecore, :env,
+  test_nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
+  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo28_nif")
