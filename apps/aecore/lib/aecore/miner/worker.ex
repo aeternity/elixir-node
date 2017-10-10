@@ -8,6 +8,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
+  alias Aecore.Chain.ChainState
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -85,6 +86,7 @@ defmodule Aecore.Miner.Worker do
   @spec mine_next_block(list()) :: :ok
   defp mine_next_block(txs) do
     chain = Chain.all_blocks()
+    chain_state = Chain.chain_state()
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
