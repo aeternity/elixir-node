@@ -21,9 +21,9 @@ defmodule Aecore.Miner.Worker do
     GenStateMachine.call(__MODULE__, :suspend)
   end
 
-  def init(_) do
+  def init(data) do
     GenStateMachine.cast(__MODULE__, :idle)
-    {:ok, :running, %{}}
+    {:ok, :running, data}
   end
 
   def get_state() do
