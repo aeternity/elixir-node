@@ -9,6 +9,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   use GenServer
 
@@ -47,10 +48,11 @@ defmodule Aecore.Miner.Worker do
     {:reply, status, status}
   end
 
-  @spec mine_next_block(list()) :: :ok
-  def mine_next_block(txs) do
+  @spec mine_next_block() :: :ok
+  def mine_next_block() do
     chain = Chain.all_blocks()
-
+    txs_map = Pool.get_and_empty_pool
+    txs_list = Map.values(txs_map)
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
@@ -61,13 +63,14 @@ defmodule Aecore.Miner.Worker do
       latest_block
     end
 
-    valid_txs = BlockValidation.filter_invalid_transactions(txs)
+    valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(chain)
 
-    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
+    unmined_header = Headers.new(latest_block.header.height + 1,
+      latest_block_hash, root_hash, difficulty, 0, 1)
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
     Chain.add_block(block)
@@ -75,7 +78,7 @@ defmodule Aecore.Miner.Worker do
 
   def handle_info(:work, state) do
     if(state == :running) do
-      mine_next_block([])
+      mine_next_block()
       schedule_work()
     end
     {:noreply, state}
