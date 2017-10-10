@@ -14,7 +14,8 @@ defmodule AecoreChainStateTest do
   test "block state" do
     block = get_block()
 
-    assert %{"a" => 3, "b" => -1, "c" => -2} == ChainState.calculate_block_state(block)
+    assert %{"a" => 3, "b" => -1, "c" => -2} ==
+      ChainState.calculate_block_state(block.txs)
   end
 
   test "chain state" do

@@ -11,7 +11,7 @@ defmodule Aecore.Chain.Worker do
 
   def start_link do
     GenServer.start_link(__MODULE__, {[Genesis.genesis_block()],
-      ChainState.calculate_block_state(Genesis.genesis_block())},
+      ChainState.calculate_block_state(Genesis.genesis_block().txs)},
       name: __MODULE__)
   end
 
@@ -34,6 +34,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_block, b})
   end
 
+  @spec chain_state() :: map()
+  def chain_state() do
+   GenServer.call(__MODULE__, :chain_state)
+  end
+
   def handle_call(:latest_block, _from, state) do
     [lb | _] = elem(state, 0)
     {:reply, lb, state}
@@ -48,8 +53,20 @@ defmodule Aecore.Chain.Worker do
     #TODO validations
     chain = elem(state, 0)
     chain_state = elem(state, 1)
-    chain_state = ChainState.calculate_chain_state(chain_state, b)
-    {:reply, :ok, {[b | chain], chain_state}}
+    new_block_chain_state = ChainState.calculate_block_state(b.txs)
+    chain_state =
+      ChainState.calculate_chain_state(new_block_chain_state, chain_state)
+    chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
+    if(chain_state_hash == b.header.chain_state_hash) do
+      {:reply, :ok, {[b | chain], chain_state}}
+    else
+      {:reply, :error, state}
+    end
+  end
+
+  def handle_call(:chain_state, _from, state) do
+   chain_state = elem(state, 1)
+   {:reply, chain_state, state}
   end
 
 end
