@@ -5,6 +5,7 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   use GenServer
 
@@ -41,7 +42,12 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = b}, _from, chain) do
-    {:reply, :ok, [b | chain]}
+    [latest_block | _] = chain
+    if(:ok = BlockValidation.validate_block!(b, latest_block)) do
+      {:reply, :ok, [b | chain]}
+    else
+      {:reply, {:error, "invalid block"}, chain}
+    end
   end
 
 end
