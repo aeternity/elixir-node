@@ -10,7 +10,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Pow.Hashcash
 
   def start_link() do
-    GenStateMachine.start_link(__MODULE__, {:off, 0}, name: __MODULE__)
+    GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
   def resume() do
@@ -23,7 +23,7 @@ defmodule Aecore.Miner.Worker do
 
   def init(_) do
     GenStateMachine.cast(__MODULE__, :idle)
-    {:ok, :running, 0}
+    {:ok, :running, %{}}
   end
 
   def get_state() do
@@ -57,7 +57,7 @@ defmodule Aecore.Miner.Worker do
    def running(:cast, :mine, data) do
      mine_next_block([])
      GenStateMachine.cast(__MODULE__,:mine)
-     {:next_state, :running, data + 1}
+     {:next_state, :running, data}
    end
 
    def running({:call, from}, :get_state, data) do
