@@ -14,7 +14,8 @@ defmodule AecoreValidationTest do
     new_block = %Block{header: %Header
       {difficulty_target: 0,
       height: 1, nonce: 1016,
-      prev_hash: <<145, 211, 229, 74, 60, 194, 178, 139, 216, 166, 140, 193, 171, 193, 39, 182,
+      prev_hash:
+      <<145, 211, 229, 74, 60, 194, 178, 139, 216, 166, 140, 193, 171, 193, 39, 182,
       240, 12, 216, 218, 93, 219, 93, 31, 73, 138, 53, 89, 186, 200, 242, 100>>,
       chain_state_hash: <<0::256>>,
       timestamp: 5000,

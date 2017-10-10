@@ -3,12 +3,19 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Block.Genesis
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    new_block_state = ChainState.calculate_block_state(new_block.txs)
+    chain_state = Chain.chain_state()
+    new_chain_state =
+      ChainState.calculate_chain_state(new_block_state, chain_state)
+    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash &&
@@ -22,6 +29,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "Root hash of transactions does not match the one in header"})
       !(new_block |> validate_block_transactions |> Enum.all?) ->
         throw({:error, "One or more transactions not valid"})
+      new_block.header.chain_state_hash != chain_state_hash ->
+        throw({:error, "Chain state not valid"})
       true ->
         :ok
     end

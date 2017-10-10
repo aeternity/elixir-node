@@ -56,12 +56,7 @@ defmodule Aecore.Chain.Worker do
     new_block_chain_state = ChainState.calculate_block_state(b.txs)
     chain_state =
       ChainState.calculate_chain_state(new_block_chain_state, chain_state)
-    chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
-    if(chain_state_hash == b.header.chain_state_hash) do
-      {:reply, :ok, {[b | chain], chain_state}}
-    else
-      {:reply, :error, state}
-    end
+    {:reply, :ok, {[b | chain], chain_state}}
   end
 
   def handle_call(:chain_state, _from, state) do
