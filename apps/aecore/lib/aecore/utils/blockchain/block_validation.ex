@@ -10,13 +10,12 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block!(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
-    coinbase_transactions_sum = List.foldl(new_block.txs, 0, fn(t, acc) ->
-        if(t.data.from_acc == "" || t.data.from_acc == nil) do
-          acc + t.data.value
-        else
-          acc
+    coinbase_transactions_sum = Enum.sum(Enum.map(new_block.txs, fn(t) ->
+        cond do
+           t.data.from_acc == nil -> 0
+           true -> t.data.value
         end
-      end)
+      end))
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash &&
@@ -65,6 +64,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     if(length(txs) == 0) do
       <<0::256>>
     else
+      IO.inspect(txs)
       merkle_tree = for transaction <- txs do
         transaction_data_bin = :erlang.term_to_binary(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
