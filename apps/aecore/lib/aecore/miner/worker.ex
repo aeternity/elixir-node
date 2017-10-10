@@ -51,7 +51,8 @@ defmodule Aecore.Miner.Worker do
   @spec mine_next_block() :: :ok
   def mine_next_block() do
     chain = Chain.all_blocks()
-    txs_map = Pool.get_and_empty_pool
+    
+    txs_map = Pool.get_and_empty_pool()
     txs_list = Map.values(txs_map)
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
