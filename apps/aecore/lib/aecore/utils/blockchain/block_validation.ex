@@ -3,12 +3,20 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Block.Genesis
+  alias Aecore.Miner.Worker, as: Miner
 
   @spec validate_block!(%Aecore.Structures.Block{},
                        %Aecore.Structures.Block{}) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    coinbase_transactions_sum = List.foldl(new_block.txs, 0, fn(t, acc) ->
+        if(t.data.from_acc == "" || t.data.from_acc == nil) do
+          acc + t.data.value
+        else
+          acc
+        end
+      end)
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash &&
@@ -22,6 +30,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "Root hash of transactions does not match the one in header"})
       !(new_block |> validate_block_transactions |> Enum.all?) ->
         throw({:error, "One or more transactions not valid"})
+      coinbase_transactions_sum > Miner.coinbase_transaction_value ->
+        throw({:error, "Sum of coinbase transactions values exceeds the maximum
+          coinbase transactions value"})
       true ->
         :ok
     end

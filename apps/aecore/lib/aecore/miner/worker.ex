@@ -8,6 +8,11 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
+  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
+
+  @coinbase_transaction_value 100
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -81,6 +86,17 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :idle, data}
    end
 
+   def add_coinbase_transaction(txs, to_acc, value) do
+     tx_data = %{TxData.create |
+                 :to_acc => to_acc,
+                 :value => value,
+                 :nonce => Enum.random(0..1000000000000)}
+     tx = %{SignedTx.create | data: tx_data}
+     txs ++ [tx]
+  end
+
+  def coinbase_transaction_value, do: @coinbase_transaction_value
+
   ## Internal
   @spec mine_next_block(list()) :: :ok
   defp mine_next_block(txs) do
@@ -96,6 +112,8 @@ defmodule Aecore.Miner.Worker do
     end
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs)
+    {_, pubkey} = Keys.pubkey()
+    valid_txs = add_coinbase_transaction(valid_txs, pubkey, @coinbase_transaction_value)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
