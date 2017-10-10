@@ -6,6 +6,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   use GenServer
 
@@ -50,13 +51,15 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = b}, _from, state) do
-    #TODO validations
-    chain = elem(state, 0)
-    chain_state = elem(state, 1)
-    new_block_chain_state = ChainState.calculate_block_state(b.txs)
-    chain_state =
-      ChainState.calculate_chain_state(new_block_chain_state, chain_state)
-    {:reply, :ok, {[b | chain], chain_state}}
+    {chain, prev_chain_state} = state
+    [prior_block | _] = chain
+    if(:ok == BlockValidation.validate_block!(b, prior_block)) do
+      new_block_chain_state = ChainState.calculate_block_state(b.txs)
+      new_chain_state = ChainState.calculate_chain_state(new_block_chain_state, prev_chain_state)
+      {:reply, :ok, {[b | chain], new_chain_state}}
+    else
+      {:reply, {:error, "invalid block"}, state}
+    end
   end
 
   def handle_call(:chain_state, _from, state) do

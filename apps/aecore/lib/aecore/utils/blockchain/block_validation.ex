@@ -73,5 +73,5 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
-
+  
 end

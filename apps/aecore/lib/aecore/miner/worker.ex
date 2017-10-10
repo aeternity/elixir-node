@@ -87,6 +87,7 @@ defmodule Aecore.Miner.Worker do
   defp mine_next_block(txs) do
     chain = Chain.all_blocks()
     chain_state = Chain.chain_state()
+
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
