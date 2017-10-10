@@ -84,8 +84,16 @@ defmodule Aecore.Miner.Worker do
   ## Internal
   @spec mine_next_block(list()) :: :ok
   defp mine_next_block(txs) do
-    chain = Chain.all_blocks
-    latest_block = BlockValidation.validate_latest_block(chain)
+    chain = Chain.all_blocks()
+    #validate latest block if the chain has more than the genesis block
+    latest_block = if(length(chain) == 1) do
+      [latest_block | _] = chain
+      latest_block
+    else
+      [latest_block, previous_block | _] = chain
+      BlockValidation.validate_block!(latest_block, previous_block)
+      latest_block
+    end
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)

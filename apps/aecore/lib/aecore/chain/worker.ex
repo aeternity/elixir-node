@@ -42,8 +42,12 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = b}, _from, chain) do
-    BlockValidation.validate_latest_block(chain)
-    {:reply, :ok, [b | chain]}
+    [latest_block | _] = chain
+    if(:ok = BlockValidation.validate_block!(b, latest_block)) do
+      {:reply, :ok, [b | chain]}
+    else
+      {:reply, {:error, "invalid block"}, chain}
+    end
   end
 
 end

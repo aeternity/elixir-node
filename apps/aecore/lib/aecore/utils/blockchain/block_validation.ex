@@ -64,17 +64,5 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
-
-  @spec validate_latest_block(list()) :: %Aecore.Structures.Block{}
-  def validate_latest_block(chain) do
-    latest_block = if(length(chain) == 1) do
-      [latest_block | _] = chain
-      latest_block
-    else
-      [latest_block, previous_block | _] = chain
-      validate_block!(latest_block, previous_block)
-      latest_block
-    end
-  end
-
+  
 end
