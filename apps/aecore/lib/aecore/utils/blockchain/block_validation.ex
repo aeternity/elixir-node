@@ -64,7 +64,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     if(length(txs) == 0) do
       <<0::256>>
     else
-      IO.inspect(txs)
       merkle_tree = for transaction <- txs do
         transaction_data_bin = :erlang.term_to_binary(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}

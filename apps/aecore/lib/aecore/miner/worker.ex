@@ -86,10 +86,9 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :idle, data}
    end
 
-   def get_coinbase_transaction() do
-     {_, pubkey} = Keys.pubkey()
+   def get_coinbase_transaction(to_acc) do
      tx_data = %{TxData.create |
-                 :to_acc => pubkey,
+                 :to_acc => to_acc,
                  :value => @coinbase_transaction_value,
                  :nonce => Enum.random(0..1000000000000)}
      %{SignedTx.create | data: tx_data}
@@ -112,7 +111,8 @@ defmodule Aecore.Miner.Worker do
     end
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs)
-    valid_txs = [get_coinbase_transaction() | valid_txs]
+    {_, pubkey} = Keys.pubkey()
+    valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
