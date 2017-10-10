@@ -29,8 +29,6 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(%Block{}) :: :ok
   def add_block(%Block{} = b) do
-    chain = all_blocks()
-    BlockValidation.validate_latest_block(chain)
     GenServer.call(__MODULE__, {:add_block, b})
   end
 
@@ -44,6 +42,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = b}, _from, chain) do
+    BlockValidation.validate_latest_block(chain)
     {:reply, :ok, [b | chain]}
   end
 
