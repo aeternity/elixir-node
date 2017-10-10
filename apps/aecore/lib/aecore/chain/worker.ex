@@ -5,6 +5,7 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   use GenServer
 
@@ -28,6 +29,8 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(%Block{}) :: :ok
   def add_block(%Block{} = b) do
+    chain = all_blocks()
+    BlockValidation.validate_latest_block(chain)
     GenServer.call(__MODULE__, {:add_block, b})
   end
 
