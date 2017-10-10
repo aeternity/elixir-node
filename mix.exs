@@ -34,7 +34,8 @@ defmodule EpochElixir.Mixfile do
   defp deps do
     [
       {:mock, "~> 0.2.0", only: :test},
-      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
+      {:gen_state_machine, "~> 2.0"}
     ]
   end
 end
