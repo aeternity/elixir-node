@@ -1,12 +1,12 @@
 defmodule AecoreTxTest do
   @moduledoc """
-  Unit tests for the Aecore.Tx module
+  Unit tests for the Aecore.Txs.Tx module
   """
 
   use ExUnit.Case
-  doctest Aecore.Tx
+  doctest Aecore.Txs.Tx
 
-  alias Aecore.Tx, as: Tx
+  alias Aecore.Txs.Tx, as: Tx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
 

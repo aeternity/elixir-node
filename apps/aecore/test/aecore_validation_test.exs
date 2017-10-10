@@ -27,12 +27,12 @@ defmodule AecoreValidationTest do
       txs_hash: <<0::256>>,
       version: 1},
       txs: []}
-    assert BlockValidation.validate_block(new_block,prev_block) == :ok
+    assert BlockValidation.validate_block!(new_block,prev_block) == :ok
   end
 
   test "validate transactions in a block" do
-    txs = [Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
-           Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
+    txs = [Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
+           Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
     block = Block.create()
     block = %{block | txs: txs}
     assert block |> BlockValidation.validate_block_transactions
