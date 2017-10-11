@@ -5,6 +5,11 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
+  @doc """
+  Calculates the balance of each account mentioned
+  in the transactions a single block, returns a map with the
+  accounts as key and their balance as value.
+  """
   @spec calculate_block_state(list()) :: map()
   def calculate_block_state(txs) do
     block_state = %{}
@@ -22,6 +27,11 @@ defmodule Aecore.Chain.ChainState do
     reduce_map_list(block_state)
   end
 
+  @doc """
+  Calculates the state of the chain with the new block added
+  to the current state, returns a map with the
+  accounts as key and their balance as value.
+  """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
     keys = Map.keys(block_state)
@@ -30,6 +40,10 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
+  @doc """
+  Builds a merkle tree from the passed chain state and
+  returns the root hash of the tree.
+  """
   @spec calculate_chain_state_hash(map()) :: binary()
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data = []
