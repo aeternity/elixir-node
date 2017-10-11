@@ -22,7 +22,8 @@ defmodule AecoreChainTest do
     latest_block = Chain.latest_block()
     prev_block_hash = BlockValidation.block_header_hash(latest_block.header)
     block = %Block{header: %Header{height: latest_block.header.height + 1, prev_hash: prev_block_hash,
-            txs_hash: <<0::256>>, difficulty_target: 0, nonce: 0,
+            txs_hash: <<0::256>>,chain_state_hash: <<0::256>>,
+            difficulty_target: 0, nonce: 0,
             timestamp: System.system_time(:milliseconds), version: 1}, txs: []}
     assert :ok = Chain.add_block(block)
     assert latest_block = Chain.latest_block()

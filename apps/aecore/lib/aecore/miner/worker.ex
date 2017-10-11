@@ -8,6 +8,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
+  alias Aecore.Chain.ChainState
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -85,26 +86,38 @@ defmodule Aecore.Miner.Worker do
   @spec mine_next_block(list()) :: :ok
   defp mine_next_block(txs) do
     chain = Chain.all_blocks()
+    chain_state = Chain.chain_state()
+
     #validate latest block if the chain has more than the genesis block
     latest_block = if(length(chain) == 1) do
       [latest_block | _] = chain
       latest_block
     else
       [latest_block, previous_block | _] = chain
-      BlockValidation.validate_block!(latest_block, previous_block)
+      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
       latest_block
     end
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
+    new_block_state = ChainState.calculate_block_state(valid_txs)
+    new_chain_state =
+      ChainState.calculate_chain_state(new_block_state, chain_state)
+
+    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(chain)
 
-    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash, difficulty, 0, 1)
+    unmined_header = Headers.new(latest_block.header.height + 1,
+      latest_block_hash, root_hash,
+      chain_state_hash, difficulty, 0, 1)
+
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
-    IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
+    IO.inspect("block: #{block.header.height} difficulty:
+               #{block.header.difficulty_target}")
     Chain.add_block(block)
   end
 
