@@ -94,7 +94,7 @@ defmodule Aecore.Miner.Worker do
       latest_block
     else
       [latest_block, previous_block | _] = chain
-      BlockValidation.validate_block!(latest_block, previous_block)
+      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
       latest_block
     end
 
@@ -110,12 +110,14 @@ defmodule Aecore.Miner.Worker do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(chain)
 
-    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash, root_hash,
+    unmined_header = Headers.new(latest_block.header.height + 1,
+      latest_block_hash, root_hash,
       chain_state_hash, difficulty, 0, 1)
 
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
-    IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
+    IO.inspect("block: #{block.header.height} difficulty:
+               #{block.header.difficulty_target}")
     Chain.add_block(block)
   end
 

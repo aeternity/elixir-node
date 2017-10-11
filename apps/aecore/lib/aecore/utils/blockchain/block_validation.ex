@@ -3,16 +3,16 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Block.Genesis
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
-                       %Aecore.Structures.Block{}) :: {:error, term()} | :ok
-  def validate_block!(new_block, previous_block) do
+                        %Aecore.Structures.Block{},
+                        map()) :: {:error, term()} | :ok
+  def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+
     new_block_state = ChainState.calculate_block_state(new_block.txs)
-    chain_state = Chain.chain_state()
     new_chain_state =
       ChainState.calculate_chain_state(new_block_state, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
@@ -73,5 +73,5 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
-  
+
 end
