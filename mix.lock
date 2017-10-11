@@ -1,4 +1,5 @@
 %{"exconstructor": {:hex, :exconstructor, "1.1.0", "272623a7b203cb2901c20cbb92c5c3ab103cc0087ff7c881979e046043346752", [:mix], []},
   "gb_merkle_trees": {:git, "https://github.com/aeternity/gb_merkle_trees.git", "4db7aad81944e2d12981a2ecd23dd59e32ab1651", [ref: "4db7aad"]},
+  "gen_state_machine": {:hex, :gen_state_machine, "2.0.1", "85efd5a0376929c3a4246dd943e17564a2908c7ddd7acd242d84594e785d83f8", [:mix], [], "hexpm"},
   "meck": {:hex, :meck, "0.8.8", "eeb3efe811d4346e1a7f65b2738abc2ad73cbe1a2c91b5dd909bac2ea0414fa6", [:rebar3], [], "hexpm"},
   "mock": {:hex, :mock, "0.2.1", "bfdba786903e77f9c18772dee472d020ceb8ef000783e737725a4c8f54ad28ec", [:mix], [{:meck, "~> 0.8.2", [hex: :meck, repo: "hexpm", optional: false]}], "hexpm"}}
