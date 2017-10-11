@@ -8,6 +8,7 @@ defmodule Aecore.Structures.Header do
   defstruct [:height,
             :prev_hash,
             :txs_hash,
+            :chain_state_hash,
             :difficulty_target,
             :nonce,
             :timestamp,
