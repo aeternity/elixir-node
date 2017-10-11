@@ -48,12 +48,7 @@ defmodule Aecore.Chain.ChainState do
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data = []
     merkle_tree_data = for {account, balance} <- chain_state do
-      if(is_tuple(account)) do
-        {:ok, key} = account
-        {key, :erlang.term_to_binary(balance)}
-      else
-        {account, :erlang.term_to_binary(balance)}
-      end
+      {account, :erlang.term_to_binary(balance)}
     end
     if(length(merkle_tree_data) == 0) do
       <<0::256>>
