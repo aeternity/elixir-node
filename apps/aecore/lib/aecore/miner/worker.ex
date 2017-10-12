@@ -5,8 +5,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
-  alias Aecore.Block.Headers
-  alias Aecore.Block.Blocks
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.Block
   alias Aecore.Pow.Hashcash
   alias Aecore.Chain.ChainState
 
@@ -110,12 +110,12 @@ defmodule Aecore.Miner.Worker do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(chain)
 
-    unmined_header = Headers.new(latest_block.header.height + 1,
+    unmined_header = Header.create(latest_block.header.height + 1,
       latest_block_hash, root_hash,
       chain_state_hash, difficulty, 0, 1)
 
     {:ok, mined_header} = Hashcash.generate(unmined_header)
-    {:ok, block} = Blocks.new(mined_header, valid_txs)
+    block = %Block{header: mined_header, txs: valid_txs}
     IO.inspect("block: #{block.header.height} difficulty:
                #{block.header.difficulty_target}")
     Chain.add_block(block)

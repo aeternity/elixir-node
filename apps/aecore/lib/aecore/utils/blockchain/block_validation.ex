@@ -2,7 +2,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
-  alias Aecore.Block.Genesis
+  alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
@@ -19,7 +19,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
     cond do
       new_block.header.prev_hash != prev_block_header_hash &&
-        previous_block != Genesis.genesis_block ->
+        previous_block != Block.genesis_block ->
         throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
         throw({:error, "Incorrect height"})

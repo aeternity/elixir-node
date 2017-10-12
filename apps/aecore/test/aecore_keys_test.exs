@@ -7,7 +7,7 @@ defmodule AecoreKeysTest do
   doctest Aecore.Keys.Worker
 
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.TxData, as: TxData
+  alias Aecore.Structures.TxData
 
   setup do
     Keys.start_link()

@@ -5,10 +5,10 @@ defmodule AecoreChainTest do
 
   use ExUnit.Case
 
-  alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Block, as: Block
-  alias Aecore.Structures.Header, as:  Header
+  alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 
   setup do
