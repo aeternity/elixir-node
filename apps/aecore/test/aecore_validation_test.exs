@@ -36,9 +36,10 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    txs = [SignedTx.create(Keys.pubkey(), 5),
-           SignedTx.create(Keys.pubkey(), 10)]
-    block = %{Block.genesis_block | txs: txs}
+    {:ok, tx1} = Keys.sign_tx(Keys.pubkey(), 5)
+    {:ok, tx2} = Keys.sign_tx(Keys.pubkey(), 10)
+
+    block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions
                  |> Enum.all? == true
   end

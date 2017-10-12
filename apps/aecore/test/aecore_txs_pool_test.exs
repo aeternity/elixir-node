@@ -14,10 +14,11 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add transaction, remove it and get pool" do
-    assert :ok = Pool.add_transaction(
-      SignedTx.create(Keys.pubkey(), 5))
-    assert :ok = Pool.remove_transaction(
-      SignedTx.create(Keys.pubkey(), 5))
+    {:ok, tx1} = Keys.sign_tx(Keys.pubkey(), 5)
+    {:ok, tx2} = Keys.sign_tx(Keys.pubkey(), 5)
+    assert :ok = Pool.add_transaction(tx1)
+    assert :ok = Pool.add_transaction(tx1)
+    assert :ok = Pool.remove_transaction(tx2)
     tx_pool = Pool.get_pool()
     assert Enum.count(tx_pool) == 1
   end

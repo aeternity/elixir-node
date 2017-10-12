@@ -15,10 +15,9 @@ defmodule AecoreTxTest do
 
   test "create and verify a signed tx" do
     {:ok, to_account} = Keys.pubkey()
-    tx = SignedTx.create(to_account, 5)
+    {:ok, tx} = Keys.sign_tx(to_account, 5)
 
-    assert %SignedTx{} = tx
-    assert :true = SignedTx.verify(tx)
+    assert :true = Keys.verify_tx(tx)
   end
 
 end

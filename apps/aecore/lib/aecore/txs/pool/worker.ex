@@ -6,7 +6,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Keys.Worker, as: KeyManager
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
 
   def start_link do
@@ -38,7 +38,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    is_tx_valid = KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
+    is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
 
     if(is_tx_valid) do
     updated_pool = Map.put_new(tx_pool,
