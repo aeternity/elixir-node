@@ -10,7 +10,10 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
                         map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
+
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    is_genesis = new_block == Genesis.genesis_block && previous_block == nil
+    is_correct_prev_hash = new_block.header.prev_hash != prev_block_header_hash
 
     new_block_state = ChainState.calculate_block_state(new_block.txs)
     new_chain_state =
@@ -18,6 +21,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     cond do
+       is_genesis || is_correct_prev_hash->
+         throw({:error, "Only Genesis"})
       new_block.header.prev_hash != prev_block_header_hash &&
         previous_block != Genesis.genesis_block ->
         throw({:error, "Incorrect previous hash"})
