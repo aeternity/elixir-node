@@ -11,8 +11,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.ChainState
 
-  use GenServer
-
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
   end
