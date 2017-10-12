@@ -45,6 +45,11 @@ defmodule Aecore.Chain.Worker do
    GenServer.call(__MODULE__, :chain_state)
   end
 
+  @spec get_blocks_for_difficulty_calculation() :: list()
+  def get_blocks_for_difficulty_calculation() do
+    GenServer.call(__MODULE__, :get_blocks_for_difficulty_calculation)
+  end
+
   def handle_call(:latest_block, _from, state) do
     [lb | _] = elem(state, 0)
     {:reply, lb, state}
@@ -84,6 +89,12 @@ defmodule Aecore.Chain.Worker do
   def handle_call(:chain_state, _from, state) do
    chain_state = elem(state, 1)
    {:reply, chain_state, state}
+  end
+
+  def handle_call(:get_blocks_for_difficulty_calculation, _from, state) do
+    chain = elem(state, 0)
+    blocks_for_difficulty_calculation = Enum.take(chain, 100)
+    {:reply, blocks_for_difficulty_calculation, state}
   end
 
 end
