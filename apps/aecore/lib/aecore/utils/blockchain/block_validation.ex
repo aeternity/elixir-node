@@ -4,16 +4,19 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Pow.Hashcash
   alias Aecore.Block.Genesis
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
-                       %Aecore.Structures.Block{}) :: {:error, term()} | :ok
-  def validate_block!(new_block, previous_block) do
+                        %Aecore.Structures.Block{},
+                        map()) :: {:error, term()} | :ok
+  def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
     coinbase_transactions_sum = Enum.sum(Enum.map(new_block.txs, fn(t) ->
         cond do
-           t.data.from_acc == nil -> 0
-           true -> t.data.value
+           t.data.from_acc == nil -> t.data.value
+           true -> 0
         end
       end))
 
@@ -32,6 +35,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       coinbase_transactions_sum > Miner.coinbase_transaction_value ->
         throw({:error, "Sum of coinbase transactions values exceeds the maximum
           coinbase transactions value"})
+      new_block.header.chain_state_hash != chain_state_hash ->
+        throw({:error, "Chain state not valid"})
       true ->
         :ok
     end
@@ -46,17 +51,22 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
   def validate_block_transactions(block) do
     for transaction <- block.txs do
-      KeyManager.verify(transaction.data,
-                        transaction.signature,
-                        transaction.data.from_acc)
+      if(transaction.signature != nil && transaction.data.from_acc == nil) do
+        KeyManager.verify(transaction.data,
+                          transaction.signature,
+                          transaction.data.from_acc)
+      else
+        true
+      end
     end
   end
 
   @spec filter_invalid_transactions(list()) :: list()
   def filter_invalid_transactions(txs) do
-    Enum.filter(txs, fn(transaction) -> KeyManager.verify(transaction.data,
-                      transaction.signature,
-                      transaction.data.from_acc) end)
+    Enum.filter(txs, fn(transaction) ->
+      KeyManager.verify(transaction.data,
+      transaction.signature,
+      transaction.data.from_acc) end)
   end
 
   @spec calculate_root_hash(list()) :: binary()
