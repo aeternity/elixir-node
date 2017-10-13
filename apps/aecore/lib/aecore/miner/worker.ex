@@ -2,6 +2,8 @@ defmodule Aecore.Miner.Worker do
 
   use GenStateMachine, callback_mode: :state_functions
 
+  require Logger
+
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
@@ -118,6 +120,9 @@ defmodule Aecore.Miner.Worker do
     {:ok, block} = Blocks.new(mined_header, valid_txs)
     IO.inspect("block: #{block.header.height} difficulty:
                #{block.header.difficulty_target}")
+               
+    Logger.info(fn -> "Mined block ##{block.header.height}" end, miner: :info)
+
     Chain.add_block(block)
   end
 

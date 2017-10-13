@@ -3,6 +3,8 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
+  require Logger
+
   alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
@@ -59,6 +61,14 @@ defmodule Aecore.Chain.Worker do
       new_chain_state =
         ChainState.calculate_chain_state(new_block_chain_state,
         prev_chain_state)
+
+      Logger.info(fn ->
+        "Added block ##{b.header.height} with a hash of\n#{b.header
+        |> BlockValidation.block_header_hash()
+        |> Base.encode16()} to the chain"
+        end,
+        chain: :info)
+
       {:reply, :ok, {[b | chain], new_chain_state}}
     else
       {:reply, {:error, "invalid block"}, state}

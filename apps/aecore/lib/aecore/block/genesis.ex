@@ -11,7 +11,7 @@ defmodule Aecore.Block.Genesis do
       | height: 0,
         prev_hash: <<0::256>>,
         txs_hash: <<0::256>>,
-        timestamp: 1507275094308,
+        timestamp: 1507798748904,
         nonce: 19,
         version: 1,
         difficulty_target: 1}
