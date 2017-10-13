@@ -36,9 +36,7 @@ defmodule Aecore.Keys.Worker do
   @spec sign_tx(binary(), integer()) :: {:ok, %SignedTx{}}
   def sign_tx(to_acc, value) do
     {:ok, from_acc} = pubkey()
-    {:ok, tx_data}  = TxData.create(%{:from_acc => from_acc,
-      :to_acc   => to_acc,
-      :value    => value})
+    {:ok, tx_data}  = TxData.create(from_acc, to_acc, value)
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
    {:ok, signed_tx}

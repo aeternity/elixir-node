@@ -21,12 +21,12 @@ defmodule Aecore.Structures.TxData do
              :value]
   use ExConstructor
 
-  @spec create(map()) :: {:ok, %TxData{}}
-  def create(%{from_acc: from_pubkey, to_acc: to_pubkey, value: value}) do
+  @spec create(binary(), binary(), integer()) :: {:ok, %TxData{}}
+  def create(from_acc, to_acc, value) do
     nonce = Enum.random(0..1000000000000)
     {:ok, %TxData{
-      from_acc: from_pubkey,
-      to_acc: to_pubkey,
+      from_acc: from_acc,
+      to_acc: to_acc,
       value: value,
       nonce: nonce}}
   end
