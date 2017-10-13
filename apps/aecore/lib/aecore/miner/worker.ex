@@ -86,19 +86,15 @@ defmodule Aecore.Miner.Worker do
   ## Internal
   @spec mine_next_block() :: :ok
   defp mine_next_block() do
-    chain = Chain.all_blocks()
     chain_state = Chain.chain_state()
 
     txs_list = Map.values(Pool.get_and_empty_pool())
 
-    #validate latest block if the chain has more than the genesis block
-    latest_block = if(length(chain) == 1) do
-      [latest_block | _] = chain
-      latest_block
-    else
-      [latest_block, previous_block | _] = chain
+    blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
+    {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
+
+    if(!(previous_block == nil)) do
       BlockValidation.validate_block!(latest_block, previous_block, chain_state)
-      latest_block
     end
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
@@ -109,7 +105,7 @@ defmodule Aecore.Miner.Worker do
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-    difficulty = Difficulty.calculate_next_difficulty(chain)
+    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash,
       root_hash, chain_state_hash, difficulty, 0, 1)

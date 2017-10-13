@@ -10,16 +10,17 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
                         map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
+
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    is_genesis = new_block == Genesis.genesis_block && previous_block == nil
+    is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 
     new_block_state = ChainState.calculate_block_state(new_block.txs)
-    new_chain_state =
-      ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     cond do
-      new_block.header.prev_hash != prev_block_header_hash &&
-        previous_block != Genesis.genesis_block ->
+      !(is_genesis || is_correct_prev_hash) ->
         throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
         throw({:error, "Incorrect height"})
