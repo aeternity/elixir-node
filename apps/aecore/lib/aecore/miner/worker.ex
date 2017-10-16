@@ -48,7 +48,7 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :idle, data, [{:reply, from, :not_started}]}
    end
 
-   def idle({:call, from}, :get_state, data) do
+   def idle({:call, from}, :get_state, _data) do
      {:keep_state_and_data, [{:reply, from, {:state, :idle}}]}
    end
 
@@ -56,7 +56,7 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :idle, data, [{:reply, from, :not_started}]}
    end
 
-   def idle(type, state , data) do
+   def idle(_type, _state , data) do
      {:next_state, :idle, data}
    end
 
@@ -67,7 +67,7 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :running, data}
    end
 
-   def running({:call, from}, :get_state, data) do
+   def running({:call, from}, :get_state, _data) do
      {:keep_state_and_data, [{:reply, from, {:state, :running}}]}
    end
 
