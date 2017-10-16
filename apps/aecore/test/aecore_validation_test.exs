@@ -36,8 +36,8 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    {:ok, tx1} = Keys.sign_tx(Keys.pubkey(), 5)
-    {:ok, tx2} = Keys.sign_tx(Keys.pubkey(), 10)
+    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
+    {:ok, tx2} = Keys.sign_tx(elem(Keys.pubkey(), 1), 10)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions

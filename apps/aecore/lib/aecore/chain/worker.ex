@@ -24,6 +24,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :latest_block)
   end
 
+  @spec get_prior_blocks_for_validity_check() :: %Block{}
+  def get_prior_blocks_for_validity_check() do
+    GenServer.call(__MODULE__, :get_prior_blocks_for_validity_check)
+  end
+
   @spec all_blocks() :: list()
   def all_blocks() do
     GenServer.call(__MODULE__, :all_blocks)
@@ -39,10 +44,26 @@ defmodule Aecore.Chain.Worker do
    GenServer.call(__MODULE__, :chain_state)
   end
 
+  @spec get_blocks_for_difficulty_calculation() :: list()
+  def get_blocks_for_difficulty_calculation() do
+    GenServer.call(__MODULE__, :get_blocks_for_difficulty_calculation)
+  end
+
   def handle_call(:latest_block, _from, state) do
     [lb | _] = elem(state, 0)
     {:reply, lb, state}
   end
+
+  def handle_call(:get_prior_blocks_for_validity_check, _from, state) do
+     chain = elem(state, 0)
+     if(length(chain) == 1) do
+       [lb | _] = chain
+       {:reply, {lb, nil}, state}
+     else
+       [lb, prev | _] = chain
+       {:reply, {lb, prev}, state}
+     end
+   end
 
   def handle_call(:all_blocks, _from, state) do
     chain = elem(state, 0)
@@ -52,21 +73,25 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_block, %Block{} = b}, _from, state) do
     {chain, prev_chain_state} = state
     [prior_block | _] = chain
+    new_block_state = ChainState.calculate_block_state(b.txs)
+    new_chain_state =
+      ChainState.calculate_chain_state(new_block_state,
+      prev_chain_state)
     if(:ok = BlockValidation.validate_block!(b, prior_block,
-             prev_chain_state)) do
-      new_block_chain_state = ChainState.calculate_block_state(b.txs)
-      new_chain_state =
-        ChainState.calculate_chain_state(new_block_chain_state,
-        prev_chain_state)
+             new_chain_state)) do
       {:reply, :ok, {[b | chain], new_chain_state}}
-    else
-      {:reply, {:error, "invalid block"}, state}
     end
   end
 
   def handle_call(:chain_state, _from, state) do
    chain_state = elem(state, 1)
    {:reply, chain_state, state}
+  end
+
+  def handle_call(:get_blocks_for_difficulty_calculation, _from, state) do
+    chain = elem(state, 0)
+    blocks_for_difficulty_calculation = Enum.take(chain, 100)
+    {:reply, blocks_for_difficulty_calculation, state}
   end
 
 end
