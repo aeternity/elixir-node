@@ -6,6 +6,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Blockchain.Difficulty
 
   use GenServer
 
@@ -90,7 +91,8 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:get_blocks_for_difficulty_calculation, _from, state) do
     chain = elem(state, 0)
-    blocks_for_difficulty_calculation = Enum.take(chain, 100)
+    number_of_blocks = Difficulty.get_number_of_blocks()
+    blocks_for_difficulty_calculation = Enum.take(chain, number_of_blocks)
     {:reply, blocks_for_difficulty_calculation, state}
   end
 
