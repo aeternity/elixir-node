@@ -18,12 +18,11 @@ defmodule Aecore.Chain.ChainState do
         block_state = update_block_state(block_state,
                                          transaction.data.from_acc,
                                          -transaction.data.value)
-        update_block_state(block_state,
-                           transaction.data.to_acc,
-                           transaction.data.value)
       end
+      update_block_state(block_state,
+                         transaction.data.to_acc,
+                         transaction.data.value)
     end
-
     reduce_map_list(block_state)
   end
 
