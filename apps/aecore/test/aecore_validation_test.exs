@@ -34,12 +34,14 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    txs = [Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
-           Aecore.Txs.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
+    {:ok ,pubkey} = Aecore.Keys.Worker.pubkey()
+    txs = [Aecore.Txs.Tx.create(pubkey, 5),
+           Aecore.Txs.Tx.create(pubkey, 10)]
     block = Block.create()
     block = %{block | txs: txs}
-    assert block |> BlockValidation.validate_block_transactions
-                 |> Enum.all? == true
+    assert block
+    |> BlockValidation.validate_block_transactions
+    |> Enum.all? == true
   end
 
 end

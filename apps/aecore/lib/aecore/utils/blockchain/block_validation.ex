@@ -11,7 +11,11 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
                         map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
+
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    is_genesis = new_block == Genesis.genesis_block && previous_block == nil
+    is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
+
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
     coinbase_transactions_sum = Enum.sum(Enum.map(new_block.txs, fn(t) ->
         cond do
@@ -21,8 +25,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       end))
 
     cond do
-      new_block.header.prev_hash != prev_block_header_hash &&
-        previous_block != Genesis.genesis_block ->
+      !(is_genesis || is_correct_prev_hash) ->
         throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
         throw({:error, "Incorrect height"})
