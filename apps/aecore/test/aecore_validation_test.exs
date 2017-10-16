@@ -39,8 +39,9 @@ defmodule AecoreValidationTest do
            Aecore.Txs.Tx.create(pubkey, 10)]
     block = Block.create()
     block = %{block | txs: txs}
-    assert block |> BlockValidation.validate_block_transactions
-                 |> Enum.all? == true
+    assert block
+    |> BlockValidation.validate_block_transactions
+    |> Enum.all? == true
   end
 
 end

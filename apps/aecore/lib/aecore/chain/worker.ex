@@ -74,15 +74,13 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_block, %Block{} = b}, _from, state) do
     {chain, prev_chain_state} = state
     [prior_block | _] = chain
+    new_block_state = ChainState.calculate_block_state(b.txs)
+    new_chain_state =
+      ChainState.calculate_chain_state(new_block_state,
+      prev_chain_state)
     if(:ok = BlockValidation.validate_block!(b, prior_block,
-             prev_chain_state)) do
-      new_block_chain_state = ChainState.calculate_block_state(b.txs)
-      new_chain_state =
-        ChainState.calculate_chain_state(new_block_chain_state,
-        prev_chain_state)
+             new_chain_state)) do
       {:reply, :ok, {[b | chain], new_chain_state}}
-    else
-      {:reply, {:error, "invalid block"}, state}
     end
   end
 
