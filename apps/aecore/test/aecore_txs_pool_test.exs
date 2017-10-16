@@ -4,7 +4,6 @@ defmodule AecoreTxsPoolTest do
   """
   use ExUnit.Case
 
-  alias Aecore.Structures.SignedTx
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain

@@ -14,12 +14,14 @@ defmodule Aecore.Chain.ChainState do
   def calculate_block_state(txs) do
     block_state = %{}
     block_state = for transaction <- txs do
-      if(transaction.data.from_acc != nil) do
-        block_state = update_block_state(block_state,
-                                         transaction.data.from_acc,
-                                         -transaction.data.value)
-      end
+    updated_block_state = cond do
+      transaction.data.from_acc != nil ->
       update_block_state(block_state,
+                         transaction.data.from_acc,
+                         -transaction.data.value)
+      true -> block_state
+    end
+      update_block_state(updated_block_state,
                          transaction.data.to_acc,
                          transaction.data.value)
     end
@@ -33,8 +35,7 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
-    keys = Map.keys(block_state)
-    Map.merge(block_state, chain_state, fn(key, v1, v2) ->
+    Map.merge(block_state, chain_state, fn(_key, v1, v2) ->
         v1 + v2
       end)
   end
@@ -45,7 +46,6 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state_hash(map()) :: binary()
   def calculate_chain_state_hash(chain_state) do
-    merkle_tree_data = []
     merkle_tree_data = for {account, balance} <- chain_state do
       {account, :erlang.term_to_binary(balance)}
     end
@@ -61,20 +61,21 @@ defmodule Aecore.Chain.ChainState do
 
   @spec update_block_state(map(), binary(), integer()) :: map()
   defp update_block_state(block_state, account, value) do
-    if(!Map.has_key?(block_state, account)) do
-      block_state = Map.put(block_state,
-                            account, 0)
+    block_state_filled_empty = cond do
+      !Map.has_key?(block_state, account) ->
+       Map.put(block_state, account, 0)
+      true -> block_state
     end
-
-    Map.put(block_state,
+    
+    Map.put(block_state_filled_empty,
             account,
-            block_state[account] + value)
+            block_state_filled_empty[account] + value)
   end
 
   @spec reduce_map_list(list()) :: map()
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn(x,acc) ->
-        Map.merge(x, acc, fn(key, v1, v2) ->
+        Map.merge(x, acc, fn(_key, v1, v2) ->
             v1 + v2
           end)
       end)
