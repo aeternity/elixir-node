@@ -1,4 +1,4 @@
-defmodule Aecore.Tx do
+defmodule Aecore.Txs.Tx do
   @moduledoc """
   This module handles the txs : creation, verification
   """

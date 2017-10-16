@@ -14,8 +14,10 @@ defmodule AecoreValidationTest do
     new_block = %Block{header: %Header
       {difficulty_target: 0,
       height: 1, nonce: 1016,
-      prev_hash: <<0, 72, 231, 138, 54, 240, 249, 116, 135, 48, 177, 11, 151, 240, 85, 155, 175,
-  148, 110, 27, 59, 69, 75, 208, 92, 121, 228, 14, 249, 26, 21, 155>>,
+      prev_hash:
+      <<145, 211, 229, 74, 60, 194, 178, 139, 216, 166, 140, 193, 171, 193, 39, 182,
+      240, 12, 216, 218, 93, 219, 93, 31, 73, 138, 53, 89, 186, 200, 242, 100>>,
+      chain_state_hash: <<0::256>>,
       timestamp: 5000,
       txs_hash: <<0::256>>,
       version: 1},
@@ -23,16 +25,18 @@ defmodule AecoreValidationTest do
     prev_block = %Block{header: %Header{difficulty_target: 0,
       height: 0, nonce: 1114,
       prev_hash: <<0::256>>,
+      chain_state_hash: <<0::256>>,
       timestamp: 4000,
       txs_hash: <<0::256>>,
       version: 1},
       txs: []}
-    assert BlockValidation.validate_block!(new_block,prev_block) == :ok
+    assert BlockValidation.validate_block!(new_block,prev_block, %{}) == :ok
   end
 
   test "validate transactions in a block" do
-    txs = [Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 5),
-           Aecore.Tx.create(Aecore.Keys.Worker.pubkey(), 10)]
+    {:ok ,pubkey} = Aecore.Keys.Worker.pubkey()
+    txs = [Aecore.Txs.Tx.create(pubkey, 5),
+           Aecore.Txs.Tx.create(pubkey, 10)]
     block = Block.create()
     block = %{block | txs: txs}
     assert block |> BlockValidation.validate_block_transactions

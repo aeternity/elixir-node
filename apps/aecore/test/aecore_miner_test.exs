@@ -5,7 +5,9 @@ defmodule MinerTest do
   alias Aecore.Miner.Worker, as: Miner
 
   test "mine_next_block" do
-    Miner.mine_next_block([])
+    Miner.start_link()
+    Miner.resume()
+    Miner.suspend()
     assert length(Chain.all_blocks) > 1
   end
 

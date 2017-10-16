@@ -44,7 +44,8 @@ defmodule Aecore.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:exconstructor, "~> 1.1"}]
+    [{:exconstructor, "~> 1.1"},
+     {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}]
   end
 end
 

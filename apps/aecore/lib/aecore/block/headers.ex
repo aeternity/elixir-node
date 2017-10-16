@@ -60,11 +60,12 @@ defmodule Aecore.Block.Headers do
     txs_hash
   end
 
-  @spec new(integer(), binary(), binary(), integer(),integer(),integer())
+  @spec new(integer(), binary(), binary(), binary(), integer(),integer(),integer())
   :: Header.header()
   def new(height,
           prev_hash,
           txs_hash,
+          chain_state_hash,
           difficulty,
           nonce,
           version) do
@@ -72,6 +73,7 @@ defmodule Aecore.Block.Headers do
       | height: height,
         prev_hash: prev_hash,
         txs_hash: txs_hash,
+        chain_state_hash: chain_state_hash,
         timestamp: System.system_time(:milliseconds),
         nonce: nonce,
         version: version,

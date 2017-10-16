@@ -3,16 +3,24 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Block.Genesis
+  alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
-                       %Aecore.Structures.Block{}) :: {:error, term()} | :ok
-  def validate_block!(new_block, previous_block) do
+                        %Aecore.Structures.Block{},
+                        map()) :: {:error, term()} | :ok
+  def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
+
     is_difficulty_target_met = Hashcash.verify(new_block.header)
+    is_genesis = new_block == Genesis.genesis_block && previous_block == nil
+    is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
+
+    new_block_state = ChainState.calculate_block_state(new_block.txs)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     cond do
-      new_block.header.prev_hash != prev_block_header_hash &&
-        previous_block != Genesis.genesis_block ->
+      !(is_genesis || is_correct_prev_hash) ->
         throw({:error, "Incorrect previous hash"})
       previous_block.header.height + 1 != new_block.header.height ->
         throw({:error, "Incorrect height"})
@@ -22,6 +30,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "Root hash of transactions does not match the one in header"})
       !(new_block |> validate_block_transactions |> Enum.all?) ->
         throw({:error, "One or more transactions not valid"})
+      new_block.header.chain_state_hash != chain_state_hash ->
+        throw({:error, "Chain state not valid"})
       true ->
         :ok
     end
