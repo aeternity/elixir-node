@@ -5,8 +5,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
-  alias Aecore.Block.Headers
-  alias Aecore.Block.Blocks
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.Block
   alias Aecore.Pow.Hashcash
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
@@ -88,13 +88,14 @@ defmodule Aecore.Miner.Worker do
      {:next_state, :idle, data}
    end
 
-   def get_coinbase_transaction(to_acc) do
-     tx_data = %{TxData.create |
-                 :from_acc => nil,
-                 :to_acc => to_acc,
-                 :value => @coinbase_transaction_value,
-                 :nonce => Enum.random(0..1000000000000)}
-     %{SignedTx.create | data: tx_data}
+  def get_coinbase_transaction(to_acc) do
+    tx_data = %TxData{
+      from_acc: nil,
+      to_acc: to_acc,
+      value: @coinbase_transaction_value,
+      nonce: Enum.random(0..1000000000000)
+    }
+    %SignedTx{data: tx_data, signature: nil}
   end
 
   def coinbase_transaction_value, do: @coinbase_transaction_value
@@ -126,10 +127,10 @@ defmodule Aecore.Miner.Worker do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
-    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash,
+    unmined_header = Header.create(latest_block.header.height + 1, latest_block_hash,
       root_hash, chain_state_hash, difficulty, 0, 1)
     {:ok, mined_header} = Hashcash.generate(unmined_header)
-    {:ok, block} = Blocks.new(mined_header, valid_txs)
+    block = %Block{header: mined_header, txs: valid_txs}
 
     IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
     Chain.add_block(block)

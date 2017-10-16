@@ -6,9 +6,11 @@ defmodule AecoreValidationTest do
   use ExUnit.Case
   doctest Aecore.Utils.Blockchain.BlockValidation
 
-  alias Aecore.Utils.Blockchain.BlockValidation, as: BlockValidation
-  alias Aecore.Structures.Block, as: Block
-  alias Aecore.Structures.Header, as: Header
+  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Keys.Worker, as: Keys
 
   test "validate new block" do
     new_block = %Block{header: %Header
@@ -34,14 +36,12 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    {:ok ,pubkey} = Aecore.Keys.Worker.pubkey()
-    txs = [Aecore.Txs.Tx.create(pubkey, 5),
-           Aecore.Txs.Tx.create(pubkey, 10)]
-    block = Block.create()
-    block = %{block | txs: txs}
-    assert block
-    |> BlockValidation.validate_block_transactions
-    |> Enum.all? == true
+    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
+    {:ok, tx2} = Keys.sign_tx(elem(Keys.pubkey(), 1), 10)
+
+    block = %{Block.genesis_block | txs: [tx1, tx2]}
+    assert block |> BlockValidation.validate_block_transactions
+                 |> Enum.all? == true
   end
 
 end

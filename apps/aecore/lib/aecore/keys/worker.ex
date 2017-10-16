@@ -4,6 +4,9 @@ defmodule Aecore.Keys.Worker do
   """
   use GenServer
 
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
+
   @filename_pub "key.pub"
   @filename_priv "key"
 
@@ -21,17 +24,35 @@ defmodule Aecore.Keys.Worker do
                                       curve:      nil}, name: __MODULE__)
   end
 
+  @doc """
+  Takes the public key of the receiver and
+  the value that will be sended. Returns signed tx
+
+  ## Parameters
+     - to_acc: The public address of the account receiving the transaction
+     - value: The amount of a transaction
+
+  """
+  @spec sign_tx(binary(), integer()) :: {:ok, %SignedTx{}}
+  def sign_tx(to_acc, value) do
+    {:ok, from_acc} = pubkey()
+    {:ok, tx_data}  = TxData.create(from_acc, to_acc, value)
+    {:ok, signature} = sign(tx_data)
+    signed_tx = %SignedTx{data: tx_data, signature: signature}
+   {:ok, signed_tx}
+  end
+
   @spec sign(term()) :: {:ok, term()}
-  def sign(tx) do
-    ## TODO: Return signed tx
-    ## If only one signature needed for a tx, signatures list will contain only one item
-    GenServer.call(__MODULE__, {:sign, tx})
+  def sign(msg) do
+    GenServer.call(__MODULE__, {:sign, msg})
+  end
+
+  def verify_tx(tx) do
+    verify(tx.data, tx.signature, tx.data.from_acc)
   end
 
   #@spec verify() :: boolean()
   def verify(msg, signature, pubkey) do
-    ## TODO: Return signed tx
-    ## If only one signature needed for a tx, signatures list will contain only one item
     GenServer.call(__MODULE__, {:verify, {msg, signature, pubkey}})
   end
 
@@ -100,9 +121,6 @@ defmodule Aecore.Keys.Worker do
     {:reply, result, state}
   end
 
-  def handle_call({:sign, _}, _from, %{priv: nil}=state) do
-    {:reply, {:error, :key_not_found}, state}
-  end
   def handle_call({:sign, term}, _from, %{priv:   priv_key,
                                           algo:   algo,
                                           digest: digest,
@@ -234,10 +252,6 @@ defmodule Aecore.Keys.Worker do
     :crypto.hash(:sha256, bin)
   end
 
-  @doc """
-  keep separate APIs and encrypt both priv & pub to protect external HDs
-  (there is known atack vector using master pub)
-  """
   defp encrypt_privkey(password, bin) do
     :crypto.block_encrypt(:aes_ecb, hash(password), bin)
   end

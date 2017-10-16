@@ -3,7 +3,6 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
-  alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
@@ -11,8 +10,8 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   def start_link do
-    GenServer.start_link(__MODULE__, {[Genesis.genesis_block()],
-      ChainState.calculate_block_state(Genesis.genesis_block().txs)},
+    GenServer.start_link(__MODULE__, {[Block.genesis_block()],
+      ChainState.calculate_block_state(Block.genesis_block().txs)},
       name: __MODULE__)
   end
 

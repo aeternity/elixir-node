@@ -5,13 +5,12 @@ defmodule DifficultyTest do
   doctest Aecore.Utils.Blockchain.Difficulty
 
   alias Aecore.Utils.Blockchain.Difficulty, as: Difficulty
-  alias Aecore.Structures.Block, as: Block
-  alias Aecore.Structures.Header, as:  Header
-  alias Aecore.Block.Genesis, as: Genesis
+  alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
 
   test "difficulty calculation genesis block only" do
     blocks = [
-      Genesis.genesis_block
+      Block.genesis_block
     ]
 
     assert 1 == Difficulty.calculate_next_difficulty(blocks)

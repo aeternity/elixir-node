@@ -9,11 +9,24 @@ defmodule Aecore.Structures.Block do
   @type block :: %Block{}
 
   defstruct [:header,
-            :txs
-            ]
+             :txs]
   use ExConstructor
 
-  def create() do
-    Block.new(%{})
+  def genesis_header() do
+    %Header{
+      height: 0,
+      prev_hash: <<0 :: 256>>,
+      txs_hash: <<0 :: 256>>,
+      timestamp: 1507275094308,
+      nonce: 19,
+      version: 1,
+      difficulty_target: 1
+    }
   end
+
+  def genesis_block() do
+    h = genesis_header()
+    %Block{header: h, txs: []}
+  end
+
 end
