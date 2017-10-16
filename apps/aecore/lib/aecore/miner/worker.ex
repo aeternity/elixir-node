@@ -2,6 +2,8 @@ defmodule Aecore.Miner.Worker do
 
   use GenStateMachine, callback_mode: :state_functions
 
+  require Logger
+
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
@@ -101,7 +103,7 @@ defmodule Aecore.Miner.Worker do
   def coinbase_transaction_value, do: @coinbase_transaction_value
 
   ## Internal
-  @spec mine_next_block() :: :ok
+  @spec mine_next_block() :: :ok | :error
   defp mine_next_block() do
     chain_state = Chain.chain_state()
 
@@ -133,6 +135,10 @@ defmodule Aecore.Miner.Worker do
     block = %Block{header: mined_header, txs: valid_txs}
 
     IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
+    Logger.info(fn ->
+      "Mined block ##{block.header.height} with a difficulty target of #{block.header.difficulty_target}"
+      end, miner: :info)
+
     Chain.add_block(block)
   end
 

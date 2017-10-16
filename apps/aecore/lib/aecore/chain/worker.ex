@@ -3,6 +3,9 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
+  require Logger
+
+  alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
@@ -77,11 +80,25 @@ defmodule Aecore.Chain.Worker do
     new_chain_state =
       ChainState.calculate_chain_state(new_block_state,
       prev_chain_state)
-    if(:ok = BlockValidation.validate_block!(b, prior_block,
-             new_chain_state)) do
+    try do
+      BlockValidation.validate_block!(b, prior_block,
+      new_chain_state)
+      total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+      Logger.info(fn ->
+        "Added block ##{b.header.height} with a hash of\n#{b.header
+        |> BlockValidation.block_header_hash()
+        |> Base.encode16()} to the chain,\ntotal tokens in the chain - #{total_tokens}"
+      end,
+      chain: :info)
       {:reply, :ok, {[b | chain], new_chain_state}}
+    catch
+      {:error, message} ->
+        Logger.info(fn ->
+          "Failed to add block: #{message}"
+        end, chain: :error)
+      {:reply, :error, state}
     end
-  end
+    end
 
   def handle_call(:chain_state, _from, state) do
    chain_state = elem(state, 1)
