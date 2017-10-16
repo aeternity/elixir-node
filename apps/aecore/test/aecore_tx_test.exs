@@ -6,7 +6,6 @@ defmodule AecoreTxTest do
   use ExUnit.Case
 
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.SignedTx
 
   setup do
     Keys.start_link()

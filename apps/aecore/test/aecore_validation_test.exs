@@ -9,7 +9,6 @@ defmodule AecoreValidationTest do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
   alias Aecore.Keys.Worker, as: Keys
 
   test "validate new block" do
