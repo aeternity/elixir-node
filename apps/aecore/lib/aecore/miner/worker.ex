@@ -8,6 +8,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Block.Headers
   alias Aecore.Block.Blocks
   alias Aecore.Pow.Hashcash
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.ChainState
 
   def start_link() do
@@ -56,7 +57,7 @@ defmodule Aecore.Miner.Worker do
 
    ## Running ##
    def running(:cast, :mine, data) do
-     mine_next_block([])
+     mine_next_block()
      GenStateMachine.cast(__MODULE__,:mine)
      {:next_state, :running, data}
    end
@@ -83,41 +84,35 @@ defmodule Aecore.Miner.Worker do
    end
 
   ## Internal
-  @spec mine_next_block(list()) :: :ok
-  defp mine_next_block(txs) do
-    chain = Chain.all_blocks()
+  @spec mine_next_block() :: :ok
+  defp mine_next_block() do
     chain_state = Chain.chain_state()
 
-    #validate latest block if the chain has more than the genesis block
-    latest_block = if(length(chain) == 1) do
-      [latest_block | _] = chain
-      latest_block
-    else
-      [latest_block, previous_block | _] = chain
+    txs_list = Map.values(Pool.get_and_empty_pool())
+
+    blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
+    {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
+
+    if(!(previous_block == nil)) do
       BlockValidation.validate_block!(latest_block, previous_block, chain_state)
-      latest_block
     end
 
-    valid_txs = BlockValidation.filter_invalid_transactions(txs)
+    valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_chain_state =
-      ChainState.calculate_chain_state(new_block_state, chain_state)
-
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-    difficulty = Difficulty.calculate_next_difficulty(chain)
+    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
-    unmined_header = Headers.new(latest_block.header.height + 1,
-      latest_block_hash, root_hash,
-      chain_state_hash, difficulty, 0, 1)
-
+    unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash,
+      root_hash, chain_state_hash, difficulty, 0, 1)
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
-    IO.inspect("block: #{block.header.height} difficulty:
-               #{block.header.difficulty_target}")
+
+    IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
     Chain.add_block(block)
   end
 
