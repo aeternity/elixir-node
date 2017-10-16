@@ -2,8 +2,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
-  alias Aecore.Block.Genesis
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
 
   @spec validate_block!(%Aecore.Structures.Block{},
@@ -13,7 +13,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     prev_block_header_hash = block_header_hash(previous_block.header)
 
     is_difficulty_target_met = Hashcash.verify(new_block.header)
-    is_genesis = new_block == Genesis.genesis_block && previous_block == nil
+    is_genesis = new_block == Block.genesis_block && previous_block == nil
     is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
