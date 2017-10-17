@@ -9,6 +9,22 @@ use Mix.Config
 # back to each application for organization purposes.
 import_config "../apps/*/config/config.exs"
 
+%{year: year, month: month, day: day} = DateTime.utc_now()
+timestamp = "#{year}-#{month}-#{day}_"
+
 config :aecore, :keys,
   password: "secret",
   dir: "/tmp/keys"
+
+config :logger,
+  compile_time_purge_level: :info,
+  backends: [{LoggerFileBackend, :info},
+             {LoggerFileBackend, :error}]
+
+config :logger, :info,
+  path: "apps/aecore/logs/#{timestamp}info.log",
+  level: :info
+
+config :logger, :error,
+  path: "apps/aecore/logs/#{timestamp}error.log",
+  level: :error

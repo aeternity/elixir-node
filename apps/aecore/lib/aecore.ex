@@ -1,8 +1,6 @@
 defmodule Aecore do
   use Application
 
-  alias Aecore.Miner.Worker, as: Miner
-
   def start(_type, _args) do
     import Supervisor.Spec
 

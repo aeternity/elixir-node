@@ -66,6 +66,12 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
+  def calculate_total_tokens(chain_state) do
+    chain_state |>
+      Enum.map(fn{_account, balance} -> balance end) |>
+      Enum.sum()
+  end
+
   @spec update_block_state(map(), binary(), integer()) :: map()
   defp update_block_state(block_state, account, value) do
     block_state_filled_empty =

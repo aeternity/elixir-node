@@ -16,6 +16,7 @@ defmodule Aecore.Structures.Block do
       height: 0,
       prev_hash: <<0::256>>,
       txs_hash: <<0::256>>,
+      chain_state_hash: <<0 :: 256>>,
       timestamp: 1_507_275_094_308,
       nonce: 19,
       version: 1,

@@ -43,9 +43,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum
-          coinbase transactions value"})
-
+        throw({:error, "Sum of coinbase transactions values exceeds the maximum " <>
+          "coinbase transactions value"})
       new_block.header.chain_state_hash != chain_state_hash ->
         throw({:error, "Chain state not valid"})
 
