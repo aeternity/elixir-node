@@ -31,6 +31,8 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     assert BlockValidation.validate_block!(new_block,prev_block, %{}) == :ok
+    ### TODO : this test needs review
+    #:ok == :ok
   end
 
   test "validate transactions in a block" do

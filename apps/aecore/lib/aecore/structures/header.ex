@@ -6,13 +6,14 @@ defmodule Aecore.Structures.Header do
   alias Aecore.Structures.Header
 
   defstruct [:height,
-            :prev_hash,
-            :txs_hash,
-            :chain_state_hash,
-            :difficulty_target,
-            :nonce,
-            :timestamp,
-            :version]
+             :prev_hash,
+             :txs_hash,
+             :chain_state_hash,
+             :difficulty_target,
+             :nonce,
+             :pow_evidence,
+             :timestamp,
+             :version]
   use ExConstructor
 
   @type header() :: %Header{}

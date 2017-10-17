@@ -36,4 +36,9 @@ defmodule Aecore.Pow.Hashcash do
     end
   end
 
+  @spec generate(atom(), map(), integer()) :: boolean()
+  def generate(:cuckoo, data, target) do
+    verify(data, target)
+  end
+
 end

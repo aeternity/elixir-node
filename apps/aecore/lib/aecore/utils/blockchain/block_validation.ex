@@ -11,7 +11,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
 
-    is_difficulty_target_met = Hashcash.verify(new_block.header)
+    is_difficulty_target_met = Aecore.Pow.Handler.verify(new_block.header)
     is_genesis = new_block == Genesis.genesis_block && previous_block == nil
     is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 
@@ -47,16 +47,16 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       KeyManager.verify(transaction.data,
-                        transaction.signature,
-                        transaction.data.from_acc)
+        transaction.signature,
+        transaction.data.from_acc)
     end
   end
 
   @spec filter_invalid_transactions(list()) :: list()
   def filter_invalid_transactions(txs) do
     Enum.filter(txs, fn(transaction) -> KeyManager.verify(transaction.data,
-                      transaction.signature,
-                      transaction.data.from_acc) end)
+transaction.signature,
+transaction.data.from_acc) end)
   end
 
   @spec calculate_root_hash(list()) :: binary()
@@ -70,8 +70,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       end
       merkle_tree = merkle_tree |>
         List.foldl(:gb_merkle_trees.empty, fn(node, merkle_tree)
-        -> :gb_merkle_trees.enter(elem(node,0), elem(node,1) , merkle_tree) end)
-      merkle_tree |> :gb_merkle_trees.root_hash()
+          -> :gb_merkle_trees.enter(elem(node,0), elem(node,1) , merkle_tree) end)
+    merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
 

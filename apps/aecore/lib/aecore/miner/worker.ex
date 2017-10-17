@@ -105,11 +105,12 @@ defmodule Aecore.Miner.Worker do
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     unmined_header = Headers.new(latest_block.header.height + 1, latest_block_hash,
       root_hash, chain_state_hash, difficulty, 0, 1)
-    {:ok, mined_header} = Hashcash.generate(unmined_header)
+    {:ok, mined_header} = Aecore.Pow.Handler.generate(unmined_header)
     {:ok, block} = Blocks.new(mined_header, valid_txs)
 
     IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
