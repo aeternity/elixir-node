@@ -137,7 +137,7 @@ defmodule Aecore.Miner.Worker do
     IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
     Logger.info(fn ->
       "Mined block ##{block.header.height} with a difficulty target of #{block.header.difficulty_target}"
-      end, miner: :info)
+      end)
 
     Chain.add_block(block)
   end

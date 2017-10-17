@@ -18,22 +18,13 @@ config :aecore, :keys,
 
 config :logger,
   compile_time_purge_level: :info,
-  backends: [{LoggerFileBackend, :miner_info},
-             {LoggerFileBackend, :chain_info},
-             {LoggerFileBackend, :chain_error}]
+  backends: [{LoggerFileBackend, :info},
+             {LoggerFileBackend, :error}]
 
-config :logger, :miner_info,
-  path: "apps/aecore/logs/#{timestamp}miner_info.log",
-  level: :info,
-  metadata_filter: [miner: :info]
+config :logger, :info,
+  path: "apps/aecore/logs/#{timestamp}info.log",
+  level: :info
 
-
-config :logger, :chain_info,
-  path: "apps/aecore/logs/#{timestamp}chain_info.log",
-  level: :info,
-  metadata_filter: [chain: :info]
-
-config :logger, :chain_error,
-  path: "apps/aecore/logs/#{timestamp}chain_error.log",
-  level: :error,
-  metadata_filter: [chain: :error]
+config :logger, :error,
+  path: "apps/aecore/logs/#{timestamp}error.log",
+  level: :error

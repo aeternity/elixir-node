@@ -88,14 +88,13 @@ defmodule Aecore.Chain.Worker do
         "Added block ##{b.header.height} with a hash of\n#{b.header
         |> BlockValidation.block_header_hash()
         |> Base.encode16()} to the chain,\ntotal tokens in the chain - #{total_tokens}"
-      end,
-      chain: :info)
+      end)
       {:reply, :ok, {[b | chain], new_chain_state}}
     catch
       {:error, message} ->
-        Logger.info(fn ->
+        Logger.error(fn ->
           "Failed to add block: #{message}"
-        end, chain: :error)
+        end)
       {:reply, :error, state}
     end
   end
