@@ -5,17 +5,19 @@ defmodule Aecore.Chain.Worker do
 
   require Logger
 
-  alias Aecore.Block.Genesis
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Blockchain.Difficulty
 
   use GenServer
 
   def start_link do
-    GenServer.start_link(__MODULE__, {[Block.genesis_block()],
-      ChainState.calculate_block_state(Block.genesis_block().txs)},
-      name: __MODULE__)
+    GenServer.start_link(
+      __MODULE__,
+      {[Block.genesis_block()], ChainState.calculate_block_state(Block.genesis_block().txs)},
+      name: __MODULE__
+    )
   end
 
   def init(initial_state) do
@@ -44,7 +46,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec chain_state() :: map()
   def chain_state() do
-   GenServer.call(__MODULE__, :chain_state)
+    GenServer.call(__MODULE__, :chain_state)
   end
 
   @spec get_blocks_for_difficulty_calculation() :: list()
@@ -58,15 +60,16 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(:get_prior_blocks_for_validity_check, _from, state) do
-     chain = elem(state, 0)
-     if(length(chain) == 1) do
-       [lb | _] = chain
-       {:reply, {lb, nil}, state}
-     else
-       [lb, prev | _] = chain
-       {:reply, {lb, prev}, state}
-     end
-   end
+    chain = elem(state, 0)
+
+    if length(chain) == 1 do
+      [lb | _] = chain
+      {:reply, {lb, nil}, state}
+    else
+      [lb, prev | _] = chain
+      {:reply, {lb, prev}, state}
+    end
+  end
 
   def handle_call(:all_blocks, _from, state) do
     chain = elem(state, 0)
@@ -77,9 +80,8 @@ defmodule Aecore.Chain.Worker do
     {chain, prev_chain_state} = state
     [prior_block | _] = chain
     new_block_state = ChainState.calculate_block_state(b.txs)
-    new_chain_state =
-      ChainState.calculate_chain_state(new_block_state,
-      prev_chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_chain_state)
+
     try do
       BlockValidation.validate_block!(b, prior_block,
       new_chain_state)
@@ -100,14 +102,14 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(:chain_state, _from, state) do
-   chain_state = elem(state, 1)
-   {:reply, chain_state, state}
+    chain_state = elem(state, 1)
+    {:reply, chain_state, state}
   end
 
   def handle_call(:get_blocks_for_difficulty_calculation, _from, state) do
     chain = elem(state, 0)
-    blocks_for_difficulty_calculation = Enum.take(chain, 100)
+    number_of_blocks = Difficulty.get_number_of_blocks()
+    blocks_for_difficulty_calculation = Enum.take(chain, number_of_blocks)
     {:reply, blocks_for_difficulty_calculation, state}
   end
-
 end

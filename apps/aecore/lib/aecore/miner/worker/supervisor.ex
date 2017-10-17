@@ -9,6 +9,7 @@ defmodule Aecore.Miner.Worker.Supervisor do
     children = [
       worker(Aecore.Miner.Worker, [])
     ]
-	supervise(children, strategy: :one_for_one)
+
+    supervise(children, strategy: :one_for_one)
   end
 end
