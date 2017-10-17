@@ -2,16 +2,18 @@ defmodule Aecore.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :aecore,
-     version: "0.1.0",
-     build_path: "../../_build",
-     config_path: "../../config/config.exs",
-     deps_path: "../../deps",
-     lockfile: "../../mix.lock",
-     elixir: "~> 1.5",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     deps: deps()]
+    [
+      app: :aecore,
+      version: "0.1.0",
+      build_path: "../../_build",
+      config_path: "../../config/config.exs",
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
+      elixir: "~> 1.5",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      deps: deps()
+    ]
   end
 
   # Configuration for the OTP application
@@ -19,8 +21,7 @@ defmodule Aecore.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :exconstructor],
-     mod: {Aecore, []}]
+    [extra_applications: [:logger, :exconstructor], mod: {Aecore, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -37,7 +38,9 @@ defmodule Aecore.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:exconstructor, "~> 1.1"},
-     {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}]
+    [
+      {:exconstructor, "~> 1.1"},
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}
+    ]
   end
 end

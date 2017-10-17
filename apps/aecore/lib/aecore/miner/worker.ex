@@ -1,5 +1,4 @@
 defmodule Aecore.Miner.Worker do
-
   use GenStateMachine, callback_mode: :state_functions
 
   alias Aecore.Chain.Worker, as: Chain
@@ -38,63 +37,64 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Idle ##
-   def idle({:call, from}, :start , data) do
-     IO.puts "Mining resuming by user"
-     GenStateMachine.cast(__MODULE__, :mine)
-     {:next_state, :running, data, [{:reply, from, :ok}]}
-   end
+  def idle({:call, from}, :start, data) do
+    IO.puts("Mining resuming by user")
+    GenStateMachine.cast(__MODULE__, :mine)
+    {:next_state, :running, data, [{:reply, from, :ok}]}
+  end
 
-   def idle({:call, from}, :suspend , data) do
-     {:next_state, :idle, data, [{:reply, from, :not_started}]}
-   end
+  def idle({:call, from}, :suspend, data) do
+    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  end
 
-   def idle({:call, from}, :get_state, _data) do
-     {:keep_state_and_data, [{:reply, from, {:state, :idle}}]}
-   end
+  def idle({:call, from}, :get_state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:state, :idle}}]}
+  end
 
-   def idle({:call, from}, _ , data) do
-     {:next_state, :idle, data, [{:reply, from, :not_started}]}
-   end
+  def idle({:call, from}, _, data) do
+    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  end
 
-   def idle(_type, _state , data) do
-     {:next_state, :idle, data}
-   end
+  def idle(_type, _state, data) do
+    {:next_state, :idle, data}
+  end
 
-   ## Running ##
-   def running(:cast, :mine, data) do
-     mine_next_block()
-     GenStateMachine.cast(__MODULE__,:mine)
-     {:next_state, :running, data}
-   end
+  ## Running ##
+  def running(:cast, :mine, data) do
+    mine_next_block()
+    GenStateMachine.cast(__MODULE__, :mine)
+    {:next_state, :running, data}
+  end
 
-   def running({:call, from}, :get_state, _data) do
-     {:keep_state_and_data, [{:reply, from, {:state, :running}}]}
-   end
+  def running({:call, from}, :get_state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:state, :running}}]}
+  end
 
-   def running({:call, from}, :start, data) do
-     {:next_state, :running, data, [{:reply, from, :already_started}]}
-   end
+  def running({:call, from}, :start, data) do
+    {:next_state, :running, data, [{:reply, from, :already_started}]}
+  end
 
-   def running({:call, from}, :suspend, data) do
-     IO.puts "Mined stop by user"
-     {:next_state, :idle, data, [{:reply, from, :ok}]}
-   end
+  def running({:call, from}, :suspend, data) do
+    IO.puts("Mined stop by user")
+    {:next_state, :idle, data, [{:reply, from, :ok}]}
+  end
 
-   def running({:call, from}, _, data) do
-     {:next_state, :running, data, [{:reply, from, :not_suported}]}
-   end
+  def running({:call, from}, _, data) do
+    {:next_state, :running, data, [{:reply, from, :not_suported}]}
+  end
 
-   def running(_, _, data) do
-     {:next_state, :idle, data}
-   end
+  def running(_, _, data) do
+    {:next_state, :idle, data}
+  end
 
   def get_coinbase_transaction(to_acc) do
     tx_data = %TxData{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value,
-      nonce: Enum.random(0..1000000000000)
+      nonce: Enum.random(0..1_000_000_000_000)
     }
+
     %SignedTx{data: tx_data, signature: nil}
   end
 
@@ -110,7 +110,7 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
 
-    if(!(previous_block == nil)) do
+    if !(previous_block == nil) do
       BlockValidation.validate_block!(latest_block, previous_block, chain_state)
     end
 
@@ -120,20 +120,27 @@ defmodule Aecore.Miner.Worker do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_chain_state =
-      ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
-    unmined_header = Header.create(latest_block.header.height + 1, latest_block_hash,
-      root_hash, chain_state_hash, difficulty, 0, 1)
+    unmined_header =
+      Header.create(
+        latest_block.header.height + 1,
+        latest_block_hash,
+        root_hash,
+        chain_state_hash,
+        difficulty,
+        0,
+        1
+      )
+
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     block = %Block{header: mined_header, txs: valid_txs}
 
     IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
     Chain.add_block(block)
   end
-
 end
