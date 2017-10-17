@@ -98,7 +98,7 @@ defmodule Aecore.Chain.Worker do
         end, chain: :error)
       {:reply, :error, state}
     end
-    end
+  end
 
   def handle_call(:chain_state, _from, state) do
    chain_state = elem(state, 1)
