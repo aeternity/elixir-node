@@ -142,9 +142,8 @@ defmodule Aecore.Miner.Worker do
     {:ok, mined_header} = Hashcash.generate(unmined_header)
     block = %Block{header: mined_header, txs: valid_txs}
 
-    IO.inspect("block: #{block.header.height} difficulty: #{block.header.difficulty_target}")
     Logger.info(fn ->
-      "Mined block ##{block.header.height} with a difficulty target of #{block.header.difficulty_target}"
+      "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
       end)
 
     Chain.add_block(block)
