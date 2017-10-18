@@ -135,8 +135,8 @@ defmodule Aecore.Miner.Worker do
         root_hash,
         chain_state_hash,
         difficulty,
-        0,
-        1
+        0, #start from nonce 0, will be incremented in mining
+        Block.current_block_version()
       )
 
     {:ok, mined_header} = Hashcash.generate(unmined_header)

@@ -8,8 +8,14 @@ defmodule Aecore.Structures.Block do
 
   @type block :: %Block{}
 
+  @current_block_version 1
+
   defstruct [:header, :txs]
   use ExConstructor
+
+  def current_block_version do
+    @current_block_version
+  end
 
   def genesis_header() do
     %Header{
@@ -19,7 +25,7 @@ defmodule Aecore.Structures.Block do
       chain_state_hash: <<0 :: 256>>,
       timestamp: 1_507_275_094_308,
       nonce: 19,
-      version: 1,
+      version: @current_block_version,
       difficulty_target: 1
     }
   end
