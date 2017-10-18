@@ -6,7 +6,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Keys.Worker, as: KeyManager
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
 
   def start_link do
@@ -38,18 +38,17 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    is_tx_valid = KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
+    is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
 
-    if(is_tx_valid) do
-    updated_pool = Map.put_new(tx_pool,
-      :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+    if is_tx_valid do
+      updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
       {:reply, :ok, updated_pool}
     else
       {:reply, :error, tx_pool}
     end
   end
 
-  def handle_call({:remove_transaction,tx}, _from, tx_pool) do
+  def handle_call({:remove_transaction, tx}, _from, tx_pool) do
     {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)))
     {:reply, :ok, updated_pool}
   end
@@ -61,5 +60,4 @@ defmodule Aecore.Txs.Pool.Worker do
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
   end
-
 end

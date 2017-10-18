@@ -4,11 +4,8 @@ defmodule AecoreTxTest do
   """
 
   use ExUnit.Case
-  doctest Aecore.Txs.Tx
 
-  alias Aecore.Txs.Tx, as: Tx
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.SignedTx
 
   setup do
     Keys.start_link()
@@ -16,9 +13,10 @@ defmodule AecoreTxTest do
   end
 
   test "create and verify a signed tx" do
-    tx = Tx.create("to_account",5)
-    assert %SignedTx{} = tx
-    assert :true = Tx.verify(tx)
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx} = Keys.sign_tx(to_account, 5)
+
+    assert :true = Keys.verify_tx(tx)
   end
 
 end

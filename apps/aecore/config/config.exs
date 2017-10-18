@@ -31,4 +31,4 @@ use Mix.Config
 
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
-  default_pow: :cucko
+  default_pow: :hashcash

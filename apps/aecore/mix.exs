@@ -14,6 +14,7 @@ defmodule Aecore.Mixfile do
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps()]
+
   end
 
   defp aliases do
@@ -26,8 +27,7 @@ defmodule Aecore.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :exconstructor],
-     mod: {Aecore, []}]
+    [extra_applications: [:logger, :exconstructor], mod: {Aecore, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -44,8 +44,10 @@ defmodule Aecore.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    [{:exconstructor, "~> 1.1"},
-     {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}]
+    [
+      {:exconstructor, "~> 1.1"},
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}
+    ]
   end
 end
 

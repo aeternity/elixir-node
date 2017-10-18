@@ -9,6 +9,7 @@ defmodule Aecore.Txs.Pool.Worker.Supervisor do
     children = [
       worker(Aecore.Txs.Pool.Worker, [])
     ]
-	supervise(children, strategy: :one_for_one)
+
+    supervise(children, strategy: :one_for_one)
   end
 end

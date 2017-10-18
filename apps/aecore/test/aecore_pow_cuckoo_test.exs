@@ -3,7 +3,7 @@ defmodule AecoreCuckooTest do
   use ExUnit.Case, async: false
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Block.Genesis
+  alias Aecore.Structures.Block
 
   @doctest Cuckoo
 
@@ -12,8 +12,7 @@ defmodule AecoreCuckooTest do
   """
   @tag timeout: 1000000000
   test "Generate with a winning nonce and high target threshold, verify it" do
-    block_header = %{Genesis.genesis_block.header |
-                     difficulty_target: 1}
+    block_header = Block.genesis_header()
     {t1, res}  =
       :timer.tc(Cuckoo, :generate,
         [block_header])

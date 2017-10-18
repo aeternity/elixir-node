@@ -4,6 +4,7 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   alias Aecore.Structures.SignedTx
+
   @type signed_tx() :: %SignedTx{}
 
   @doc """
@@ -13,14 +14,6 @@ defmodule Aecore.Structures.SignedTx do
      - data: Aecore %TxData{} structure
      - signature: Signed %TxData{} with the private key of the sender
   """
-  defstruct data: nil,
-            signature: nil
+  defstruct [:data, :signature]
   use ExConstructor
-
-  @spec create() :: signed_tx()
-  def create do
-    SignedTx.new(%{})
-  end
 end
-
-# [%signed_tx{nonce: 0, from_acc: "", to_acc: "",value: 10}]
