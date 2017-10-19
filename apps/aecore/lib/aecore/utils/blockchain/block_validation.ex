@@ -5,32 +5,43 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
 
+
+  @spec check_prev_hash(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}) :: boolean()
+  defp check_prev_hash(new_block, previous_block) do
+    prev_block_header_hash = block_header_hash(previous_block.header)
+    new_block.header.prev_hash == prev_block_header_hash
+  end
+
+  @spec check_correct_height(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}) :: boolean()
+  defp check_correct_height(new_block, previous_block) do
+    previous_block.header.height + 1 == new_block.header.height
+  end
+
+  @spec calculate_coinbase_transactions_sum(%Aecore.Structures.Block{}) :: integer()
+  defp calculate_coinbase_transactions_sum(new_block) do
+    Enum.sum(
+      Enum.map(new_block.txs, fn t ->
+        cond do
+          t.data.from_acc == nil -> t.data.value
+          true -> 0
+        end
+      end)
+    )
+  end
+
   @spec validate_block!(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}, map()) ::
           {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
-
     is_difficulty_target_met = Hashcash.verify(new_block.header)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
-
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
-
-    coinbase_transactions_sum =
-      Enum.sum(
-        Enum.map(new_block.txs, fn t ->
-          cond do
-            t.data.from_acc == nil -> t.data.value
-            true -> 0
-          end
-        end)
-      )
+    coinbase_transactions_sum = calculate_coinbase_transactions_sum(new_block)
 
     cond do
-      !(is_genesis || is_correct_prev_hash) ->
+      !(is_genesis || check_prev_hash(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
-      previous_block.header.height + 1 != new_block.header.height ->
+      !(is_genesis || check_correct_height(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->

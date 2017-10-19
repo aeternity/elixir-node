@@ -112,9 +112,7 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
 
-    if !(previous_block == nil) do
-      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
-    end
+    BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
     valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
     {_, pubkey} = Keys.pubkey()
