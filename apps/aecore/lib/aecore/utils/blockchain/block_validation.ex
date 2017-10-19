@@ -5,6 +5,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Worker, as: Chain
 
   @spec validate_block!(%Aecore.Structures.Block{},
                         %Aecore.Structures.Block{},
@@ -55,9 +56,22 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       if(transaction.signature != nil && transaction.data.from_acc == nil) do
-        KeyManager.verify(transaction.data,
+        valid = KeyManager.verify(transaction.data,
                           transaction.signature,
                           transaction.data.from_acc)
+        cond do
+          !valid ->
+            false
+          true ->
+            cond do
+              !Map.has_key?(Chain.chain_state, transaction.data.from_acc) ->
+                false
+              Chain.chain_state()[transaction.data.from_acc] - transaction.data.value < 0 ->
+                false
+              true ->
+                true
+            end
+        end
       else
         true
       end
@@ -66,10 +80,28 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec filter_invalid_transactions(list()) :: list()
   def filter_invalid_transactions(txs) do
-    Enum.filter(txs, fn(transaction) ->
-      KeyManager.verify(transaction.data,
-      transaction.signature,
-      transaction.data.from_acc) end)
+    transaction_data = List.foldl(txs, {[], Chain.chain_state()}, fn(tx, acc) ->
+      valid = KeyManager.verify(tx.data,
+                                tx.signature,
+                                tx.data.from_acc)
+      if(valid) do
+        {txs, current_chain_state} = acc
+        if(current_chain_state[tx.data.from_acc] - tx.data.value < 0) do
+          acc
+        else
+          block_state = %{}
+          block_state = Map.put(block_state, tx.data.from_acc, -tx.data.value)
+          block_state = Map.put(block_state, tx.data.to_acc, tx.data.value)
+          current_chain_state = ChainState.calculate_chain_state(block_state, current_chain_state)
+
+          {txs ++ [tx], current_chain_state}
+        end
+      else
+        acc
+      end
+    end)
+
+    elem(transaction_data, 0)
   end
 
   @spec calculate_root_hash(list()) :: binary()
