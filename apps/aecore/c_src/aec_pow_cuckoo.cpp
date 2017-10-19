@@ -38,7 +38,7 @@ node_t* generate_single(char* header, int nonce, int ntrims, int nthreads) {
 
   // Initiate context using header and nonce
   ctx.setheadernonce(header, sizeof(header), nonce);
-  aec_printf("k0 %llx k1 %llx\n", ctx.sip_keys.k0, ctx.sip_keys.k1);
+  //aec_printf("k0 %llx k1 %llx\n", ctx.sip_keys.k0, ctx.sip_keys.k1);
 
   // Spawn threads with this context
   for (int t = 0; t < nthreads; t++) {
@@ -90,7 +90,7 @@ int verify(char* header, int nonce, node_t soln[PROOFSIZE]) {
   // Initiate a context using header and nonce, we just need the keys
   cuckoo_ctx ctx(1, 1, 1);
   ctx.setheadernonce(header, sizeof(header), nonce);
-  printf("k0 %llx k1 %llx\n", ctx.sip_keys.k0, ctx.sip_keys.k1);
+  //printf("k0 %llx k1 %llx\n", ctx.sip_keys.k0, ctx.sip_keys.k1);
 
   edge_t nonces[PROOFSIZE];
   for (int i = 0; i < PROOFSIZE; i++) {

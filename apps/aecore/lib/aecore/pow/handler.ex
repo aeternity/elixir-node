@@ -27,7 +27,7 @@ defmodule Aecore.Pow.Handler do
     handler(Application.get_env(:aecore, :pow)[:default_pow])
   end
 
-  defp handler(:cucko) do
+  defp handler(:cuckoo) do
     Cuckoo
   end
   defp handler(:hashcash) do
