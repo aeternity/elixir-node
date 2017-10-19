@@ -9,14 +9,10 @@ defmodule Aecore.Pow.Handler do
   alias Aecore.Pow.Hashcash
 
   @spec generate(map()) :: {:ok, map()}
-  def generate(header) do
-    handler.generate(header)
-  end
+  def generate(header), do:  handler.generate(header)
 
   @spec verify(map()) :: boolean()
-  def verify(data) do
-    handler.verify(data)
-  end
+  def verify(data), do: handler.verify(data)
 
   @spec verify(map(), integer(), integer(), integer()) :: boolean()
   def verify(data, nonce, soln, difficulty) do
@@ -27,14 +23,8 @@ defmodule Aecore.Pow.Handler do
     handler(Application.get_env(:aecore, :pow)[:default_pow])
   end
 
-  defp handler(:cuckoo) do
-    Cuckoo
-  end
-  defp handler(:hashcash) do
-    Hashcash
-  end
-  defp handler(_) do
-    Hashcash
-  end
+  defp handler(:cuckoo), do:  Cuckoo
+  defp handler(:hashcash), do: Hashcash
+  defp handler(_), do: Hashcash
 
 end
