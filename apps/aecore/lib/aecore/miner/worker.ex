@@ -107,7 +107,7 @@ defmodule Aecore.Miner.Worker do
   defp mine_next_block() do
     chain_state = Chain.chain_state()
 
-    txs_list = Map.values(Pool.get_and_empty_pool())
+    txs_list = Map.values(Pool.get_pool())
 
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
