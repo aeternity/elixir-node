@@ -16,7 +16,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   @coinbase_transaction_value 100
-  @number_of_cycles 10
   @nonce_per_cycle 100000
 
   def start_link() do
@@ -41,7 +40,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Idle ##
-  def idle({:call, from}, :start, data) do
+  def idle({:call, from}, :start, _data) do
     IO.puts("Mining resuming by user")
     GenStateMachine.cast(__MODULE__, :mine)
     {:next_state, :running, 0, [{:reply, from, :ok}]}
@@ -141,17 +140,17 @@ defmodule Aecore.Miner.Worker do
         Block.current_block_version()
       )
 
-    {status, mined_header} = Hashcash.generate(unmined_header, start_nonce + @nonce_per_cycle)
-    block = %Block{header: mined_header, txs: valid_txs}
-    if(status == :ok) do
-      Chain.add_block(block)
+    case Hashcash.generate(unmined_header, start_nonce + @nonce_per_cycle) do
+      {:ok, mined_header} ->
+        block = %Block{header: mined_header, txs: valid_txs}
+        Chain.add_block(block)
+        Logger.info(fn ->
+          "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+          end)
+        {:block_found, 0}
 
-      Logger.info(fn ->
-        "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-        end)
-    {:block_found, 0}
-    else
-      {:no_block_found, start_nonce + @nonce_per_cycle}
+      {:error, _message} ->
+        {:no_block_found, start_nonce + @nonce_per_cycle}
     end
   end
 end
