@@ -14,8 +14,6 @@ defmodule Aecore.Structures.SignedTx do
      - data: Aecore %TxData{} structure
      - signature: Signed %TxData{} with the private key of the sender
   """
-  defstruct [:data,
-             :signature]
+  defstruct [:data, :signature]
   use ExConstructor
-
 end

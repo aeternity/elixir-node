@@ -9,6 +9,7 @@ defmodule Aecore.Keys.Worker.Supervisor do
     children = [
       worker(Aecore.Keys.Worker, [])
     ]
-	supervise(children, strategy: :one_for_one)
+
+    supervise(children, strategy: :one_for_one)
   end
 end
