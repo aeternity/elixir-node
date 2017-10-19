@@ -16,6 +16,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   @coinbase_transaction_value 100
+  @number_of_cycles 10
+  @nonce_per_cycle 100000
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -42,7 +44,7 @@ defmodule Aecore.Miner.Worker do
   def idle({:call, from}, :start, data) do
     IO.puts("Mining resuming by user")
     GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, data, [{:reply, from, :ok}]}
+    {:next_state, :running, 0, [{:reply, from, :ok}]}
   end
 
   def idle({:call, from}, :suspend, data) do
@@ -62,10 +64,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Running ##
-  def running(:cast, :mine, data) do
-    mine_next_block()
+  def running(:cast, :mine, start_nonce) do
+    {_, next_nonce} = mine_next_block(start_nonce)
     GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, data}
+    {:next_state, :running, next_nonce}
   end
 
   def running({:call, from}, :get_state, _data) do
@@ -103,8 +105,8 @@ defmodule Aecore.Miner.Worker do
   def coinbase_transaction_value, do: @coinbase_transaction_value
 
   ## Internal
-  @spec mine_next_block() :: :ok | :error
-  defp mine_next_block() do
+  @spec mine_next_block(integer()) :: :ok | :error
+  defp mine_next_block(start_nonce) do
     chain_state = Chain.chain_state()
 
     txs_list = Map.values(Pool.get_and_empty_pool())
@@ -139,13 +141,17 @@ defmodule Aecore.Miner.Worker do
         Block.current_block_version()
       )
 
-    {:ok, mined_header} = Hashcash.generate(unmined_header)
+    {status, mined_header} = Hashcash.generate(unmined_header, start_nonce + @nonce_per_cycle)
     block = %Block{header: mined_header, txs: valid_txs}
+    if(status == :ok) do
+      Chain.add_block(block)
 
-    Logger.info(fn ->
-      "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-      end)
-
-    Chain.add_block(block)
+      Logger.info(fn ->
+        "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+        end)
+    {:block_found, 0}
+    else
+      {:no_block_found, start_nonce + @nonce_per_cycle}
+    end
   end
 end
