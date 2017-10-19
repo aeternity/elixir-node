@@ -86,7 +86,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
                                 tx.data.from_acc)
       if(valid) do
         {txs, current_chain_state} = acc
-        if(current_chain_state[tx.data.from_acc] - tx.data.value < 0) do
+        if(Map.has_key?(current_chain_state, tx.data.from_acc) && current_chain_state[tx.data.from_acc] - tx.data.value < 0) do
           acc
         else
           block_state = %{}
