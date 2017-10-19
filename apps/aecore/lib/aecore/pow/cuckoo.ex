@@ -10,7 +10,6 @@ defmodule Aecore.Pow.Cuckoo do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Pow.Hashcash
 
-  @nonce_range 1000000000000000000000000
   @trims 7
   @threads 5
   @mersenne_prime 2147483647
@@ -25,6 +24,7 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Proof of Work verification (with difficulty check)
   """
+  @spec verify(map()) :: boolean()
   def verify(%{nonce: nonce,
                difficulty_target: difficulty,
                pow_evidence: soln}=header) do
@@ -35,10 +35,12 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  def generate(header) do
-    header  = %{header | nonce: pick_nonce()}
-    hash    = hash_header(header)
-    generate_process(header, hash)
+  @doc """
+  Find a nonce, by calling nif.Returns {:ok, %Header{}}
+  """
+  @spec generate(map()) :: {:ok, map()}
+  def generate(%{}=header) do
+    generate_process(header, hash_header(header))
   end
 
   def generate_process(header, hash) do
@@ -48,7 +50,7 @@ defmodule Aecore.Pow.Cuckoo do
         hash   = hash_header(header)
         generate_process(header, hash)
       {:ok, soln} ->
-            test_target(%{header | pow_evidence: soln})
+        test_target(%{header | pow_evidence: soln})
     end
   end
 
@@ -57,7 +59,7 @@ defmodule Aecore.Pow.Cuckoo do
   ###=============================================================================
 
   ##Proof of Work generation, a single attempt.External call to the nif
-  defp generate_single(header, nonce, trims, theards) do
+  defp generate_single(_header, _nonce, _trims, _theards) do
     :nif_library_not_loaded
   end
 
@@ -72,10 +74,18 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
+  ##White paper, section 9: rather than adjusting the nodes/edges ratio, a
+  ##hash-based difficulty is suggested: the sha256 hash of the cycle nonces
+  ##is restricted to be under the difficulty value (0 < difficulty < 2^256)
+  defp test_target(soln, target) do
+    nodesize = get_node_size()
+    bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
+    Hashcash.generate(:cuckoo, bin, target)
+  end
+
   defp hash_header(header) do
     :base64.encode_to_string(BlockValidation.block_header_hash(header))
   end
-
 
   ##Proof of Work verification (without difficulty check)
   defp verify(_Hash, _Nonce, _Soln) do
@@ -88,17 +98,6 @@ defmodule Aecore.Pow.Cuckoo do
     :erlang.nif_error(:nif_library_not_loaded)
   end
 
-
-  ##White paper, section 9: rather than adjusting the nodes/edges ratio, a
-  ##hash-based difficulty is suggested: the sha256 hash of the cycle nonces
-  ##is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  defp test_target(soln, target) do
-    nodesize = get_node_size()
-    bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
-    Hashcash.generate(:cuckoo, bin, target)
-  end
-
-
   ##Convert solution (a list of 42 numbers) to a binary
   defp solution_to_binary([], _Bits, acc) do
     acc
@@ -107,16 +106,7 @@ defmodule Aecore.Pow.Cuckoo do
     solution_to_binary(t, bits, acc <> <<h::size(bits) >>)
   end
 
-  @spec pick_nonce() :: integer()
-  def pick_nonce() do
-    :rand.uniform(:erlang.band(@nonce_range, @mersenne_prime))
-  end
-
-  defp next_nonce(214748364) do
-    0
-  end
-  defp next_nonce(nonce) do
-    :erlang.band(nonce + 1, @mersenne_prime)
-  end
+  defp next_nonce(@mersenne_prime), do: 0
+  defp next_nonce(nonce), do:  nonce + 1
 
 end
