@@ -1,46 +1,26 @@
 defmodule Aecore.Utils.Blockchain.BlockValidation do
+
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
 
-
-  @spec check_prev_hash(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}) :: boolean()
-  defp check_prev_hash(new_block, previous_block) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
-    new_block.header.prev_hash == prev_block_header_hash
-  end
-
-  @spec check_correct_height(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}) :: boolean()
-  defp check_correct_height(new_block, previous_block) do
-    previous_block.header.height + 1 == new_block.header.height
-  end
-
-  @spec calculate_coinbase_transactions_sum(%Aecore.Structures.Block{}) :: integer()
-  defp calculate_coinbase_transactions_sum(new_block) do
-    Enum.sum(
-      Enum.map(new_block.txs, fn t ->
-        cond do
-          t.data.from_acc == nil -> t.data.value
-          true -> 0
-        end
-      end)
-    )
-  end
-
-  @spec validate_block!(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}, map()) ::
-          {:error, term()} | :ok
+  @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
-    is_difficulty_target_met = Hashcash.verify(new_block.header)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
-    coinbase_transactions_sum = calculate_coinbase_transactions_sum(new_block)
+    is_difficulty_target_met = Hashcash.verify(new_block.header)
+    coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
     cond do
+      # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
+      # do not check previous block height for genesis block, there is none
       !(is_genesis || check_correct_height(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
@@ -50,12 +30,11 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
-      !(new_block |> validate_block_transactions |> Enum.all?()) ->
+      !(validate_block_transactions(new_block) |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum " <>
-          "coinbase transactions value"})
+        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
         throw({:error, "Chain state not valid"})
@@ -68,21 +47,24 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(%Aecore.Structures.Header{}) :: binary()
+  @spec block_header_hash(Header.header()) :: binary()
   def block_header_hash(header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
+  @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    for transaction <- block.txs do
-      if transaction.signature != nil && transaction.data.from_acc == nil do
-        KeyManager.verify(transaction.data, transaction.signature, transaction.data.from_acc)
-      else
-        true
-      end
-    end
+    block.txs
+    |> Enum.map(
+         fn tx -> cond do
+                    SignedTx.is_coinbase(tx) ->
+                      true
+                    true ->
+                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
+                  end
+         end
+       )
   end
 
   @spec filter_invalid_transactions(list()) :: list()
@@ -112,4 +94,29 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
+
+  @spec calculate_root_hash(Block.block()) :: integer()
+  defp sum_coinbase_transactions(block) do
+    block.txs
+    |> Enum.map(
+         fn tx -> cond do
+                    SignedTx.is_coinbase(tx) -> tx.data.value
+                    true -> 0
+                  end
+         end
+       )
+    |> Enum.sum()
+  end
+
+  @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
+  defp check_prev_hash(new_block, previous_block) do
+    prev_block_header_hash = block_header_hash(previous_block.header)
+    new_block.header.prev_hash == prev_block_header_hash
+  end
+
+  @spec check_correct_height(Block.block(), Block.block()) :: boolean()
+  defp check_correct_height(new_block, previous_block) do
+    previous_block.header.height + 1 == new_block.header.height
+  end
+
 end
