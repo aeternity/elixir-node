@@ -107,8 +107,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec validate_transaction_chainstate(term(), map()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state) do
-    chain_stat_has_account = Map.has_key?(chain_state, tx.data.from_acc)
-    from_account_has_necessary_balance = chain_stat_has_account && chain_state[tx.data.from_acc] - tx.data.value < 0
+    chain_state_has_account = Map.has_key?(chain_state, tx.data.from_acc)
+    from_account_has_necessary_balance = chain_state_has_account && chain_state[tx.data.from_acc] - tx.data.value >= 0
 
     cond do
       from_account_has_necessary_balance ->
