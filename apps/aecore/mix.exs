@@ -10,7 +10,7 @@ defmodule Aecore.Mixfile do
      lockfile: "../../mix.lock",
      elixir: "~> 1.5",
      compilers: [:make, :elixir, :app],
-     aliases: aliases,
+     aliases: aliases(),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps()]
