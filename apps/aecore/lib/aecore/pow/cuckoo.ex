@@ -58,7 +58,10 @@ defmodule Aecore.Pow.Cuckoo do
   ### Internal functions
   ###=============================================================================
 
-  ##Proof of Work generation, a single attempt.External call to the nif
+  ## Proof of Work generation, a single attempt.
+  ## We are making call to a nif and the return is
+  ## {:ok, solution :: list()} | {:error, :no_solutions}
+  ## If the nif librarys is not loaded we get :nif_library_not_loaded
   defp generate_single(_header, _nonce, _trims, _theards) do
     :nif_library_not_loaded
   end
@@ -74,31 +77,36 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  ##White paper, section 9: rather than adjusting the nodes/edges ratio, a
-  ##hash-based difficulty is suggested: the sha256 hash of the cycle nonces
-  ##is restricted to be under the difficulty value (0 < difficulty < 2^256)
+  ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
+  ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
+  ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
+  @spec test_target(soln :: list(), target :: integer()) :: true | false
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     Hashcash.generate(:cuckoo, bin, target)
   end
 
+  @spec hash_header(header :: map()) :: list()
   defp hash_header(header) do
     :base64.encode_to_string(BlockValidation.block_header_hash(header))
   end
 
-  ##Proof of Work verification (without difficulty check)
+  ## Proof of Work verification (without difficulty check)
+  ## We are making call to a nif and the return is boolean()
   defp verify(_Hash, _Nonce, _Soln) do
     :nif_library_not_loaded
   end
 
-  ##Fetch the size of solution elements
+  ## Fetch the size of solution elements
+  ## If nif is not loaded - stops the
+  ## execution of the calling process with the reason,
   @spec get_node_size() :: integer()
   defp get_node_size() do
     :erlang.nif_error(:nif_library_not_loaded)
   end
 
-  ##Convert solution (a list of 42 numbers) to a binary
+  ## Convert solution (a list of 42 numbers) to a binary
   defp solution_to_binary([], _Bits, acc) do
     acc
   end
