@@ -1,10 +1,13 @@
 defmodule Aehttpclient.Client do
 
-  def ping_uri(uri) do
-    case(HTTPoison.get(uri <> "/ping")) do
-      {:ok, %{status_code: status_code}} when status_code == 200 ->
-        :ok
-      true ->
+  def get_info(uri) do
+    case(HTTPoison.get(uri <> "/info",[recv_timeout: 10000000])) do
+      {:ok, %{body: body, status_code: 200}} ->
+        response = Poison.decode!(body)
+        {:ok, response}
+      {:ok, %HTTPoison.Response{status_code: 404}} ->
+        :error
+      {:error, %HTTPoison.Error{}} ->
         :error
     end
   end

@@ -17,7 +17,7 @@ defmodule Aehttpserver.Router do
     pipe_through :browser # Use the default browser stack
 
     get "/", PageController, :index
-    get "/ping", PingController, :index
+    get "/info", InfoController, :info
   end
 
   # Other scopes may use custom stacks.

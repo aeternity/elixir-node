@@ -1,6 +1,8 @@
 defmodule Aecore.Peers.Worker do
 
   alias Aehttpclient.Client
+  alias Aecore.Structures.Block
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   use GenServer
 
@@ -32,10 +34,21 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  @spec genesis_block_header_hash() :: term()
+  def genesis_block_header_hash() do
+    Block.genesis_header()
+    |> BlockValidation.block_header_hash()
+    |> Base.encode16()
+  end
+
   def handle_call({:add_peer,uri}, _from, peers) do
-    case(Client.ping_uri(uri)) do
-      :ok ->
-        {:reply, :ok, [uri | peers]}
+    case(Client.get_info(uri)) do
+      {:ok, info} ->
+        if(Map.get(info,"genesis_block_hash") == genesis_block_header_hash()) do
+          {:reply, :ok, [uri | peers]}
+        else
+          {:reply, :error, peers}
+        end
       :error ->
         {:reply, :error, peers}
     end
@@ -51,8 +64,8 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:check_peers, _from, peers) do
     updated_peers = Enum.filter(peers, fn(peer) ->
-      reply = Client.ping_uri(peer)
-      :ok = reply
+      {status, _} = Client.get_info(peer)
+      :ok = status
       end)
     {:reply, :ok, updated_peers}
   end
