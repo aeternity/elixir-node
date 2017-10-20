@@ -1,8 +1,10 @@
 defmodule Aecore.Utils.Blockchain.BlockValidation do
+
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Hashcash
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
@@ -32,7 +34,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
-      !(new_block |> validate_block_transactions |> Enum.all?()) ->
+      !(validate_block_transactions(new_block) |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
@@ -57,13 +59,16 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    for transaction <- block.txs do
-      if transaction.signature != nil && transaction.data.from_acc == nil do
-        KeyManager.verify(transaction.data, transaction.signature, transaction.data.from_acc)
-      else
-        true
-      end
-    end
+    block.txs
+    |> Enum.map(
+         fn tx -> cond do
+                    SignedTx.is_coinbase(tx) ->
+                      true
+                    true ->
+                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
+                  end
+         end
+       )
   end
 
   @spec filter_invalid_transactions(list()) :: list()
@@ -98,11 +103,10 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   defp sum_coinbase_transactions(block) do
     block.txs
     |> Enum.map(
-         fn tx ->
-           cond do
-             tx.data.from_acc == nil && tx.signature == nil -> tx.data.value
-             true -> 0
-           end
+         fn tx -> cond do
+                    SignedTx.is_coinbase(tx) -> tx.data.value
+                    true -> 0
+                  end
          end
        )
     |> Enum.sum()
