@@ -16,6 +16,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
+    is_valid_chain_state = ChainState.validate_chain_state(chain_state)
 
     coinbase_transactions_sum =
       Enum.sum(
@@ -48,6 +49,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
           "coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
+        throw({:error, "Chain state hash not matching"})
+
+      !is_valid_chain_state ->
         throw({:error, "Chain state not valid"})
 
       new_block.header.version != Block.current_block_version() ->
