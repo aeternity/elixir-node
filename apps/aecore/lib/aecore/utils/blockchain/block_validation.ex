@@ -5,32 +5,25 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
 
-  @spec validate_block!(%Aecore.Structures.Block{}, %Aecore.Structures.Block{}, map()) ::
-          {:error, term()} | :ok
+  @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
-
-    is_difficulty_target_met = Hashcash.verify(new_block.header)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
 
-    coinbase_transactions_sum =
-      Enum.sum(
-        Enum.map(new_block.txs, fn t ->
-          cond do
-            t.data.from_acc == nil -> t.data.value
-            true -> 0
-          end
-        end)
-      )
+    is_difficulty_target_met = Hashcash.verify(new_block.header)
+
+    coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
     cond do
+      # do not check previous block hash for genesis block, there is none
       !(is_genesis || is_correct_prev_hash) ->
         throw({:error, "Incorrect previous hash"})
 
-      previous_block.header.height + 1 != new_block.header.height ->
+      # do not check previous block height for genesis block, there is none
+      !(is_genesis || previous_block.header.height + 1 == new_block.header.height) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->
@@ -43,8 +36,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum " <>
-          "coinbase transactions value"})
+        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
         throw({:error, "Chain state not valid"})
@@ -57,13 +49,13 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(%Aecore.Structures.Header{}) :: binary()
+  @spec block_header_hash(Header.header()) :: binary()
   def block_header_hash(header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Aecore.Structures.Block{}) :: list()
+  @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
     for transaction <- block.txs do
       if transaction.signature != nil && transaction.data.from_acc == nil do
@@ -101,4 +93,19 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       merkle_tree |> :gb_merkle_trees.root_hash()
     end
   end
+
+  @spec calculate_root_hash(Block.block()) :: integer()
+  defp sum_coinbase_transactions(block) do
+    block.txs
+    |> Enum.map(
+         fn tx ->
+           cond do
+             tx.data.from_acc == nil && tx.signature == nil -> tx.data.value
+             true -> 0
+           end
+         end
+       )
+    |> Enum.sum()
+  end
+
 end
