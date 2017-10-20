@@ -107,7 +107,7 @@ defmodule Aecore.Miner.Worker do
   defp mine_next_block() do
     chain_state = Chain.chain_state()
 
-    txs_list = Map.values(Pool.get_and_empty_pool())
+    txs_list = Map.values(Pool.get_pool())
 
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
@@ -136,15 +136,15 @@ defmodule Aecore.Miner.Worker do
         root_hash,
         chain_state_hash,
         difficulty,
-        0,
-        1
+        0, #start from nonce 0, will be incremented in mining
+        Block.current_block_version()
       )
 
     {:ok, mined_header} = Aecore.Pow.Handler.generate(unmined_header)
     block = %Block{header: mined_header, txs: valid_txs}
 
     Logger.info(fn ->
-      "Mined block ##{block.header.height} with a difficulty target of #{block.header.difficulty_target}"
+      "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
       end)
 
     Chain.add_block(block)

@@ -8,6 +8,7 @@ use Mix.Config
 # configure all applications here, we prefer to delegate
 # back to each application for organization purposes.
 import_config "../apps/*/config/config.exs"
+path = Path.absname("apps/aecore")
 
 %{year: year, month: month, day: day} = DateTime.utc_now()
 timestamp = "#{year}-#{month}-#{day}_"
@@ -18,13 +19,14 @@ config :aecore, :keys,
 
 config :logger,
   compile_time_purge_level: :info,
-  backends: [{LoggerFileBackend, :info},
+  backends: [:console,
+             {LoggerFileBackend, :info},
              {LoggerFileBackend, :error}]
 
 config :logger, :info,
-  path: "apps/aecore/logs/#{timestamp}info.log",
+  path: path <> "/logs/#{timestamp}info.log",
   level: :info
 
 config :logger, :error,
-  path: "apps/aecore/logs/#{timestamp}error.log",
+  path: path <> "/logs/#{timestamp}error.log",
   level: :error

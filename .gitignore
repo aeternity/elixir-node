@@ -28,3 +28,9 @@ apps/aecore/priv/
 
 # Ignore c_src
 apps/aecore/c_src/
+
+# Ignore Logs created by aecore
+apps/aecore/logs
+
+# Ignore deps manager lockfile
+mix.lock
