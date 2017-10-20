@@ -4,28 +4,24 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Pow.Hashcash
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
-
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
-
     is_difficulty_target_met = Hashcash.verify(new_block.header)
-
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
     cond do
       # do not check previous block hash for genesis block, there is none
-      !(is_genesis || is_correct_prev_hash) ->
+      !(is_genesis || check_prev_hash(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
       # do not check previous block height for genesis block, there is none
-      !(is_genesis || previous_block.header.height + 1 == new_block.header.height) ->
+      !(is_genesis || check_correct_height(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->
@@ -110,6 +106,17 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
          end
        )
     |> Enum.sum()
+  end
+
+  @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
+  defp check_prev_hash(new_block, previous_block) do
+    prev_block_header_hash = block_header_hash(previous_block.header)
+    new_block.header.prev_hash == prev_block_header_hash
+  end
+
+  @spec check_correct_height(Block.block(), Block.block()) :: boolean()
+  defp check_correct_height(new_block, previous_block) do
+    previous_block.header.height + 1 == new_block.header.height
   end
 
 end
