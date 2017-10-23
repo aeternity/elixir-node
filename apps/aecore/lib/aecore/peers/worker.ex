@@ -19,7 +19,7 @@ defmodule Aecore.Peers.Worker do
 
   @spec add_peer(term) :: :ok | :error
   def add_peer(uri) do
-    GenServer.call(__MODULE__, {:add_peer, uri},15000)
+    GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
   @spec remove_peer(term) :: :ok | :error
