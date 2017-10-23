@@ -17,7 +17,7 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-  @spec add_peer(term) :: :ok | :error
+  @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
     GenServer.call(__MODULE__, {:add_peer, uri})
   end

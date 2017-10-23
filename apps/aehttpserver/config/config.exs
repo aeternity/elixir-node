@@ -7,7 +7,6 @@ use Mix.Config
 
 # Configures the endpoint
 config :aehttpserver, Aehttpserver.Endpoint,
-  render_errors: [view: Aehttpserver.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Aehttpserver.PubSub,
            adapter: Phoenix.PubSub.PG2]
 
