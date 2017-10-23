@@ -19,7 +19,8 @@ config :aecore, :keys,
 
 config :logger,
   compile_time_purge_level: :info,
-  backends: [{LoggerFileBackend, :info},
+  backends: [:console,
+             {LoggerFileBackend, :info},
              {LoggerFileBackend, :error}]
 
 config :logger, :info,

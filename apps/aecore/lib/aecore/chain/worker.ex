@@ -9,6 +9,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   use GenServer
 
@@ -85,6 +86,7 @@ defmodule Aecore.Chain.Worker do
     try do
       BlockValidation.validate_block!(b, prior_block,
       new_chain_state)
+      Enum.each(b.txs, fn(tx) -> Pool.remove_transaction(tx) end)
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
       Logger.info(fn ->
         "Added block ##{b.header.height} with hash #{b.header
