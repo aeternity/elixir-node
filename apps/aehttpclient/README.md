@@ -1,6 +1,6 @@
 # Aehttpclient
 
-**TODO: Add description**
+A basic client for making requests to a node.
 
 ## Installation
 
