@@ -68,5 +68,6 @@ To debug, see errors, warnings and info about the blockchain,
 the log can be found in the source folder under:`apps/aecore/logs`
 
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
+
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
 
