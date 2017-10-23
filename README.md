@@ -2,7 +2,7 @@
 
 # **Elixir blockchain research**
 
-This is an elixir implementation of a basic blockchain. We aim to keep the blockchain simple as possible and to research and experiment with different technologies 
+This is an elixir implementation of a basic blockchain. We aim to keep the blockchain as simple as possible and to research and experiment with different technologies 
 
 ## Getting Started
 
@@ -13,7 +13,7 @@ These instructions will get you a copy of the project up and running on your loc
 To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html) and the source code by cloning or downloading the repository. 
 
 ## Usage
-####**Starting the application**
+#### **Starting the application**
 Start the application in interactive Elixir mode
 
 `iex -S mix`
