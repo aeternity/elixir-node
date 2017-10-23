@@ -7,11 +7,13 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Worker, as: Chain
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
+    is_valid_chain_state = ChainState.validate_chain_state(chain_state)
     is_difficulty_target_met = Hashcash.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
@@ -37,6 +39,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
+        throw({:error, "Chain state hash not matching"})
+
+      !is_valid_chain_state ->
         throw({:error, "Chain state not valid"})
 
       new_block.header.version != Block.current_block_version() ->
@@ -67,11 +72,45 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
        )
   end
 
-  @spec filter_invalid_transactions(list()) :: list()
-  def filter_invalid_transactions(txs) do
-    Enum.filter(txs, fn transaction ->
-      KeyManager.verify(transaction.data, transaction.signature, transaction.data.from_acc)
-    end)
+  @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
+  def filter_invalid_transactions_chainstate(txs_list, chain_state) do
+    {valid_txs_list, _} = List.foldl(
+      txs_list,
+      {[], chain_state},
+      fn (tx, {valid_txs_list, chain_state_acc}) ->
+        valid_signature = KeyManager.verify(
+          tx.data,
+          tx.signature,
+          tx.data.from_acc
+        )
+
+        {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
+
+        cond do
+          valid_signature && valid_chain_state ->
+            {valid_txs_list ++ [tx], updated_chain_state}
+          true ->
+            {valid_txs_list, chain_state_acc}
+        end
+      end
+    )
+
+    valid_txs_list
+  end
+
+  @spec validate_transaction_chainstate(term(), map()) :: {boolean(), map()}
+  defp validate_transaction_chainstate(tx, chain_state) do
+    chain_state_has_account = Map.has_key?(chain_state, tx.data.from_acc)
+    from_account_has_necessary_balance = chain_state_has_account && chain_state[tx.data.from_acc] - tx.data.value >= 0
+
+    cond do
+      from_account_has_necessary_balance ->
+        chain_state_changes = %{tx.data.from_acc => -tx.data.value, tx.data.to_acc => tx.data.value}
+        updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
+        {true, updated_chain_state}
+      true ->
+        {false, chain_state}
+    end
   end
 
   @spec calculate_root_hash(list()) :: binary()

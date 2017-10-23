@@ -115,7 +115,7 @@ defmodule Aecore.Miner.Worker do
 
     BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
-    valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
+    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(txs_list, chain_state)
     {_, pubkey} = Keys.pubkey()
     valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
