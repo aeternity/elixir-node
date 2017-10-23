@@ -95,7 +95,7 @@ defmodule Aecore.Miner.Worker do
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value,
-      nonce: Enum.random(0..1_000_000_000_000)
+      nonce: 0
     }
 
     %SignedTx{data: tx_data, signature: nil}

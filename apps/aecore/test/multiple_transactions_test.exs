@@ -33,8 +33,8 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
-    assert 0 == Chain.chain_state[account1_pub_key]
-    assert 100 == Chain.chain_state[account2_pub_key]
+    assert 0 == Chain.chain_state[account1_pub_key].balance
+    assert 100 == Chain.chain_state[account2_pub_key].balance
     Pool.get_and_empty_pool()
 
     # account1 => 0; account2 => 100
@@ -48,7 +48,7 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
-    assert 100 == Chain.chain_state[account1_pub_key]
+    assert 100 == Chain.chain_state[account1_pub_key].balance
     Pool.get_and_empty_pool()
 
     # acccount1 => 100; account2 => 100
@@ -66,9 +66,9 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
-    assert 0 == Chain.chain_state[account1_pub_key]
-    assert 140 == Chain.chain_state[account2_pub_key]
-    assert 60 == Chain.chain_state[account3_pub_key]
+    assert 0 == Chain.chain_state[account1_pub_key].balance
+    assert 140 == Chain.chain_state[account2_pub_key].balance
+    assert 60 == Chain.chain_state[account3_pub_key].balance
     Pool.get_and_empty_pool()
 
     # account1 => 0; account2 => 140; account3 => 60
@@ -91,9 +91,9 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
-    assert 20 == Chain.chain_state[account1_pub_key]
-    assert 190 == Chain.chain_state[account2_pub_key]
-    assert 90 == Chain.chain_state[account3_pub_key]
+    assert 20 == Chain.chain_state[account1_pub_key].balance
+    assert 190 == Chain.chain_state[account2_pub_key].balance
+    assert 90 == Chain.chain_state[account3_pub_key].balance
     Pool.get_and_empty_pool()
 
     # account1 => 20; account2 => 190; account3 => 90
@@ -111,9 +111,9 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
-    assert 0 == Chain.chain_state[account1_pub_key]
-    assert 190 == Chain.chain_state[account2_pub_key]
-    assert 190 == Chain.chain_state[account3_pub_key]
+    assert 0 == Chain.chain_state[account1_pub_key].balance
+    assert 190 == Chain.chain_state[account2_pub_key].balance
+    assert 190 == Chain.chain_state[account3_pub_key].balance
     Pool.get_and_empty_pool()
   end
 

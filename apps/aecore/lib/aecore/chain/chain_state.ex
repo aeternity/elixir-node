@@ -37,8 +37,18 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
-    Map.merge(block_state, chain_state, fn _key, v1, v2 ->
-      v1 + v2
+    new_chain_state = Map.merge(block_state, chain_state, fn _key, v1, v2 ->
+      %{balance: v1 + v2.balance, nonce: v2.nonce + 1}
+    end)
+
+    Enum.reduce(new_chain_state, %{}, fn(x, acc) ->
+    	{key, value} = x
+    	value = cond do
+    		!is_map(value) -> %{balance: value, nonce: 0}
+    		true -> value
+    	end
+
+    	Map.put(acc, key, value)
     end)
   end
 
@@ -49,8 +59,8 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state_hash(map()) :: binary()
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
-      for {account, balance} <- chain_state do
-        {account, :erlang.term_to_binary(balance)}
+      for {account, data} <- chain_state do
+        {account, :erlang.term_to_binary(data)}
       end
 
     if length(merkle_tree_data) == 0 do
@@ -69,14 +79,14 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
     chain_state |>
-      Enum.map(fn{_account, balance} -> balance end) |>
+      Enum.map(fn{_account, data} -> data.balance end) |>
       Enum.sum()
   end
 
   @spec validate_chain_state(map()) :: boolean()
   def validate_chain_state(chain_state) do
     chain_state |>
-      Enum.map(fn{_account, balance} -> balance >= 0 end) |>
+      Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end) |>
       Enum.all?()
   end
 
