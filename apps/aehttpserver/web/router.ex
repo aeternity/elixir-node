@@ -16,7 +16,6 @@ defmodule Aehttpserver.Router do
   scope "/", Aehttpserver do
     pipe_through :browser # Use the default browser stack
 
-    get "/", PageController, :index
     get "/info", InfoController, :info
   end
 

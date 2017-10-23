@@ -1,7 +1,7 @@
 defmodule Aehttpclient.Client do
 
   def get_info(uri) do
-    case(HTTPoison.get(uri <> "/info",[recv_timeout: 10000000])) do
+    case(HTTPoison.get(uri <> "/info")) do
       {:ok, %{body: body, status_code: 200}} ->
         response = Poison.decode!(body)
         {:ok, response}

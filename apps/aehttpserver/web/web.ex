@@ -44,7 +44,6 @@ defmodule Aehttpserver.Web do
 
       import Aehttpserver.Router.Helpers
       import Aehttpserver.ErrorHelpers
-      import Aehttpserver.Gettext
     end
   end
 

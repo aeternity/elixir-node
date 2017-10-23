@@ -7,8 +7,6 @@ use Mix.Config
 
 # Configures the endpoint
 config :aehttpserver, Aehttpserver.Endpoint,
-  url: [host: "localhost"],
-  secret_key_base: "5OCr9Ljxr0s8cSx36fmjKgi6hWETJeoxH+jMvBSNDCO/pt0Zqo1S0+EGGJ2VyOoa",
   render_errors: [view: Aehttpserver.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Aehttpserver.PubSub,
            adapter: Phoenix.PubSub.PG2]

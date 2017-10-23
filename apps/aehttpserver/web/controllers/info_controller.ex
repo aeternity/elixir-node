@@ -4,7 +4,6 @@ defmodule Aehttpserver.InfoController do
   alias Aecore.Structures.Block
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Keys.Worker, as: Keys
 
   def info(conn, _params) do
@@ -20,12 +19,11 @@ defmodule Aehttpserver.InfoController do
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
-    
+
     json conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
                  current_block_hash: latest_block_header,
                  genesis_block_hash: genesis_block_hash,
-                 peer_count: Enum.count(Peers.all_peers),
                  difficulty_target: latest_block.header.difficulty_target,
                  public_key: pubkey}
   end
