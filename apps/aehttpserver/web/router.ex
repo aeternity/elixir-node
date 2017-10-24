@@ -15,9 +15,10 @@ defmodule Aehttpserver.Router do
 
   scope "/", Aehttpserver do
     pipe_through :browser # Use the default browser stack
-
     get "/info", InfoController, :info
+    resources "/block", BlockController, param: "hash", only: [:show]
   end
+
 
   # Other scopes may use custom stacks.
   # scope "/api", Aehttpserver do

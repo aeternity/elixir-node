@@ -48,7 +48,7 @@ defmodule Aecore.Peers.Worker do
     if(!Enum.member?(peers,uri)) do
       case(Client.get_info(uri)) do
         {:ok, info} ->
-          if(Map.get(info,"genesis_block_hash") == genesis_block_header_hash()) do
+          if(Map.get(info,:genesis_block_hash) == genesis_block_header_hash()) do
             {:reply, :ok, [uri | peers]}
           else
             {:reply, {:error, "Genesis header hash not valid"}, peers}

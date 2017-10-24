@@ -81,7 +81,11 @@ defmodule Aecore.Chain.Worker do
       block.header
       |> BlockValidation.block_header_hash()
       |> Base.encode16() == hash end)
-    {:reply, block, state}
+    if(block != nil) do
+      {:reply, block, state}
+    else
+      {:reply, {:error, "Block not found"}, state}
+    end
   end
 
   def handle_call(:all_blocks, _from, state) do
