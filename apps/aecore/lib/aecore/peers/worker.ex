@@ -73,7 +73,7 @@ defmodule Aecore.Peers.Worker do
     updated_peers = Enum.filter(peers, fn(peer) ->
       {status, info} = Client.get_info(peer)
       :ok == status &&
-        Map.get(info,"genesis_block_hash") == genesis_block_header_hash()
+        Map.get(info, :genesis_block_hash) == genesis_block_header_hash()
       end)
     {:reply, :ok, updated_peers}
   end
