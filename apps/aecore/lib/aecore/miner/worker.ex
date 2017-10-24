@@ -109,13 +109,14 @@ defmodule Aecore.Miner.Worker do
     chain_state = Chain.chain_state()
 
     txs_list = Map.values(Pool.get_pool())
+    ordered_txs_list = Enum.sort(txs_list, fn(tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
 
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
 
     BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
-    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(txs_list, chain_state)
+    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
     {_, pubkey} = Keys.pubkey()
     valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)

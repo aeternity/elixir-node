@@ -7,7 +7,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Chain.Worker, as: Chain
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
@@ -101,11 +100,21 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   @spec validate_transaction_chainstate(term(), map()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state) do
     chain_state_has_account = Map.has_key?(chain_state, tx.data.from_acc)
+    tx_has_valid_nonce = cond do
+      chain_state_has_account ->
+        tx.data.nonce > Map.get(chain_state, tx.data.from_acc).nonce
+
+      true ->
+        true
+    end
+
     from_account_has_necessary_balance = chain_state_has_account && chain_state[tx.data.from_acc].balance - tx.data.value >= 0
 
     cond do
-      from_account_has_necessary_balance ->
-        chain_state_changes = %{tx.data.from_acc => -tx.data.value, tx.data.to_acc => tx.data.value}
+      tx_has_valid_nonce && from_account_has_necessary_balance ->
+        from_acc_new_state = %{balance: -tx.data.value, nonce: 1}
+        to_acc_new_state = %{balance: tx.data.value, nonce: 0}
+        chain_state_changes = %{tx.data.from_acc => from_acc_new_state, tx.data.to_acc => to_acc_new_state}
         updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
         {true, updated_chain_state}
       true ->

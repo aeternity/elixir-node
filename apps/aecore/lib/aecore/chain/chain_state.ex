@@ -18,13 +18,13 @@ defmodule Aecore.Chain.ChainState do
         updated_block_state =
           cond do
             transaction.data.from_acc != nil ->
-              update_block_state(block_state, transaction.data.from_acc, -transaction.data.value)
+              update_block_state(block_state, transaction.data.from_acc, -transaction.data.value, 1)
 
             true ->
               block_state
           end
 
-        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value)
+        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value, 0)
       end
 
     reduce_map_list(block_state)
@@ -37,18 +37,8 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
-    new_chain_state = Map.merge(block_state, chain_state, fn _key, v1, v2 ->
-      %{balance: v1 + v2.balance, nonce: v2.nonce + 1}
-    end)
-
-    Enum.reduce(new_chain_state, %{}, fn(x, acc) ->
-    	{key, value} = x
-    	value = cond do
-    		!is_map(value) -> %{balance: value, nonce: 0}
-    		true -> value
-    	end
-
-    	Map.put(acc, key, value)
+    Map.merge(block_state, chain_state, fn _key, v1, v2 ->
+      %{balance: v1.balance + v2.balance, nonce: v1.nonce + v2.nonce}
     end)
   end
 
@@ -90,25 +80,27 @@ defmodule Aecore.Chain.ChainState do
       Enum.all?()
   end
 
-  @spec update_block_state(map(), binary(), integer()) :: map()
-  defp update_block_state(block_state, account, value) do
+  @spec update_block_state(map(), binary(), integer(), integer()) :: map()
+  defp update_block_state(block_state, account, value, nonce_increment_value) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
-          Map.put(block_state, account, 0)
+          Map.put(block_state, account, %{balance: 0, nonce: 0})
 
         true ->
           block_state
       end
 
-    Map.put(block_state_filled_empty, account, block_state_filled_empty[account] + value)
+    new_account_state = %{balance: block_state_filled_empty[account].balance + value,
+                          nonce:   block_state_filled_empty[account].nonce + nonce_increment_value}
+    Map.put(block_state_filled_empty, account, new_account_state)
   end
 
   @spec reduce_map_list(list()) :: map()
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn x, acc ->
       Map.merge(x, acc, fn _key, v1, v2 ->
-        v1 + v2
+        %{balance: v1.balance + v2.balance, nonce: v1.nonce + v2.nonce}
       end)
     end)
   end

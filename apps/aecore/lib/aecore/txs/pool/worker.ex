@@ -54,16 +54,11 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call(:get_pool, _from, tx_pool) do
-    {:reply, order_by_nonce(tx_pool), tx_pool}
+    {:reply, tx_pool, tx_pool}
   end
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
-    {:reply, order_by_nonce(tx_pool), %{}}
+    {:reply, tx_pool, %{}}
   end
 
-  @spec order_by_nonce(list()) :: list()
-  defp order_by_nonce(txs) do
-    # TODO: order by nonce
-    txs
-  end
 end
