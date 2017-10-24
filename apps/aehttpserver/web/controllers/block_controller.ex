@@ -9,7 +9,7 @@ defmodule Aehttpserver.BlockController do
     block = Chain.get_block_by_hash(params["hash"])
     case (block) do
       %Block{} ->
-        block_hex_values = Serialization.serialize_block(block)
+        block_hex_values = Serialization.block(block, :serialize)
         json conn, block_hex_values
       {:error, message} ->
         json conn, %{error: message}

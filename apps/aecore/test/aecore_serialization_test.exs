@@ -6,9 +6,10 @@ defmodule AecoreSerializationTest do
 
   test "serialize a block" do
     block = get_block()
-    serialized_block = Serialization.serialize_block(block)
+    serialized_block = Serialization.block(block, :serialize)
     assert check_header_values(serialized_block)
     assert check_transactions(serialized_block)
+    assert Serialization.block(serialized_block, :deserialize) == block
   end
 
   def check_header_values(block) do
