@@ -2,7 +2,6 @@ defmodule Aecore.Structures.Block do
   @moduledoc """
   Structure of the block
   """
-
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
 
