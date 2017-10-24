@@ -15,4 +15,13 @@ defmodule Aehttpclient.Client do
         :error
     end
   end
+
+  @doc """
+  Send newest transactions to a peer
+  """
+  @spec broadcast_tx(String.t, map()) :: {:ok, map()} | {:error, term()}
+  def broadcast_tx(uri, tx) do
+    HTTPoison.post uri <> "/new_tx", tx,
+        [{"Content-Type", "application/json"}]
+  end
 end
