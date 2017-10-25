@@ -9,13 +9,13 @@ defmodule Aecore.Utils.Blockchain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty :: term()
+  @spec calculate_next_difficulty :: integer()
   def calculate_next_difficulty() do
     Chain.get_blocks_for_difficulty_calculation()
     |> calculate_next_difficulty()
   end
 
-  @spec calculate_next_difficulty :: term()
+  @spec calculate_next_difficulty :: integer()
   def calculate_next_difficulty(list) do
     [latest_block | _] = list
 
@@ -47,7 +47,7 @@ defmodule Aecore.Utils.Blockchain.Difficulty do
     end
   end
 
-  @spec calculate_distance(list) :: term()
+  @spec calculate_distance(list) :: float()
   defp calculate_distance(list) do
     [head | tail] = list
 
