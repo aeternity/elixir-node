@@ -47,7 +47,7 @@ defmodule Aecore.Peers.Worker do
   def handle_call({:add_peer,uri}, _from, peers) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
-        if(Map.get(info,:genesis_block_hash) == genesis_block_header_hash()) do
+        if(info.genesis_block_hash == genesis_block_header_hash()) do
           updated_peers = Map.put(peers, uri, info.current_block_hash)
           {:reply, :ok, updated_peers}
         else
@@ -66,11 +66,16 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
+  @doc """
+  Filters the peers map by checking if the response status from a GET /info
+  request is :ok and if the genesis block hash is the same as the one
+  in the current node. After that the current block hash for every peer
+  is updated if the one in the latest GET /info request is different.
+  """
   def handle_call(:check_peers, _from, peers) do
     filtered_peers = :maps.filter(fn(peer, _) ->
         {status, info} = Client.get_info(peer)
-        :ok == status &&
-          Map.get(info, :genesis_block_hash) == genesis_block_header_hash()
+        :ok == status && info.genesis_block_hash == genesis_block_header_hash()
       end, peers)
     updated_peers =
       for {peer, current_block_hash} <- filtered_peers, into: %{} do
