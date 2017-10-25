@@ -13,6 +13,7 @@ C_SRC_DIR = $(CURDIR)
 PRIV_DIR = $(BASEDIR)/priv/
 LIB20_SO ?= $(CURDIR)/../priv/$(PROJECT)20_nif.so
 LIB28_SO ?= $(CURDIR)/../priv/$(PROJECT)28_nif.so
+LIB26_SO ?= $(CURDIR)/../priv/$(PROJECT)26_nif.so
 LIB32_SO ?= $(CURDIR)/../priv/$(PROJECT)32_nif.so
 
 # System type and C compiler/flags.
@@ -98,6 +99,7 @@ link_verbose_0 = @echo " LD    " $(@F);
 link_verbose = $(link_verbose_$(V))
 
 OBJECTS20 = aec_pow_cuckoo.20o aec_pow_cuckoo_nif.20o
+OBJECTS26 = aec_pow_cuckoo.26o aec_pow_cuckoo_nif.26o
 OBJECTS28 = aec_pow_cuckoo.28o aec_pow_cuckoo_nif.28o
 OBJECTS32 = aec_pow_cuckoo.32o aec_pow_cuckoo_nif.32o
 CUCKOO_SRCS = $(LIBDIR)/src/blake2b-ref.c
@@ -109,10 +111,13 @@ COMPILE_CPP = $(cpp_verbose) $(CXX) $(CXXFLAGS) $(CPPFLAGS) -c
 help: ## This documentation
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-all: deps $(PRIV_DIR) $(LIB20_SO) $(LIB28_SO) # $(LIB32_SO) ## Build all
+all: deps $(PRIV_DIR) $(LIB20_SO) $(LIB28_SO) $(LIB26_SO) # $(LIB32_SO) ## Build all
 
 $(LIB20_SO): $(OBJECTS20) $(CUCKOO_OBJECTS)
 	$(link_verbose) $(CXX) -o $@ $(LDLIBS)  $(LDFLAGS) $^
+
+$(LIB26_SO): $(OBJECTS26) $(CUCKOO_OBJECTS)
+	$(link_verbose) $(CXX) -o $@ $(LD	LIBS)  $(LDFLAGS) $^
 
 $(LIB28_SO): $(OBJECTS28) $(CUCKOO_OBJECTS)
 	$(link_verbose) $(CXX) -o $@ $(LDLIBS)  $(LDFLAGS) $^
@@ -125,6 +130,9 @@ $(LIB28_SO): $(OBJECTS28) $(CUCKOO_OBJECTS)
 
 %.20o: %.cpp
 	$(COMPILE_CPP) -DEDGEBITS=19 $(OUTPUT_OPTION) $<
+
+%.26o: %.cpp
+	$(COMPILE_CPP) -DEDGEBITS=25 $(OUTPUT_OPTION) $<
 
 %.28o: %.cpp
 	$(COMPILE_CPP) -DEDGEBITS=27 $(OUTPUT_OPTION) $<
@@ -148,7 +156,7 @@ $(CUCKOO_SRCS): $(LIBDIR)
 $(CUCKOO_OBJECTS): $(CUCKOO_SRCS)
 
 clean: ## Clean all files
-	@rm -f $(OBJECTS20) $(OBJECTS28) $(OBJECTS32) $(LIB_SO)
+	@rm -f $(OBJECTS20) $(OBJECTS26) $(OBJECTS28) $(OBJECTS32) $(LIB_SO)
 
 distclean: clean
 	@rm -fR $(LIBDIR)

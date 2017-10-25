@@ -10,7 +10,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   def validate_block!(new_block, previous_block, chain_state) do
     prev_block_header_hash = block_header_hash(previous_block.header)
 
-    is_difficulty_target_met = Aecore.Pow.Handler.verify(new_block.header)
+    is_difficulty_target_met = Aecore.Pow.Cuckoo.verify(new_block.header)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     is_correct_prev_hash = new_block.header.prev_hash == prev_block_header_hash
 

@@ -17,6 +17,7 @@ defmodule AecoreChainTest do
     []
   end
 
+  @tag timeout: 100000000
   test "add block" do
     Miner.resume()
     Miner.suspend()
@@ -31,7 +32,7 @@ defmodule AecoreChainTest do
                                    txs_hash: <<0::256>>,chain_state_hash: new_chain_state_hash,
                                    difficulty_target: 1, nonce: 0,
                                    timestamp: System.system_time(:milliseconds), version: 1}, txs: []}
-    {:ok, nbh} = Aecore.Pow.Handler.generate(block.header)
+    {:ok, nbh} = Aecore.Pow.Cuckoo.generate(block.header)
     block = %{block | header: nbh}
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
     assert previous_block.header.height + 1 == latest_block.header.height

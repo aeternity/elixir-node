@@ -9,7 +9,7 @@ defmodule Aecore.Mixfile do
      deps_path: "../../deps",
      lockfile: "../../mix.lock",
      elixir: "~> 1.5",
-     compilers: [:make, :elixir, :app],
+     compilers: [:app, :make, :elixir],
      aliases: aliases(),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,

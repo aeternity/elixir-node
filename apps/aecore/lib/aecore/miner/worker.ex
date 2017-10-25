@@ -140,12 +140,12 @@ defmodule Aecore.Miner.Worker do
         Block.current_block_version()
       )
 
-    {:ok, mined_header} = Aecore.Pow.Handler.generate(unmined_header)
+    {:ok, mined_header} = Aecore.Pow.Cuckoo.generate(unmined_header)
     block = %Block{header: mined_header, txs: valid_txs}
 
     Logger.info(fn ->
       "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-      end)
+	end)
 
     Chain.add_block(block)
   end

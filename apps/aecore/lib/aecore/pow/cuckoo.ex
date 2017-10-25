@@ -46,9 +46,7 @@ defmodule Aecore.Pow.Cuckoo do
   def generate_process(header, hash) do
     case generate_single(hash, header.nonce, @trims, @threads) do
       {:error, :no_solutions} ->
-        header = %{header | nonce: next_nonce(header.nonce)}
-        hash   = hash_header(header)
-        generate_process(header, hash)
+        generate(%{header | nonce: next_nonce(header.nonce)})
       {:ok, soln} ->
         test_target(%{header | pow_evidence: soln})
     end
@@ -61,7 +59,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## Proof of Work generation, a single attempt.
   ## We are making call to a nif and the return is
   ## {:ok, solution :: list()} | {:error, :no_solutions}
-  ## If the nif librarys is not loaded we get :nif_library_not_loaded
+  ## When your NIF is loaded, it will override this function.
   defp generate_single(_header, _nonce, _trims, _theards) do
     :nif_library_not_loaded
   end
@@ -71,9 +69,9 @@ defmodule Aecore.Pow.Cuckoo do
       true  ->
         {:ok, header}
       false ->
-        header = %{header | nonce: next_nonce(header.nonce)}
-        hash   = hash_header(header)
-        generate_process(header, hash)
+        generate(%{header |
+                   nonce: next_nonce(header.nonce),
+                   pow_evidence: nil})
     end
   end
 
@@ -83,7 +81,7 @@ defmodule Aecore.Pow.Cuckoo do
   @spec test_target(soln :: list(), target :: integer()) :: true | false
   defp test_target(soln, target) do
     nodesize = get_node_size()
-    bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
+    bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     Hashcash.generate(:cuckoo, bin, target)
   end
 
@@ -94,13 +92,15 @@ defmodule Aecore.Pow.Cuckoo do
 
   ## Proof of Work verification (without difficulty check)
   ## We are making call to a nif and the return is boolean()
-  defp verify(_Hash, _Nonce, _Soln) do
+  ## When your NIF is loaded, it will override this function.
+  defp verify(_hash, _nonce, _soln) do
     :nif_library_not_loaded
   end
 
   ## Fetch the size of solution elements
   ## If nif is not loaded - stops the
-  ## execution of the calling process with the reason,
+  ## execution of the calling process with the reason.
+  ## When your NIF is loaded, it will override this function.
   @spec get_node_size() :: integer()
   defp get_node_size() do
     :erlang.nif_error(:nif_library_not_loaded)

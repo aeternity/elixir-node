@@ -30,5 +30,4 @@ use Mix.Config
 #     import_config "#{Mix.env}.exs"
 
 config :aecore, :pow,
-  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
-  default_pow: :cuckoo
+  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo26_nif")
