@@ -7,7 +7,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Chain.Worker, as: Chain
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do

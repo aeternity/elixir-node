@@ -9,7 +9,7 @@ defmodule Aecore do
       supervisor(Aecore.Chain.Worker.Supervisor, []),
       supervisor(Aecore.Miner.Worker.Supervisor, []),
       supervisor(Aecore.Txs.Pool.Worker.Supervisor, []),
-      supervisor(Aecore.Peers.Worker, [])
+      supervisor(Aecore.Peers.Worker.Supervisor, [])
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)
