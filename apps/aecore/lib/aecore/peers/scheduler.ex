@@ -3,6 +3,8 @@ defmodule Aecore.Peers.Scheduler do
 
   alias Aecore.Peers.Worker, as: Peers
 
+  @check_time 60_000
+
   def start_link do
     GenServer.start_link(__MODULE__, %{})
   end
@@ -19,6 +21,6 @@ defmodule Aecore.Peers.Scheduler do
   end
 
   defp schedule_work() do
-    Process.send_after(self(), :work, 60_000)
+    Process.send_after(self(), :work, @check_time)
   end
 end
