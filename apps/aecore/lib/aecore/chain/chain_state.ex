@@ -18,7 +18,8 @@ defmodule Aecore.Chain.ChainState do
         updated_block_state =
           cond do
             transaction.data.from_acc != nil ->
-              update_block_state(block_state, transaction.data.from_acc, -transaction.data.value, 1)
+              update_block_state(block_state, transaction.data.from_acc,
+                                 -transaction.data.value, transaction.data.nonce)
 
             true ->
               block_state
@@ -38,7 +39,15 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
     Map.merge(block_state, chain_state, fn _key, v1, v2 ->
-      %{balance: v1.balance + v2.balance, nonce: v1.nonce + v2.nonce}
+      new_nonce = cond do
+        v1.nonce > v2.nonce ->
+          v1.nonce
+
+        true ->
+          v2.nonce
+      end
+
+      %{balance: v1.balance + v2.balance, nonce: new_nonce}
     end)
   end
 
@@ -81,7 +90,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec update_block_state(map(), binary(), integer(), integer()) :: map()
-  defp update_block_state(block_state, account, value, nonce_increment_value) do
+  defp update_block_state(block_state, account, value, nonce) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
@@ -91,8 +100,16 @@ defmodule Aecore.Chain.ChainState do
           block_state
       end
 
+    new_nonce = cond do
+      block_state_filled_empty[account].nonce < nonce ->
+        nonce
+
+      true ->
+        block_state_filled_empty[account].nonce
+    end
+
     new_account_state = %{balance: block_state_filled_empty[account].balance + value,
-                          nonce:   block_state_filled_empty[account].nonce + nonce_increment_value}
+                          nonce:   new_nonce}
     Map.put(block_state_filled_empty, account, new_account_state)
   end
 
@@ -100,7 +117,17 @@ defmodule Aecore.Chain.ChainState do
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn x, acc ->
       Map.merge(x, acc, fn _key, v1, v2 ->
-        %{balance: v1.balance + v2.balance, nonce: v1.nonce + v2.nonce}
+        new_nonce = cond do
+          v1.nonce > v2.nonce ->
+            v1.nonce
+          v2.nonce > v1.nonce ->
+            v2.nonce
+
+          true ->
+            v1.nonce
+        end
+
+        %{balance: v1.balance + v2.balance, nonce: new_nonce}
       end)
     end)
   end
