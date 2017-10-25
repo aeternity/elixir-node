@@ -38,17 +38,7 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
-    Map.merge(block_state, chain_state, fn _key, v1, v2 ->
-      new_nonce = cond do
-        v1.nonce > v2.nonce ->
-          v1.nonce
-
-        true ->
-          v2.nonce
-      end
-
-      %{balance: v1.balance + v2.balance, nonce: new_nonce}
-    end)
+    merge_states(block_state, chain_state)
   end
 
   @doc """
@@ -116,19 +106,24 @@ defmodule Aecore.Chain.ChainState do
   @spec reduce_map_list(list()) :: map()
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn x, acc ->
-      Map.merge(x, acc, fn _key, v1, v2 ->
-        new_nonce = cond do
-          v1.nonce > v2.nonce ->
-            v1.nonce
-          v2.nonce > v1.nonce ->
-            v2.nonce
+      merge_states(x, acc)
+    end)
+  end
 
-          true ->
-            v1.nonce
-        end
+  @spec merge_states(map(), map()) :: map()
+  defp merge_states(new_state, destination_state) do
+    Map.merge(new_state, destination_state, fn _key, v1, v2 ->
+      new_nonce = cond do
+        v1.nonce > v2.nonce ->
+          v1.nonce
+        v2.nonce > v1.nonce ->
+          v2.nonce
 
-        %{balance: v1.balance + v2.balance, nonce: new_nonce}
-      end)
+        true ->
+          v1.nonce
+      end
+
+      %{balance: v1.balance + v2.balance, nonce: new_nonce}
     end)
   end
 end
