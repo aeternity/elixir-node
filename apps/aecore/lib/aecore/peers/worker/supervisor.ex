@@ -1,4 +1,4 @@
-defmodule Aecore.Peers.Supervisor do
+defmodule Aecore.Peers.Worker.Supervisor do
   use Supervisor
 
   def start_link() do
@@ -7,7 +7,8 @@ defmodule Aecore.Peers.Supervisor do
 
   def init(:ok) do
     children = [
-      worker(Aecore.Peers.Worker, [])
+      worker(Aecore.Peers.Worker, []),
+      worker(Aecore.Peers.Scheduler, [])
     ]
 
     supervise(children, strategy: :one_for_one)
