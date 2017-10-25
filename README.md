@@ -16,7 +16,8 @@ To install and use the Elixir Blockchain you will need [Elixir](https://elixir-l
 #### **Starting the application**
 Start the application in interactive Elixir mode
 
-`iex -S mix`
+`iex -S mix phx.server`
+
 #### **Starting the miner**
 To start the miner use the following command in the command prompt: 
 
@@ -71,3 +72,6 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
 
+## HTTP-API
+
+The node will run a http api at `localhost:4000`
