@@ -16,6 +16,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   @coinbase_transaction_value 100
+  @nonce_per_cycle 1
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -39,10 +40,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Idle ##
-  def idle({:call, from}, :start, data) do
+  def idle({:call, from}, :start, _data) do
     IO.puts("Mining resuming by user")
     GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, data, [{:reply, from, :ok}]}
+    {:next_state, :running, 0, [{:reply, from, :ok}]}
   end
 
   def idle({:call, from}, :suspend, data) do
@@ -62,10 +63,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Running ##
-  def running(:cast, :mine, data) do
-    mine_next_block()
+  def running(:cast, :mine, start_nonce) do
+    {_, next_nonce} = mine_next_block(start_nonce)
     GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, data}
+    {:next_state, :running, next_nonce}
   end
 
   def running({:call, from}, :get_state, _data) do
@@ -103,8 +104,8 @@ defmodule Aecore.Miner.Worker do
   def coinbase_transaction_value, do: @coinbase_transaction_value
 
   ## Internal
-  @spec mine_next_block() :: :ok | :error
-  defp mine_next_block() do
+  @spec mine_next_block(integer()) :: :ok | :error
+  defp mine_next_block(start_nonce) do
     chain_state = Chain.chain_state()
 
     txs_list = Map.values(Pool.get_pool())
@@ -112,11 +113,9 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
 
-    if !(previous_block == nil) do
-      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
-    end
+    BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
-    valid_txs = BlockValidation.filter_invalid_transactions(txs_list)
+    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(txs_list, chain_state)
     {_, pubkey} = Keys.pubkey()
     valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
@@ -139,14 +138,19 @@ defmodule Aecore.Miner.Worker do
         0, #start from nonce 0, will be incremented in mining
         Block.current_block_version()
       )
+    Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+    case Aecore.Pow.Cuckoo.generate(%{unmined_header
+                                      | nonce: start_nonce + @nonce_per_cycle}) do
+      {:ok, mined_header} ->
+        block = %Block{header: mined_header, txs: valid_txs}
+        Chain.add_block(block)
+        Logger.info(fn ->
+          "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+          end)
+        {:block_found, 0}
 
-    {:ok, mined_header} = Aecore.Pow.Cuckoo.generate(unmined_header)
-    block = %Block{header: mined_header, txs: valid_txs}
-
-    Logger.info(fn ->
-      "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-	end)
-
-    Chain.add_block(block)
+      {:error, _message} ->
+        {:no_block_found, start_nonce + @nonce_per_cycle}
+    end
   end
 end

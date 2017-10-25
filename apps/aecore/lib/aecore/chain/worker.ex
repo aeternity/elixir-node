@@ -30,9 +30,14 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :latest_block)
   end
 
-  @spec get_prior_blocks_for_validity_check() :: %Block{}
+  @spec get_prior_blocks_for_validity_check() :: tuple()
   def get_prior_blocks_for_validity_check() do
     GenServer.call(__MODULE__, :get_prior_blocks_for_validity_check)
+  end
+
+  @spec get_block_by_hash(term()) :: %Block{}
+  def get_block_by_hash(hash) do
+    GenServer.call(__MODULE__, {:get_block_by_hash, hash})
   end
 
   @spec all_blocks() :: list()
@@ -69,6 +74,18 @@ defmodule Aecore.Chain.Worker do
     else
       [lb, prev | _] = chain
       {:reply, {lb, prev}, state}
+    end
+  end
+
+  def handle_call({:get_block_by_hash, hash}, _from, state) do
+    block = Enum.find(elem(state, 0), fn(block) ->
+      block.header
+      |> BlockValidation.block_header_hash()
+      |> Base.encode16() == hash end)
+    if(block != nil) do
+      {:reply, block, state}
+    else
+      {:reply, {:error, "Block not found"}, state}
     end
   end
 

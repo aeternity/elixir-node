@@ -18,6 +18,8 @@ defmodule AecoreTxsPoolTest do
   test "add transaction, remove it and get pool" do
     {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
     {:ok, tx2} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
+    Miner.resume()
+    Miner.suspend()
     assert :ok = Pool.add_transaction(tx1)
     assert :ok = Pool.add_transaction(tx2)
     assert :ok = Pool.remove_transaction(tx2)

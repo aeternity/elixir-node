@@ -47,9 +47,14 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
-  @spec sign(term()) :: {:ok, term()}
+  @spec sign(term()) :: {:ok, binary()}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})
+  end
+
+  @spec sign(term(), binary()) :: {:ok, binary()}
+  def sign(msg, priv_key) do
+    GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end
 
   def verify_tx(tx) do
@@ -137,6 +142,17 @@ defmodule Aecore.Keys.Worker do
         {:sign, term},
         _from,
         %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
+      ) do
+    signature =
+      :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])
+
+    {:reply, {:ok, signature}, state}
+  end
+
+  def handle_call(
+        {:sign, term, priv_key},
+        _from,
+        %{algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
       :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])

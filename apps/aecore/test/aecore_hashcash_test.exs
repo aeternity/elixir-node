@@ -7,7 +7,8 @@ defmodule HashcashTest do
 
   @tag timeout: 10000000
   test "successfull test" do
-    assert {:ok, mined_header} = Hashcash.generate(Block.genesis_block.header)
+    start_nonce = 0
+    assert {:ok, mined_header} = Hashcash.generate(Block.genesis_block.header, start_nonce)
     assert :true = Hashcash.verify(mined_header)
   end
 end

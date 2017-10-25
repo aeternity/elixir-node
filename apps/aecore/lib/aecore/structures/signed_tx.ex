@@ -16,4 +16,10 @@ defmodule Aecore.Structures.SignedTx do
   """
   defstruct [:data, :signature]
   use ExConstructor
+
+  @spec is_coinbase(signed_tx()) :: boolean()
+  def is_coinbase(tx) do
+    tx.data.from_acc == nil && tx.signature == nil
+  end
+
 end
