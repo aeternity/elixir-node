@@ -101,8 +101,7 @@ defmodule Aecore.Chain.Worker do
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_chain_state)
 
     try do
-      BlockValidation.validate_block!(b, prior_block,
-      new_chain_state)
+      BlockValidation.validate_block!(b, prior_block, new_chain_state)
       Enum.each(b.txs, fn(tx) -> Pool.remove_transaction(tx) end)
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
       Logger.info(fn ->
