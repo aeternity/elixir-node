@@ -8,6 +8,7 @@ defmodule Aecore.Pow.Cuckoo do
   require Logger
 
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Structures.Header
   alias Aecore.Pow.Hashcash
 
   @trims 7
@@ -25,15 +26,16 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%{nonce: nonce,
-               difficulty_target: difficulty,
-               pow_evidence: soln}=header) do
+  def verify(%Header{nonce: nonce,
+                     difficulty_target: difficulty,
+                     pow_evidence: soln}=header) do
     hash = hash_header(%{header | pow_evidence: nil})
     case test_target(soln, difficulty) do
       true  -> verify(hash, nonce, soln)
       false -> false
     end
   end
+
 
   @doc """
   Find a nonce, by calling nif.Returns {:ok, %Header{}}
