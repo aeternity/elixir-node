@@ -9,6 +9,8 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Utils.Blockchain.BlockValidation
 
+  require Logger
+
   def start_link do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -49,19 +51,25 @@ defmodule Aecore.Peers.Worker do
       {:ok, info} ->
         if(info.genesis_block_hash == genesis_block_header_hash()) do
           updated_peers = Map.put(peers, uri, info.current_block_hash)
+          Logger.info(fn -> "Added #{uri} to the peer list" end)
           {:reply, :ok, updated_peers}
         else
+          Logger.error(fn ->
+            "Failed to add #{uri}, genesis header hash not valid" end)
           {:reply, {:error, "Genesis header hash not valid"}, peers}
         end
       :error ->
+        Logger.error("GET /info request error")
         {:reply, :error, peers}
     end
   end
 
   def handle_call({:remove_peer, uri}, _from, peers) do
     if(Map.has_key?(peers, uri)) do
+      Logger.info(fn -> "Removed #{uri} from the peer list" end)
       {:reply, :ok, Map.delete(peers, uri)}
     else
+      Logger.error(fn -> "#{uri} is not in the peer list" end)
       {:reply, {:error, "Peer not found"}, peers}
     end
   end
@@ -86,6 +94,8 @@ defmodule Aecore.Peers.Worker do
           {peer, current_block_hash}
         end
       end
+    Logger.info(fn ->
+      "#{Enum.count(peers) - Enum.count(filtered_peers)} peers were removed after the check" end)
     {:reply, :ok, updated_peers}
   end
 

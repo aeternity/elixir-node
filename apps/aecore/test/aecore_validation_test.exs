@@ -10,6 +10,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Chain.Worker, as: Chain
 
   test "validate new block" do
     new_block =
@@ -52,8 +53,11 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block" do
-    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
-    {:ok, tx2} = Keys.sign_tx(elem(Keys.pubkey(), 1), 10)
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx1} = Keys.sign_tx(to_account, 5,
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+    {:ok, tx2} = Keys.sign_tx(to_account, 10,
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions

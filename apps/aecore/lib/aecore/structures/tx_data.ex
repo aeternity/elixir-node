@@ -18,9 +18,8 @@ defmodule Aecore.Structures.TxData do
   defstruct [:nonce, :from_acc, :to_acc, :value]
   use ExConstructor
 
-  @spec create(binary(), binary(), integer()) :: {:ok, %TxData{}}
-  def create(from_acc, to_acc, value) do
-    nonce = Enum.random(0..1_000_000_000_000)
+  @spec create(binary(), binary(), integer(), integer()) :: {:ok, %TxData{}}
+  def create(from_acc, to_acc, value, nonce) do
     {:ok, %TxData{from_acc: from_acc, to_acc: to_acc, value: value, nonce: nonce}}
   end
 end

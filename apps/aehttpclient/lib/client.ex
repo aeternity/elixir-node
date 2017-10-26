@@ -4,14 +4,27 @@ defmodule Aehttpclient.Client do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Peers.Worker, as: Peers
 
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
   end
 
+  @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
   def get_block({uri, hash}) do
     get(uri <> "/block/#{hash}", :block)
+  end
+
+  @spec get_peers(term()) :: {:ok, list()}
+  def get_peers(uri) do
+    get(uri <> "/peers", :peers)
+  end
+
+  @spec get_and_add_peers(term()) :: :ok
+  def get_and_add_peers(uri) do
+    {:ok, peers} = get_peers(uri)
+    Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
   def get(uri, identifier) do
@@ -24,6 +37,9 @@ defmodule Aehttpclient.Client do
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
+          :peers ->
+            response = Poison.decode!(body)
+            {:ok,response}
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error

@@ -1,8 +1,6 @@
 defmodule Aecore.Miner.Worker do
   use GenStateMachine, callback_mode: :state_functions
 
-  require Logger
-
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
@@ -14,6 +12,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+
+  require Logger
 
   @coinbase_transaction_value 100
   @nonce_per_cycle 1
@@ -95,7 +95,7 @@ defmodule Aecore.Miner.Worker do
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value,
-      nonce: Enum.random(0..1_000_000_000_000)
+      nonce: 0
     }
 
     %SignedTx{data: tx_data, signature: nil}
@@ -109,13 +109,14 @@ defmodule Aecore.Miner.Worker do
     chain_state = Chain.chain_state()
 
     txs_list = Map.values(Pool.get_pool())
+    ordered_txs_list = Enum.sort(txs_list, fn(tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
 
     blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
     {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
 
     BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
-    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(txs_list, chain_state)
+    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
     {_, pubkey} = Keys.pubkey()
     valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)

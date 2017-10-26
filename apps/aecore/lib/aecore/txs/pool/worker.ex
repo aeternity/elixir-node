@@ -60,4 +60,5 @@ defmodule Aecore.Txs.Pool.Worker do
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
   end
+
 end
