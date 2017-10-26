@@ -1,8 +1,6 @@
 defmodule Aecore.Miner.Worker do
   use GenStateMachine, callback_mode: :state_functions
 
-  require Logger
-
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
@@ -14,6 +12,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+
+  require Logger
 
   @coinbase_transaction_value 100
   @nonce_per_cycle 100000
