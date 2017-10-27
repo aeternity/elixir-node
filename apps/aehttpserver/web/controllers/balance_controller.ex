@@ -10,7 +10,7 @@ defmodule Aehttpserver.BalanceController do
         {:ok, acc} ->
           case(Chain.chain_state[acc]) do
             nil ->
-              json conn, %{"unknown" => 0}
+              json conn, %{"balance" => 0, "account" => "unknown"}
             %{balance: balance} ->
               json conn, %{"balance" => balance, "account" => params["account"]}
           end
