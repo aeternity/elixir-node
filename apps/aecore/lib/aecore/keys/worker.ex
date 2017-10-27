@@ -38,21 +38,21 @@ defmodule Aecore.Keys.Worker do
      - value: The amount of a transaction
 
   """
-  @spec sign_tx(binary(), integer()) :: {:ok, %SignedTx{}}
-  def sign_tx(to_acc, value) do
+  @spec sign_tx(binary(), integer(), integer()) :: {:ok, %SignedTx{}}
+  def sign_tx(to_acc, value, nonce) do
     {:ok, from_acc} = pubkey()
-    {:ok, tx_data} = TxData.create(from_acc, to_acc, value)
+    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce)
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
     {:ok, signed_tx}
   end
 
-  @spec sign(term()) :: {:ok, term()}
+  @spec sign(term()) :: {:ok, binary()}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})
   end
 
-  @spec sign(term(), binary()) :: {:ok, term()}
+  @spec sign(term(), binary()) :: {:ok, binary()}
   def sign(msg, priv_key) do
     GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end

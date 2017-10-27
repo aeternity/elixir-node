@@ -33,12 +33,12 @@ defmodule Aecore.Utils.Serialization do
   end
 
 
-  @spec txs(map(), :serialize | :deserialize) :: map() | {:error, term()}
-  def txs(tx, direction) do
+  @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
+  def tx(tx, direction) do
        new_data = %{tx.data | 
-         from_acc: base64_binary(tx.data.from_acc, direction),
-         to_acc: base64_binary(tx.data.to_acc, direction)}
-       new_signature = base64_binary(tx.signature, direction)
+         from_acc: hex_binary(tx.data.from_acc, direction),
+         to_acc: hex_binary(tx.data.to_acc, direction)}
+       new_signature = hex_binary(tx.signature, direction)
        %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
@@ -48,19 +48,6 @@ defmodule Aecore.Utils.Serialization do
         Base.encode16(data)
       :deserialize ->
         Base.decode16!(data)
-    end
-  end
-
-  def base64_binary(data, direction) do
-    case direction do
-      :serialize ->
-        data
-        |> :erlang.term_to_binary()
-        |> Base.encode64() 
-      :deserialize ->
-        data
-        |> Base.decode64!()
-        |> :erlang.binary_to_term()
     end
   end
 end

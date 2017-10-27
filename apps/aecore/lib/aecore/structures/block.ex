@@ -20,16 +20,8 @@ defmodule Aecore.Structures.Block do
 
   @spec genesis_header() :: Header.header()
   def genesis_header() do
-    %Header{
-      height: 0,
-      prev_hash: <<0::256>>,
-      txs_hash: <<0::256>>,
-      chain_state_hash: <<0 :: 256>>,
-      timestamp: 1_507_275_094_308,
-      nonce: 19,
-      version: @genesis_block_version,
-      difficulty_target: 1
-    }
+    h = Application.get_env(:aecore, :pow)[:genesis_header]
+    struct(Aecore.Structures.Header, h)
   end
 
   @spec genesis_block() :: block()

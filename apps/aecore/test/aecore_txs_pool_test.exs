@@ -14,9 +14,13 @@ defmodule AecoreTxsPoolTest do
     []
   end
 
+  @tag timeout: 1000000000
   test "add transaction, remove it and get pool" do
-    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
-    {:ok, tx2} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5)
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx1} = Keys.sign_tx(to_account, 5,
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+    {:ok, tx2} = Keys.sign_tx(to_account, 5,
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
     Miner.resume()
     Miner.suspend()
     assert :ok = Pool.add_transaction(tx1)

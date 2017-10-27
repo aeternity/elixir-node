@@ -13,7 +13,7 @@ defmodule Aehttpserver.NewTxController do
   def new_tx(conn, _params) do
     conn.body_params["_json"]
     |> Poison.decode!([keys: :atoms])
-    |> Serialization.txs(:deserialize)
+    |> Serialization.tx(:deserialize)
     |> Aecore.Txs.Pool.Worker.add_transaction()
     json conn, %{:status => :new_tx_added}
   end

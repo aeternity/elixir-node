@@ -7,6 +7,7 @@ defmodule AecoreKeysTest do
   doctest Aecore.Keys.Worker
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Chain.Worker, as: Chain
 
   setup do
     Keys.start_link()
@@ -19,6 +20,6 @@ defmodule AecoreKeysTest do
 
   test "sign transaction" do
     {:ok, to_account} = Keys.pubkey()
-    assert {:ok, _} = Keys.sign_tx(to_account, 5)
+    assert {:ok, _} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
   end
 end

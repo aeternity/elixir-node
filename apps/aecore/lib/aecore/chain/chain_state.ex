@@ -18,13 +18,14 @@ defmodule Aecore.Chain.ChainState do
         updated_block_state =
           cond do
             transaction.data.from_acc != nil ->
-              update_block_state(block_state, transaction.data.from_acc, -transaction.data.value)
+              update_block_state(block_state, transaction.data.from_acc,
+                                 -transaction.data.value, transaction.data.nonce)
 
             true ->
               block_state
           end
 
-        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value)
+        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value, 0)
       end
 
     reduce_map_list(block_state)
@@ -37,9 +38,7 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_chain_state(map(), map()) :: map()
   def calculate_chain_state(block_state, chain_state) do
-    Map.merge(block_state, chain_state, fn _key, v1, v2 ->
-      v1 + v2
-    end)
+    merge_states(block_state, chain_state)
   end
 
   @doc """
@@ -49,8 +48,8 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state_hash(map()) :: binary()
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
-      for {account, balance} <- chain_state do
-        {account, :erlang.term_to_binary(balance)}
+      for {account, data} <- chain_state do
+        {account, :erlang.term_to_binary(data)}
       end
 
     if length(merkle_tree_data) == 0 do
@@ -69,37 +68,62 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
     chain_state |>
-      Enum.map(fn{_account, balance} -> balance end) |>
+      Enum.map(fn{_account, data} -> data.balance end) |>
       Enum.sum()
   end
 
   @spec validate_chain_state(map()) :: boolean()
   def validate_chain_state(chain_state) do
     chain_state |>
-      Enum.map(fn{_account, balance} -> balance >= 0 end) |>
+      Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end) |>
       Enum.all?()
   end
 
-  @spec update_block_state(map(), binary(), integer()) :: map()
-  defp update_block_state(block_state, account, value) do
+  @spec update_block_state(map(), binary(), integer(), integer()) :: map()
+  defp update_block_state(block_state, account, value, nonce) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
-          Map.put(block_state, account, 0)
+          Map.put(block_state, account, %{balance: 0, nonce: 0})
 
         true ->
           block_state
       end
 
-    Map.put(block_state_filled_empty, account, block_state_filled_empty[account] + value)
+    new_nonce = cond do
+      block_state_filled_empty[account].nonce < nonce ->
+        nonce
+
+      true ->
+        block_state_filled_empty[account].nonce
+    end
+
+    new_account_state = %{balance: block_state_filled_empty[account].balance + value,
+                          nonce:   new_nonce}
+    Map.put(block_state_filled_empty, account, new_account_state)
   end
 
   @spec reduce_map_list(list()) :: map()
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn x, acc ->
-      Map.merge(x, acc, fn _key, v1, v2 ->
-        v1 + v2
-      end)
+      merge_states(x, acc)
+    end)
+  end
+
+  @spec merge_states(map(), map()) :: map()
+  defp merge_states(new_state, destination_state) do
+    Map.merge(new_state, destination_state, fn _key, v1, v2 ->
+      new_nonce = cond do
+        v1.nonce > v2.nonce ->
+          v1.nonce
+        v2.nonce > v1.nonce ->
+          v2.nonce
+
+        true ->
+          v1.nonce
+      end
+
+      %{balance: v1.balance + v2.balance, nonce: new_nonce}
     end)
   end
 end
