@@ -27,8 +27,13 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
+  @spec get_account_balance({term(), term()}) :: {:ok, map()} | :error
   def get_account_balance({uri,acc}) do
     get(uri <> "/balance/#{acc}", :balance)
+  end
+
+  def get_acc_txs({uri,acc}) do
+    get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
   def get(uri, identifier) do
@@ -41,9 +46,7 @@ defmodule Aehttpclient.Client do
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
-          :peers ->
-            standard_response(body)
-          :balance ->
+          _ ->
             standard_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
