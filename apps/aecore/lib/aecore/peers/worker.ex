@@ -15,9 +15,7 @@ defmodule Aecore.Peers.Worker do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def init(initial_peers) do
-    {:ok, initial_peers}
-  end
+  ## Client side
 
   @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
@@ -44,6 +42,17 @@ defmodule Aecore.Peers.Worker do
     Block.genesis_header()
     |> BlockValidation.block_header_hash()
     |> Base.encode16()
+  end
+
+  @spec send_block(block :: map()) :: :ok | :error
+  def send_block(block) do
+    GenServer.cast(__MODULE__, {:send_block, block})
+  end
+
+  ## Server side
+
+  def init(initial_peers) do
+    {:ok, initial_peers}
   end
 
   def handle_call({:add_peer,uri}, _from, peers) do
@@ -101,5 +110,13 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:all_peers, _from, peers) do
     {:reply, peers, peers}
+  end
+
+  def handle_cast({:send_block, b}, peers) do
+    Aehttpclient.Client.send_block({b, peers})
+    {:noreply,  peers}
+  end
+  def handle_cast(_any, peers) do
+    {:noreply, peers}
   end
 end

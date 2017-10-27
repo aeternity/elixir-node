@@ -5,7 +5,6 @@ defmodule Aehttpserver.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_flash
-    plug :protect_from_forgery
     plug :put_secure_browser_headers
   end
 
@@ -17,6 +16,7 @@ defmodule Aehttpserver.Router do
     pipe_through :browser # Use the default browser stack
     get "/info", InfoController, :info
     get "/peers", PeersController, :info
+    post "/new_block", BlockController, :new_block
     resources "/block", BlockController, param: "hash", only: [:show]
   end
 

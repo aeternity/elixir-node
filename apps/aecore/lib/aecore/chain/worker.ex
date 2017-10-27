@@ -109,6 +109,11 @@ defmodule Aecore.Chain.Worker do
         |> BlockValidation.block_header_hash()
         |> Base.encode16()}, total tokens: #{total_tokens}"
       end)
+
+      ## Block was validated, now we can send it to other peers
+	  serialized_block = Aecore.Utils.Serialization.block(b, :serialize)
+
+      Aecore.Peers.Worker.send_block(serialized_block)
       {:reply, :ok, {[b | chain], new_chain_state}}
     catch
       {:error, message} ->
