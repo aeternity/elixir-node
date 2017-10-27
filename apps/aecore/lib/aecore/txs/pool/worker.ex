@@ -8,6 +8,8 @@ defmodule Aecore.Txs.Pool.Worker do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
+  alias Aecore.Peers.Worker, as: Peers
+  require Logger
 
   def start_link do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -39,9 +41,12 @@ defmodule Aecore.Txs.Pool.Worker do
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
-
     if is_tx_valid do
       updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+      case tx_pool == updated_pool do
+        true -> Logger.info(" This transaction has already been added")
+        false -> Aecore.Peers.Worker.broadcast_tx(tx)
+      end
       {:reply, :ok, updated_pool}
     else
       {:reply, :error, tx_pool}

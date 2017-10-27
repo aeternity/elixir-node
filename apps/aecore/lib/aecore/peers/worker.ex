@@ -8,6 +8,7 @@ defmodule Aecore.Peers.Worker do
   alias Aehttpclient.Client
   alias Aecore.Structures.Block
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Serialization
 
   require Logger
 
@@ -37,6 +38,11 @@ defmodule Aecore.Peers.Worker do
   @spec all_peers() :: map()
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
+  end
+
+  @spec broadcast_tx(tx :: map()) :: term()
+  def broadcast_tx(tx) do
+    GenServer.cast(__MODULE__, {:broadcast_tx, tx})
   end
 
   @spec genesis_block_header_hash() :: term()
@@ -101,5 +107,19 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:all_peers, _from, peers) do
     {:reply, peers, peers}
+  end
+
+  def handle_cast({:broadcast_tx, tx}, peers) do
+    serialized_tx = 
+    Serialization.tx(tx, :serialize)
+    |> Poison.encode!()
+    for peer <- peers do
+      Client.send_tx(peer, serialized_tx)
+    end
+
+    {:noreply, peers}
+  end
+  def handle_cast(_any, peers) do
+    {:noreply, peers}
   end
 end

@@ -53,6 +53,15 @@ defmodule Aehttpclient.Client do
     end
   end
 
+  @doc """
+  Send newest transactions to a peer
+  """
+  @spec send_tx(tuple(), map()) :: {:ok, map()} | {:error, term()}
+  def send_tx({uri,_}, tx) do
+    HTTPoison.post uri <> "/new_tx", Poison.encode!(tx),
+        [{"Content-Type", "application/json"}]
+  end
+
   def standard_response(body) do
     response = Poison.decode!(body)
     {:ok,response}
