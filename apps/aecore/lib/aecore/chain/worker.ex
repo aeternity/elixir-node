@@ -8,8 +8,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Serialization
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Peers.Worker, as: Peers
 
   use GenServer
 
@@ -111,9 +113,9 @@ defmodule Aecore.Chain.Worker do
       end)
 
       ## Block was validated, now we can send it to other peers
-	  serialized_block = Aecore.Utils.Serialization.block(b, :serialize)
+      serialized_block = Serialization.block(b, :serialize)
+      Peers.async_send({:send_block, serialized_block})
 
-      Aecore.Peers.Worker.send_block(serialized_block)
       {:reply, :ok, {[b | chain], new_chain_state}}
     catch
       {:error, message} ->

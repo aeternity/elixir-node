@@ -16,12 +16,8 @@ defmodule Aehttpclient.Client do
     get(uri <> "/block/#{hash}", :block)
   end
 
-  @spec send_block({b :: map(), peers :: map()}) :: :ok | :error
-  def send_block({b, peers}) do
-    peers = Map.keys(peers)
-    for peer <- peers do
-      send_to_peers(:post, peer <> "/new_block", b)
-    end
+  def post(peer, data, uri) do
+    send_to_peer(:post, data, "#{peer}/#{uri}")
   end
 
   @spec get_peers(term()) :: {:ok, list()}
@@ -35,10 +31,7 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
-  @doc """
-  TODO
-  """
-  defp send_to_peers(:post, uri, data) do
+  defp send_to_peer(:post, data, uri) do
     HTTPoison.post uri, Poison.encode!(data),
       [{"Content-Type", "application/json"}]
   end

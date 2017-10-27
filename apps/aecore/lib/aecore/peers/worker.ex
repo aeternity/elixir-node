@@ -8,6 +8,7 @@ defmodule Aecore.Peers.Worker do
   alias Aehttpclient.Client
   alias Aecore.Structures.Block
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aehttpclient.Client, as: HttpClient
 
   require Logger
 
@@ -44,9 +45,12 @@ defmodule Aecore.Peers.Worker do
     |> Base.encode16()
   end
 
-  @spec send_block(block :: map()) :: :ok | :error
-  def send_block(block) do
-    GenServer.cast(__MODULE__, {:send_block, block})
+  @doc """
+  Every async requests to the peers will be send from here
+  """
+  @spec async_send({operation :: atom(), data :: term()}) :: :ok | :error
+  def async_send({operation, data}) do
+    GenServer.cast(__MODULE__, {operation, data})
   end
 
   ## Server side
@@ -113,10 +117,13 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:send_block, b}, peers) do
-    Aehttpclient.Client.send_block({b, peers})
-    {:noreply,  peers}
+    for peer <- Map.keys(peers) do
+      HttpClient.post(peer, b, :new_block)
+    end
+    {:noreply, peers}
   end
   def handle_cast(_any, peers) do
+    Logger.info("Receiving unhandled cast message:  #{inspect(peers)}")
     {:noreply, peers}
   end
 end
