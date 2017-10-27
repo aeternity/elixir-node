@@ -35,9 +35,9 @@ defmodule Aehttpclient.Client do
   @doc """
   Send newest transactions to a peer
   """
-  @spec broadcast_tx(String.t, map()) :: {:ok, map()} | {:error, term()}
-  def broadcast_tx(uri, tx) do
-    HTTPoison.post uri <> "/new_tx", tx,
+  @spec send_tx(String.t, map()) :: {:ok, map()} | {:error, term()}
+  def send_tx(uri, tx) do
+    HTTPoison.post uri <> "/new_tx", Poison.encode!(tx),
         [{"Content-Type", "application/json"}]
   end
 end

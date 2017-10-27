@@ -89,9 +89,11 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:broadcast_tx, tx}, peers) do
-    serialized_tx = Serialization.txs(tx, :serialize)
+    serialized_tx = 
+    Serialization.txs(tx, :serialize)
+    |> Poison.encode!()
     for peer <- peers do
-      Client.broadcast_tx(peer, serialized_tx)
+      Client.send_tx(peer, serialized_tx)
     end
 
     {:noreply, peers}

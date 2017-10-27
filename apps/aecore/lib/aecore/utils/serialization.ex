@@ -5,6 +5,7 @@ defmodule Aecore.Utils.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
   def block(block, direction) do
@@ -31,6 +32,16 @@ defmodule Aecore.Utils.Serialization do
     %{block | header: new_header, txs: new_txs}
   end
 
+
+  @spec txs(map(), :serialize | :deserialize) :: map() | {:error, term()}
+  def txs(tx, direction) do
+       new_data = %{tx.data | 
+         from_acc: base64_binary(tx.data.from_acc, direction),
+         to_acc: base64_binary(tx.data.to_acc, direction)}
+       new_signature = base64_binary(tx.signature, direction)
+       %SignedTx{data: TxData.new(new_data), signature: new_signature}
+  end
+
   def hex_binary(data, direction) do
     case(direction) do
       :serialize ->
@@ -40,19 +51,16 @@ defmodule Aecore.Utils.Serialization do
     end
   end
 
-  @spec txs(map(), :serialize | :deserialize) :: map() | {:error, term()}
-  def txs(tx, direction) do
+  def base64_binary(data, direction) do
     case direction do
-      :serialize -> 
-        tx 
+      :serialize ->
+        data
         |> :erlang.term_to_binary()
-        |> Base.encode64()
-        |> Poison.encode!()
+        |> Base.encode64() 
       :deserialize ->
-        tx 
+        data
         |> Base.decode64!()
         |> :erlang.binary_to_term()
-      _ -> {:error, "Unexpected direction"}
     end
   end
 end
