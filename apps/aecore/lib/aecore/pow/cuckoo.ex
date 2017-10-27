@@ -4,6 +4,10 @@ defmodule Aecore.Pow.Cuckoo do
   A NIF interface to the C/C++ Cuckoo Cycle implementation of
   John Tromp:  https://github.com/tromp/cuckoo
   White paper: https://github.com/tromp/cuckoo/blob/master/doc/cuckoo.pdf?raw=true
+
+  Source file used for building this:
+    - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow_cuckoo.erl
+    - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow.erl
   """
   require Logger
 
