@@ -27,6 +27,10 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
+  def get_account_balance({uri,acc}) do
+    get(uri <> "/balance/#{acc}", :balance)
+  end
+
   def get(uri, identifier) do
     case(HTTPoison.get(uri)) do
       {:ok, %{body: body, status_code: 200}} ->
@@ -38,13 +42,19 @@ defmodule Aehttpclient.Client do
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
           :peers ->
-            response = Poison.decode!(body)
-            {:ok,response}
+            standard_response(body)
+          :balance ->
+            standard_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
       {:error, %HTTPoison.Error{}} ->
         :error
     end
+  end
+
+  def standard_response(body) do
+    response = Poison.decode!(body)
+    {:ok,response}
   end
 end
