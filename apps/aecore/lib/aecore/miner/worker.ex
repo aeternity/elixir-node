@@ -16,7 +16,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @coinbase_transaction_value 100
-  @nonce_per_cycle 100000
+  @nonce_per_cycle 1
 
   def start_link() do
     GenStateMachine.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -126,6 +126,7 @@ defmodule Aecore.Miner.Worker do
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     unmined_header =
@@ -138,8 +139,9 @@ defmodule Aecore.Miner.Worker do
         0, #start from nonce 0, will be incremented in mining
         Block.current_block_version()
       )
-
-    case Hashcash.generate(unmined_header, start_nonce + @nonce_per_cycle) do
+    Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+    case Aecore.Pow.Cuckoo.generate(%{unmined_header
+                                      | nonce: start_nonce + @nonce_per_cycle}) do
       {:ok, mined_header} ->
         block = %Block{header: mined_header, txs: valid_txs}
         Chain.add_block(block)
