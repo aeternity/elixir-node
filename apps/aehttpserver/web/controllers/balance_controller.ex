@@ -12,7 +12,7 @@ defmodule Aehttpserver.BalanceController do
             nil ->
               json conn, %{"unknown" => 0}
             %{balance: balance} ->
-              json conn, %{params["account"] => balance}
+              json conn, %{"balance" => balance, "account" => params["account"]}
           end
       end
   end
