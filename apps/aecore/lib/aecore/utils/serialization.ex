@@ -5,7 +5,6 @@ defmodule Aecore.Utils.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
   def block(block, direction) do
