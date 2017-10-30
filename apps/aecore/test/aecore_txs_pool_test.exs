@@ -14,6 +14,7 @@ defmodule AecoreTxsPoolTest do
     []
   end
 
+  @tag timeout: 1000000000
   test "add transaction, remove it and get pool" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,

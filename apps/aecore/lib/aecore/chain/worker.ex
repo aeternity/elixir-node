@@ -114,7 +114,7 @@ defmodule Aecore.Chain.Worker do
 
       ## Block was validated, now we can send it to other peers
       serialized_block = Serialization.block(b, :serialize)
-      Peers.async_send({:send_block, serialized_block})
+      Peers.async_request({:new_block, serialized_block})
 
       {:reply, :ok, {[b | chain], new_chain_state}}
     catch

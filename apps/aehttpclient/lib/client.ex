@@ -36,6 +36,10 @@ defmodule Aehttpclient.Client do
       [{"Content-Type", "application/json"}]
   end
 
+  def get_account_balance({uri,acc}) do
+    get(uri <> "/balance/#{acc}", :balance)
+  end
+
   def get(uri, identifier) do
     case(HTTPoison.get(uri)) do
       {:ok, %{body: body, status_code: 200}} ->
@@ -47,13 +51,28 @@ defmodule Aehttpclient.Client do
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
           :peers ->
-            response = Poison.decode!(body)
-            {:ok,response}
+            standard_response(body)
+          :balance ->
+            standard_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
       {:error, %HTTPoison.Error{}} ->
         :error
     end
+  end
+
+  @doc """
+  Send newest transactions to a peer
+  """
+  @spec send_tx(tuple(), map()) :: {:ok, map()} | {:error, term()}
+  def send_tx({uri,_}, tx) do
+    HTTPoison.post uri <> "/new_tx", Poison.encode!(tx),
+      [{"Content-Type", "application/json"}]
+  end
+
+  def standard_response(body) do
+    response = Poison.decode!(body)
+    {:ok,response}
   end
 end

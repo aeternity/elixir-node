@@ -12,6 +12,7 @@ defmodule Aecore.Structures.Header do
     :chain_state_hash,
     :difficulty_target,
     :nonce,
+    :pow_evidence,
     :timestamp,
     :version
   ]

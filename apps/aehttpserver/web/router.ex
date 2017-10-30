@@ -8,16 +8,14 @@ defmodule Aehttpserver.Router do
     plug :put_secure_browser_headers
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   scope "/", Aehttpserver do
     pipe_through :browser # Use the default browser stack
     get "/info", InfoController, :info
+    post "/new_tx", NewTxController, :new_tx
     get "/peers", PeersController, :info
     post "/new_block", BlockController, :new_block
     resources "/block", BlockController, param: "hash", only: [:show]
+    resources "/balance", BalanceController, param: "account", only: [:show]
   end
 
 

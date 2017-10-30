@@ -10,10 +10,12 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state) do
+
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
     is_valid_chain_state = ChainState.validate_chain_state(chain_state)
-    is_difficulty_target_met = Hashcash.verify(new_block.header)
+
+    is_difficulty_target_met = Aecore.Pow.Cuckoo.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
     cond do

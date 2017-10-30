@@ -9,6 +9,8 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
+  alias Aecore.Utils.Serialization
+
 
   require Logger
 
@@ -38,6 +40,11 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  @spec broadcast_tx(tx :: map()) :: term()
+  def broadcast_tx(tx) do
+    GenServer.cast(__MODULE__, {:broadcast_tx, tx})
+  end
+
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
     Block.genesis_header()
@@ -48,9 +55,9 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Every async requests to the peers will be send from here
   """
-  @spec async_send({operation :: atom(), data :: term()}) :: :ok | :error
-  def async_send({operation, data}) do
-    GenServer.cast(__MODULE__, {operation, data})
+  @spec async_request({type :: atom(), data :: term()}) :: :ok | :error
+  def async_request({type, data}) do
+    GenServer.cast(__MODULE__, {:async_request, {type, data}})
   end
 
   ## Server side
@@ -116,14 +123,28 @@ defmodule Aecore.Peers.Worker do
     {:reply, peers, peers}
   end
 
-  def handle_cast({:send_block, b}, peers) do
-    for peer <- Map.keys(peers) do
-      HttpClient.post(peer, b, :new_block)
-    end
+  ## Async operations
+
+  def handle_cast({:async_request, {type, data}}, peers) do
+    send_to_peers(:post, type, data, Map.keys(peers))
     {:noreply, peers}
   end
+
   def handle_cast(_any, peers) do
-    Logger.info("Receiving unhandled cast message:  #{inspect(peers)}")
-    {:noreply, peers}
+    Logger.info("[Peers] Unhandled cast message:  #{inspect(peers)}")
   end
+
+  ## Internal functions
+  defp send_to_peers(:post, uri, data, []) do
+    Logger.warn("Empty peers list")
+  end
+  defp send_to_peers(:post, uri, data, peers) do
+    for peer <- peers do
+      HttpClient.post(peer, data, uri)
+    end
+  end
+  defp send_to_peers(_, _, _, _) do
+    Logger.error("[Peers] Unknown request type")
+  end
+
 end

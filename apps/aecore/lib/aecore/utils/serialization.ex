@@ -17,7 +17,7 @@ defmodule Aecore.Utils.Serialization do
         txs_hash: hex_binary(block.header.txs_hash, direction)}
     new_txs = for tx <- block.txs do
       from_acc = if(tx.data.from_acc != nil) do
-        hex_binary(tx.data_from_acc, direction)
+        hex_binary(tx.data.from_acc, direction)
       else
         nil
       end
@@ -33,6 +33,16 @@ defmodule Aecore.Utils.Serialization do
       %SignedTx{data: TxData.new(new_data), signature: new_signature}
     end
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
+  end
+
+
+  @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
+  def tx(tx, direction) do
+       new_data = %{tx.data |
+         from_acc: hex_binary(tx.data.from_acc, direction),
+         to_acc: hex_binary(tx.data.to_acc, direction)}
+       new_signature = hex_binary(tx.signature, direction)
+       %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
   def hex_binary(data, direction) do
