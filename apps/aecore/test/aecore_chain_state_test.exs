@@ -14,9 +14,9 @@ defmodule AecoreChainStateTest do
   test "block state" do
     block = get_block()
 
-    assert %{"a" => %{balance:  3, nonce: 102},
-             "b" => %{balance: -1, nonce: 1},
-             "c" => %{balance: -2, nonce: 1}} ==
+    assert %{"a" => %{balance:  1, nonce: 102},
+             "b" => %{balance: -2, nonce: 1},
+             "c" => %{balance: -3, nonce: 1}} ==
       ChainState.calculate_block_state(block.txs)
   end
 
@@ -38,13 +38,13 @@ defmodule AecoreChainStateTest do
            txs_hash: <<12, 123, 12>>, difficulty_target: 0, nonce: 0,
            timestamp: System.system_time(:milliseconds), version: 1}, txs: [
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "b",
-              value: 5, nonce: 101}, signature: <<0>>},
+              value: 5, nonce: 101, fee: 1}, signature: <<0>>},
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "c",
-              value: 2, nonce: 102}, signature: <<0>>},
+              value: 2, nonce: 102, fee: 1}, signature: <<0>>},
              %SignedTx{data: %TxData{from_acc: "c", to_acc: "b",
-              value: 4, nonce: 1}, signature: <<0>>},
+              value: 4, nonce: 1, fee: 1}, signature: <<0>>},
              %SignedTx{data: %TxData{from_acc: "b", to_acc: "a",
-              value: 10, nonce: 1}, signature: <<0>>}]}
+              value: 10, nonce: 1, fee: 1}, signature: <<0>>}]}
   end
 
 end

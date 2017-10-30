@@ -95,7 +95,8 @@ defmodule Aecore.Miner.Worker do
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value,
-      nonce: 0
+      nonce: 0,
+      fee: 0
     }
 
     %SignedTx{data: tx_data, signature: nil}
@@ -122,7 +123,9 @@ defmodule Aecore.Miner.Worker do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_block_state_with_fees = ChainState.add_fees_to_block_state(valid_txs, new_block_state)
+
+    new_chain_state = ChainState.calculate_chain_state(new_block_state_with_fees, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
