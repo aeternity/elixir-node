@@ -34,7 +34,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/balance/#{acc}", :balance)
   end
 
-  @spec get_acc_txs({term(), term()}) :: {:ok, list()} | :error
+  @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
   def get_account_txs({uri,acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
