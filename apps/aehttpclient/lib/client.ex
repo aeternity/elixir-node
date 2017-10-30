@@ -4,6 +4,8 @@ defmodule Aehttpclient.Client do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
 
   @spec get_info(term()) :: {:ok, map()} | :error
@@ -32,7 +34,8 @@ defmodule Aehttpclient.Client do
     get(uri <> "/balance/#{acc}", :balance)
   end
 
-  def get_acc_txs({uri,acc}) do
+  @spec get_acc_txs({term(), term()}) :: {:ok, list()} | :error
+  def get_account_txs({uri,acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
@@ -46,8 +49,12 @@ defmodule Aehttpclient.Client do
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
+          :acc_txs ->
+            response = Poison.decode!(body,
+              as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+            {:ok, response}
           _ ->
-            standard_response(body)
+            json_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
@@ -56,7 +63,7 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  def standard_response(body) do
+  def json_response(body) do
     response = Poison.decode!(body)
     {:ok,response}
   end
