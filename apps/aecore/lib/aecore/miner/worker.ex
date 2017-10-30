@@ -6,7 +6,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
-  alias Aecore.Pow.Hashcash
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
@@ -106,13 +105,20 @@ defmodule Aecore.Miner.Worker do
   ## Internal
   @spec mine_next_block(integer()) :: :ok | :error
   defp mine_next_block(start_nonce) do
-    chain_state = Chain.chain_state()
+    latest_block = Chain.latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    chain_state = Chain.chain_state(latest_block_hash)
 
     txs_list = Map.values(Pool.get_pool())
     ordered_txs_list = Enum.sort(txs_list, fn(tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
 
-    blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
-    {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
+    blocks_for_difficulty_calculation = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
+    previous_block = cond do
+      latest_block == Block.genesis_block() -> nil
+      true ->
+        blocks = Chain.get_blocks(latest_block_hash, 2)
+        Enum.at(blocks, 1)
+    end
 
     BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 

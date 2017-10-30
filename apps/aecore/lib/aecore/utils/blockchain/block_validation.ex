@@ -54,7 +54,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   end
 
   @spec block_header_hash(Header.header()) :: binary()
-  def block_header_hash(header) do
+  def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
