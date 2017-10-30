@@ -7,6 +7,7 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Utils.Blockchain.BlockValidation
 
   use GenServer
@@ -26,6 +27,7 @@ defmodule Aecore.Chain.Worker do
     {:ok, initial_state}
   end
 
+
   @spec latest_block() :: %Block{}
   def latest_block() do
     latest_block_hashes = get_latest_block_chain_state() |> Map.keys()
@@ -37,10 +39,24 @@ defmodule Aecore.Chain.Worker do
     get_block(latest_block_hash)
   end
 
+  def chain_state() do
+    latest_block = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    chain_state(latest_block_hash)
+  end
+
+  def all_blocks() do
+    latest_block_obj = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
+    get_blocks(latest_block_hash, latest_block_obj.header.height)
+  end
+
   @spec get_latest_block_chain_state() :: tuple()
   def get_latest_block_chain_state() do
     GenServer.call(__MODULE__, :get_latest_block_chain_state)
   end
+
+  # TODO: add get by hash base16 function
 
   @spec get_block(term()) :: %Block{}
   def get_block(hash) do
@@ -113,6 +129,11 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = block}, _from, state) do
+
+    # TODO: Validate Transaction
+
+    Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+
     {block_map, latest_block_chain_state} = state
     block_hash = BlockValidation.block_header_hash(block.header)
     updated_block_map = Map.put(block_map, block_hash, block)

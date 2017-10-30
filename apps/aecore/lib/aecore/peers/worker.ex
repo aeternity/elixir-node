@@ -47,7 +47,7 @@ defmodule Aecore.Peers.Worker do
 
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
-    Block.genesis_header()
+    Block.genesis_block().header
     |> BlockValidation.block_header_hash()
     |> Base.encode16()
   end
