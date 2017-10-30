@@ -53,7 +53,7 @@ To remove a transaction from the Transaction Pool:
 
 `Aecore.Txs.Pool.Worker.remove_transaction(%SignedTx{}) :: :ok | :error`
 
-To inspect a transactions in the Transaction Pool: 
+To inspect all transactions in the Transaction Pool: 
 
 `Aecore.Txs.Pool.Worker.get_pool() :: map() `
 
