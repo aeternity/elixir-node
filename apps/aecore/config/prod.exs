@@ -53,5 +53,3 @@ config :aecore, :pow,
     version: 1,
     difficulty_target: 1
   }
-
-import_config "#{Mix.env}.exs"

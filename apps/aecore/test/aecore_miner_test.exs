@@ -5,6 +5,7 @@ defmodule MinerTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 
+  @tag timeout: 100000000
   test "mine_next_block" do
     Miner.start_link()
     Miner.resume()
