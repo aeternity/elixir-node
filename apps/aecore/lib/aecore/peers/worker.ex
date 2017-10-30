@@ -13,7 +13,7 @@ defmodule Aecore.Peers.Worker do
   require Logger
 
   def start_link do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(1000) }, name: __MODULE__)
   end
 
   def init(initial_peers) do
@@ -40,6 +40,11 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  @spec get_peers_nonce() :: integer
+  def get_peers_nonce() do
+    GenServer.call(__MODULE__, :get_peers_nonce)
+  end
+
   @spec broadcast_tx(tx :: map()) :: term()
   def broadcast_tx(tx) do
     GenServer.cast(__MODULE__, {:broadcast_tx, tx})
@@ -52,31 +57,31 @@ defmodule Aecore.Peers.Worker do
     |> Base.encode16()
   end
 
-  def handle_call({:add_peer,uri}, _from, peers) do
+  def handle_call({:add_peer,uri}, _from, %{peers: peers} = state) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
         if(info.genesis_block_hash == genesis_block_header_hash()) do
           updated_peers = Map.put(peers, uri, info.current_block_hash)
           Logger.info(fn -> "Added #{uri} to the peer list" end)
-          {:reply, :ok, updated_peers}
+          {:reply, :ok, %{state | peers: updated_peers}}
         else
           Logger.error(fn ->
             "Failed to add #{uri}, genesis header hash not valid" end)
-          {:reply, {:error, "Genesis header hash not valid"}, peers}
+          {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
         end
       :error ->
         Logger.error("GET /info request error")
-        {:reply, :error, peers}
+        {:reply, :error, %{state | peers: peers}}
     end
   end
 
-  def handle_call({:remove_peer, uri}, _from, peers) do
+  def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
     if(Map.has_key?(peers, uri)) do
       Logger.info(fn -> "Removed #{uri} from the peer list" end)
-      {:reply, :ok, Map.delete(peers, uri)}
+      {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
     else
       Logger.error(fn -> "#{uri} is not in the peer list" end)
-      {:reply, {:error, "Peer not found"}, peers}
+      {:reply, {:error, "Peer not found"}, %{state | peers: peers}}
     end
   end
 
@@ -86,7 +91,7 @@ defmodule Aecore.Peers.Worker do
   in the current node. After that the current block hash for every peer
   is updated if the one in the latest GET /info request is different.
   """
-  def handle_call(:check_peers, _from, peers) do
+  def handle_call(:check_peers, _from, %{peers: peers} = state) do
     filtered_peers = :maps.filter(fn(peer, _) ->
         {status, info} = Client.get_info(peer)
         :ok == status && info.genesis_block_hash == genesis_block_header_hash()
@@ -102,24 +107,28 @@ defmodule Aecore.Peers.Worker do
       end
     Logger.info(fn ->
       "#{Enum.count(peers) - Enum.count(filtered_peers)} peers were removed after the check" end)
-    {:reply, :ok, updated_peers}
+    {:reply, :ok, %{state | peers: updated_peers}}
   end
 
-  def handle_call(:all_peers, _from, peers) do
-    {:reply, peers, peers}
+  def handle_call(:all_peers, _from, %{peers: peers} = state) do
+    {:reply, peers, %{state | peers: peers}}
   end
 
-  def handle_cast({:broadcast_tx, tx}, peers) do
+  def handle_call(:get_peers_nonce, _from, state) do
+    {:reply, state.nonce, state}
+  end
+
+  def handle_cast({:broadcast_tx, tx}, %{peers: peers} = state) do
     serialized_tx = 
     Serialization.tx(tx, :serialize)
     |> Poison.encode!()
     for peer <- peers do
       Client.send_tx(peer, serialized_tx)
     end
-
-    {:noreply, peers}
+    {:noreply, %{state | peers: peers}}
   end
-  def handle_cast(_any, peers) do
-    {:noreply, peers}
+
+  def handle_cast(_any, %{peers: peers} = state) do
+    {:noreply, %{state | peers: peers}}
   end
 end
