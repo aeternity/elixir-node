@@ -56,7 +56,10 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :get_latest_block_chain_state)
   end
 
-  # TODO: add get by hash base16 function
+  @spec get_block_by_hash(term()) :: %Block{}
+  def get_block_by_hash(hash) do
+    GenServer.call(__MODULE__, {:get_block_by_hash, hash})
+  end
 
   @spec get_block(term()) :: %Block{}
   def get_block(hash) do
@@ -121,6 +124,16 @@ defmodule Aecore.Chain.Worker do
     {block_map, _} = state
     block = block_map[block_hash]
 
+    if(block != nil) do
+      {:reply, block, state}
+    else
+      {:reply, {:error, "Block not found"}, state}
+    end
+  end
+
+  def handle_call({:get_block_by_hash, hash}, _from, state) do
+    {_, block} = Enum.find(elem(state, 0), fn{block_hash, _block} ->
+      block_hash |> Base.encode16() == hash end)
     if(block != nil) do
       {:reply, block, state}
     else
