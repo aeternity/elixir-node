@@ -160,6 +160,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
   defp check_prev_hash(new_block, previous_block) do
+    IO.inspect(previous_block)
     prev_block_header_hash = block_header_hash(previous_block.header)
     new_block.header.prev_hash == prev_block_header_hash
   end

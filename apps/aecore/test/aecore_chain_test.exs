@@ -43,7 +43,7 @@ defmodule AecoreChainTest do
     latest_block_hash_hex = latest_block_hash |> Base.encode16()
     [latest_block | [previous_block | []]] = Chain.get_blocks(latest_block_hash, 2)
 
-    assert latest_block == Chain.get_block_by_hash(latest_block_hash_hex)
+    assert latest_block == Chain.get_block_by_hex_hash(latest_block_hash_hex)
     assert previous_block.header.height + 1 == latest_block.header.height
     assert BlockValidation.validate_block!(latest_block, previous_block, Chain.chain_state())
     assert :ok = Chain.add_block(block)

@@ -17,7 +17,8 @@ defmodule Aecore.Chain.Worker do
 
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    # latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    latest_block_chain_state = genesis_chain_state
 
     initial_state = {genesis_block_map, latest_block_chain_state}
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
@@ -36,7 +37,7 @@ defmodule Aecore.Chain.Worker do
       _ -> throw({:error, "multiple or none latest block hashes"})
     end
 
-    get_block_by_hash(latest_block_hash, :bin)
+    get_block(latest_block_hash)
   end
 
   def chain_state() do
@@ -56,9 +57,14 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :get_latest_block_chain_state)
   end
 
-  @spec get_block_by_hash(binary() | term(), :hex | :bin) :: %Block{}
-  def get_block_by_hash(block_hash, hash_base) do
-    GenServer.call(__MODULE__, {:get_block_by_hash, block_hash, hash_base})
+  @spec get_block_by_hex_hash(term()) :: %Block{}
+  def get_block_by_hex_hash(hash) do
+    GenServer.call(__MODULE__, {:get_block_by_hex_hash, hash})
+  end
+
+  @spec get_block(term()) :: %Block{}
+  def get_block(hash) do
+    GenServer.call(__MODULE__, {:get_block, hash})
   end
 
   @spec get_blocks(binary(), integer()) :: :ok
@@ -115,20 +121,9 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:get_block_by_hash, block_hash, hash_base}, _from, state) do
-    block = case(hash_base) do
-      :bin ->
-        {block_map, _} = state
-        block_map[block_hash]
-      :hex ->
-        case(Enum.find(elem(state, 0), fn{hash, _block} ->
-          hash |> Base.encode16() == block_hash end)) do
-          {_, block} ->
-            block
-          nil ->
-            nil
-        end
-    end
+  def handle_call({:get_block, block_hash}, _from, state) do
+    {block_map, _} = state
+    block = block_map[block_hash]
 
     if(block != nil) do
       {:reply, block, state}
@@ -137,9 +132,22 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:add_block, %Block{} = block}, _from, state) do
+  def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
+    case(Enum.find(elem(state, 0), fn{block_hash, _block} ->
+      block_hash |> Base.encode16() == hash end)) do
+      {_, block} ->
+        {:reply, block, state}
+      nil ->
+        {:reply, {:error, "Block not found"}, state}
+    end
+  end
 
-    # TODO: Validate Transaction
+  def handle_call({:add_block, %Block{} = block}, _from, state) do
+    {chain, chain_state} = state
+    new_block_state = ChainState.calculate_block_state(block.txs)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    IO.inspect(chain_state)
+    BlockValidation.validate_block!(block, chain[block.header.prev_hash], new_chain_state)
 
     Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
