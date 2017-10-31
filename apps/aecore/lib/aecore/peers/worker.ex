@@ -48,7 +48,8 @@ defmodule Aecore.Peers.Worker do
   end
 
   @doc """
-  Every async requests to the peers will be send from here
+  Making async post requests to the users
+  `type` is related to the uri e.g. /new_block
   """
   @spec broadcast_to_all({type :: atom(), data :: term()}) :: :ok | :error
   def broadcast_to_all({type, data}) do
