@@ -6,7 +6,7 @@ defmodule Aehttpserver.BlockController do
   alias Aecore.Structures.Block
 
   def show(conn, params) do
-    block = Chain.get_block_by_hash(params["hash"])
+    block = Chain.get_block_by_hash(params["hash"], :hex)
     case (block) do
       %Block{} ->
         block_hex_values = Serialization.block(block, :serialize)

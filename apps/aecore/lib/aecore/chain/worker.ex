@@ -36,7 +36,7 @@ defmodule Aecore.Chain.Worker do
       _ -> throw({:error, "multiple or none latest block hashes"})
     end
 
-    get_block(latest_block_hash)
+    get_block_by_hash(latest_block_hash, :bin)
   end
 
   def chain_state() do
@@ -56,14 +56,9 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :get_latest_block_chain_state)
   end
 
-  @spec get_block_by_hash(term()) :: %Block{}
-  def get_block_by_hash(hash) do
-    GenServer.call(__MODULE__, {:get_block_by_hash, hash})
-  end
-
-  @spec get_block(term()) :: %Block{}
-  def get_block(hash) do
-    GenServer.call(__MODULE__, {:get_block, hash})
+  @spec get_block_by_hash(binary() | term(), :hex | :bin) :: %Block{}
+  def get_block_by_hash(block_hash, hash_base) do
+    GenServer.call(__MODULE__, {:get_block_by_hash, block_hash, hash_base})
   end
 
   @spec get_blocks(binary(), integer()) :: :ok
@@ -120,20 +115,21 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:get_block, block_hash}, _from, state) do
-    {block_map, _} = state
-    block = block_map[block_hash]
-
-    if(block != nil) do
-      {:reply, block, state}
-    else
-      {:reply, {:error, "Block not found"}, state}
+  def handle_call({:get_block_by_hash, block_hash, hash_base}, _from, state) do
+    block = case(hash_base) do
+      :bin ->
+        {block_map, _} = state
+        block_map[block_hash]
+      :hex ->
+        case(Enum.find(elem(state, 0), fn{hash, _block} ->
+          hash |> Base.encode16() == block_hash end)) do
+          {_, block} ->
+            block
+          nil ->
+            nil
+        end
     end
-  end
 
-  def handle_call({:get_block_by_hash, hash}, _from, state) do
-    {_, block} = Enum.find(elem(state, 0), fn{block_hash, _block} ->
-      block_hash |> Base.encode16() == hash end)
     if(block != nil) do
       {:reply, block, state}
     else
