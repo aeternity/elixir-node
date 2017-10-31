@@ -301,7 +301,6 @@ defmodule Aecore.Keys.Worker do
 
   defp is_valid_pub_key(pub_key_str) do
     pub_key_str
-    |> Base.decode16!()
     |> byte_size() == @pub_key_length
   end
 
