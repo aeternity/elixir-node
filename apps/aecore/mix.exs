@@ -13,8 +13,9 @@ defmodule Aecore.Mixfile do
      aliases: aliases(),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps()]
-
+     deps: deps(),
+     test_coverage: [tool: ExCoveralls],
+     preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test]]
   end
 
   defp aliases do
@@ -46,7 +47,8 @@ defmodule Aecore.Mixfile do
   defp deps do
     [
       {:exconstructor, "~> 1.1"},
-      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"}
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
+      {:excoveralls, "~> 0.7", only: :test}
     ]
   end
 end

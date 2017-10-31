@@ -5,52 +5,38 @@ defmodule Aecore.Utils.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
   def block(block, direction) do
-    new_header =
-      %{block.header |
-        chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
-        prev_hash: hex_binary(block.header.prev_hash, direction),
-        txs_hash: hex_binary(block.header.txs_hash, direction)}
-    new_txs = for tx <- block.txs do
-      from_acc = if(tx.data.from_acc != nil) do
-        hex_binary(tx.data.from_acc, direction)
-      else
-        nil
-      end
-      new_data = %{tx.data |
-                   from_acc: from_acc,
-                   to_acc: hex_binary(tx.data.to_acc, direction)}
-
-      new_signature = if(tx.signature != nil) do
-        hex_binary(tx.signature, direction)
-      else
-        nil
-      end
-      %SignedTx{data: TxData.new(new_data), signature: new_signature}
-    end
+    new_header = %{block.header |
+      chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
+      prev_hash: hex_binary(block.header.prev_hash, direction),
+      txs_hash: hex_binary(block.header.txs_hash, direction)}
+    new_txs = Enum.map(block.txs, fn(tx) -> tx(tx,direction) end)
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
 
-
   @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
   def tx(tx, direction) do
-       new_data = %{tx.data |
-         from_acc: hex_binary(tx.data.from_acc, direction),
-         to_acc: hex_binary(tx.data.to_acc, direction)}
-       new_signature = hex_binary(tx.signature, direction)
-       %SignedTx{data: TxData.new(new_data), signature: new_signature}
+    new_data = %{tx.data |
+                 from_acc: hex_binary(tx.data.from_acc, direction),
+                 to_acc: hex_binary(tx.data.to_acc, direction)}
+    new_signature = hex_binary(tx.signature, direction)
+    %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
   def hex_binary(data, direction) do
-    case(direction) do
-      :serialize ->
-        Base.encode16(data)
-      :deserialize ->
-        Base.decode16!(data)
+    if(data != nil) do
+      case(direction) do
+        :serialize ->
+          Base.encode16(data)
+        :deserialize ->
+          Base.decode16!(data)
+      end
+    else
+      nil
     end
   end
 end

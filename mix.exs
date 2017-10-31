@@ -8,7 +8,9 @@ defmodule EpochElixir.Mixfile do
      elixir: "~> 1.5.1",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps()]
+     deps: deps(),
+     test_coverage: [tool: ExCoveralls],
+     preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test]]
   end
 
 
@@ -35,6 +37,7 @@ defmodule EpochElixir.Mixfile do
     [{:mock, "~> 0.2.0", only: :test},
      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
      {:gen_state_machine, "~> 2.0"},
-     {:logger_file_backend, "~> 0.0.10"}]
+     {:logger_file_backend, "~> 0.0.10"},
+     {:excoveralls, "~> 0.7", only: :test}]
   end
 end
