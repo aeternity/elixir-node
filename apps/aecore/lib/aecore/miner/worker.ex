@@ -123,7 +123,7 @@ defmodule Aecore.Miner.Worker do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_block_state_with_fees = ChainState.add_fees_to_block_state(valid_txs, new_block_state)
+    new_block_state_with_fees = ChainState.add_fees_to_block_state(valid_txs, new_block_state, pubkey)
 
     new_chain_state = ChainState.calculate_chain_state(new_block_state_with_fees, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)

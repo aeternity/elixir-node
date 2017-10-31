@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Keys.Worker, as: Keys
 
   use GenServer
 
@@ -97,8 +98,9 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_block, %Block{} = b}, _from, state) do
     {chain, prev_chain_state} = state
     [prior_block | _] = chain
+    pubkey = elem(Keys.pubkey(), 1)
     new_block_state = ChainState.calculate_block_state(b.txs)
-    new_block_state_with_fees = ChainState.add_fees_to_block_state(b.txs, new_block_state)
+    new_block_state_with_fees = ChainState.add_fees_to_block_state(b.txs, new_block_state, pubkey)
     new_chain_state = ChainState.calculate_chain_state(new_block_state_with_fees, prev_chain_state)
 
     try do

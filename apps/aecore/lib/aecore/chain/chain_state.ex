@@ -4,8 +4,6 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  alias Aecore.Keys.Worker, as: Keys
-
   @doc """
   Calculates the balance of each account mentioned
   in the transactions a single block, returns a map with the
@@ -82,22 +80,21 @@ defmodule Aecore.Chain.ChainState do
       Enum.all?()
   end
 
-  @spec add_fees_to_block_state(list(), map()) :: map()
-  def add_fees_to_block_state(txs, block_state) do
-    pubkey = elem(Keys.pubkey(), 1)
+  @spec add_fees_to_block_state(list(), map(), binary()) :: map()
+  def add_fees_to_block_state(txs, block_state, account) do
     total_fees = List.foldl(txs, 0, fn(tx, acc) ->
         acc + tx.data.fee
       end)
 
     cond do
-      !Map.has_key?(block_state, pubkey) ->
-        Map.put(block_state, pubkey, %{balance: total_fees, nonce: 0})
+      !Map.has_key?(block_state, account) ->
+        Map.put(block_state, account, %{balance: total_fees, nonce: 0})
 
       true ->
-        current_pubkey_block_state = Map.get(block_state, pubkey)
+        current_pubkey_block_state = Map.get(block_state, account)
         new_pubkey_block_state = %{balance: current_pubkey_block_state.balance + total_fees,
                                    nonce: current_pubkey_block_state.nonce}
-        Map.replace(block_state, pubkey, new_pubkey_block_state)
+        Map.replace(block_state, account, new_pubkey_block_state)
     end
   end
 
