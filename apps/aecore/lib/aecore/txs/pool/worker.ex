@@ -45,7 +45,7 @@ defmodule Aecore.Txs.Pool.Worker do
       updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
       case tx_pool == updated_pool do
         true -> Logger.info(" This transaction has already been added")
-        false -> Aecore.Peers.Worker.broadcast_tx(tx)
+        false -> Peers.broadcast_tx(tx)
       end
       {:reply, :ok, updated_pool}
     else

@@ -6,7 +6,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
-  alias Aecore.Pow.Hashcash
+  alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
@@ -140,8 +140,8 @@ defmodule Aecore.Miner.Worker do
         Block.current_block_version()
       )
     Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
-    case Aecore.Pow.Cuckoo.generate(%{unmined_header
-                                      | nonce: start_nonce + @nonce_per_cycle}) do
+    case Cuckoo.generate(%{unmined_header
+                           | nonce: start_nonce + @nonce_per_cycle}) do
       {:ok, mined_header} ->
         block = %Block{header: mined_header, txs: valid_txs}
         Chain.add_block(block)

@@ -1,7 +1,7 @@
 defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
-  alias Aecore.Pow.Hashcash
+  alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -15,7 +15,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
     is_valid_chain_state = ChainState.validate_chain_state(chain_state)
 
-    is_difficulty_target_met = Aecore.Pow.Cuckoo.verify(new_block.header)
+    is_difficulty_target_met = Cuckoo.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
 
     cond do
