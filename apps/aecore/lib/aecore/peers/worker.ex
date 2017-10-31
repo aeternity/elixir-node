@@ -40,11 +40,6 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
-  @spec broadcast_tx(tx :: map()) :: term()
-  def broadcast_tx(tx) do
-    GenServer.cast(__MODULE__, {:broadcast_tx, tx})
-  end
-
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
     Block.genesis_header()
@@ -55,9 +50,10 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Every async requests to the peers will be send from here
   """
-  @spec async_request({type :: atom(), data :: term()}) :: :ok | :error
-  def async_request({type, data}) do
-    GenServer.cast(__MODULE__, {:async_request, {type, data}})
+  @spec broadcast_to_all({type :: atom(), data :: term()}) :: :ok | :error
+  def broadcast_to_all({type, data}) do
+    data = prep_data(type,data)
+    GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
   end
 
   ## Server side
@@ -125,8 +121,8 @@ defmodule Aecore.Peers.Worker do
 
   ## Async operations
 
-  def handle_cast({:async_request, {type, data}}, peers) do
-    send_to_peers(:post, type, data, Map.keys(peers))
+  def handle_cast({:broadcast_to_all, {type, data}}, peers) do
+    send_to_peers(type, data, Map.keys(peers))
     {:noreply, peers}
   end
 
@@ -135,10 +131,10 @@ defmodule Aecore.Peers.Worker do
   end
 
   ## Internal functions
-  defp send_to_peers(:post, uri, data, []) do
+  defp send_to_peers(uri, data, []) do
     Logger.warn("Empty peers list")
   end
-  defp send_to_peers(:post, uri, data, peers) do
+  defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
     end
@@ -146,5 +142,8 @@ defmodule Aecore.Peers.Worker do
   defp send_to_peers(_, _, _, _) do
     Logger.error("[Peers] Unknown request type")
   end
+
+  defp prep_data(:new_tx, %{}=data), do: Serialization.tx(data, :serialize)
+  defp prep_data(:new_block, %{}=data), do: Serialization.block(data, :serialize)
 
 end
