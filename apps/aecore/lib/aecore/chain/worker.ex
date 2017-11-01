@@ -17,8 +17,8 @@ defmodule Aecore.Chain.Worker do
 
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    # latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
-    latest_block_chain_state = genesis_chain_state
+    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    # latest_block_chain_state = genesis_chain_state
 
     initial_state = {genesis_block_map, latest_block_chain_state}
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
@@ -27,7 +27,6 @@ defmodule Aecore.Chain.Worker do
   def init(initial_state) do
     {:ok, initial_state}
   end
-
 
   @spec latest_block() :: %Block{}
   def latest_block() do
@@ -38,18 +37,6 @@ defmodule Aecore.Chain.Worker do
     end
 
     get_block(latest_block_hash)
-  end
-
-  def chain_state() do
-    latest_block = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-    chain_state(latest_block_hash)
-  end
-
-  def all_blocks() do
-    latest_block_obj = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
-    get_blocks(latest_block_hash, latest_block_obj.header.height)
   end
 
   @spec get_latest_block_chain_state() :: tuple()
@@ -72,23 +59,6 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end
 
-  defp get_blocks(blocks_acc, next_block_hash, size) do
-    cond do
-      size > 0 ->
-        case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-          {:error, _} -> blocks_acc
-          block ->
-            updated_block_acc = [block | blocks_acc]
-            prev_block_hash = block.header.prev_hash
-            next_size = size - 1
-
-            get_blocks(updated_block_acc, prev_block_hash, next_size)
-        end
-      true ->
-        blocks_acc
-    end
-  end
-
   @spec add_block(%Block{}) :: :ok
   def add_block(%Block{} = block) do
     GenServer.call(__MODULE__, {:add_block, block})
@@ -97,11 +67,6 @@ defmodule Aecore.Chain.Worker do
   @spec chain_state(binary()) :: map()
   def chain_state(latest_block_hash) do
     GenServer.call(__MODULE__, {:chain_state, latest_block_hash})
-  end
-
-  @spec debug() :: map()
-  def debug() do
-    GenServer.call(__MODULE__, :debug)
   end
 
   def handle_call(:get_latest_block_chain_state, _from, state) do
@@ -144,9 +109,10 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call({:add_block, %Block{} = block}, _from, state) do
     {chain, chain_state} = state
+    prev_block_chain_state = chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-    IO.inspect(chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+
     BlockValidation.validate_block!(block, chain[block.header.prev_hash], new_chain_state)
 
     Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
@@ -189,12 +155,32 @@ defmodule Aecore.Chain.Worker do
     {:reply, chain_state[latest_block_hash], state}
   end
 
-  def handle_call(:debug, _from, state) do
-    IO.puts("--------------------------------------")
-    IO.inspect(state)
-    IO.puts("--------------------------------------")
-
-    {:reply, :ok, state}
+  def chain_state() do
+    latest_block = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    chain_state(latest_block_hash)
   end
 
+  def all_blocks() do
+    latest_block_obj = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
+    get_blocks(latest_block_hash, latest_block_obj.header.height)
+  end
+
+  defp get_blocks(blocks_acc, next_block_hash, size) do
+    cond do
+      size > 0 ->
+        case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
+          {:error, _} -> blocks_acc
+          block ->
+            updated_block_acc = [block | blocks_acc]
+            prev_block_hash = block.header.prev_hash
+            next_size = size - 1
+
+            get_blocks(updated_block_acc, prev_block_hash, next_size)
+        end
+      true ->
+        blocks_acc
+    end
+  end
 end

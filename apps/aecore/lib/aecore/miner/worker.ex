@@ -119,8 +119,7 @@ defmodule Aecore.Miner.Worker do
         blocks = Chain.get_blocks(latest_block_hash, 2)
         Enum.at(blocks, 1)
     end
-    IO.inspect(previous_block)
-    IO.inspect(chain_state)
+    
     BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
     valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
