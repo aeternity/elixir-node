@@ -9,6 +9,7 @@ defmodule Aecore.Keys.Worker do
 
   @filename_pub "key.pub"
   @filename_priv "key"
+  @pub_key_length 65
 
   def start_link() do
     GenServer.start_link(
@@ -123,19 +124,23 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
-
   def handle_call(
         {:verify, {term, signature, pub_key}},
         _from,
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
-    result =
-      :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
-        pub_key,
-        :crypto.ec_curve(curve)
-      ])
+    case is_valid_pub_key(pub_key) do
+      true ->
+        result =
+          :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
+                pub_key,
+                :crypto.ec_curve(curve)
+              ])
 
-    {:reply, result, state}
+        {:reply, result, state}
+      false ->
+        {:reply, {:error, "Key length is not valid!"}, state}
+    end
   end
 
   def handle_call(
@@ -292,6 +297,11 @@ defmodule Aecore.Keys.Worker do
   defp decrypt_pubkey(password, bin) do
     <<pub::65-binary, _padding::binary>> = :crypto.block_decrypt(:aes_ecb, hash(password), bin)
     pub
+  end
+
+  defp is_valid_pub_key(pub_key_str) do
+    pub_key_str
+    |> byte_size() == @pub_key_length
   end
 
   defp padding128(bin) do

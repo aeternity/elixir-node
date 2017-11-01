@@ -18,7 +18,6 @@ defmodule Aecore.Chain.Worker do
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
-    # latest_block_chain_state = genesis_chain_state
 
     initial_state = {genesis_block_map, latest_block_chain_state}
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
