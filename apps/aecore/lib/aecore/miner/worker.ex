@@ -41,7 +41,7 @@ defmodule Aecore.Miner.Worker do
 
   ## Idle ##
   def idle({:call, from}, :start, _data) do
-    Logger.info("Mining resuming by user")
+    Logger.info("Mining resumed by user")
     GenStateMachine.cast(__MODULE__, :mine)
     {:next_state, :running, 0, [{:reply, from, :ok}]}
   end
@@ -78,7 +78,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def running({:call, from}, :suspend, data) do
-    Logger.info("Mined stop by user")
+    Logger.info("Mined stopped by user")
     {:next_state, :idle, data, [{:reply, from, :ok}]}
   end
 
@@ -106,52 +106,65 @@ defmodule Aecore.Miner.Worker do
   ## Internal
   @spec mine_next_block(integer()) :: :ok | :error
   defp mine_next_block(start_nonce) do
-    chain_state = Chain.chain_state()
+    latest_block = Chain.latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    chain_state = Chain.chain_state(latest_block_hash)
 
     txs_list = Map.values(Pool.get_pool())
     ordered_txs_list = Enum.sort(txs_list, fn(tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
 
-    blocks_for_difficulty_calculation = Chain.get_blocks_for_difficulty_calculation()
-    {latest_block, previous_block} = Chain.get_prior_blocks_for_validity_check()
+    blocks_for_difficulty_calculation = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
+    previous_block = cond do
+      latest_block == Block.genesis_block() -> nil
+      true ->
+        blocks = Chain.get_blocks(latest_block_hash, 2)
+        Enum.at(blocks, 1)
+    end
+    try do
+      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
 
-    BlockValidation.validate_block!(latest_block, previous_block, chain_state)
+      valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      {_, pubkey} = Keys.pubkey()
+      valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
+      root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-    valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
-    {_, pubkey} = Keys.pubkey()
-    valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
-    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+      new_block_state = ChainState.calculate_block_state(valid_txs)
+      new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
-    new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+      latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
 
-    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
-    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+      unmined_header =
+        Header.create(
+          latest_block.header.height + 1,
+          latest_block_hash,
+          root_hash,
+          chain_state_hash,
+          difficulty,
+          0, #start from nonce 0, will be incremented in mining
+          Block.current_block_version()
+        )
+      Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+      case Cuckoo.generate(%{unmined_header
+                             | nonce: start_nonce + @nonce_per_cycle}) do
+        {:ok, mined_header} ->
+          block = %Block{header: mined_header, txs: valid_txs}
+          Logger.info(fn ->
+            "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+            end)
+          Chain.add_block(block)
+          {:block_found, 0}
 
-    unmined_header =
-      Header.create(
-        latest_block.header.height + 1,
-        latest_block_hash,
-        root_hash,
-        chain_state_hash,
-        difficulty,
-        0, #start from nonce 0, will be incremented in mining
-        Block.current_block_version()
-      )
-    Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
-    case Cuckoo.generate(%{unmined_header
-                           | nonce: start_nonce + @nonce_per_cycle}) do
-      {:ok, mined_header} ->
-        block = %Block{header: mined_header, txs: valid_txs}
-        Chain.add_block(block)
-        Logger.info(fn ->
-          "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-          end)
-        {:block_found, 0}
-
+        {:error, _message} ->
+          {:no_block_found, start_nonce + @nonce_per_cycle}
+      end
+    catch
       {:error, _message} ->
-        {:no_block_found, start_nonce + @nonce_per_cycle}
+        Logger.error(fn ->
+          "Failed to mine block"
+        end)
     end
   end
 end
