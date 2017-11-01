@@ -99,8 +99,10 @@ defmodule Aecore.Peers.Worker do
   """
   def handle_call(:check_peers, _from, peers) do
     filtered_peers = :maps.filter(fn(peer, _) ->
-        {status, info} = Client.get_info(peer)
-        :ok == status && info.genesis_block_hash == genesis_block_header_hash()
+        case Client.get_info(peer) do
+          {:ok, info} -> info.genesis_block_hash == genesis_block_header_hash()
+          _ -> false
+        end
       end, peers)
     updated_peers =
       for {peer, current_block_hash} <- filtered_peers, into: %{} do
@@ -135,6 +137,7 @@ defmodule Aecore.Peers.Worker do
   defp send_to_peers(_uri, _data, []) do
     Logger.warn("Empty peers list")
   end
+
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
