@@ -9,7 +9,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Utils.Serialization
+
   require Logger
 
   def start_link do

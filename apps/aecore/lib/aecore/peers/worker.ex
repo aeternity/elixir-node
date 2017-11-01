@@ -132,16 +132,13 @@ defmodule Aecore.Peers.Worker do
   end
 
   ## Internal functions
-  defp send_to_peers(uri, data, []) do
+  defp send_to_peers(_uri, _data, []) do
     Logger.warn("Empty peers list")
   end
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
     end
-  end
-  defp send_to_peers(_, _, _, _) do
-    Logger.error("[Peers] Unknown request type")
   end
 
   defp prep_data(:new_tx, %{}=data), do: Serialization.tx(data, :serialize)

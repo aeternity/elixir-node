@@ -8,7 +8,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Serialization
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
