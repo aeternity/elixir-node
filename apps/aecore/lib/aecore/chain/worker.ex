@@ -13,6 +13,10 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   def start_link do
+    GenServer.start_link(__MODULE__, {}, name: __MODULE__)
+  end
+
+  def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
@@ -20,10 +24,7 @@ defmodule Aecore.Chain.Worker do
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
 
     initial_state = {genesis_block_map, latest_block_chain_state}
-    GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
-  end
 
-  def init(initial_state) do
     {:ok, initial_state}
   end
 
