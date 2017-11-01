@@ -1,50 +1,67 @@
 defmodule Aecore.Persistence.Worker do
   @moduledoc """
-  TODO
+  Store/Restore latest blockchain and chainstate
   """
+
+  @persistence_table Application.get_env(:aecore, :persistence)[:table]
 
   use GenServer
 
-  # alias Aehttpclient.Client
-  # alias Aecore.Structures.Block
-  # alias Aecore.Utils.Blockchain.BlockValidation
-  # alias Aecore.Utils.Serialization
+  alias Aecore.Chain.Worker, as: Chain
 
   require Logger
 
   def start_link do
-    GenServer.start_link(__MODULE__, %{table: nil}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def get_last_state() do
-    GenServer.call(__MODULE__, :last_state)
+  @spec restore_blockchain() :: {:ok, list()} | {:error, reason :: term()}
+  def restore_blockchain() do
+    GenServer.call(__MODULE__, :blockchain)
   end
 
-  def init(state) do
-    {:ok, table} = :dets.open_file(:chain, [type: :set])
+  @spec restore_chainstate() :: {:ok, list()} | {:error, reason :: term()}
+  def restore_chainstate() do
+    GenServer.call(__MODULE__, :chainstate)
+  end
+
+  def init(_) do
+    ## Ensures that the worker handles exit signals
     Process.flag(:trap_exit, true)
-    {:ok, %{state | table: table}}
+    {:ok, setup()}
   end
 
-  def handle_call(:last_state, _from, %{table: table}=state) do
+  def handle_call(:blockchain, _from, %{table: nil}=state) do
+    {:reply, {:error, "failed on reading persistence db"}, state}
+  end
+
+  def handle_call(:blockchain, _from, %{table: table}=state) do
     reply = :dets.lookup(table, :blockchain)
-    {:reply, reply, state}
+    {:reply, {:ok, reply}, state}
+  end
+
+  def handle_call(:chainstate, _from, %{table: table}=state) do
+    reply = :dets.lookup(table, :chainstate)
+    {:reply, {:ok, reply}, state}
   end
 
   def handle_cast(_any, state) do
     {:noreply, state}
   end
 
+  def terminate(_, %{table: nil}=state), do: Logger.error("No db connection")
   def terminate(_, %{table: table}=state) do
     Aecore.Miner.Worker.suspend
+    :ok = :dets.insert(table, {:blockchain, Chain.all_blocks()})
+    :ok = :dets.insert(table, {:chainstate, Chain.chain_state()})
+    Logger.info("Terminating, blockchain and chainstate were stored to disk")
+  end
 
-    ## Get the blockchain state
-    chain = Aecore.Chain.Worker.all_blocks
-    :ok = :dets.insert(table, {:blockchain, chain})
-    Logger.info("Terminating, blockchain state was stored to disk")
-    ## Get the chainstate
-    ## Write them to dets
-    Process.sleep(10_000)
+  ## Internal functions
+
+  defp setup do
+    {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
+    %{table: table}
   end
 
 end

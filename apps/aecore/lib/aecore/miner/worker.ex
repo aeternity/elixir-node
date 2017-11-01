@@ -41,7 +41,7 @@ defmodule Aecore.Miner.Worker do
 
   ## Idle ##
   def idle({:call, from}, :start, _data) do
-    IO.puts("Mining resuming by user")
+    Logger.info("Mining resuming by user")
     GenStateMachine.cast(__MODULE__, :mine)
     {:next_state, :running, 0, [{:reply, from, :ok}]}
   end
@@ -78,7 +78,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def running({:call, from}, :suspend, data) do
-    IO.puts("Mined stop by user")
+    Logger.info("Mined stop by user")
     {:next_state, :idle, data, [{:reply, from, :ok}]}
   end
 
