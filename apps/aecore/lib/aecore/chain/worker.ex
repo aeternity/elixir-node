@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Utils.Blockchain.Difficulty
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Peers.Worker, as: Peers
 
   use GenServer
 
@@ -109,6 +110,10 @@ defmodule Aecore.Chain.Worker do
         |> BlockValidation.block_header_hash()
         |> Base.encode16()}, total tokens: #{total_tokens}"
       end)
+
+      ## Block was validated, now we can send it to other peers
+      Peers.broadcast_to_all({:new_block, b})
+
       {:reply, :ok, {[b | chain], new_chain_state}}
     catch
       {:error, message} ->
