@@ -100,8 +100,7 @@ defmodule Aecore.Chain.Worker do
     [prior_block | _] = chain
     pubkey = elem(Keys.pubkey(), 1)
     new_block_state = ChainState.calculate_block_state(b.txs)
-    new_block_state_with_fees = ChainState.add_fees_to_block_state(b.txs, new_block_state, pubkey)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state_with_fees, prev_chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_chain_state)
 
     try do
       BlockValidation.validate_block!(b, prior_block, new_chain_state)

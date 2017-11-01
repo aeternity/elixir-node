@@ -37,6 +37,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
+        IO.puts(coinbase_transactions_sum)
         throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
@@ -150,7 +151,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     block.txs
     |> Enum.map(
          fn tx -> cond do
-                    SignedTx.is_coinbase(tx) -> tx.data.value
+                    SignedTx.is_coinbase(tx) -> tx.data.value - tx.data.fee
                     true -> 0
                   end
          end

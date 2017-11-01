@@ -90,13 +90,13 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data}
   end
 
-  def get_coinbase_transaction(to_acc) do
+  def get_coinbase_transaction(to_acc, total_fees) do
     tx_data = %TxData{
       from_acc: nil,
       to_acc: to_acc,
-      value: @coinbase_transaction_value,
+      value: @coinbase_transaction_value + total_fees,
       nonce: 0,
-      fee: 0
+      fee: total_fees
     }
 
     %SignedTx{data: tx_data, signature: nil}
@@ -119,13 +119,14 @@ defmodule Aecore.Miner.Worker do
 
     valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
     {_, pubkey} = Keys.pubkey()
-    valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
+    total_fees = List.foldl(valid_txs, 0, fn(tx, acc) ->
+        acc + tx.data.fee
+      end)
+    valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
-    new_block_state_with_fees = ChainState.add_fees_to_block_state(valid_txs, new_block_state, pubkey)
-
-    new_chain_state = ChainState.calculate_chain_state(new_block_state_with_fees, chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)

@@ -80,24 +80,6 @@ defmodule Aecore.Chain.ChainState do
       Enum.all?()
   end
 
-  @spec add_fees_to_block_state(list(), map(), binary()) :: map()
-  def add_fees_to_block_state(txs, block_state, account) do
-    total_fees = List.foldl(txs, 0, fn(tx, acc) ->
-        acc + tx.data.fee
-      end)
-
-    cond do
-      !Map.has_key?(block_state, account) ->
-        Map.put(block_state, account, %{balance: total_fees, nonce: 0})
-
-      true ->
-        current_pubkey_block_state = Map.get(block_state, account)
-        new_pubkey_block_state = %{balance: current_pubkey_block_state.balance + total_fees,
-                                   nonce: current_pubkey_block_state.nonce}
-        Map.replace(block_state, account, new_pubkey_block_state)
-    end
-  end
-
   @spec update_block_state(map(), binary(), integer(), integer()) :: map()
   defp update_block_state(block_state, account, value, nonce) do
     block_state_filled_empty =
