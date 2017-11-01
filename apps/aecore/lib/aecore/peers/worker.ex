@@ -42,7 +42,7 @@ defmodule Aecore.Peers.Worker do
 
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
-    Block.genesis_header()
+    Block.genesis_block().header
     |> BlockValidation.block_header_hash()
     |> Base.encode16()
   end
@@ -134,10 +134,6 @@ defmodule Aecore.Peers.Worker do
   end
 
   ## Internal functions
-  defp send_to_peers(_uri, _data, []) do
-    Logger.warn("Empty peers list")
-  end
-
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
