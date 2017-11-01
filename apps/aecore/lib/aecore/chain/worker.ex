@@ -9,6 +9,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Peers.Worker, as: Peers
 
   use GenServer
 
@@ -127,15 +128,14 @@ defmodule Aecore.Chain.Worker do
 
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
-      Logger.info(
-        fn ->
-          "Added block ##{block.header.height} with hash #{
-            block.header
-            |> BlockValidation.block_header_hash()
-            |> Base.encode16()
-          }, total tokens: #{total_tokens}"
-        end
-      )
+      Logger.info(fn ->
+        "Added block ##{block.header.height} with hash #{block.header
+        |> BlockValidation.block_header_hash()
+        |> Base.encode16()}, total tokens: #{total_tokens}"
+      end)
+
+      ## Block was validated, now we can send it to other peers
+      Peers.broadcast_to_all({:new_block, block})
 
       {:reply, :ok, {updated_block_map, updated_latest_block_chainstate}}
     catch

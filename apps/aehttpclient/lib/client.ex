@@ -18,6 +18,10 @@ defmodule Aehttpclient.Client do
     get(uri <> "/block/#{hash}", :block)
   end
 
+  def post(peer, data, uri) do
+    send_to_peer(data, "#{peer}/#{uri}")
+  end
+
   @spec get_peers(term()) :: {:ok, list()}
   def get_peers(uri) do
     get(uri <> "/peers", :peers)
@@ -29,7 +33,6 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
-  @spec get_account_balance({term(), term()}) :: {:ok, map()} | :error
   def get_account_balance({uri,acc}) do
     get(uri <> "/balance/#{acc}", :balance)
   end
@@ -63,17 +66,13 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @doc """
-  Send newest transactions to a peer
-  """
-  @spec send_tx(tuple(), map()) :: {:ok, map()} | {:error, term()}
-  def send_tx({uri,_}, tx) do
-    HTTPoison.post uri <> "/new_tx", Poison.encode!(tx),
-        [{"Content-Type", "application/json"}]
-  end
-
   def json_response(body) do
     response = Poison.decode!(body)
     {:ok,response}
+  end
+
+  defp send_to_peer(data, uri) do
+    HTTPoison.post uri, Poison.encode!(data),
+      [{"Content-Type", "application/json"}]
   end
 end

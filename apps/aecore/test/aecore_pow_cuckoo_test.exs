@@ -5,8 +5,6 @@ defmodule AecoreCuckooTest do
   alias Aecore.Pow.Cuckoo
   alias Aecore.Structures.Block
 
-  @doctest Cuckoo
-
   @moduledoc """
   Unit tests for the cuckoo module
   """
