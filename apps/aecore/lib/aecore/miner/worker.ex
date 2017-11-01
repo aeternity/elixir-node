@@ -130,6 +130,7 @@ defmodule Aecore.Miner.Worker do
 
     new_block_state = ChainState.calculate_block_state(valid_txs)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)

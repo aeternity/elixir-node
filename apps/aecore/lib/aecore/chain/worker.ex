@@ -19,7 +19,7 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
 
-    initial_state = {genesis_block_map, latest_block_chain_state}
+    initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
   end
 
@@ -69,7 +69,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(:get_latest_block_chain_state, _from, state) do
-    {_, latest_block_chain_state} = state
+    {_, latest_block_chain_state, _} = state
     {:reply, latest_block_chain_state, state}
   end
 
@@ -86,7 +86,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:get_block, block_hash}, _from, state) do
-    {block_map, _} = state
+    {block_map, _, _} = state
     block = block_map[block_hash]
 
     if(block != nil) do
@@ -107,16 +107,20 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = block}, _from, state) do
-    {chain, chain_state} = state
-    prev_block_chain_state = chain_state[block.header.prev_hash]
+    #{chain, chain_state, txs_index} = state
+    {block_map, latest_block_chain_state, txs_index} = state
+    prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state =
+      ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    acc_txs_map = block_txs_for_accs(block)
+    new_txs_index = add_txs_to_chain_state(latest_block_chain_state, acc_txs_map)
+    merge_txs_lists(latest_block_chain_state, new_txs_index)
 
-    BlockValidation.validate_block!(block, chain[block.header.prev_hash], new_chain_state)
+    BlockValidation.validate_block!(block, block_map[block.header.prev_hash], new_chain_state)
 
     Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
-    {block_map, latest_block_chain_state} = state
     block_hash = BlockValidation.block_header_hash(block.header)
     updated_block_map = Map.put(block_map, block_hash, block)
     has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
@@ -129,10 +133,8 @@ defmodule Aecore.Chain.Worker do
         {latest_block_chain_state, %{}}
     end
 
-    new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_chain_state)
-
-    updated_latest_block_chainstate = Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
+    updated_latest_block_chainstate =
+      Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
@@ -146,11 +148,11 @@ defmodule Aecore.Chain.Worker do
       end
     )
 
-    {:reply, :ok, {updated_block_map, updated_latest_block_chainstate}}
+    {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
   end
 
   def handle_call({:chain_state, latest_block_hash}, _from, state) do
-    {_, chain_state} = state
+    {_, chain_state, _} = state
     {:reply, chain_state[latest_block_hash], state}
   end
 
@@ -164,6 +166,39 @@ defmodule Aecore.Chain.Worker do
     latest_block_obj = latest_block()
     latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
     get_blocks(latest_block_hash, latest_block_obj.header.height)
+  end
+
+  def block_txs_for_accs(block) do
+    block_hash = BlockValidation.block_header_hash(block.header)
+    accounts = for tx <- block.txs do
+      [tx.data.from_acc, tx.data.to_acc]
+    end
+    accounts = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts, into: %{} do
+      acc_txs = Enum.filter(block.txs, fn(tx) ->
+          tx.data.from_acc == account || tx.data.to_acc == account
+        end)
+      tx_hashes = Enum.map(acc_txs, fn(tx) ->
+          tx_bin = :erlang.term_to_binary(tx)
+          :crypto.hash(:sha256, tx_bin)
+        end)
+      tx_tuples = Enum.map(tx_hashes, fn(hash) ->
+          {block_hash, hash}
+        end)
+      {account, tx_tuples}
+    end
+  end
+
+  def add_txs_to_chain_state(chain_state, acc_txs_map) do
+    Map.merge(chain_state, acc_txs_map, fn(_, v1, v2) ->
+        %{balance: v1.balance, nonce: v1.nonce, txs: v2}
+      end)
+  end
+
+  def merge_txs_lists(old_chain_state, txs_index) do
+    Map.merge(old_chain_state, txs_index, fn(_, v1, v2) ->
+        %{balance: v1.balance, nonce: v1.nonce, txs: v1.txs ++ v2.txs}
+      end)
   end
 
   defp get_blocks(blocks_acc, next_block_hash, size) do
