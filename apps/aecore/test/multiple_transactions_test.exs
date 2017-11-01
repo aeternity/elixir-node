@@ -252,6 +252,36 @@ defmodule MultipleTransactionsTest do
     assert 186 == Chain.chain_state[account3_pub_key].balance
   end
 
+  @tag timeout: 10000000
+  test "in one block, miner collects all the fees from the transactions" do
+    {account1, account2, account3} = get_accounts_one_block()
+    {account1_pub_key, _account1_priv_key} = account1
+    {account2_pub_key, _account2_priv_key} = account2
+    {account3_pub_key, _account3_priv_key} = account3
+    pubkey = elem(Keys.pubkey(), 1)
+
+    Miner.resume()
+    Miner.suspend()
+    Pool.get_and_empty_pool()
+    {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
+                             Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0)
+    assert :ok = Pool.add_transaction(tx)
+    Miner.resume()
+    Miner.suspend()
+    Pool.get_and_empty_pool()
+    tx = create_signed_tx(account1, account2, 99,
+                          Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1)
+    assert :ok = Pool.add_transaction(tx)
+    tx = create_signed_tx(account2, account3, 99,
+                          Map.get(Chain.chain_state, account2_pub_key, %{nonce: 0}).nonce + 1, 1)
+    assert :ok = Pool.add_transaction(tx)
+    miner_balance_before_mining = Map.get(Chain.chain_state, pubkey).balance
+    Miner.resume()
+    Miner.suspend()
+    miner_balance_after_mining = Map.get(Chain.chain_state, pubkey).balance
+    assert miner_balance_after_mining == miner_balance_before_mining + Miner.coinbase_transaction_value() + 2
+  end
+
   defp get_accounts_one_block() do
     account1 = {
         <<4, 94, 96, 161, 182, 76, 153, 22, 179, 136, 60, 87, 225, 135, 253, 179, 80,
