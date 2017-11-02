@@ -13,7 +13,7 @@ defmodule Aehttpserver.InfoController do
       |> BlockValidation.block_header_hash()
       |> Base.encode16()
 
-    genesis_block_header = Block.genesis_header()
+    genesis_block_header = Block.genesis_block().header
     genesis_block_hash = genesis_block_header
      |> BlockValidation.block_header_hash()
      |> Base.encode16()

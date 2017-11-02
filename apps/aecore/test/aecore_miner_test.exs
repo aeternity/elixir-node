@@ -7,7 +7,7 @@ defmodule MinerTest do
 
   @tag timeout: 100000000
   test "mine_next_block" do
-    Miner.start_link()
+    Miner.start_link([])
     Miner.resume()
     Miner.suspend()
     assert length(Chain.all_blocks) > 1

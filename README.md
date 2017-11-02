@@ -29,15 +29,15 @@ To suspend/stop the miner from mining:
 `Aecore.Miner.Worker.suspend() `
 
 #### **API calls**
-To add block to the blockchain: 
+To add a block to the blockchain: 
 
 `Aecore.Chain.Worker.add_block(%Block{}) :: :ok`
 
-To get the all blocks in the current chain: 
+To get all blocks in the current chain: 
 
 `Aecore.Chain.Worker.all_blocks() :: list()`
 
-To get latest block added to the chain: 
+To get the latest block added to the chain: 
 
 `Aecore.Chain.Worker.latest_block() :: %Block{}`
 
@@ -45,15 +45,15 @@ To get the latest chainstate:
 
 `Aecore.Chain.Worker.chain_state() :: map()`
 
-To add transaction to the Transaction Pool:
+To add a transaction to the Transaction Pool:
 
 `Aecore.Txs.Pool.Worker.add_transaction(%SignedTx{}) :: :ok | :error`
 
-To remove transaction from the Transaction Pool: 
+To remove a transaction from the Transaction Pool: 
 
 `Aecore.Txs.Pool.Worker.remove_transaction(%SignedTx{}) :: :ok | :error`
 
-To inspect transactions in the Transaction Pool: 
+To inspect all transactions in the Transaction Pool: 
 
 `Aecore.Txs.Pool.Worker.get_pool() :: map() `
 
@@ -74,4 +74,4 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 ## HTTP-API
 
-The node will run a http api at `localhost:4000`
+The node will run an http API at `localhost:4000`

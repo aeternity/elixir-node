@@ -13,7 +13,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Chain.Worker, as: Chain
 
   setup do
-    Pool.start_link()
+    Pool.start_link([])
     []
   end
 

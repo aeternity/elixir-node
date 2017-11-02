@@ -18,8 +18,7 @@ defmodule Aecore.Structures.Block do
     @current_block_version
   end
 
-  @spec genesis_header() :: Header.header()
-  def genesis_header() do
+  defp genesis_header() do
     h = Application.get_env(:aecore, :pow)[:genesis_header]
     struct(Aecore.Structures.Header, h)
   end

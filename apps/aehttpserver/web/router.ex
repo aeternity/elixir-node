@@ -13,8 +13,10 @@ defmodule Aehttpserver.Router do
     get "/info", InfoController, :info
     post "/new_tx", NewTxController, :new_tx
     get "/peers", PeersController, :info
+    post "/new_block", BlockController, :new_block
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
+    resources "/tx_pool", TxPoolController, param: "account", only: [:show]
   end
 
 

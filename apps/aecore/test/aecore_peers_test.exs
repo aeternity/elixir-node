@@ -5,7 +5,7 @@ defmodule AecorePeersTest do
   alias Aecore.Peers.Worker, as: Peers
 
   setup do
-    Peers.start_link()
+    Peers.start_link([])
     []
   end
 
