@@ -29,6 +29,14 @@ defmodule Aecore.Chain.Worker do
     {:ok, initial_state}
   end
 
+  @doc """
+  Returns blockchain and chainstate
+  """
+  @spec get_current_state() :: {map(), map()}
+  def get_current_state() do
+    GenServer.call(__MODULE__, :get_current_state)
+  end
+
   @spec latest_block() :: %Block{}
   def latest_block() do
     latest_block_hashes = get_latest_block_chain_state() |> Map.keys()
@@ -68,6 +76,10 @@ defmodule Aecore.Chain.Worker do
   @spec chain_state(binary()) :: map()
   def chain_state(latest_block_hash) do
     GenServer.call(__MODULE__, {:chain_state, latest_block_hash})
+  end
+
+  def handle_call(:get_current_state, _from, state) do
+    {:reply, state, state}
   end
 
   def handle_call(:get_latest_block_chain_state, _from, state) do

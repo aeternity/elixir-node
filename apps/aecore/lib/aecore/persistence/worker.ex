@@ -4,6 +4,7 @@ defmodule Aecore.Persistence.Worker do
   """
 
   @persistence_table Application.get_env(:aecore, :persistence)[:table]
+  @blockchain_key :block_chain_state_key
 
   use GenServer
 
@@ -15,14 +16,9 @@ defmodule Aecore.Persistence.Worker do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  @spec restore_blockchain() :: {:ok, list()} | {:error, reason :: term()}
+  @spec restore_blockchain() :: {:ok, list()} | {:error, term()}
   def restore_blockchain() do
     GenServer.call(__MODULE__, :blockchain)
-  end
-
-  @spec restore_chainstate() :: {:ok, list()} | {:error, reason :: term()}
-  def restore_chainstate() do
-    GenServer.call(__MODULE__, :chainstate)
   end
 
   def init(_) do
@@ -36,24 +32,17 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call(:blockchain, _from, %{table: table}=state) do
-    reply = :dets.lookup(table, :blockchain)
-    {:reply, {:ok, reply}, state}
-  end
-
-  def handle_call(:chainstate, _from, %{table: table}=state) do
-    reply = :dets.lookup(table, :chainstate)
-    {:reply, {:ok, reply}, state}
+    {:reply, get_block_chain_states(table), state}
   end
 
   def handle_cast(_any, state) do
     {:noreply, state}
   end
 
-  def terminate(_, %{table: nil}=state), do: Logger.error("No db connection")
-  def terminate(_, %{table: table}=state) do
+  def terminate(_, %{table: nil}), do: Logger.error("No db connection")
+  def terminate(_, %{table: table}) do
     Aecore.Miner.Worker.suspend
-    :ok = :dets.insert(table, {:blockchain, Chain.all_blocks()})
-    :ok = :dets.insert(table, {:chainstate, Chain.chain_state()})
+    :ok = :dets.insert(table, {@blockchain_key, Chain.get_current_state()})
     Logger.info("Terminating, blockchain and chainstate were stored to disk")
   end
 
@@ -62,6 +51,14 @@ defmodule Aecore.Persistence.Worker do
   defp setup do
     {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
     %{table: table}
+  end
+
+  @spec get_block_chain_states(table :: reference()) :: {:ok, term()}
+  defp get_block_chain_states(table) do
+    case :dets.lookup(table, @blockchain_key) do
+      [] -> {:ok, :nothing_to_restore}
+      restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
+    end
   end
 
 end
