@@ -11,7 +11,7 @@ defmodule Aecore.Keys.Worker do
   @filename_priv "key"
   @pub_key_length 65
 
-  def start_link() do
+  def start_link(_args) do
     GenServer.start_link(
       __MODULE__,
       %{
