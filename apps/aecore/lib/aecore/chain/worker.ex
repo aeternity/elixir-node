@@ -18,6 +18,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    txs_index = %{}
 
     initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
     GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
@@ -68,6 +69,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:chain_state, latest_block_hash})
   end
 
+  @spec txs_index() :: map()
+  def txs_index() do
+    GenServer.call(__MODULE__, :txs_index)
+  end
+
   def handle_call(:get_latest_block_chain_state, _from, state) do
     {_, latest_block_chain_state, _} = state
     {:reply, latest_block_chain_state, state}
@@ -107,15 +113,14 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:add_block, %Block{} = block}, _from, state) do
-    #{chain, chain_state, txs_index} = state
     {block_map, latest_block_chain_state, txs_index} = state
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
     new_chain_state =
       ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
-    acc_txs_map = block_txs_for_accs(block)
-    new_txs_index = add_txs_to_chain_state(latest_block_chain_state, acc_txs_map)
-    merge_txs_lists(latest_block_chain_state, new_txs_index)
+
+    new_block_txs_index = acc_txs_info(block)
+    new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
     BlockValidation.validate_block!(block, block_map[block.header.prev_hash], new_chain_state)
 
@@ -156,6 +161,11 @@ defmodule Aecore.Chain.Worker do
     {:reply, chain_state[latest_block_hash], state}
   end
 
+  def handle_call(:txs_index, _from, state) do
+    {_, _, txs_index} = state
+    {:reply, txs_index, state}
+  end
+
   def chain_state() do
     latest_block = latest_block()
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
@@ -168,7 +178,7 @@ defmodule Aecore.Chain.Worker do
     get_blocks(latest_block_hash, latest_block_obj.header.height)
   end
 
-  def block_txs_for_accs(block) do
+  def acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
     accounts = for tx <- block.txs do
       [tx.data.from_acc, tx.data.to_acc]
@@ -189,15 +199,10 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def add_txs_to_chain_state(chain_state, acc_txs_map) do
-    Map.merge(chain_state, acc_txs_map, fn(_, v1, v2) ->
-        %{balance: v1.balance, nonce: v1.nonce, txs: v2}
-      end)
-  end
-
-  def merge_txs_lists(old_chain_state, txs_index) do
-    Map.merge(old_chain_state, txs_index, fn(_, v1, v2) ->
-        %{balance: v1.balance, nonce: v1.nonce, txs: v1.txs ++ v2.txs}
+  def update_txs_index(current_txs_index, new_block_txs_index) do
+    Map.merge(current_txs_index, new_block_txs_index,
+      fn(_, current_list, new_block_list) ->
+        current_list ++ new_block_list
       end)
   end
 
