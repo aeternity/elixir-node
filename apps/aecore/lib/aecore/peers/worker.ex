@@ -22,7 +22,7 @@ defmodule Aecore.Peers.Worker do
 
   @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
-    GenServer.call(__MODULE__, {:add_peer, uri})
+    GenServer.call(__MODULE__, {:add_peer, uri}, 10000)
   end
 
   @spec remove_peer(term) :: :ok | :error
@@ -119,7 +119,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:broadcast_tx, tx}, %{peers: peers} = state) do
-    serialized_tx = 
+    serialized_tx =
     Serialization.tx(tx, :serialize)
     |> Poison.encode!()
     for peer <- peers do
