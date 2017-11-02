@@ -9,22 +9,23 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Peers.Worker, as: Peers
 
   use GenServer
 
   def start_link do
+    GenServer.start_link(__MODULE__, {}, name: __MODULE__)
+  end
+
+  def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
     txs_index = %{}
-
     initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
-    GenServer.start_link(__MODULE__, initial_state, name: __MODULE__)
-  end
 
-  def init(initial_state) do
     {:ok, initial_state}
   end
 
@@ -79,18 +80,6 @@ defmodule Aecore.Chain.Worker do
     {:reply, latest_block_chain_state, state}
   end
 
-  def handle_call(:get_prior_blocks_for_validity_check, _from, state) do
-    chain = elem(state, 0)
-
-    if length(chain) == 1 do
-      [lb | _] = chain
-      {:reply, {lb, nil}, state}
-    else
-      [lb, prev | _] = chain
-      {:reply, {lb, prev}, state}
-    end
-  end
-
   def handle_call({:get_block, block_hash}, _from, state) do
     {block_map, _, _} = state
     block = block_map[block_hash]
@@ -103,7 +92,8 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
-    case(Enum.find(elem(state, 0), fn{block_hash, _block} ->
+    {chain, _, _} = state
+    case(Enum.find(chain, fn{block_hash, _block} ->
       block_hash |> Base.encode16() == hash end)) do
       {_, block} ->
         {:reply, block, state}
@@ -121,39 +111,45 @@ defmodule Aecore.Chain.Worker do
 
     new_block_txs_index = acc_txs_info(block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
+    try do
+      BlockValidation.validate_block!(block, block_map[block.header.prev_hash], new_chain_state)
 
-    BlockValidation.validate_block!(block, block_map[block.header.prev_hash], new_chain_state)
+      Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
-    Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+      block_hash = BlockValidation.block_header_hash(block.header)
+      updated_block_map = Map.put(block_map, block_hash, block)
+      has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
 
-    block_hash = BlockValidation.block_header_hash(block.header)
-    updated_block_map = Map.put(block_map, block_hash, block)
-    has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
-
-    {deleted_latest_chain_state, prev_chain_state} = case has_prev_block do
-      true ->
-        prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
-        {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
-      false ->
-        {latest_block_chain_state, %{}}
-    end
-
-    updated_latest_block_chainstate =
-      Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
-
-    total_tokens = ChainState.calculate_total_tokens(new_chain_state)
-
-    Logger.info(
-      fn ->
-        "Added block ##{block.header.height} with hash #{
-          block.header
-          |> BlockValidation.block_header_hash()
-          |> Base.encode16()
-        }, total tokens: #{total_tokens}"
+      {deleted_latest_chain_state, prev_chain_state} = case has_prev_block do
+        true ->
+          prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
+          {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
+        false ->
+          {latest_block_chain_state, %{}}
       end
-    )
 
-    {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
+      updated_latest_block_chainstate =
+        Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
+
+      total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+
+      Logger.info(fn ->
+        "Added block ##{block.header.height} with hash #{block.header
+        |> BlockValidation.block_header_hash()
+        |> Base.encode16()}, total tokens: #{total_tokens}"
+      end)
+
+      ## Block was validated, now we can send it to other peers
+      Peers.broadcast_to_all({:new_block, block})
+
+      {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
+    catch
+      {:error, message} ->
+        Logger.error(fn ->
+          "Failed to add block: #{message}"
+        end)
+      {:reply, :error, state}
+    end
   end
 
   def handle_call({:chain_state, latest_block_hash}, _from, state) do

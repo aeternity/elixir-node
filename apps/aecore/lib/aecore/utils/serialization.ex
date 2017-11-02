@@ -4,6 +4,8 @@ defmodule Aecore.Utils.Serialization do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
@@ -13,16 +15,16 @@ defmodule Aecore.Utils.Serialization do
       prev_hash: hex_binary(block.header.prev_hash, direction),
       txs_hash: hex_binary(block.header.txs_hash, direction)}
     new_txs = Enum.map(block.txs, fn(tx) -> tx(tx,direction) end)
-    %{block | header: new_header, txs: new_txs}
+    Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
 
   @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
   def tx(tx, direction) do
     new_data = %{tx.data |
-      from_acc: hex_binary(tx.data.from_acc, direction),
-      to_acc: hex_binary(tx.data.to_acc, direction)}
+                 from_acc: hex_binary(tx.data.from_acc, direction),
+                 to_acc: hex_binary(tx.data.to_acc, direction)}
     new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: new_data, signature: new_signature}
+    %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
   def hex_binary(data, direction) do
