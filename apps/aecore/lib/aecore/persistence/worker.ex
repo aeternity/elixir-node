@@ -12,13 +12,13 @@ defmodule Aecore.Persistence.Worker do
 
   require Logger
 
-  def start_link do
+  def start_link(_arg) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   @spec restore_blockchain() :: {:ok, list()} | {:error, term()}
   def restore_blockchain() do
-    GenServer.call(__MODULE__, :blockchain)
+    GenServer.call(__MODULE__, :restore_blockchain)
   end
 
   def init(_) do
@@ -27,11 +27,11 @@ defmodule Aecore.Persistence.Worker do
     {:ok, setup()}
   end
 
-  def handle_call(:blockchain, _from, %{table: nil}=state) do
+  def handle_call(:restore_blockchain, _from, %{table: nil}=state) do
     {:reply, {:error, "failed on reading persistence db"}, state}
   end
 
-  def handle_call(:blockchain, _from, %{table: table}=state) do
+  def handle_call(:restore_blockchain, _from, %{table: table}=state) do
     {:reply, get_block_chain_states(table), state}
   end
 
