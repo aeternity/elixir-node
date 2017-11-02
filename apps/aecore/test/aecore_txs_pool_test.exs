@@ -10,7 +10,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Keys.Worker, as: Keys
 
   setup do
-    Pool.start_link()
+    Pool.start_link([])
     []
   end
 

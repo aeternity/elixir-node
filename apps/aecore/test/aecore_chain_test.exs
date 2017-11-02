@@ -13,7 +13,7 @@ defmodule AecoreChainTest do
   alias Aecore.Miner.Worker, as: Miner
 
   setup do
-    Chain.start_link()
+    Chain.start_link([])
     []
   end
 
