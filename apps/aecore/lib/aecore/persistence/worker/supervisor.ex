@@ -10,7 +10,7 @@ defmodule Aecore.Persistence.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      Supervisor.child_spec(Aecore.Persistence.Worker, [shutdown: max_shutdown_time])
+      Supervisor.child_spec(Aecore.Persistence.Worker, [shutdown: @max_shutdown_time])
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
