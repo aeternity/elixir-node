@@ -114,6 +114,12 @@ defmodule Aecore.Miner.Worker do
 
   def coinbase_transaction_value, do: @coinbase_transaction_value
 
+  def calculate_total_fees(txs) do
+    List.foldl(txs, 0, fn(tx, acc) ->
+        acc + tx.data.fee
+      end)
+  end
+
   ## Internal
   @spec mine_next_block(integer()) :: :ok | :error
   defp mine_next_block(start_nonce) do
@@ -136,9 +142,7 @@ defmodule Aecore.Miner.Worker do
 
       valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
       {_, pubkey} = Keys.pubkey()
-      total_fees = List.foldl(valid_txs, 0, fn(tx, acc) ->
-          acc + tx.data.fee
-        end)
+      total_fees = calculate_total_fees(valid_txs)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
