@@ -106,7 +106,7 @@ defmodule Aecore.Miner.Worker do
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,
       nonce: 0,
-      fee: total_fees
+      fee: 0
     }
 
     %SignedTx{data: tx_data, signature: nil}
