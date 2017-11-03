@@ -30,6 +30,14 @@ defmodule Aecore.Chain.Worker do
     {:ok, initial_state}
   end
 
+  @doc """
+  Returns blockchain and chainstate
+  """
+  @spec get_current_state() :: {map(), map()}
+  def get_current_state() do
+    GenServer.call(__MODULE__, :get_current_state)
+  end
+
   @spec latest_block() :: %Block{}
   def latest_block() do
     latest_block_hashes = get_latest_block_chain_state() |> Map.keys()
@@ -74,6 +82,24 @@ defmodule Aecore.Chain.Worker do
   @spec txs_index() :: map()
   def txs_index() do
     GenServer.call(__MODULE__, :txs_index)
+  end
+
+  def chain_state() do
+    latest_block = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
+    chain_state(latest_block_hash)
+  end
+
+  def all_blocks() do
+    latest_block_obj = latest_block()
+    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
+    get_blocks(latest_block_hash, latest_block_obj.header.height)
+  end
+
+  ## Server side
+
+  def handle_call(:get_current_state, _from, state) do
+    {:reply, state, state}
   end
 
   def handle_call(:get_latest_block_chain_state, _from, state) do
@@ -163,19 +189,7 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def chain_state() do
-    latest_block = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-    chain_state(latest_block_hash)
-  end
-
-  def all_blocks() do
-    latest_block_obj = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
-    get_blocks(latest_block_hash, latest_block_obj.header.height)
-  end
-
-  def calculate_block_acc_txs_info(block) do
+  defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
     accounts = for tx <- block.txs do
       [tx.data.from_acc, tx.data.to_acc]
@@ -196,7 +210,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def update_txs_index(current_txs_index, new_block_txs_index) do
+  defp update_txs_index(current_txs_index, new_block_txs_index) do
     Map.merge(current_txs_index, new_block_txs_index,
       fn(_, current_list, new_block_list) ->
         current_list ++ new_block_list

@@ -27,6 +27,8 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+config :aecore, :persistence,
+  table: Path.absname("apps/aecore/priv/persistence_table")
 
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
