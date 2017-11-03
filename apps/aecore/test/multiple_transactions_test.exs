@@ -254,22 +254,27 @@ defmodule MultipleTransactionsTest do
 
   @tag timeout: 10000000
   test "in one block, miner collects all the fees from the transactions" do
-    {account1, account2, account3} = get_accounts_one_block()
+    {account1, account2, account3} = get_accounts_miner_fees()
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
-    {account3_pub_key, _account3_priv_key} = account3
     pubkey = elem(Keys.pubkey(), 1)
 
+    Miner.resume()
+    Miner.suspend()
+    Pool.get_and_empty_pool()
     Miner.resume()
     Miner.suspend()
     Pool.get_and_empty_pool()
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0)
     assert :ok = Pool.add_transaction(tx)
+    {:ok, tx} = Keys.sign_tx(account2_pub_key, 100,
+                             Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 2, 0)
+    assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
     Pool.get_and_empty_pool()
-    tx = create_signed_tx(account1, account2, 99,
+    tx = create_signed_tx(account1, account3, 99,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account2, account3, 99,
@@ -278,6 +283,7 @@ defmodule MultipleTransactionsTest do
     miner_balance_before_mining = Map.get(Chain.chain_state, pubkey).balance
     Miner.resume()
     Miner.suspend()
+    Pool.get_and_empty_pool()
     miner_balance_after_mining = Map.get(Chain.chain_state, pubkey).balance
     assert miner_balance_after_mining == miner_balance_before_mining + Miner.coinbase_transaction_value() + 2
   end
@@ -335,6 +341,35 @@ defmodule MultipleTransactionsTest do
           162, 250, 63, 103, 111, 249, 66, 67, 21, 133, 54, 152, 61, 119, 51, 188>>,
         <<19, 239, 205, 35, 76, 49, 9, 230, 59, 169, 195, 217, 222, 135, 204, 201, 160,
           126, 253, 20, 230, 122, 184, 193, 131, 53, 157, 50, 117, 29, 195, 47>>
+      }
+
+    {account1, account2, account3}
+  end
+
+  defp get_accounts_miner_fees() do
+    account1 = {
+        <<4, 231, 192, 96, 22, 175, 115, 58, 27, 93, 216, 187, 43, 116, 150, 164, 153,
+          80, 134, 135, 12, 127, 173, 196, 198, 181, 84, 119, 225, 204, 150, 176, 26,
+          119, 103, 128, 201, 93, 131, 7, 169, 48, 28, 60, 16, 112, 65, 8, 46, 212, 32,
+          251, 135, 81, 99, 146, 67, 139, 42, 151, 183, 210, 45, 195, 8>>,
+        <<129, 187, 237, 185, 104, 21, 152, 221, 22, 1, 87, 152, 137, 25, 107, 214, 19,
+          227, 128, 210, 180, 224, 113, 196, 232, 254, 249, 247, 230, 252, 242, 32>>
+      }
+    account2 = {
+        <<4, 176, 20, 135, 174, 148, 149, 10, 132, 176, 41, 79, 141, 161, 151, 96, 65,
+          70, 198, 93, 25, 11, 90, 105, 57, 41, 39, 255, 197, 140, 163, 9, 180, 126,
+          111, 71, 178, 86, 250, 177, 170, 211, 70, 146, 111, 201, 137, 230, 98, 8,
+          205, 109, 234, 51, 50, 140, 9, 177, 130, 222, 196, 54, 98, 55, 243>>,
+        <<3, 213, 65, 255, 170, 53, 52, 113, 72, 39, 215, 55, 3, 120, 107, 138, 229, 5,
+          32, 56, 255, 130, 166, 97, 131, 94, 156, 186, 57, 55, 189, 228>>
+      }
+    account3 = {
+        <<4, 163, 213, 138, 149, 50, 37, 22, 21, 221, 239, 158, 126, 245, 61, 146, 7,
+          15, 86, 26, 224, 169, 46, 191, 199, 39, 172, 189, 146, 10, 111, 160, 51, 7,
+          33, 236, 50, 4, 211, 92, 192, 17, 134, 144, 168, 106, 126, 235, 101, 133,
+          156, 66, 66, 39, 248, 210, 14, 251, 91, 86, 59, 29, 153, 150, 190>>,
+        <<147, 131, 218, 194, 163, 243, 40, 42, 172, 5, 190, 120, 23, 16, 43, 0, 249,
+          175, 101, 170, 182, 11, 49, 209, 39, 253, 111, 114, 182, 253, 131, 31>>
       }
 
     {account1, account2, account3}
