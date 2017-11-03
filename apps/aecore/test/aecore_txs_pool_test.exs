@@ -10,7 +10,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Keys.Worker, as: Keys
 
   setup do
-    Pool.start_link()
+    Pool.start_link([])
     []
   end
 
@@ -29,8 +29,8 @@ defmodule AecoreTxsPoolTest do
     assert Enum.count(Pool.get_pool()) == 1
     Miner.resume()
     Miner.suspend()
-    assert length(Chain.all_blocks) > 1
-    assert Enum.count(Chain.latest_block.txs) == 2
+    assert length(Chain.all_blocks()) > 1
+    assert Enum.count(Chain.latest_block().txs) == 2
     assert Enum.count(Pool.get_pool()) == 0
   end
 

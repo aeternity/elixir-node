@@ -9,7 +9,7 @@ defmodule AecoreTxTest do
   alias Aecore.Chain.Worker, as: Chain
 
   setup do
-    Keys.start_link()
+    Keys.start_link([])
     []
   end
 

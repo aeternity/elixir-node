@@ -4,6 +4,8 @@ defmodule Aehttpclient.Client do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
 
   @spec get_info(term()) :: {:ok, map()} | :error
@@ -14,6 +16,10 @@ defmodule Aehttpclient.Client do
   @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
   def get_block({uri, hash}) do
     get(uri <> "/block/#{hash}", :block)
+  end
+
+  def post(peer, data, uri) do
+    send_to_peer(data, "#{peer}/#{uri}")
   end
 
   @spec get_peers(term()) :: {:ok, list()}
@@ -31,6 +37,11 @@ defmodule Aehttpclient.Client do
     get(uri <> "/balance/#{acc}", :balance)
   end
 
+  @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
+  def get_account_txs({uri,acc}) do
+    get(uri <> "/tx_pool/#{acc}", :acc_txs)
+  end
+
   def get(uri, identifier) do
     case(HTTPoison.get(uri)) do
       {:ok, %{body: body, status_code: 200}} ->
@@ -41,10 +52,12 @@ defmodule Aehttpclient.Client do
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
             {:ok, response}
-          :peers ->
-            standard_response(body)
-          :balance ->
-            standard_response(body)
+          :acc_txs ->
+            response = Poison.decode!(body,
+              as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+            {:ok, response}
+          _ ->
+            json_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
@@ -53,17 +66,13 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @doc """
-  Send newest transactions to a peer
-  """
-  @spec send_tx(tuple(), map()) :: {:ok, map()} | {:error, term()}
-  def send_tx({uri,_}, tx) do
-    HTTPoison.post uri <> "/new_tx", Poison.encode!(tx),
-        [{"Content-Type", "application/json"}]
-  end
-
-  def standard_response(body) do
+  def json_response(body) do
     response = Poison.decode!(body)
     {:ok,response}
+  end
+
+  defp send_to_peer(data, uri) do
+    HTTPoison.post uri, Poison.encode!(data),
+      [{"Content-Type", "application/json"}]
   end
 end
