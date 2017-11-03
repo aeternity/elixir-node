@@ -2,7 +2,6 @@ defmodule AehttpclientTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.Block
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Keys.Worker, as: Keys
@@ -11,9 +10,8 @@ defmodule AehttpclientTest do
   test "Client functions" do
     account = Keys.pubkey() |> elem(1) |> Base.encode16()
     add_txs_to_pool()
-    _genesis_block = Block.genesis_block()
     assert {:ok, _} = Client.get_info("localhost:4000")
-    assert {:ok, _genesis_block} = Client.get_block({"localhost:4000",
+    assert {:ok, _} = Client.get_block({"localhost:4000",
       "C061E48A6F7FB2634E0C012B168D41F4773A38BD9E5EA28E5BE7D04186127BA0"})
     assert {:ok, _} = Client.get_peers("localhost:4000")
     assert Enum.count(Client.get_account_txs({"localhost:4000", account})
