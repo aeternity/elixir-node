@@ -5,6 +5,7 @@ defmodule Aehttpserver.InfoController do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Peers.Worker, as: Peers
 
   def info(conn, _params) do
     latest_block = Chain.latest_block()
@@ -17,6 +18,8 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
+     peer_nonce = Peers.get_peers_nonce()
+
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
 
@@ -25,6 +28,7 @@ defmodule Aehttpserver.InfoController do
                  current_block_hash: latest_block_header,
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: latest_block.header.difficulty_target,
-                 public_key: pubkey}
+                 public_key: pubkey,
+                 peer_nonce: peer_nonce}
   end
 end
