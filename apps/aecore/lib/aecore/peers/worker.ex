@@ -14,8 +14,10 @@ defmodule Aecore.Peers.Worker do
 
   require Logger
 
+  @mersenne_prime 2147483647
+
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(1000)}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(@mersenne_prime)}, name: __MODULE__)
   end
 
   ## Client side
@@ -85,7 +87,7 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = stat
               {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
             end
           true -> 
-            Logger.error(fn ->
+            Logger.debug(fn ->
               "Failed to add #{uri}, equal peer nonces" end)
             {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
         end
