@@ -13,15 +13,15 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Utils.Blockchain.BlockValidation, as: BlockValidation
   alias Aecore.Txs.Pool.Worker, as: Pool
 
-  setup do
-    Chain.start_link()
-    []
-  end
+  #setup do
+  #  Chain.start_link([])
+  #end
 
   @tag timeout: 100000
   test "get txs for given address test" do
-
     {:ok, address} = Keys.pubkey()
+
+    ## Create unique address
     address_hex =
       address
       |> Base.encode16()
@@ -31,9 +31,9 @@ defmodule GetTxsForAddressTest do
 
     user_pubkey = {:ok, address_bin}
 
-    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5, 1)
-    {:ok, tx2} = Keys.sign_tx(elem(user_pubkey, 1), 7, 1)
-    {:ok, tx3} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5, 1)
+    {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5, 1, 1)
+    {:ok, tx2} = Keys.sign_tx(elem(user_pubkey, 1), 7, 1, 1)
+    {:ok, tx3} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5, 1, 1)
 
     assert :ok = Pool.add_transaction(tx1)
     assert :ok = Pool.add_transaction(tx2)
@@ -43,7 +43,7 @@ defmodule GetTxsForAddressTest do
     Miner.suspend()
 
     assert 2 <= :erlang.length(Chain.all_blocks)
-    assert [tx2] = split_blocks(Chain.all_blocks, address_bin, [])
+    assert [tx2] = Pool.get_txs_for_address(address_bin)
   end
 
 

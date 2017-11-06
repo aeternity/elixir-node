@@ -9,6 +9,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Chain.Worker, as: Chain
 
   require Logger
 
@@ -19,6 +20,9 @@ defmodule Aecore.Txs.Pool.Worker do
   def init(initial_pool) do
     {:ok, initial_pool}
   end
+
+
+  ## Client side
 
   @spec add_transaction(%SignedTx{}) :: :ok | :error
   def add_transaction(tx) do
@@ -38,6 +42,20 @@ defmodule Aecore.Txs.Pool.Worker do
   @spec get_and_empty_pool() :: map()
   def get_and_empty_pool() do
     GenServer.call(__MODULE__, :get_and_empty_pool)
+  end
+
+
+  @spec get_txs_for_address(String.t()) :: list()
+  def get_txs_for_address(address) do
+    GenServer.call(__MODULE__, {:get_txs_for_address, address})
+  end
+
+
+  ## Server side
+
+  def handle_call({:get_txs_for_address, address}, _from, state) do
+    txs_list = split_blocks(Chain.all_blocks(), address, [])
+    {:reply, txs_list, state}
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
@@ -65,6 +83,27 @@ defmodule Aecore.Txs.Pool.Worker do
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
+  end
+
+  ## Private functions
+
+    defp split_blocks([block | blocks], address, txs ) do
+    user_txs = check_address_tx(block.txs, address, txs)
+    split_blocks(blocks, address, user_txs)
+  end
+  defp split_blocks([], address, txs) do
+    txs
+  end
+
+  defp check_address_tx([tx | txs], address, user_txs) do
+    if tx.data.from_acc == address or tx.data.to_acc == address  do
+      user_txs = [tx.data | user_txs]
+    end
+
+    check_address_tx(txs, address, user_txs)
+  end
+   defp check_address_tx([], address, user_txs) do
+    user_txs
   end
 
 end
