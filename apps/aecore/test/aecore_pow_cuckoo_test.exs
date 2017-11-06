@@ -5,14 +5,12 @@ defmodule AecoreCuckooTest do
   alias Aecore.Pow.Cuckoo
   alias Aecore.Structures.Block
 
-  @doctest Cuckoo
-
   @moduledoc """
   Unit tests for the cuckoo module
   """
   @tag timeout: 1000000000
   test "Generate with a winning nonce and high target threshold, verify it" do
-    block_header = %{Block.genesis_header() | pow_evidence: nil }
+    block_header = %{Block.genesis_block().header | pow_evidence: nil }
     {t1, res}  =
       :timer.tc(Cuckoo, :generate,
         [block_header])

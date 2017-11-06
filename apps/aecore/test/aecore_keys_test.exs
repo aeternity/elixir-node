@@ -10,7 +10,7 @@ defmodule AecoreKeysTest do
   alias Aecore.Chain.Worker, as: Chain
 
   setup do
-    Keys.start_link()
+    Keys.start_link([])
     []
   end
 
@@ -20,6 +20,20 @@ defmodule AecoreKeysTest do
 
   test "sign transaction" do
     {:ok, to_account} = Keys.pubkey()
-    assert {:ok, _} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+    assert {:ok, _} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
   end
+
+  test "check pubkey length" do
+    pub_key_str = "041A470AE9831B61D9951A10D49663419CE087DF1BD7DB06578971767F032D389CB283AD4DD4E3532F3A5F3C89B006092CB6CECE39CAC3B06C2CB6DF8B51C73675"
+    pub_key_bin = pub_key_str |> Base.decode16!()
+    assert false  == Keys.verify("", "", pub_key_bin)
+  end
+
+  test "wrong key verification" do
+    pub_key_str = "041A470AE9831B61D9951A10D49663419CE087DF1BD7DB06578971767F032D389CB283AD4DD4E3"
+    pub_key_bin = pub_key_str |> Base.decode16!()
+
+    assert {:error, _} = Keys.verify("", "", pub_key_bin)
+  end
+
 end

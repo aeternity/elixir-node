@@ -17,6 +17,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
     is_difficulty_target_met = Cuckoo.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
+    total_fees = Miner.calculate_total_fees(new_block.txs)
 
     cond do
       # do not check previous block hash for genesis block, there is none
@@ -36,7 +37,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       !(validate_block_transactions(new_block) |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
-      coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
+      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
         throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       new_block.header.chain_state_hash != chain_state_hash ->
@@ -54,7 +55,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   end
 
   @spec block_header_hash(Header.header()) :: binary()
-  def block_header_hash(header) do
+  def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end

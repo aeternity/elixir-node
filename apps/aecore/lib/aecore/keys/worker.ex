@@ -9,8 +9,9 @@ defmodule Aecore.Keys.Worker do
 
   @filename_pub "key.pub"
   @filename_priv "key"
+  @pub_key_length 65
 
-  def start_link() do
+  def start_link(_args) do
     GenServer.start_link(
       __MODULE__,
       %{
@@ -38,10 +39,10 @@ defmodule Aecore.Keys.Worker do
      - value: The amount of a transaction
 
   """
-  @spec sign_tx(binary(), integer(), integer()) :: {:ok, %SignedTx{}}
-  def sign_tx(to_acc, value, nonce) do
+  @spec sign_tx(binary(), integer(), integer(), integer()) :: {:ok, %SignedTx{}}
+  def sign_tx(to_acc, value, nonce, fee) do
     {:ok, from_acc} = pubkey()
-    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce)
+    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee)
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
     {:ok, signed_tx}
@@ -123,19 +124,23 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
-
   def handle_call(
         {:verify, {term, signature, pub_key}},
         _from,
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
-    result =
-      :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
-        pub_key,
-        :crypto.ec_curve(curve)
-      ])
+    case is_valid_pub_key(pub_key) do
+      true ->
+        result =
+          :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
+                pub_key,
+                :crypto.ec_curve(curve)
+              ])
 
-    {:reply, result, state}
+        {:reply, result, state}
+      false ->
+        {:reply, {:error, "Key length is not valid!"}, state}
+    end
   end
 
   def handle_call(
@@ -292,6 +297,11 @@ defmodule Aecore.Keys.Worker do
   defp decrypt_pubkey(password, bin) do
     <<pub::65-binary, _padding::binary>> = :crypto.block_decrypt(:aes_ecb, hash(password), bin)
     pub
+  end
+
+  defp is_valid_pub_key(pub_key_str) do
+    pub_key_str
+    |> byte_size() == @pub_key_length
   end
 
   defp padding128(bin) do

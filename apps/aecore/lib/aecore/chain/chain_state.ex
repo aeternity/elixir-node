@@ -19,7 +19,8 @@ defmodule Aecore.Chain.ChainState do
           cond do
             transaction.data.from_acc != nil ->
               update_block_state(block_state, transaction.data.from_acc,
-                                 -transaction.data.value, transaction.data.nonce)
+                                 -(transaction.data.value + transaction.data.fee),
+                                 transaction.data.nonce)
 
             true ->
               block_state

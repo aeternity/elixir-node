@@ -10,7 +10,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Keys.Worker, as: Keys
 
   setup do
-    Pool.start_link()
+    Pool.start_link([])
     []
   end
 
@@ -18,9 +18,9 @@ defmodule AecoreTxsPoolTest do
   test "add transaction, remove it and get pool" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
     Miner.resume()
     Miner.suspend()
     assert :ok = Pool.add_transaction(tx1)
@@ -29,8 +29,8 @@ defmodule AecoreTxsPoolTest do
     assert Enum.count(Pool.get_pool()) == 1
     Miner.resume()
     Miner.suspend()
-    assert length(Chain.all_blocks) > 1
-    assert Enum.count(Chain.latest_block.txs) == 2
+    assert length(Chain.all_blocks()) > 1
+    assert Enum.count(Chain.latest_block().txs) == 2
     assert Enum.count(Pool.get_pool()) == 0
   end
 
