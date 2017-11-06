@@ -53,6 +53,27 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     end
   end
 
+  @spec single_validate_block(%Block{}) :: {:error, term()} | :ok
+  def single_validate_block(block) do
+    coinbase_transactions_sum = sum_coinbase_transactions(block)
+    cond do
+      block.header.txs_hash != calculate_root_hash(block.txs) ->
+        throw({:error, "Root hash of transactions does not match the one in header"})
+
+      !(validate_block_transactions(block) |> Enum.all?()) ->
+        throw({:error, "One or more transactions not valid"})
+
+      coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
+        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
+
+      block.header.version != Block.current_block_version() ->
+        throw({:error, "Invalid block version"})
+
+      true ->
+        :ok
+    end
+  end
+
   @spec block_header_hash(Header.header()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)

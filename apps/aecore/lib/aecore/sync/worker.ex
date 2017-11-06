@@ -30,6 +30,11 @@ defmodule Aecore.Sync.Worker do
     GenServer.call(__MODULE__, :update_statuses)
   end
 
+  @spec single_validate_all_blocks() :: :ok
+  def single_validate_all_blocks() do
+    GenServer.call(__MODULE__, :single_validate_all_blocks)
+  end
+
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
@@ -55,6 +60,22 @@ defmodule Aecore.Sync.Worker do
       end
     end
 
+    {:reply, :ok, updated_state}
+  end
+
+  def handle_call(:single_validate_all_blocks, _from ,state) do
+    updated_state = Enum.filter(state, fn{block_hash, _} ->
+        block_hash_hex = Base.encode16(block_hash)
+        block = HttpClient.get_block(block_hash_hex)
+        try do
+          BlockValidation.single_validate_block(block)
+          true
+        catch
+          {:error, _message} ->
+            false
+        end
+      end)
+      
     {:reply, :ok, updated_state}
   end
 
