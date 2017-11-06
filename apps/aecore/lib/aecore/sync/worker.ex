@@ -20,22 +20,42 @@ defmodule Aecore.Sync.Worker do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec ask_peers_for_latest_block() :: :ok
-  def ask_peers_for_latest_block() do
-    GenServer.call(__MODULE__, :ask_peers_for_latest_block)
+  @spec ask_peers_for_unknown_blocks() :: :ok
+  def ask_peers_for_unknown_blocks() do
+    GenServer.call(__MODULE__, :ask_peers_for_unknown_blocks)
+  end
+
+  @spec update_statuses() :: :ok
+  def update_statuses() do
+    GenServer.call(__MODULE__, :update_statuses)
   end
 
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
 
-  def handle_call(:ask_peers_for_latest_block, _from, state) do
+  def handle_call(:ask_peers_for_unknown_blocks, _from, state) do
     all_peers = Peers.all_peers()
     state = Enum.reduce(all_peers, state, fn ({uri, latest_block_hash}, acc) ->
         Map.merge(acc, check_peer_block(uri, latest_block_hash, %{}))
       end)
 
     {:reply, :ok, state}
+  end
+
+  def handle_call(:update_statuses, _from, state) do
+    updated_state = for {block_hash, %{peer: peer, status: status}} <- state, into: %{} do
+      block = Chain.get_block_by_hex_hash(block_hash)
+      must_be_updated = status == :bad && Map.has_key?(state, block.header.prev_hash)
+      case must_be_updated do
+        true ->
+          {block_hash, %{peer: peer, status: :good}}
+        false ->
+          {block_hash, %{peer: peer, status: status}}
+      end
+    end
+
+    {:reply, :ok, updated_state}
   end
 
   def check_peer_block(peer_uri, block_hash, blocks_with_status) do
@@ -52,6 +72,7 @@ defmodule Aecore.Sync.Worker do
               :error ->
                 :bad
             end
+
             check_peer_block(peer_uri, peer_block.header.prev_hash,
               Map.put(blocks_with_status,
                peer_block_hash, %{peer: peer_uri, status: status}))

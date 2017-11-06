@@ -50,7 +50,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block_by_hex_hash, hash})
   end
 
-  @spec get_block(term()) :: %Block{}
+  @spec get_block(binary()) :: %Block{}
   def get_block(hash) do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
