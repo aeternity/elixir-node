@@ -28,7 +28,6 @@ defmodule GetTxsForAddressTest do
       |> String.slice(1, String.length(Base.encode16(address)))
       |> Kernel.<> "1"
     address_bin = address_hex |> Base.decode16!()
-
     user_pubkey = {:ok, address_bin}
 
     {:ok, tx1} = Keys.sign_tx(elem(Keys.pubkey(), 1), 5, 1, 1)
