@@ -24,41 +24,41 @@ defmodule Aecore.Persistence.Worker do
   def init(_) do
     ## Ensures that the worker handles exit signals
     Process.flag(:trap_exit, true)
-    {:ok, setup()}
+    {:ok, []}
   end
 
-  def handle_call(:restore_blockchain, _from, %{table: nil}=state) do
-    {:reply, {:error, "failed on reading persistence db"}, state}
-  end
-
-  def handle_call(:restore_blockchain, _from, %{table: table}=state) do
-    {:reply, get_block_chain_states(table), state}
+  def handle_call(:restore_blockchain, _from, state) do
+    {:reply, get_block_chain_states(), state}
   end
 
   def handle_cast(_any, state) do
     {:noreply, state}
   end
 
-  def terminate(_, %{table: nil}), do: Logger.error("No db connection")
-  def terminate(_, %{table: table}) do
+  def terminate(_, _) do
     Aecore.Miner.Worker.suspend
+    {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
     :ok = :dets.insert(table, {@blockchain_key, Chain.get_current_state()})
+    halt_dets(table)
     Logger.info("Terminating, blockchain and chainstate were stored to disk")
   end
 
   ## Internal functions
 
-  defp setup do
+  @spec get_block_chain_states() :: {:ok, term()}
+  defp get_block_chain_states() do
     {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
-    %{table: table}
+    resp = case :dets.lookup(table, @blockchain_key) do
+             [] -> {:ok, :nothing_to_restore}
+             restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
+           end
+    halt_dets(table)
+    resp
   end
 
-  @spec get_block_chain_states(table :: reference()) :: {:ok, term()}
-  defp get_block_chain_states(table) do
-    case :dets.lookup(table, @blockchain_key) do
-      [] -> {:ok, :nothing_to_restore}
-      restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
-    end
+  defp halt_dets(table) do
+    :dets.close(table)
+    :dets.stop()
   end
 
 end

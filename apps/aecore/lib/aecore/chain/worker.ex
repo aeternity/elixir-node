@@ -11,6 +11,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Persistence.Worker, as: Persistence
 
   use GenServer
 
@@ -27,7 +28,7 @@ defmodule Aecore.Chain.Worker do
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
     initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
 
-    {:ok, initial_state}
+    {:ok, initial_state, 2000}
   end
 
   @doc """
@@ -187,6 +188,17 @@ defmodule Aecore.Chain.Worker do
   def handle_call(:txs_index, _from, state) do
     {_, _, txs_index} = state
     {:reply, txs_index, state}
+  end
+
+  ## After init(), we make async call in order
+  ## to restore the previous state from disk
+  def handle_info(:timeout, state) do
+    new_state =
+      case Persistence.restore_blockchain() do
+        {:ok, :nothing_to_restore} -> state
+        {:ok, restored_state} -> restored_state
+      end
+    {:noreply, new_state}
   end
 
   defp calculate_block_acc_txs_info(block) do
