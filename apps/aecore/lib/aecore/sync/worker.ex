@@ -67,13 +67,18 @@ defmodule Aecore.Sync.Worker do
 
   def handle_call(:update_statuses, _from, state) do
     updated_state = for {block_hash, %{peer: peer, status: status}} <- state, into: %{} do
-      block = Chain.get_block_by_hex_hash(block_hash)
-      must_be_updated = status == :bad && Map.has_key?(state, block.header.prev_hash)
-      case must_be_updated do
-        true ->
-          {block_hash, %{peer: peer, status: :good}}
-        false ->
+      case Chain.get_block_by_hex_hash(block_hash) do
+        {:error, _} ->
           {block_hash, %{peer: peer, status: status}}
+        block
+         ->
+          must_be_updated = status == :bad && Map.has_key?(state, block.header.prev_hash)
+          case must_be_updated do
+            true ->
+              {block_hash, %{peer: peer, status: :good}}
+            false ->
+              {block_hash, %{peer: peer, status: status}}
+          end
       end
     end
 
@@ -99,8 +104,9 @@ defmodule Aecore.Sync.Worker do
   end
 
   defp build_chain(state, {block_hash, peer}, chain) do
-    case HttpClient.get_block({peer, Base.encode16(block_hash)}) do
-      {:ok, peer_block} ->
+    {:ok, peer_block} = HttpClient.get_block({peer, Base.encode16(block_hash)})
+    cond do
+      peer_block.header != nil ->
         deserialized_block = Serialization.block(peer_block, :deserialize)
         has_parent_block_in_state = Map.has_key?(state, deserialized_block.header.prev_hash)
         has_parent_in_chain =
@@ -113,7 +119,7 @@ defmodule Aecore.Sync.Worker do
           true ->
             []
         end
-      :error ->
+      true ->
         Logger.info(fn -> "Couldn't get block #{block_hash} from #{peer}" end)
     end
   end
@@ -142,22 +148,24 @@ defmodule Aecore.Sync.Worker do
   defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
-        case HttpClient.get_block({peer_uri, block_hash}) do
-          {:ok, peer_block} ->
+        {:ok, peer_block} = HttpClient.get_block({peer_uri, block_hash})
+        cond do
+          peer_block.header != nil ->
             deserialized_block = Serialization.block(peer_block, :deserialize)
             peer_block_hash =
               BlockValidation.block_header_hash(deserialized_block.header)
-            status = case HttpClient.get_block({peer_uri, peer_block.header.prev_hash}) do
-              {:ok, _peer_block_prev} ->
+            {:ok, peer_block_parent} = HttpClient.get_block({peer_uri, peer_block.header.prev_hash})
+            status = cond do
+              peer_block_parent.header != nil ->
                 :good
-              :error ->
+              true ->
                 :bad
             end
 
             check_peer_block(peer_uri, peer_block.header.prev_hash,
               Map.put(blocks_with_status,
                peer_block_hash, %{peer: peer_uri, status: status}))
-          :error ->
+          true ->
             blocks_with_status
         end
       _ ->
@@ -168,13 +176,18 @@ defmodule Aecore.Sync.Worker do
   defp single_validate_all_blocks(state) do
     filtered_blocks_list = Enum.filter(state, fn{block_hash, %{peer: peer}} ->
         block_hash_hex = Base.encode16(block_hash)
-        {:ok, block} = HttpClient.get_block({peer, block_hash_hex})
-        try do
-          deserialized_block = Serialization.block(block, :deserialize)
-          BlockValidation.single_validate_block(deserialized_block)
-          true
-        catch
-          {:error, _message} ->
+        {:ok, peer_block} = HttpClient.get_block({peer, block_hash_hex})
+        cond do
+          peer_block.header != nil ->
+            try do
+              deserialized_block = Serialization.block(peer_block, :deserialize)
+              BlockValidation.single_validate_block(deserialized_block)
+              true
+            catch
+              {:error, _message} ->
+                false
+            end
+          true ->
             false
         end
       end)
