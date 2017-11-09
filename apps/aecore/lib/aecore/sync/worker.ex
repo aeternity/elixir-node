@@ -18,6 +18,11 @@ defmodule Aecore.Sync.Worker do
     {:ok, state}
   end
 
+  @spec add_block_to_state(binary(), term()) :: :ok
+  def add_block_to_state(block_hash, peer) do
+    GenServer.call(__MODULE__, {:add_block_to_state, block_hash, peer})
+  end
+
   def get_state do
     GenServer.call(__MODULE__, :get_state)
   end
@@ -40,6 +45,11 @@ defmodule Aecore.Sync.Worker do
   @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+  end
+
+  def handle_call({:add_block_to_state, block_hash, peer}, _from, state) do
+    updated_state = Map.put(state, block_hash, %{peer: peer, status: :bad})
+    {:reply, :ok, updated_state}
   end
 
   def handle_call(:get_state, _from, state) do
