@@ -74,7 +74,12 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-def handle_call({:add_peer,uri}, _from, %{peers: peers} = state) do
+def handle_call({:add_peer,uri}, _from, state) do
+    add_peer(uri, state)
+  end
+
+  defp add_peer(uri, state) do
+    %{peers: peers} = state
     case(Client.get_info(uri)) do
       {:ok, info} ->
         case @peer_nonce == info.peer_nonce do
@@ -147,8 +152,8 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers} = state) do
     {:noreply, state}
   end
 
-  def handle_cast({:schedule_add_peer, uri}, _from, state) do
-    Process.send_after(self(), {:add_peer, uri}, 5_000)
+  def handle_cast({:schedule_add_peer, uri}, state) do
+    {:reply, _, state} = add_peer(uri, state)
     {:noreply, state}
   end
 
