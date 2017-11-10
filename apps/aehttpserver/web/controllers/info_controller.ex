@@ -7,6 +7,8 @@ defmodule Aehttpserver.InfoController do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Peers.Worker, as: Peers
 
+  require Logger
+
   def info(conn, _params) do
     latest_block = Chain.latest_block()
     latest_block_header = latest_block.header
@@ -31,7 +33,7 @@ defmodule Aehttpserver.InfoController do
       true ->
         Logger.info("Peer already in our list")
       false ->
-        Peers.add_peer(peer)  
+        Peers.add_peer(peer)
     end
 
     json conn, %{current_block_version: latest_block.header.version,
