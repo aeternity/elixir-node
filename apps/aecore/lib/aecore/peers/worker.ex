@@ -14,12 +14,15 @@ defmodule Aecore.Peers.Worker do
 
   require Logger
 
-  @mersenne_prime 2147483647
+  @peer_nonce :rand.uniform(2147483647)
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(@mersenne_prime)}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{}}, name: __MODULE__)
   end
 
+  def get_peer_nonce() do
+    @peer_nonce
+  end
   ## Client side
 
   @spec add_peer(term) :: :ok | {:error, term()} | :error
@@ -40,12 +43,6 @@ defmodule Aecore.Peers.Worker do
   @spec all_peers() :: map()
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
-  end
-
-
-  @spec get_peers_nonce() :: integer
-  def get_peers_nonce() do
-    GenServer.call(__MODULE__, :get_peers_nonce)
   end
 
   @spec genesis_block_header_hash() :: term()
@@ -72,11 +69,11 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = state) do
+def handle_call({:add_peer,uri}, _from, %{peers: peers} = state) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
-        case own_nonce == info.peer_nonce do
-          false ->  
+        case @peer_nonce == info.peer_nonce do
+          false ->
             if(info.genesis_block_hash == genesis_block_header_hash()) do
               updated_peers = Map.put(peers, uri, info.current_block_hash)
               Logger.info(fn -> "Added #{uri} to the peer list" end)
@@ -86,7 +83,7 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = stat
                 "Failed to add #{uri}, genesis header hash not valid" end)
               {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
             end
-          true -> 
+          true ->
             Logger.debug(fn ->
               "Failed to add #{uri}, equal peer nonces" end)
             {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
@@ -136,10 +133,6 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = stat
 
   def handle_call(:all_peers, _from, %{peers: peers} = state) do
     {:reply, peers, %{state | peers: peers}}
-  end
-
-  def handle_call(:get_peers_nonce, _from, state) do
-    {:reply, state.nonce, state}
   end
 
   ## Async operations

@@ -18,10 +18,16 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
-     peer_nonce = Peers.get_peers_nonce()
+     peer_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
+
+    #Add whoever's getting our info
+    peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
+    peer = peer_ip <> ":" <> to_string(conn.port)
+
+    Aecore.Peers.Worker.add_peer(peer)
 
     json conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
