@@ -6,6 +6,7 @@ defmodule Aehttpserver.InfoController do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Scheduler, as: Scheduler
 
   def info(conn, _params) do
     latest_block = Chain.latest_block()
@@ -18,7 +19,7 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
-     peer_nonce = Peers.get_peers_nonce()
+     peer_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
