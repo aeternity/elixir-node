@@ -48,6 +48,11 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :get_peers_nonce)
   end
 
+  @spec add_peers_from_peers() :: :ok
+  def add_peers_from_peers() do
+    GenServer.call(__MODULE__, :add_peers_from_peers)
+  end
+
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
     Block.genesis_block().header
@@ -72,29 +77,8 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = state) do
-    case(Client.get_info(uri)) do
-      {:ok, info} ->
-        case own_nonce == info.peer_nonce do
-          false ->  
-            if(info.genesis_block_hash == genesis_block_header_hash()) do
-              updated_peers = Map.put(peers, uri, info.current_block_hash)
-              Logger.info(fn -> "Added #{uri} to the peer list" end)
-              {:reply, :ok, %{state | peers: updated_peers}}
-            else
-              Logger.error(fn ->
-                "Failed to add #{uri}, genesis header hash not valid" end)
-              {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
-            end
-          true -> 
-            Logger.debug(fn ->
-              "Failed to add #{uri}, equal peer nonces" end)
-            {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
-        end
-      :error ->
-        Logger.error("GET /info request error")
-        {:reply, :error, %{state | peers: peers}}
-    end
+  def handle_call({:add_peer, uri}, _from, state) do
+    add_peer(uri, state)
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
@@ -142,6 +126,27 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = stat
     {:reply, state.nonce, state}
   end
 
+  def handle_call(:add_peers_from_peers, _from, %{peers: peers, } = state) do
+    peers = Enum.reduce(peers, peers, fn({uri, _}, own_peers_acc) ->
+        case HttpClient.get_peers(uri) do
+          {:ok, peer_peers} ->
+            Enum.reduce(peer_peers, own_peers_acc, fn({uri, current_block_hash}, updated_own_peers_acc) ->
+                case add_peer(uri, state) do
+                  {:reply, :ok, state} ->
+                    %{peers: updated_state_peers} = state
+                    updated_state_peers
+                  {:reply, :error, _} ->
+                    updated_own_peers_acc
+                end
+              end)
+          :error ->
+            own_peers_acc
+        end
+      end)
+
+    {:reply, peers, %{state | peers: peers}}
+  end
+
   ## Async operations
 
   def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
@@ -163,5 +168,31 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = stat
 
   defp prep_data(:new_tx, %{}=data), do: Serialization.tx(data, :serialize)
   defp prep_data(:new_block, %{}=data), do: Serialization.block(data, :serialize)
+
+  defp add_peer(uri, state) do
+    %{peers: peers, nonce: own_nonce} = state
+    case(Client.get_info(uri)) do
+      {:ok, info} ->
+        case own_nonce == info.peer_nonce do
+          false ->
+            if(info.genesis_block_hash == genesis_block_header_hash()) do
+              updated_peers = Map.put(peers, uri, info.current_block_hash)
+              Logger.info(fn -> "Added #{uri} to the peer list" end)
+              {:reply, :ok, %{state | peers: updated_peers}}
+            else
+              Logger.error(fn ->
+                "Failed to add #{uri}, genesis header hash not valid" end)
+              {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
+            end
+          true ->
+            Logger.debug(fn ->
+              "Failed to add #{uri}, equal peer nonces" end)
+            {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
+        end
+      :error ->
+        Logger.error("GET /info request error")
+        {:reply, :error, %{state | peers: peers}}
+    end
+  end
 
 end
