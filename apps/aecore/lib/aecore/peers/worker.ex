@@ -15,6 +15,7 @@ defmodule Aecore.Peers.Worker do
   require Logger
 
   @mersenne_prime 2147483647
+  @max_peers 50
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(@mersenne_prime)}, name: __MODULE__)
@@ -130,7 +131,7 @@ defmodule Aecore.Peers.Worker do
     peers = Enum.reduce(peers, peers, fn({uri, _}, own_peers_acc) ->
         case HttpClient.get_peers(uri) do
           {:ok, peer_peers} ->
-            Enum.reduce(peer_peers, own_peers_acc, fn({uri, current_block_hash}, updated_own_peers_acc) ->
+            Enum.reduce(peer_peers, own_peers_acc, fn({uri, _}, updated_own_peers_acc) ->
                 case add_peer(uri, state) do
                   {:reply, :ok, state} ->
                     %{peers: updated_state_peers} = state
@@ -171,27 +172,32 @@ defmodule Aecore.Peers.Worker do
 
   defp add_peer(uri, state) do
     %{peers: peers, nonce: own_nonce} = state
-    case(Client.get_info(uri)) do
-      {:ok, info} ->
-        case own_nonce == info.peer_nonce do
-          false ->
-            if(info.genesis_block_hash == genesis_block_header_hash()) do
-              updated_peers = Map.put(peers, uri, info.current_block_hash)
-              Logger.info(fn -> "Added #{uri} to the peer list" end)
-              {:reply, :ok, %{state | peers: updated_peers}}
-            else
-              Logger.error(fn ->
-                "Failed to add #{uri}, genesis header hash not valid" end)
-              {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
-            end
-          true ->
-            Logger.debug(fn ->
-              "Failed to add #{uri}, equal peer nonces" end)
-            {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
-        end
-      :error ->
-        Logger.error("GET /info request error")
-        {:reply, :error, %{state | peers: peers}}
+    if(peers |> Map.keys() |> Enum.count() < @max_peers) do
+      case(Client.get_info(uri)) do
+        {:ok, info} ->
+          case own_nonce == info.peer_nonce do
+            false ->
+              if(info.genesis_block_hash == genesis_block_header_hash()) do
+                updated_peers = Map.put(peers, uri, info.current_block_hash)
+                Logger.info(fn -> "Added #{uri} to the peer list" end)
+                {:reply, :ok, %{state | peers: updated_peers}}
+              else
+                Logger.error(fn ->
+                  "Failed to add #{uri}, genesis header hash not valid" end)
+                {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
+              end
+            true ->
+              Logger.debug(fn ->
+                "Failed to add #{uri}, equal peer nonces" end)
+              {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
+          end
+        :error ->
+          Logger.error("GET /info request error")
+          {:reply, :error, %{state | peers: peers}}
+      end
+    else
+      Logger.info("Max peers count reached")
+      {:reply, :ok, state}
     end
   end
 
