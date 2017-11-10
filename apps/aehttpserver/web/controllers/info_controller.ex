@@ -27,7 +27,12 @@ defmodule Aehttpserver.InfoController do
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
     peer = peer_ip <> ":" <> to_string(conn.port)
 
-    Aecore.Peers.Worker.add_peer(peer)
+    case(Map.has_key?(Peers.all_peers, peer)) do
+      true ->
+        Logger.info("Peer already in our list")
+      false ->
+        Peers.add_peer(peer)  
+    end
 
     json conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
