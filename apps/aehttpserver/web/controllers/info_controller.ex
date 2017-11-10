@@ -19,7 +19,7 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
-     peer_nonce = Scheduler.get_peer_nonce()
+     peer_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
