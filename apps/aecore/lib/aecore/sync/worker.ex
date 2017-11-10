@@ -1,12 +1,11 @@
 defmodule Aecore.Sync.Worker do
+  use GenServer
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Serialization
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
-
-  use GenServer
 
   require Logger
 
@@ -21,10 +20,6 @@ defmodule Aecore.Sync.Worker do
   @spec add_block_to_state(binary(), term()) :: :ok
   def add_block_to_state(block_hash, peer) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, peer})
-  end
-
-  def get_state do
-    GenServer.call(__MODULE__, :get_state)
   end
 
   @spec ask_peers_for_unknown_blocks() :: :ok
@@ -50,10 +45,6 @@ defmodule Aecore.Sync.Worker do
   def handle_call({:add_block_to_state, block_hash, peer}, _from, state) do
     updated_state = Map.put(state, block_hash, %{peer: peer, status: :bad})
     {:reply, :ok, updated_state}
-  end
-
-  def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
   end
 
   def handle_call(:ask_peers_for_unknown_blocks, _from, state) do
@@ -104,9 +95,8 @@ defmodule Aecore.Sync.Worker do
   end
 
   defp build_chain(state, {block_hash, peer}, chain) do
-    {:ok, peer_block} = HttpClient.get_block({peer, Base.encode16(block_hash)})
-    cond do
-      peer_block.header != nil ->
+    case(HttpClient.get_block({peer, Base.encode16(block_hash)})) do
+      {:ok, peer_block} ->
         deserialized_block = Serialization.block(peer_block, :deserialize)
         has_parent_block_in_state = Map.has_key?(state, deserialized_block.header.prev_hash)
         has_parent_in_chain =
@@ -119,7 +109,7 @@ defmodule Aecore.Sync.Worker do
           true ->
             []
         end
-      true ->
+      :error ->
         Logger.info(fn -> "Couldn't get block #{block_hash} from #{peer}" end)
     end
   end
@@ -148,24 +138,23 @@ defmodule Aecore.Sync.Worker do
   defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
-        {:ok, peer_block} = HttpClient.get_block({peer_uri, block_hash})
-        cond do
-          peer_block.header != nil ->
+        case(HttpClient.get_block({peer_uri, Base.encode16(block_hash)})) do
+          {:ok, peer_block} ->
             deserialized_block = Serialization.block(peer_block, :deserialize)
             peer_block_hash =
               BlockValidation.block_header_hash(deserialized_block.header)
-            {:ok, peer_block_parent} = HttpClient.get_block({peer_uri, peer_block.header.prev_hash})
-            status = cond do
-              peer_block_parent.header != nil ->
-                :good
-              true ->
-                :bad
-            end
+            status =
+              case(HttpClient.get_block({peer_uri, Base.encode16(peer_block_hash)})) do
+                {:ok, _peer_block_parent} ->
+                  :good
+                :error ->
+                  :bad
+              end
 
             check_peer_block(peer_uri, peer_block.header.prev_hash,
               Map.put(blocks_with_status,
                peer_block_hash, %{peer: peer_uri, status: status}))
-          true ->
+          :error ->
             blocks_with_status
         end
       _ ->
@@ -176,9 +165,8 @@ defmodule Aecore.Sync.Worker do
   defp single_validate_all_blocks(state) do
     filtered_blocks_list = Enum.filter(state, fn{block_hash, %{peer: peer}} ->
         block_hash_hex = Base.encode16(block_hash)
-        {:ok, peer_block} = HttpClient.get_block({peer, block_hash_hex})
-        cond do
-          peer_block.header != nil ->
+        case(HttpClient.get_block({peer, block_hash_hex})) do
+          {:ok, peer_block} ->
             try do
               deserialized_block = Serialization.block(peer_block, :deserialize)
               BlockValidation.single_validate_block(deserialized_block)
@@ -187,7 +175,7 @@ defmodule Aecore.Sync.Worker do
               {:error, _message} ->
                 false
             end
-          true ->
+          :error ->
             false
         end
       end)

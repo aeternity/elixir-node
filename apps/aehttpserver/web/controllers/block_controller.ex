@@ -14,7 +14,7 @@ defmodule Aehttpserver.BlockController do
         block_hex_values = Serialization.block(block, :serialize)
         json conn, block_hex_values
       {:error, message} ->
-        json conn, %{error: message}
+        json %{conn | status: 404}, %{error: message}
     end
   end
 
