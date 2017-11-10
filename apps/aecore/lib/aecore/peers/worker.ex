@@ -79,7 +79,17 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call({:add_peer, uri}, _from, state) do
-    add_peer(uri, state)
+    case add_peer(uri, state) do
+      {:ok, state_with_peer} ->
+        case add_peer_peers(uri, state_with_peer) do
+          {:ok, state_with_peer_peers} ->
+            {:reply, :ok, state_with_peer_peers}
+          {:error, message} ->
+            {:reply, {:error, message}, state}
+        end
+      {:error, message} ->
+        {:reply, {:error, message}, state}
+    end
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
@@ -180,24 +190,44 @@ defmodule Aecore.Peers.Worker do
               if(info.genesis_block_hash == genesis_block_header_hash()) do
                 updated_peers = Map.put(peers, uri, info.current_block_hash)
                 Logger.info(fn -> "Added #{uri} to the peer list" end)
-                {:reply, :ok, %{state | peers: updated_peers}}
+                {:ok, %{state | peers: updated_peers}}
               else
                 Logger.error(fn ->
                   "Failed to add #{uri}, genesis header hash not valid" end)
-                {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
+                {:error, "Genesis header hash not valid"}
               end
             true ->
               Logger.debug(fn ->
                 "Failed to add #{uri}, equal peer nonces" end)
-              {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
+              {:error, "Equal peer nonces"}
           end
         :error ->
           Logger.error("GET /info request error")
-          {:reply, :error, %{state | peers: peers}}
+          {:error, "GET /info request error"}
       end
     else
       Logger.info("Max peers count reached")
-      {:reply, :ok, state}
+      {:error, "Max peers count reached"}
+    end
+  end
+
+  defp add_peer_peers(uri, state) do
+    %{peers: peers, } = state
+    case HttpClient.get_peers(uri) do
+      {:ok, peer_peers} ->
+        updated_peers = Enum.reduce(peer_peers, peers, fn({uri, _}, acc) ->
+            case add_peer(uri, %{state | peers: acc}) do
+              {:ok, state} ->
+                %{peers: updated_state_peers} = state
+                updated_state_peers
+              {:error, _} ->
+                acc
+            end
+          end)
+
+        {:ok, %{state | peers: updated_peers}}
+      :error ->
+        {:error, "GET /peers request error"}
     end
   end
 
