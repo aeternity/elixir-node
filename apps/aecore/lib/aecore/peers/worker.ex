@@ -63,6 +63,11 @@ defmodule Aecore.Peers.Worker do
     GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
   end
 
+  @spec schedule_add_peer(uri :: term()) :: term()
+  def schedule_add_peer(uri) do
+    GenServer.cast(__MODULE__, {:schedule_add_peer, uri})
+  end
+
   ## Server side
 
   def init(initial_peers) do
@@ -139,6 +144,11 @@ def handle_call({:add_peer,uri}, _from, %{peers: peers} = state) do
 
   def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
     send_to_peers(type, data, Map.keys(peers))
+    {:noreply, state}
+  end
+
+  def handle_cast({:schedule_add_peer, uri}, _from, state) do
+    Process.send_after(self(), {:add_peer, uri}, 5_000)
     {:noreply, state}
   end
 
