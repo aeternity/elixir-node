@@ -8,7 +8,6 @@ defmodule Aecore.Peers.Worker.Supervisor do
   def init(:ok) do
     children = [
       Aecore.Peers.Worker,
-      Aecore.Peers.Scheduler,
       Aecore.Peers.Sync
     ]
 
