@@ -79,14 +79,14 @@ defmodule Aecore.Peers.Worker do
     if Map.has_key?(peers, uri) do
       Logger.debug(fn ->
               "Skipped adding #{uri}, already known" end)
-      {:reply, {:error, "Peer already known"}, state} 
+      {:reply, {:error, "Peer already known"}, state}
     else
       case check_peer(uri, own_nonce) do
         {:ok, info} ->
           if map_size(peers) < @peers_max_count
           || :rand.uniform() < @probability_of_peer_remove_when_max do
-            peers_update1 = 
-              if map_size(peers) >= @peers_max_count do 
+            peers_update1 =
+              if map_size(peers) >= @peers_max_count do
                 random_peer = Enum.random(Map.keys(peers))
                 Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
                 Map.delete(peers, random_peer)
@@ -170,18 +170,18 @@ defmodule Aecore.Peers.Worker do
       HttpClient.post(peer, data, uri)
     end
   end
-  
+
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
         case own_nonce == info.peer_nonce do
-          false ->  
+          false ->
             if(info.genesis_block_hash == genesis_block_header_hash()) do
               {:ok, info}
             else
               {:error, "Genesis header hash not valid"}
             end
-          true -> 
+          true ->
             {:error, "Equal peer nonces"}
         end
       :error ->
@@ -193,3 +193,4 @@ defmodule Aecore.Peers.Worker do
   defp prep_data(:new_block, %{}=data), do: Serialization.block(data, :serialize)
 
 end
+

@@ -20,7 +20,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_info(:work, state) do
-    remove_dead()
+    check_peers()
     introduce_variety()
     refill()
     schedule_work()
@@ -31,10 +31,14 @@ defmodule Aecore.Peers.Sync do
     Process.send_after(self(), :work, @check_time)
   end
 
-  defp remove_dead do
+  defp check_peers do
     Peers.check_peers()
   end
 
+  @doc """
+  To make sure no peer is more popular in network then others,
+  we remove one peer at random if we have at least target_count of peers.
+  """
   @spec introduce_variety :: :ok
   defp introduce_variety do
     peers_count = map_size(Peers.all_peers())
@@ -48,6 +52,12 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
+  @doc """
+  If our peer count is lower then @peers_target_count,
+  we request peers list from all known peers and choose at random
+  min(peers_we_need_to_have_target_count, peers_we_currently_have)
+  new peers to add.
+  """
   @spec refill :: :ok | {:error, term()}
   defp refill do
     peers_count = map_size(Peers.all_peers())
@@ -65,7 +75,7 @@ defmodule Aecore.Peers.Sync do
           Logger.error(fn -> "No new peers added when trying to refill peers" end)
           {:error, "No new peers added"}
         end
-      true ->  
+      true ->
         :ok
     end
   end
@@ -91,7 +101,7 @@ defmodule Aecore.Peers.Sync do
     end)
     |> Enum.shuffle
     |> Enum.take(Enum.min([@peers_target_count - known_count, known_count]))
-    |> Enum.reduce(0, fn(peer, acc) -> 
+    |> Enum.reduce(0, fn(peer, acc) ->
       case Peers.add_peer(peer) do
         :ok -> acc+1
         _ -> acc
@@ -99,3 +109,4 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 end
+
