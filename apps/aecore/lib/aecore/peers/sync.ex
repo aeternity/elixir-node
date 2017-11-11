@@ -26,13 +26,31 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :refill)
   end
 
+  @spec introduce_variety :: :ok
+  def introduce_variety do
+    GenServer.call(__MODULE__, :introduce_variety)
+  end
+
+  def handle_call(:introduce_variety, _from, state) do
+    peers_count = map_size(Peers.all_peers())
+    if peers_count >= @peers_target_count do
+      random_peer = Enum.random(Map.keys(Peers.all_peers()))
+      Logger.info(fn -> "Removing #{random_peer} to introduce variety" end)
+      Peers.remove_peer(random_peer)
+      {:reply, :ok, state}
+    else
+      {:reply, :ok, state}
+    end
+  end
+
   def handle_call(:refill, _from, state) do
-    all_peers = Map.keys(Peers.all_peers())
+    peers_count = map_size(Peers.all_peers())
     cond do
-      all_peers == [] ->
+      peers_count == 0 ->
         Logger.error(fn -> "No peers" end)
         {:reply, {:error, "No peers"}, state}
-      length(all_peers) < @peers_target_count ->
+      peers_count < @peers_target_count ->
+        all_peers = Map.keys(Peers.all_peers())
         new_count = get_newpeers_and_add(all_peers)
         if new_count > 0 do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)

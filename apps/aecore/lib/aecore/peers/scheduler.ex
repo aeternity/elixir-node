@@ -16,6 +16,7 @@ defmodule Aecore.Peers.Scheduler do
 
   def handle_info(:work, state) do
     PeersSync.remove_dead()
+    PeersSync.introduce_variety()
     PeersSync.refill()
     schedule_work()
     {:noreply, state}
