@@ -83,8 +83,7 @@ defmodule Aecore.Peers.Worker do
     else
       case check_peer(uri, own_nonce) do
         {:ok, info} ->
-          if map_size(peers) < @peers_max_count
-          || :rand.uniform() < @probability_of_peer_remove_when_max do
+          if should_a_peer_be_added(map_size(peers)) do
             peers_update1 =
               if map_size(peers) >= @peers_max_count do
                 random_peer = Enum.random(Map.keys(peers))
@@ -187,6 +186,11 @@ defmodule Aecore.Peers.Worker do
       :error ->
         {:error, "Request error"}
     end
+  end
+
+  defp should_a_peer_be_added peers_count do
+    peers_count < @peers_max_count
+    || :rand.uniform() < @probability_of_peer_remove_when_max
   end
 
   defp prep_data(:new_tx, %{}=data), do: Serialization.tx(data, :serialize)
