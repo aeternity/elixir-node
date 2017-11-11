@@ -1,7 +1,7 @@
 defmodule Aecore.Peers.Scheduler do
   use GenServer
 
-  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Sync, as: PeersSync
 
   @check_time 60_000
 
@@ -10,12 +10,13 @@ defmodule Aecore.Peers.Scheduler do
   end
 
   def init(state) do
-    schedule_work()
+    Process.send_after(self(), :work, 5_000)
     {:ok, state}
   end
 
   def handle_info(:work, state) do
-    Peers.check_peers()
+    PeersSync.remove_dead()
+    PeersSync.refill()
     schedule_work()
     {:noreply, state}
   end
