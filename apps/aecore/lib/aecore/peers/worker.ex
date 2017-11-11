@@ -81,41 +81,28 @@ defmodule Aecore.Peers.Worker do
               "Skipped adding #{uri}, already known" end)
       {:reply, {:error, "Peer already known"}, state} 
     else
-      case(Client.get_info(uri)) do
+      case check_peer(uri, own_nonce) do
         {:ok, info} ->
-          case own_nonce == info.peer_nonce do
-            false ->  
-              if(info.genesis_block_hash == genesis_block_header_hash()) do
-                if map_size(peers) < @peers_max_count
-                || :rand.uniform() < @probability_of_peer_remove_when_max do
-                  peers_update1 = 
-                    if map_size(peers) >= @peers_max_count do 
-                      random_peer = Enum.random(Map.keys(peers))
-                      Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
-                      Map.delete(peers, random_peer)
-                    else
-                      peers
-                    end
-                  updated_peers = Map.put(peers_update1, uri, info.current_block_hash)
-                  Logger.info(fn -> "Added #{uri} to the peer list" end)
-                  {:reply, :ok, %{state | peers: updated_peers}}
-                else
-                  Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
-                  {:reply, :ok, state}
-                end
+          if map_size(peers) < @peers_max_count
+          || :rand.uniform() < @probability_of_peer_remove_when_max do
+            peers_update1 = 
+              if map_size(peers) >= @peers_max_count do 
+                random_peer = Enum.random(Map.keys(peers))
+                Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
+                Map.delete(peers, random_peer)
               else
-                Logger.error(fn ->
-                  "Failed to add #{uri}, genesis header hash not valid" end)
-                {:reply, {:error, "Genesis header hash not valid"}, %{state | peers: peers}}
+                peers
               end
-            true -> 
-              Logger.debug(fn ->
-                "Failed to add #{uri}, equal peer nonces" end)
-              {:reply, {:error, "Equal peer nonces"}, %{state | peers: peers}}
+            updated_peers = Map.put(peers_update1, uri, info.current_block_hash)
+            Logger.info(fn -> "Added #{uri} to the peer list" end)
+            {:reply, :ok, %{state | peers: updated_peers}}
+          else
+            Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
+            {:reply, :ok, state}
           end
-        :error ->
-          Logger.error("GET /info request error")
-          {:reply, :error, %{state | peers: peers}}
+        {:error, reason} ->
+          Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
+          {:reply, {:error, reason}, state}
       end
     end
   end
@@ -181,6 +168,24 @@ defmodule Aecore.Peers.Worker do
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
+    end
+  end
+  
+  defp check_peer(uri, own_nonce) do
+    case(Client.get_info(uri)) do
+      {:ok, info} ->
+        case own_nonce == info.peer_nonce do
+          false ->  
+            if(info.genesis_block_hash == genesis_block_header_hash()) do
+              {:ok, info}
+            else
+              {:error, "Genesis header hash not valid"}
+            end
+          true -> 
+            {:error, "Equal peer nonces"}
+        end
+      :error ->
+        {:error, "Request error"}
     end
   end
 
