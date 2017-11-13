@@ -14,7 +14,6 @@ defmodule Aecore.Peers.Worker do
   require Logger
 
   @mersenne_prime 2147483647
-  @nonce_table :ets.new(:nonce_table, [:named_table])
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -65,15 +64,18 @@ defmodule Aecore.Peers.Worker do
   """
   @spec get_peer_nonce() :: integer()
   def get_peer_nonce() do
-    nonce =
-      case :ets.lookup(@nonce_table, :nonce) do
-        [] ->
-          rand = :rand.uniform(@mersenne_prime)
-          :ets.insert(@nonce_table, {:nonce, rand})
-          rand
-        _ ->
-          :ets.lookup(@nonce_table, :nonce)
-      end
+    case :ets.info(:nonce_table) do
+      :undefined -> create_nonce_table()
+      _ -> :table_created
+    end
+    case :ets.lookup(:nonce_table, :nonce) do
+      [] ->
+        rand = :rand.uniform(@mersenne_prime)
+        :ets.insert(:nonce_table, {:nonce, rand})
+        rand
+      _ ->
+        :ets.lookup(:nonce_table, :nonce)[:nonce]
+    end
   end
 
   ## Server side
@@ -161,6 +163,11 @@ def handle_call({:add_peer,uri}, _from, peers) do
   end
 
   ## Internal functions
+
+  defp create_nonce_table() do
+    :ets.new(:nonce_table, [:named_table])
+  end
+
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
