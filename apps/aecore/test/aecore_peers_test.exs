@@ -10,7 +10,7 @@ defmodule AecorePeersTest do
   end
 
   test "add peer, get all peers, check peers and remove the peer" do
-    assert {:error, "Equal peer nonces"} = Peers.add_peer("localhost:4000")
+    assert {:error, _} = Peers.add_peer("localhost:4000")
     assert Enum.count(Peers.all_peers) == 0
     assert :ok = Peers.check_peers
     assert {:error, "Peer not found"} =

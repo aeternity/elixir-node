@@ -53,3 +53,7 @@ config :aecore, :pow,
     version: 1,
     difficulty_target: 1
   }
+
+config :aecore, :peers,
+  peers_target_count: 2,
+  peers_max_count: 4
