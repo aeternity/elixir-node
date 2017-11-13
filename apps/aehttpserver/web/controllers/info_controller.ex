@@ -6,7 +6,6 @@ defmodule Aehttpserver.InfoController do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Scheduler, as: Scheduler
 
   def info(conn, _params) do
     latest_block = Chain.latest_block()

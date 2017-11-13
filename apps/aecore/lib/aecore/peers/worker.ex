@@ -10,8 +10,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Utils.Serialization
-  alias Aecore.Peers.Scheduler, as: Scheduler
-
 
   require Logger
 
@@ -79,7 +77,7 @@ defmodule Aecore.Peers.Worker do
 def handle_call({:add_peer,uri}, _from, peers) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
-        case Aecore.Peers.Worker.get_peer_nonce() == info.peer_nonce do
+        case @peer_nonce == info.peer_nonce do
           false ->
             if(info.genesis_block_hash == genesis_block_header_hash()) do
               updated_peers = Map.put(peers, uri, info.current_block_hash)
