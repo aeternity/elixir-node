@@ -8,7 +8,7 @@ defmodule Aecore do
       Aecore.Miner.Worker.Supervisor,
       Aecore.Txs.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
-      Aecore.Sync.Worker.Supervisor
+      Aecore.Persistence.Worker.Supervisor
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

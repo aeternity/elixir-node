@@ -55,9 +55,9 @@ defmodule AecoreValidationTest do
   test "validate transactions in a block" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 10,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions

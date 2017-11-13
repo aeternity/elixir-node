@@ -51,7 +51,7 @@ defmodule Aecore.Miner.Worker do
 
   ## Idle ##
   def idle({:call, from}, :start, _data) do
-    IO.puts("Mining resumed by user")
+    Logger.info("Mining resumed by user")
     GenStateMachine.cast(__MODULE__, :mine)
     {:next_state, :running, 0, [{:reply, from, :ok}]}
   end
@@ -88,7 +88,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def running({:call, from}, :suspend, data) do
-    IO.puts("Mining stopped by user")
+    Logger.info("Mined stopped by user")
     {:next_state, :idle, data, [{:reply, from, :ok}]}
   end
 
@@ -100,18 +100,25 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data}
   end
 
-  def get_coinbase_transaction(to_acc) do
+  def get_coinbase_transaction(to_acc, total_fees) do
     tx_data = %TxData{
       from_acc: nil,
       to_acc: to_acc,
-      value: @coinbase_transaction_value,
-      nonce: 0
+      value: @coinbase_transaction_value + total_fees,
+      nonce: 0,
+      fee: 0
     }
 
     %SignedTx{data: tx_data, signature: nil}
   end
 
   def coinbase_transaction_value, do: @coinbase_transaction_value
+
+  def calculate_total_fees(txs) do
+    List.foldl(txs, 0, fn(tx, acc) ->
+        acc + tx.data.fee
+      end)
+  end
 
   ## Internal
   @spec mine_next_block(integer()) :: :ok | :error
@@ -135,7 +142,8 @@ defmodule Aecore.Miner.Worker do
 
       valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
       {_, pubkey} = Keys.pubkey()
-      valid_txs = [get_coinbase_transaction(pubkey) | valid_txs]
+      total_fees = calculate_total_fees(valid_txs)
+      valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state = ChainState.calculate_block_state(valid_txs)

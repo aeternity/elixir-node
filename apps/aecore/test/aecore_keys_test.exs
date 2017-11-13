@@ -20,7 +20,7 @@ defmodule AecoreKeysTest do
 
   test "sign transaction" do
     {:ok, to_account} = Keys.pubkey()
-    assert {:ok, _} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state(), to_account, %{nonce: 0}).nonce + 1)
+    assert {:ok, _} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
   end
 
   test "check pubkey length" do
