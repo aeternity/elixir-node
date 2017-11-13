@@ -5,7 +5,7 @@ defmodule Aehttpserver.BlockController do
   alias Aecore.Utils.Serialization
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Structures.Block
-  alias Aecore.Sync.Worker, as: Sync
+  alias Aecore.Peers.Sync
 
   def show(conn, params) do
     block = Chain.get_block_by_hex_hash(params["hash"])
