@@ -73,9 +73,9 @@ defmodule Aecore.Peers.Worker do
     end
     case :ets.lookup(:nonce_table, :nonce) do
       [] ->
-        rand = :rand.uniform(@mersenne_prime)
-        :ets.insert(:nonce_table, {:nonce, rand})
-        rand
+        nonce = :rand.uniform(@mersenne_prime)
+        :ets.insert(:nonce_table, {:nonce, nonce})
+        nonce
       _ ->
         :ets.lookup(:nonce_table, :nonce)[:nonce]
     end
