@@ -27,6 +27,7 @@ defmodule Aehttpserver.BlockController do
     peer = peer_ip <> ":" <> to_string(conn.port)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, peer)
+    Sync.add_valid_peer_blocks_to_chain()
     json conn, %{ok: "new block received"}
   end
 end

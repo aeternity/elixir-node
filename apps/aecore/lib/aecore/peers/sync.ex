@@ -229,7 +229,7 @@ defmodule Aecore.Peers.Sync do
   defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
-        case(HttpClient.get_block({peer_uri, Base.encode16(block_hash)})) do
+        case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, peer_block} ->
             deserialized_block = Serialization.block(peer_block, :deserialize)
             peer_block_hash =

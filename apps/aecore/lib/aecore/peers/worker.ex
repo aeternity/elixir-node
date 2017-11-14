@@ -94,7 +94,8 @@ defmodule Aecore.Peers.Worker do
                 peers
               end
             updated_peers = Map.put(peers_update1, uri, info.current_block_hash)
-            Sync.ask_peers_for_unknown_blocks(peers_update1)
+            Sync.ask_peers_for_unknown_blocks(updated_peers)
+            Sync.add_valid_peer_blocks_to_chain()
             Logger.info(fn -> "Added #{uri} to the peer list" end)
             {:reply, :ok, %{state | peers: updated_peers}}
           else
