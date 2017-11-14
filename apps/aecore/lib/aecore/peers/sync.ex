@@ -27,9 +27,9 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, peer})
   end
 
-  @spec ask_peers_for_unknown_blocks() :: :ok
-  def ask_peers_for_unknown_blocks() do
-    GenServer.call(__MODULE__, :ask_peers_for_unknown_blocks)
+  @spec ask_peers_for_unknown_blocks(map()) :: :ok
+  def ask_peers_for_unknown_blocks(peers) do
+    GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
 
   @spec update_statuses() :: :ok
@@ -52,9 +52,8 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, updated_state}
   end
 
-  def handle_call(:ask_peers_for_unknown_blocks, _from, state) do
-    all_peers = Peers.all_peers()
-    state = Enum.reduce(all_peers, state, fn ({uri, latest_block_hash}, acc) ->
+  def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
+    state = Enum.reduce(peers, state, fn ({uri, latest_block_hash}, acc) ->
         Map.merge(acc, check_peer_block(uri, latest_block_hash, %{}))
       end)
 
