@@ -5,6 +5,9 @@ defmodule Aecore.Peers.Sync do
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Serialization
 
   use GenServer
 
@@ -98,7 +101,8 @@ defmodule Aecore.Peers.Sync do
     |> Enum.shuffle
     |> Enum.take(Enum.min([@peers_target_count - known_count, known_count]))
     |> Enum.reduce(0, fn(peer, acc) ->
-      case Peers.add_peer(peer) do
+      peer_uri = elem(peer, 0)
+      case Peers.add_peer(peer_uri) do
         :ok -> acc+1
         _ -> acc
       end
