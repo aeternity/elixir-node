@@ -19,7 +19,7 @@ defmodule Aecore.Peers.Worker do
 
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
   end
 
   ## Client side
@@ -87,13 +87,13 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-  def handle_call({:add_peer,uri}, _from, peers) do
+  def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = state) do
     if Map.has_key?(peers, uri) do
       Logger.debug(fn ->
         "Skipped adding #{uri}, already known" end)
       {:reply, {:error, "Peer already known"}, peers}
     else
-      case check_peer(uri, get_peer_nonce()) do
+      case check_peer(uri, own_nonce) do
         {:ok, info} ->
           if should_a_peer_be_added(map_size(peers)) do
             peers_update1 =
@@ -106,25 +106,25 @@ defmodule Aecore.Peers.Worker do
               end
             updated_peers = Map.put(peers_update1, uri, info.current_block_hash)
             Logger.info(fn -> "Added #{uri} to the peer list" end)
-            {:reply, :ok, updated_peers}
+            {:reply, :ok, %{state | peers: updated_peers}}
           else
             Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
-            {:reply, :ok, peers}
+            {:reply, :ok, state}
           end
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
-          {:reply, {:error, reason}, peers}
+          {:reply, {:error, reason}, state}
       end
     end
   end
 
-  def handle_call({:remove_peer, uri}, _from, peers) do
+  def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
     if(Map.has_key?(peers, uri)) do
       Logger.info(fn -> "Removed #{uri} from the peer list" end)
-      {:reply, :ok, Map.delete(peers, uri)}
+      {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
     else
       Logger.error(fn -> "#{uri} is not in the peer list" end)
-      {:reply, {:error, "Peer not found"}, peers}
+      {:reply, {:error, "Peer not found"}, %{state | peers: peers}}
     end
   end
 
@@ -134,7 +134,7 @@ defmodule Aecore.Peers.Worker do
   in the current node. After that the current block hash for every peer
   is updated if the one in the latest GET /info request is different.
   """
-  def handle_call(:check_peers, _from, peers) do
+  def handle_call(:check_peers, _from, %{peers: peers} = state) do
     filtered_peers = :maps.filter(fn(peer, _) ->
         case Client.get_info(peer) do
           {:ok, info} -> info.genesis_block_hash == genesis_block_header_hash()
@@ -152,18 +152,18 @@ defmodule Aecore.Peers.Worker do
       end
     Logger.info(fn ->
       "#{Enum.count(peers) - Enum.count(filtered_peers)} peers were removed after the check" end)
-    {:reply, :ok, updated_peers}
+    {:reply, :ok, %{state | peers: updated_peers}}
   end
 
-  def handle_call(:all_peers, _from, peers) do
-    {:reply, peers, peers}
+  def handle_call(:all_peers, _from, %{peers: peers} = state) do
+    {:reply, peers, %{state | peers: peers}}
   end
 
   ## Async operations
 
-  def handle_cast({:broadcast_to_all, {type, data}}, peers) do
+  def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
     send_to_peers(type, data, Map.keys(peers))
-    {:noreply, peers}
+    {:noreply, state}
   end
 
   def handle_cast(any, peers) do
