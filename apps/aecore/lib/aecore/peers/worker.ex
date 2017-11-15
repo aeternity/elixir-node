@@ -11,7 +11,6 @@ defmodule Aecore.Peers.Worker do
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Utils.Serialization
 
-
   require Logger
 
   @mersenne_prime 2147483647
@@ -20,14 +19,14 @@ defmodule Aecore.Peers.Worker do
 
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: :rand.uniform(@mersenne_prime)}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
   end
 
   ## Client side
 
   @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
-    GenServer.call(__MODULE__, {:add_peer, uri}, 10000)
+    GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
   @spec remove_peer(term) :: :ok | :error
@@ -43,12 +42,6 @@ defmodule Aecore.Peers.Worker do
   @spec all_peers() :: map()
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
-  end
-
-
-  @spec get_peers_nonce() :: integer
-  def get_peers_nonce() do
-    GenServer.call(__MODULE__, :get_peers_nonce)
   end
 
   @spec genesis_block_header_hash() :: term()
@@ -69,6 +62,25 @@ defmodule Aecore.Peers.Worker do
     GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
   end
 
+  @doc """
+  Gets a random peer nonce
+  """
+  @spec get_peer_nonce() :: integer()
+  def get_peer_nonce() do
+    case :ets.info(:nonce_table) do
+      :undefined -> create_nonce_table()
+      _ -> :table_created
+    end
+    case :ets.lookup(:nonce_table, :nonce) do
+      [] ->
+        nonce = :rand.uniform(@mersenne_prime)
+        :ets.insert(:nonce_table, {:nonce, nonce})
+        nonce
+      _ ->
+        :ets.lookup(:nonce_table, :nonce)[:nonce]
+    end
+  end
+
   ## Server side
 
   def init(initial_peers) do
@@ -78,14 +90,14 @@ defmodule Aecore.Peers.Worker do
   def handle_call({:add_peer,uri}, _from, %{peers: peers, nonce: own_nonce} = state) do
     if Map.has_key?(peers, uri) do
       Logger.debug(fn ->
-              "Skipped adding #{uri}, already known" end)
-      {:reply, {:error, "Peer already known"}, state}
+        "Skipped adding #{uri}, already known" end)
+      {:reply, {:error, "Peer already known"}, peers}
     else
       case check_peer(uri, own_nonce) do
         {:ok, info} ->
           if should_a_peer_be_added(map_size(peers)) do
             peers_update1 =
-              if map_size(peers) >= @peers_max_count do
+            if map_size(peers) >= @peers_max_count do
                 random_peer = Enum.random(Map.keys(peers))
                 Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
                 Map.delete(peers, random_peer)
@@ -147,10 +159,6 @@ defmodule Aecore.Peers.Worker do
     {:reply, peers, %{state | peers: peers}}
   end
 
-  def handle_call(:get_peers_nonce, _from, state) do
-    {:reply, state.nonce, state}
-  end
-
   ## Async operations
 
   def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
@@ -158,12 +166,17 @@ defmodule Aecore.Peers.Worker do
     {:noreply, state}
   end
 
-  def handle_cast(any, state) do
+  def handle_cast(any, peers) do
     Logger.info("[Peers] Unhandled cast message:  #{inspect(any)}")
-    {:noreply, state}
+    {:noreply, peers}
   end
 
   ## Internal functions
+
+  defp create_nonce_table() do
+    :ets.new(:nonce_table, [:named_table])
+  end
+
   defp send_to_peers(uri, data, peers) do
     for peer <- peers do
       HttpClient.post(peer, data, uri)
@@ -197,4 +210,3 @@ defmodule Aecore.Peers.Worker do
   defp prep_data(:new_block, %{}=data), do: Serialization.block(data, :serialize)
 
 end
-
