@@ -11,7 +11,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Utils.Persistence
 
   use GenServer
 
@@ -20,23 +20,21 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    Process.flag(:trap_exit, true)
+    state =
+      case Persistence.get_block_chain_states() do
+        {:ok, :nothing_to_restore} ->
+          genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
-    genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
-    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-    initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
+          genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
+          genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+          latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+          txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+          {genesis_block_map, latest_block_chain_state, txs_index}
+        {:ok, restored_state} -> restored_state
+      end
 
-    {:ok, initial_state, 2000}
-  end
-
-  @doc """
-  Returns blockchain and chainstate
-  """
-  @spec get_current_state() :: {map(), map()}
-  def get_current_state() do
-    GenServer.call(__MODULE__, :get_current_state)
+    {:ok, state}
   end
 
   @spec latest_block() :: %Block{}
@@ -190,15 +188,10 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  ## After init(), we make async call in order
-  ## to restore the previous state from disk
-  def handle_info(:timeout, state) do
-    new_state =
-      case Persistence.restore_blockchain() do
-        {:ok, :nothing_to_restore} -> state
-        {:ok, restored_state} -> restored_state
-      end
-    {:noreply, new_state}
+  def terminate(_, state) do
+    Persistence.store_state(state)
+    Logger.warn("Terminting, state was stored on disk ...")
+
   end
 
   defp calculate_block_acc_txs_info(block) do
