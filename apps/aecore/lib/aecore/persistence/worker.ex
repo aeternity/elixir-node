@@ -2,8 +2,7 @@ defmodule Aecore.Persistence.Worker do
   @moduledoc """
   Store/Restore latest blockchain and chainstate
   """
-
-  @persistence_table Application.get_env(:aecore, :persistence)[:table]
+  
   @blockchain_key :block_chain_state_key
 
   use GenServer
@@ -49,7 +48,7 @@ defmodule Aecore.Persistence.Worker do
   ## Internal functions
 
   defp setup do
-    {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
+    {:ok, table} = :dets.open_file(persistance_table_path(), [type: :set])
     %{table: table}
   end
 
@@ -61,4 +60,7 @@ defmodule Aecore.Persistence.Worker do
     end
   end
 
+  defp persistance_table_path() do
+    Application.get_env(:aecore, :persistence)[:table]
+  end
 end
