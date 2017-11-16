@@ -16,8 +16,8 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     is_valid_chain_state = ChainState.validate_chain_state(chain_state)
 
     is_difficulty_target_met = Cuckoo.verify(new_block.header)
-    coinbase_transactions_sum = sum_coinbase_transactions(new_block)
-    total_fees = Miner.calculate_total_fees(new_block.txs)
+
+    single_validate_block(new_block)
 
     cond do
       # do not check previous block hash for genesis block, there is none
@@ -31,23 +31,11 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       !is_difficulty_target_met ->
         throw({:error, "Header hash doesnt meet the difficulty target"})
 
-      new_block.header.txs_hash != calculate_root_hash(new_block.txs) ->
-        throw({:error, "Root hash of transactions does not match the one in header"})
-
-      !(validate_block_transactions(new_block) |> Enum.all?()) ->
-        throw({:error, "One or more transactions not valid"})
-
-      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
-
       new_block.header.chain_state_hash != chain_state_hash ->
         throw({:error, "Chain state hash not matching"})
 
       !is_valid_chain_state ->
         throw({:error, "Chain state not valid"})
-
-      new_block.header.version != Block.current_block_version() ->
-        throw({:error, "Invalid block version"})
 
       true ->
         :ok
@@ -57,6 +45,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   @spec single_validate_block(%Block{}) :: {:error, term()} | :ok
   def single_validate_block(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
+    total_fees = Miner.calculate_total_fees(block.txs)
     cond do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
@@ -64,7 +53,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       !(validate_block_transactions(block) |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
-      coinbase_transactions_sum > Miner.coinbase_transaction_value() ->
+      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
         throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
       block.header.version != Block.current_block_version() ->
