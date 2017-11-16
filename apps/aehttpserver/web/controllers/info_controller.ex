@@ -33,10 +33,10 @@ defmodule Aehttpserver.InfoController do
       true ->
         Logger.info("Peer already in our list")
       false ->
-        # Peers.add_peer(peer)
         Peers.schedule_add_peer(peer)
     end
 
+    conn = Plug.Conn.put_resp_header(conn, "server", "aehttpserver")
     json conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
                  current_block_hash: latest_block_header,
