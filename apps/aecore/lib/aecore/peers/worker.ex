@@ -200,7 +200,6 @@ defmodule Aecore.Peers.Worker do
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
-        IO.inspect(info.server)
         case own_nonce == info.peer_nonce do
           false ->
             cond do
