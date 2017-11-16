@@ -1,6 +1,5 @@
 defmodule Aecore.Peers.Sync do
 
-  @check_time 60_000
   @peers_target_count Application.get_env(:aecore, :peers)[:peers_target_count]
 
   alias Aecore.Peers.Worker, as: Peers
@@ -18,7 +17,6 @@ defmodule Aecore.Peers.Sync do
   end
 
   def init(state) do
-    Process.send_after(self(), :work, 5_000)
     {:ok, state}
   end
 
@@ -98,26 +96,10 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, filtered_state}
   end
 
-  def handle_info(:work, state) do
-    check_peers()
-    introduce_variety()
-    refill()
-    schedule_work()
-    {:noreply, state}
-  end
-
-  defp schedule_work() do
-    Process.send_after(self(), :work, @check_time)
-  end
-
-  defp check_peers do
-    Peers.check_peers()
-  end
-
   #To make sure no peer is more popular in network then others,
   #we remove one peer at random if we have at least target_count of peers.
   @spec introduce_variety :: :ok
-  defp introduce_variety do
+  def introduce_variety do
     peers_count = map_size(Peers.all_peers())
     if peers_count >= @peers_target_count do
       random_peer = Enum.random(Map.keys(Peers.all_peers()))
@@ -134,7 +116,7 @@ defmodule Aecore.Peers.Sync do
   #min(peers_we_need_to_have_target_count, peers_we_currently_have)
   #new peers to add.
   @spec refill :: :ok | {:error, term()}
-  defp refill do
+  def refill do
     peers_count = map_size(Peers.all_peers())
     cond do
       peers_count == 0 ->
