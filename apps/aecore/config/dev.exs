@@ -61,5 +61,5 @@ config :aecore, :pow,
   }
 
 config :aecore, :peers,
-  peers_target_count: 2,
+  peers_target_count: 3,
   peers_max_count: 4

@@ -10,6 +10,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Utils.Serialization
+  alias Aecore.Peers.Sync
 
   require Logger
 
@@ -91,7 +92,7 @@ defmodule Aecore.Peers.Worker do
     if Map.has_key?(peers, uri) do
       Logger.debug(fn ->
         "Skipped adding #{uri}, already known" end)
-      {:reply, {:error, "Peer already known"}, peers}
+      {:reply, {:error, "Peer already known"}, state}
     else
       case check_peer(uri, own_nonce) do
         {:ok, info} ->

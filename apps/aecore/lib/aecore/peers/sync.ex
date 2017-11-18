@@ -5,6 +5,9 @@ defmodule Aecore.Peers.Sync do
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Utils.Serialization
 
   use GenServer
 
@@ -79,12 +82,13 @@ defmodule Aecore.Peers.Sync do
   defp get_newpeers_and_add(known) do
     known_count = length(known)
     known_set = MapSet.new(known)
+    number_of_peers_to_add = Enum.min([@peers_target_count - known_count, known_count])
     known
     |> Enum.shuffle
     |> Enum.take(@peers_target_count - known_count)
     |> Enum.reduce([], fn(peer, acc) ->
       case (HttpClient.get_peers(peer)) do
-        {:ok, list} -> Enum.concat(list, acc)
+        {:ok, list} -> Enum.concat(acc, Map.keys(list))
         :error -> acc
       end
     end)
@@ -96,11 +100,15 @@ defmodule Aecore.Peers.Sync do
       end
     end)
     |> Enum.shuffle
-    |> Enum.take(Enum.min([@peers_target_count - known_count, known_count]))
     |> Enum.reduce(0, fn(peer, acc) ->
-      case Peers.add_peer(peer) do
-        :ok -> acc+1
-        _ -> acc
+      #if we have successfully added less then number_of_peers_to_add peers then try to add another one
+      if acc < number_of_peers_to_add do 
+        case Peers.add_peer(peer) do
+          :ok -> acc+1
+          _ -> acc
+        end
+      else
+        acc
       end
     end)
   end
