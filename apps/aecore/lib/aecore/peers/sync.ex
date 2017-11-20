@@ -39,11 +39,6 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :update_statuses)
   end
 
-  @spec single_validate_all_blocks() :: :ok
-  def single_validate_all_blocks() do
-    GenServer.call(__MODULE__, :single_validate_all_blocks)
-  end
-
   @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
@@ -86,17 +81,9 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, updated_state}
   end
 
-  def handle_call(:single_validate_all_blocks, _from ,state) do
-    updated_state = single_validate_all_blocks(state)
-
-    {:reply, :ok, updated_state}
-  end
-
   def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
-    validated_peer_blocks = single_validate_all_blocks(state)
-
     filtered_state =
-      Enum.reduce(validated_peer_blocks, validated_peer_blocks, fn({block_hash, %{peer: peer}}, acc) ->
+      Enum.reduce(state, state, fn({block_hash, %{peer: peer}}, acc) ->
           built_chain = build_chain(acc, {block_hash, peer}, [])
           add_built_chain(built_chain, state)
       end)
@@ -175,11 +162,9 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
-  @doc """
-  Builds a chain, starting from the given block,
-  until we reach a block, of which the previous block is the highest in our chain
-  (that means we can add this chain to ours)
-  """
+  # Builds a chain, starting from the given block,
+  # until we reach a block, of which the previous block is the highest in our chain
+  # (that means we can add this chain to ours)
   defp build_chain(state, {block_hash, peer}, chain) do
     case(HttpClient.get_block({peer, Base.encode16(block_hash)})) do
       {:ok, peer_block} ->
@@ -200,10 +185,8 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  @doc """
-  Adds the given chain to the local chain and
-  deletes the blocks we added from the state
-  """
+  # Adds the given chain to the local chain and
+  # deletes the blocks we added from the state
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
         case Chain.add_block(block) do
@@ -215,57 +198,37 @@ defmodule Aecore.Peers.Sync do
       end)
   end
 
-  @doc """
-  Gets all unknown blocks, starting from the given one and sets status for each one
-  """
+  # Gets all unknown blocks, starting from the given one and sets status for each one
   defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, peer_block} ->
-            status =
-              case(HttpClient.get_block({peer_uri, peer_block.header.prev_hash})) do
-                {:ok, _peer_block_parent} ->
-                  :good
-                :error ->
-                  :bad
-              end
+            deserialized_block = Serialization.block(peer_block, :deserialize)
+            try do
+              BlockValidation.single_validate_block(deserialized_block)
+              peer_block_hash =
+                BlockValidation.block_header_hash(deserialized_block.header)
+              status =
+                case(HttpClient.get_block({peer_uri, peer_block.header.prev_hash})) do
+                  {:ok, _peer_block_parent} ->
+                    :good
+                  :error ->
+                    :bad
+                end
 
-            check_peer_block(peer_uri, peer_block.header.prev_hash,
-              Map.put(blocks_with_status,
-               peer_block_hash, %{peer: peer_uri, status: status}))
+              check_peer_block(peer_uri, peer_block.header.prev_hash,
+                Map.put(blocks_with_status,
+                 peer_block_hash, %{peer: peer_uri, status: status}))
+            catch
+              {:error, _} ->
+                blocks_with_status
+            end
           :error ->
             blocks_with_status
         end
       _ ->
         blocks_with_status
     end
-  end
-
-  @doc """
-  Validates each block without taking the Chain.state
-  or the previous block into consideration
-  """
-  defp single_validate_all_blocks(state) do
-    filtered_blocks_list = Enum.filter(state, fn{block_hash, %{peer: peer}} ->
-        block_hash_hex = Base.encode16(block_hash)
-        case(HttpClient.get_block({peer, block_hash_hex})) do
-          {:ok, peer_block} ->
-            try do
-              deserialized_block = Serialization.block(peer_block, :deserialize)
-              BlockValidation.single_validate_block(deserialized_block)
-              true
-            catch
-              {:error, _message} ->
-                false
-            end
-          :error ->
-            false
-        end
-      end)
-
-    List.foldl(filtered_blocks_list, %{}, fn({block_hash, block_data}, acc) ->
-        Map.put(acc, block_hash, block_data)
-      end)
   end
 end
