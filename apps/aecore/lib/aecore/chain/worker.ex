@@ -8,7 +8,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Utils.Persistence
@@ -92,7 +91,7 @@ defmodule Aecore.Chain.Worker do
   def all_blocks() do
     latest_block_obj = latest_block()
     latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
-    get_blocks(latest_block_hash, latest_block_obj.header.height)
+    get_blocks(latest_block_hash, latest_block_obj.header.height + 1)
   end
 
   ## Server side
@@ -146,7 +145,7 @@ defmodule Aecore.Chain.Worker do
       updated_block_map = Map.put(block_map, block_hash, block)
       has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
 
-      {deleted_latest_chain_state, prev_chain_state} = case has_prev_block do
+      {deleted_latest_chain_state, _} = case has_prev_block do
         true ->
           prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
           {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
