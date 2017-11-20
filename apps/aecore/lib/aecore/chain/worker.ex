@@ -11,6 +11,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Utils.Persistence
+  alias Aecore.Utils.Blockchain.Difficulty
 
   use GenServer
 
@@ -67,8 +68,23 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end
 
+  @spec add_validated_block(%Block{}) :: :ok
+  def add_validated_block(%Block{} = block) do
+    latest_block = latest_block()
+
+    prev_block_chain_state = chain_state()
+    new_block_state = ChainState.calculate_block_state(block.txs)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+
+    latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
+    blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
+
+    BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
+    add_block(block)
+  end
+
   @spec add_block(%Block{}) :: :ok
-  def add_block(%Block{} = block) do
+  defp add_block(%Block{} = block) do
     GenServer.call(__MODULE__, {:add_block, block})
   end
 
@@ -137,8 +153,6 @@ defmodule Aecore.Chain.Worker do
     new_block_txs_index = calculate_block_acc_txs_info(block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     try do
-      BlockValidation.validate_block!(block, block_map[block.header.prev_hash], new_chain_state)
-
       Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
       block_hash = BlockValidation.block_header_hash(block.header)

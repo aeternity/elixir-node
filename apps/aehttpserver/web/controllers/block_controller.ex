@@ -23,7 +23,7 @@ defmodule Aehttpserver.BlockController do
 
     block = Aecore.Utils.Serialization.block(map, :deserialize)
 
-    Aecore.Chain.Worker.add_block(block)
+    Aecore.Chain.Worker.add_validated_block(block)
     json conn, %{ok: "new block received"}
   end
 end

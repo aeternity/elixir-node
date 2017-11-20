@@ -138,7 +138,17 @@ defmodule Aecore.Miner.Worker do
         Enum.at(blocks, 1)
     end
     try do
-      BlockValidation.validate_block!(latest_block, previous_block, chain_state)
+
+      BlockValidation.validate_block!(latest_block, previous_block, chain_state, blocks_for_difficulty_calculation)
+
+    catch
+      {:error, _message} ->
+        Logger.error(fn ->
+          "Failed to mine block"
+        end)
+    end
+
+      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
       {_, pubkey} = Keys.pubkey()
@@ -151,8 +161,6 @@ defmodule Aecore.Miner.Worker do
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-
-      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       unmined_header =
         Header.create(
@@ -172,17 +180,11 @@ defmodule Aecore.Miner.Worker do
           Logger.info(fn ->
             "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
             end)
-          Chain.add_block(block)
+          Chain.add_validated_block(block)
           {:block_found, 0}
 
         {:error, _message} ->
           {:no_block_found, start_nonce + @nonce_per_cycle}
       end
-    catch
-      {:error, _message} ->
-        Logger.error(fn ->
-          "Failed to mine block"
-        end)
-    end
   end
 end
