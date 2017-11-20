@@ -175,8 +175,8 @@ defmodule Aecore.Peers.Sync do
 
   # Gets all unknown blocks, starting from the given one
   defp check_peer_block(peer_uri, block_hash, state) do
-    case Chain.get_block_by_hex_hash(block_hash) do
-      {:error, _} ->
+    case Chain.has_block?(block_hash) do
+      false ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, peer_block} ->
             deserialized_block = Serialization.block(peer_block, :deserialize)
@@ -194,7 +194,7 @@ defmodule Aecore.Peers.Sync do
           :error ->
             state
         end
-      _ ->
+      true ->
         state
     end
   end

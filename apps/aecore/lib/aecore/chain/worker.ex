@@ -63,6 +63,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
+  @spec has_block?(term()) :: true | false
+  def has_block?(hash) do
+    GenServer.call(__MODULE__, {:has_block, hash})
+  end
+
   @spec get_blocks(binary(), integer()) :: :ok
   def get_blocks(start_block_hash, size) do
     Enum.reverse(get_blocks([], start_block_hash, size))
@@ -115,6 +120,13 @@ defmodule Aecore.Chain.Worker do
     else
       {:reply, {:error, "Block not found"}, state}
     end
+  end
+
+  def handle_call({:has_block, hex_hash}, _from, state) do
+    {block_map, _, _} = state
+    binary_hash = Base.decode16(hex_hash)
+
+    {:reply, Map.has_key?(block_map, binary_hash), state}
   end
 
   def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
