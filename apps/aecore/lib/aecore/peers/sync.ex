@@ -20,6 +20,10 @@ defmodule Aecore.Peers.Sync do
     {:ok, state}
   end
 
+  def get_state() do
+    GenServer.call(__MODULE__, :get_state)
+  end
+
   @spec add_block_to_state(binary(), term()) :: :ok
   def add_block_to_state(block_hash, peer) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, peer})
@@ -43,6 +47,10 @@ defmodule Aecore.Peers.Sync do
   @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+  end
+
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
   end
 
   def handle_call({:add_block_to_state, block_hash, peer}, _from, state) do
@@ -85,12 +93,12 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
-    updated_state = single_validate_all_blocks(state)
+    validated_peer_blocks = single_validate_all_blocks(state)
 
-    filtered_state = Enum.reduce(updated_state, updated_state, fn({block_hash, %{peer: peer}}, acc) ->
+    filtered_state =
+      Enum.reduce(validated_peer_blocks, validated_peer_blocks, fn({block_hash, %{peer: peer}}, acc) ->
           built_chain = build_chain(acc, {block_hash, peer}, [])
-          add_built_chain(built_chain)
-          remove_added_blocks_from_state(acc)
+          add_built_chain(built_chain, state)
       end)
 
     {:reply, :ok, filtered_state}
@@ -187,24 +195,14 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  defp add_built_chain(chain) do
-    Enum.each(chain, fn(block) ->
-        Chain.add_block(block)
-      end)
-  end
-
-  defp remove_added_blocks_from_state(state) do
-    state_with_removed_blocks = Enum.filter(state, fn {block_hash, _} ->
-        case Chain.get_block(block_hash) do
-          {:error, _} ->
-            true
-          _ ->
-            false
+  defp add_built_chain(chain, state) do
+    Enum.reduce(chain, state, fn (block, acc) ->
+        case Chain.add_block(block) do
+          :ok ->
+            Map.delete(state, BlockValidation.block_header_hash(block.header))
+          :error ->
+            acc
         end
-      end)
-
-    List.foldl(state_with_removed_blocks, %{}, fn({block_hash, block_data}, acc) ->
-        Map.put(acc, block_hash, block_data)
       end)
   end
 
