@@ -34,11 +34,6 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
 
-  @spec update_statuses() :: :ok
-  def update_statuses() do
-    GenServer.call(__MODULE__, :update_statuses)
-  end
-
   @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
@@ -49,7 +44,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:add_block_to_state, block_hash, peer}, _from, state) do
-    updated_state = Map.put(state, block_hash, %{peer: peer, status: :bad})
+    updated_state = Map.put(state, block_hash, peer)
     {:reply, :ok, updated_state}
   end
 
@@ -61,29 +56,9 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, state}
   end
 
-  def handle_call(:update_statuses, _from, state) do
-    updated_state = for {block_hash, %{peer: peer, status: status}} <- state, into: %{} do
-      case Chain.get_block_by_hex_hash(block_hash) do
-        {:error, _} ->
-          {block_hash, %{peer: peer, status: status}}
-        block
-         ->
-          must_be_updated = status == :bad && Map.has_key?(state, block.header.prev_hash)
-          case must_be_updated do
-            true ->
-              {block_hash, %{peer: peer, status: :good}}
-            false ->
-              {block_hash, %{peer: peer, status: status}}
-          end
-      end
-    end
-
-    {:reply, :ok, updated_state}
-  end
-
   def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
     filtered_state =
-      Enum.reduce(state, state, fn({block_hash, %{peer: peer}}, acc) ->
+      Enum.reduce(state, state, fn({block_hash, peer}, acc) ->
           built_chain = build_chain(acc, {block_hash, peer}, [])
           add_built_chain(built_chain, state)
       end)
@@ -198,8 +173,8 @@ defmodule Aecore.Peers.Sync do
       end)
   end
 
-  # Gets all unknown blocks, starting from the given one and sets status for each one
-  defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
+  # Gets all unknown blocks, starting from the given one
+  defp check_peer_block(peer_uri, block_hash, state) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
@@ -209,26 +184,18 @@ defmodule Aecore.Peers.Sync do
               BlockValidation.single_validate_block(deserialized_block)
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
-              status =
-                case(HttpClient.get_block({peer_uri, peer_block.header.prev_hash})) do
-                  {:ok, _peer_block_parent} ->
-                    :good
-                  :error ->
-                    :bad
-                end
 
               check_peer_block(peer_uri, peer_block.header.prev_hash,
-                Map.put(blocks_with_status,
-                 peer_block_hash, %{peer: peer_uri, status: status}))
+                Map.put(state, peer_block_hash, peer_uri))
             catch
               {:error, _} ->
-                blocks_with_status
+                state
             end
           :error ->
-            blocks_with_status
+            state
         end
       _ ->
-        blocks_with_status
+        state
     end
   end
 end
