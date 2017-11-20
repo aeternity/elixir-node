@@ -175,6 +175,11 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
+  @doc """
+  Builds a chain, starting from the given block,
+  until we reach a block, of which the previous block is the highest in our chain
+  (that means we can add this chain to ours)
+  """
   defp build_chain(state, {block_hash, peer}, chain) do
     case(HttpClient.get_block({peer, Base.encode16(block_hash)})) do
       {:ok, peer_block} ->
@@ -195,6 +200,10 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
+  @doc """
+  Adds the given chain to the local chain and
+  deletes the blocks we added from the state
+  """
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
         case Chain.add_block(block) do
@@ -206,16 +215,16 @@ defmodule Aecore.Peers.Sync do
       end)
   end
 
+  @doc """
+  Gets all unknown blocks, starting from the given one and sets status for each one
+  """
   defp check_peer_block(peer_uri, block_hash, blocks_with_status) do
     case Chain.get_block_by_hex_hash(block_hash) do
       {:error, _} ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, peer_block} ->
-            deserialized_block = Serialization.block(peer_block, :deserialize)
-            peer_block_hash =
-              BlockValidation.block_header_hash(deserialized_block.header)
             status =
-              case(HttpClient.get_block({peer_uri, Base.encode16(peer_block_hash)})) do
+              case(HttpClient.get_block({peer_uri, peer_block.header.prev_hash})) do
                 {:ok, _peer_block_parent} ->
                   :good
                 :error ->
@@ -233,6 +242,10 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
+  @doc """
+  Validates each block without taking the Chain.state
+  or the previous block into consideration
+  """
   defp single_validate_all_blocks(state) do
     filtered_blocks_list = Enum.filter(state, fn{block_hash, %{peer: peer}} ->
         block_hash_hex = Base.encode16(block_hash)
