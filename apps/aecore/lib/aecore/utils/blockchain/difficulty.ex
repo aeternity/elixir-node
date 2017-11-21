@@ -1,6 +1,6 @@
 defmodule Aecore.Utils.Blockchain.Difficulty do
 
-  @number_of_blocks 3
+  @number_of_blocks 100
   @max_difficulty_change 2
   @target_distance 60000
 

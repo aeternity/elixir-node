@@ -74,9 +74,15 @@ defmodule Aecore.Miner.Worker do
 
   ## Running ##
   def running(:cast, :mine, start_nonce) do
-    {_, next_nonce} = mine_next_block(start_nonce)
-    GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, next_nonce}
+    {status, next_nonce} = mine_next_block(start_nonce)
+    case status do
+      :error ->
+        Logger.info("Mining stopped by error")
+        {:next_state, :idle, 0}
+      _ ->
+        GenStateMachine.cast(__MODULE__, :mine)
+        {:next_state, :running, next_nonce}
+    end
   end
 
   def running({:call, from}, :get_state, _data) do
@@ -88,7 +94,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def running({:call, from}, :suspend, data) do
-    Logger.info("Mined stopped by user")
+    Logger.info("Mining stopped by user")
     {:next_state, :idle, data, [{:reply, from, :ok}]}
   end
 
@@ -115,9 +121,13 @@ defmodule Aecore.Miner.Worker do
   def coinbase_transaction_value, do: @coinbase_transaction_value
 
   def calculate_total_fees(txs) do
-    List.foldl(txs, 0, fn(tx, acc) ->
+    List.foldl(
+      txs,
+      0,
+      fn (tx, acc) ->
         acc + tx.data.fee
-      end)
+      end
+    )
   end
 
   ## Internal
@@ -127,31 +137,37 @@ defmodule Aecore.Miner.Worker do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     chain_state = Chain.chain_state(latest_block_hash)
 
-    txs_list = Map.values(Pool.get_pool())
-    ordered_txs_list = Enum.sort(txs_list, fn(tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
+    blocks_for_difficulty_validation = if(latest_block.header.height == 0) do
+      Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
+    else
+      [_ | something] = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks() + 1)
+      something
+    end
 
-    blocks_for_difficulty_calculation = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
     previous_block = cond do
       latest_block == Block.genesis_block() -> nil
       true ->
         blocks = Chain.get_blocks(latest_block_hash, 2)
         Enum.at(blocks, 1)
     end
+
     try do
+      BlockValidation.validate_block!(
+        latest_block,
+        previous_block,
+        chain_state,
+        blocks_for_difficulty_validation
+      )
 
-      BlockValidation.validate_block!(latest_block, previous_block, chain_state, blocks_for_difficulty_calculation)
-
-    catch
-      {:error, message} ->
-        Logger.error(fn ->
-          "Failed to mine block: #{message}"
-        end)
-    end
-
+      blocks_for_difficulty_calculation = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
+      txs_list = Map.values(Pool.get_pool())
+      ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+
       {_, pubkey} = Keys.pubkey()
+
       total_fees = calculate_total_fees(valid_txs)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
@@ -169,22 +185,34 @@ defmodule Aecore.Miner.Worker do
           root_hash,
           chain_state_hash,
           difficulty,
-          0, #start from nonce 0, will be incremented in mining
+          0,
+          #start from nonce 0, will be incremented in mining
           Block.current_block_version()
         )
+
       Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
-      case Cuckoo.generate(%{unmined_header
-                             | nonce: start_nonce + @nonce_per_cycle}) do
+
+      case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
         {:ok, mined_header} ->
           block = %Block{header: mined_header, txs: valid_txs}
-          Logger.info(fn ->
-            "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-            end)
+          Logger.info(
+            fn ->
+              "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{
+                block.header.nonce
+              }" end
+          )
           Chain.add_block(block)
           {:block_found, 0}
 
         {:error, _message} ->
           {:no_block_found, start_nonce + @nonce_per_cycle}
       end
+
+    catch
+      message ->
+        Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
+        {:error, message}
+    end
+
   end
 end

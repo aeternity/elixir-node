@@ -19,10 +19,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     is_difficulty_target_met = Cuckoo.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
     total_fees = Miner.calculate_total_fees(new_block.txs)
-
-    heights = Enum.map(blocks_for_difficulty_calculation, fn(block) -> block.header.height end)
-    IO.inspect(heights)
-
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     cond do

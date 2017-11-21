@@ -78,13 +78,7 @@ defmodule Aecore.Chain.Worker do
 
     latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
 
-    blocks_for_difficulty_calculation = if(block.header.height == 1) do
-      get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
-    else
-      something = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
-      [block | something] |> Enum.take(Difficulty.get_number_of_blocks())
-    end
-
+    blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
     BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
     add_validated_block(block)
   end
@@ -153,8 +147,7 @@ defmodule Aecore.Chain.Worker do
     {block_map, latest_block_chain_state, txs_index} = state
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state =
-      ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
 
     new_block_txs_index = calculate_block_acc_txs_info(block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
