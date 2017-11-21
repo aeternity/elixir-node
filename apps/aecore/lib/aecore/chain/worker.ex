@@ -68,8 +68,8 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end
 
-  @spec add_validated_block(%Block{}) :: :ok
-  def add_validated_block(%Block{} = block) do
+  @spec add_block(%Block{}) :: :ok
+  def add_block(%Block{} = block) do
     latest_block = latest_block()
 
     prev_block_chain_state = chain_state()
@@ -80,12 +80,12 @@ defmodule Aecore.Chain.Worker do
     blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
 
     BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
-    add_block(block)
+    add_validated_block(block)
   end
 
-  @spec add_block(%Block{}) :: :ok
-  defp add_block(%Block{} = block) do
-    GenServer.call(__MODULE__, {:add_block, block})
+  @spec add_validated_block(%Block{}) :: :ok
+  defp add_validated_block(%Block{} = block) do
+    GenServer.call(__MODULE__, {:add_validated_block, block})
   end
 
   @spec chain_state(binary()) :: map()
@@ -143,7 +143,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:add_block, %Block{} = block}, _from, state) do
+  def handle_call({:add_validated_block, %Block{} = block}, _from, state) do
     {block_map, latest_block_chain_state, txs_index} = state
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)

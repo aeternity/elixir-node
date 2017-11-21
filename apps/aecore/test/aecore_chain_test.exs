@@ -53,7 +53,7 @@ defmodule AecoreChainTest do
     assert BlockValidation.validate_block!(latest_block, previous_block,
                                             Chain.chain_state(),
                                             blocks_for_difficulty_calculation)
-    assert :ok = Chain.add_validated_block(block)
+    assert :ok = Chain.add_block(block)
     assert latest_block = Chain.latest_block()
     assert latest_block.header.height == block.header.height
 

@@ -142,9 +142,9 @@ defmodule Aecore.Miner.Worker do
       BlockValidation.validate_block!(latest_block, previous_block, chain_state, blocks_for_difficulty_calculation)
 
     catch
-      {:error, _message} ->
+      {:error, message} ->
         Logger.error(fn ->
-          "Failed to mine block"
+          "Failed to mine block: #{message}"
         end)
     end
 
@@ -180,7 +180,7 @@ defmodule Aecore.Miner.Worker do
           Logger.info(fn ->
             "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
             end)
-          Chain.add_validated_block(block)
+          Chain.add_block(block)
           {:block_found, 0}
 
         {:error, _message} ->
