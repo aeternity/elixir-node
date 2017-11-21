@@ -77,7 +77,13 @@ defmodule Aecore.Chain.Worker do
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
 
     latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
-    blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
+
+    blocks_for_difficulty_calculation = if(block.header.height == 1) do
+      get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
+    else
+      something = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
+      [block | something] |> Enum.take(Difficulty.get_number_of_blocks())
+    end
 
     BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
     add_validated_block(block)
