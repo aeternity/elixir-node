@@ -27,8 +27,14 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+
+persistence_path = case System.get_env("PERSISTENCE_PATH") do
+  nil -> "apps/aecore/priv/persistence_table"
+  env -> env
+end
+
 config :aecore, :persistence,
-  table: Path.absname("apps/aecore/priv/persistence_table")
+  table: Path.absname(persistence_path)
 
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
@@ -55,5 +61,5 @@ config :aecore, :pow,
   }
 
 config :aecore, :peers,
-  peers_target_count: 2,
+  peers_target_count: 3,
   peers_max_count: 4

@@ -67,8 +67,7 @@ defmodule Aecore.Peers.Sync do
     filtered_state =
       Enum.reduce(state, state, fn({_, block}, acc) ->
           built_chain = build_chain(acc, block, [])
-          IO.inspect(built_chain)
-          add_built_chain(built_chain, state)
+          add_built_chain(built_chain, acc)
       end)
 
     {:reply, :ok, filtered_state}
@@ -118,12 +117,13 @@ defmodule Aecore.Peers.Sync do
   defp get_newpeers_and_add(known) do
     known_count = length(known)
     known_set = MapSet.new(known)
+    number_of_peers_to_add = Enum.min([@peers_target_count - known_count, known_count])
     known
     |> Enum.shuffle
     |> Enum.take(@peers_target_count - known_count)
     |> Enum.reduce([], fn(peer, acc) ->
       case (HttpClient.get_peers(peer)) do
-        {:ok, list} -> Enum.concat(list, acc)
+        {:ok, list} -> Enum.concat(acc, Map.keys(list))
         :error -> acc
       end
     end)
@@ -135,12 +135,15 @@ defmodule Aecore.Peers.Sync do
       end
     end)
     |> Enum.shuffle
-    |> Enum.take(Enum.min([@peers_target_count - known_count, known_count]))
     |> Enum.reduce(0, fn(peer, acc) ->
-      peer_uri = elem(peer, 0)
-      case Peers.add_peer(peer_uri) do
-        :ok -> acc+1
-        _ -> acc
+      #if we have successfully added less then number_of_peers_to_add peers then try to add another one
+      if acc < number_of_peers_to_add do
+        case Peers.add_peer(peer) do
+          :ok -> acc+1
+          _ -> acc
+        end
+      else
+        acc
       end
     end)
   end
@@ -152,7 +155,6 @@ defmodule Aecore.Peers.Sync do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain =
       block.header.prev_hash == BlockValidation.block_header_hash(Chain.latest_block().header)
-      IO.inspect({has_parent_block_in_state, has_parent_in_chain})
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
