@@ -20,20 +20,24 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
-     peer_nonce = Peers.get_peer_nonce()
+    peer_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
 
     #Add whoever's getting our info
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
-    peer = peer_ip <> ":" <> to_string(conn.port)
+    port = ":" <> to_string(conn.port)
+    peer = peer_ip <> port
+    host = conn.host <> port
 
-    case(Map.has_key?(Peers.all_peers, peer)) do
-      true ->
-        Logger.info("Peer already in our list")
-      false ->
-        Peers.schedule_add_peer(peer)
+    if(!(peer == host || host == "localhost:4000")) do
+      case(Map.has_key?(Peers.all_peers, peer)) do
+        true ->
+          Logger.info("Peer already in our list")
+        false ->
+          Peers.schedule_add_peer(peer)
+      end
     end
 
     conn = Plug.Conn.put_resp_header(conn, "server", "aehttpserver")

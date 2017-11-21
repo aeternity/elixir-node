@@ -8,9 +8,9 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Utils.Persistence
 
   use GenServer
 
@@ -19,23 +19,21 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    Process.flag(:trap_exit, true)
+    state =
+      case Persistence.get_block_chain_states() do
+        {:ok, :nothing_to_restore} ->
+          genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
-    genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
-    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-    initial_state = {genesis_block_map, latest_block_chain_state, txs_index}
+          genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
+          genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+          latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+          txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+          {genesis_block_map, latest_block_chain_state, txs_index}
+        {:ok, restored_state} -> restored_state
+      end
 
-    {:ok, initial_state}
-  end
-
-  @doc """
-  Returns blockchain and chainstate
-  """
-  @spec get_current_state() :: {map(), map()}
-  def get_current_state() do
-    GenServer.call(__MODULE__, :get_current_state)
+    {:ok, state}
   end
 
   @spec latest_block() :: %Block{}
@@ -93,7 +91,7 @@ defmodule Aecore.Chain.Worker do
   def all_blocks() do
     latest_block_obj = latest_block()
     latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
-    get_blocks(latest_block_hash, latest_block_obj.header.height)
+    get_blocks(latest_block_hash, latest_block_obj.header.height + 1)
   end
 
   ## Server side
@@ -147,7 +145,7 @@ defmodule Aecore.Chain.Worker do
       updated_block_map = Map.put(block_map, block_hash, block)
       has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
 
-      {deleted_latest_chain_state, prev_chain_state} = case has_prev_block do
+      {deleted_latest_chain_state, _} = case has_prev_block do
         true ->
           prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
           {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
@@ -187,6 +185,12 @@ defmodule Aecore.Chain.Worker do
   def handle_call(:txs_index, _from, state) do
     {_, _, txs_index} = state
     {:reply, txs_index, state}
+  end
+
+  def terminate(_, state) do
+    Persistence.store_state(state)
+    Logger.warn("Terminting, state was stored on disk ...")
+
   end
 
   defp calculate_block_acc_txs_info(block) do
