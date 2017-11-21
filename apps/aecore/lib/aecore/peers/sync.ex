@@ -44,7 +44,14 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:add_block_to_state, block_hash, block}, _from, state) do
-    updated_state = Map.put(state, block_hash, block)
+    updated_state =
+      case Chain.has_block?(Base.encode16(block_hash)) do
+        true ->
+          state
+        false ->
+          Map.put(state, block_hash, block)
+      end
+
     {:reply, :ok, updated_state}
   end
 
@@ -60,6 +67,7 @@ defmodule Aecore.Peers.Sync do
     filtered_state =
       Enum.reduce(state, state, fn({_, block}, acc) ->
           built_chain = build_chain(acc, block, [])
+          IO.inspect(built_chain)
           add_built_chain(built_chain, state)
       end)
 
@@ -144,6 +152,7 @@ defmodule Aecore.Peers.Sync do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain =
       block.header.prev_hash == BlockValidation.block_header_hash(Chain.latest_block().header)
+      IO.inspect({has_parent_block_in_state, has_parent_in_chain})
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
@@ -160,7 +169,7 @@ defmodule Aecore.Peers.Sync do
     Enum.reduce(chain, state, fn (block, acc) ->
         case Chain.add_block(block) do
           :ok ->
-            Map.delete(state, BlockValidation.block_header_hash(block.header))
+            Map.delete(acc, BlockValidation.block_header_hash(block.header))
           :error ->
             acc
         end
