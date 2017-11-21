@@ -1,6 +1,6 @@
 .PHONY: deps deps_build clean distclean help
 
-CURDIR := $(shell pwd)
+CURDIR := $(abspath $(shell pwd)/..)
 BASEDIR := $(abspath $(CURDIR)/..)
 
 PROJECT := aec_pow_cuckoo
@@ -10,11 +10,12 @@ LIBDIR := cuckoo
 ERTS_INCLUDE_DIR ?= $(shell erl -noshell -s init stop -eval "io:format(\"~s/erts-~s/include/\", [code:root_dir(), erlang:system_info(version)]).")
 
 C_SRC_DIR = $(CURDIR)
-PRIV_DIR = $(BASEDIR)/priv/
-LIB20_SO ?= $(CURDIR)/../priv/$(PROJECT)20_nif.so
-LIB28_SO ?= $(CURDIR)/../priv/$(PROJECT)28_nif.so
-LIB26_SO ?= $(CURDIR)/../priv/$(PROJECT)26_nif.so
-LIB32_SO ?= $(CURDIR)/../priv/$(PROJECT)32_nif.so
+
+PRIV_DIR = $(BASEDIR)/priv/cuckoo/
+LIB20_SO ?= $(CURDIR)/../priv/cuckoo/$(PROJECT)20_nif.so
+LIB28_SO ?= $(CURDIR)/../priv/cuckoo/$(PROJECT)28_nif.so
+LIB26_SO ?= $(CURDIR)/../priv/cuckoo/$(PROJECT)26_nif.so
+LIB32_SO ?= $(CURDIR)/../priv/cuckoo/$(PROJECT)32_nif.so
 
 # System type and C compiler/flags.
 
