@@ -25,8 +25,8 @@ defmodule Aecore.Peers.Sync do
   end
 
   @spec add_block_to_state(binary(), term()) :: :ok
-  def add_block_to_state(block_hash, peer) do
-    GenServer.call(__MODULE__, {:add_block_to_state, block_hash, peer})
+  def add_block_to_state(block_hash, block) do
+    GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
   @spec ask_peers_for_unknown_blocks(map()) :: :ok
@@ -43,8 +43,8 @@ defmodule Aecore.Peers.Sync do
     {:reply, state, state}
   end
 
-  def handle_call({:add_block_to_state, block_hash, peer}, _from, state) do
-    updated_state = Map.put(state, block_hash, peer)
+  def handle_call({:add_block_to_state, block_hash, block}, _from, state) do
+    updated_state = Map.put(state, block_hash, block)
     {:reply, :ok, updated_state}
   end
 
@@ -58,8 +58,8 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
     filtered_state =
-      Enum.reduce(state, state, fn({block_hash, peer}, acc) ->
-          built_chain = build_chain(acc, {block_hash, peer}, [])
+      Enum.reduce(state, state, fn({_, block}, acc) ->
+          built_chain = build_chain(acc, block, [])
           add_built_chain(built_chain, state)
       end)
 
@@ -140,23 +140,17 @@ defmodule Aecore.Peers.Sync do
   # Builds a chain, starting from the given block,
   # until we reach a block, of which the previous block is the highest in our chain
   # (that means we can add this chain to ours)
-  defp build_chain(state, {block_hash, peer}, chain) do
-    case(HttpClient.get_block({peer, Base.encode16(block_hash)})) do
-      {:ok, peer_block} ->
-        deserialized_block = Serialization.block(peer_block, :deserialize)
-        has_parent_block_in_state = Map.has_key?(state, deserialized_block.header.prev_hash)
-        has_parent_in_chain =
-          deserialized_block.header.prev_hash == BlockValidation.block_header_hash(Chain.latest_block().header)
-        cond do
-          has_parent_block_in_state ->
-            build_chain(state, {deserialized_block.header.prev_hash, peer}, [deserialized_block | chain])
-          has_parent_in_chain ->
-            [deserialized_block | chain]
-          true ->
-            []
-        end
-      :error ->
-        Logger.info(fn -> "Couldn't get block #{block_hash} from #{peer}" end)
+  defp build_chain(state, block, chain) do
+    has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
+    has_parent_in_chain =
+      block.header.prev_hash == BlockValidation.block_header_hash(Chain.latest_block().header)
+    cond do
+      has_parent_block_in_state ->
+        build_chain(state, state[block.header.prev_hash], [block | chain])
+      has_parent_in_chain ->
+        [block | chain]
+      true ->
+        []
     end
   end
 
@@ -186,7 +180,7 @@ defmodule Aecore.Peers.Sync do
                 BlockValidation.block_header_hash(deserialized_block.header)
 
               check_peer_block(peer_uri, peer_block.header.prev_hash,
-                Map.put(state, peer_block_hash, peer_uri))
+                Map.put(state, peer_block_hash, deserialized_block))
             catch
               {:error, _} ->
                 state

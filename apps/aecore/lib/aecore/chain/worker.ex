@@ -124,9 +124,15 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call({:has_block, hex_hash}, _from, state) do
     {block_map, _, _} = state
-    binary_hash = Base.decode16(hex_hash)
+    has_block =
+      case Base.decode16(hex_hash) do
+        {:ok, decoded_hash} ->
+          Map.has_key?(block_map, decoded_hash)
+        :error ->
+          false
+      end
 
-    {:reply, Map.has_key?(block_map, binary_hash), state}
+    {:reply, has_block, state}
   end
 
   def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
