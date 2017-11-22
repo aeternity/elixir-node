@@ -44,14 +44,17 @@ defmodule Aehttpclient.Client do
 
   def get(uri, identifier) do
     case(HTTPoison.get(uri)) do
-      {:ok, %{body: body, status_code: 200}} ->
+      {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
           :block ->
             response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
             {:ok, response}
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
-            {:ok, response}
+            {_, server} = Enum.find(headers, fn(header) ->
+              header == {"server", "aehttpserver"} end)
+            response_with_server_header = Map.put(response, :server, server)
+            {:ok, response_with_server_header}
           :acc_txs ->
             response = Poison.decode!(body,
               as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
