@@ -103,7 +103,6 @@ defmodule Aecore.Peers.Sync do
     peers_count = map_size(Peers.all_peers())
     cond do
       peers_count == 0 ->
-        Logger.error(fn -> "No peers" end)
         {:error, "No peers"}
       peers_count < @peers_target_count ->
         all_peers = Map.keys(Peers.all_peers())
