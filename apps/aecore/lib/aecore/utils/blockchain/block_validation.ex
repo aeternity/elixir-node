@@ -17,6 +17,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     is_valid_chain_state = ChainState.validate_chain_state(chain_state)
 
     is_difficulty_target_met = Cuckoo.verify(new_block.header)
+    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     single_validate_block(new_block)
 
@@ -37,6 +38,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
       !is_valid_chain_state ->
         throw({:error, "Chain state not valid"})
+
+      difficulty != new_block.header.difficulty_target ->
+        throw({:error, "Invalid block difficulty"})
 
       true ->
         :ok
@@ -59,9 +63,6 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
       block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
-
-      difficulty != new_block.header.difficulty_target ->
-        throw({:error, "Invalid block difficulty"})
 
       true ->
         :ok
