@@ -137,11 +137,14 @@ defmodule Aecore.Miner.Worker do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     chain_state = Chain.chain_state(latest_block_hash)
 
+    # We take an extra block and then drop one at the head of the list
+    # so the miner's blocks for difficulty calculation are the same as
+    # the blocks in the add_block function
     blocks_for_difficulty_validation = if(latest_block.header.height == 0) do
       Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
     else
-      [_ | something] = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks() + 1)
-      something
+      Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks() + 1)
+      |> Enum.drop(1)
     end
 
     previous_block = cond do
