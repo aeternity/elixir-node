@@ -1,5 +1,4 @@
 defmodule Aecore.Utils.Blockchain.Difficulty do
-  alias Aecore.Chain.Worker, as: Chain
 
   @number_of_blocks 100
   @max_difficulty_change 2
@@ -9,13 +8,7 @@ defmodule Aecore.Utils.Blockchain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty :: integer()
-  def calculate_next_difficulty() do
-    Chain.get_blocks_for_difficulty_calculation()
-    |> calculate_next_difficulty()
-  end
-
-  @spec calculate_next_difficulty :: integer()
+  @spec calculate_next_difficulty(list()) :: integer()
   def calculate_next_difficulty(list) do
     [latest_block | _] = list
 

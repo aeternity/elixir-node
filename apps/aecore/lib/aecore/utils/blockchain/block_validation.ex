@@ -7,9 +7,10 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
+  alias Aecore.Utils.Blockchain.Difficulty
 
-  @spec validate_block!(Block.block(), Block.block(), map()) :: {:error, term()} | :ok
-  def validate_block!(new_block, previous_block, chain_state) do
+  @spec validate_block!(Block.block(), Block.block(), map(), list()) :: {:error, term()} | :ok
+  def validate_block!(new_block, previous_block, chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
@@ -18,6 +19,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
     is_difficulty_target_met = Cuckoo.verify(new_block.header)
     coinbase_transactions_sum = sum_coinbase_transactions(new_block)
     total_fees = Miner.calculate_total_fees(new_block.txs)
+    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     cond do
       # do not check previous block hash for genesis block, there is none
@@ -48,6 +50,9 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
       new_block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
+
+      difficulty != new_block.header.difficulty_target ->
+        throw({:error, "Invalid block difficulty"})
 
       true ->
         :ok
