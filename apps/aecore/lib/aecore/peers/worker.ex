@@ -186,6 +186,8 @@ defmodule Aecore.Peers.Worker do
             Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
             {:reply, :ok, state}
           end
+        {:error, :peer_has_own_nonce} ->
+          {:reply, :ok, state}
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
@@ -217,7 +219,7 @@ defmodule Aecore.Peers.Worker do
                 {:ok, info}
             end
           true ->
-            {:error, "Equal peer nonces"}
+            {:error, :peer_has_own_nonce}
         end
       :error ->
         {:error, "Request error"}
