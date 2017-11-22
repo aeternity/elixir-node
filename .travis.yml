@@ -8,8 +8,7 @@ env:
 
 before_install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
-
-cache: cargo
+  - source $HOME/.cargo/env
 
 script:
   - mix coveralls -u
