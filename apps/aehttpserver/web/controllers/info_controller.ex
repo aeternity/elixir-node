@@ -33,9 +33,7 @@ defmodule Aehttpserver.InfoController do
     peer = peer_ip <> peer_port
     host = conn.host <> host_port
 
-    IO.inspect({peer, host})
-
-    if(!(peer == host || host == "localhost:4000")) do
+    if(!(peer == host || host == "localhost:" <> host_port)) do
       case(Map.has_key?(Peers.all_peers, peer)) do
         true ->
           Logger.info("Peer already in our list")

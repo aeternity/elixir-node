@@ -10,7 +10,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Utils.Serialization
-  alias Aecore.Peers.Sync
 
   require Logger
 
@@ -186,8 +185,6 @@ defmodule Aecore.Peers.Worker do
             Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
             {:reply, :ok, state}
           end
-        {:error, :peer_has_own_nonce} ->
-          {:reply, :ok, state}
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
@@ -219,7 +216,7 @@ defmodule Aecore.Peers.Worker do
                 {:ok, info}
             end
           true ->
-            {:error, :peer_has_own_nonce}
+            {:error, "Equal peer nonces"}
         end
       :error ->
         {:error, "Request error"}
