@@ -49,7 +49,13 @@ defmodule Aecore.Peers.Sync do
         true ->
           state
         false ->
-          Map.put(state, block_hash, block)
+          try do
+            BlockValidation.single_validate_block(block)
+            Map.put(state, block_hash, block)
+          catch
+            {:error, message} ->
+              Logger.error(fn -> "Can't add block to Sync state; #{message}" end)
+          end
       end
 
     {:reply, :ok, updated_state}
