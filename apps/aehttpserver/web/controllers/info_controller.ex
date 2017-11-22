@@ -25,11 +25,16 @@ defmodule Aehttpserver.InfoController do
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
 
+    IO.inspect({Plug.Conn.get_req_header(conn, "peer_port"), conn.port})
     #Add whoever's getting our info
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
-    port = ":" <> to_string(conn.port)
-    peer = peer_ip <> port
-    host = conn.host <> port
+    peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
+    peer_port = ":" <> peer_port
+    host_port = ":" <> to_string(conn.port)
+    peer = peer_ip <> peer_port
+    host = conn.host <> host_port
+
+    IO.inspect({peer, host})
 
     if(!(peer == host || host == "localhost:4000")) do
       case(Map.has_key?(Peers.all_peers, peer)) do
