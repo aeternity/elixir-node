@@ -2,9 +2,9 @@ defmodule HashcashTest do
   use ExUnit.Case
   doctest Aecore.Pow.Hashcash
 
-  #alias Aecore.Pow.Hashcash
-  #alias Aecore.Structures.Header
-  #alias Aecore.Structures.Block
+  # alias Aecore.Pow.Hashcash
+  # alias Aecore.Structures.Header
+  # alias Aecore.Structures.Block
 
   #@tag timeout: 10000000
   #test "successfull test" do

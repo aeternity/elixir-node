@@ -62,7 +62,6 @@ defmodule Aecore.Peers.Sync do
     peers_count = map_size(Peers.all_peers())
     cond do
       peers_count == 0 ->
-        Logger.error(fn -> "No peers" end)
         {:error, "No peers"}
       peers_count < @peers_target_count ->
         all_peers = Map.keys(Peers.all_peers())
@@ -71,7 +70,7 @@ defmodule Aecore.Peers.Sync do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)
           :ok
         else
-          Logger.error(fn -> "No new peers added when trying to refill peers" end)
+          Logger.debug(fn -> "No new peers added when trying to refill peers" end)
           {:error, "No new peers added"}
         end
       true ->

@@ -34,4 +34,8 @@ defmodule Aehttpserver.Endpoint do
     signing_salt: "EB5YKhDy"
 
   plug Aehttpserver.Router
+
+  def on_response(status, headers, _body, request) do
+    {status, List.keyreplace(headers, "server", 0, {"server", "aehttpserver"}), request}
+  end
 end
