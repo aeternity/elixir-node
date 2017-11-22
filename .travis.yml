@@ -12,3 +12,6 @@ before_install:
 
 script:
   - mix coveralls -u
+
+cache:
+  - cargo
