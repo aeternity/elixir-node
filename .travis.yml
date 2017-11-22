@@ -9,5 +9,7 @@ env:
 before_install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
 
+cache: cargo
+
 script:
   - mix coveralls -u
