@@ -120,6 +120,7 @@ defmodule Aecore.Peers.Worker do
           _ -> false
         end
       end, peers)
+
     updated_peers =
       for {peer, current_block_hash} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(peer)
@@ -129,8 +130,12 @@ defmodule Aecore.Peers.Worker do
           {peer, current_block_hash}
         end
       end
-    Logger.info(fn ->
-      "#{Enum.count(peers) - Enum.count(filtered_peers)} peers were removed after the check" end)
+
+    removed_peers_count = Enum.count(peers) - Enum.count(filtered_peers)
+    if removed_peers_count > 0 do
+      Logger.info(fn -> "#{Enum.count(peers) - Enum.count(filtered_peers)} peers were removed after the check" end)
+    end
+
     {:reply, :ok, %{state | peers: updated_peers}}
   end
 
