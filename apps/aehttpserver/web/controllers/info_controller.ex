@@ -25,7 +25,6 @@ defmodule Aehttpserver.InfoController do
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
 
-    IO.inspect({Plug.Conn.get_req_header(conn, "peer_port"), conn.port})
     #Add whoever's getting our info
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
     peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()

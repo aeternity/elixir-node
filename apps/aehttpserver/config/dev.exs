@@ -29,7 +29,6 @@ config :aehttpserver, Aehttpserver.Endpoint,
   http: [
     port: port,
     protocol_options: [
-      onrequest: &Aehttpserver.Endpoint.on_request/1,
       onresponse: &Aehttpserver.Endpoint.on_response/4
     ]
   ],

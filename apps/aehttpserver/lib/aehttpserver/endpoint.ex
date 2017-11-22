@@ -35,12 +35,6 @@ defmodule Aehttpserver.Endpoint do
 
   plug Aehttpserver.Router
 
-  def on_request(headers) do
-    port = headers |> elem(10)
-    new_headers = headers |> elem(16) |> List.insert_at(-1, {"peer_port", port})
-    Tuple.delete_at(headers, 16) |> Tuple.insert_at(16, new_headers)
-  end
-
   def on_response(status, headers, _body, request) do
     {status, List.keyreplace(headers, "server", 0, {"server", "aehttpserver"}), request}
   end
