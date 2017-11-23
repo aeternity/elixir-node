@@ -55,6 +55,7 @@ defmodule Aecore.Peers.Sync do
           catch
             {:error, message} ->
               Logger.error(fn -> "Can't add block to Sync state; #{message}" end)
+              state
           end
       end
 
