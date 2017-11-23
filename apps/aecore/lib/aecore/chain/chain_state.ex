@@ -20,13 +20,14 @@ defmodule Aecore.Chain.ChainState do
             transaction.data.from_acc != nil ->
               update_block_state(block_state, transaction.data.from_acc,
                                  -(transaction.data.value + transaction.data.fee),
-                                 transaction.data.nonce)
+                                 transaction.data.nonce, transaction.data.lock_time_block)
 
             true ->
               block_state
           end
 
-        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value, 0)
+        update_block_state(updated_block_state, transaction.data.to_acc,
+                           transaction.data.value, 0, transaction.data.lock_time_block)
       end
 
     reduce_map_list(block_state)
@@ -80,6 +81,21 @@ defmodule Aecore.Chain.ChainState do
       Enum.all?()
   end
 
+  @spec substract_locked_amounts_from_chain_state(map(), integer()) :: map()
+  def substract_locked_amounts_from_chain_state(chain_state, new_block_height) do
+    Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
+        locked_amount = Enum.reduce(locked, 0, fn(%{amount: amount, block: lock_time_block}, amount_to_substract) ->
+            if(lock_time_block > new_block_height) do
+              amount_to_substract + amount
+            else
+              amount_to_substract
+            end
+          end)
+
+        Map.put(acc, account, %{balance: balance - locked_amount, nonce: nonce, locked: locked})
+      end)
+  end
+
   @spec update_block_state(map(), binary(), integer(), integer(), integer()) :: map()
   defp update_block_state(block_state, account, value, nonce, lock_time_block) do
     block_state_filled_empty =
@@ -101,7 +117,7 @@ defmodule Aecore.Chain.ChainState do
 
     new_account_state = %{balance: block_state_filled_empty[account].balance + value,
                           nonce:   new_nonce,
-                          locked:  block_state_filled_empty.locked ++
+                          locked:  block_state_filled_empty[account].locked ++
                                    [%{amount: value, block: lock_time_block}]}
     Map.put(block_state_filled_empty, account, new_account_state)
   end

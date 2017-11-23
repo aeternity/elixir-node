@@ -16,6 +16,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @coinbase_transaction_value 100
+  @coinbase_lock_time_block 10
   @nonce_per_cycle 1
 
   def start_link(_args) do
@@ -106,13 +107,14 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data}
   end
 
-  def get_coinbase_transaction(to_acc, total_fees) do
+  def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
     tx_data = %TxData{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,
       nonce: 0,
-      fee: 0
+      fee: 0,
+      lock_time_block: lock_time_block
     }
 
     %SignedTx{data: tx_data, signature: nil}
@@ -155,6 +157,8 @@ defmodule Aecore.Miner.Worker do
     end
 
     try do
+      IO.inspect("MINER:")
+      IO.inspect(chain_state)
       BlockValidation.validate_block!(
         latest_block,
         previous_block,
@@ -172,12 +176,16 @@ defmodule Aecore.Miner.Worker do
       {_, pubkey} = Keys.pubkey()
 
       total_fees = calculate_total_fees(valid_txs)
-      valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
+      valid_txs = [get_coinbase_transaction(pubkey, total_fees,
+                                            latest_block.header.height + 1 +
+                                            @coinbase_lock_time_block) | valid_txs]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state = ChainState.calculate_block_state(valid_txs)
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+      new_chain_state_locked_amounts =
+        ChainState.substract_locked_amounts_from_chain_state(new_chain_state, latest_block.header.height + 1)
+      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
 
       latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
 

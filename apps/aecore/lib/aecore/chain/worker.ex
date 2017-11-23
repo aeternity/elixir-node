@@ -75,11 +75,16 @@ defmodule Aecore.Chain.Worker do
     prev_block_chain_state = chain_state()
     new_block_state = ChainState.calculate_block_state(block.txs)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state_locked_amounts =
+      ChainState.substract_locked_amounts_from_chain_state(new_chain_state, latest_block.header.height + 1)
+    IO.puts("CHAIN:")
+    IO.inspect(new_chain_state)
+    IO.inspect(new_chain_state_locked_amounts)
 
     latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
 
     blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
+    BlockValidation.validate_block!(block, latest_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
     add_validated_block(block)
   end
 
@@ -148,6 +153,8 @@ defmodule Aecore.Chain.Worker do
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state_locked_amounts =
+      ChainState.substract_locked_amounts_from_chain_state(new_chain_state, block.header.height)
 
     new_block_txs_index = calculate_block_acc_txs_info(block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
@@ -167,7 +174,7 @@ defmodule Aecore.Chain.Worker do
       end
 
       updated_latest_block_chainstate =
-        Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
+        Map.put(deleted_latest_chain_state, block_hash, new_chain_state_locked_amounts)
 
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
