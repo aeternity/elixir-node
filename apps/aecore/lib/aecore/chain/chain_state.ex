@@ -80,12 +80,12 @@ defmodule Aecore.Chain.ChainState do
       Enum.all?()
   end
 
-  @spec update_block_state(map(), binary(), integer(), integer()) :: map()
-  defp update_block_state(block_state, account, value, nonce) do
+  @spec update_block_state(map(), binary(), integer(), integer(), integer()) :: map()
+  defp update_block_state(block_state, account, value, nonce, lock_time_block) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
-          Map.put(block_state, account, %{balance: 0, nonce: 0})
+          Map.put(block_state, account, %{balance: 0, nonce: 0, locked: []})
 
         true ->
           block_state
@@ -100,7 +100,9 @@ defmodule Aecore.Chain.ChainState do
     end
 
     new_account_state = %{balance: block_state_filled_empty[account].balance + value,
-                          nonce:   new_nonce}
+                          nonce:   new_nonce,
+                          locked:  block_state_filled_empty.locked ++
+                                   [%{amount: value, block: lock_time_block}]}
     Map.put(block_state_filled_empty, account, new_account_state)
   end
 
@@ -124,7 +126,9 @@ defmodule Aecore.Chain.ChainState do
           v1.nonce
       end
 
-      %{balance: v1.balance + v2.balance, nonce: new_nonce}
+      %{balance: v1.balance + v2.balance,
+        nonce: new_nonce,
+        locked: v1.locked ++ v2.locked}
     end)
   end
 end
