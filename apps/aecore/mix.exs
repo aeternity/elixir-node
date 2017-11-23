@@ -48,7 +48,8 @@ defmodule Aecore.Mixfile do
     [
       {:exconstructor, "~> 1.1"},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
-      {:excoveralls, "~> 0.7", only: :test}
+      {:excoveralls, "~> 0.7", only: :test},
+      {:distillery, "~> 1.5", runtime: false}
     ]
   end
 end
