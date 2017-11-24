@@ -21,11 +21,10 @@ use Mix.Releases.Config,
 # when building in that environment, this combination of release
 # and environment configuration is called a profile
 
-environment :dev1 do
+environment :dev do
   set dev_mode: true
   set include_erts: false
-  set vm_args: "rel/vm.args"
-  set cookie: :"!ed3sw0aaST2z46(oww2b@@H>YW)Rt)zn8~wd%WT6WoFb2MYed:tyUPZ1=$qPa$S"
+  set cookie: :"secret"
 end
 
 environment :prod do
