@@ -157,8 +157,6 @@ defmodule Aecore.Miner.Worker do
     end
 
     try do
-      IO.inspect("MINER:")
-      IO.inspect(chain_state)
       BlockValidation.validate_block!(
         latest_block,
         previous_block,

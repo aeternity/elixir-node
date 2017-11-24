@@ -69,30 +69,42 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
-    chain_state |>
-      Enum.map(fn{_account, data} -> data.balance end) |>
-      Enum.sum()
+    chain_state
+    |> Enum.map(fn{_account, data} -> data.balance +
+       Enum.reduce(data.locked, 0, fn(%{amount: amount}, locked_sum) ->
+         locked_sum + amount
+        end)
+    end)
+    |> Enum.sum()
   end
 
   @spec validate_chain_state(map()) :: boolean()
   def validate_chain_state(chain_state) do
-    chain_state |>
-      Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end) |>
-      Enum.all?()
+    chain_state
+    |> Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end)
+    |> Enum.all?()
   end
 
   @spec substract_locked_amounts_from_chain_state(map(), integer()) :: map()
   def substract_locked_amounts_from_chain_state(chain_state, new_block_height) do
     Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
-        locked_amount = Enum.reduce(locked, 0, fn(%{amount: amount, block: lock_time_block}, amount_to_substract) ->
-            if(lock_time_block > new_block_height) do
-              amount_to_substract + amount
-            else
-              amount_to_substract
+        {locked_amount, updated_locked} =
+          Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
+            cond do
+              lock_time_block > new_block_height ->
+                if(new_block_height == lock_time_block - 10) do
+                  {amount_update_value - amount, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
+                else
+                  {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
+                end
+              lock_time_block == new_block_height ->
+                {amount_update_value + amount, updated_locked}
+              true ->
+                {amount_update_value, updated_locked}
             end
           end)
 
-        Map.put(acc, account, %{balance: balance - locked_amount, nonce: nonce, locked: locked})
+        Map.put(acc, account, %{balance: balance + locked_amount, nonce: nonce, locked: updated_locked})
       end)
   end
 

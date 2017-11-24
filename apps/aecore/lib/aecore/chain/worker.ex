@@ -77,9 +77,6 @@ defmodule Aecore.Chain.Worker do
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.substract_locked_amounts_from_chain_state(new_chain_state, latest_block.header.height + 1)
-    IO.puts("CHAIN:")
-    IO.inspect(new_chain_state)
-    IO.inspect(new_chain_state_locked_amounts)
 
     latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
 
@@ -176,7 +173,7 @@ defmodule Aecore.Chain.Worker do
       updated_latest_block_chainstate =
         Map.put(deleted_latest_chain_state, block_hash, new_chain_state_locked_amounts)
 
-      total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+      total_tokens = ChainState.calculate_total_tokens(new_chain_state_locked_amounts)
 
       Logger.info(fn ->
         "Added block ##{block.header.height} with hash #{block.header
