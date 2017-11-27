@@ -64,6 +64,8 @@ defmodule Aehttpclient.Client do
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
+      {:ok, %HTTPoison.Response{status_code: 400}} ->
+        :error
       {:error, %HTTPoison.Error{}} ->
         :error
     end
