@@ -6,6 +6,7 @@ defmodule Aehttpserver.Router do
     plug :fetch_session
     plug :fetch_flash
     plug :put_secure_browser_headers
+    plug Aehttpserver.Plugs.SetHeader
   end
 
   scope "/", Aehttpserver do
