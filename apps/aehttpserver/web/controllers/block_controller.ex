@@ -36,9 +36,6 @@ defmodule Aehttpserver.BlockController do
         number
     end
 
-    IO.inspect(latest_block_hash)
-    IO.inspect(count)
-
     blocks = Chain.get_blocks(latest_block_hash, count)
     blocks_json = Enum.map(blocks, fn (block) -> Serialization.block(block, :serialize)   end)
     json conn, blocks_json

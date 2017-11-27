@@ -19,9 +19,4 @@ defmodule Aehttpserver.Router do
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
   end
 
-
-  # Other scopes may use custom stacks.
-  # scope "/api", Aehttpserver do
-  #   pipe_through :api
-  # end
 end
