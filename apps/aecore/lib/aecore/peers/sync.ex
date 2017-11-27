@@ -63,7 +63,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
-    state = Enum.reduce(peers, state, fn ({nonce, %{uri: uri, latest_block: latest_block}}, acc) ->
+    state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: latest_block}}, acc) ->
         Map.merge(acc, check_peer_block(uri, latest_block, %{}))
       end)
 
