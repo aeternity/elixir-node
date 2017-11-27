@@ -4,15 +4,15 @@ defmodule Aehttpserver.TxController do
   alias Aecore.Utils.Serialization, as: Serialization
 
   def show(conn, params) do
-    IO.inspect params
+   # IO.inspect params
     account_bin =
       params["account"]
       |> Base.decode16!()
-    IO.inspect account_bin
-    user_txs = Pool.get_txs_for_address(account_bin)
+   # IO.inspect account_bin
+    user_txs = Pool.get_txs_for_address(account_bin, :add_hash)
     IO.inspect user_txs
     case params["include_proof"]  do
-     " true" ->
+      "true" ->
         json(conn , Enum.map(user_txs, fn(tx) ->
               %{tx |
                 from_acc: Serialization.hex_binary(tx.from_acc, :serialize),

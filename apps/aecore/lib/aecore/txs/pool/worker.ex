@@ -45,16 +45,16 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
 
-  @spec get_txs_for_address(String.t()) :: list()
-  def get_txs_for_address(address) do
-    GenServer.call(__MODULE__, {:get_txs_for_address, address})
+  @spec get_txs_for_address(String.t(), atom()) :: list()
+  def get_txs_for_address(address, option) do
+    GenServer.call(__MODULE__, {:get_txs_for_address,{address, option}})
   end
 
 
   ## Server side
 
-  def handle_call({:get_txs_for_address, address}, _from, state) do
-    txs_list = split_blocks(Chain.all_blocks(), address, [])
+  def handle_call({:get_txs_for_address,{address, option}}, _from, state) do
+    txs_list = split_blocks(Chain.all_blocks(), address, [], option)
     {:reply, txs_list, state}
   end
 
@@ -87,11 +87,22 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
-    defp split_blocks([block | blocks], address, txs ) do
+  defp split_blocks([block | blocks], address, txs, :no_hash ) do
     user_txs = check_address_tx(block.txs, address, txs)
-    split_blocks(blocks, address, user_txs)
+    split_blocks(blocks, address, user_txs, :no_hash)
   end
-  defp split_blocks([], address, txs) do
+
+  defp split_blocks([block | blocks], address, txs, :add_hash) do
+    user_txs = check_address_tx(block.txs, address, txs)
+    case user_txs do
+      [] -> split_blocks(blocks, address, user_txs, :add_hash)
+      _ ->
+        user_txs = [block.header.chain_state_hash | user_txs]
+        split_blocks(blocks, address, user_txs, :add_hash)
+    end
+  end
+
+  defp split_blocks([], address, txs, _) do
     txs
   end
 
