@@ -31,6 +31,3 @@ apps/aecore/src/c_src/
 
 # Ignore Logs created by aecore
 apps/aecore/logs
-
-# Ignore deps manager lockfile
-mix.lock
