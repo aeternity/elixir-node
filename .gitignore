@@ -27,7 +27,7 @@ erl_crash.dump
 apps/aecore/priv/
 
 # Ignore c_src
-apps/aecore/c_src/
+apps/aecore/src/c_src/
 
 # Ignore Logs created by aecore
 apps/aecore/logs

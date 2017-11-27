@@ -29,15 +29,15 @@ use Mix.Config
 #
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/persistence_table"
+  nil -> "apps/aecore/priv/rox_db"
   env -> env
 end
 
 config :aecore, :persistence,
-  table: Path.absname(persistence_path)
+  path: Path.absname(persistence_path)
 
 config :aecore, :pow,
-  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo26_nif"),
+  nif_path: Path.absname("apps/aecore/priv/cuckoo/aec_pow_cuckoo26_nif"),
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,
