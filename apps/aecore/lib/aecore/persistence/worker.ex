@@ -1,64 +1,56 @@
 defmodule Aecore.Persistence.Worker do
   @moduledoc """
-  Store/Restore latest blockchain and chainstate
+  add/get blocks and chain state to/from disk using rox, the
+  elixir rocksdb library - https://hexdocs.pm/rox
   """
-
-  @persistence_table Application.get_env(:aecore, :persistence)[:table]
-  @blockchain_key :block_chain_state_key
 
   use GenServer
 
-  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Utils.Blockchain.BlockValidation
 
   require Logger
 
-  def start_link(_arg) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link(_args) do
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  @spec restore_blockchain() :: {:ok, list()} | {:error, term()}
-  def restore_blockchain() do
-    GenServer.call(__MODULE__, :restore_blockchain)
+  ## Client side
+
+  @spec write_block_by_hash(block :: map()) :: :ok | {:error, reason :: term()}
+  def write_block_by_hash(%{header: header}=block) do
+    hash = BlockValidation.block_header_hash(header)
+    GenServer.call(__MODULE__, {:write_block_by_hash, {hash, block}})
   end
+  def write_block_by_hash(_block), do: {:error, "bad block structure"}
+
+  @spec read_block_by_hash(String.t()) ::
+  {:ok, block :: map()} | :not_found | {:error, reason :: term()}
+  def read_block_by_hash(hash) when is_binary(hash) do
+    GenServer.call(__MODULE__, {:read_block_by_hash, hash})
+  end
+  def read_block_by_hash(_hash), do: {:error, "bad hash value"}
+
+  ## Server side
 
   def init(_) do
-    ## Ensures that the worker handles exit signals
-    Process.flag(:trap_exit, true)
-    {:ok, setup()}
+    ## We are creating `blocks_by_hash` family for the blocks
+    ## https://github.com/facebook/rocksdb/wiki/Column-Families
+    {:ok, db, %{"blocks_by_hash" => blocks_family}} =
+      Rox.open(persistence_path(),
+        [create_if_missing: true, auto_create_column_families: true], ["blocks_by_hash"])
+    {:ok, %{db: db, blocks_family: blocks_family}}
   end
 
-  def handle_call(:restore_blockchain, _from, %{table: nil}=state) do
-    {:reply, {:error, "failed on reading persistence db"}, state}
+  def handle_call({:write_block_by_hash, {hash, block}}, _from,
+    %{db: _db, blocks_family: blocks_family} = state) do
+    {:reply, Rox.put(blocks_family, hash, block), state}
   end
 
-  def handle_call(:restore_blockchain, _from, %{table: table}=state) do
-    {:reply, get_block_chain_states(table), state}
+  def handle_call({:read_block_by_hash, hash}, _from,
+    %{db: _db, blocks_family: blocks_family} = state) do
+    {:reply, Rox.get(blocks_family, hash), state}
   end
 
-  def handle_cast(_any, state) do
-    {:noreply, state}
-  end
-
-  def terminate(_, %{table: nil}), do: Logger.error("No db connection")
-  def terminate(_, %{table: table}) do
-    Aecore.Miner.Worker.suspend
-    :ok = :dets.insert(table, {@blockchain_key, Chain.get_current_state()})
-    Logger.info("Terminating, blockchain and chainstate were stored to disk")
-  end
-
-  ## Internal functions
-
-  defp setup do
-    {:ok, table} = :dets.open_file(@persistence_table , [type: :set])
-    %{table: table}
-  end
-
-  @spec get_block_chain_states(table :: reference()) :: {:ok, term()}
-  defp get_block_chain_states(table) do
-    case :dets.lookup(table, @blockchain_key) do
-      [] -> {:ok, :nothing_to_restore}
-      restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
-    end
-  end
+  defp persistence_path(), do: Application.get_env(:aecore, :persistence)[:path]
 
 end

@@ -43,15 +43,18 @@ defmodule Aehttpclient.Client do
   end
 
   def get(uri, identifier) do
-    case(HTTPoison.get(uri)) do
-      {:ok, %{body: body, status_code: 200}} ->
+    case(HTTPoison.get(uri, [{"peer_port", get_local_port()}])) do
+      {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
           :block ->
             response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
             {:ok, response}
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
-            {:ok, response}
+            {_, server} = Enum.find(headers, fn(header) ->
+              header == {"server", "aehttpserver"} end)
+            response_with_server_header = Map.put(response, :server, server)
+            {:ok, response_with_server_header}
           :acc_txs ->
             response = Poison.decode!(body,
               as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
@@ -74,5 +77,11 @@ defmodule Aehttpclient.Client do
   defp send_to_peer(data, uri) do
     HTTPoison.post uri, Poison.encode!(data),
       [{"Content-Type", "application/json"}]
+  end
+
+  defp get_local_port() do
+    Aehttpserver.Endpoint |> :sys.get_state |> elem(3) |> Enum.at(2)
+    |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
+    |> elem(1) |> Enum.at(0) |> elem(1)
   end
 end

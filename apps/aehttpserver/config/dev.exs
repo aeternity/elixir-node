@@ -19,8 +19,19 @@ use Mix.Config
 # If desired, both `http:` and `https:` keys can be
 # configured to run both http and https servers on
 # different ports.
+
+port =  case System.get_env("PORT") do
+  nil -> 4000
+  env -> env
+end
+
 config :aehttpserver, Aehttpserver.Endpoint,
-  http: [port: 4000],
+  http: [
+    port: port,
+    protocol_options: [
+      onresponse: &Aehttpserver.Endpoint.on_response/4
+    ]
+  ],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,

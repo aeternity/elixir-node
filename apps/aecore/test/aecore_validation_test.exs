@@ -49,7 +49,9 @@ defmodule AecoreValidationTest do
       txs_hash: <<0::256>>,
       version: 1},
       txs: []}
-    assert BlockValidation.validate_block!(new_block,prev_block, %{}) == :ok
+    blocks_for_difficulty_calculation = [new_block, prev_block]
+    assert BlockValidation.validate_block!(new_block, prev_block, %{}, 
+                                    blocks_for_difficulty_calculation) == :ok
   end
 
   test "validate transactions in a block" do
