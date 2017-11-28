@@ -97,8 +97,13 @@ defmodule Aecore.Txs.Pool.Worker do
     case user_txs do
       [] -> split_blocks(blocks, address, user_txs, :add_hash)
       _ ->
-        user_txs = [block.header.chain_state_hash | user_txs]
-        split_blocks(blocks, address, user_txs, :add_hash)
+        block_user_txs =
+      for block_user_txs <- user_txs do
+        Map.put_new(block_user_txs,
+          :block_hash,
+          block.header.chain_state_hash)
+      end
+        split_blocks(blocks, address, block_user_txs, :add_hash)
     end
   end
 
