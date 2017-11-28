@@ -145,7 +145,7 @@ defmodule Aecore.Peers.Sync do
       #if we have successfully added less then number_of_peers_to_add peers then try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
-          :ok -> acc+1
+          :ok -> acc + 1
           _ -> acc
         end
       else
@@ -196,7 +196,7 @@ defmodule Aecore.Peers.Sync do
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if(block_hash == Base.encode16(peer_block_hash)) do
+              if block_hash == Base.encode16(peer_block_hash) do
                 check_peer_block(peer_uri, peer_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))
               else

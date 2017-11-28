@@ -8,9 +8,9 @@ defmodule AecoreCuckooTest do
   @moduledoc """
   Unit tests for the cuckoo module
   """
-  @tag timeout: 1000000000
+  @tag timeout: 1_000_000_000
   test "Generate with a winning nonce and high target threshold, verify it" do
-    block_header = %{Block.genesis_block().header | pow_evidence: nil }
+    block_header = %{Block.genesis_block().header | pow_evidence: nil}
     {t1, res}  =
       :timer.tc(Cuckoo, :generate,
         [block_header])
@@ -20,7 +20,7 @@ defmodule AecoreCuckooTest do
 
     ## verify the solution
     {t2, res2} =
-      :timer.tc(Cuckoo, :verify,[new_block_header])
+      :timer.tc(Cuckoo, :verify, [new_block_header])
     Logger.info("Verified in #{t2} microsecs")
     assert true = res2
   end
