@@ -2,9 +2,9 @@ defmodule DifficultyTest do
 
   use ExUnit.Case
 
-  doctest Aecore.Utils.Blockchain.Difficulty
+  doctest Aecore.Chain.Difficulty
 
-  alias Aecore.Utils.Blockchain.Difficulty, as: Difficulty
+  alias Aecore.Chain.Difficulty, as: Difficulty
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
 

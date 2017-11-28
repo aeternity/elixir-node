@@ -8,10 +8,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   use GenServer
 

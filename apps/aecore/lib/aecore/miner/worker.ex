@@ -2,8 +2,8 @@ defmodule Aecore.Miner.Worker do
   use GenStateMachine, callback_mode: :state_functions
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Difficulty
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo

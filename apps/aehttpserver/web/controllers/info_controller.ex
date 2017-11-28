@@ -3,7 +3,7 @@ defmodule Aehttpserver.InfoController do
 
   alias Aecore.Structures.Block
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Peers.Worker, as: Peers
 

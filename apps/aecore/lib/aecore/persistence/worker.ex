@@ -6,7 +6,7 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
 
   require Logger
 

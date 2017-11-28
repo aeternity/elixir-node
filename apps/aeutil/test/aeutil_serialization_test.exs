@@ -1,8 +1,8 @@
-defmodule AecoreSerializationTest do
+defmodule AeutilSerializationTest do
 
   use ExUnit.Case
 
-  alias Aecore.Utils.Serialization
+  alias Aeutil.Serialization
 
   test "serialize a block" do
     block = get_block()

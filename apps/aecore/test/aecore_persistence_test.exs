@@ -5,7 +5,7 @@ defmodule PersistenceTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
 
   setup do
     Persistence.start_link([])

@@ -5,8 +5,8 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Serialization
+  alias Aecore.Chain.BlockValidation
+  alias Aeutil.Serialization
 
   use GenServer
 

@@ -4,9 +4,9 @@ defmodule AecoreValidationTest do
   """
 
   use ExUnit.Case
-  doctest Aecore.Utils.Blockchain.BlockValidation
+  doctest Aecore.Chain.BlockValidation
 
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Keys.Worker, as: Keys

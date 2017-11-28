@@ -2,7 +2,7 @@ defmodule Aehttpserver.TxPoolController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Utils.Serialization
+  alias Aeutil.Serialization
 
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool)

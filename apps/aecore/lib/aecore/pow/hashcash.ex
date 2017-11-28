@@ -7,8 +7,8 @@ defmodule Aecore.Pow.Hashcash do
   Verify a nonce, returns :true | :false
   """
 
-  alias Aecore.Utils.Bits
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aeutil.Bits
+  alias Aecore.Chain.BlockValidation
 
   @spec verify(map()) :: boolean()
   def verify(%Aecore.Structures.Header{} = block_header) do
