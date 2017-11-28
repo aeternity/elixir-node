@@ -37,7 +37,17 @@ defmodule Aehttpserver.BlockController do
     end
 
     blocks = Chain.get_blocks(latest_block_hash, count)
-    blocks_json = Enum.map(blocks, fn (block) -> Serialization.block(block, :serialize)   end)
+    blocks_json = Enum.map(
+      blocks,
+      fn (block) ->
+        hash = BlockValidation.block_header_hash(block.header)
+        %{
+          "hash" => Base.encode16(hash),
+          "header" => Serialization.block(block, :serialize).header,
+          "tx_count" => Enum.count(block.txs)
+        }
+      end
+    )
     json conn, blocks_json
   end
 
