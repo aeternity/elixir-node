@@ -28,7 +28,7 @@ defmodule Aecore.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :exconstructor], mod: {Aecore, []}]
+    [extra_applications: [:logger, :erlexec, :exexec, :exconstructor], mod: {Aecore, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -48,7 +48,8 @@ defmodule Aecore.Mixfile do
     [
       {:exconstructor, "~> 1.1"},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
-      {:excoveralls, "~> 0.7", only: :test}
+      {:excoveralls, "~> 0.7", only: :test},
+      {:exexec, "~> 0.1"}
     ]
   end
 end
@@ -61,7 +62,7 @@ defmodule Mix.Tasks.Compile.Make do
   @moduledoc "Compiles helper in c_src"
 
   def run(_) do
-    File.cd(Path.absname("apps/aecore/c_src"))
+    File.cd(Path.absname("apps/aecore/src/cuckoo/"))
     {result, _error_code} = System.cmd("make", ['all'], stderr_to_stdout: true)
     Mix.shell.info result
     :ok

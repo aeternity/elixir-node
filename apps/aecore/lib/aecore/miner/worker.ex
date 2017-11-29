@@ -53,7 +53,7 @@ defmodule Aecore.Miner.Worker do
   def idle({:call, from}, :start, _data) do
     Logger.info("Mining resumed by user")
     GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, 0, [{:reply, from, :ok}]}
+    {:next_state, :running, {0, []}, [{:reply, from, :ok}]}
   end
 
   def idle({:call, from}, :suspend, data) do
@@ -68,21 +68,20 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data, [{:reply, from, :not_started}]}
   end
 
-  def idle(_type, _state, data) do
-    {:next_state, :idle, data}
+  def idle(:info, _state, _data) do
+    {:next_state, :idle, 0}
+  end
+
+  def idle(_type, _state, _data) do
+    {:next_state, :idle, 0}
   end
 
   ## Running ##
-  def running(:cast, :mine, start_nonce) do
-    {status, next_nonce} = mine_next_block(start_nonce)
-    case status do
-      :error ->
-        Logger.info("Mining stopped by error")
-        {:next_state, :idle, 0}
-      _ ->
-        GenStateMachine.cast(__MODULE__, :mine)
-        {:next_state, :running, next_nonce}
-    end
+  def running(:cast, :mine, {start_nonce, _}) do
+      case mine_next_block(start_nonce) do
+        {:ok, nonce, pid} ->  {:next_state, :running, {nonce, pid}}
+        {:error, _reason} ->  {:next_state, :idle, {0, []}}
+      end
   end
 
   def running({:call, from}, :get_state, _data) do
@@ -93,13 +92,26 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :running, data, [{:reply, from, :already_started}]}
   end
 
-  def running({:call, from}, :suspend, data) do
+  def running({:call, from}, :suspend, {_, pid}) do
     Logger.info("Mining stopped by user")
-    {:next_state, :idle, data, [{:reply, from, :ok}]}
+    Process.exit(pid, :kill)
+    {:next_state, :idle, {0, []}, [{:reply, from, :ok}]}
   end
 
   def running({:call, from}, _, data) do
     {:next_state, :running, data, [{:reply, from, :not_suported}]}
+  end
+
+  def running(:info, {:block_found, nonce}, {_, pid}) do
+
+    #Process.exit(pid, :kill)
+    GenStateMachine.cast(__MODULE__, :mine)
+    {:next_state, :running, {nonce, []}}
+  end
+
+  def running(:info, {:no_block_found, _}, {_, pid}) do
+    Process.exit(pid, :kill)
+    {:next_state, :idle, {0, []}}
   end
 
   def running(_, _, data) do
@@ -195,26 +207,33 @@ defmodule Aecore.Miner.Worker do
 
       Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
 
-      case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
-        {:ok, mined_header} ->
-          block = %Block{header: mined_header, txs: valid_txs}
-          Logger.info(
-            fn ->
-              "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{
-                block.header.nonce
-              }" end
-          )
-          Chain.add_block(block)
-          {:block_found, 0}
+      fun = fn(pid) ->
+        res =
+          case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
+            {:ok, mined_header} ->
+              block = %Block{header: mined_header, txs: valid_txs}
+              Logger.info(
+                fn ->
+                  "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{
+                  block.header.nonce
+                  }" end
+              )
+              Chain.add_block(block)
+              {:block_found, start_nonce + @nonce_per_cycle}
 
-        {:error, _message} ->
-          {:no_block_found, start_nonce + @nonce_per_cycle}
+            {:error, _message} ->
+              {:no_block_found, 0}
+          end
+        send pid, res
       end
+
+      pid = self()
+      {:ok, start_nonce + @nonce_per_cycle, spawn fn() -> fun.(pid) end}
 
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
-        {:error, message}
+      {:error, message}
     end
 
   end

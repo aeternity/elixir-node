@@ -14,13 +14,14 @@ defmodule Aecore.Utils.Persistence do
 
   @spec get_block_chain_states() :: {:ok, term()}
   def get_block_chain_states() do
-    {:ok, table} = :dets.open_file(persistence_table_path() , [type: :set])
-    resp = case :dets.lookup(table, @blockchain_key) do
-             [] -> {:ok, :nothing_to_restore}
-             restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
-           end
-    :ok = halt_dets(table)
-    resp
+    # {:ok, table} = :dets.open_file(persistence_table_path() , [type: :set])
+    # resp = case :dets.lookup(table, @blockchain_key) do
+    #          [] -> {:ok, :nothing_to_restore}
+    #          restored_data -> {:ok, Keyword.fetch!(restored_data, @blockchain_key)}
+    #        end
+    # :ok = halt_dets(table)
+    # resp
+    {:ok, :nothing_to_restore}
   end
 
   defp halt_dets(table) do
