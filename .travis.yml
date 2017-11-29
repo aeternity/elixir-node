@@ -12,6 +12,7 @@ before_install:
 
 script:
   - mix coveralls -u
+  - mix credo list --ignore readability,design,refactor
 
 cache:
   - cargo
