@@ -8,6 +8,8 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
 
+  require Logger
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -65,6 +67,9 @@ defmodule Aehttpclient.Client do
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
       {:error, %HTTPoison.Error{}} ->
+        :error
+      unexpected ->
+        Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
         :error
     end
   end
