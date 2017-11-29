@@ -9,6 +9,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
+  alias Aehttpclient.Client
 
   require Logger
 
@@ -46,7 +47,7 @@ defmodule Aecore.Txs.Pool.Worker do
       updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
       case tx_pool == updated_pool do
         true -> Logger.info(" This transaction already has been added")
-        false -> Peers.broadcast_to_all({:new_tx, tx})
+        false -> Client.broadcast_tx(tx)
       end
       {:reply, :ok, updated_pool}
     else

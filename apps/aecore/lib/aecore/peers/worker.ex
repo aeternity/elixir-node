@@ -51,17 +51,6 @@ defmodule Aecore.Peers.Worker do
     |> Base.encode16()
   end
 
-
-  @doc """
-  Making async post requests to the users
-  `type` is related to the uri e.g. /new_block
-  """
-  @spec broadcast_to_all({type :: atom(), data :: term()}) :: :ok | :error
-  def broadcast_to_all({type, data}) do
-    data = prep_data(type,data)
-    GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
-  end
-
   @spec schedule_add_peer(uri :: term()) :: term()
   def schedule_add_peer(uri) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri})
@@ -144,11 +133,6 @@ defmodule Aecore.Peers.Worker do
 
   ## Async operations
 
-  def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
-    send_to_peers(type, data, Map.keys(peers))
-    {:noreply, state}
-  end
-
   def handle_cast({:schedule_add_peer, uri}, state) do
     {:reply, _, state} = add_peer(uri, state)
     {:noreply, state}
@@ -194,13 +178,7 @@ defmodule Aecore.Peers.Worker do
 
   defp create_nonce_table() do
     :ets.new(:nonce_table, [:named_table])
-  end
-
-  defp send_to_peers(uri, data, peers) do
-    for peer <- peers do
-      HttpClient.post(peer, data, uri)
-    end
-  end
+  end 
 
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
@@ -227,8 +205,5 @@ defmodule Aecore.Peers.Worker do
     peers_count < @peers_max_count
     || :rand.uniform() < @probability_of_peer_remove_when_max
   end
-
-  defp prep_data(:new_tx, %{}=data), do: Serialization.tx(data, :serialize)
-  defp prep_data(:new_block, %{}=data), do: Serialization.block(data, :serialize)
 
 end

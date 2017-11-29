@@ -7,6 +7,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
+  alias Aeutil.Serialization
 
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
@@ -15,10 +16,43 @@ defmodule Aehttpclient.Client do
 
   @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
   def get_block({uri, hash}) do
-    get(uri <> "/block/#{hash}", :block)
+    case get(uri <> "/block/#{hash}", :block) do
+      {:ok, serialized_block} -> 
+        {:ok, Serialization.block(serialized_block, :deserialize)}
+        #TODO handle deserialization errors
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+  
+  @spec broadcast_block(%Block{}) :: :ok | :error
+  def broadcast_block(block) do
+    data = Serialization.block(block, :serialize)
+    broadcast("new_block", data)
   end
 
-  def post(peer, data, uri) do
+  @spec broadcast_tx(%SignedTx{}) :: :ok | :error
+  def broadcast_tx(tx) do
+    data = Serialization.tx(tx, :serialize)
+    broadcast("new_tx", data)
+  end 
+
+  @spec broadcast(uri :: binary(), data :: term()) :: :ok | :error
+  defp broadcast(uri, data) do
+    spawn fn ->
+      peers = Map.keys(Peers.all_peers())
+      post_to_peers(uri, data, peers)
+    end
+    :ok
+  end
+
+  defp post_to_peers(uri, data, peers) do
+    for peer <- peers do
+      post(peer, data, uri)
+    end
+  end
+
+  defp post(peer, data, uri) do
     send_to_peer(data, "#{peer}/#{uri}")
   end
 
@@ -42,7 +76,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  def get(uri, identifier) do
+  defp get(uri, identifier) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
