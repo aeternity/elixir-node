@@ -33,7 +33,7 @@ defmodule Aecore.Pow.Hashcash do
       case verify(block_header_hash, block_header.difficulty_target) do
         true -> {:ok, block_header}
         false ->
-        if(nonce <= start_nonce) do
+        if nonce <= start_nonce do
           generate(%{block_header | nonce: nonce + 1}, start_nonce)
         else
           {:error, "no solution found"}
