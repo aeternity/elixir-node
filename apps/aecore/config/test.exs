@@ -29,15 +29,15 @@ use Mix.Config
 #
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/persistence_table"
+  nil -> "apps/aecore/priv/rox_db"
   env -> env
 end
 
 config :aecore, :persistence,
-  table: Path.absname(persistence_path)
-  
+  path: Path.absname(persistence_path)
+
 config :aecore, :pow,
-  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
+  nif_path: Path.absname("apps/aecore/priv/cuckoo/aec_pow_cuckoo20_nif"),
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,
@@ -45,17 +45,17 @@ config :aecore, :pow,
     chain_state_hash: <<0 :: 256>>,
     timestamp: 1_507_275_094_308,
     nonce: 62,
-    pow_evidence: [5865, 33461, 43503, 72290,
-                   97096, 102579, 109935, 110807,
-                   129404, 135480, 145736, 174409,
-                   178611, 180359, 183866, 197227,
-                   198055, 206373, 220794, 221908,
-                   227792, 240266, 248610, 311225,
-                   312038, 315739, 327595, 334270,
-                   336439, 345186, 348916, 357090,
-                   372159, 444132, 462404, 464127,
-                   464504, 495627, 495985, 497109,
-                   504460, 510965],
+    pow_evidence: [5_865, 33_461, 43_503, 72_290,
+                   97_096, 102_579, 109_935, 110_807,
+                   129_404, 135_480, 145_736, 174_409,
+                   178_611, 180_359, 183_866, 197_227,
+                   198_055, 206_373, 220_794, 221_908,
+                   227_792, 240_266, 248_610, 311_225,
+                   312_038, 315_739, 327_595, 334_270,
+                   336_439, 345_186, 348_916, 357_090,
+                   372_159, 444_132, 462_404, 464_127,
+                   464_504, 495_627, 495_985, 497_109,
+                   504_460, 510_965],
     version: 1,
     difficulty_target: 1
   }
@@ -63,4 +63,3 @@ config :aecore, :pow,
 config :aecore, :peers,
   peers_target_count: 2,
   peers_max_count: 4
-

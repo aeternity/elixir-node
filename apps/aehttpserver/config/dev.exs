@@ -30,6 +30,7 @@ config :aehttpserver, Aehttpserver.Endpoint,
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
+  server: true,
   watchers: []
 
 # Do not include metadata nor timestamps in development logs

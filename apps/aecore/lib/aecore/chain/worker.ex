@@ -10,7 +10,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Utils.Persistence
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Utils.Blockchain.Difficulty
 
   use GenServer
@@ -20,21 +20,13 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    Process.flag(:trap_exit, true)
-    state =
-      case Persistence.get_block_chain_states() do
-        {:ok, :nothing_to_restore} ->
-          genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
+    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
-          genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-          genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-          latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
-          txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-          {genesis_block_map, latest_block_chain_state, txs_index}
-        {:ok, restored_state} -> restored_state
-      end
-
-    {:ok, state}
+    {:ok, {genesis_block_map, latest_block_chain_state, txs_index}}
   end
 
   @spec latest_block() :: %Block{}
@@ -58,9 +50,14 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block_by_hex_hash, hash})
   end
 
-  @spec get_block(term()) :: %Block{}
+  @spec get_block(binary()) :: %Block{}
   def get_block(hash) do
     GenServer.call(__MODULE__, {:get_block, hash})
+  end
+
+  @spec has_block?(term()) :: true | false
+  def has_block?(hash) do
+    GenServer.call(__MODULE__, {:has_block, hash})
   end
 
   @spec get_blocks(binary(), integer()) :: :ok
@@ -125,11 +122,24 @@ defmodule Aecore.Chain.Worker do
     {block_map, _, _} = state
     block = block_map[block_hash]
 
-    if(block != nil) do
+    if block != nil do
       {:reply, block, state}
     else
       {:reply, {:error, "Block not found"}, state}
     end
+  end
+
+  def handle_call({:has_block, hex_hash}, _from, state) do
+    {block_map, _, _} = state
+    has_block =
+      case Base.decode16(hex_hash) do
+        {:ok, decoded_hash} ->
+          Map.has_key?(block_map, decoded_hash)
+        :error ->
+          false
+      end
+
+    {:reply, has_block, state}
   end
 
   def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
@@ -158,7 +168,7 @@ defmodule Aecore.Chain.Worker do
       updated_block_map = Map.put(block_map, block_hash, block)
       has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
 
-      {deleted_latest_chain_state, _} = case has_prev_block do
+      {deleted_latest_chain_state, _prev_chain_state} = case has_prev_block do
         true ->
           prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
           {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
@@ -176,6 +186,9 @@ defmodule Aecore.Chain.Worker do
         |> BlockValidation.block_header_hash()
         |> Base.encode16()}, total tokens: #{total_tokens}"
       end)
+
+      ## Store latest block to disk
+      Persistence.write_block_by_hash(block)
 
       ## Block was validated, now we can send it to other peers
       Peers.broadcast_to_all({:new_block, block})

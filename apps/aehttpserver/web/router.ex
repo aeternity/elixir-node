@@ -1,28 +1,23 @@
 defmodule Aehttpserver.Router do
   use Aehttpserver.Web, :router
 
-  pipeline :browser do
-    plug :accepts, ["html"]
-    plug :fetch_session
-    plug :fetch_flash
-    plug :put_secure_browser_headers
+  pipeline :api do
+    plug CORSPlug, [origin: "*"]
+    plug :accepts, ["json"]
     plug Aehttpserver.Plugs.SetHeader
   end
 
   scope "/", Aehttpserver do
-    pipe_through :browser # Use the default browser stack
+    pipe_through :api
+
     get "/info", InfoController, :info
     post "/new_tx", NewTxController, :new_tx
     get "/peers", PeersController, :info
     post "/new_block", BlockController, :new_block
+    get "/blocks", BlockController, :get_blocks
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
   end
 
-
-  # Other scopes may use custom stacks.
-  # scope "/api", Aehttpserver do
-  #   pipe_through :api
-  # end
 end
