@@ -15,4 +15,7 @@ script:
   - mix credo list --ignore readability,design,refactor
 
 cache:
-  - cargo
+  - $TRAVIS_BUILD_DIR/target
+  - $HOME/.cargo
+  - deps
+  - _build
