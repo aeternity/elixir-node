@@ -146,10 +146,9 @@ defmodule Aecore.Peers.Worker do
   ## Async operations
 
   def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
-    peer_uris =
-      peers
-        |> Map.values()
-        |> Enum.map(fn(%{uri: uri}) -> uri end)
+    peer_uris = peers
+      |> Map.values()
+      |> Enum.map(fn(%{uri: uri}) -> uri end)
     send_to_peers(type, data, peer_uris)
     {:noreply, state}
   end
@@ -176,11 +175,10 @@ defmodule Aecore.Peers.Worker do
   ## Internal functions
   defp add_peer(uri, state) do
     %{peers: peers} = state
-    state_has_uri =
-      peers
-        |> Map.values()
-        |> Enum.map(fn(%{uri: uri}) -> uri end)
-        |> Enum.member?(uri)
+    state_has_uri = peers
+      |> Map.values()
+      |> Enum.map(fn(%{uri: uri}) -> uri end)
+      |> Enum.member?(uri)
 
     if state_has_uri do
       Logger.debug(fn ->
