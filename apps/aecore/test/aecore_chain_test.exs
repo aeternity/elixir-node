@@ -18,7 +18,7 @@ defmodule AecoreChainTest do
     []
   end
 
-  @tag timeout: 100000000
+  @tag timeout: 100_000_000
   test "add block" do
     Miner.resume()
     Miner.suspend()

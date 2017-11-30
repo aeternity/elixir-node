@@ -26,7 +26,12 @@ port =  case System.get_env("PORT") do
 end
 
 config :aehttpserver, Aehttpserver.Endpoint,
-  http: [port: port, protocol_options: [onresponse: &Aehttpserver.Endpoint.on_response/4]],
+  http: [
+    port: port,
+    protocol_options: [
+      onresponse: &Aehttpserver.Endpoint.on_response/4
+    ]
+  ],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,

@@ -17,9 +17,9 @@ defmodule Aecore.Pow.Cuckoo do
 
   @trims 7
   @threads 5
-  @mersenne_prime 2147483647
+  @mersenne_prime 2_147_483_647
 
-  @on_load { :init, 0 }
+  @on_load {:init, 0}
 
   def init do
     path = Application.get_env(:aecore, :pow)[:nif_path]
@@ -32,7 +32,7 @@ defmodule Aecore.Pow.Cuckoo do
   @spec verify(map()) :: boolean()
   def verify(%Header{nonce: nonce,
                      difficulty_target: difficulty,
-                     pow_evidence: soln}=header) do
+                     pow_evidence: soln} = header) do
     hash = hash_header(%{header | pow_evidence: nil})
     case test_target(soln, difficulty) do
       true  -> verify(hash, nonce, soln)
@@ -45,7 +45,7 @@ defmodule Aecore.Pow.Cuckoo do
   Find a nonce, by calling nif.Returns {:ok, %Header{}}
   """
   @spec generate(map()) :: {:ok, map()}
-  def generate(%{}=header) do
+  def generate(%{} = header) do
     generate_process(header, hash_header(header))
   end
 
@@ -70,7 +70,7 @@ defmodule Aecore.Pow.Cuckoo do
     :nif_library_not_loaded
   end
 
-  defp test_target(%{pow_evidence: soln, difficulty_target: target}=header) do
+  defp test_target(%{pow_evidence: soln, difficulty_target: target} = header) do
     case test_target(soln, target) do
       true  ->
         {:ok, header}

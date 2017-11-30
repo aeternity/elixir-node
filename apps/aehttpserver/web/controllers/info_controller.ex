@@ -27,11 +27,13 @@ defmodule Aehttpserver.InfoController do
 
     #Add whoever's getting our info
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
-    port = ":" <> to_string(conn.port)
-    peer = peer_ip <> port
-    host = conn.host <> port
+    peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
+    peer_port = ":" <> peer_port
+    host_port = ":" <> to_string(conn.port)
+    peer = peer_ip <> peer_port
+    host = conn.host <> host_port
 
-    if(!(peer == host || host == "localhost:4000")) do
+    if !(peer == host || host == "localhost:" <> host_port) do
       case(Map.has_key?(Peers.all_peers, peer)) do
         true ->
           Logger.info("Peer already in our list")
@@ -40,12 +42,13 @@ defmodule Aehttpserver.InfoController do
       end
     end
 
-    json conn, %{current_block_version: latest_block.header.version,
+    json(conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
                  current_block_hash: latest_block_header,
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: latest_block.header.difficulty_target,
                  public_key: pubkey,
-                 peer_nonce: peer_nonce}
+                 peer_nonce: peer_nonce})
+
   end
 end

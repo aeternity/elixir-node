@@ -17,7 +17,7 @@ defmodule MultipleTransactionsTest do
     []
   end
 
-  @tag timeout: 10000000
+  @tag timeout: 10_000_000
   test "in one block" do
     {account1, account2, account3} = get_accounts_one_block()
     {account1_pub_key, _account1_priv_key} = account1
@@ -153,7 +153,7 @@ defmodule MultipleTransactionsTest do
     assert 119 == Chain.chain_state[account1_pub_key].balance
   end
 
-  # @tag timeout: 10000000
+  @tag timeout: 10_000_000
   test "in multiple blocks" do
     {account1, account2, account3} = get_accounts_multiple_blocks()
     {account1_pub_key, _account1_priv_key} = account1
@@ -308,7 +308,7 @@ defmodule MultipleTransactionsTest do
     assert 186 == Chain.chain_state[account3_pub_key].balance
   end
 
-  @tag timeout: 10000000
+  @tag timeout: 10_000_000
   test "in one block, miner collects all the fees from the transactions" do
     {account1, account2, account3} = get_accounts_miner_fees()
     {account1_pub_key, _account1_priv_key} = account1
