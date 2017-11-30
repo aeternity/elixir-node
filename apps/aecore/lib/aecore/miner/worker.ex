@@ -193,7 +193,7 @@ defmodule Aecore.Miner.Worker do
           Block.current_block_version()
         )
 
-      Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
 
       case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
         {:ok, mined_header} ->
