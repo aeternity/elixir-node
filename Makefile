@@ -4,19 +4,23 @@
 
 dev1-build:
 	@echo "Build dev1"
-	MIX_ENV=dev1 mix release
+	@MIX_ENV=dev1 mix release
 
 dev1-start:
 	@echo "Start dev1"
-	_build/dev1/rel/epoch_elixir/bin/epoch_elixir start
+	@./_build/dev1/rel/epoch_elixir/bin/epoch_elixir start
 
 dev1-stop:
 	@echo "Stop dev1"
+	@_build/dev1/rel/epoch_elixir/bin/epoch_elixir stop
 
 dev1-clean:
 	@echo "Cleaned dev1"
 	@rm -rf ./_build/dev1/
 	@rm -rf ./priv1/
+
+dev1-attach:
+	@_build/dev1/rel/epoch_elixir/bin/epoch_elixir attach
 
 #
 #DEV2 commands
@@ -24,19 +28,23 @@ dev1-clean:
 
 dev2-build:
 	@echo "Build dev2"
-	MIX_ENV=dev2 mix release
+	@MIX_ENV=dev2 mix release
 
 dev2-start:
 	@echo "Start dev2"
-	_build/dev2/rel/epoch_elixir/bin/epoch_elixir start
+	@./_build/dev2/rel/epoch_elixir/bin/epoch_elixir start
 
 dev2-stop:
 	@echo "Stop dev2"
+	@_build/dev2/rel/epoch_elixir/bin/epoch_elixir stop
 
 dev2-clean:
 	@echo "Cleaned dev2"
 	@rm -rf ./_build/dev2/
 	@rm -rf ./priv2/
+
+dev2-attach:
+	@_build/dev2/rel/epoch_elixir/bin/epoch_elixir attach
 
 #
 #DEV3 commands
@@ -44,20 +52,23 @@ dev2-clean:
 
 dev3-build:
 	@echo "Build dev3"
-	MIX_ENV=dev3 mix release
+	@MIX_ENV=dev3 mix release
 
 dev3-start:
 	@echo "Start dev3"
-	_build/dev3/rel/epoch_elixir/bin/epoch_elixir start
+	@./_build/dev3/rel/epoch_elixir/bin/epoch_elixir start
 
 dev3-stop:
 	@echo "Stop dev3"
+	@_build/dev3/rel/epoch_elixir/bin/epoch_elixir stop
 
 dev3-clean:
 	@echo "Cleaned dev3"
 	@rm -rf ./_build/dev3/
 	@rm -rf ./priv3/
 
+dev3-attach:
+	@_build/dev3/rel/epoch_elixir/bin/epoch_elixir attach
 
 #
 #Miltiple nodes
