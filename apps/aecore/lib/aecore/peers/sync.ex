@@ -204,7 +204,7 @@ defmodule Aecore.Peers.Sync do
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if(block_hash == Base.encode16(peer_block_hash)) do
+              if block_hash == Base.encode16(peer_block_hash) do
                 check_peer_block(peer_uri, peer_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))
               else

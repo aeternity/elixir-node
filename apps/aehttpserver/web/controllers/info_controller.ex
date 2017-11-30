@@ -38,12 +38,13 @@ defmodule Aehttpserver.InfoController do
       Peers.schedule_add_peer(peer, nonce)
     end
 
-    json conn, %{current_block_version: latest_block.header.version,
+    json(conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
                  current_block_hash: latest_block_header,
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: latest_block.header.difficulty_target,
                  public_key: pubkey,
-                 peer_nonce: peer_nonce}
+                 peer_nonce: peer_nonce})
+
   end
 end

@@ -19,15 +19,15 @@ defmodule DifficultyTest do
   test "difficulty calculation" do
     blocks = [
       %Block{header: %Header{difficulty_target: 6,
-        height: 1, nonce: 0, prev_hash: <<1, 24, 45>>, timestamp: 130000,
+        height: 1, nonce: 0, prev_hash: <<1, 24, 45>>, timestamp: 130_000,
         txs_hash: "\f{\f", version: 1}, txs: []},
       %Block{header: %Header{difficulty_target: 1,
-        height: 1, nonce: 0, prev_hash: <<1, 24, 45>>, timestamp: 20000,
+        height: 1, nonce: 0, prev_hash: <<1, 24, 45>>, timestamp: 20_000,
         txs_hash: "\f{\f", version: 1}, txs: []},
       %Block{header: %Header{difficulty_target: 1,
         height: 0, nonce: 0,
         prev_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>, timestamp: 10000,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>, timestamp: 10_000,
         txs_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0>>, version: 1}, txs: []}
     ]
