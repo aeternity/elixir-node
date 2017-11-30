@@ -152,7 +152,7 @@ defmodule Aecore.Peers.Sync do
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
           :ok ->
-            acc+1
+            acc + 1
           _ ->
             acc
         end
