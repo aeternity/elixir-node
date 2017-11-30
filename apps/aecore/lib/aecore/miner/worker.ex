@@ -12,6 +12,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Peers.Worker, as: Peers
 
   require Logger
 
@@ -33,7 +34,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def resume() do
-    GenStateMachine.call(__MODULE__, :start)
+    case Peers.is_chain_synced? do
+      true ->
+        GenStateMachine.call(__MODULE__, :start)
+      false ->
+        Logger.error("Can't start miner, chain not yet synced")
+    end
   end
 
   def suspend() do
