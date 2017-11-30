@@ -62,9 +62,9 @@ defmodule Aecore.Peers.Worker do
     GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
   end
 
-  @spec schedule_add_peer(uri :: term()) :: term()
-  def schedule_add_peer(uri) do
-    GenServer.cast(__MODULE__, {:schedule_add_peer, uri})
+  @spec schedule_add_peer(uri :: term(), nonce :: integer()) :: term()
+  def schedule_add_peer(uri, nonce) do
+    GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end
 
   @doc """
@@ -121,7 +121,6 @@ defmodule Aecore.Peers.Worker do
             false
         end
       end, peers)
-      
     updated_peers =
       for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(uri)
@@ -155,8 +154,17 @@ defmodule Aecore.Peers.Worker do
     {:noreply, state}
   end
 
-  def handle_cast({:schedule_add_peer, uri}, state) do
-    {:reply, _, state} = add_peer(uri, state)
+  def handle_cast({:schedule_add_peer, uri, nonce}, %{peers: peers} = state) do
+    already_have_peer = Map.has_key?(peers, nonce)
+    state =
+      case already_have_peer do
+        true ->
+          state
+        false ->
+          {:reply, _, state} = add_peer(uri, state)
+          state
+      end
+      
     {:noreply, state}
   end
 

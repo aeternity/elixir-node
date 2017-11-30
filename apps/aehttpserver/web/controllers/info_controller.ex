@@ -29,17 +29,13 @@ defmodule Aehttpserver.InfoController do
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
     peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
     peer_port = ":" <> peer_port
+    nonce = Plug.Conn.get_req_header(conn, "nonce") |> Enum.at(0) |> String.to_integer()
     host_port = ":" <> to_string(conn.port)
     peer = peer_ip <> peer_port
     host = conn.host <> host_port
 
-    if(!(peer == host || host == "localhost:" <> host_port)) do
-      case(Map.has_key?(Peers.all_peers, peer)) do
-        true ->
-          Logger.info("Peer already in our list")
-        false ->
-          Peers.schedule_add_peer(peer)
-      end
+    if(!(nonce == peer_nonce || peer == host || host == "localhost:" <> host_port)) do
+      Peers.schedule_add_peer(peer, nonce)
     end
 
     json conn, %{current_block_version: latest_block.header.version,
