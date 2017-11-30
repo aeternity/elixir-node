@@ -18,9 +18,15 @@ defmodule AecoreTxsPoolTest do
   test "add transaction, remove it and get pool" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.latest_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.latest_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
     Miner.resume()
     Miner.suspend()
     assert :ok = Pool.add_transaction(tx1)

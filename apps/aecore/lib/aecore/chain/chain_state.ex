@@ -9,8 +9,8 @@ defmodule Aecore.Chain.ChainState do
   in the transactions a single block, returns a map with the
   accounts as key and their balance as value.
   """
-  @spec calculate_block_state(list()) :: map()
-  def calculate_block_state(txs) do
+  @spec calculate_block_state(list(), integer()) :: map()
+  def calculate_block_state(txs, latest_block_height) do
     block_state = %{}
 
     block_state =
@@ -20,14 +20,17 @@ defmodule Aecore.Chain.ChainState do
             transaction.data.from_acc != nil ->
               update_block_state(block_state, transaction.data.from_acc,
                                  -(transaction.data.value + transaction.data.fee),
-                                 transaction.data.nonce, transaction.data.lock_time_block)
+                                 transaction.data.nonce, transaction.data.lock_time_block, true)
 
             true ->
               block_state
           end
 
-        update_block_state(updated_block_state, transaction.data.to_acc,
-                           transaction.data.value, 0, transaction.data.lock_time_block)
+        add_to_amount = latest_block_height + 1 !=
+          transaction.data.lock_time_block - Application.get_env(:aecore, :tx_data)[:lock_time_block]
+
+        update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value,
+                           0, transaction.data.lock_time_block, add_to_amount)
       end
 
     reduce_map_list(block_state)
@@ -85,20 +88,17 @@ defmodule Aecore.Chain.ChainState do
     |> Enum.all?()
   end
 
-  @spec substract_locked_amounts_from_chain_state(map(), integer()) :: map()
-  def substract_locked_amounts_from_chain_state(chain_state, new_block_height) do
+  @spec update_chain_state_locked(map(), integer()) :: map()
+  def update_chain_state_locked(chain_state, new_block_height) do
     Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
-        {locked_amount, updated_locked} =
+      {locked_amount, updated_locked} =
           Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
             cond do
               lock_time_block > new_block_height ->
-                if(new_block_height == lock_time_block - 10) do
-                  {amount_update_value - amount, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
-                else
-                  {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
-                end
+                {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
               lock_time_block == new_block_height ->
                 {amount_update_value + amount, updated_locked}
+
               true ->
                 {amount_update_value, updated_locked}
             end
@@ -108,8 +108,8 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
-  @spec update_block_state(map(), binary(), integer(), integer(), integer()) :: map()
-  defp update_block_state(block_state, account, value, nonce, lock_time_block) do
+  @spec update_block_state(map(), binary(), integer(), integer(), integer(), boolean()) :: map()
+  defp update_block_state(block_state, account, value, nonce, lock_time_block, add_to_amount) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
@@ -119,6 +119,12 @@ defmodule Aecore.Chain.ChainState do
           block_state
       end
 
+    new_balance = if(add_to_amount) do
+      block_state_filled_empty[account].balance + value
+    else
+      block_state_filled_empty[account].balance
+    end
+
     new_nonce = cond do
       block_state_filled_empty[account].nonce < nonce ->
         nonce
@@ -127,10 +133,16 @@ defmodule Aecore.Chain.ChainState do
         block_state_filled_empty[account].nonce
     end
 
-    new_account_state = %{balance: block_state_filled_empty[account].balance + value,
+    new_locked = if(value > 0) do
+      block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
+    else
+      block_state_filled_empty[account].locked
+    end
+
+    new_account_state = %{balance: new_balance,
                           nonce:   new_nonce,
-                          locked:  block_state_filled_empty[account].locked ++
-                                   [%{amount: value, block: lock_time_block}]}
+                          locked:  new_locked}
+
     Map.put(block_state_filled_empty, account, new_account_state)
   end
 

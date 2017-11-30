@@ -35,7 +35,7 @@ end
 
 config :aecore, :persistence,
   table: Path.absname(persistence_path)
-  
+
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo20_nif"),
   genesis_header: %{
@@ -64,3 +64,5 @@ config :aecore, :peers,
   peers_target_count: 2,
   peers_max_count: 4
 
+config :aecore, :tx_data,
+  lock_time_block: 0

@@ -6,8 +6,6 @@ defmodule Aecore.Structures.TxData do
   alias Aecore.Structures.TxData
   @type tx_data() :: %TxData{}
 
-  @lock_time_block 10
-
   @doc """
   Definition of Aecore TxData structure
 
@@ -19,9 +17,6 @@ defmodule Aecore.Structures.TxData do
   """
   defstruct [:nonce, :from_acc, :to_acc, :value, :fee, :lock_time_block]
   use ExConstructor
-
-  @spec get_lock_time_block() :: integer()
-  def get_lock_time_block(), do: @lock_time_block
 
   @spec create(binary(), binary(), integer(), integer(), integer(), integer()) :: {:ok, %TxData{}}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block) do

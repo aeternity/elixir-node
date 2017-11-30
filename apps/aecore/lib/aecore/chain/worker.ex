@@ -27,7 +27,8 @@ defmodule Aecore.Chain.Worker do
           genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
           genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-          genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+          genesis_chain_state =
+            ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
           latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
           txs_index = calculate_block_acc_txs_info(Block.genesis_block())
           {genesis_block_map, latest_block_chain_state, txs_index}
@@ -73,10 +74,10 @@ defmodule Aecore.Chain.Worker do
     latest_block = latest_block()
 
     prev_block_chain_state = chain_state()
-    new_block_state = ChainState.calculate_block_state(block.txs)
+    new_block_state = ChainState.calculate_block_state(block.txs, latest_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
-      ChainState.substract_locked_amounts_from_chain_state(new_chain_state, latest_block.header.height + 1)
+      ChainState.update_chain_state_locked(new_chain_state, latest_block.header.height + 1)
 
     latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
 
@@ -148,10 +149,11 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_validated_block, %Block{} = block}, _from, state) do
     {block_map, latest_block_chain_state, txs_index} = state
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
-    new_block_state = ChainState.calculate_block_state(block.txs)
+    latest_block = block_map[block.header.prev_hash]
+    new_block_state = ChainState.calculate_block_state(block.txs, latest_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
-      ChainState.substract_locked_amounts_from_chain_state(new_chain_state, block.header.height)
+      ChainState.update_chain_state_locked(new_chain_state, block.header.height)
 
     new_block_txs_index = calculate_block_acc_txs_info(block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)

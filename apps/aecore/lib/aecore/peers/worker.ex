@@ -10,7 +10,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Utils.Blockchain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Utils.Serialization
-  alias Aecore.Peers.Sync
 
   require Logger
 

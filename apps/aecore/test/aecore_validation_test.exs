@@ -50,16 +50,22 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    assert BlockValidation.validate_block!(new_block, prev_block, %{}, 
+    assert BlockValidation.validate_block!(new_block, prev_block, %{},
                                     blocks_for_difficulty_calculation) == :ok
   end
 
   test "validate transactions in a block" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.latest_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 10,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.latest_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions
