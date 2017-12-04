@@ -76,7 +76,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def idle(type, state, data) do
-    Logger.info("[Miner] idle | type : #{inspect(_type)} | state: #{inspect(state)}")
+    Logger.info("[Miner] idle | type : #{inspect(type)} | state: #{inspect(state)}")
     {:next_state, :idle, data}
   end
 
@@ -103,7 +103,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def running({:call, from}, state, data) do
-    Logger.info("[Miner] running | call | state : #{inspect(_state)}")
+    Logger.info("[Miner] running | call | state : #{inspect(state)}")
     {:next_state, :running, data, [{:reply, from, :not_suported}]}
   end
 
