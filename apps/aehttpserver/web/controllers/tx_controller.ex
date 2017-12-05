@@ -10,28 +10,26 @@ defmodule Aehttpserver.TxController do
     account_bin =
       params["account"]
       |> Base.decode16!()
-    #IO.inspect account_bin
     user_txs = Pool.get_txs_for_address(account_bin, :no_hash)
     user_txs_and_hash = Pool.get_txs_for_address(account_bin, :add_hash)
-    #IO.inspect user_proof
     merkle_tree = build_tx_tree(user_txs)
     {size, {key, value, _}} = merkle_tree
     proof = :gb_merkle_trees.merkle_proof(key, merkle_tree)
-    root_hash =  merkle_tree |> :gb_merkle_trees.root_hash
-    valid = :gb_merkle_trees.verify_merkle_proof(key, value, root_hash, proof)
     include_proof =
     for proof <- user_txs_and_hash do
       Map.put_new(proof, :proof, proof)
     end
-    #IO.inspect proof
-    #IO.inspect include_proof
-    case params["merkle_proof"]  do
+    case params["include_proof"]  do
       "true" ->
         json(conn, Enum.map(include_proof, fn(tx) ->
               %{tx |
-                proof: Serialization.hex_binary(tx.proof, :serialize),
+                proof: %{tx.proof |
+                         from_acc: Serialization.hex_binary(tx.proof.from_acc, :serialize),
+                         to_acc: Serialization.hex_binary(tx.proof.to_acc, :serialize),
+                         txs_hash: Serialization.hex_binary(tx.proof.txs_hash, :serialize)},
                 from_acc: Serialization.hex_binary(tx.from_acc, :serialize),
-                to_acc: Serialization.hex_binary(tx.to_acc, :serialize)
+                to_acc: Serialization.hex_binary(tx.to_acc, :serialize),
+                txs_hash: Serialization.hex_binary(tx.txs_hash, :serialize)
                } end))
       _ ->
         json(conn, Enum.map(user_txs, fn(tx) ->
@@ -50,7 +48,7 @@ defmodule Aehttpserver.TxController do
     else
       merkle_tree =
       for transaction <- txs do
-      transaction_data_bin = :erlang.term_to_binary(transaction)
+        transaction_data_bin = :erlang.term_to_binary(transaction)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
       end
 

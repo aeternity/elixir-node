@@ -113,7 +113,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp check_address_tx([tx | txs], address, user_txs) do
     if tx.data.from_acc == address or tx.data.to_acc == address  do
-      user_txs = [tx.data | user_txs]
+      user_txs = [Map.from_struct(tx.data) | user_txs]
     end
 
     check_address_tx(txs, address, user_txs)
