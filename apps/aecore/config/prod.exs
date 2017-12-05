@@ -29,36 +29,38 @@ use Mix.Config
 #
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/persistence_table"
+  nil -> "apps/aecore/priv/rox_db"
   env -> env
 end
 
 config :aecore, :persistence,
-  table: Path.absname(persistence_path)
+  path: Path.absname(persistence_path)
 
 config :aecore, :pow,
-  nif_path: Path.absname("apps/aecore/priv/aec_pow_cuckoo26_nif"),
+  bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
+  params: {"./lean", "-t 5", 16},
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,
     txs_hash: <<0::256>>,
     chain_state_hash: <<0 :: 256>>,
     timestamp: 1_507_275_094_308,
-    nonce: 49,
-    pow_evidence: [827073, 968001, 1367727,
-                   2248958, 2496250, 3450285,
-                   3762239, 4330454, 4753400,
-                   6298861, 7633605, 8406300,
-                   8427108, 8637289, 9074181,
-                   11812624, 12065013, 12379945,
-                   12636125, 13185509, 13304773,
-                   16291222, 16913907, 17967337,
-                   18585455, 19550321, 19557538,
-                   21486461, 21542527, 22115004,
-                   22608952, 22961192, 23009944,
-                   24049559, 24093275, 24618494,
-                   24790930, 24863623, 25203962,
-                   26777546, 27127749, 29049875],
+    nonce: 76,
+    pow_evidence: [323333, 333635, 356466, 636139,
+                   646165, 663665, 663739, 31306333,
+                   31373934, 31376265, 31613030,
+                   31633064, 31636339, 31653839,
+                   32303738, 32306461, 32313830,
+                   32323733, 32393364, 32396234,
+                   33323435, 33346230, 33616139,
+                   34323339, 34326132, 34326539,
+                   34373434, 34643263, 35316335,
+                   35363536, 35626131, 35653164,
+                   36303962, 36323737, 36393163,
+                   36666663, 37336636, 37356164,
+                   37626237, 37633337, 37663630,
+                   37666439],
+
     version: 1,
     difficulty_target: 1
   }

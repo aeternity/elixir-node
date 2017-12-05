@@ -5,4 +5,17 @@ otp_release:
   - 20.0
 env:
   - MIX_ENV=test
-script: mix coveralls -u
+
+before_install:
+  - curl https://sh.rustup.rs -sSf | sh -s -- -y
+  - source $HOME/.cargo/env
+
+script:
+  - mix coveralls -u
+  - mix credo list --ignore readability,design,refactor
+
+cache:
+  - $TRAVIS_BUILD_DIR/target
+  - $HOME/.cargo
+  - deps
+  - _build

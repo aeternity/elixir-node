@@ -12,6 +12,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
 
+  @tag :validation
   test "validate new block" do
     new_block =
       %Block{header: %Header{chain_state_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -19,17 +20,21 @@ defmodule AecoreValidationTest do
                              0, 0, 0, 0, 0, 0>>,
                              difficulty_target: 0,
                              height: 1,
-                             nonce: 248312374,
-                             pow_evidence: [8081, 47553, 48385, 49312, 51555,
-                                            64159, 71996, 78044, 90415, 102863,
-                                            113010, 124096, 126548, 148419,
-                                            164411, 166884, 181371, 195117,
-                                            195929, 204532, 214522, 238027,
-                                            239685, 245406, 271421, 277983,
-                                            289169, 329736, 330930, 334253,
-                                            339312, 342060, 384756, 393044,
-                                            410582, 414490, 429226, 429839,
-                                            430507, 482481, 493187, 510666],
+                             nonce: 248_312_405,
+                             pow_evidence: [383_234, 616_365, 623_137, 633_764,
+                                            31_313_631, 31_326_664, 31_346_130,
+                                            31_346_561, 31_373_638, 31_646_332,
+                                            32_306_533, 32_313_362, 32_323_637,
+                                            32_353_630, 32_363_064, 32_366_432,
+                                            32_383_636, 32_386_561, 32_653_839,
+                                            32_663_066, 33_356_265, 33_396_261,
+                                            33_613_630, 33_616_333, 34_333_337,
+                                            34_333_662, 34_393_965, 34_626_164,
+                                            35_306_265, 35_333_837, 35_336_639,
+                                            35_386_633, 35_393_931, 36_313_261,
+                                            36_323_663, 37_313_335, 37_323_632,
+                                            37_616_562, 37_616_634, 37_626_535,
+                                            37_653_934, 37_656_233],
                              prev_hash: <<5, 106, 166, 218, 144, 176, 219, 99,
                              63, 101, 99, 156, 27, 61, 128, 219, 23, 42, 195,
                              177, 173, 135, 126, 228, 52, 17, 142, 35, 9, 218,
@@ -50,7 +55,7 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    assert BlockValidation.validate_block!(new_block, prev_block, %{}, 
+    assert BlockValidation.validate_block!(new_block, prev_block, %{},
                                     blocks_for_difficulty_calculation) == :ok
   end
 

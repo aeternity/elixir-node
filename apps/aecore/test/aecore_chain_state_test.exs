@@ -11,6 +11,7 @@ defmodule AecoreChainStateTest do
   alias Aecore.Structures.SignedTx, as: SignedTx
   alias Aecore.Chain.ChainState, as: ChainState
 
+  @tag :chain_state
   test "block state" do
     block = get_block()
 
@@ -20,6 +21,7 @@ defmodule AecoreChainStateTest do
       ChainState.calculate_block_state(block.txs)
   end
 
+  @tag :chain_state
   test "chain state" do
     chain_state =
       ChainState.calculate_chain_state(%{"a" => %{balance: 3, nonce: 100},

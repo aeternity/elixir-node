@@ -1,19 +1,20 @@
 EXECUTABLES = \
-	priv/bin/mean16 \
-	priv/bin/lean16 \
-	priv/bin/verify16 \
-	priv/bin/mean28 \
-	priv/bin/lean28 \
-	priv/bin/verify28 \
-	priv/bin/mean30 \
-	priv/bin/lean30 \
-	priv/bin/verify30
+	$(CURDIR)/bin/mean16 \
+	$(CURDIR)/bin/lean16 \
+	$(CURDIR)/bin/verify16 \
+	$(CURDIR)/bin/mean28 \
+	$(CURDIR)/bin/lean28 \
+	$(CURDIR)/bin/verify28 \
+	$(CURDIR)/bin/mean30 \
+	$(CURDIR)/bin/lean30 \
+	$(CURDIR)/bin/verify30
 
-LIBBLAKE = priv/lib/libblake2b.so
+CURDIR := $(abspath $(shell pwd)/../../priv/cuckoo)
+LIBBLAKE = $(CURDIR)/lib/libblake2b.so
 
-SRC_EXECUTABLES = $(subst priv/bin, c_src/src, $(EXECUTABLES))
+SRC_EXECUTABLES = $(subst $(CURDIR)/bin, c_src/src, $(EXECUTABLES))
 
-SRC_LIBBLAKE = $(subst priv/lib, c_src/src, $(LIBBLAKE))
+SRC_LIBBLAKE = $(subst $(CURDIR)/lib, c_src/src, $(LIBBLAKE))
 
 SRC_ARCH_FLAGS = -m64
 
@@ -36,17 +37,17 @@ distclean:
 # recomputation caused by inability of `cp -p `to set high resolution
 # timestamp on certain filesystems.
 .LOW_RESOLUTION_TIME: $(LIBBLAKE)
-$(LIBBLAKE): $(SRC_LIBBLAKE) | priv/lib
+$(LIBBLAKE): $(SRC_LIBBLAKE) | $(CURDIR)/lib
 	cp -p $< $@
 
 # Use `.LOW_RESOLUTION_TIME` for preventing unnecessary target
 # recomputation caused by inability of `cp -p `to set high resolution
 # timestamp on certain filesystems.
 .LOW_RESOLUTION_TIME: $(EXECUTABLES)
-$(EXECUTABLES): priv/bin/%: c_src/src/% | priv/bin
+$(EXECUTABLES): $(CURDIR)/bin/%: c_src/src/% | $(CURDIR)/bin
 	cp -p $< $@
 
-priv/lib priv/bin:
+$(CURDIR) $(CURDIR)/lib $(CURDIR)/bin:
 	mkdir -p $@
 
 # Do not silence the recursive make call, in order to show compiler

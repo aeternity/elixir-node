@@ -53,7 +53,7 @@ defmodule Aecore.Chain.ChainState do
         {account, :erlang.term_to_binary(data)}
       end
 
-    if length(merkle_tree_data) == 0 do
+    if Enum.empty?(merkle_tree_data) do
       <<0::256>>
     else
       merkle_tree =

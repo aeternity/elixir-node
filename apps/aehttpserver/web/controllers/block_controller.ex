@@ -18,6 +18,39 @@ defmodule Aehttpserver.BlockController do
     end
   end
 
+  def get_blocks(conn, params) do
+    latest_block_hash = case Map.get(params, "from_block") do
+      nil ->
+        latest_block = Chain.latest_block()
+        BlockValidation.block_header_hash(latest_block.header)
+      hash ->
+        {_, hash_bin} = Base.decode16(hash)
+        hash_bin
+    end
+
+    count = case Map.get(params, "count") do
+      nil ->
+        100
+      count_string ->
+        {number, _} = Integer.parse(count_string)
+        number
+    end
+
+    blocks = Chain.get_blocks(latest_block_hash, count)
+    blocks_json = Enum.map(
+      blocks,
+      fn (block) ->
+        hash = BlockValidation.block_header_hash(block.header)
+        %{
+          "hash" => Base.encode16(hash),
+          "header" => Serialization.block(block, :serialize).header,
+          "tx_count" => Enum.count(block.txs)
+        }
+      end
+    )
+    json conn, blocks_json
+  end
+
   def new_block(conn, _params) do
     ## Becouse we 'conn.body_params' contains decoded json as map with
     ## keys as strings instead of atoms we are doing this workaround

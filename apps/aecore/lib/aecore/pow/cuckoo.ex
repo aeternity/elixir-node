@@ -32,9 +32,7 @@ defmodule Aecore.Pow.Cuckoo do
   Find a nonce
   """
   @spec generate(map()) :: {:ok, map()}
-  def generate(%{}=header) do
-    process(:generate, header)
-  end
+  def generate(%{}=header), do: process(:generate, header)
 
   ###=============================================================================
   ### Internal functions
@@ -130,10 +128,10 @@ defmodule Aecore.Pow.Cuckoo do
   defp wait_for_result() do
     receive do
       {:stdout, os_pid, msg} ->
-        Exexec.stop(os_pid)
+        #Exexec.stop(os_pid)
         {:ok, msg}
       {:stderr, os_pid, msg} ->
-        Exexec.stop(os_pid)
+        #Exexec.stop(os_pid)
         Logger.info("[Cuckoo] stderr: #{inspect(msg)}")
         {:error, :miner_was_stopped}
       any ->

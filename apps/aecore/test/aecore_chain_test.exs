@@ -18,9 +18,11 @@ defmodule AecoreChainTest do
     []
   end
 
-  @tag timeout: 100000000
+  @tag timeout: 100_000_000
+  @tag :chain
   test "add block" do
     Miner.resume()
+    :timer.sleep(10000)
     Miner.suspend()
 
     latest_block = Chain.latest_block()

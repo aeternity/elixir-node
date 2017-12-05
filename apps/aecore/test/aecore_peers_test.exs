@@ -9,8 +9,9 @@ defmodule AecorePeersTest do
     []
   end
 
+  @tag :peers
   test "add peer, get all peers, check peers and remove the peer" do
-    assert Enum.count(Peers.all_peers) == 0
+    assert Enum.empty?(Peers.all_peers)
     assert :ok = Peers.check_peers
     assert {:error, "Peer not found"} =
       Peers.remove_peer("localhost:4000")

@@ -29,15 +29,15 @@ use Mix.Config
 #
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/persistence_table"
+  nil -> "apps/aecore/priv/rox_db"
   env -> env
 end
 
 config :aecore, :persistence,
-  table: Path.absname(persistence_path)
+  path: Path.absname(persistence_path)
 
 config :aecore, :pow,
-  bin_dir: Path.absname("apps/aecore/src/cuckoo/priv/bin"),
+  bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
   genesis_header: %{
     height: 0,
@@ -46,12 +46,21 @@ config :aecore, :pow,
     chain_state_hash: <<0 :: 256>>,
     timestamp: 1_507_275_094_308,
     nonce: 76,
-    pow_evidence: [323333, 333635, 356466, 636139, 646165, 663665, 663739,
-                   31306333, 31373934, 31376265, 31613030, 31633064, 31636339, 31653839,
-                   32303738, 32306461, 32313830, 32323733, 32393364, 32396234, 33323435,
-                   33346230, 33616139, 34323339, 34326132, 34326539, 34373434, 34643263,
-                   35316335, 35363536, 35626131, 35653164, 36303962, 36323737, 36393163,
-                   36666663, 37336636, 37356164, 37626237, 37633337, 37663630, 37666439],
+    pow_evidence: [323333, 333635, 356466, 636139,
+                   646165, 663665, 663739, 31306333,
+                   31373934, 31376265, 31613030,
+                   31633064, 31636339, 31653839,
+                   32303738, 32306461, 32313830,
+                   32323733, 32393364, 32396234,
+                   33323435, 33346230, 33616139,
+                   34323339, 34326132, 34326539,
+                   34373434, 34643263, 35316335,
+                   35363536, 35626131, 35653164,
+                   36303962, 36323737, 36393163,
+                   36666663, 37336636, 37356164,
+                   37626237, 37633337, 37663630,
+                   37666439],
+
     version: 1,
     difficulty_target: 1
   }

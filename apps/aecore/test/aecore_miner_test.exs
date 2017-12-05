@@ -5,10 +5,12 @@ defmodule MinerTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 
-  @tag timeout: 100000000
+  @tag timeout: 100_000_000
+  @tag :miner
   test "mine_next_block" do
     Miner.start_link([])
     Miner.resume()
+    :timer.sleep(10000)
     Miner.suspend()
     assert length(Chain.all_blocks) > 1
     latest_block = Chain.latest_block
