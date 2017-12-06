@@ -118,7 +118,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
     check_address_tx(txs, address, user_txs)
   end
-   defp check_address_tx([], address, user_txs) do
+  defp check_address_tx([], address, user_txs) do
     user_txs
   end
 

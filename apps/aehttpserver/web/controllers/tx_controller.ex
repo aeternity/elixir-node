@@ -6,7 +6,6 @@ defmodule Aehttpserver.TxController do
   alias Aecore.Utils.Blockchain.BlockValidation
 
   def show(conn, params) do
-    # IO.inspect params["account"]
     account_bin =
       params["account"]
       |> Base.decode16!()
@@ -41,7 +40,6 @@ defmodule Aehttpserver.TxController do
   end
 
 
-  ## TODO : better use pattern matching for len checking : [_h | _] = txs
   defp build_tx_tree(txs) do
     if length(txs) == 0 do
       <<0::256>>
@@ -54,7 +52,7 @@ defmodule Aehttpserver.TxController do
 
       merkle_tree =
         merkle_tree
-      |> List.foldl(:gb_merkle_trees.empty(), fn(node, merkle_tree_acc) ->
+        |> List.foldl(:gb_merkle_trees.empty(), fn(node, merkle_tree_acc) ->
         :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree_acc)
       end)
     end
