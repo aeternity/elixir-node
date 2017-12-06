@@ -122,7 +122,7 @@ defmodule Aecore.Chain.Worker do
     {block_map, _, _} = state
     block = block_map[block_hash]
 
-    if(block != nil) do
+    if block != nil do
       {:reply, block, state}
     else
       {:reply, {:error, "Block not found"}, state}

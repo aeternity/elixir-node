@@ -10,7 +10,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ## Prerequisites
 
-To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html) and the source code by cloning or downloading the repository.
+To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html), [Rust](https://www.rust-lang.org/install.html) (for RocksDB persistence) and the source code by cloning or downloading the repository.
 
 ## Usage
 #### **Starting the application**
