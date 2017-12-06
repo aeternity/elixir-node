@@ -87,7 +87,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
-  defp split_blocks([block | blocks], address, txs, :no_hash ) do
+  defp split_blocks([block | blocks], address, txs, :no_hash) do
     user_txs = check_address_tx(block.txs, address, txs)
     split_blocks(blocks, address, user_txs, :no_hash)
   end
