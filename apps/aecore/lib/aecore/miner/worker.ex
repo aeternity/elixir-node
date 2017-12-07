@@ -140,7 +140,7 @@ defmodule Aecore.Miner.Worker do
     # We take an extra block and then drop one at the head of the list
     # so the miner's blocks for difficulty calculation are the same as
     # the blocks in the add_block function
-    blocks_for_difficulty_validation = if(latest_block.header.height == 0) do
+    blocks_for_difficulty_validation = if latest_block.header.height == 0 do
       Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
     else
       Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks() + 1)
@@ -193,7 +193,7 @@ defmodule Aecore.Miner.Worker do
           Block.current_block_version()
         )
 
-      Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
 
       case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
         {:ok, mined_header} ->

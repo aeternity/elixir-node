@@ -33,7 +33,7 @@ defmodule Aehttpserver.InfoController do
     peer = peer_ip <> peer_port
     host = conn.host <> host_port
 
-    if(!(peer == host || host == "localhost:" <> host_port)) do
+    if !(peer == host || host == "localhost:" <> host_port) do
       case(Map.has_key?(Peers.all_peers, peer)) do
         true ->
           Logger.info("Peer already in our list")
@@ -42,12 +42,13 @@ defmodule Aehttpserver.InfoController do
       end
     end
 
-    json conn, %{current_block_version: latest_block.header.version,
+    json(conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,
                  current_block_hash: latest_block_header,
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: latest_block.header.difficulty_target,
                  public_key: pubkey,
-                 peer_nonce: peer_nonce}
+                 peer_nonce: peer_nonce})
+
   end
 end

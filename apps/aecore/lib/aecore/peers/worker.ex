@@ -13,7 +13,7 @@ defmodule Aecore.Peers.Worker do
 
   require Logger
 
-  @mersenne_prime 2147483647
+  @mersenne_prime 2_147_483_647
   @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
   @probability_of_peer_remove_when_max 0.5
 
@@ -81,12 +81,12 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-  def handle_call({:add_peer,uri}, _from, state) do
+  def handle_call({:add_peer, uri}, _from, state) do
     add_peer(uri, state)
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
-    if(Map.has_key?(peers, uri)) do
+    if Map.has_key?(peers, uri) do
       Logger.info(fn -> "Removed #{uri} from the peer list" end)
       {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
     else
@@ -112,7 +112,7 @@ defmodule Aecore.Peers.Worker do
     updated_peers =
       for {peer, current_block_hash} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(peer)
-        if(info.current_block_hash != current_block_hash) do
+        if info.current_block_hash != current_block_hash do
           {peer, info.current_block_hash}
         else
           {peer, current_block_hash}
@@ -169,6 +169,8 @@ defmodule Aecore.Peers.Worker do
             Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
             {:reply, :ok, state}
           end
+        {:error, "Equal peer nonces"} ->
+          {:reply, :ok, state}
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
@@ -178,7 +180,6 @@ defmodule Aecore.Peers.Worker do
 
   defp create_nonce_table() do
     :ets.new(:nonce_table, [:named_table])
-  end 
 
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
@@ -188,7 +189,7 @@ defmodule Aecore.Peers.Worker do
             cond do
               info.genesis_block_hash != genesis_block_header_hash() ->
                 {:error, "Genesis header hash not valid"}
-              !Map.has_key?(info, :server) || info.server != "aehttpserver"->
+              !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
                 {:error, "Peer is not an aehttpserver"}
               true ->
                 {:ok, info}

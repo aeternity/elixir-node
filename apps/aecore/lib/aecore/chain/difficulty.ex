@@ -2,7 +2,7 @@ defmodule Aecore.Chain.Difficulty do
 
   @number_of_blocks 100
   @max_difficulty_change 2
-  @target_distance 60000
+  @target_distance 60_000
 
   def get_number_of_blocks() do
     @number_of_blocks

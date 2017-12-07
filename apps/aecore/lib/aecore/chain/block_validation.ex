@@ -142,7 +142,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec calculate_root_hash(list()) :: binary()
   def calculate_root_hash(txs) do
-    if length(txs) == 0 do
+    if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =

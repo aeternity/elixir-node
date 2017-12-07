@@ -14,7 +14,7 @@ defmodule Aeutil.Serialization do
       chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
       prev_hash: hex_binary(block.header.prev_hash, direction),
       txs_hash: hex_binary(block.header.txs_hash, direction)}
-    new_txs = Enum.map(block.txs, fn(tx) -> tx(tx,direction) end)
+    new_txs = Enum.map(block.txs, fn(tx) -> tx(tx, direction) end)
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
 
@@ -28,7 +28,7 @@ defmodule Aeutil.Serialization do
   end
 
   def hex_binary(data, direction) do
-    if(data != nil) do
+    if data != nil do
       case(direction) do
         :serialize ->
           Base.encode16(data)

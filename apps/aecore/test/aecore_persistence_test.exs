@@ -13,7 +13,7 @@ defmodule PersistenceTest do
     []
   end
 
-  @tag timeout: 10000000
+  @tag timeout: 10_000_000
   @tag :persistence
   test "Reading last mined block by his hash from rocksdb" do
     Miner.resume()

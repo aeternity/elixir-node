@@ -9,6 +9,8 @@ defmodule Aehttpclient.Client do
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
+  require Logger
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -67,12 +69,12 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
-  def get_account_balance({uri,acc}) do
+  def get_account_balance({uri, acc}) do
     get(uri <> "/balance/#{acc}", :balance)
   end
 
   @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
-  def get_account_txs({uri,acc}) do
+  def get_account_txs({uri, acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
@@ -100,12 +102,15 @@ defmodule Aehttpclient.Client do
         :error
       {:error, %HTTPoison.Error{}} ->
         :error
+      unexpected ->
+        Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
+        :error
     end
   end
 
   def json_response(body) do
     response = Poison.decode!(body)
-    {:ok,response}
+    {:ok, response}
   end
 
   defp send_to_peer(data, uri) do
