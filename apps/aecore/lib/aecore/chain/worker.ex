@@ -12,7 +12,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
-  alias Aehttpclient.Client
 
   use GenServer
 
@@ -192,7 +191,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.write_block_by_hash(block)
 
       ## Block was validated, now we can send it to other peers
-      Client.broadcast_block(block)
+      Peers.broadcast_block(block)
 
       {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
     catch

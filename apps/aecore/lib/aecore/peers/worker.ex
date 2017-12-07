@@ -7,6 +7,7 @@ defmodule Aecore.Peers.Worker do
 
   alias Aehttpclient.Client
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
   alias Aeutil.Serialization
@@ -37,6 +38,12 @@ defmodule Aecore.Peers.Worker do
   @spec check_peers() :: :ok
   def check_peers() do
     GenServer.call(__MODULE__, :check_peers)
+  end
+
+  @spec all_uris() :: list(binary())
+  def all_uris() do
+    all_peers() 
+    |> Map.keys
   end
 
   @spec all_peers() :: map()
@@ -74,6 +81,22 @@ defmodule Aecore.Peers.Worker do
         :ets.lookup(:nonce_table, :nonce)[:nonce]
     end
   end
+ 
+  @spec broadcast_block(%Block{}) :: :ok
+  def broadcast_block(block) do
+    spawn fn -> 
+      Client.send_block(block, all_uris())
+    end
+    :ok
+  end
+
+  @spec broadcast_tx(%SignedTx{}) :: :ok
+  def broadcast_tx(tx) do
+    spawn fn ->
+      Client.send_tx(tx, all_uris())
+    end
+    :ok
+  end 
 
   ## Server side
 
@@ -180,6 +203,7 @@ defmodule Aecore.Peers.Worker do
 
   defp create_nonce_table() do
     :ets.new(:nonce_table, [:named_table])
+  end
 
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do

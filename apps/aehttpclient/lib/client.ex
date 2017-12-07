@@ -26,32 +26,25 @@ defmodule Aehttpclient.Client do
         {:error, reason}
     end
   end
-  
-  @spec broadcast_block(%Block{}) :: :ok | :error
-  def broadcast_block(block) do
+
+  @spec send_block(%Block{}, list(binary())) :: :ok
+  def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
-    broadcast("new_block", data)
+    post_to_peers("new_block", data, peers)
   end
 
-  @spec broadcast_tx(%SignedTx{}) :: :ok | :error
-  def broadcast_tx(tx) do
+  @spec send_tx(%SignedTx{}, list(binary())) :: :ok
+  def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
-    broadcast("new_tx", data)
+    post_to_peers("new_tx", data, peers)
   end 
 
-  @spec broadcast(uri :: binary(), data :: term()) :: :ok | :error
-  defp broadcast(uri, data) do
-    spawn fn ->
-      peers = Map.keys(Peers.all_peers())
-      post_to_peers(uri, data, peers)
-    end
-    :ok
-  end
-
+  @spec post_to_peers(binary(), binary(), list(binary())) :: :ok
   defp post_to_peers(uri, data, peers) do
     for peer <- peers do
       post(peer, data, uri)
     end
+    :ok
   end
 
   defp post(peer, data, uri) do
