@@ -28,14 +28,6 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 
-persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
-
-config :aecore, :persistence,
-  path: Path.absname(persistence_path)
-
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/cuckoo/aec_pow_cuckoo26_nif"),
   genesis_header: %{
