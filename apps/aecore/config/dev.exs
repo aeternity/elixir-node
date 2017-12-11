@@ -33,6 +33,10 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
   env -> env
 end
 
+# config :aecore, :authorization,
+#   uuid: UUID.uuid4
+#   Mix.
+
 config :aecore, :persistence,
   path: Path.absname(persistence_path)
 

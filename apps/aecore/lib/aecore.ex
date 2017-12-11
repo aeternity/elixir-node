@@ -10,7 +10,8 @@ defmodule Aecore do
       Aecore.Peers.Worker.Supervisor,
       Aecore.Persistence.Worker.Supervisor
     ]
-
+    
+    Application.put_env(:aecore, :authorization, UUID.uuid4)
     Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
