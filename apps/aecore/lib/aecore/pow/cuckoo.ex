@@ -14,8 +14,6 @@ defmodule Aecore.Pow.Cuckoo do
   alias Aecore.Structures.Header
   alias Aecore.Pow.Hashcash
 
-  @mersenne_prime 2147483647
-
   @doc """
   Proof of Work verification (with difficulty check)
   """
@@ -41,18 +39,17 @@ defmodule Aecore.Pow.Cuckoo do
     with {:ok, builder} <- hash_header(builder(process, header)),
          {:ok, builder} <- get_os_cmd(builder),
          {:ok, builder} <- exec_os_cmd(builder),
-         {:ok, builder} <- parse_response(builder),
          {:ok, builder} <- build_response(builder)
       do
       {:ok, %{process: process}=builder}
       case process do
-        :generate -> {:ok, builder.header}
+        :generate -> builder.header
         :verify -> builder.verified
       end
 
       else
         {:error, %{error: :no_solution}} ->
-          generate(%{header | nonce: next_nonce(header.nonce)})
+          {:error, :no_solution}
         {:error, %{error: reason}} ->
           {:error, reason}
     end
@@ -89,7 +86,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp default_command_options() do
     [{:stdout, self()},
      {:stderr, self()},
-     {:kill_timeout, 1},
+     {:kill_timeout, 0},
      {:sync, false},
      {:cd, Application.get_env(:aecore, :pow)[:bin_dir]},
      {:env, [{"SHELL", "/bin/sh"}]},
@@ -101,17 +98,19 @@ defmodule Aecore.Pow.Cuckoo do
                      cmd: command,
                      cmd_opt: options}=builder) do
     try do
-      {:ok, _erlpid, ospid} = Exexec.run_link(command, options)
+      {:ok, _erlpid, ospid} = Exexec.run(command, options)
       if process == :verify do
         Exexec.send(ospid, solution_to_string(header.pow_evidence))
         Exexec.send(ospid, :eof)
       end
 
-      case wait_for_result() do
-        {:ok, response} -> {:ok, %{ builder | cmd_response: response}}
-        {:error, reason} -> {:error, %{builder | error: reason}}
-      end
-
+      res =
+        case wait_for_result(process) do
+          {:ok, response} -> {:ok, %{ builder | response: response}}
+          {:error, reason} -> {:error, %{builder | error: reason}}
+        end
+      Exexec.stop(ospid)
+      res
     catch
       error -> {:error, %{builder | error: error} }
     end
@@ -125,25 +124,24 @@ defmodule Aecore.Pow.Cuckoo do
     ["export ", ldpathvar, "=../lib:$", ldpathvar, "; "]
   end
 
-  defp wait_for_result() do
+  ## Consider buffer
+  defp wait_for_result(process) do
     receive do
-      {:stdout, os_pid, msg} ->
-        #Exexec.stop(os_pid)
-        {:ok, msg}
-      {:stderr, os_pid, msg} ->
-        #Exexec.stop(os_pid)
-        Logger.info("[Cuckoo] stderr: #{inspect(msg)}")
+      {:stdout, _os_pid, msg} ->
+        handle_raw_data(process, msg)
+      {:stderr, _os_pid, msg} ->
+        Logger.error("[Cuckoo] stderr: #{inspect(msg)}")
         {:error, :miner_was_stopped}
+      {:DOWN, _ref, :process, _pid, :killed} ->
+        exit(:normal)
+      {:EXIT, _pid, :shutdown} ->
+        exit(:shutdown)
+      {:DOWN, _, :process, _pid, :normal} ->
+        wait_for_result(process)
       any ->
-        Logger.info("[Cuckoo] any case : #{inspect(any)}")
-        {:error, :miner_was_stopped}
+        Logger.error("[Cuckoo] wait_for_response any case : #{inspect(any)}")
+        {:error, :no_value}
     end
-  end
-
-  defp parse_response(%{process: process,
-                        cmd_response: cmd_response}=builder) do
-    response = handle_raw_data(process, cmd_response)
-    {:ok, %{builder | response: response}}
   end
 
   defp handle_raw_data(:verify, msg) do
@@ -156,7 +154,7 @@ defmodule Aecore.Pow.Cuckoo do
         [solution, _more | _] = String.split solution, "\n"
         solution =
         for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
-        {:ok, solution}
+        {:ok, {:generated, solution}}
       _ -> {:error, :no_solution}
     end
   end
@@ -168,15 +166,16 @@ defmodule Aecore.Pow.Cuckoo do
   defp build_response(%{header: header,
                         response: response}=builder) do
     case response do
-      {:ok, {:verified, verified}} ->
+      {:verified, verified} ->
         {:ok, %{ builder | verified: verified}}
-      {:ok, soln} ->
+      {:generated, soln} ->
         if test_target(soln, header.difficulty_target) do
           {:ok, %{ builder | header: %{header | pow_evidence: soln}}}
         else
           {:error, %{builder | error: :no_solution}}
         end
       {:error, error} ->
+        Logger.error("[Cuckoo] buildig response: #{inspect(error)}")
         {:error, %{builder | error: error} }
     end
   end
@@ -214,14 +213,10 @@ defmodule Aecore.Pow.Cuckoo do
     Enum.join(list, " ")
   end
 
-  defp next_nonce(@mersenne_prime), do: 0
-  defp next_nonce(nonce), do:  nonce + 1
-
   defp builder(process, header) do
     %{:header         => header,
       :hash           => nil,
       :process        => process,
-      :cmd_response   => nil,
       :response       => nil,
       :verified       => false,
       :cmd            => nil,

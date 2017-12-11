@@ -1,5 +1,10 @@
 defmodule Aecore.Miner.Worker do
-  use GenStateMachine, callback_mode: :state_functions
+  @moduledoc """
+  Handle the mining process.
+  inspiration : https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_conductor.erl
+  """
+
+  use GenServer
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Utils.Blockchain.BlockValidation
@@ -11,15 +16,25 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
 
+  @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @nonce_per_cycle 1
+  @default_mining_strategy :contiously_noreplay
+  @single_async_to_chain_mining_strategy :single__noreplay
+  @resuming_by_default :false
 
   def start_link(_args) do
-    GenStateMachine.start_link(__MODULE__, {0, nil}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{miner_state: :idle,
+                                       mining_strategy: @default_mining_strategy,
+                                       nonce: 0,
+                                       workers: {},
+                                       block_candidate: nil}, name: __MODULE__)
+  end
+
+  def stop(reason) do
+    GenServer.stop(__MODULE__, reason)
   end
 
   def child_spec(arg) do
@@ -32,133 +47,174 @@ defmodule Aecore.Miner.Worker do
     }
   end
 
-  def resume() do
-    GenStateMachine.call(__MODULE__, :start)
+  def init(state) do
+    if @resuming_by_default do
+      {:ok, state, 0}
+    else
+      {:ok, state}
+    end
   end
 
-  def suspend() do
-    GenStateMachine.call(__MODULE__, :suspend)
+  @spec resume() :: :ok
+  def resume(), do: GenServer.call(__MODULE__, {:mining, :start})
+
+  @spec suspend() :: :ok
+  def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
+
+  ## TODO needs testing
+  @spec graceful_suspend() :: :ok
+  def graceful_suspend() do
+    GenServer.call(__MODULE__, {:mining, {:stop, :graceful}})
   end
 
-  def init(data) do
-    GenStateMachine.cast(__MODULE__, :idle)
-    {:ok, :running, data}
+  ## Mine single block and add it to the chain - Async
+  def mine_async_block_to_chain() do
+    GenServer.call(__MODULE__, {:mining, {:start, :single_async_to_chain}})
   end
 
-  def get_state() do
-    GenStateMachine.call(__MODULE__, :get_state)
+  ## Mine single block and add it to the chain - Sync
+  def mine_sync_block_to_chain() do
+    cblock = candidate()
+    {:ok, new_block} = mine_sync_block(Cuckoo.generate(cblock.header), cblock)
+    Chain.add_block(new_block)
+    :ok
   end
 
-  ## Idle ##
-  def idle({:call, from}, :start, _data) do
-    Logger.info("[Miner] Mining resumed by user")
-    GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, {0, nil}, [{:reply, from, :ok}]}
+  ## Mine single block without adding it to the chain - Sync
+  def mine_sync_block(%Block{} = cblock) do
+    mine_sync_block(Cuckoo.generate(cblock.header), cblock)
   end
 
-  def idle({:call, from}, :suspend, data) do
-    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  defp mine_sync_block({:error, :no_solution}, %Block{} = cblock) do
+    cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
+    cblock  = %{cblock | header: cheader}
+    mine_sync_block(Cuckoo.generate(cheader), cblock)
+  end
+  defp mine_sync_block(%Header{} = mined_header, cblock) do
+    {:ok, %{cblock | header: mined_header}}
   end
 
-  def idle({:call, from}, :get_state, _data) do
-    {:keep_state_and_data, [{:reply, from, {:state, :idle}}]}
+  ## Server side
+  def handle_call({:mining, :stop}, _from, state) do
+    {:reply, :ok, mining(%{state | miner_state: :idle})}
+  end
+  def handle_call({:mining, {:stop, :graceful}}, _from, state) do
+    {:reply, :ok, %{state | miner_state: :idle}}
+  end
+  def handle_call({:mining, :start}, _from, state) do
+    {:reply, :ok, mining(%{state | miner_state: :running})}
   end
 
-  def idle({:call, from}, state, data) do
-    Logger.info("[Miner] idle | call | state : #{inspect(state)}")
-    {:next_state, :idle, data, [{:reply, from, :not_started}]}
+  def handle_call({:mining, {:start, :single_async_to_chain}}, _from, state) do
+    {:reply, :ok, mining(%{state | miner_state: :running,
+                           mining_strategy: @single_async_to_chain_mining_strategy})}
   end
 
-  def idle(:info, {:block_found, _}, {_, pid}) do
-    Logger.info("[Miner] idle | info | block_found")
-    stop_worker(pid)
-    {:next_state, :idle, {0, nil}}
+  def handle_call(any, _from, state) do
+    Logger.info("[Miner] handle call any: #{inspect(any)}")
+    {:reply, :ok, state}
   end
 
-  def idle(type, state, data) do
-    Logger.info("[Miner] idle | type : #{inspect(type)} | state: #{inspect(state)}")
-    {:next_state, :idle, data}
+  def handle_cast(any, state) do
+    Logger.info("[Miner] handle cast any: #{inspect(any)}")
+    {:noreply, state}
   end
 
-  ## Running ##
-  def running(:cast, :mine, {start_nonce, _}) do
-      case mine_next_block(start_nonce) do
-        {:ok, nonce, pid} ->  {:next_state, :running, {nonce, pid}}
-        {:error, _reason} ->  {:next_state, :idle, {0, nil}}
-      end
+  def handle_info({:worker_reply, pid, result}, state) do
+    {:noreply, handle_worker_reply(pid, result, state)}
   end
 
-  def running({:call, from}, :get_state, {_, pid}) do
-    {:keep_state_and_data, [{:reply, from, {:state, :running, pid}}]}
+  def handle_info({:DOWN, _ref, :process, _pid, :normal}, state) do
+    {:noreply, state}
   end
 
-  def running({:call, from}, :start, data) do
-    {:next_state, :running, data, [{:reply, from, :already_started}]}
+  def handle_info(:timeout, state) do
+    Logger.info("[Miner] Mining was resumed by default")
+    {:noreply, mining(%{state |
+                        miner_state: :running,
+                        block_candidate: candidate()})}
   end
 
-  def running({:call, from}, :suspend, {_, pid}) do
-    Logger.info("[Miner] Mining stopped by user")
-    stop_worker(pid)
-    {:next_state, :idle, {0, nil}, [{:reply, from, :ok}]}
+  def handle_info(any, state) do
+    Logger.info("[Miner] handle info any: #{inspect(any)}")
+    {:noreply, state}
   end
 
-  def running({:call, from}, state, data) do
-    Logger.info("[Miner] running | call | state : #{inspect(state)}")
-    {:next_state, :running, data, [{:reply, from, :not_suported}]}
+  ## Private
+
+  defp mining(%{miner_state: :running, workers: workers}=state) when workers != {} do
+    Logger.error("[Miner] error still working")
+    state
+  end
+  defp mining(%{miner_state: :running, block_candidate: nil}=state) do
+    mining(%{state | block_candidate: candidate()})
+  end
+  defp mining(%{miner_state: :running, block_candidate: cblock}=state) do
+    cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
+    cblock  = %{cblock | header: cheader}
+    work = fn() -> Cuckoo.generate(cheader) end
+    start_worker(work, %{state | block_candidate: cblock})
   end
 
-  def running(:info, {:block_found, nonce}, {_, pid}) do
-    stop_worker(pid)
-    GenStateMachine.cast(__MODULE__, :mine)
-    {:next_state, :running, {nonce, nil}}
+  defp mining(%{miner_state: :idle, workers: []} = state), do: state
+  defp mining(%{miner_state: :idle} = state), do: stop_worker(state)
+
+  defp start_worker(work, state) do
+    server = self()
+    {pid, ref} = spawn_monitor(fn() ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    %{state | workers: {pid, ref}}
   end
 
-  def running(:info, {:no_block_found, _}, {_, pid}) do
-    Logger.info("[Miner] No block was found")
-    stop_worker(pid)
-    {:next_state, :idle, {0, nil}}
+  defp stop_worker(%{workers: {}} = state), do: state
+  defp stop_worker(%{workers: workers} = state) do
+    {pid, info} = workers
+    cleanup_after_worker(info)
+    Process.exit(pid, :shutdown)
+    %{state | workers: {}}
   end
 
-  def running(type, state, {_, _pid} = data) do
-    Logger.info("[Miner] running | type: #{inspect(type)} | state: #{inspect(state)}")
-    {:next_state, :idle, data}
+  defp cleanup_after_worker(ref), do: Process.demonitor(ref, [:flush])
+
+  defp handle_worker_reply(pid, reply, %{workers: {pid, info}}=state) do
+    cleanup_after_worker(info)
+    worker_reply(reply, %{state | workers: {}})
   end
 
-  def get_coinbase_transaction(to_acc, total_fees) do
-    tx_data = %TxData{
-      from_acc: nil,
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees,
-      nonce: 0,
-      fee: 0
-    }
+  defp worker_reply({:error, :no_solution}, state), do: mining(state)
 
-    %SignedTx{data: tx_data, signature: nil}
-  end
-
-  def coinbase_transaction_value, do: @coinbase_transaction_value
-
-  def calculate_total_fees(txs) do
-    List.foldl(
-      txs,
-      0,
-      fn (tx, acc) ->
-        acc + tx.data.fee
-      end
+  defp worker_reply(%{} = miner_header, %{block_candidate: cblock}=state) do
+    Logger.info(
+      fn ->
+        "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
+        cblock.header.nonce
+        }" end
     )
+    cblock = %{cblock | header: miner_header}
+    Chain.add_block(cblock)
+
+    if state.mining_strategy == @default_mining_strategy do
+      mining(%{state | block_candidate: nil})
+    else
+      %{state | block_candidate: nil, mining_strategy: @default_mining_strategy}
+    end
   end
 
-  ## Internal
-  @spec mine_next_block(integer()) :: :ok | :error
-  defp mine_next_block(start_nonce) do
+  def candidate() do
     latest_block = Chain.latest_block()
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
     chain_state = Chain.chain_state(latest_block_hash)
 
-    # We take an extra block and then drop one at the head of the list
-    # so the miner's blocks for difficulty calculation are the same as
-    # the blocks in the add_block function
-    blocks_for_difficulty_validation = if latest_block.header.height == 0 do
+    ## ------------------------------------------------------------------
+    ## We take an extra block and then drop one at the head of the list
+    ## so the miner's blocks for difficulty calculation are the same as
+    ## the blocks in the add_block function
+    ## -------------------------------------------------------------------
+
+    blocks_for_difficulty_validation =
+    if latest_block.header.height == 0 do
       Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
     else
       Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks() + 1)
@@ -183,10 +239,9 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation = Chain.get_blocks(latest_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
-      txs_list = Map.values(Pool.get_pool())
+      txs_list = Map.values(Aecore.Txs.Pool.Worker.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
-
       {_, pubkey} = Keys.pubkey()
 
       total_fees = calculate_total_fees(valid_txs)
@@ -198,7 +253,6 @@ defmodule Aecore.Miner.Worker do
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-
       unmined_header =
         Header.create(
           latest_block.header.height + 1,
@@ -206,47 +260,40 @@ defmodule Aecore.Miner.Worker do
           root_hash,
           chain_state_hash,
           difficulty,
-          0,
-          #start from nonce 0, will be incremented in mining
+          0, #start from nonce 0, will be incremented in mining
           Block.current_block_version()
         )
-
-      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
-
-      fun = fn(pid) ->
-        res =
-          case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
-            {:ok, mined_header} ->
-              block = %Block{header: mined_header, txs: valid_txs}
-              Logger.info(
-                fn ->
-                  "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{
-                  block.header.nonce
-                  }" end
-              )
-              Chain.add_block(block)
-              {:block_found, start_nonce + @nonce_per_cycle}
-            {:error, message} ->
-              Logger.error("[Miner] failed to generate block : #{inspect(message)}")
-              {:no_block_found, 0}
-
-          end
-        send pid, res
-      end
-
-      pid = self()
-      miner_pid = spawn fn() -> fun.(pid) end
-      {:ok, start_nonce + @nonce_per_cycle, miner_pid}
-
+      %Block{header: unmined_header, txs: valid_txs}
     catch
-      message ->
-        Logger.error(fn -> "[Miner] Failed to mine block: #{Kernel.inspect(message)}" end)
-      {:error, message}
+      _ -> :error
     end
 
   end
 
-  defp stop_worker(pid) when is_pid(pid), do: Process.exit(pid, :shutdown)
-  defp stop_worker(_), do: :ok
+  def calculate_total_fees(txs) do
+    List.foldl(
+      txs,
+      0,
+      fn (tx, acc) ->
+        acc + tx.data.fee
+      end
+    )
+  end
+
+  def get_coinbase_transaction(to_acc, total_fees) do
+    tx_data = %TxData{
+      from_acc: nil,
+      to_acc: to_acc,
+      value: @coinbase_transaction_value + total_fees,
+      nonce: 0,
+      fee: 0
+    }
+
+    %SignedTx{data: tx_data, signature: nil}
+  end
+  def coinbase_transaction_value, do: @coinbase_transaction_value
+
+  def next_nonce(@mersenne_prime), do: 0
+  def next_nonce(nonce), do:  nonce + 1
 
 end

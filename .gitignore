@@ -26,8 +26,8 @@ erl_crash.dump
 # Ignore priv dir
 apps/aecore/priv/
 
-# Ignore c_src
-apps/aecore/src/c_src/
+# Ignore Cuckoo c_src
+apps/aecore/src/cuckoo/c_src/
 
 # Ignore Logs created by aecore
 apps/aecore/logs

@@ -13,12 +13,10 @@ defmodule PersistenceTest do
     []
   end
 
-  @tag timeout: 10_000_000
+  @tag timeout: 20_000
   @tag :persistence
   test "Reading last mined block by his hash from rocksdb" do
-    Miner.resume()
-    :timer.sleep(10000)
-    Miner.suspend()
+    Miner.mine_sync_block_to_chain
     hash = BlockValidation.block_header_hash(Chain.latest_block.header)
     assert {:ok, %{header: _header}} = Persistence.read_block_by_hash(hash)
   end
