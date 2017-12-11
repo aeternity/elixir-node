@@ -23,7 +23,8 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state =
-      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
+      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height,
+                                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
@@ -71,7 +72,9 @@ defmodule Aecore.Chain.Worker do
     latest_block = latest_block()
 
     prev_block_chain_state = chain_state()
-    new_block_state = ChainState.calculate_block_state(block.txs, latest_block.header.height)
+    new_block_state =
+      ChainState.calculate_block_state(block.txs, latest_block.header.height,
+         Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, latest_block.header.height + 1)
@@ -160,7 +163,9 @@ defmodule Aecore.Chain.Worker do
     {block_map, latest_block_chain_state, txs_index} = state
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     latest_block = block_map[block.header.prev_hash]
-    new_block_state = ChainState.calculate_block_state(block.txs, latest_block.header.height)
+    new_block_state =
+      ChainState.calculate_block_state(block.txs, latest_block.header.height,
+        Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, block.header.height)
@@ -190,7 +195,7 @@ defmodule Aecore.Chain.Worker do
       Logger.info(fn ->
         "Added block ##{block.header.height} with hash #{block.header
         |> BlockValidation.block_header_hash()
-        |> Base.encode16()}, total tokens: #{total_tokens}"
+        |> Base.encode16()}, total tokens: #{elem(total_tokens, 0)}"
       end)
 
       ## Store latest block to disk
@@ -222,7 +227,6 @@ defmodule Aecore.Chain.Worker do
   def terminate(_, state) do
     Persistence.store_state(state)
     Logger.warn("Terminting, state was stored on disk ...")
-
   end
 
   defp calculate_block_acc_txs_info(block) do

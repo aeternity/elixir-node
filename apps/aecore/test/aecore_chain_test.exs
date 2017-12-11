@@ -27,7 +27,9 @@ defmodule AecoreChainTest do
     latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
 
     chain_state = Chain.chain_state(latest_block_hash)
-    new_block_state = ChainState.calculate_block_state([], latest_block.header.height)
+    new_block_state =
+      ChainState.calculate_block_state([], latest_block.header.height,
+        Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
     new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
     new_chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 

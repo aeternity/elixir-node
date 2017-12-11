@@ -19,7 +19,7 @@ defmodule AecoreTxTest do
                              Map.get(Chain.chain_state,
                                      to_account, %{nonce: 0}).nonce + 1, 1,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
 
     assert :true = Keys.verify_tx(tx)
   end

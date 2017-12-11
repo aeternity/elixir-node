@@ -65,4 +65,4 @@ config :aecore, :peers,
   peers_max_count: 4
 
 config :aecore, :tx_data,
-  lock_time_block: 10
+  lock_time_coinbase: 10

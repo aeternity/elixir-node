@@ -23,11 +23,11 @@ defmodule AehttpclientTest do
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
                               Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1,
                               Chain.latest_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 5,
                               Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1,
                               Chain.latest_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     Pool.add_transaction(tx1)
     Pool.add_transaction(tx2)
   end

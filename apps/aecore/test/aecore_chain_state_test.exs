@@ -24,7 +24,8 @@ defmodule AecoreChainStateTest do
                                %{amount: 5, block: lock_time_block}]},
              "c" => %{nonce: 1, balance: -5,
                       locked: [%{amount: 2, block: lock_time_block}]}} ==
-      ChainState.calculate_block_state(block.txs, latest_block.header.height)
+      ChainState.calculate_block_state(block.txs, latest_block.header.height,
+        Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
   end
 
   test "chain state" do
@@ -60,25 +61,25 @@ defmodule AecoreChainStateTest do
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "b",
               value: 5, nonce: 101, fee: 1,
               lock_time_block: Chain.latest_block().header.height +
-                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1},
+                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "c",
               value: 2, nonce: 102, fee: 1,
               lock_time_block: Chain.latest_block().header.height +
-                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1},
+                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "c", to_acc: "b",
               value: 4, nonce: 1, fee: 1,
               lock_time_block: Chain.latest_block().header.height +
-                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1},
+                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "b", to_acc: "a",
               value: 10, nonce: 1, fee: 1,
               lock_time_block: Chain.latest_block().header.height +
-                Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1},
+                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>}]}
   end
 

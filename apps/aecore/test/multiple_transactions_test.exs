@@ -32,7 +32,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -40,7 +40,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 99,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -54,7 +54,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -62,7 +62,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 109,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -75,15 +75,15 @@ defmodule MultipleTransactionsTest do
     account1_initial_nonce = Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce
     tx = create_signed_tx(account1, account2, 39, account1_initial_nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account1, account3, 29, account1_initial_nonce + 2, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account1, account3, 29, account1_initial_nonce + 3, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -100,22 +100,22 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
     Pool.get_and_empty_pool()
     tx = create_signed_tx(account1, account2, 49, account1_initial_nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account1, account3, 29, account1_initial_nonce + 2, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account1, account3, 29, account1_initial_nonce + 3, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -130,7 +130,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account3_pub_key, 13,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -138,12 +138,12 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account3, account2, 99,
                           Map.get(Chain.chain_state, account3_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account2, account1, 99,
                           Map.get(Chain.chain_state, account2_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -168,7 +168,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -176,7 +176,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 99,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -190,7 +190,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -198,7 +198,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 109,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -211,7 +211,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 39,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -219,7 +219,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account3, 29,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -227,7 +227,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account3, 29,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -243,7 +243,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -251,7 +251,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 49,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -259,7 +259,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account3, 29,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -267,7 +267,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account3, 29,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -282,7 +282,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 80,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -290,7 +290,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account2, 99,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -298,7 +298,7 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account2, account3, 99,
                           Map.get(Chain.chain_state, account2_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -324,12 +324,12 @@ defmodule MultipleTransactionsTest do
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     {:ok, tx} = Keys.sign_tx(account2_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 2, 0,
                              Chain.latest_block().header.height +
-                              Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     Miner.resume()
     Miner.suspend()
@@ -337,12 +337,12 @@ defmodule MultipleTransactionsTest do
     tx = create_signed_tx(account1, account3, 99,
                           Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     tx = create_signed_tx(account2, account3, 99,
                           Map.get(Chain.chain_state, account2_pub_key, %{nonce: 0}).nonce + 1, 1,
                           Chain.latest_block().header.height +
-                            Application.get_env(:aecore, :tx_data)[:lock_time_block] + 1)
+                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     assert :ok = Pool.add_transaction(tx)
     miner_balance_before_mining = Map.get(Chain.chain_state, pubkey).balance
     Miner.resume()

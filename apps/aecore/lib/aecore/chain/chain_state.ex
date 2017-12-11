@@ -9,8 +9,8 @@ defmodule Aecore.Chain.ChainState do
   in the transactions a single block, returns a map with the
   accounts as key and their balance as value.
   """
-  @spec calculate_block_state(list(), integer()) :: map()
-  def calculate_block_state(txs, latest_block_height) do
+  @spec calculate_block_state(list(), integer(), integer()) :: map()
+  def calculate_block_state(txs, latest_block_height, lock_time_coinbase) do
     block_state = %{}
 
     block_state =
@@ -27,7 +27,7 @@ defmodule Aecore.Chain.ChainState do
           end
 
         add_to_amount = latest_block_height + 1 !=
-          transaction.data.lock_time_block - Application.get_env(:aecore, :tx_data)[:lock_time_block]
+          transaction.data.lock_time_block - lock_time_coinbase
 
         update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value,
                            0, transaction.data.lock_time_block, add_to_amount)
@@ -72,13 +72,18 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
-    chain_state
-    |> Enum.map(fn{_account, data} -> data.balance +
-       Enum.reduce(data.locked, 0, fn(%{amount: amount}, locked_sum) ->
-         locked_sum + amount
-        end)
+    Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
+      {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
+      locked_tokens =
+        Enum.reduce(data.locked, 0, fn(%{amount: amount}, locked_sum) ->
+          locked_sum + amount
+         end)
+      new_total_tokens = total_tokens + data.balance + locked_tokens
+      new_total_unlocked_tokens = total_unlocked_tokens + data.balance
+      new_total_locked_tokens = total_locked_tokens + locked_tokens
+
+      {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
     end)
-    |> Enum.sum()
   end
 
   @spec validate_chain_state(map()) :: boolean()
@@ -91,7 +96,7 @@ defmodule Aecore.Chain.ChainState do
   @spec update_chain_state_locked(map(), integer()) :: map()
   def update_chain_state_locked(chain_state, new_block_height) do
     Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
-      {locked_amount, updated_locked} =
+      {unlocked_amount, updated_locked} =
           Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
             cond do
               lock_time_block > new_block_height ->
@@ -100,11 +105,16 @@ defmodule Aecore.Chain.ChainState do
                 {amount_update_value + amount, updated_locked}
 
               true ->
+                Logger.error(fn ->
+                  "Update chain state locked:
+                   new block height (#{new_block_height}) greater than lock time block (#{message})"
+                end)
+
                 {amount_update_value, updated_locked}
             end
           end)
 
-        Map.put(acc, account, %{balance: balance + locked_amount, nonce: nonce, locked: updated_locked})
+        Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
       end)
   end
 

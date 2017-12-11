@@ -175,10 +175,12 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,
                                             latest_block.header.height + 1 +
-                                            Application.get_env(:aecore, :tx_data)[:lock_time_block]) | valid_txs]
+                                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) | valid_txs]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_block_state = ChainState.calculate_block_state(valid_txs, latest_block.header.height)
+      new_block_state =
+        ChainState.calculate_block_state(valid_txs, latest_block.header.height,
+          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
       new_chain_state_locked_amounts =
         ChainState.update_chain_state_locked(new_chain_state, latest_block.header.height + 1)
