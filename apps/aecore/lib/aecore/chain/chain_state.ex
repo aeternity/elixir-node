@@ -4,6 +4,8 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
+  require Logger
+
   @doc """
   Calculates the balance of each account mentioned
   in the transactions a single block, returns a map with the
@@ -107,7 +109,7 @@ defmodule Aecore.Chain.ChainState do
               true ->
                 Logger.error(fn ->
                   "Update chain state locked:
-                   new block height (#{new_block_height}) greater than lock time block (#{message})"
+                   new block height (#{new_block_height}) greater than lock time block (#{lock_time_block})"
                 end)
 
                 {amount_update_value, updated_locked}
