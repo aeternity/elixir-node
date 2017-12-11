@@ -8,6 +8,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Block
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
 
@@ -45,16 +46,31 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
 
-  @spec get_txs_for_address(String.t(), atom()) :: list()
-  def get_txs_for_address(address, option) do
-    GenServer.call(__MODULE__, {:get_txs_for_address,{address, option}})
+  @spec get_txs_for_address(String.t()) :: list()
+  def get_txs_for_address(address) do
+    GenServer.call(__MODULE__, {:get_txs_for_address, address})
+  end
+
+  @spec get_block_by_txs_hash(binary()) :: %Block{}
+  def get_block_by_txs_hash(txs_hash) do
+   GenServer.call(__MODULE__, {:get_block_by_txs_hash, txs_hash})
   end
 
 
   ## Server side
 
-  def handle_call({:get_txs_for_address,{address, option}}, _from, state) do
-    txs_list = split_blocks(Chain.all_blocks(), address, [], option)
+  def handle_call({:get_block_by_txs_hash, txs_hash}, _from, state) do
+    case Enum.find(Chain.all_blocks, fn block ->
+          block.header.txs_hash == txs_hash end) do
+      block ->
+        {:reply, block, state}
+      nil ->
+        {:reply, {:error, "Block not found!"}, state}
+    end
+  end
+
+  def handle_call({:get_txs_for_address, address}, _from, state) do
+    txs_list = split_blocks(Chain.all_blocks(), address, [])
     {:reply, txs_list, state}
   end
 
@@ -87,33 +103,31 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
-  defp split_blocks([block | blocks], address, txs, :no_hash) do
-    user_txs = check_address_tx(block.txs, address, txs)
-    split_blocks(blocks, address, user_txs, :no_hash)
-  end
-
-  defp split_blocks([block | blocks], address, txs, :add_hash) do
+  defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
     case user_txs do
-      [] -> split_blocks(blocks, address, user_txs, :add_hash)
+      [] -> split_blocks(blocks, address, user_txs)
       _ ->
         block_user_txs =
       for block_user_txs <- user_txs do
-        Map.put_new(block_user_txs,
-          :txs_hash,
-          block.header.txs_hash)
+        block_user_txs
+        |>  Map.put_new(:txs_hash, block.header.txs_hash)
+        |>  Map.put_new(:block_hash, block.header.chain_state_hash)
+        |>  Map.put_new(:block_height, block.header.height)
       end
-        split_blocks(blocks, address, block_user_txs, :add_hash)
+        split_blocks(blocks, address, block_user_txs)
     end
   end
 
-  defp split_blocks([], address, txs, _) do
+  defp split_blocks([], address, txs) do
     txs
   end
 
   defp check_address_tx([tx | txs], address, user_txs) do
     if tx.data.from_acc == address or tx.data.to_acc == address  do
-      user_txs = [Map.from_struct(tx.data) | user_txs]
+      user_txs = [
+        Map.from_struct(tx.data)
+        |> Map.put_new(:signature, tx.signature)| user_txs]
     end
 
     check_address_tx(txs, address, user_txs)

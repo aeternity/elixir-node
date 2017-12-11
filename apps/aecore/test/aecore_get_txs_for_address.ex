@@ -38,7 +38,6 @@ defmodule GetTxsForAddressTest do
     assert :ok = Pool.add_transaction(tx2)
     assert :ok = Pool.add_transaction(tx3)
     Miner.resume()
-    :timer.sleep(10000)
     Miner.suspend()
 
     assert 2 <= :erlang.length(Chain.all_blocks)
