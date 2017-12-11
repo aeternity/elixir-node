@@ -19,7 +19,7 @@ defmodule Aecore.Pow.Cuckoo do
   """
   @spec verify(map()) :: boolean()
   def verify(%Header{difficulty_target: difficulty,
-                     pow_evidence: soln}=header) do
+                     pow_evidence: soln} = header) do
     case test_target(soln, difficulty) do
       true  -> process(:verify, header)
       false -> false
@@ -30,7 +30,7 @@ defmodule Aecore.Pow.Cuckoo do
   Find a nonce
   """
   @spec generate(map()) :: {:ok, map()}
-  def generate(%{}=header), do: process(:generate, header)
+  def generate(%{} = header), do: process(:generate, header)
 
   ###=============================================================================
   ### Internal functions
@@ -41,21 +41,19 @@ defmodule Aecore.Pow.Cuckoo do
          {:ok, builder} <- exec_os_cmd(builder),
          {:ok, builder} <- build_response(builder)
       do
-      {:ok, %{process: process}=builder}
+      {:ok, %{process: process} = builder}
       case process do
         :generate -> builder.header
         :verify -> builder.verified
       end
 
       else
-        {:error, %{error: :no_solution}} ->
-          {:error, :no_solution}
         {:error, %{error: reason}} ->
           {:error, reason}
     end
   end
 
-  defp hash_header(%{header: header}=builder) do
+  defp hash_header(%{header: header} = builder) do
     header = %{header | pow_evidence: nil}
     hash   = :base64.encode_to_string(BlockValidation.block_header_hash(header))
     {:ok, %{builder | hash: hash}}
@@ -63,7 +61,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   defp get_os_cmd(%{process: process,
                     header: header,
-                    hash: hash}=builder) do
+                    hash: hash} = builder) do
     {:ok, command, options} = build_command(process, header.nonce, hash)
     {:ok, %{builder | cmd: command, cmd_opt: options}}
   end
@@ -96,7 +94,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp exec_os_cmd(%{process: process,
                      header: header,
                      cmd: command,
-                     cmd_opt: options}=builder) do
+                     cmd_opt: options} = builder) do
     try do
       {:ok, _erlpid, ospid} = Exexec.run(command, options)
       if process == :verify do
@@ -106,13 +104,13 @@ defmodule Aecore.Pow.Cuckoo do
 
       res =
         case wait_for_result(process) do
-          {:ok, response} -> {:ok, %{ builder | response: response}}
+          {:ok, response} -> {:ok, %{builder | response: response}}
           {:error, reason} -> {:error, %{builder | error: reason}}
         end
       Exexec.stop(ospid)
       res
     catch
-      error -> {:error, %{builder | error: error} }
+      error -> {:error, %{builder | error: error}}
     end
   end
 
@@ -159,24 +157,24 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  defp build_response(%{error: error}=builder) when error != nil do
-    {:error, %{builder | error: error} }
+  defp build_response(%{error: error} = builder) when error != nil do
+    {:error, %{builder | error: error}}
   end
 
   defp build_response(%{header: header,
-                        response: response}=builder) do
+                        response: response} = builder) do
     case response do
       {:verified, verified} ->
-        {:ok, %{ builder | verified: verified}}
+        {:ok, %{builder | verified: verified}}
       {:generated, soln} ->
         if test_target(soln, header.difficulty_target) do
-          {:ok, %{ builder | header: %{header | pow_evidence: soln}}}
+          {:ok, %{builder | header: %{header | pow_evidence: soln}}}
         else
           {:error, %{builder | error: :no_solution}}
         end
       {:error, error} ->
         Logger.error("[Cuckoo] buildig response: #{inspect(error)}")
-        {:error, %{builder | error: error} }
+        {:error, %{builder | error: error}}
     end
   end
 

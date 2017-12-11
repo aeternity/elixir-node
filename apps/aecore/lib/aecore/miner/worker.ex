@@ -142,14 +142,15 @@ defmodule Aecore.Miner.Worker do
 
   ## Private
 
-  defp mining(%{miner_state: :running, workers: workers}=state) when workers != {} do
+  defp mining(%{miner_state: :running, workers: workers} = state)
+  when workers != {} do
     Logger.error("[Miner] error still working")
     state
   end
-  defp mining(%{miner_state: :running, block_candidate: nil}=state) do
+  defp mining(%{miner_state: :running, block_candidate: nil} = state) do
     mining(%{state | block_candidate: candidate()})
   end
-  defp mining(%{miner_state: :running, block_candidate: cblock}=state) do
+  defp mining(%{miner_state: :running, block_candidate: cblock} = state) do
     cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
     cblock  = %{cblock | header: cheader}
     work = fn() -> Cuckoo.generate(cheader) end
@@ -178,14 +179,14 @@ defmodule Aecore.Miner.Worker do
 
   defp cleanup_after_worker(ref), do: Process.demonitor(ref, [:flush])
 
-  defp handle_worker_reply(pid, reply, %{workers: {pid, info}}=state) do
+  defp handle_worker_reply(pid, reply, %{workers: {pid, info}} = state) do
     cleanup_after_worker(info)
     worker_reply(reply, %{state | workers: {}})
   end
 
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
 
-  defp worker_reply(%{} = miner_header, %{block_candidate: cblock}=state) do
+  defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
     Logger.info(
       fn ->
         "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
