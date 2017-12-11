@@ -34,7 +34,7 @@ defmodule Aehttpserver.InfoController do
 
     if(!(peer_nonce == own_nonce)) do
       Peers.schedule_add_peer(peer, peer_nonce)
-   end
+    end
 
     json(conn, %{current_block_version: latest_block.header.version,
                  current_block_height: latest_block.header.height,

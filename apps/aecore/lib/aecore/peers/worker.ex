@@ -189,14 +189,7 @@ defmodule Aecore.Peers.Worker do
         {:ok, info} ->
           if(!Map.has_key?(peers, info.peer_nonce)) do
             if should_a_peer_be_added(map_size(peers)) do
-              peers_update1 =
-              if map_size(peers) >= @peers_max_count do
-                  random_peer = Enum.random(Map.keys(peers))
-                  Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
-                  Map.delete(peers, random_peer)
-                else
-                  peers
-                end
+              peers_update1 = trim_peers(peers)
               updated_peers =
                 Map.put(peers_update1, info.peer_nonce,
                         %{uri: uri, latest_block: info.current_block_hash})
@@ -217,6 +210,16 @@ defmodule Aecore.Peers.Worker do
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
       end
+    end
+  end
+
+  defp trim_peers(peers) do
+    if map_size(peers) >= @peers_max_count do
+      random_peer = Enum.random(Map.keys(peers))
+      Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
+      Map.delete(peers, random_peer)
+    else
+      peers
     end
   end
 
