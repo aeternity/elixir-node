@@ -34,11 +34,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   def resume() do
-    case Peers.is_chain_synced? do
-      true ->
-        GenStateMachine.call(__MODULE__, :start)
-      false ->
-        Logger.error("Can't start miner, chain not yet synced")
+    if Peers.is_chain_synced? do
+      GenStateMachine.call(__MODULE__, :start)
+    else
+      Logger.error("Can't start miner, chain not yet synced")
     end
   end
 

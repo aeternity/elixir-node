@@ -114,7 +114,7 @@ defmodule Aecore.Peers.Worker do
           end
         end)
     is_synced =
-      if(Enum.count(peer_uris) == 0) do
+      if(Enum.empty?(peer_uris)) do
         true
       else
         Enum.max(peer_latest_block_heights) <= local_latest_block_height
@@ -185,17 +185,12 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:schedule_add_peer, uri, nonce}, %{peers: peers} = state) do
-    already_have_peer = Map.has_key?(peers, nonce)
-    state =
-      case already_have_peer do
-        true ->
-          state
-        false ->
-          {:reply, _, state} = add_peer(uri, state)
-          state
-      end
-
-    {:noreply, state}
+    if Map.has_key?(peers, nonce) do
+      {:noreply, state}
+    else
+      {:reply, _, newstate} = add_peer(uri, state)
+      {:noreply, newstate}
+    end
   end
 
   def handle_cast(any, state) do
@@ -221,7 +216,7 @@ defmodule Aecore.Peers.Worker do
           if(!Map.has_key?(peers, info.peer_nonce)) do
             if should_a_peer_be_added(map_size(peers)) do
               peers_update1 =
-              if map_size(peers) >= @peers_max_count do
+                if map_size(peers) >= @peers_max_count do
                   random_peer = Enum.random(Map.keys(peers))
                   Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
                   Map.delete(peers, random_peer)
