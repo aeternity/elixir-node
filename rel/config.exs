@@ -18,7 +18,7 @@ environment :dev1 do
   set dev_mode: true
   set include_erts: true
   set cookie: :"secret1"
-  set vm_args: "./rel/dev1/dev1_vm.args"
+  set vm_args: "./rel/dev1/vm.args"
   set sys_config: "./rel/dev1/sys.config"
 end
 
@@ -26,7 +26,7 @@ environment :dev2 do
   set dev_mode: true
   set include_erts: true
   set cookie: :"secret2"
-  set vm_args: "./rel/dev2_vm.args"
+  set vm_args: "./rel/vm.args"
   set sys_config: "./rel/dev2/sys.config"
 end
 
@@ -34,7 +34,7 @@ environment :dev3 do
   set dev_mode: true
   set include_erts: true
   set cookie: :"secret3"
-  set vm_args: "./rel/dev3_vm.args"
+  set vm_args: "./rel/vm.args"
   set sys_config: "./rel/dev3/sys.config"
 end
 
