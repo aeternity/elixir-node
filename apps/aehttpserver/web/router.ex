@@ -31,10 +31,10 @@ defmodule Aehttpserver.Router do
   end
 
   def authorization(conn, _opts) do
-    uuid = Application.get_env(:aecore, :authorization)
-    header_uuid = Plug.Conn.get_req_header(conn, "authorization") |> Enum.at(0)
+    env_authorization = Application.get_env(:aecore, :authorization)
+    header_authorization = Plug.Conn.get_req_header(conn, "authorization") |> Enum.at(0)
 
-    if uuid == header_uuid do
+    if env_authorization == header_authorization do
       conn
     else
       conn |> send_resp(401, "Unauthorized") |> halt()
