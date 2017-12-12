@@ -21,7 +21,6 @@ defmodule Aehttpclient.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:aeutil, in_umbrella: true},
       {:httpoison, "~> 0.13"}
     ]
   end
