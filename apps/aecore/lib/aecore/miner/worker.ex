@@ -266,7 +266,9 @@ defmodule Aecore.Miner.Worker do
         )
       %Block{header: unmined_header, txs: valid_txs}
     catch
-      _ -> :error
+      error ->
+        Logger.error("[Miner] Error while creating a block candidate #{inspect(error)}")
+        error
     end
 
   end
