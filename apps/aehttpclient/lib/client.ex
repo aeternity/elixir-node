@@ -7,6 +7,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -17,10 +18,36 @@ defmodule Aehttpclient.Client do
 
   @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
   def get_block({uri, hash}) do
-    get(uri <> "/block/#{hash}", :block)
+    case get(uri <> "/block/#{hash}", :block) do
+      {:ok, serialized_block} -> 
+        {:ok, Serialization.block(serialized_block, :deserialize)}
+        #TODO handle deserialization errors
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
-  def post(peer, data, uri) do
+  @spec send_block(%Block{}, list(binary())) :: :ok
+  def send_block(block, peers) do
+    data = Serialization.block(block, :serialize)
+    post_to_peers("new_block", data, peers)
+  end
+
+  @spec send_tx(%SignedTx{}, list(binary())) :: :ok
+  def send_tx(tx, peers) do
+    data = Serialization.tx(tx, :serialize)
+    post_to_peers("new_tx", data, peers)
+  end 
+
+  @spec post_to_peers(binary(), binary(), list(binary())) :: :ok
+  defp post_to_peers(uri, data, peers) do
+    for peer <- peers do
+      post(peer, data, uri)
+    end
+    :ok
+  end
+
+  defp post(peer, data, uri) do
     send_to_peer(data, "#{peer}/#{uri}")
   end
 
@@ -44,7 +71,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  def get(uri, identifier) do
+  defp get(uri, identifier) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
