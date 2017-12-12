@@ -32,6 +32,7 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:aeutil, in_umbrella: true},
       {:phoenix, "~> 1.3.0-rc"},
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
