@@ -1,6 +1,6 @@
 # Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
 # License: CC BY-SA 3.0
-defmodule Aecore.Utils.Bits do
+defmodule Aeutil.Bits do
   # this is the public api which allows you to pass any binary representation
   def extract(str) when is_binary(str) do
     extract(str, [])

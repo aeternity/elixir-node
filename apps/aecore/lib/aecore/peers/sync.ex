@@ -5,8 +5,8 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Serialization
+  alias Aecore.Chain.BlockValidation
+  alias Aeutil.Serialization
 
   use GenServer
 
@@ -197,15 +197,14 @@ defmodule Aecore.Peers.Sync do
     case Chain.has_block?(block_hash) do
       false ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
-          {:ok, peer_block} ->
-            deserialized_block = Serialization.block(peer_block, :deserialize)
+          {:ok, deserialized_block} ->
             try do
               BlockValidation.single_validate_block(deserialized_block)
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if block_hash == Base.encode16(peer_block_hash) do
-                check_peer_block(peer_uri, peer_block.header.prev_hash,
+              if(block_hash == Base.encode16(peer_block_hash)) do
+                check_peer_block(peer_uri, Serialization.hex_binary(deserialized_block.header.prev_hash, :serialize),
                   Map.put(state, peer_block_hash, deserialized_block))
               else
                 state

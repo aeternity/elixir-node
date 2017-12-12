@@ -1,4 +1,4 @@
-defmodule Aecore.Utils.Serialization do
+defmodule Aeutil.Serialization do
   @moduledoc """
   Utility module for serialization
   """
