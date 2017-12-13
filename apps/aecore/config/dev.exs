@@ -39,6 +39,7 @@ config :aecore, :persistence,
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
+  max_difficulty_change: 1,
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,

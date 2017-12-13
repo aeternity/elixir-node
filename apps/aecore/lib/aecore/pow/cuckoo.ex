@@ -184,8 +184,9 @@ defmodule Aecore.Pow.Cuckoo do
   @spec test_target(soln :: list(), target :: integer()) :: true | false
   defp test_target(soln, target) do
     nodesize = get_node_size()
-    bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
-    Hashcash.generate(:cuckoo, bin, target)
+    bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
+    hash = :crypto.hash(:sha256, bin)
+    Hashcash.generate(:cuckoo, hash, target)
   end
 
 
