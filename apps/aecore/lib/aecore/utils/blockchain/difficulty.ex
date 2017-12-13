@@ -1,8 +1,8 @@
 defmodule Aecore.Utils.Blockchain.Difficulty do
 
-  @number_of_blocks 100
-  @max_difficulty_change 2
-  @target_distance 60_000
+  @number_of_blocks 10
+  @max_difficulty_change 1
+  @target_distance 5_000
 
   def get_number_of_blocks() do
     @number_of_blocks
