@@ -106,6 +106,10 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data}
   end
 
+  def set_tx_bytes_per_token(bytes) do
+    Application.put_env(:aecore, :tx_data, bytes_per_token: bytes)
+  end
+
   def get_coinbase_transaction(to_acc, total_fees) do
     tx_data = %TxData{
       from_acc: nil,
