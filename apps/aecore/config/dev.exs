@@ -70,4 +70,5 @@ bytes_per_token =  case System.get_env("BYTES_PER_TOKEN") do
 end
 
 config :aecore, :tx_data,
-  bytes_per_token: bytes_per_token
+  miner_bytes_per_token: bytes_per_token,
+  pool_bytes_per_token: 100
