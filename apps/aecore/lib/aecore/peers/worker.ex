@@ -134,7 +134,7 @@ defmodule Aecore.Peers.Worker do
     updated_peers =
       for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(uri)
-        if(info.current_block_hash != latest_block) do
+        if info.current_block_hash != latest_block do
           {nonce, %{uri: uri, latest_block: info.current_block_hash}}
         else
           {nonce, %{uri: uri, latest_block: latest_block}}
@@ -155,17 +155,12 @@ defmodule Aecore.Peers.Worker do
 
   ## Async operations
   def handle_cast({:schedule_add_peer, uri, nonce}, %{peers: peers} = state) do
-    already_have_peer = Map.has_key?(peers, nonce)
-    state =
-      case already_have_peer do
-        true ->
-          state
-        false ->
-          {:reply, _, state} = add_peer(uri, state)
-          state
-      end
-
-    {:noreply, state}
+    if Map.has_key?(peers, nonce) do
+      {:noreply, state}
+    else
+      {:reply, _, state} = add_peer(uri, state)
+      {:noreply, state}
+    end
   end
 
   def handle_cast(any, state) do
