@@ -155,7 +155,7 @@ defmodule Aecore.Peers.Worker do
     updated_peers =
       for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(uri)
-        if(info.current_block_hash != latest_block) do
+        if info.current_block_hash != latest_block do
           {nonce, %{uri: uri, latest_block: info.current_block_hash}}
         else
           {nonce, %{uri: uri, latest_block: latest_block}}
