@@ -1,7 +1,7 @@
 use Mix.Config
 
 config :aecore, :persistence,
-  path: Path.absname("./priv_dev2/rox_db")
+  path: Path.absname("priv_dev2/rox_db")
 
 config :aecore, :peers,
   peers_target_count: 3,
