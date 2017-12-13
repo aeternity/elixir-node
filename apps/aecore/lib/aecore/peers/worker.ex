@@ -9,9 +9,10 @@ defmodule Aecore.Peers.Worker do
   alias Aehttpclient.Client
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Block
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Chain.BlockValidation
   alias Aehttpclient.Client, as: HttpClient
-  alias Aecore.Utils.Serialization
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -46,6 +47,12 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :check_peers)
   end
 
+  @spec all_uris() :: list(binary())
+  def all_uris() do
+    all_peers()
+    |> Map.keys
+  end
+
   @spec all_peers() :: map()
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
@@ -56,17 +63,6 @@ defmodule Aecore.Peers.Worker do
     Block.genesis_block().header
     |> BlockValidation.block_header_hash()
     |> Base.encode16()
-  end
-
-
-  @doc """
-  Making async post requests to the users
-  `type` is related to the uri e.g. /new_block
-  """
-  @spec broadcast_to_all({type :: atom(), data :: term()}) :: :ok | :error
-  def broadcast_to_all({type, data}) do
-    data = prep_data(type, data)
-    GenServer.cast(__MODULE__, {:broadcast_to_all, {type, data}})
   end
 
   @spec schedule_add_peer(uri :: term(), nonce :: integer()) :: term()
@@ -91,6 +87,22 @@ defmodule Aecore.Peers.Worker do
       _ ->
         :ets.lookup(:nonce_table, :nonce)[:nonce]
     end
+  end
+
+  @spec broadcast_block(%Block{}) :: :ok
+  def broadcast_block(block) do
+    spawn fn ->
+      Client.send_block(block, all_uris())
+    end
+    :ok
+  end
+
+  @spec broadcast_tx(%SignedTx{}) :: :ok
+  def broadcast_tx(tx) do
+    spawn fn ->
+      Client.send_tx(tx, all_uris())
+    end
+    :ok
   end
 
   ## Server side
@@ -175,15 +187,6 @@ defmodule Aecore.Peers.Worker do
   end
 
   ## Async operations
-
-  def handle_cast({:broadcast_to_all, {type, data}}, %{peers: peers} = state) do
-    peer_uris = peers
-      |> Map.values()
-      |> Enum.map(fn(%{uri: uri}) -> uri end)
-    send_to_peers(type, data, peer_uris)
-    {:noreply, state}
-  end
-
   def handle_cast({:schedule_add_peer, uri, nonce}, %{peers: peers} = state) do
     if Map.has_key?(peers, nonce) do
       {:noreply, state}
@@ -252,12 +255,6 @@ defmodule Aecore.Peers.Worker do
     :ets.new(:nonce_table, [:named_table])
   end
 
-  defp send_to_peers(uri, data, peers) do
-    for peer <- peers do
-      HttpClient.post(peer, data, uri)
-    end
-  end
-
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
@@ -283,8 +280,5 @@ defmodule Aecore.Peers.Worker do
     peers_count < @peers_max_count
     || :rand.uniform() < @probability_of_peer_remove_when_max
   end
-
-  defp prep_data(:new_tx, %{} = data), do: Serialization.tx(data, :serialize)
-  defp prep_data(:new_block, %{} = data), do: Serialization.block(data, :serialize)
 
 end
