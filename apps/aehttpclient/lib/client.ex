@@ -19,7 +19,7 @@ defmodule Aehttpclient.Client do
   @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
   def get_block({uri, hash}) do
     case get(uri <> "/block/#{hash}", :block) do
-      {:ok, serialized_block} -> 
+      {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
         #TODO handle deserialization errors
       {:error, reason} ->
@@ -37,7 +37,7 @@ defmodule Aehttpclient.Client do
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
     post_to_peers("new_tx", data, peers)
-  end 
+  end
 
   @spec post_to_peers(binary(), binary(), list(binary())) :: :ok
   defp post_to_peers(uri, data, peers) do
@@ -72,7 +72,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp get(uri, identifier) do
-    case(HTTPoison.get(uri, [{"peer_port", get_local_port()}])) do
+    case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
           :block ->
@@ -93,6 +93,8 @@ defmodule Aehttpclient.Client do
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         :error
+      {:ok, %HTTPoison.Response{status_code: 400}} ->
+        :error
       {:error, %HTTPoison.Error{}} ->
         :error
       unexpected ->
@@ -112,7 +114,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp get_local_port() do
-    Aehttpserver.Endpoint |> :sys.get_state |> elem(3) |> Enum.at(2)
+    Aehttpserver.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
     |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
     |> elem(1) |> Enum.at(0) |> elem(1)
   end
