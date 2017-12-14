@@ -6,9 +6,10 @@ multinode-build: dev1-build
 	@rm -rf _build/dev2 _build/dev3
 	@for x in dev2 dev3; do \
 		cp -R _build/dev1 _build/$$x; \
-		cp rel/$$x/sys.config _build/$$x/rel/epoch_elixir/releases/0.1.0/sys.config; \
 		cp rel/$$x/vm.args _build/$$x/rel/epoch_elixir/releases/0.1.0/vm.args; \
 	done
+	@make dev2-build
+	@make dev3-build
 
 multinode-start:
 	@make dev1-start

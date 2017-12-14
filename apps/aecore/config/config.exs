@@ -35,7 +35,7 @@ end
 
 config :aecore, :persistence,
   path: Path.absname(persistence_path)
-  
+
 config :aecore, :pow,
   nif_path: Path.absname("apps/aecore/priv/cuckoo/aec_pow_cuckoo20_nif"),
   genesis_header: %{
@@ -59,5 +59,5 @@ config :aecore, :pow,
     version: 1,
     difficulty_target: 1
   }
-  
+
 import_config "#{Mix.env}.exs"
