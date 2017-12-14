@@ -20,7 +20,7 @@ defmodule Aehttpserver.InfoController do
      |> BlockValidation.block_header_hash()
      |> Base.encode16()
 
-    peer_nonce = Peers.get_peer_nonce()
+    own_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
     pubkey = Base.encode16(pubkey)
@@ -29,17 +29,11 @@ defmodule Aehttpserver.InfoController do
     peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
     peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
     peer_port = ":" <> peer_port
-    host_port = ":" <> to_string(conn.port)
+    peer_nonce = Plug.Conn.get_req_header(conn, "nonce") |> Enum.at(0) |> String.to_integer()
     peer = peer_ip <> peer_port
-    host = conn.host <> host_port
 
-    if !(peer == host || host == "localhost:" <> host_port) do
-      case(Map.has_key?(Peers.all_peers, peer)) do
-        true ->
-          Logger.info("Peer already in our list")
-        false ->
-          Peers.schedule_add_peer(peer)
-      end
+    if(!(peer_nonce == own_nonce)) do
+      Peers.schedule_add_peer(peer, peer_nonce)
     end
 
     json(conn, %{current_block_version: top_block.header.version,
@@ -48,7 +42,7 @@ defmodule Aehttpserver.InfoController do
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: top_block.header.difficulty_target,
                  public_key: pubkey,
-                 peer_nonce: peer_nonce})
+                 peer_nonce: own_nonce})
 
   end
 end

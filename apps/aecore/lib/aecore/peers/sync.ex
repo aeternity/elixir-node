@@ -63,7 +63,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
-    state = Enum.reduce(peers, state, fn ({uri, top_block_hash}, acc) ->
+    state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: top_block_hash}}, acc) ->
         {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
         Map.merge(acc, check_peer_block(uri, top_hash_decoded, %{}))
       end)
@@ -107,7 +107,10 @@ defmodule Aecore.Peers.Sync do
       peers_count == 0 ->
         {:error, "No peers"}
       peers_count < @peers_target_count ->
-        all_peers = Map.keys(Peers.all_peers())
+        all_peers =
+          Peers.all_peers()
+            |> Map.values()
+            |> Enum.map(fn(%{uri: uri}) -> uri end)
         new_count = get_newpeers_and_add(all_peers)
         if new_count > 0 do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)
@@ -130,8 +133,11 @@ defmodule Aecore.Peers.Sync do
     |> Enum.take(@peers_target_count - known_count)
     |> Enum.reduce([], fn(peer, acc) ->
       case (HttpClient.get_peers(peer)) do
-        {:ok, list} -> Enum.concat(acc, Map.keys(list))
-        :error -> acc
+        {:ok, list} ->
+          Enum.concat(acc, Enum.map(Map.values(list),
+                                    fn(%{"uri" => uri}) -> uri end))
+        :error ->
+          acc
       end
     end)
     |> Enum.reduce([], fn(peer, acc) ->
@@ -146,8 +152,10 @@ defmodule Aecore.Peers.Sync do
       #if we have successfully added less then number_of_peers_to_add peers then try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
-          :ok -> acc + 1
-          _ -> acc
+          :ok ->
+            acc + 1
+          _ ->
+            acc
         end
       else
         acc
@@ -158,7 +166,7 @@ defmodule Aecore.Peers.Sync do
   # Builds a chain, starting from the given block,
   # until we reach a block, of which the previous block is the highest in our chain
   # (that means we can add this chain to ours)
-  def build_chain(state, block, chain) do
+  defp build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain = Chain.has_block?(block.header.prev_hash) 
     cond do
