@@ -30,11 +30,9 @@ defmodule Aehttpserver.InfoController do
     peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
     peer_port = ":" <> peer_port
     peer_nonce = Plug.Conn.get_req_header(conn, "nonce") |> Enum.at(0) |> String.to_integer()
-    host_port = ":" <> to_string(conn.port)
     peer = peer_ip <> peer_port
-    host = conn.host <> host_port
 
-    if(!(peer_nonce == own_nonce || peer == host || host == "localhost:" <> host_port)) do
+    if(!(peer_nonce == own_nonce)) do
       Peers.schedule_add_peer(peer, peer_nonce)
     end
 
