@@ -41,7 +41,8 @@ defmodule Aecore.Peers.Worker do
   @spec all_uris() :: list(binary())
   def all_uris() do
     all_peers()
-    |> Map.keys
+    |> Map.values()
+    |> Enum.map(fn(%{uri: uri}) -> uri end)
   end
 
   @spec all_peers() :: map()
