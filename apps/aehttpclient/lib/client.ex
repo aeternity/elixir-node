@@ -16,8 +16,9 @@ defmodule Aehttpclient.Client do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), term()}) :: {:ok, %Block{}} | :error
+  @spec get_block({term(), binary()}) :: {:ok, %Block{}} | {:error, binary()}
   def get_block({uri, hash}) do
+    hash = Base.encode16(hash)
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} -> 
         {:ok, Serialization.block(serialized_block, :deserialize)}
@@ -92,12 +93,12 @@ defmodule Aehttpclient.Client do
             json_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
-        :error
+        {:error, "Response 404"}
       {:error, %HTTPoison.Error{}} ->
-        :error
+        {:error, "HTTPPoison Error"}
       unexpected ->
         Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
-        :error
+        {:error, "Unexpected error"}
     end
   end
 

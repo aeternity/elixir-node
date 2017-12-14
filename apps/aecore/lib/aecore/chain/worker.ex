@@ -29,29 +29,30 @@ defmodule Aecore.Chain.Worker do
     {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
   end
 
-  @spec get_top_block() :: %Block{}
-  def get_top_block() do
-    GenServer.call(__MODULE__, :get_top_block)
+  @spec top_block() :: %Block{}
+  def top_block() do
+    GenServer.call(__MODULE__, :top_block)
   end
 
-  @spec get_top_block_chain_state() :: tuple()
-  def get_top_block_chain_state() do
-    GenServer.call(__MODULE__, :get_top_block_chain_state)
+  @spec top_block_chain_state() :: tuple()
+  def top_block_chain_state() do
+    GenServer.call(__MODULE__, :top_block_chain_state)
   end
 
-  @spec get_top_block_hash() :: binary()
-  def get_top_block_hash() do
-    GenServer.call(__MODULE__, :get_top_block_hash)
+  @spec top_block_hash() :: binary()
+  def top_block_hash() do
+    GenServer.call(__MODULE__, :top_block_hash)
   end
 
-  @spec get_top_height() :: integer() 
-  def get_top_height() do
-    GenServer.call(__MODULE__, :get_top_height)
+  @spec top_height() :: integer() 
+  def top_height() do
+    GenServer.call(__MODULE__, :top_height)
   end
 
   @spec get_block_by_hex_hash(term()) :: %Block{}
   def get_block_by_hex_hash(hash) do
-    GenServer.call(__MODULE__, {:get_block, Base.decode16(hash)})
+    {:ok, decoded_hash} = Base.decode16(hash)
+    GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
   @spec get_block(binary()) :: %Block{}
@@ -59,7 +60,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
-  @spec has_block?(term()) :: true | false
+  @spec has_block?(binary()) :: true | false
   def has_block?(hash) do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
@@ -87,8 +88,8 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec chain_state(binary()) :: map()
-  def chain_state(latest_block_hash) do
-    GenServer.call(__MODULE__, {:chain_state, latest_block_hash})
+  def chain_state(block_hash) do
+    GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
   @spec txs_index() :: map()
@@ -97,32 +98,32 @@ defmodule Aecore.Chain.Worker do
   end
 
   def chain_state() do
-    get_top_block_chain_state()
+    top_block_chain_state()
   end
 
   def longest_blocks_chain() do
-    get_blocks(get_top_block_hash(), get_top_height() + 1)
+    get_blocks(top_block_hash(), top_height() + 1)
   end
 
   ## Server side
 
-  def handle_call(:get_current_state, _from, state) do
+  def handle_call(:current_state, _from, state) do
     {:reply, state, state}
   end
 
-  def handle_call(:get_top_block, _from, %{blocks_map: blocks_map, top_hash: top_hash} = state) do
+  def handle_call(:top_block, _from, %{blocks_map: blocks_map, top_hash: top_hash} = state) do
     {:reply, blocks_map[top_hash], state}
   end
 
-  def handle_call(:get_top_block_hash,  _from, %{top_hash: top_hash} = state) do
+  def handle_call(:top_block_hash,  _from, %{top_hash: top_hash} = state) do
     {:reply, top_hash, state}
   end
 
-  def handle_call(:get_top_block_chain_state, _from, %{chain_states: chain_states, top_hash: top_hash} = state) do
+  def handle_call(:top_block_chain_state, _from, %{chain_states: chain_states, top_hash: top_hash} = state) do
     {:reply, chain_states[top_hash], state}
   end
 
-  def handle_call(:get_top_height, _from, %{top_height: top_height} = state) do
+  def handle_call(:top_height, _from, %{top_height: top_height} = state) do
     {:reply, top_height, state}
   end
 
@@ -136,20 +137,13 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:has_block, hex_hash}, _from, %{blocks_map: blocks_map} = state) do
-    has_block =
-      case Base.decode16(hex_hash) do
-        {:ok, decoded_hash} ->
-          Map.has_key?(blocks_map, decoded_hash)
-        :error ->
-          false
-      end
-
+  def handle_call({:has_block, hash}, _from, %{blocks_map: blocks_map} = state) do
+    has_block = Map.has_key?(blocks_map, hash)
     {:reply, has_block, state}
   end
 
   def handle_call({:add_validated_block, %Block{} = block}, _from, 
-                  %{blocks_map: blocks_map, chain_states: chain_states, txs_index: txs_indes, top_height: top_height} = state) do
+                  %{blocks_map: blocks_map, chain_states: chain_states, txs_index: txs_index, top_height: top_height} = state) do
     prev_block_chain_state = chain_states[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
@@ -160,9 +154,8 @@ defmodule Aecore.Chain.Worker do
       Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
       block_hash = BlockValidation.block_header_hash(block.header)
+      
       updated_blocks_map = Map.put(blocks_map, block_hash, block)
-      has_prev_block = Map.has_key?(chain_states, block.header.prev_hash) ##TODO: we assume this is true on first line
-
       updated_chain_states = Map.put(chain_states, block_hash, new_chain_state)
 
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
@@ -172,7 +165,7 @@ defmodule Aecore.Chain.Worker do
         |> BlockValidation.block_header_hash()
         |> Base.encode16()}, total tokens: #{total_tokens}"
       end)
-      ## Store latest block to disk
+      ## Store new block to disk
       Persistence.write_block_by_hash(block)
       ## Block was validated, now we can send it to other peers
       Peers.broadcast_block(block)

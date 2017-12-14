@@ -45,7 +45,7 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call({:add_block_to_state, block_hash, block}, _from, state) do
     updated_state =
-      case Chain.has_block?(Base.encode16(block_hash)) do
+      case Chain.has_block?(block_hash) do
         true ->
           state
         false ->
@@ -63,8 +63,9 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
-    state = Enum.reduce(peers, state, fn ({uri, latest_block_hash}, acc) ->
-        Map.merge(acc, check_peer_block(uri, latest_block_hash, %{}))
+    state = Enum.reduce(peers, state, fn ({uri, top_block_hash}, acc) ->
+        {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
+        Map.merge(acc, check_peer_block(uri, top_hash_decoded, %{}))
       end)
 
     {:reply, :ok, state}
@@ -157,10 +158,9 @@ defmodule Aecore.Peers.Sync do
   # Builds a chain, starting from the given block,
   # until we reach a block, of which the previous block is the highest in our chain
   # (that means we can add this chain to ours)
-  defp build_chain(state, block, chain) do
+  def build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
-    has_parent_in_chain =
-      block.header.prev_hash == BlockValidation.block_header_hash(Chain.latest_block().header)
+    has_parent_in_chain = Chain.has_block?(block.header.prev_hash) 
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
@@ -195,8 +195,8 @@ defmodule Aecore.Peers.Sync do
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if(block_hash == Base.encode16(peer_block_hash)) do
-                check_peer_block(peer_uri, Serialization.hex_binary(deserialized_block.header.prev_hash, :serialize),
+              if(block_hash == peer_block_hash) do
+                check_peer_block(peer_uri, deserialized_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))
               else
                 state

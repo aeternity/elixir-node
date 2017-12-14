@@ -10,13 +10,15 @@ defmodule MinerTest do
     Miner.start_link([])
     Miner.resume()
     Miner.suspend()
-    assert length(Chain.all_blocks) > 1
-    latest_block = Chain.latest_block
-    latest_block_coinbase_tx = Enum.at(latest_block.txs, 0)
-    assert latest_block_coinbase_tx.signature == nil
-    assert latest_block_coinbase_tx.data.from_acc == nil
-    assert latest_block_coinbase_tx.data.value <= Miner.coinbase_transaction_value()
-    assert SignedTx.is_coinbase(latest_block_coinbase_tx)
+    assert Chain.top_height() >= 1
+    assert Chain.top_block().header.height >= 1
+    assert length(Chain.longest_blocks_chain()) > 1
+    top_block = Chain.top_block
+    top_block_coinbase_tx = Enum.at(top_block.txs, 0)
+    assert top_block_coinbase_tx.signature == nil
+    assert top_block_coinbase_tx.data.from_acc == nil
+    assert top_block_coinbase_tx.data.value <= Miner.coinbase_transaction_value()
+    assert SignedTx.is_coinbase(top_block_coinbase_tx)
   end
 
 end

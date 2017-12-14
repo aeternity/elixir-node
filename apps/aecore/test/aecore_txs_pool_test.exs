@@ -29,8 +29,8 @@ defmodule AecoreTxsPoolTest do
     assert Enum.count(Pool.get_pool()) == 1
     Miner.resume()
     Miner.suspend()
-    assert length(Chain.all_blocks()) > 1
-    assert Enum.count(Chain.latest_block().txs) == 2
+    assert length(Chain.longest_blocks_chain()) > 1
+    assert Enum.count(Chain.top_block().txs) == 2
     assert Enum.empty?(Pool.get_pool())
   end
 
