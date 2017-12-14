@@ -23,10 +23,10 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
-    {:ok, {genesis_block_map, latest_block_chain_state, txs_index}}
+    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index}}
   end
 
   @spec latest_block() :: %Block{}
@@ -47,7 +47,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block_by_hex_hash(term()) :: %Block{}
   def get_block_by_hex_hash(hash) do
-    GenServer.call(__MODULE__, {:get_block_by_hex_hash, hash})
+    GenServer.call(__MODULE__, {:get_block, Base.decode16(hash)})
   end
 
   @spec get_block(binary()) :: %Block{}
@@ -113,14 +113,12 @@ defmodule Aecore.Chain.Worker do
     {:reply, state, state}
   end
 
-  def handle_call(:get_latest_block_chain_state, _from, state) do
-    {_, latest_block_chain_state, _} = state
-    {:reply, latest_block_chain_state, state}
+  def handle_call(:get_latest_block_chain_state, _from, %{current_chain_state: current_chain_state} = state) do
+    {:reply, current_chain_state, state}
   end
 
-  def handle_call({:get_block, block_hash}, _from, state) do
-    {block_map, _, _} = state
-    block = block_map[block_hash]
+  def handle_call({:get_block, block_hash}, _from, %{blocks_map: blocks_map} = state) do
+    block = blocks_map[block_hash]
 
     if block != nil do
       {:reply, block, state}
@@ -129,12 +127,11 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:has_block, hex_hash}, _from, state) do
-    {block_map, _, _} = state
+  def handle_call({:has_block, hex_hash}, _from, %{blocks_map: blocks_map} = state) do
     has_block =
       case Base.decode16(hex_hash) do
         {:ok, decoded_hash} ->
-          Map.has_key?(block_map, decoded_hash)
+          Map.has_key?(blocks_map, decoded_hash)
         :error ->
           false
       end
@@ -142,20 +139,9 @@ defmodule Aecore.Chain.Worker do
     {:reply, has_block, state}
   end
 
-  def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
-    {chain, _, _} = state
-    case(Enum.find(chain, fn{block_hash, _block} ->
-      block_hash |> Base.encode16() == hash end)) do
-      {_, block} ->
-        {:reply, block, state}
-      nil ->
-        {:reply, {:error, "Block not found"}, state}
-    end
-  end
-
-  def handle_call({:add_validated_block, %Block{} = block}, _from, state) do
-    {block_map, latest_block_chain_state, txs_index} = state
-    prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
+  def handle_call({:add_validated_block, %Block{} = block}, _from, 
+                  %{blocks_map: blocks_map, chain_states: chain_states, txs_index: txs_indes} = state) do
+    prev_block_chain_state = chain_states[block.header.prev_hash]
     new_block_state = ChainState.calculate_block_state(block.txs)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
 
@@ -165,19 +151,10 @@ defmodule Aecore.Chain.Worker do
       Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
 
       block_hash = BlockValidation.block_header_hash(block.header)
-      updated_block_map = Map.put(block_map, block_hash, block)
-      has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
+      updated_blocks_map = Map.put(blocks_map, block_hash, block)
+      has_prev_block = Map.has_key?(chain_states, block.header.prev_hash) ##TODO: we assume this is true on first line
 
-      {deleted_latest_chain_state, _prev_chain_state} = case has_prev_block do
-        true ->
-          prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
-          {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
-        false ->
-          {latest_block_chain_state, %{}}
-      end
-
-      updated_latest_block_chainstate =
-        Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
+      updated_chain_states = Map.put(chain_states, block_hash, new_chain_state)
 
       total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
@@ -193,7 +170,7 @@ defmodule Aecore.Chain.Worker do
       ## Block was validated, now we can send it to other peers
       Peers.broadcast_block(block)
 
-      {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
+      {:reply, :ok, %{blocks_map: updated_blocks_map, chain_states: updated_chain_states, txs_index: new_txs_index}}
     catch
       {:error, message} ->
         Logger.error(fn ->
@@ -203,13 +180,11 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:chain_state, latest_block_hash}, _from, state) do
-    {_, chain_state, _} = state
-    {:reply, chain_state[latest_block_hash], state}
+  def handle_call({:chain_state, block_hash}, _from, %{chain_states: chain_states} = state) do
+    {:reply, chain_states[block_hash], state}
   end
 
-  def handle_call(:txs_index, _from, state) do
-    {_, _, txs_index} = state
+  def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
   end
 
