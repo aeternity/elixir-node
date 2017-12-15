@@ -12,6 +12,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aeutil.Bits
 
   require Logger
 
@@ -171,12 +172,13 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
 
-      total_fees = calculate_total_fees(valid_txs)
-      valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs]
+      total_fees = calculate_total_fees(valid_txs_by_fee)
+      valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state = ChainState.calculate_block_state(valid_txs)
@@ -220,6 +222,16 @@ defmodule Aecore.Miner.Worker do
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
         {:error, message}
     end
+  end
 
+  defp filter_transactions_by_fee(txs) do
+    Enum.filter(txs, fn(tx) ->
+      tx_size_bits =
+        tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+      tx_size_bytes = tx_size_bits / 8
+
+      tx.data.fee >= Float.floor(tx_size_bytes /
+                                  Application.get_env(:aecore, :tx_data)[:miner_bytes_per_token])
+    end)
   end
 end

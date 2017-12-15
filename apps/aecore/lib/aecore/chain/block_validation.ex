@@ -126,11 +126,13 @@ defmodule Aecore.Chain.BlockValidation do
         true
     end
 
-    from_account_has_necessary_balance = chain_state_has_account && chain_state[tx.data.from_acc].balance - tx.data.value >= 0
+    from_account_has_necessary_balance =
+      chain_state_has_account &&
+        chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
 
     cond do
       tx_has_valid_nonce && from_account_has_necessary_balance ->
-        from_acc_new_state = %{balance: -tx.data.value, nonce: 1}
+        from_acc_new_state = %{balance: -(tx.data.value + tx.data.fee), nonce: 1}
         to_acc_new_state = %{balance: tx.data.value, nonce: 0}
         chain_state_changes = %{tx.data.from_acc => from_acc_new_state, tx.data.to_acc => to_acc_new_state}
         updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
