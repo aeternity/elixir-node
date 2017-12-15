@@ -79,12 +79,12 @@ defmodule Aecore.Chain.Worker do
 
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
     BlockValidation.validate_block!(block, prev_block, new_chain_state, blocks_for_difficulty_calculation)
-    add_validated_block(block)
+    add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(%Block{}) :: :ok
-  defp add_validated_block(%Block{} = block) do
-    GenServer.call(__MODULE__, {:add_validated_block, block})
+  @spec add_validated_block(%Block{}, map()) :: :ok
+  defp add_validated_block(%Block{} = block, chain_state) do
+    GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
   @spec chain_state(binary()) :: map()
@@ -142,47 +142,34 @@ defmodule Aecore.Chain.Worker do
     {:reply, has_block, state}
   end
 
-  def handle_call({:add_validated_block, %Block{} = block}, _from, 
-                  %{blocks_map: blocks_map, chain_states: chain_states, txs_index: txs_index, top_height: top_height} = state) do
-    prev_block_chain_state = chain_states[block.header.prev_hash]
-    new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
-
-    new_block_txs_index = calculate_block_acc_txs_info(block)
+  def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state}, 
+                  _from, 
+                  %{blocks_map: blocks_map, chain_states: chain_states, 
+                    txs_index: txs_index, top_height: top_height} = state) do
+    new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
-    try do
-      Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+    Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+    new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
-      block_hash = BlockValidation.block_header_hash(block.header)
-      
-      updated_blocks_map = Map.put(blocks_map, block_hash, block)
-      updated_chain_states = Map.put(chain_states, block_hash, new_chain_state)
+    updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
+    updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
 
-      total_tokens = ChainState.calculate_total_tokens(new_chain_state)
-
-      Logger.info(fn ->
-        "Added block ##{block.header.height} with hash #{block.header
-        |> BlockValidation.block_header_hash()
-        |> Base.encode16()}, total tokens: #{total_tokens}"
-      end)
-      ## Store new block to disk
-      Persistence.write_block_by_hash(block)
-      ## Block was validated, now we can send it to other peers
-      Peers.broadcast_block(block)
-
-      state_update1 = %{state | blocks_map: updated_blocks_map, chain_states: updated_chain_states, txs_index: new_txs_index}
-
-      if top_height < block.header.height do
-        {:reply, :ok, %{state_update1 | top_hash: block_hash, top_height: block.header.height}}
-      else
-        {:reply, :ok, state_update1}
-      end
-    catch
-      {:error, message} ->
-        Logger.error(fn ->
-          "Failed to add block: #{message}"
-        end)
-      {:reply, :error, state}
+    total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+    Logger.info(fn ->
+      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{total_tokens}"
+    end)
+    ## Store new block to disk
+    Persistence.write_block_by_hash(new_block)
+    state_update1 = %{state | blocks_map: updated_blocks_map, 
+                              chain_states: updated_chain_states, 
+                              txs_index: new_txs_index}
+    if top_height < new_block.header.height do
+      ## We send the block to others only if it extends the longest chain
+      Peers.broadcast_block(new_block)
+      {:reply, :ok, %{state_update1 | top_hash: new_block_hash, 
+                                      top_height: new_block.header.height}}
+    else
+      {:reply, :ok, state_update1}
     end
   end
 
