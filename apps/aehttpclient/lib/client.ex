@@ -114,7 +114,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp get_local_port() do
-    Aehttpserver.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
+    Aehttpserver.Web.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
     |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
     |> elem(1) |> Enum.at(0) |> elem(1)
   end
