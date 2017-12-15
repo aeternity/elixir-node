@@ -21,24 +21,6 @@ defmodule Aehttpserver.Web do
       use Phoenix.Controller, namespace: Aehttpserver.Web
       import Plug.Conn
       import Aehttpserver.Web.Router.Helpers
-      import Aehttpserver.Web.Gettext
-    end
-  end
-
-  def view do
-    quote do
-      use Phoenix.View, root: "lib/aehttpserver/web/templates",
-                        namespace: Aehttpserver.Web
-
-      # Import convenience functions from controllers
-      import Phoenix.Controller, only: [get_csrf_token: 0, get_flash: 2, view_module: 1]
-
-      # Use all HTML functionality (forms, tags, etc)
-      use Phoenix.HTML
-
-      import Aehttpserver.Web.Router.Helpers
-      import Aehttpserver.Web.ErrorHelpers
-      import Aehttpserver.Web.Gettext
     end
   end
 
@@ -53,7 +35,6 @@ defmodule Aehttpserver.Web do
   def channel do
     quote do
       use Phoenix.Channel
-      import Aehttpserver.Web.Gettext
     end
   end
 

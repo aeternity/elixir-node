@@ -3,13 +3,13 @@ defmodule Aehttpclient.Client do
   Client used for making requests to a node.
   """
 
+  require Logger
+
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
-
-  require Logger
 
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
