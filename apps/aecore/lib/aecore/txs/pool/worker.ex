@@ -6,7 +6,6 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Bits
@@ -42,19 +41,18 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
-    tx_size_bits =
-      tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+    tx_size_bits = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
     tx_size_bytes = tx_size_bits / 8
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
-                                Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+        Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+
     cond do
-      !is_tx_valid ->
-        Logger.info("Invalid transaction")
+      !SignedTx.is_valid(tx) ->
+        Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
       !is_minimum_fee_met ->
-        Logger.info("Fee is too low")
+        Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
       true ->
         updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
