@@ -2,8 +2,8 @@ defmodule Aecore.Miner.Worker do
   use GenStateMachine, callback_mode: :state_functions
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Difficulty
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
@@ -200,7 +200,7 @@ defmodule Aecore.Miner.Worker do
           Block.current_block_version()
         )
 
-      Logger.debug("start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}")
+      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
 
       case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
         {:ok, mined_header} ->

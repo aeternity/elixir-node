@@ -8,10 +8,10 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   setup do
     Chain.start_link([])

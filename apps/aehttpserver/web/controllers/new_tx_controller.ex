@@ -1,7 +1,7 @@
 defmodule Aehttpserver.NewTxController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.Utils.Serialization
+  alias Aeutil.Serialization
   alias Aecore.Txs.Pool.Worker, as: Pool
 
 

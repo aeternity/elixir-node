@@ -8,10 +8,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   use GenServer
 
@@ -202,7 +202,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.write_block_by_hash(block)
 
       ## Block was validated, now we can send it to other peers
-      Peers.broadcast_to_all({:new_block, block})
+      Peers.broadcast_block(block)
 
       {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
     catch

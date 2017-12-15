@@ -1,4 +1,4 @@
-defmodule Aecore.Utils.Blockchain.BlockValidation do
+defmodule Aecore.Chain.BlockValidation do
 
   alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Cuckoo
@@ -7,7 +7,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   @spec validate_block!(Block.block(), Block.block(), map(), list()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state, blocks_for_difficulty_calculation) do
@@ -142,7 +142,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec calculate_root_hash(list()) :: binary()
   def calculate_root_hash(txs) do
-    if length(txs) == 0 do
+    if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =

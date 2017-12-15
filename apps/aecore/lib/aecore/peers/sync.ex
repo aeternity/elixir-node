@@ -4,6 +4,9 @@ defmodule Aecore.Peers.Sync do
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.BlockValidation
+  alias Aeutil.Serialization
 
   use GenServer
 
@@ -60,8 +63,8 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
-    state = Enum.reduce(peers, state, fn ({uri, latest_block_hash}, acc) ->
-        Map.merge(acc, check_peer_block(uri, latest_block_hash, %{}))
+    state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: latest_block}}, acc) ->
+        Map.merge(acc, check_peer_block(uri, latest_block, %{}))
       end)
 
     {:reply, :ok, state}
@@ -103,7 +106,10 @@ defmodule Aecore.Peers.Sync do
       peers_count == 0 ->
         {:error, "No peers"}
       peers_count < @peers_target_count ->
-        all_peers = Map.keys(Peers.all_peers())
+        all_peers =
+          Peers.all_peers()
+            |> Map.values()
+            |> Enum.map(fn(%{uri: uri}) -> uri end)
         new_count = get_newpeers_and_add(all_peers)
         if new_count > 0 do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)
@@ -126,8 +132,11 @@ defmodule Aecore.Peers.Sync do
     |> Enum.take(@peers_target_count - known_count)
     |> Enum.reduce([], fn(peer, acc) ->
       case (HttpClient.get_peers(peer)) do
-        {:ok, list} -> Enum.concat(acc, Map.keys(list))
-        :error -> acc
+        {:ok, list} ->
+          Enum.concat(acc, Enum.map(Map.values(list),
+                                    fn(%{"uri" => uri}) -> uri end))
+        :error ->
+          acc
       end
     end)
     |> Enum.reduce([], fn(peer, acc) ->
@@ -142,8 +151,10 @@ defmodule Aecore.Peers.Sync do
       #if we have successfully added less then number_of_peers_to_add peers then try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
-          :ok -> acc + 1
-          _ -> acc
+          :ok ->
+            acc + 1
+          _ ->
+            acc
         end
       else
         acc
@@ -186,15 +197,14 @@ defmodule Aecore.Peers.Sync do
     case Chain.has_block?(block_hash) do
       false ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
-          {:ok, peer_block} ->
-            deserialized_block = Serialization.block(peer_block, :deserialize)
+          {:ok, deserialized_block} ->
             try do
               BlockValidation.single_validate_block(deserialized_block)
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if block_hash == Base.encode16(peer_block_hash) do
-                check_peer_block(peer_uri, peer_block.header.prev_hash,
+              if(block_hash == Base.encode16(peer_block_hash)) do
+                check_peer_block(peer_uri, Serialization.hex_binary(deserialized_block.header.prev_hash, :serialize),
                   Map.put(state, peer_block_hash, deserialized_block))
               else
                 state
