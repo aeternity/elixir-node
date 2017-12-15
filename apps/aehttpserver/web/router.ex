@@ -4,6 +4,7 @@ defmodule Aehttpserver.Router do
   pipeline :api do
     plug CORSPlug, [origin: "*"]
     plug :accepts, ["json"]
+    plug Aehttpserver.Plugs.SetHeader
   end
 
   scope "/", Aehttpserver do
