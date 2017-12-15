@@ -35,7 +35,4 @@ defmodule Aehttpserver.Endpoint do
 
   plug Aehttpserver.Router
 
-  def on_response(status, headers, _body, request) do
-    {status, List.keyreplace(headers, "server", 0, {"server", "aehttpserver"}), request}
-  end
 end

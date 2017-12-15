@@ -28,7 +28,7 @@ defmodule Aecore.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :rox, :exconstructor], mod: {Aecore, []}]
+    [extra_applications: [:logger, :rox, :exconstructor, :gen_state_machine], mod: {Aecore, []}]
   end
 
   # Dependencies can be Hex packages:

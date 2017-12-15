@@ -5,7 +5,9 @@ defmodule Aecore.Peers.Worker do
 
   use GenServer
 
+  alias Aecore.Peers.Sync
   alias Aehttpclient.Client
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.BlockValidation
@@ -22,6 +24,11 @@ defmodule Aecore.Peers.Worker do
   end
 
   ## Client side
+
+  @spec is_chain_synced?() :: boolean()
+  def is_chain_synced?() do
+    GenServer.call(__MODULE__, :is_chain_synced)
+  end
 
   @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
@@ -103,7 +110,31 @@ defmodule Aecore.Peers.Worker do
     {:ok, initial_peers}
   end
 
-  def handle_call({:add_peer, uri}, _from, state) do
+  def handle_call(:is_chain_synced, _from, %{peers: peers} = state) do
+    local_latest_block_height = Chain.latest_block().header.height
+    peer_uris = peers
+      |> Map.values()
+      |> Enum.map(fn(%{uri: uri}) -> uri end)
+    peer_latest_block_heights =
+      Enum.map(peer_uris, fn(uri) ->
+          case Client.get_info(uri) do
+            {:ok, info} ->
+              info.current_block_height
+            :error ->
+              0
+          end
+        end)
+    is_synced =
+      if(Enum.empty?(peer_uris)) do
+        true
+      else
+        Enum.max(peer_latest_block_heights) <= local_latest_block_height
+      end
+
+    {:reply, is_synced, state}
+  end
+
+  def handle_call({:add_peer,uri}, _from, state) do
     add_peer(uri, state)
   end
 
@@ -159,8 +190,8 @@ defmodule Aecore.Peers.Worker do
     if Map.has_key?(peers, nonce) do
       {:noreply, state}
     else
-      {:reply, _, state} = add_peer(uri, state)
-      {:noreply, state}
+      {:reply, _, newstate} = add_peer(uri, state)
+      {:noreply, newstate}
     end
   end
 
@@ -191,6 +222,8 @@ defmodule Aecore.Peers.Worker do
                 Map.put(peers_update1, info.peer_nonce,
                         %{uri: uri, latest_block: info.current_block_hash})
               Logger.info(fn -> "Added #{uri} to the peer list" end)
+              Sync.ask_peers_for_unknown_blocks(updated_peers)
+              Sync.add_valid_peer_blocks_to_chain()
               {:reply, :ok, %{state | peers: updated_peers}}
             else
               Logger.debug(fn -> "Max peers reached. #{uri} not added" end)

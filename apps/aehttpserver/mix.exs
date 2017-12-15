@@ -19,7 +19,7 @@ defmodule Aehttpserver.Mixfile do
   def application do
     [
       mod: {Aehttpserver, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger, :logger_file_backend]
     ]
   end
 
