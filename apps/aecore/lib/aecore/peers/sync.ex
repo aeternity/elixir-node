@@ -5,6 +5,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aeutil.Serialization
 
@@ -37,6 +38,17 @@ defmodule Aecore.Peers.Sync do
   @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+  end
+
+  def add_unknown_peer_pool_txs(peers) do
+    Enum.each(peers, fn(peer) ->
+        deserialized_pool_txs =
+          peer
+          |> HttpClient.get_pool_txs()
+          |> elem(1)
+          |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+        Enum.each(deserialized_pool_txs, fn(tx) -> Pool.add_transaction(tx) end)
+      end)
   end
 
   def handle_call(:get_state, _from, state) do
