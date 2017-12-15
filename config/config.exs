@@ -16,17 +16,3 @@ timestamp = "#{year}-#{month}-#{day}_"
 config :aecore, :keys,
   password: "secret",
   dir: "/tmp/keys"
-
-config :logger,
-  compile_time_purge_level: :info,
-  backends: [:console,
-             {LoggerFileBackend, :info},
-             {LoggerFileBackend, :error}]
-
-config :logger, :info,
-  path: path <> "/logs/#{timestamp}info.log",
-  level: :info
-
-config :logger, :error,
-  path: path <> "/logs/#{timestamp}error.log",
-  level: :error

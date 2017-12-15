@@ -20,7 +20,7 @@ defmodule Aecore.Structures.Block do
 
   defp genesis_header() do
     h = Application.get_env(:aecore, :pow)[:genesis_header]
-    struct(Aecore.Structures.Header, h)
+    struct(Header, h)
   end
 
   @spec genesis_block() :: block()

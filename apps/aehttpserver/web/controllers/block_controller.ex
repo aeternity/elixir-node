@@ -2,8 +2,8 @@ defmodule Aehttpserver.BlockController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Serialization
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aeutil.Serialization
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Peers.Sync
 
@@ -55,7 +55,7 @@ defmodule Aehttpserver.BlockController do
     ## Becouse we 'conn.body_params' contains decoded json as map with
     ## keys as strings instead of atoms we are doing this workaround
     map = Poison.decode!(Poison.encode!(conn.body_params), [keys: :atoms])
-    block = Aecore.Utils.Serialization.block(map, :deserialize)
+    block = Aeutil.Serialization.block(map, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
     Sync.add_valid_peer_blocks_to_chain()

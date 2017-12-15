@@ -1,4 +1,4 @@
-defmodule Aecore.Utils.Blockchain.Difficulty do
+defmodule Aecore.Chain.Difficulty do
 
   @number_of_blocks 100
   @max_difficulty_change 2
