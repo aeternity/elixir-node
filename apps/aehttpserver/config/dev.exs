@@ -15,7 +15,6 @@ end
 config :aehttpserver, Aehttpserver.Web.Endpoint,
   http: [port: port],
   debug_errors: true,
-  code_reloader: false,
   check_origin: false,
   watchers: []
 
@@ -34,17 +33,6 @@ config :aehttpserver, Aehttpserver.Web.Endpoint,
 # If desired, both `http:` and `https:` keys can be
 # configured to run both http and https servers on
 # different ports.
-
-# Watch static and templates for browser reloading.
-config :aehttpserver, Aehttpserver.Web.Endpoint,
-  live_reload: [
-    patterns: [
-      ~r{priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$},
-      ~r{priv/gettext/.*(po)$},
-      ~r{lib/aehttpserver/web/views/.*(ex)$},
-      ~r{lib/aehttpserver/web/templates/.*(eex)$}
-    ]
-  ]
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"

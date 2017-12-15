@@ -20,7 +20,7 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [mod: {Aehttpserver.Application, []},
-     extra_applications: [:logger, :runtime_tools]]
+     extra_applications: [:logger, :logger_file_backend, :runtime_tools]]
   end
 
   # Specifies which paths to compile per environment.
