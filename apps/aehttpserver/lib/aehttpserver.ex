@@ -1,6 +1,8 @@
 defmodule Aehttpserver do
   use Application
 
+  require Logger
+
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   def start(_type, _args) do
@@ -17,6 +19,17 @@ defmodule Aehttpserver do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Aehttpserver.Supervisor]
+
+    env_authorization = System.get_env("NODE_AUTHORIZATION")
+    case env_authorization  do
+      nil ->
+        gen_authorization = UUID.uuid4
+        Application.put_env(:aecore, :authorization, gen_authorization)
+        Logger.info(fn -> "Authorization header for /node routes: #{gen_authorization}" end)
+      env ->
+        Application.put_env(:aecore, :authorization, env)
+    end
+
     Supervisor.start_link(children, opts)
   end
 

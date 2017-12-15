@@ -26,15 +26,11 @@ port =  case System.get_env("PORT") do
 end
 
 config :aehttpserver, Aehttpserver.Endpoint,
-  http: [
-    port: port,
-    protocol_options: [
-      onresponse: &Aehttpserver.Endpoint.on_response/4
-    ]
-  ],
+  http: [port: port],
   debug_errors: true,
   code_reloader: true,
   check_origin: false,
+  server: true,
   watchers: []
 
 # Do not include metadata nor timestamps in development logs
