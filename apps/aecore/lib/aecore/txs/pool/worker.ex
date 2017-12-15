@@ -48,7 +48,7 @@ defmodule Aecore.Txs.Pool.Worker do
     tx_size_bytes = tx_size_bits / 8
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
-                                Application.get_env(:aecore, :tx_data)[:pool_bytes_per_token])
+                                Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
     cond do
       !is_tx_valid ->
         Logger.info("Invalid transaction")
