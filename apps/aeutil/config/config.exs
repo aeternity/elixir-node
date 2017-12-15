@@ -8,15 +8,15 @@ use Mix.Config
 # if you want to provide default values for your application for
 # 3rd-party users, it should be done in your "mix.exs" file.
 
-# You can configure for your application as:
+# You can configure your application as:
 #
-#     config :aecore, key: :value
+#     config :aeutil, key: :value
 #
-# And access this configuration in your application as:
+# and access this configuration in your application as:
 #
-#     Application.get_env(:aecore, :key)
+#     Application.get_env(:aeutil, :key)
 #
-# Or configure a 3rd-party app:
+# You can also configure a 3rd-party app:
 #
 #     config :logger, level: :info
 #
@@ -27,7 +27,4 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
-
-config :aecore, :peers,
-  peers_target_count: 3,
-  peers_max_count: 4
+#     import_config "#{Mix.env}.exs"

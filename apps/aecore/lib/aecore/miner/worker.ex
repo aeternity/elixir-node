@@ -2,8 +2,8 @@ defmodule Aecore.Miner.Worker do
   use GenStateMachine, callback_mode: :state_functions
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Difficulty
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
@@ -12,6 +12,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Peers.Worker, as: Peers
 
   require Logger
 
@@ -33,7 +34,11 @@ defmodule Aecore.Miner.Worker do
   end
 
   def resume() do
-    GenStateMachine.call(__MODULE__, :start)
+    if Peers.is_chain_synced? do
+      GenStateMachine.call(__MODULE__, :start)
+    else
+      Logger.error("Can't start miner, chain not yet synced")
+    end
   end
 
   def suspend() do
