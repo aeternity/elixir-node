@@ -1,7 +1,7 @@
-defmodule Aehttpserver.Endpoint do
+defmodule Aehttpserver.Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :aehttpserver
 
-  socket "/socket", Aehttpserver.UserSocket
+  socket "/socket", Aehttpserver.Web.UserSocket
 
   # Serve at "/" the static files from "priv/static" directory.
   #
@@ -13,6 +13,11 @@ defmodule Aehttpserver.Endpoint do
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
+  if code_reloading? do
+    socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
+    plug Phoenix.LiveReloader
+    plug Phoenix.CodeReloader
+  end
 
   plug Plug.RequestId
   plug Plug.Logger
@@ -31,8 +36,19 @@ defmodule Aehttpserver.Endpoint do
   plug Plug.Session,
     store: :cookie,
     key: "_aehttpserver_key",
-    signing_salt: "EB5YKhDy"
+    signing_salt: "z4ZjBOwA"
 
-  plug Aehttpserver.Router
+  plug Aehttpserver.Web.Router
 
+  @doc """
+  Dynamically loads configuration from the system environment
+  on startup.
+
+  It receives the endpoint configuration from the config files
+  and must return the updated configuration.
+  """
+  def load_from_system_env(config) do
+    port = System.get_env("PORT") || raise "expected the PORT environment variable to be set"
+    {:ok, Keyword.put(config, :http, [:inet6, port: port])}
+  end
 end

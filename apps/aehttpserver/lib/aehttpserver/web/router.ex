@@ -1,4 +1,4 @@
-defmodule Aehttpserver.Router do
+defmodule Aehttpserver.Web.Router do
   use Aehttpserver.Web, :router
 
   pipeline :api do
@@ -19,5 +19,5 @@ defmodule Aehttpserver.Router do
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
   end
-
+  
 end

@@ -1,6 +1,6 @@
 use Mix.Config
 
-config :aehttpserver, Aehttpserver.Endpoint,
+config :aehttpserver, Aehttpserver.Web.Endpoint,
   http: [port: 4002],
   debug_errors: true,
   code_reloader: true,
