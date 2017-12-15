@@ -7,6 +7,10 @@ defmodule Aehttpserver.Web.Router do
     plug Aehttpserver.Plugs.SetHeader
   end
 
+  pipeline :authorized do
+    plug :authorization
+  end
+
   scope "/", Aehttpserver do
     pipe_through :api
 
@@ -19,5 +23,23 @@ defmodule Aehttpserver.Web.Router do
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
   end
-  
+
+  scope "/node", Aehttpserver do
+    pipe_through :api
+    pipe_through :authorized
+
+    resources "/miner", MinerController, param: "operation", only: [:show]
+  end
+
+  def authorization(conn, _opts) do
+    env_authorization = Application.get_env(:aecore, :authorization)
+    header_authorization = Plug.Conn.get_req_header(conn, "authorization") |> Enum.at(0)
+
+    if env_authorization == header_authorization do
+      conn
+    else
+      conn |> send_resp(401, "Unauthorized") |> halt()
+    end
+  end
+
 end
