@@ -32,7 +32,6 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [{:phoenix, "~> 1.3.0-rc"},
-     {:phoenix_pubsub, "~> 1.0"},
      {:cowboy, "~> 1.0"},
      {:cors_plug, "~> 1.2"}]
   end
