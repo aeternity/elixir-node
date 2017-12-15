@@ -17,7 +17,7 @@ defmodule GetTxsForAddressTest do
   #  Chain.start_link([])
   #end
 
-  @tag timeout: 100000
+  @tag timeout: 100_000
   test "get txs for given address test" do
     {:ok, address} = Keys.pubkey()
 
@@ -42,25 +42,5 @@ defmodule GetTxsForAddressTest do
 
     assert 2 <= :erlang.length(Chain.all_blocks)
     assert [tx2] = Pool.get_txs_for_address(address_bin)
-  end
-
-
-  defp split_blocks([block | blocks], address, txs) do
-    user_txs = check_address_tx(block.txs, address, txs)
-    split_blocks(blocks, address, user_txs)
-  end
-  defp split_blocks([], address, txs) do
-    txs
-  end
-
-  defp check_address_tx([tx | txs], address, user_txs) do
-    if tx.data.from_acc == address or tx.data.to_acc == address  do
-      user_txs = [tx.data | user_txs]
-    end
-
-    check_address_tx(txs, address, user_txs)
-  end
-   defp check_address_tx([], address, user_txs) do
-    user_txs
   end
 end

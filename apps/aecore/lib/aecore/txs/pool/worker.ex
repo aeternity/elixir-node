@@ -53,7 +53,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   @spec get_block_by_txs_hash(binary()) :: %Block{}
   def get_block_by_txs_hash(txs_hash) do
-   GenServer.call(__MODULE__, {:get_block_by_txs_hash, txs_hash})
+    GenServer.call(__MODULE__, {:get_block_by_txs_hash, txs_hash})
   end
 
 
