@@ -148,6 +148,10 @@ defmodule Aecore.Chain.ChainState do
     new_locked = if(value > 0) do
       block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
     else
+      if(!add_to_amount) do
+        throw({:error, "Update block state: not substracting negative value"})
+      end
+
       block_state_filled_empty[account].locked
     end
 
