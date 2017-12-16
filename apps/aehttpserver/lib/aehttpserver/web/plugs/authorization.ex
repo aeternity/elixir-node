@@ -5,7 +5,7 @@ defmodule Aehttpserver.Plugs.Authorization do
 
   def call(conn, _default) do
     env_authorization = Application.get_env(:aecore, :authorization)
-    header_authorization = get_req_header(conn, "authorization") |> Enum.at(0)
+    header_authorization = conn |> get_req_header("authorization") |> Enum.at(0)
 
     if env_authorization == header_authorization do
       conn

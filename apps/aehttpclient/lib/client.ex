@@ -11,6 +11,9 @@ defmodule Aehttpclient.Client do
 
   require Logger
 
+  @typedoc "Client request identifier"
+  @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -77,32 +80,47 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
+  @spec handleResponse(:block, map(), map()) :: {:ok, map()}
+  defp handleResponse(:block, body, _headers) do
+    response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
+    {:ok, response}
+  end
+
+  @spec handleResponse(:info, map(), list(map())) :: {:ok, map()}
+  defp handleResponse(:info, body, headers) do
+    response = Poison.decode!(body, keys: :atoms!)
+    {_, server} = Enum.find(headers, fn(header) ->
+      header == {"server", "aehttpserver"}
+    end)
+    response_with_server_header = Map.put(response, :server, server)
+    {:ok, response_with_server_header}
+  end
+
+  @spec handleResponse(:acc_txs, map(), list(map())) :: {:ok, map()}
+  defp handleResponse(:acc_txs, body, _headers) do
+    response = Poison.decode!(body, as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+    {:ok, response}
+  end
+
+  @spec handleResponse(:pool_txs, map(), list(map())) :: {:ok, map()}
+  defp handleResponse(:pool_txs, body, _headers) do
+    response = body
+      |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+      |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+    {:ok, response}
+  end
+
+  @spec handleResponse(:default, map(), list(map())) :: {:ok, map()}
+  defp handleResponse(:default, body, _headers) do
+    response = Poison.decode!(body)
+    {:ok, response}
+  end
+
+  @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
-        case(identifier) do
-          :block ->
-            response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
-            {:ok, response}
-          :info ->
-            response = Poison.decode!(body, keys: :atoms!)
-            {_, server} = Enum.find(headers, fn(header) ->
-              header == {"server", "aehttpserver"} end)
-            response_with_server_header = Map.put(response, :server, server)
-            {:ok, response_with_server_header}
-          :acc_txs ->
-            response = Poison.decode!(body,
-              as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
-            {:ok, response}
-          :pool_txs ->
-            response =
-              body
-              |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
-              |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
-            {:ok, response}
-          :default ->
-            json_response(body)
-        end
+        handleResponse(identifier, body, headers)
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         {:error, "Response 404"}
       {:ok, %HTTPoison.Response{status_code: 400}} ->
@@ -115,16 +133,11 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  def json_response(body) do
-    response = Poison.decode!(body)
-    {:ok, response}
-  end
-
   defp send_to_peer(data, uri) do
-    HTTPoison.post uri, Poison.encode!(data),
-      [{"Content-Type", "application/json"}]
+    HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
   end
 
+  # TODO: what is this function even doing?
   defp get_local_port() do
     Aehttpserver.Web.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
     |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)

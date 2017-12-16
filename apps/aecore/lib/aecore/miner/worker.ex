@@ -203,10 +203,8 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
+  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
   def candidate() do
-  ## Internal
-  @spec mine_next_block(integer()) :: {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
-  defp mine_next_block(start_nonce) do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
@@ -217,14 +215,13 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_validation = if top_block.header.height == 0 do
       [top_block]
     else
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks() + 1)
+      top_block_hash
+      |> Chain.get_blocks(Difficulty.get_number_of_blocks() + 1)
       |> Enum.drop(1)
     end
 
-    previous_block = cond do
-      top_block == Block.genesis_block() -> nil
-      true ->
-        Chain.get_block(top_block.header.prev_hash)
+    previous_block = unless top_block == Block.genesis_block() do
+      Chain.get_block(top_block.header.prev_hash)
     end
 
     try do
@@ -284,13 +281,9 @@ defmodule Aecore.Miner.Worker do
   ## Internal
 
   def calculate_total_fees(txs) do
-    List.foldl(
-      txs,
-      0,
-      fn (tx, acc) ->
+    List.foldl(txs, 0, fn (tx, acc) ->
         acc + tx.data.fee
-      end
-    )
+    end)
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
@@ -307,13 +300,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp filter_transactions_by_fee(txs) do
+    miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bits =
-        tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+      tx_size_bits = tx
+        |> :erlang.term_to_binary()
+        |> Bits.extract()
+        |> Enum.count()
       tx_size_bytes = tx_size_bits / 8
-
-      tx.data.fee >= Float.floor(tx_size_bytes /
-        Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token])
+      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
 
