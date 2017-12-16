@@ -27,6 +27,7 @@ defmodule Aeutil.Serialization do
     %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
+  @spec(binary, :serialize | :deserialize ) :: binary
   def hex_binary(data, direction) do
     if data != nil do
       case(direction) do
