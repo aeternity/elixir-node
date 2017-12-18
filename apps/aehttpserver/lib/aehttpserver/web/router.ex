@@ -19,6 +19,7 @@ defmodule Aehttpserver.Web.Router do
     get "/peers", PeersController, :info
     post "/new_block", BlockController, :new_block
     get "/blocks", BlockController, :get_blocks
+    get "/pool_txs", TxPoolController, :get_pool_txs
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]

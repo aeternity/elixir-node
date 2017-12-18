@@ -28,6 +28,10 @@ defmodule Aehttpclient.Client do
     end
   end
 
+  def get_pool_txs(uri) do
+    get(uri <> "/pool_txs", :pool_txs)
+  end
+
   @spec send_block(%Block{}, list(binary())) :: :ok
   def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
@@ -54,7 +58,7 @@ defmodule Aehttpclient.Client do
 
   @spec get_peers(term()) :: {:ok, list()}
   def get_peers(uri) do
-    get(uri <> "/peers", :peers)
+    get(uri <> "/peers")
   end
 
   @spec get_and_add_peers(term()) :: :ok
@@ -63,8 +67,9 @@ defmodule Aehttpclient.Client do
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
+  @spec get_account_balance({binary(), binary()}) :: {:ok, binary()} | :error
   def get_account_balance({uri, acc}) do
-    get(uri <> "/balance/#{acc}", :balance)
+    get(uri <> "/balance/#{acc}")
   end
 
   @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
@@ -72,7 +77,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  defp get(uri, identifier) do
+  defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         case(identifier) do
@@ -89,7 +94,13 @@ defmodule Aehttpclient.Client do
             response = Poison.decode!(body,
               as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
             {:ok, response}
-          _ ->
+          :pool_txs ->
+            response =
+              body
+              |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+              |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+            {:ok, response}
+          :default ->
             json_response(body)
         end
       {:ok, %HTTPoison.Response{status_code: 404}} ->
