@@ -297,6 +297,39 @@ defmodule MultipleTransactionsTest do
     assert miner_balance_after_mining == miner_balance_before_mining + Miner.coinbase_transaction_value() + 20
   end
 
+  test "locked amount" do
+    {:ok, pubkey} = Keys.pubkey()
+    account1 = get_account_locked_amount()
+    {account1_pub_key, _account1_priv_key} = account1
+
+    Miner.resume()
+    Miner.suspend()
+    Pool.get_and_empty_pool()
+    {:ok, tx} = Keys.sign_tx(account1_pub_key, 90,
+                             Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 10,
+                             Chain.top_block().header.height +
+                              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 3)
+    Pool.add_transaction(tx)
+    Miner.resume()
+    Miner.suspend()
+    tx = create_signed_tx(account1, {pubkey, <<0>>}, 50,
+                          Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce + 1, 10)
+    Pool.add_transaction(tx)
+    Miner.resume()
+    Miner.suspend()
+    assert Enum.count(Pool.get_pool()) == 1
+    Miner.resume()
+    Miner.suspend()
+    assert Enum.count(Pool.get_pool()) == 1
+    assert Map.get(Chain.chain_state, account1_pub_key).balance == 90
+    miner_balance_before_block = Map.get(Chain.chain_state, pubkey).balance
+    Miner.resume()
+    Miner.suspend()
+    assert Enum.empty?(Pool.get_pool())
+    miner_balance_after_block = Map.get(Chain.chain_state, pubkey).balance
+    assert miner_balance_after_block == miner_balance_before_block + 100 + 60
+  end
+
   defp get_accounts_one_block() do
     account1 = {
         <<4, 94, 96, 161, 182, 76, 153, 22, 179, 136, 60, 87, 225, 135, 253, 179, 80,
@@ -384,10 +417,20 @@ defmodule MultipleTransactionsTest do
     {account1, account2, account3}
   end
 
-  defp create_signed_tx(from_acc, to_acc, value, nonce, fee) do
+  defp get_account_locked_amount() do
+    {<<4, 55, 160, 38, 64, 182, 216, 237, 37, 115, 115, 235, 25, 35, 106, 13, 194,
+       87, 156, 61, 156, 235, 207, 151, 183, 35, 38, 247, 66, 253, 39, 197, 43, 49,
+       55, 78, 125, 31, 45, 38, 203, 156, 1, 206, 235, 241, 50, 140, 195, 38, 19,
+       89, 234, 69, 251, 211, 208, 29, 72, 99, 90, 90, 212, 128, 105>>,
+     <<132, 73, 10, 38, 77, 68, 7, 72, 211, 181, 33, 176, 209, 113, 210, 159, 247,
+       148, 237, 83, 238, 200, 99, 252, 175, 107, 11, 95, 114, 133, 149, 168>>}
+  end
+
+  defp create_signed_tx(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {from_acc_pub_key, from_acc_priv_key} = from_acc
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
-    {:ok, tx_data} = TxData.create(from_acc_pub_key, to_acc_pub_key, value, nonce, fee)
+    {:ok, tx_data} = TxData.create(from_acc_pub_key, to_acc_pub_key, value,
+                                   nonce, fee, lock_time_block)
     {:ok, signature} = Keys.sign(tx_data, from_acc_priv_key)
 
     %SignedTx{data: tx_data, signature: signature}

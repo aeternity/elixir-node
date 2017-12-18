@@ -33,5 +33,6 @@ config :aecore, :peers,
   peers_max_count: 4
 
 config :aecore, :tx_data,
+  lock_time_coinbase: 0,
   miner_fee_bytes_per_token: 100,
   pool_fee_bytes_per_token: 100

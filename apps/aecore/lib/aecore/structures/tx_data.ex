@@ -4,6 +4,7 @@ defmodule Aecore.Structures.TxData do
   """
 
   alias Aecore.Structures.TxData
+
   @type tx_data() :: %TxData{}
 
   @doc """
@@ -15,11 +16,16 @@ defmodule Aecore.Structures.TxData do
      - to_acc: To account is the public address of the account receiving the transaction
      - value: The amount of a transaction
   """
-  defstruct [:nonce, :from_acc, :to_acc, :value, :fee]
+  defstruct [:nonce, :from_acc, :to_acc, :value, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), integer(), integer(), integer()) :: {:ok, %TxData{}}
-  def create(from_acc, to_acc, value, nonce, fee) do
-    {:ok, %TxData{from_acc: from_acc, to_acc: to_acc, value: value, nonce: nonce, fee: fee}}
+  @spec create(binary(), binary(), integer(), integer(), integer(), integer()) :: {:ok, %TxData{}}
+  def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
+    {:ok, %TxData{from_acc: from_acc,
+                  to_acc: to_acc,
+                  value: value,
+                  nonce: nonce,
+                  fee: fee,
+                  lock_time_block: lock_time_block}}
   end
 end

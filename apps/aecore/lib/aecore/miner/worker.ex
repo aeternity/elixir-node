@@ -116,13 +116,14 @@ defmodule Aecore.Miner.Worker do
     Application.put_env(:aecore, :tx_data, miner_fee_bytes_per_token: bytes)
   end
 
-  def get_coinbase_transaction(to_acc, total_fees) do
+  def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
     tx_data = %TxData{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,
       nonce: 0,
-      fee: 0
+      fee: 0,
+      lock_time_block: lock_time_block
     }
 
     %SignedTx{data: tx_data, signature: nil}
@@ -182,12 +183,17 @@ defmodule Aecore.Miner.Worker do
       {_, pubkey} = Keys.pubkey()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
-      valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs_by_fee]
+      valid_txs = [get_coinbase_transaction(pubkey, total_fees,
+                                            top_block.header.height + 1 +
+                                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) | valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_block_state = ChainState.calculate_block_state(valid_txs)
+      new_block_state =
+        ChainState.calculate_block_state(valid_txs, top_block.header.height)
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+      new_chain_state_locked_amounts =
+        ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
+      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
