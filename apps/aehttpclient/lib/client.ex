@@ -94,8 +94,10 @@ defmodule Aehttpclient.Client do
               as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
             {:ok, response}
           :pool_txs ->
-            response = Poison.decode!(body,
-              as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+            response =
+              body
+              |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+              |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
             {:ok, response}
           :default ->
             json_response(body)

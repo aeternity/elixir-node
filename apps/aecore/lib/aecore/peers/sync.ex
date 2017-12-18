@@ -41,14 +41,16 @@ defmodule Aecore.Peers.Sync do
   end
 
   def add_unknown_peer_pool_txs(peers) do
-    Enum.each(peers, fn(peer) ->
-        deserialized_pool_txs =
-          peer
-          |> HttpClient.get_pool_txs()
-          |> elem(1)
-          |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
-        Enum.each(deserialized_pool_txs, fn(tx) -> Pool.add_transaction(tx) end)
-      end)
+    peer_uris = peers |> Map.values() |> Enum.map(fn(%{uri: uri}) -> uri end)
+    Enum.each(peer_uris, fn(peer) ->
+      case HttpClient.get_pool_txs(peer) do
+        {:ok, deserialized_pool_txs} ->
+          Enum.each(deserialized_pool_txs,
+            fn(tx) -> Pool.add_transaction(tx) end)
+        :error ->
+          Logger.error("Couldn't get pool from peer")
+      end
+    end)
   end
 
   def handle_call(:get_state, _from, state) do
