@@ -4,6 +4,8 @@ defmodule Aecore.Structures.TxData do
   """
 
   alias Aecore.Structures.TxData
+  alias Aecore.Chain.Worker, as: Chain
+
   @type tx_data() :: %TxData{}
 
   @doc """
@@ -19,7 +21,9 @@ defmodule Aecore.Structures.TxData do
   use ExConstructor
 
   @spec create(binary(), binary(), integer(), integer(), integer(), integer()) :: {:ok, %TxData{}}
-  def create(from_acc, to_acc, value, nonce, fee, lock_time_block) do
+  def create(from_acc, to_acc, value, nonce, fee,
+             lock_time_block \\ Chain.latest_block().header.height + 1) do
+
     {:ok, %TxData{from_acc: from_acc,
                   to_acc: to_acc,
                   value: value,
