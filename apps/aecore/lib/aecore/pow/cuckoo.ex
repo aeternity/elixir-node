@@ -41,11 +41,8 @@ defmodule Aecore.Pow.Cuckoo do
          {:ok, builder} <- exec_os_cmd(builder),
          {:ok, builder} <- build_response(builder)
       do
-      {:ok, %{process: process} = builder}
-      case process do
-        :generate -> builder.header
-        :verify -> builder.verified
-      end
+      {:ok, %{response: response} = builder}
+      response
 
       else
         {:error, %{error: reason}} ->
@@ -70,7 +67,7 @@ defmodule Aecore.Pow.Cuckoo do
     {exe, _extra, size} = Application.get_env(:aecore, :pow)[:params]
     cmd =
       case process do
-        :generate -> [exe, size, " -h ", hash," -n ", nonce]
+        :generate -> [exe, size, " -h ", hash, " -n ", nonce]
         :verify ->   ["./verify", size, " -h ", hash, " -n ", nonce]
       end
     command = Enum.join(export_ld_lib_path() ++ cmd)
@@ -130,14 +127,12 @@ defmodule Aecore.Pow.Cuckoo do
       {:stderr, _os_pid, msg} ->
         Logger.error("[Cuckoo] stderr: #{inspect(msg)}")
         {:error, :miner_was_stopped}
-      {:DOWN, _ref, :process, _pid, :killed} ->
-        exit(:normal)
       {:EXIT, _pid, :shutdown} ->
         exit(:shutdown)
       {:DOWN, _, :process, _pid, :normal} ->
         wait_for_result(process)
       any ->
-        Logger.error("[Cuckoo] wait_for_response any case : #{inspect(any)}")
+        Logger.error("[Cuckoo] Unexpeted error : #{inspect(any)}")
         {:error, :no_value}
     end
   end
@@ -158,23 +153,18 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{error: error} = builder) when error != nil do
+    Logger.error("[Cuckoo] Unexpected error: #{inspect(error)}")
     {:error, %{builder | error: error}}
   end
-
+  defp build_response(%{response: {:verified, verified}} = builder) do
+    {:ok, %{builder | response: verified}}
+  end
   defp build_response(%{header: header,
-                        response: response} = builder) do
-    case response do
-      {:verified, verified} ->
-        {:ok, %{builder | verified: verified}}
-      {:generated, soln} ->
-        if test_target(soln, header.difficulty_target) do
-          {:ok, %{builder | header: %{header | pow_evidence: soln}}}
-        else
-          {:error, %{builder | error: :no_solution}}
-        end
-      {:error, error} ->
-        Logger.error("[Cuckoo] buildig response: #{inspect(error)}")
-        {:error, %{builder | error: error}}
+                        response: {:generated, soln}} = builder) do
+    if test_target(soln, header.difficulty_target) do
+      {:ok, %{builder | response: %{header | pow_evidence: soln}}}
+    else
+      {:error, %{builder | error: :no_solution}}
     end
   end
 
