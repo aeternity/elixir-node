@@ -1,4 +1,4 @@
-defmodule Aehttpserver.NewTxController do
+defmodule Aehttpserver.Web.NewTxController do
   use Aehttpserver.Web, :controller
 
   alias Aeutil.Serialization

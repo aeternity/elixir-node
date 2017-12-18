@@ -1,4 +1,4 @@
-defmodule Aehttpserver.BlockController do
+defmodule Aehttpserver.Web.BlockController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain

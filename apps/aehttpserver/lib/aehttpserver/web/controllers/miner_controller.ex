@@ -1,4 +1,4 @@
-defmodule Aehttpserver.MinerController do
+defmodule Aehttpserver.Web.MinerController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Miner.Worker, as: Miner
