@@ -59,12 +59,12 @@ defmodule AecoreValidationTest do
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
                               Map.get(Chain.chain_state,
                                       to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.latest_block().header.height +
+                              Chain.top_block().header.height +
                                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 10,
                               Map.get(Chain.chain_state,
                                       to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.latest_block().header.height +
+                              Chain.top_block().header.height +
                                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}

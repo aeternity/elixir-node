@@ -1,6 +1,5 @@
 defmodule Aecore.Chain.BlockValidation do
 
-  alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
@@ -77,16 +76,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) ->
-                      true
-                    true ->
-                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
-                  end
-         end
-       )
+    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
@@ -95,16 +85,11 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_signature = KeyManager.verify(
-          tx.data,
-          tx.signature,
-          tx.data.from_acc
-        )
-
+        valid_tx = SignedTx.is_valid(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
 
         cond do
-          valid_signature && valid_chain_state ->
+          valid_tx && valid_chain_state ->
             {valid_txs_list ++ [tx], updated_chain_state}
           true ->
             {valid_txs_list, chain_state_acc}

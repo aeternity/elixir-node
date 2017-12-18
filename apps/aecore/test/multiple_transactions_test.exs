@@ -307,7 +307,7 @@ defmodule MultipleTransactionsTest do
     Pool.get_and_empty_pool()
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 90,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 10,
-                             Chain.latest_block().header.height +
+                             Chain.top_block().header.height +
                               Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 3)
     Pool.add_transaction(tx)
     Miner.resume()

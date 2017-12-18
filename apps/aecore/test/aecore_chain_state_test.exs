@@ -15,7 +15,7 @@ defmodule AecoreChainStateTest do
   test "block state" do
     block = get_block()
     lock_time_block = Enum.at(block.txs, 0).data.lock_time_block
-    latest_block = Chain.latest_block()
+    latest_block = Chain.top_block()
 
     assert %{"a" => %{balance: -9, nonce: 102,
                       locked: [%{amount: 10, block: lock_time_block}]},
@@ -28,7 +28,7 @@ defmodule AecoreChainStateTest do
   end
 
   test "chain state" do
-    next_block_height = Chain.latest_block().header.height + 1
+    next_block_height = Chain.top_block().header.height + 1
     chain_state =
       ChainState.calculate_chain_state(%{"a" => %{balance: 3, nonce: 100,
                                                   locked: [%{amount: 1, block: next_block_height}]},
@@ -59,25 +59,25 @@ defmodule AecoreChainStateTest do
            timestamp: System.system_time(:milliseconds), version: 1}, txs: [
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "b",
               value: 5, nonce: 101, fee: 1,
-              lock_time_block: Chain.latest_block().header.height +
+              lock_time_block: Chain.top_block().header.height +
                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "a", to_acc: "c",
               value: 2, nonce: 102, fee: 1,
-              lock_time_block: Chain.latest_block().header.height +
+              lock_time_block: Chain.top_block().header.height +
                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "c", to_acc: "b",
               value: 4, nonce: 1, fee: 1,
-              lock_time_block: Chain.latest_block().header.height +
+              lock_time_block: Chain.top_block().header.height +
                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>},
 
              %SignedTx{data: %TxData{from_acc: "b", to_acc: "a",
               value: 10, nonce: 1, fee: 1,
-              lock_time_block: Chain.latest_block().header.height +
+              lock_time_block: Chain.top_block().header.height +
                 Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1},
               signature: <<0>>}]}
   end

@@ -23,7 +23,7 @@ defmodule AecoreKeysTest do
     assert {:ok, _} = Keys.sign_tx(to_account, 5,
                                    Map.get(Chain.chain_state,
                                            to_account, %{nonce: 0}).nonce + 1, 1,
-                                   Chain.latest_block().header.height +
+                                   Chain.top_block().header.height +
                                     Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
   end
 

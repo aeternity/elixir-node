@@ -139,10 +139,9 @@ defmodule Aecore.Chain.ChainState do
     new_nonce = cond do
       block_state_filled_empty[account].nonce < nonce ->
         nonce
-
       true ->
         block_state_filled_empty[account].nonce
-    end
+      end
 
     new_locked = if(add_to_locked) do
       block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
