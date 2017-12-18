@@ -6,6 +6,7 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpclient.Client
+  alias Aecore.Miner.Worker, as: Miner
 
   test "Client functions" do
     account = Keys.pubkey() |> elem(1) |> Base.encode16()
@@ -19,15 +20,13 @@ defmodule AehttpclientTest do
   end
 
   def add_txs_to_pool() do
+    Miner.resume()
+    Miner.suspend()
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.latest_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)
     {:ok, tx2} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.latest_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
+                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)
     Pool.add_transaction(tx1)
     Pool.add_transaction(tx2)
   end

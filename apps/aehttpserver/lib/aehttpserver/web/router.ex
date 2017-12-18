@@ -1,12 +1,17 @@
-defmodule Aehttpserver.Router do
+defmodule Aehttpserver.Web.Router do
   use Aehttpserver.Web, :router
 
   pipeline :api do
     plug CORSPlug, [origin: "*"]
     plug :accepts, ["json"]
+    plug Aehttpserver.Plugs.SetHeader
   end
 
-  scope "/", Aehttpserver do
+  pipeline :authorized do
+    plug Aehttpserver.Plugs.Authorization
+  end
+
+  scope "/", Aehttpserver.Web do
     pipe_through :api
 
     get "/info", InfoController, :info
@@ -17,6 +22,13 @@ defmodule Aehttpserver.Router do
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
+  end
+
+  scope "/node", Aehttpserver.Web do
+    pipe_through :api
+    pipe_through :authorized
+
+    resources "/miner", MinerController, param: "operation", only: [:show]
   end
 
 end

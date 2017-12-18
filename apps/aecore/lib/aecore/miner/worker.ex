@@ -12,6 +12,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aeutil.Bits
+  alias Aecore.Peers.Worker, as: Peers
 
   require Logger
 
@@ -33,7 +35,11 @@ defmodule Aecore.Miner.Worker do
   end
 
   def resume() do
-    GenStateMachine.call(__MODULE__, :start)
+    if Peers.is_chain_synced? do
+      GenStateMachine.call(__MODULE__, :start)
+    else
+      Logger.error("Can't start miner, chain not yet synced")
+    end
   end
 
   def suspend() do
@@ -106,6 +112,10 @@ defmodule Aecore.Miner.Worker do
     {:next_state, :idle, data}
   end
 
+  def set_tx_bytes_per_token(bytes) do
+    Application.put_env(:aecore, :tx_data, miner_fee_bytes_per_token: bytes)
+  end
+
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
     tx_data = %TxData{
       from_acc: nil,
@@ -168,14 +178,15 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
 
-      total_fees = calculate_total_fees(valid_txs)
+      total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,
                                             latest_block.header.height + 1 +
-                                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) | valid_txs]
+                                            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) | valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state =
@@ -222,6 +233,16 @@ defmodule Aecore.Miner.Worker do
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
         {:error, message}
     end
+  end
 
+  defp filter_transactions_by_fee(txs) do
+    Enum.filter(txs, fn(tx) ->
+      tx_size_bits =
+        tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+      tx_size_bytes = tx_size_bits / 8
+
+      tx.data.fee >= Float.floor(tx_size_bytes /
+                                  Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token])
+    end)
   end
 end

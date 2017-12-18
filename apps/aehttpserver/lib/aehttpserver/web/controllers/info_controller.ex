@@ -1,4 +1,4 @@
-defmodule Aehttpserver.InfoController do
+defmodule Aehttpserver.Web.InfoController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Structures.Block

@@ -1,4 +1,4 @@
-defmodule Aehttpserver.PeersController do
+defmodule Aehttpserver.Web.PeersController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Peers.Worker, as: Peers
