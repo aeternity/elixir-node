@@ -100,7 +100,7 @@ defmodule Aecore.Pow.Cuckoo do
       end
 
       res =
-        case wait_for_result(process) do
+        case wait_for_result(process, "") do
           {:ok, response} -> {:ok, %{builder | response: response}}
           {:error, reason} -> {:error, %{builder | error: reason}}
         end
@@ -120,20 +120,21 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   ## Consider buffer
-  defp wait_for_result(process) do
+  defp wait_for_result(process, buff) do
     receive do
       {:stdout, _os_pid, msg} ->
-        handle_raw_data(process, msg)
+        wait_for_result(process, msg <> buff)
       {:stderr, _os_pid, msg} ->
         Logger.error("[Cuckoo] stderr: #{inspect(msg)}")
         {:error, :miner_was_stopped}
       {:EXIT, _pid, :shutdown} ->
         exit(:shutdown)
       {:DOWN, _, :process, _pid, :normal} ->
-        wait_for_result(process)
+        ## Here we suppose to have the whole data from the os port
+        handle_raw_data(process, buff)
       any ->
         Logger.error("[Cuckoo] Unexpeted error : #{inspect(any)}")
-        {:error, :no_value}
+        exit(:kill)
     end
   end
 
@@ -148,7 +149,8 @@ defmodule Aecore.Pow.Cuckoo do
         solution =
         for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
         {:ok, {:generated, solution}}
-      _ -> {:error, :no_solution}
+      any ->
+        {:error, :no_solution}
     end
   end
 
