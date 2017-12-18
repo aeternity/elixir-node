@@ -5,6 +5,16 @@
 # is restricted to this project.
 use Mix.Config
 
+# General application configuration
+config :aehttpserver,
+  namespace: Aehttpserver
+
+# Configures the endpoint
+config :aehttpserver, Aehttpserver.Web.Endpoint,
+  url: [host: "localhost"],
+  secret_key_base: "iC7edxvq+oLqfi0E3jpHq9hq0PLu+n0xeJkjxRwPO+klI8fR8s/5n+Y30asPxlYo",
+  render_errors: [view: Aehttpserver.Web.ErrorView, accepts: ~w(html json)]
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",

@@ -7,6 +7,7 @@ defmodule AecoreTxTest do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Structures.SignedTx
 
   setup do
     Keys.start_link([])
@@ -18,6 +19,20 @@ defmodule AecoreTxTest do
     {:ok, tx} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
 
     assert :true = Keys.verify_tx(tx)
+  end
+
+  test "positive tx valid" do
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+
+    assert SignedTx.is_valid(tx)
+  end
+
+  test "negative tx invalid" do
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx} = Keys.sign_tx(to_account, -5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+
+    assert !SignedTx.is_valid(tx)
   end
 
 end

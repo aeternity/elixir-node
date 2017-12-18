@@ -31,3 +31,7 @@ use Mix.Config
 config :aecore, :peers,
   peers_target_count: 2,
   peers_max_count: 4
+
+config :aecore, :tx_data,
+  miner_fee_bytes_per_token: 100,
+  pool_fee_bytes_per_token: 100
