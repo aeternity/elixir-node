@@ -21,7 +21,6 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @resuming_by_default :false
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -45,7 +44,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def init(state) do
-    if @resuming_by_default do
+    if Application.get_env(:aecore, :miner)[:resumed_by_default] do
       {:ok, state, 0}
     else
       {:ok, state}
