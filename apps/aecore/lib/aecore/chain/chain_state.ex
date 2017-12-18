@@ -1,17 +1,10 @@
 defmodule Aecore.Chain.ChainState do
   @moduledoc """
-  Module used for calculating the block and chain states.
+  Module used for calculating the chain states.
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
   require Logger
-
-  @doc """
-  Calculates the balance of each account mentioned
-  in the transactions a single block, returns a map with the
-  accounts as key and their balance as value.
-  """
-  
   alias Aecore.Structures.SignedTx
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()

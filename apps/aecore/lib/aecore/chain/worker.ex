@@ -78,9 +78,7 @@ defmodule Aecore.Chain.Worker do
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
     new_chain_state = BlockValidation.calculate_and_validate_block!(
       block, prev_block, prev_block_chain_state, blocks_for_difficulty_calculation)
-    new_chain_state_locked_amounts =
-      ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
-    add_validated_block(block, new_chain_state_locked_amounts)
+    add_validated_block(block, new_chain_state)
   end
 
   @spec add_validated_block(%Block{}, map()) :: :ok
