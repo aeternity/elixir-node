@@ -18,7 +18,7 @@ defmodule PersistenceTest do
   test "Reading last mined block by his hash from rocksdb" do
     Miner.resume()
     Miner.suspend()
-    hash = BlockValidation.block_header_hash(Chain.latest_block.header)
+    hash = BlockValidation.block_header_hash(Chain.top_block().header)
     assert {:ok, %{header: _header}} = Persistence.read_block_by_hash(hash)
   end
 
