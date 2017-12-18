@@ -50,8 +50,13 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    assert BlockValidation.validate_block!(new_block, prev_block, %{},
-                                    blocks_for_difficulty_calculation) == :ok
+    _ = BlockValidation.calculate_and_validate_block!(
+      new_block, prev_block, %{}, blocks_for_difficulty_calculation)
+    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 2}}
+    assert {:error, "Incorrect height"} == catch_throw( 
+      BlockValidation.calculate_and_validate_block!(
+        wrong_height_block, prev_block, %{}, 
+        blocks_for_difficulty_calculation))
   end
 
   test "validate transactions in a block" do

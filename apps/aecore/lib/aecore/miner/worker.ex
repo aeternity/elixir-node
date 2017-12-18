@@ -165,19 +165,12 @@ defmodule Aecore.Miner.Worker do
     end
 
     try do
-      BlockValidation.validate_block!(
-        top_block,
-        previous_block,
-        chain_state,
-        blocks_for_difficulty_validation
-      )
-
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
@@ -188,12 +181,8 @@ defmodule Aecore.Miner.Worker do
                                             Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) | valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_block_state =
-        ChainState.calculate_block_state(valid_txs, top_block.header.height)
-      new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-      new_chain_state_locked_amounts =
-        ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
+      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)
 

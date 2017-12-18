@@ -27,8 +27,7 @@ defmodule AecoreChainTest do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     chain_state = Chain.chain_state(top_block_hash)
-    new_block_state = ChainState.calculate_block_state([], top_block.header.height)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
     new_chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     block = %Block{header: %Header{height: top_block.header.height + 1,
@@ -47,12 +46,13 @@ defmodule AecoreChainTest do
                                               Difficulty.get_number_of_blocks)
     top_block_hash_hex = top_block_hash |> Base.encode16()
     [top_block | [previous_block | []]] = Chain.get_blocks(top_block_hash, 2)
+    previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
     assert top_block == Chain.get_block_by_hex_hash(top_block_hash_hex)
     assert previous_block.header.height + 1 == top_block.header.height
-    assert BlockValidation.validate_block!(top_block, previous_block,
-                                            Chain.chain_state(),
-                                            blocks_for_difficulty_calculation)
+    assert BlockValidation.calculate_and_validate_block!(top_block, previous_block,
+                                                         Chain.chain_state(previous_block_hash),
+                                                         blocks_for_difficulty_calculation)
     assert :ok = Chain.add_block(block)
     assert top_block = Chain.top_block()
     assert top_block.header.height == block.header.height
