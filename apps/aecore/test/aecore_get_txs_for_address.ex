@@ -13,9 +13,6 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Utils.Blockchain.BlockValidation, as: BlockValidation
   alias Aecore.Txs.Pool.Worker, as: Pool
 
-  #setup do
-  #  Chain.start_link([])
-  #end
 
   @tag timeout: 100_000
   test "get txs for given address test" do
@@ -43,4 +40,27 @@ defmodule GetTxsForAddressTest do
     assert 2 <= :erlang.length(Chain.all_blocks)
     assert [tx2] = Pool.get_txs_for_address(address_bin)
   end
-end
+
+  test "get txs for given address with proof test" do
+    Miner.resume()
+    Miner.suspend()
+    {:ok, address} = Keys.pubkey
+    user_txs = Pool.get_txs_for_address(address)
+    user_txs_with_proof = Pool.get_txs_for_address_with_proof(user_txs)
+    for user_tx_with_proof <- user_txs_with_proof do
+      transaction = :erlang.term_to_binary(
+        tx
+        |> Map.delete(:txs_hash)
+        |> Map.delete(:block_hash)
+        |> Map.delete(:block_height)
+        |> Map.delete(:signature)
+        |> TxData.new()
+      )
+      key = :crypto.hash(:sha256, transaction)
+      assert {:ok, :verified} =
+        :gb_merkle_trees.verify_merkle_proof(key,
+          transaction,
+          user_tx_with_proof.txs_hash,
+          user_tx_with_proof.proof)
+    end
+  end

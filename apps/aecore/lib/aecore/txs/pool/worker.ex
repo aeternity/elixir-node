@@ -9,8 +9,11 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
+  alias Aecore.Structures.TxData
+  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
+  alias Aeutil.Bits
 
   require Logger
 
@@ -76,15 +79,27 @@ defmodule Aecore.Txs.Pool.Worker do
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
-    if is_tx_valid do
-      updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
-      case tx_pool == updated_pool do
-        true -> Logger.info(" This transaction already has been added")
-        false -> Peers.broadcast_tx(tx)
-      end
-      {:reply, :ok, updated_pool}
-    else
-      {:reply, :error, tx_pool}
+    tx_size_bits =
+      tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+    tx_size_bytes = tx_size_bits / 8
+    is_minimum_fee_met =
+      tx.data.fee >= Float.floor(tx_size_bytes /
+                                Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+    cond do
+      !is_tx_valid ->
+        Logger.info("Invalid transaction")
+        {:reply, :error, tx_pool}
+      !is_minimum_fee_met ->
+        Logger.info("Fee is too low")
+        {:reply, :error, tx_pool}
+      true ->
+        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+        if tx_pool == updated_pool do
+          Logger.info("Transaction is already in pool")
+        else
+          Peers.broadcast_tx(tx)
+        end
+        {:reply, :ok, updated_pool}
     end
   end
 
@@ -99,6 +114,34 @@ defmodule Aecore.Txs.Pool.Worker do
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
+  end
+
+  def get_txs_for_address_with_proof(user_txs) do
+    blocks_for_user_txs =
+    for user_tx <- user_txs do
+      get_block_by_txs_hash(user_tx.txs_hash)
+    end
+    merkle_trees =
+    for block <- blocks_for_user_txs do
+      build_tx_tree(block.txs)
+    end
+    user_txs_trees = Enum.zip(user_txs, merkle_trees)
+    proof =
+    for user_tx_tree <- user_txs_trees  do
+      {tx, tree} = user_tx_tree
+      transaction = :erlang.term_to_binary(
+        tx
+        |> Map.delete(:txs_hash)
+        |> Map.delete(:block_hash)
+        |> Map.delete(:block_height)
+        |> Map.delete(:signature)
+        |> TxData.new()
+      )
+      key = :crypto.hash(:sha256, transaction)
+      merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
+      serialized_merkle_proof = serialize_merkle_proof(merkle_proof, [])
+      Map.put_new(tx, :proof, serialized_merkle_proof)
+    end
   end
 
   ## Private functions
@@ -136,4 +179,35 @@ defmodule Aecore.Txs.Pool.Worker do
     user_txs
   end
 
+  defp build_tx_tree(txs) do
+    if Enum.empty?(txs) do
+      <<0::256>>
+    else
+      merkle_tree =
+      for transaction <- txs do
+        transaction_data_bin = :erlang.term_to_binary(transaction.data)
+        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+      end
+
+      merkle_tree
+      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
+        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
+      end)
+    end
+  end
+
+  defp serialize_merkle_proof(proof, acc) when is_tuple(proof) do
+    proof
+    |> Tuple.to_list()
+    |> serialize_merkle_proof(acc)
+  end
+  defp serialize_merkle_proof([], acc), do: acc
+  defp serialize_merkle_proof([head | tail], acc) do
+    if is_tuple(head) do
+      serialize_merkle_proof(Tuple.to_list(head), acc)
+    else
+      acc = [Serialization.hex_binary(head, :serialize)| acc]
+      serialize_merkle_proof(tail, acc)
+    end
+  end
 end
