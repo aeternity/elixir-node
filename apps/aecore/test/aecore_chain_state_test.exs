@@ -24,8 +24,7 @@ defmodule AecoreChainStateTest do
                                %{amount: 5, block: lock_time_block}]},
              "c" => %{nonce: 1, balance: -5,
                       locked: [%{amount: 2, block: lock_time_block}]}} ==
-      ChainState.calculate_block_state(block.txs, latest_block.header.height,
-        Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
+      ChainState.calculate_block_state(block.txs, latest_block.header.height)
   end
 
   test "chain state" do

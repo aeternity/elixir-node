@@ -6,7 +6,6 @@ defmodule Aecore.Keys.Worker do
 
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.Worker, as: Chain
 
   @filename_pub "key.pub"
   @filename_priv "key"
@@ -41,8 +40,7 @@ defmodule Aecore.Keys.Worker do
 
   """
   @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, %SignedTx{}}
-  def sign_tx(to_acc, value, nonce, fee,
-              lock_time_block \\ Chain.latest_block().header.height + 1) do
+  def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
     {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
     {:ok, signature} = sign(tx_data)

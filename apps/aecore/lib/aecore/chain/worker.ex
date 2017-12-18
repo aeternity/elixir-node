@@ -23,8 +23,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state =
-      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height,
-                                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
+      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
     latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
@@ -73,8 +72,7 @@ defmodule Aecore.Chain.Worker do
 
     prev_block_chain_state = chain_state()
     new_block_state =
-      ChainState.calculate_block_state(block.txs, latest_block.header.height,
-         Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
+      ChainState.calculate_block_state(block.txs, latest_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, latest_block.header.height + 1)
@@ -164,8 +162,7 @@ defmodule Aecore.Chain.Worker do
     prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
     latest_block = block_map[block.header.prev_hash]
     new_block_state =
-      ChainState.calculate_block_state(block.txs, latest_block.header.height,
-        Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
+      ChainState.calculate_block_state(block.txs, latest_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, block.header.height)

@@ -11,8 +11,8 @@ defmodule Aecore.Chain.ChainState do
   in the transactions a single block, returns a map with the
   accounts as key and their balance as value.
   """
-  @spec calculate_block_state(list(), integer(), integer()) :: map()
-  def calculate_block_state(txs, latest_block_height, lock_time_coinbase) do
+  @spec calculate_block_state(list(), integer()) :: map()
+  def calculate_block_state(txs, latest_block_height) do
     block_state = %{}
 
     block_state =
@@ -22,17 +22,16 @@ defmodule Aecore.Chain.ChainState do
             transaction.data.from_acc != nil ->
               update_block_state(block_state, transaction.data.from_acc,
                                  -(transaction.data.value + transaction.data.fee),
-                                 transaction.data.nonce, transaction.data.lock_time_block, true)
+                                 transaction.data.nonce, transaction.data.lock_time_block, false)
 
             true ->
               block_state
           end
 
-        add_to_amount = latest_block_height + 1 !=
-          transaction.data.lock_time_block - lock_time_coinbase
+        add_to_locked = latest_block_height + 1 <= transaction.data.lock_time_block
 
         update_block_state(updated_block_state, transaction.data.to_acc, transaction.data.value,
-                           0, transaction.data.lock_time_block, add_to_amount)
+                           0, transaction.data.lock_time_block, add_to_locked)
       end
 
     reduce_map_list(block_state)
@@ -121,7 +120,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec update_block_state(map(), binary(), integer(), integer(), integer(), boolean()) :: map()
-  defp update_block_state(block_state, account, value, nonce, lock_time_block, add_to_amount) do
+  defp update_block_state(block_state, account, value, nonce, lock_time_block, add_to_locked) do
     block_state_filled_empty =
       cond do
         !Map.has_key?(block_state, account) ->
@@ -131,10 +130,10 @@ defmodule Aecore.Chain.ChainState do
           block_state
       end
 
-    new_balance = if(add_to_amount) do
-      block_state_filled_empty[account].balance + value
-    else
+    new_balance = if(add_to_locked) do
       block_state_filled_empty[account].balance
+    else
+      block_state_filled_empty[account].balance + value
     end
 
     new_nonce = cond do
@@ -145,13 +144,9 @@ defmodule Aecore.Chain.ChainState do
         block_state_filled_empty[account].nonce
     end
 
-    new_locked = if(value > 0) do
+    new_locked = if(add_to_locked) do
       block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
     else
-      if(!add_to_amount) do
-        throw({:error, "Update block state: not substracting negative value"})
-      end
-
       block_state_filled_empty[account].locked
     end
 

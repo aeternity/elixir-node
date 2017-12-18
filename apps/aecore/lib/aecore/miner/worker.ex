@@ -179,8 +179,7 @@ defmodule Aecore.Miner.Worker do
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state =
-        ChainState.calculate_block_state(valid_txs, latest_block.header.height,
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase])
+        ChainState.calculate_block_state(valid_txs, latest_block.header.height)
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
       new_chain_state_locked_amounts =
         ChainState.update_chain_state_locked(new_chain_state, latest_block.header.height + 1)
