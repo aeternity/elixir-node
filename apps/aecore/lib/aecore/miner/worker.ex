@@ -21,15 +21,12 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @default_mining_strategy :contiously_noreplay
-  @single_async_to_chain_mining_strategy :single__noreplay
   @resuming_by_default :false
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
-                                       mining_strategy: @default_mining_strategy,
                                        nonce: 0,
-                                       workers: {},
+                                       job: {},
                                        block_candidate: nil}, name: __MODULE__)
   end
 
@@ -61,17 +58,6 @@ defmodule Aecore.Miner.Worker do
   @spec suspend() :: :ok
   def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
 
-  ## TODO needs testing
-  @spec graceful_suspend() :: :ok
-  def graceful_suspend() do
-    GenServer.call(__MODULE__, {:mining, {:stop, :graceful}})
-  end
-
-  ## Mine single block and add it to the chain - Async
-  def mine_async_block_to_chain() do
-    GenServer.call(__MODULE__, {:mining, {:start, :single_async_to_chain}})
-  end
-
   ## Mine single block and add it to the chain - Sync
   def mine_sync_block_to_chain() do
     cblock = candidate()
@@ -95,19 +81,16 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Server side
+
   def handle_call({:mining, :stop}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :idle})}
-  end
-  def handle_call({:mining, {:stop, :graceful}}, _from, state) do
-    {:reply, :ok, %{state | miner_state: :idle}}
   end
   def handle_call({:mining, :start}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :running})}
   end
 
   def handle_call({:mining, {:start, :single_async_to_chain}}, _from, state) do
-    {:reply, :ok, mining(%{state | miner_state: :running,
-                           mining_strategy: @single_async_to_chain_mining_strategy})}
+    {:reply, :ok, mining(%{state | miner_state: :running})}
   end
 
   def handle_call(any, _from, state) do
@@ -142,9 +125,9 @@ defmodule Aecore.Miner.Worker do
 
   ## Private
 
-  defp mining(%{miner_state: :running, workers: workers} = state)
-  when workers != {} do
-    Logger.error("[Miner] error still working")
+  defp mining(%{miner_state: :running, job: job} = state)
+  when job != {} do
+    Logger.error("[Miner] Miner is still working")
     state
   end
   defp mining(%{miner_state: :running, block_candidate: nil} = state) do
@@ -157,7 +140,7 @@ defmodule Aecore.Miner.Worker do
     start_worker(work, %{state | block_candidate: cblock})
   end
 
-  defp mining(%{miner_state: :idle, workers: []} = state), do: state
+  defp mining(%{miner_state: :idle, job: []} = state), do: state
   defp mining(%{miner_state: :idle} = state), do: stop_worker(state)
 
   defp start_worker(work, state) do
@@ -166,22 +149,23 @@ defmodule Aecore.Miner.Worker do
       send(server, {:worker_reply, self(), work.()})
     end)
 
-    %{state | workers: {pid, ref}}
+    %{state | job: {pid, ref}}
   end
 
-  defp stop_worker(%{workers: {}} = state), do: state
-  defp stop_worker(%{workers: workers} = state) do
-    {pid, info} = workers
-    cleanup_after_worker(info)
+  defp stop_worker(%{job: {}} = state), do: state
+  defp stop_worker(%{job: job} = state) do
+    cleanup_after_worker(job)
+    %{state | job: {}}
+  end
+
+  defp cleanup_after_worker({pid, ref}) do
+    Process.demonitor(ref, [:flush])
     Process.exit(pid, :shutdown)
-    %{state | workers: {}}
   end
 
-  defp cleanup_after_worker(ref), do: Process.demonitor(ref, [:flush])
-
-  defp handle_worker_reply(pid, reply, %{workers: {pid, info}} = state) do
-    cleanup_after_worker(info)
-    worker_reply(reply, %{state | workers: {}})
+  defp handle_worker_reply(pid, reply, %{job: job} = state) do
+    cleanup_after_worker(job)
+    worker_reply(reply, %{state | job: {}})
   end
 
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
@@ -195,12 +179,7 @@ defmodule Aecore.Miner.Worker do
     )
     cblock = %{cblock | header: miner_header}
     Chain.add_block(cblock)
-
-    if state.mining_strategy == @default_mining_strategy do
-      mining(%{state | block_candidate: nil})
-    else
-      %{state | block_candidate: nil, mining_strategy: @default_mining_strategy}
-    end
+    mining(%{state | block_candidate: nil})
   end
 
   def candidate() do
