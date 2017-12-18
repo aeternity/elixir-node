@@ -380,7 +380,7 @@ defmodule MultipleTransactionsTest do
     miner_balance_before_block = Map.get(Chain.chain_state, pubkey).balance
     Miner.resume()
     Miner.suspend()
-    assert Enum.count(Pool.get_pool()) == 0
+    assert Enum.empty?(Pool.get_pool())
     miner_balance_after_block = Map.get(Chain.chain_state, pubkey).balance
     assert miner_balance_after_block == miner_balance_before_block + 100 + 60
   end
