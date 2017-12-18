@@ -26,15 +26,21 @@ defmodule Aehttpserver.Web.InfoController do
     pubkey = Base.encode16(pubkey)
 
     #Add whoever's getting our info
-    peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
-    peer_port = Plug.Conn.get_req_header(conn, "peer_port") |> Enum.at(0) |> to_string()
-    peer_port = ":" <> peer_port
-    peer_nonce = Plug.Conn.get_req_header(conn, "nonce") |> Enum.at(0) |> String.to_integer()
-    peer = peer_ip <> peer_port
+    peer_port = Plug.Conn.get_req_header(conn, "peer_port")
+    peer_nonce = Plug.Conn.get_req_header(conn, "nonce")
+    if !Enum.empty?(peer_port) && !Enum.empty?(peer_nonce) do
+      peer_ip = conn.peer |> elem(0) |> Tuple.to_list |> Enum.join(".")
+      peer_port = peer_port   |> Enum.at(0) |> to_string()
+      peer_port = ":" <> peer_port
+      peer_nonce = peer_nonce |> Enum.at(0) |> String.to_integer()
+      peer = peer_ip <> peer_port
 
-    if(!(peer_nonce == own_nonce)) do
-      Peers.schedule_add_peer(peer, peer_nonce)
+      if(!(peer_nonce == own_nonce)) do
+        Peers.schedule_add_peer(peer, peer_nonce)
+      end
     end
+
+
 
     json(conn, %{current_block_version: top_block.header.version,
                  current_block_height: top_block.header.height,
