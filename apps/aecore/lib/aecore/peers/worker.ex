@@ -111,7 +111,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call(:is_chain_synced, _from, %{peers: peers} = state) do
-    local_latest_block_height = Chain.latest_block().header.height
+    local_latest_block_height = Chain.top_height()
     peer_uris = peers
       |> Map.values()
       |> Enum.map(fn(%{uri: uri}) -> uri end)

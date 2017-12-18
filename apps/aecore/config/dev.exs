@@ -31,3 +31,12 @@ use Mix.Config
 config :aecore, :peers,
   peers_target_count: 3,
   peers_max_count: 4
+
+bytes_per_token =  case System.get_env("BYTES_PER_TOKEN") do
+  nil -> 100
+  env -> String.to_integer(env)
+end
+
+config :aecore, :tx_data,
+  miner_fee_bytes_per_token: bytes_per_token,
+  pool_fee_bytes_per_token: 100

@@ -1,4 +1,4 @@
-defmodule Aehttpserver.TxPoolController do
+defmodule Aehttpserver.Web.TxPoolController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Txs.Pool.Worker, as: Pool
