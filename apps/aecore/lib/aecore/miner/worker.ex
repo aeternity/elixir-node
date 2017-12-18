@@ -58,17 +58,27 @@ defmodule Aecore.Miner.Worker do
   @spec suspend() :: :ok
   def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
 
+  @spec get_state() :: :running | :idle
+  def get_state, do: GenServer.call(__MODULE__, :get_state)
+
   ## Mine single block and add it to the chain - Sync
+  @spec mine_sync_block_to_chain() :: %Block{} | error :: term()
   def mine_sync_block_to_chain() do
     cblock = candidate()
-    {:ok, new_block} = mine_sync_block(Cuckoo.generate(cblock.header), cblock)
-    Chain.add_block(new_block)
-    :ok
+    case mine_sync_block(cblock) do
+      {:ok, new_block} -> Chain.add_block(new_block)
+      {:error, _} = error -> error
+    end
   end
 
   ## Mine single block without adding it to the chain - Sync
+  @spec mine_sync_block(%Block{}) :: {:ok, %Block{}} | {:error, reason :: atom()}
   def mine_sync_block(%Block{} = cblock) do
-    mine_sync_block(Cuckoo.generate(cblock.header), cblock)
+    if GenServer.call(__MODULE__, :get_state) == :idle do
+      mine_sync_block(Cuckoo.generate(cblock.header), cblock)
+    else
+      {:error, :miner_is_busy}
+    end
   end
 
   defp mine_sync_block({:error, :no_solution}, %Block{} = cblock) do
@@ -83,14 +93,17 @@ defmodule Aecore.Miner.Worker do
   ## Server side
 
   def handle_call({:mining, :stop}, _from, state) do
-    {:reply, :ok, mining(%{state | miner_state: :idle})}
+    {:reply, :ok, mining(%{state | miner_state: :idle, block_candidate: nil})}
   end
   def handle_call({:mining, :start}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :running})}
   end
-
   def handle_call({:mining, {:start, :single_async_to_chain}}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :running})}
+  end
+
+  def handle_call(:get_state, _from, state) do
+    {:reply, state.miner_state, state}
   end
 
   def handle_call(any, _from, state) do
@@ -154,18 +167,17 @@ defmodule Aecore.Miner.Worker do
 
   defp stop_worker(%{job: {}} = state), do: state
   defp stop_worker(%{job: job} = state) do
-    cleanup_after_worker(job)
-    %{state | job: {}}
+    %{state | job: cleanup_after_worker(job)}
   end
 
   defp cleanup_after_worker({pid, ref}) do
     Process.demonitor(ref, [:flush])
     Process.exit(pid, :shutdown)
+    {}
   end
 
   defp handle_worker_reply(pid, reply, %{job: job} = state) do
-    cleanup_after_worker(job)
-    worker_reply(reply, %{state | job: {}})
+    worker_reply(reply, %{state | job: cleanup_after_worker(job)})
   end
 
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
