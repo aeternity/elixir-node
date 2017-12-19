@@ -128,7 +128,11 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_root_hash(list()) :: binary()
-  def calculate_root_hash(txs) do
+  def calculate_root_hash(txs) when length(txs) == 0 do
+    <<0::256>>
+  end
+
+  def calculate_root_hash(txs)  do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
