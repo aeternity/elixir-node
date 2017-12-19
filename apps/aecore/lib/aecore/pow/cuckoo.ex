@@ -20,9 +20,10 @@ defmodule Aecore.Pow.Cuckoo do
   @spec verify(map()) :: boolean()
   def verify(%Header{difficulty_target: difficulty,
                      pow_evidence: soln} = header) do
-    case test_target(soln, difficulty) do
-      true  -> process(:verify, header)
-      false -> false
+    if test_target(soln, difficulty) do
+      process(:verify, header)
+    else ->
+        false
     end
   end
 
