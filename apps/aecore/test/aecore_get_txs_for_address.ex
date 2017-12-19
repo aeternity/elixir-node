@@ -46,7 +46,7 @@ defmodule GetTxsForAddressTest do
     Miner.suspend()
     {:ok, address} = Keys.pubkey
     user_txs = Pool.get_txs_for_address(address)
-    user_txs_with_proof = Pool.get_txs_for_address_with_proof(user_txs)
+    user_txs_with_proof = Pool.add_proof_to_txs(user_txs)
     for user_tx_with_proof <- user_txs_with_proof do
       transaction = :erlang.term_to_binary(
         tx
@@ -56,7 +56,7 @@ defmodule GetTxsForAddressTest do
         |> Map.delete(:signature)
         |> TxData.new()
       )
-      key = :crypto.hash(:sha256, transaction)
+      key = TxData.hash_tx(transaction)
       assert {:ok, :verified} =
         :gb_merkle_trees.verify_merkle_proof(key,
           transaction,

@@ -1,4 +1,4 @@
-defmodule Aehttpserver.TxController do
+defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization, as: Serialization
@@ -14,7 +14,7 @@ defmodule Aehttpserver.TxController do
       _ ->
         case params["include_proof"]  do
           "true" ->
-            proof = Pool.get_txs_for_address_with_proof(user_txs)
+            proof = Pool.add_proof_to_txs(user_txs)
             json(conn, Enum.map(proof, fn(tx) ->
                   %{tx |
                     from_acc: Serialization.hex_binary(tx.from_acc, :serialize),
@@ -24,7 +24,7 @@ defmodule Aehttpserver.TxController do
                     signature: Serialization.hex_binary(tx.signature, :serialize)
                    } end))
 
-            _ ->
+          _ ->
             json(conn, Enum.map(user_txs, fn(tx) ->
                   %{tx |
                     from_acc: Serialization.hex_binary(tx.from_acc, :serialize),

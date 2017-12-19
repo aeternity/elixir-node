@@ -1,4 +1,4 @@
-defmodule Aehttpserver.BalanceController do
+defmodule Aehttpserver.Web.BalanceController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain

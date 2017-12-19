@@ -68,16 +68,16 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
-    chain_state |>
-      Enum.map(fn{_account, data} -> data.balance end) |>
-      Enum.sum()
+    chain_state
+    |> Enum.map(fn{_account, data} -> data.balance end) 
+    |> Enum.sum()
   end
 
   @spec validate_chain_state(map()) :: boolean()
   def validate_chain_state(chain_state) do
-    chain_state |>
-      Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end) |>
-      Enum.all?()
+    chain_state 
+    |> Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end)
+    |> Enum.all?()
   end
 
   @spec update_block_state(map(), binary(), integer(), integer()) :: map()
@@ -86,18 +86,17 @@ defmodule Aecore.Chain.ChainState do
       cond do
         !Map.has_key?(block_state, account) ->
           Map.put(block_state, account, %{balance: 0, nonce: 0})
-
         true ->
           block_state
       end
 
-    new_nonce = cond do
+    new_nonce = 
+      cond do
       block_state_filled_empty[account].nonce < nonce ->
         nonce
-
       true ->
         block_state_filled_empty[account].nonce
-    end
+      end
 
     new_account_state = %{balance: block_state_filled_empty[account].balance + value,
                           nonce:   new_nonce}

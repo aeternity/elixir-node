@@ -1,4 +1,4 @@
-defmodule Aehttpserver.BlockController do
+defmodule Aehttpserver.Web.BlockController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain
@@ -19,10 +19,9 @@ defmodule Aehttpserver.BlockController do
   end
 
   def get_blocks(conn, params) do
-    latest_block_hash = case Map.get(params, "from_block") do
+    from_block_hash = case Map.get(params, "from_block") do
       nil ->
-        latest_block = Chain.latest_block()
-        BlockValidation.block_header_hash(latest_block.header)
+        Chain.top_block_hash()
       hash ->
         {_, hash_bin} = Base.decode16(hash)
         hash_bin
@@ -36,7 +35,7 @@ defmodule Aehttpserver.BlockController do
         number
     end
 
-    blocks = Chain.get_blocks(latest_block_hash, count)
+    blocks = Chain.get_blocks(from_block_hash, count)
     blocks_json = Enum.map(
       blocks,
       fn (block) ->

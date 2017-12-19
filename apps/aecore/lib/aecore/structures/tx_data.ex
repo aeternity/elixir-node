@@ -10,7 +10,7 @@ defmodule Aecore.Structures.TxData do
   Definition of Aecore TxData structure
 
   ## Parameters
-     - nonce: A random integer generated on initialisation of a transaction.Must be unique
+  - nonce: A random integer generated on initialisation of a transaction.Must be unique
      - from_acc: From account is the public address of one account originating the transaction
      - to_acc: To account is the public address of the account receiving the transaction
      - value: The amount of a transaction
@@ -22,4 +22,10 @@ defmodule Aecore.Structures.TxData do
   def create(from_acc, to_acc, value, nonce, fee) do
     {:ok, %TxData{from_acc: from_acc, to_acc: to_acc, value: value, nonce: nonce, fee: fee}}
   end
+
+  @spec hash_tx(tx_data()) :: binary()
+  def hash_tx(tx) do
+    :crypto.hash(:sha256, tx)
+  end
+
 end

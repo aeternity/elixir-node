@@ -1,6 +1,5 @@
 defmodule Aecore.Chain.BlockValidation do
 
-  alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
@@ -77,16 +76,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) ->
-                      true
-                    true ->
-                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
-                  end
-         end
-       )
+    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
@@ -95,16 +85,11 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_signature = KeyManager.verify(
-          tx.data,
-          tx.signature,
-          tx.data.from_acc
-        )
-
+        valid_tx = SignedTx.is_valid(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
 
         cond do
-          valid_signature && valid_chain_state ->
+          valid_tx && valid_chain_state ->
             {valid_txs_list ++ [tx], updated_chain_state}
           true ->
             {valid_txs_list, chain_state_acc}
@@ -144,22 +129,27 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec calculate_root_hash(list()) :: binary()
   def calculate_root_hash(txs) do
+    txs
+    |> build_merkle_tree()
+    |> :gb_merkle_trees.root_hash()
+  end
+
+  @spec build_merkle_tree(list()) :: tuple()
+  def build_merkle_tree(txs) do
+    merkle_tree =
     if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =
-        for transaction <- txs do
-          transaction_data_bin = :erlang.term_to_binary(transaction.data)
-          {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-        end
+      for transaction <- txs do
+        transaction_data_bin = :erlang.term_to_binary(transaction.data)
+        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+      end
 
-      merkle_tree =
-        merkle_tree
-        |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-             :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-           end)
-
-      merkle_tree |> :gb_merkle_trees.root_hash()
+      merkle_tree
+      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
+        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
+      end)
     end
   end
 
@@ -168,11 +158,11 @@ defmodule Aecore.Chain.BlockValidation do
     block.txs
     |> Enum.map(
          fn tx -> cond do
-                    SignedTx.is_coinbase(tx) -> tx.data.value
-                    true -> 0
+             SignedTx.is_coinbase(tx) -> tx.data.value
+             true -> 0
                   end
-         end
-       )
+    end
+    )
     |> Enum.sum()
   end
 

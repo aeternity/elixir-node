@@ -29,9 +29,15 @@ defmodule AecoreTxsPoolTest do
     assert Enum.count(Pool.get_pool()) == 1
     Miner.resume()
     Miner.suspend()
-    assert length(Chain.all_blocks()) > 1
-    assert Enum.count(Chain.latest_block().txs) == 2
+    assert length(Chain.longest_blocks_chain()) > 1
+    assert Enum.count(Chain.top_block().txs) == 2
     assert Enum.empty?(Pool.get_pool())
+  end
+
+  test "add negative transaction fail" do
+    {:ok, to_account} = Keys.pubkey()
+    {:ok, tx} = Keys.sign_tx(to_account, -5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)
+    assert :error = Pool.add_transaction(tx)
   end
 
 end

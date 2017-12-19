@@ -6,10 +6,10 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.TxData
+  alias Aecore.Chain.BlockValidation
   alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
@@ -63,7 +63,7 @@ defmodule Aecore.Txs.Pool.Worker do
   ## Server side
 
   def handle_call({:get_block_by_txs_hash, txs_hash}, _from, state) do
-    case Enum.find(Chain.all_blocks, fn block ->
+    case Enum.find(Chain.longest_blocks_chain(), fn block ->
           block.header.txs_hash == txs_hash end) do
       block ->
         {:reply, block, state}
@@ -73,24 +73,23 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
-    txs_list = split_blocks(Chain.all_blocks(), address, [])
+    txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
     {:reply, txs_list, state}
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    is_tx_valid = Keys.verify(tx.data, tx.signature, tx.data.from_acc)
-    tx_size_bits =
-      tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+    tx_size_bits = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
     tx_size_bytes = tx_size_bits / 8
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
-                                Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+      Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+
     cond do
-      !is_tx_valid ->
-        Logger.info("Invalid transaction")
+      !SignedTx.is_valid(tx) ->
+        Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
       !is_minimum_fee_met ->
-        Logger.info("Fee is too low")
+        Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
       true ->
         updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
@@ -116,20 +115,20 @@ defmodule Aecore.Txs.Pool.Worker do
     {:reply, tx_pool, %{}}
   end
 
-  def get_txs_for_address_with_proof(user_txs) do
+  def add_proof_to_txs(user_txs) do
     blocks_for_user_txs =
     for user_tx <- user_txs do
       get_block_by_txs_hash(user_tx.txs_hash)
     end
     merkle_trees =
     for block <- blocks_for_user_txs do
-      build_tx_tree(block.txs)
+      BlockValidation.build_merkle_tree(block.txs)
     end
     user_txs_trees = Enum.zip(user_txs, merkle_trees)
     proof =
     for user_tx_tree <- user_txs_trees  do
       {tx, tree} = user_tx_tree
-      transaction = :erlang.term_to_binary(
+      key = :erlang.term_to_binary(
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
@@ -137,7 +136,7 @@ defmodule Aecore.Txs.Pool.Worker do
         |> Map.delete(:signature)
         |> TxData.new()
       )
-      key = :crypto.hash(:sha256, transaction)
+      |> TxData.hash_tx()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       serialized_merkle_proof = serialize_merkle_proof(merkle_proof, [])
       Map.put_new(tx, :proof, serialized_merkle_proof)
@@ -177,23 +176,6 @@ defmodule Aecore.Txs.Pool.Worker do
   end
   defp check_address_tx([], address, user_txs) do
     user_txs
-  end
-
-  defp build_tx_tree(txs) do
-    if Enum.empty?(txs) do
-      <<0::256>>
-    else
-      merkle_tree =
-      for transaction <- txs do
-        transaction_data_bin = :erlang.term_to_binary(transaction.data)
-        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-      end
-
-      merkle_tree
-      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-      end)
-    end
   end
 
   defp serialize_merkle_proof(proof, acc) when is_tuple(proof) do
