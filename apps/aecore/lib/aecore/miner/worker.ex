@@ -175,7 +175,13 @@ defmodule Aecore.Miner.Worker do
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
-      ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
+      oracle_registration_txs = Enum.filter(txs_list, fn(tx) ->
+          !match?(%TxData{}, tx.data)
+        end)
+      txs_list_without_oracle_txs = Enum.filter(txs_list, fn(tx) ->
+          match?(%TxData{}, tx.data)
+        end)
+      ordered_txs_list = Enum.sort(txs_list_without_oracle_txs, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
@@ -183,11 +189,14 @@ defmodule Aecore.Miner.Worker do
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees) | valid_txs_by_fee]
-      root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state = ChainState.calculate_block_state(valid_txs)
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+
+      valid_txs_with_oracle_registration_txs = oracle_registration_txs ++ valid_txs
+
+      root_hash = BlockValidation.calculate_root_hash(valid_txs_with_oracle_registration_txs)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
@@ -207,7 +216,7 @@ defmodule Aecore.Miner.Worker do
 
       case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
         {:ok, mined_header} ->
-          block = %Block{header: mined_header, txs: valid_txs}
+          block = %Block{header: mined_header, txs: valid_txs_with_oracle_registration_txs}
           Logger.info(
             fn ->
               "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{

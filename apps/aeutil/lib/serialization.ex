@@ -7,6 +7,9 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleResponseTxData
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
   def block(block, direction) do
@@ -20,9 +23,19 @@ defmodule Aeutil.Serialization do
 
   @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
   def tx(tx, direction) do
-    new_data = %{tx.data |
-                 from_acc: hex_binary(tx.data.from_acc, direction),
-                 to_acc: hex_binary(tx.data.to_acc, direction)}
+    new_data =
+      cond do
+        match?(%OracleQueryTxData{}, tx.data) ->
+          %{tx.data | sender: hex_binary(tx.data.sender, direction),
+                      oracle_hash: hex_binary(tx.data.oracle_hash, direction)}
+        match?(%OracleRegistrationTxData{}, tx.data) ->
+          %{tx.data | operator: hex_binary(tx.data.operator, direction)}
+        match?(%OracleResponseTxData{}, tx.data) ->
+          %{tx.data | operator: hex_binary(tx.data.operator, direction)}
+        match?(%TxData{}, tx.data) ->
+          %{tx.data | from_acc: hex_binary(tx.data.from_acc, direction),
+                      to_acc: hex_binary(tx.data.to_acc, direction)}
+      end
     new_signature = hex_binary(tx.signature, direction)
     %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end

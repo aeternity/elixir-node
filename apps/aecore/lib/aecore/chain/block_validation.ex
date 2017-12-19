@@ -5,6 +5,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
@@ -150,7 +151,10 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec calculate_root_hash(Block.block()) :: integer()
   defp sum_coinbase_transactions(block) do
-    block.txs
+    txs_list_without_oracle_txs = Enum.filter(block.txs, fn(tx) ->
+        match?(%TxData{}, tx.data)
+      end)
+    txs_list_without_oracle_txs
     |> Enum.map(
          fn tx -> cond do
                     SignedTx.is_coinbase(tx) -> tx.data.value
