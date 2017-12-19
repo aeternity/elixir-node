@@ -22,8 +22,8 @@ defmodule Aecore.Pow.Cuckoo do
                      pow_evidence: soln} = header) do
     if test_target(soln, difficulty) do
       process(:verify, header)
-    else ->
-        false
+    else
+      false
     end
   end
 
