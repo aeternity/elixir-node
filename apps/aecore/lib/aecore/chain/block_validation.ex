@@ -128,7 +128,7 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_root_hash(list()) :: binary()
-  def calculate_root_hash(txs) when length(txs) == 0 do
+  def calculate_root_hash(txs) when txs == [] do
     <<0::256>>
   end
 
