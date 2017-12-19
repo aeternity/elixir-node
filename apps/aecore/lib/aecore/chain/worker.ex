@@ -159,7 +159,7 @@ defmodule Aecore.Chain.Worker do
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{total_tokens}"
+      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
@@ -182,11 +182,6 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
-  end
-
-  def terminate(_, state) do
-    Persistence.store_state(state)
-    Logger.warn("Terminting, state was stored on disk ...")
   end
 
   defp calculate_block_acc_txs_info(block) do
