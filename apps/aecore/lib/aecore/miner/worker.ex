@@ -204,6 +204,9 @@ defmodule Aecore.Miner.Worker do
   end
 
   def candidate() do
+  ## Internal
+  @spec mine_next_block(integer()) :: {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
+  defp mine_next_block(start_nonce) do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
