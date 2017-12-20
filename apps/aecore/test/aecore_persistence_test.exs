@@ -5,7 +5,7 @@ defmodule PersistenceTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
 
   setup do
     Persistence.start_link([])
@@ -17,7 +17,7 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Reading last mined block by his hash from rocksdb" do
     Miner.mine_sync_block_to_chain
-    hash = BlockValidation.block_header_hash(Chain.latest_block.header)
+    hash = BlockValidation.block_header_hash(Chain.top_block.header)
     assert {:ok, %{header: _header}} = Persistence.read_block_by_hash(hash)
   end
 

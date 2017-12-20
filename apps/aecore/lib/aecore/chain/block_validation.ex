@@ -1,13 +1,12 @@
-defmodule Aecore.Utils.Blockchain.BlockValidation do
+defmodule Aecore.Chain.BlockValidation do
 
-  alias Aecore.Keys.Worker, as: KeyManager
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   @spec validate_block!(Block.block(), Block.block(), map(), list()) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state, blocks_for_difficulty_calculation) do
@@ -77,16 +76,7 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
 
   @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) ->
-                      true
-                    true ->
-                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
-                  end
-         end
-       )
+    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
@@ -95,16 +85,11 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_signature = KeyManager.verify(
-          tx.data,
-          tx.signature,
-          tx.data.from_acc
-        )
-
+        valid_tx = SignedTx.is_valid(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
 
         cond do
-          valid_signature && valid_chain_state ->
+          valid_tx && valid_chain_state ->
             {valid_txs_list ++ [tx], updated_chain_state}
           true ->
             {valid_txs_list, chain_state_acc}
@@ -126,12 +111,14 @@ defmodule Aecore.Utils.Blockchain.BlockValidation do
         true
     end
 
-    from_account_has_necessary_balance = chain_state_has_account && chain_state[tx.data.from_acc].balance - tx.data.value >= 0
+    from_account_has_necessary_balance =
+      chain_state_has_account &&
+        chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
 
     cond do
       tx_has_valid_nonce && from_account_has_necessary_balance ->
-        from_acc_new_state = %{balance: -tx.data.value, nonce: 1}
-        to_acc_new_state = %{balance: tx.data.value, nonce: 0}
+        from_acc_new_state = %{balance: -(tx.data.value + tx.data.fee), nonce: 1, locked: []}
+        to_acc_new_state = %{balance: tx.data.value, nonce: 0, locked: []}
         chain_state_changes = %{tx.data.from_acc => from_acc_new_state, tx.data.to_acc => to_acc_new_state}
         updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
         {true, updated_chain_state}

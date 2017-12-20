@@ -27,4 +27,13 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+
+persistence_path = case System.get_env("PERSISTENCE_PATH") do
+  nil -> "apps/aecore/priv/rox_db"
+  env -> env
+end
+
+config :aecore, :persistence,
+  path: Path.absname(persistence_path)
+
 import_config "#{Mix.env}.exs"

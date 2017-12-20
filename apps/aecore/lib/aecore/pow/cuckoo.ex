@@ -10,7 +10,7 @@ defmodule Aecore.Pow.Cuckoo do
   """
   require Logger
 
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Header
   alias Aecore.Pow.Hashcash
 

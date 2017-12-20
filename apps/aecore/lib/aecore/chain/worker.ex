@@ -8,10 +8,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Utils.Blockchain.Difficulty
+  alias Aecore.Chain.Difficulty
 
   use GenServer
 
@@ -22,32 +22,38 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
-    latest_block_chain_state = %{genesis_block_hash => genesis_chain_state}
+    genesis_chain_state =
+      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
+    chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
-    {:ok, {genesis_block_map, latest_block_chain_state, txs_index}}
+    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
   end
 
-  @spec latest_block() :: %Block{}
-  def latest_block() do
-    latest_block_hashes = get_latest_block_chain_state() |> Map.keys()
-    latest_block_hash = case(length(latest_block_hashes)) do
-      1 -> List.first(latest_block_hashes)
-      _ -> throw({:error, "multiple or none latest block hashes"})
-    end
-
-    get_block(latest_block_hash)
+  @spec top_block() :: %Block{}
+  def top_block() do
+    GenServer.call(__MODULE__, :top_block)
   end
 
-  @spec get_latest_block_chain_state() :: tuple()
-  def get_latest_block_chain_state() do
-    GenServer.call(__MODULE__, :get_latest_block_chain_state)
+  @spec top_block_chain_state() :: tuple()
+  def top_block_chain_state() do
+    GenServer.call(__MODULE__, :top_block_chain_state)
+  end
+
+  @spec top_block_hash() :: binary()
+  def top_block_hash() do
+    GenServer.call(__MODULE__, :top_block_hash)
+  end
+
+  @spec top_height() :: integer()
+  def top_height() do
+    GenServer.call(__MODULE__, :top_height)
   end
 
   @spec get_block_by_hex_hash(term()) :: %Block{}
   def get_block_by_hex_hash(hash) do
-    GenServer.call(__MODULE__, {:get_block_by_hex_hash, hash})
+    {:ok, decoded_hash} = Base.decode16(hash)
+    GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
   @spec get_block(binary()) :: %Block{}
@@ -55,7 +61,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
-  @spec has_block?(term()) :: true | false
+  @spec has_block?(binary()) :: true | false
   def has_block?(hash) do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
@@ -65,29 +71,28 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end
 
-  @spec add_block(%Block{}) :: :ok
+  @spec add_block(%Block{}) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    latest_block = latest_block()
-
-    prev_block_chain_state = chain_state()
-    new_block_state = ChainState.calculate_block_state(block.txs)
+    prev_block = get_block(block.header.prev_hash) #TODO: catch error
+    prev_block_chain_state = chain_state(block.header.prev_hash)
+    new_block_state = ChainState.calculate_block_state(block.txs, prev_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state_locked_amounts =
+      ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
 
-    latest_header_hash = BlockValidation.block_header_hash(latest_block.header)
-
-    blocks_for_difficulty_calculation = get_blocks(latest_header_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, latest_block, new_chain_state, blocks_for_difficulty_calculation)
-    add_validated_block(block)
+    blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
+    BlockValidation.validate_block!(block, prev_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
+    add_validated_block(block, new_chain_state_locked_amounts)
   end
 
-  @spec add_validated_block(%Block{}) :: :ok
-  defp add_validated_block(%Block{} = block) do
-    GenServer.call(__MODULE__, {:add_validated_block, block})
+  @spec add_validated_block(%Block{}, map()) :: :ok
+  defp add_validated_block(%Block{} = block, chain_state) do
+    GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
   @spec chain_state(binary()) :: map()
-  def chain_state(latest_block_hash) do
-    GenServer.call(__MODULE__, {:chain_state, latest_block_hash})
+  def chain_state(block_hash) do
+    GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
   @spec txs_index() :: map()
@@ -96,31 +101,37 @@ defmodule Aecore.Chain.Worker do
   end
 
   def chain_state() do
-    latest_block = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block.header)
-    chain_state(latest_block_hash)
+    top_block_chain_state()
   end
 
-  def all_blocks() do
-    latest_block_obj = latest_block()
-    latest_block_hash = BlockValidation.block_header_hash(latest_block_obj.header)
-    get_blocks(latest_block_hash, latest_block_obj.header.height + 1)
+  def longest_blocks_chain() do
+    get_blocks(top_block_hash(), top_height() + 1)
   end
 
   ## Server side
 
-  def handle_call(:get_current_state, _from, state) do
+  def handle_call(:current_state, _from, state) do
     {:reply, state, state}
   end
 
-  def handle_call(:get_latest_block_chain_state, _from, state) do
-    {_, latest_block_chain_state, _} = state
-    {:reply, latest_block_chain_state, state}
+  def handle_call(:top_block, _from, %{blocks_map: blocks_map, top_hash: top_hash} = state) do
+    {:reply, blocks_map[top_hash], state}
   end
 
-  def handle_call({:get_block, block_hash}, _from, state) do
-    {block_map, _, _} = state
-    block = block_map[block_hash]
+  def handle_call(:top_block_hash,  _from, %{top_hash: top_hash} = state) do
+    {:reply, top_hash, state}
+  end
+
+  def handle_call(:top_block_chain_state, _from, %{chain_states: chain_states, top_hash: top_hash} = state) do
+    {:reply, chain_states[top_hash], state}
+  end
+
+  def handle_call(:top_height, _from, %{top_height: top_height} = state) do
+    {:reply, top_height, state}
+  end
+
+  def handle_call({:get_block, block_hash}, _from, %{blocks_map: blocks_map} = state) do
+    block = blocks_map[block_hash]
 
     if block != nil do
       {:reply, block, state}
@@ -129,94 +140,53 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:has_block, hex_hash}, _from, state) do
-    {block_map, _, _} = state
-    has_block =
-      case Base.decode16(hex_hash) do
-        {:ok, decoded_hash} ->
-          Map.has_key?(block_map, decoded_hash)
-        :error ->
-          false
-      end
-
+  def handle_call({:has_block, hash}, _from, %{blocks_map: blocks_map} = state) do
+    has_block = Map.has_key?(blocks_map, hash)
     {:reply, has_block, state}
   end
 
-  def handle_call({:get_block_by_hex_hash, hash}, _from, state) do
-    {chain, _, _} = state
-    case(Enum.find(chain, fn{block_hash, _block} ->
-      block_hash |> Base.encode16() == hash end)) do
-      {_, block} ->
-        {:reply, block, state}
-      nil ->
-        {:reply, {:error, "Block not found"}, state}
-    end
-  end
-
-  def handle_call({:add_validated_block, %Block{} = block}, _from, state) do
-    {block_map, latest_block_chain_state, txs_index} = state
-    prev_block_chain_state = latest_block_chain_state[block.header.prev_hash]
-    new_block_state = ChainState.calculate_block_state(block.txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
-
-    new_block_txs_index = calculate_block_acc_txs_info(block)
+  def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
+                  _from,
+                  %{blocks_map: blocks_map, chain_states: chain_states,
+                    txs_index: txs_index, top_height: top_height} = state) do
+    new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
-    try do
-      Enum.each(block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+    Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
+    new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
-      block_hash = BlockValidation.block_header_hash(block.header)
-      updated_block_map = Map.put(block_map, block_hash, block)
-      has_prev_block = Map.has_key?(latest_block_chain_state, block.header.prev_hash)
+    updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
+    updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
 
-      {deleted_latest_chain_state, _prev_chain_state} = case has_prev_block do
-        true ->
-          prev_chain_state = Map.get(latest_block_chain_state, block.header.prev_hash)
-          {Map.delete(latest_block_chain_state, block.header.prev_hash), prev_chain_state}
-        false ->
-          {latest_block_chain_state, %{}}
-      end
-
-      updated_latest_block_chainstate =
-        Map.put(deleted_latest_chain_state, block_hash, new_chain_state)
-
-      total_tokens = ChainState.calculate_total_tokens(new_chain_state)
-
-      Logger.info(fn ->
-        "Added block ##{block.header.height} with hash #{block.header
-        |> BlockValidation.block_header_hash()
-        |> Base.encode16()}, total tokens: #{total_tokens}"
-      end)
-
-      ## Store latest block to disk
-      Persistence.write_block_by_hash(block)
-
-      ## Block was validated, now we can send it to other peers
-      Peers.broadcast_to_all({:new_block, block})
-
-      {:reply, :ok, {updated_block_map, updated_latest_block_chainstate, new_txs_index}}
-    catch
-      {:error, message} ->
-        Logger.error(fn ->
-          "Failed to add block: #{message}"
-        end)
-      {:reply, :error, state}
+    total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+    Logger.info(fn ->
+      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
+    end)
+    ## Store new block to disk
+    Persistence.write_block_by_hash(new_block)
+    state_update1 = %{state | blocks_map: updated_blocks_map,
+                              chain_states: updated_chain_states,
+                              txs_index: new_txs_index}
+    if top_height < new_block.header.height do
+      ## We send the block to others only if it extends the longest chain
+      Peers.broadcast_block(new_block)
+      {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
+                                      top_height: new_block.header.height}}
+    else
+      {:reply, :ok, state_update1}
     end
   end
 
-  def handle_call({:chain_state, latest_block_hash}, _from, state) do
-    {_, chain_state, _} = state
-    {:reply, chain_state[latest_block_hash], state}
+  def handle_call({:chain_state, block_hash}, _from, %{chain_states: chain_states} = state) do
+    {:reply, chain_states[block_hash], state}
   end
 
-  def handle_call(:txs_index, _from, state) do
-    {_, _, txs_index} = state
+  def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
   end
 
   def terminate(_, state) do
     Persistence.store_state(state)
     Logger.warn("Terminting, state was stored on disk ...")
-
   end
 
   defp calculate_block_acc_txs_info(block) do

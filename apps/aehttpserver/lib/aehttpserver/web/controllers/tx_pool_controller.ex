@@ -1,8 +1,8 @@
-defmodule Aehttpserver.TxPoolController do
+defmodule Aehttpserver.Web.TxPoolController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Utils.Serialization
+  alias Aeutil.Serialization
 
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool)
@@ -14,6 +14,14 @@ defmodule Aehttpserver.TxPoolController do
         json(conn,
           Enum.map(acc_txs, fn(tx) -> Serialization.tx(tx, :serialize) end))
     end
+  end
+
+  def get_pool_txs(conn, _params) do
+    pool_txs =
+      Pool.get_pool()
+      |> Map.values
+      |> Enum.map(fn(tx) -> Serialization.tx(tx, :serialize) end)
+    json conn, pool_txs
   end
 
   def get_acc_txs(pool_txs, acc) do
