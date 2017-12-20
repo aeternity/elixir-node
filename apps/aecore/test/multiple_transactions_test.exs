@@ -248,7 +248,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain
     :ok = Miner.mine_sync_block_to_chain
-    :ok =Miner.mine_sync_block_to_chain
+    :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
     {:ok, tx} = Keys.sign_tx(account1_pub_key, 100,
                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 10)
