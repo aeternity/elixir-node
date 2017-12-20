@@ -184,18 +184,13 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def terminate(_, state) do
-    Persistence.store_state(state)
-    Logger.warn("Terminting, state was stored on disk ...")
-  end
-
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
     accounts = for tx <- block.txs do
       [tx.data.from_acc, tx.data.to_acc]
     end
-    accounts = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-    for account <- accounts, into: %{} do
+    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
