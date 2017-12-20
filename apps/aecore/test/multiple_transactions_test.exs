@@ -90,16 +90,17 @@ defmodule MultipleTransactionsTest do
     # account A has 100 tokens, spends 40 (+10 fee) to B, and two times 20 (+10 fee) to C,
     # last transaction to C should be invalid, others be included
     account1_initial_nonce2 = Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce
-    {:ok, tx8} = Keys.sign_tx(account1_pub_key, 100, account1_initial_nonce2 + 1, 10)
-
+    {:ok, tx8} = Keys.sign_tx(account1_pub_key, 100,
+                              Map.get(Chain.chain_state, pubkey, %{nonce: 0}).nonce + 1, 10)
     assert :ok = Pool.add_transaction(tx8)
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
-    tx9 = create_signed_tx(account1, account2, 40, account1_initial_nonce2 + 3, 10)
+
+    tx9 = create_signed_tx(account1, account2, 40, account1_initial_nonce2 + 1, 10)
     assert :ok = Pool.add_transaction(tx9)
-    tx10 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 4, 10)
+    tx10 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 2, 10)
     assert :ok = Pool.add_transaction(tx10)
-    tx11 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 5, 10)
+    tx11 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 3, 10)
     assert :ok = Pool.add_transaction(tx11)
     :ok = Miner.mine_sync_block_to_chain
 
