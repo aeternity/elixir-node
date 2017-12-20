@@ -1,6 +1,6 @@
 defmodule Aecore.Structures.OracleRegistrationTxData do
 
-  alias Aecore.Structures.OracleRegistrationTxData
+  alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
 
   defstruct [:operator,
@@ -9,7 +9,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
              :description,
              :fee]
 
-  @spec create(binary(), binary(), binary(), integer()) :: %OracleRegistrationTxData{}
+  @spec create(map(), map(), binary(), integer()) :: %OracleRegistrationTxData{}
   def create(query_format, response_format, description, fee) do
     {:ok, pubkey} = Keys.pubkey()
     %OracleRegistrationTxData{operator: pubkey,

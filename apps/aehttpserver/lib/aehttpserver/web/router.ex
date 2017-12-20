@@ -16,8 +16,9 @@ defmodule Aehttpserver.Web.Router do
 
     get "/info", InfoController, :info
     post "/new_tx", NewTxController, :new_tx
-    get "/peers", PeersController, :info
     post "/new_block", BlockController, :new_block
+    post "/oracle_response", OracleController, :oracle_response
+    get "/peers", PeersController, :info
     get "/blocks", BlockController, :get_blocks
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
