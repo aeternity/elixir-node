@@ -23,7 +23,7 @@ defmodule Aehttpserver.Web.InfoController do
     own_nonce = Peers.get_peer_nonce()
 
     {:ok, pubkey} = Keys.pubkey()
-    pubkey = Base.encode16(pubkey)
+    pubkey_hex = Base.encode16(pubkey)
 
     #Add whoever's getting our info
     peer_port_headers = Plug.Conn.get_req_header(conn, "peer_port")
@@ -47,7 +47,7 @@ defmodule Aehttpserver.Web.InfoController do
                  current_block_hash: top_block_header,
                  genesis_block_hash: genesis_block_hash,
                  difficulty_target: top_block.header.difficulty_target,
-                 public_key: pubkey,
+                 public_key: pubkey_hex,
                  peer_nonce: own_nonce})
 
   end

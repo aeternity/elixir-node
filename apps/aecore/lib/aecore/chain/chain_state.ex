@@ -13,19 +13,18 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_block_state(list(), integer()) :: map()
   def calculate_block_state(txs, latest_block_height) do
-    block_state = %{}
+    empty_block_state = %{}
 
-    block_state =
-      for transaction <- txs do
+    block_state = for transaction <- txs do
         updated_block_state =
           cond do
             transaction.data.from_acc != nil ->
-              update_block_state(block_state, transaction.data.from_acc,
+              update_block_state(empty_block_state, transaction.data.from_acc,
                                  -(transaction.data.value + transaction.data.fee),
                                  transaction.data.nonce, transaction.data.lock_time_block, false)
 
             true ->
-              block_state
+              empty_block_state
           end
 
         add_to_locked = latest_block_height + 1 <= transaction.data.lock_time_block
