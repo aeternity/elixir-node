@@ -21,7 +21,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
       !Map.has_key?(registered_oracles, oracle_hash) ->
         Logger.error("No oracle registered with that hash")
         :error
-      !OracleTxValidation.validate_data(query_format, query_data) ->
+      !OracleTxValidation.data_valid?(query_format, query_data) ->
         :error
       true ->
         {:ok, pubkey} = Keys.pubkey()

@@ -32,6 +32,16 @@ config :aecore, :peers,
   peers_target_count: 3,
   peers_max_count: 4
 
+is_operator = case System.get_env("IS_OPERATOR") do
+  "true" -> true
+  nil -> false
+end
+
+config :aecore, :operator,
+  is_node_operator: is_operator,
+  oracle_url: "localhost:4001",
+  oracles_list: []
+
 bytes_per_token =  case System.get_env("BYTES_PER_TOKEN") do
   nil -> 100
   env -> String.to_integer(env)

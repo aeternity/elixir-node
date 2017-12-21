@@ -8,6 +8,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Structures.TxData
   alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -163,6 +164,7 @@ defmodule Aecore.Chain.Worker do
                   %{blocks_map: blocks_map, chain_states: chain_states,
                     txs_index: txs_index,registered_oracles: registered_oracles,
                     top_height: top_height} = state) do
+    handle_oracle_queries(new_block)
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     new_block_registered_oracles = generate_oracle_map(new_block)
@@ -247,6 +249,23 @@ defmodule Aecore.Chain.Worker do
           Map.put(acc, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
         else
           acc
+        end
+      end)
+  end
+
+  defp handle_oracle_queries (block) do
+    oracles_list =
+      if(Application.get_env(:aecore, :operator)[:is_node_operator]) do
+        Application.get_env(:aecore, :operator)[:oracles_list]
+      else
+        []
+      end
+    Enum.each(block.txs, fn(tx) ->
+        if(match?(%OracleQueryTxData{}, tx.data) &&
+           Enum.member?(oracles_list, tx.data.oracle_hash)) do
+          HTTPoison.post(Application.get_env(:aecore, :operator)[:oracle_url],
+                         Poison.encode!(tx),
+                         [{"Content-Type", "application/json"}])
         end
       end)
   end
