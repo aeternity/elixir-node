@@ -8,6 +8,7 @@ ID         = {LOWER}[a-zA-Z0-9_]*
 TYPE       = {UPPER}[a-zA-Z0-9]*
 INT        = {DIGIT}+
 DECL       = {ID}[:]{TYPE}
+CON        = {}
 OP         = [+\-=!<>:]
 
 Rules.
@@ -15,6 +16,8 @@ Rules.
 Contract   : {token, {contract, TokenLine}}.
 if         : {token, {'if', TokenLine}}.
 else       : {token, {else, TokenLine}}.
+func       : {token, {func, TokenLine}}.
+true|false : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 
 ; : {token, {';', TokenLine}}.
 { : {token, {'{', TokenLine}}.
