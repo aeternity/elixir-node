@@ -65,10 +65,10 @@ defmodule Aecore.Txs.Pool.Worker do
   def handle_call({:get_block_by_txs_hash, txs_hash}, _from, state) do
     case Enum.find(Chain.longest_blocks_chain(), fn block ->
           block.header.txs_hash == txs_hash end) do
-      block ->
-        {:reply, block, state}
       nil ->
         {:reply, {:error, "Block not found!"}, state}
+      block ->
+        {:reply, block, state}
     end
   end
 
@@ -115,20 +115,16 @@ defmodule Aecore.Txs.Pool.Worker do
     {:reply, tx_pool, %{}}
   end
 
+  @doc """
+  A function that adds a merkle proof for every single transaction
+  """
+
+  @spec add_proof_to_txs(list()) :: list()
   def add_proof_to_txs(user_txs) do
-    blocks_for_user_txs =
-    for user_tx <- user_txs do
-      get_block_by_txs_hash(user_tx.txs_hash)
-    end
-    merkle_trees =
-    for block <- blocks_for_user_txs do
-      BlockValidation.build_merkle_tree(block.txs)
-    end
-    user_txs_trees = Enum.zip(user_txs, merkle_trees)
-    proof =
-    for user_tx_tree <- user_txs_trees  do
-      {tx, tree} = user_tx_tree
-      key = :erlang.term_to_binary(
+    for tx <- user_txs do
+      block = get_block_by_txs_hash(tx.txs_hash)
+      tree  = BlockValidation.build_merkle_tree(block.txs)
+      key   = :erlang.term_to_binary(
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
@@ -147,34 +143,37 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
-    case user_txs do
-      [] -> split_blocks(blocks, address, user_txs)
-      _ ->
-        block_user_txs =
+    block_user_txs =
+    if user_txs == [] do
+      []
+    else
       for block_user_txs <- user_txs do
         block_user_txs
         |>  Map.put_new(:txs_hash, block.header.txs_hash)
         |>  Map.put_new(:block_hash, block.header.chain_state_hash)
         |>  Map.put_new(:block_height, block.header.height)
       end
-        split_blocks(blocks, address, block_user_txs)
     end
+    split_blocks(blocks, address, block_user_txs)
   end
 
-  defp split_blocks([], address, txs) do
+  defp split_blocks([], _address, txs) do
     txs
   end
 
   defp check_address_tx([tx | txs], address, user_txs) do
+    user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do
-      user_txs = [
+      [
         Map.from_struct(tx.data)
         |> Map.put_new(:signature, tx.signature)| user_txs]
+    else
+      []
     end
-
     check_address_tx(txs, address, user_txs)
   end
-  defp check_address_tx([], address, user_txs) do
+
+  defp check_address_tx([], _address, user_txs) do
     user_txs
   end
 
