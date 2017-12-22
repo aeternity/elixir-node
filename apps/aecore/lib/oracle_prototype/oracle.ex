@@ -19,14 +19,14 @@ defmodule Aecore.OraclePrototype.Oracle do
         signed_tx = sign_tx(tx_data)
         signed_tx_hash = :crypto.hash(:sha256, :erlang.term_to_binary(signed_tx))
         oracles_list = Application.get_env(:aecore, :operator)[:oracles_list]
-        updated_oracles_list = Enum.uniq([oracles_list | signed_tx_hash])
-        Application.put_env(:aecore, :operator, is_node_operator: true)
-        Application.put_env(:aecore, :operator, oracles_list: updated_oracles_list)
+        updated_oracles_list = Enum.uniq([signed_tx_hash | oracles_list])
         case Pool.add_transaction(signed_tx) do
           :ok ->
-            Application.put_env(:aecore, :operator, is_node_operator: true)
             Application.put_env(:aecore, :operator,
-                                oracles_list: updated_oracles_list)
+                                [is_node_operator: true,
+                                 oracles_list: updated_oracles_list,
+                                 oracle_url:
+                                 Application.get_env(:aecore, :operator)[:oracle_url]])
             :ok
           :error ->
             :error

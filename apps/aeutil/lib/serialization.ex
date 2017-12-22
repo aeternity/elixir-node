@@ -37,7 +37,7 @@ defmodule Aeutil.Serialization do
                       to_acc: hex_binary(tx.data.to_acc, direction)}
       end
     new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: TxData.new(new_data), signature: new_signature}
+    %SignedTx{data: new_data, signature: new_signature}
   end
 
   def hex_binary(data, direction) do

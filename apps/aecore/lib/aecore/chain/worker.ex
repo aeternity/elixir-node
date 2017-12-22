@@ -9,12 +9,14 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aeutil.Serialization
 
   use GenServer
 
@@ -28,12 +30,14 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-    registered_oracles = generate_oracle_map(Block.genesis_block())
+    registered_oracles = generate_registrated_oracles_map(Block.genesis_block())
+    oracle_responses = generate_oracle_response_map(Block.genesis_block())
 
     {:ok, %{blocks_map: genesis_block_map,
             chain_states: chain_states,
             txs_index: txs_index,
             registered_oracles: registered_oracles,
+            oracle_responses: oracle_responses,
             top_hash: genesis_block_hash,
             top_height: 0}}
   end
@@ -114,6 +118,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
+  @spec oracle_responses() :: map()
+  def oracle_responses() do
+    GenServer.call(__MODULE__, :oracle_responses)
+  end
+
   def chain_state() do
     top_block_chain_state()
   end
@@ -163,13 +172,18 @@ defmodule Aecore.Chain.Worker do
                   _from,
                   %{blocks_map: blocks_map, chain_states: chain_states,
                     txs_index: txs_index,registered_oracles: registered_oracles,
+                    oracle_responses: oracle_responses,
                     top_height: top_height} = state) do
     handle_oracle_queries(new_block)
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
-    new_txs_index = update_txs_index(txs_index, new_block_txs_index)
-    new_block_registered_oracles = generate_oracle_map(new_block)
+    new_txs_index =
+      update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
+    new_block_registered_oracles = generate_registrated_oracles_map(new_block)
     new_registered_oracles =
       Map.merge(new_block_registered_oracles, registered_oracles)
+    new_block_oracle_responses = generate_oracle_response_map(new_block)
+    new_oracle_responses =
+      update_txs_index_or_oracle_responses(oracle_responses, new_block_oracle_responses)
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
@@ -183,7 +197,8 @@ defmodule Aecore.Chain.Worker do
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index,
-                              registered_oracles: new_registered_oracles}
+                              registered_oracles: new_registered_oracles,
+                              oracle_responses: new_oracle_responses}
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
@@ -204,6 +219,15 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:registered_oracles, _from, %{registered_oracles: registered_oracles} = state) do
     {:reply, registered_oracles, state}
+  end
+
+  def handle_call(:oracle_responses, _from, %{oracle_responses: oracle_responses} = state) do
+    {:reply, oracle_responses, state}
+  end
+
+  # Handle info from HTTPoison.post async call
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   def terminate(_, state) do
@@ -236,17 +260,31 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_txs_index(current_txs_index, new_block_txs_index) do
-    Map.merge(current_txs_index, new_block_txs_index,
+  defp update_txs_index_or_oracle_responses(map1, map2) do
+    Map.merge(map1, map2,
       fn(_, current_list, new_block_list) ->
         current_list ++ new_block_list
       end)
   end
 
-  defp generate_oracle_map(block) do
+  defp generate_registrated_oracles_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
         if(match?(%OracleRegistrationTxData{}, tx.data)) do
           Map.put(acc, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+        else
+          acc
+        end
+      end)
+  end
+
+  defp generate_oracle_response_map(block) do
+    Enum.reduce(block.txs, %{}, fn(tx, acc) ->
+        if(match?(%OracleResponseTxData{}, tx.data)) do
+          if(acc[tx.data.oracle_hash] != nil) do
+            Map.put(acc, tx.data.oracle_hash,acc[tx.data.oracle_hash] ++ [tx])
+          else
+            Map.put(acc, tx.data.oracle_hash, [tx])
+          end
         else
           acc
         end
@@ -263,9 +301,14 @@ defmodule Aecore.Chain.Worker do
     Enum.each(block.txs, fn(tx) ->
         if(match?(%OracleQueryTxData{}, tx.data) &&
            Enum.member?(oracles_list, tx.data.oracle_hash)) do
+          encoded_tx_hex_hash =
+            tx
+            |> Serialization.tx(:serialize)
+            |> Poison.encode!()
           HTTPoison.post(Application.get_env(:aecore, :operator)[:oracle_url],
-                         Poison.encode!(tx),
-                         [{"Content-Type", "application/json"}])
+                         encoded_tx_hex_hash,
+                         [{"Content-Type", "application/json"}],
+                         [stream_to: self()])
         end
       end)
   end

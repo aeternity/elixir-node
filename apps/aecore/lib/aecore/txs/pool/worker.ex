@@ -21,6 +21,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   @spec add_transaction(%SignedTx{}) :: :ok | :error
+
   def add_transaction(tx) do
     GenServer.call(__MODULE__, {:add_transaction, tx})
   end
