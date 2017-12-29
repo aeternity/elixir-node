@@ -11,21 +11,18 @@ defmodule Aecore.Chain.ChainState do
   in the transactions a single block, returns a map with the
   accounts as key and their balance as value.
   """
-  @spec calculate_block_state(list(), integer()) :: map()
+  @spec calculate_block_state(list, integer) :: map
   def calculate_block_state(txs, latest_block_height) do
     empty_block_state = %{}
 
     block_state = for transaction <- txs do
-        updated_block_state =
-          cond do
-            transaction.data.from_acc != nil ->
-              update_block_state(empty_block_state, transaction.data.from_acc,
-                                 -(transaction.data.value + transaction.data.fee),
-                                 transaction.data.nonce, transaction.data.lock_time_block, false)
-
-            true ->
-              empty_block_state
-          end
+        updated_block_state = if transaction.data.from_acc == nil do
+          empty_block_state
+        else 
+          update_block_state(empty_block_state, transaction.data.from_acc,
+                              -(transaction.data.value + transaction.data.fee),
+                              transaction.data.nonce, transaction.data.lock_time_block, false)   
+        end
 
         add_to_locked = latest_block_height + 1 <= transaction.data.lock_time_block
 
@@ -41,7 +38,7 @@ defmodule Aecore.Chain.ChainState do
   to the current state, returns a map with the
   accounts as key and their balance as value.
   """
-  @spec calculate_chain_state(map(), map()) :: map()
+  @spec calculate_chain_state(map, map) :: map
   def calculate_chain_state(block_state, chain_state) do
     merge_states(block_state, chain_state)
   end
@@ -50,7 +47,7 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(map()) :: binary()
+  @spec calculate_chain_state_hash(map) :: binary
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
       for {account, data} <- chain_state do
@@ -70,7 +67,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(map()) :: integer()
+  @spec calculate_total_tokens(map) :: integer
   def calculate_total_tokens(chain_state) do
     Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
@@ -86,14 +83,14 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec validate_chain_state(map()) :: boolean()
+  @spec validate_chain_state(map) :: boolean
   def validate_chain_state(chain_state) do
     chain_state
     |> Enum.map(fn{_account, data} -> Map.get(data, :balance, 0) >= 0 end)
     |> Enum.all?()
   end
 
-  @spec update_chain_state_locked(map(), integer()) :: map()
+  @spec update_chain_state_locked(map, integer) :: map
   def update_chain_state_locked(chain_state, new_block_height) do
     Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
       {unlocked_amount, updated_locked} =
@@ -118,31 +115,27 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
-  @spec update_block_state(map(), binary(), integer(), integer(), integer(), boolean()) :: map()
+  @spec update_block_state(map, binary, integer, integer, integer, boolean) :: map
   defp update_block_state(block_state, account, value, nonce, lock_time_block, add_to_locked) do
-    block_state_filled_empty =
-      cond do
-        !Map.has_key?(block_state, account) ->
-          Map.put(block_state, account, %{balance: 0, nonce: 0, locked: []})
-
-        true ->
-          block_state
-      end
-
-    new_balance = if(add_to_locked) do
+    block_state_filled_empty = if Map.has_key?(block_state, account) do
+      block_state
+    else
+      Map.put(block_state, account, %{balance: 0, nonce: 0, locked: []})
+    end
+    
+    new_balance = if add_to_locked do
       block_state_filled_empty[account].balance
     else
       block_state_filled_empty[account].balance + value
     end
 
-    new_nonce = cond do
-      block_state_filled_empty[account].nonce < nonce ->
-        nonce
-      true ->
-        block_state_filled_empty[account].nonce
-      end
+    new_nonce = if block_state_filled_empty[account].nonce < nonce do
+      nonce
+    else
+      block_state_filled_empty[account].nonce
+    end
 
-    new_locked = if(add_to_locked) do
+    new_locked = if add_to_locked do
       block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
     else
       block_state_filled_empty[account].locked
@@ -155,14 +148,14 @@ defmodule Aecore.Chain.ChainState do
     Map.put(block_state_filled_empty, account, new_account_state)
   end
 
-  @spec reduce_map_list(list()) :: map()
+  @spec reduce_map_list(list) :: map
   defp reduce_map_list(list) do
     List.foldl(list, %{}, fn x, acc ->
       merge_states(x, acc)
     end)
   end
 
-  @spec merge_states(map(), map()) :: map()
+  @spec merge_states(map, map) :: map
   defp merge_states(new_state, destination_state) do
     Map.merge(new_state, destination_state, fn _key, v1, v2 ->
       new_nonce = cond do

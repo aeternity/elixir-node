@@ -11,12 +11,12 @@ defmodule Aehttpclient.Client do
 
   require Logger
 
-  @spec get_info(term()) :: {:ok, map()} | :error
+  @spec get_info(term) :: {:ok, map} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, %Block{}} | {:error, binary()}
+  @spec get_block({term, binary}) :: {:ok, Block.t} | {:error, binary}
   def get_block({uri, hash}) do
     hash = Base.encode16(hash)
     case get(uri <> "/block/#{hash}", :block) do
@@ -32,19 +32,19 @@ defmodule Aehttpclient.Client do
     get(uri <> "/pool_txs", :pool_txs)
   end
 
-  @spec send_block(%Block{}, list(binary())) :: :ok
+  @spec send_block(Block.t, list(binary)) :: :ok
   def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
     post_to_peers("new_block", data, peers)
   end
 
-  @spec send_tx(%SignedTx{}, list(binary())) :: :ok
+  @spec send_tx(SignedTx.t, list(binary)) :: :ok
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
     post_to_peers("new_tx", data, peers)
   end
 
-  @spec post_to_peers(binary(), binary(), list(binary())) :: :ok
+  @spec post_to_peers(binary, binary, list(binary)) :: :ok
   defp post_to_peers(uri, data, peers) do
     for peer <- peers do
       post(peer, data, uri)
@@ -56,27 +56,28 @@ defmodule Aehttpclient.Client do
     send_to_peer(data, "#{peer}/#{uri}")
   end
 
-  @spec get_peers(term()) :: {:ok, list()}
+  @spec get_peers(term) :: {:ok, list()}
   def get_peers(uri) do
     get(uri <> "/peers")
   end
 
-  @spec get_and_add_peers(term()) :: :ok
+  @spec get_and_add_peers(term) :: :ok
   def get_and_add_peers(uri) do
     {:ok, peers} = get_peers(uri)
     Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
   end
 
-  @spec get_account_balance({binary(), binary()}) :: {:ok, binary()} | :error
+  @spec get_account_balance({binary, binary}) :: {:ok, binary} | :error
   def get_account_balance({uri, acc}) do
     get(uri <> "/balance/#{acc}")
   end
 
-  @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
+  @spec get_account_txs({term, term}) :: {:ok, list()} | :error
   def get_account_txs({uri, acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
+  @spec get(binary, term) :: {term, struct}
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->

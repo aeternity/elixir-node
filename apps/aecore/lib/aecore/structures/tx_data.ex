@@ -5,7 +5,7 @@ defmodule Aecore.Structures.TxData do
 
   alias Aecore.Structures.TxData
 
-  @type tx_data() :: %TxData{}
+  @type t :: %TxData{}
 
   @doc """
   Definition of Aecore TxData structure
@@ -19,7 +19,7 @@ defmodule Aecore.Structures.TxData do
   defstruct [:nonce, :from_acc, :to_acc, :value, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), integer(), integer(), integer(), integer()) :: {:ok, %TxData{}}
+  @spec create(binary, binary, integer, integer, integer, integer) :: {:ok, TxData.t}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, %TxData{from_acc: from_acc,
                   to_acc: to_acc,

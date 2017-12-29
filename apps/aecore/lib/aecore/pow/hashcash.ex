@@ -10,13 +10,13 @@ defmodule Aecore.Pow.Hashcash do
   alias Aeutil.Bits
   alias Aecore.Chain.BlockValidation
 
-  @spec verify(map()) :: boolean()
+  @spec verify(map) :: boolean
   def verify(%Aecore.Structures.Header{} = block_header) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
     verify(block_header_hash, block_header.difficulty_target)
   end
 
-  @spec verify(charlist() :: integer()) :: boolean()
+  @spec verify(charlist() :: integer) :: boolean
   def verify(block_header_hash, difficulty) do
     block_header_hash
     |> Bits.extract()
@@ -27,7 +27,7 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Find a nonce
   """
-  @spec generate(map(), integer()) :: {:ok, %Aecore.Structures.Header{}} | {:error, term()}
+  @spec generate(map, integer) :: {:ok, %Aecore.Structures.Header{}} | {:error, term}
   def generate(%Aecore.Structures.Header{nonce: nonce} = block_header, start_nonce) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
       case verify(block_header_hash, block_header.difficulty_target) do
@@ -41,7 +41,7 @@ defmodule Aecore.Pow.Hashcash do
       end
   end
 
-  @spec generate(atom(), map(), integer()) :: boolean()
+  @spec generate(atom, map, integer) :: boolean
   def generate(:cuckoo, data, target) do
     verify(data, target)
   end

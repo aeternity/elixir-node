@@ -7,7 +7,6 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
 
   use GenServer
 
@@ -25,12 +24,12 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec add_block_to_state(binary(), term()) :: :ok
+  @spec add_block_to_state(binary, term) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
-  @spec ask_peers_for_unknown_blocks(map()) :: :ok
+  @spec ask_peers_for_unknown_blocks(map) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
@@ -114,7 +113,7 @@ defmodule Aecore.Peers.Sync do
   #we request peers list from all known peers and choose at random
   #min(peers_we_need_to_have_target_count, peers_we_currently_have)
   #new peers to add.
-  @spec refill :: :ok | {:error, term()}
+  @spec refill :: :ok | {:error, term}
   def refill do
     peers_count = map_size(Peers.all_peers())
     cond do
@@ -218,7 +217,7 @@ defmodule Aecore.Peers.Sync do
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if(block_hash == peer_block_hash) do
+              if block_hash == peer_block_hash do
                 check_peer_block(peer_uri, deserialized_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))
               else

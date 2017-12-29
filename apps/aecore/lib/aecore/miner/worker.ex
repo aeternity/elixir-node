@@ -205,7 +205,7 @@ defmodule Aecore.Miner.Worker do
 
   def candidate() do
   ## Internal
-  @spec mine_next_block(integer()) :: {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
+  @spec mine_next_block(integer) :: :ok | :error
   defp mine_next_block(start_nonce) do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
@@ -217,14 +217,15 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_validation = if top_block.header.height == 0 do
       [top_block]
     else
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks() + 1)
+      top_block_hash
+      |> Chain.get_blocks(Difficulty.get_number_of_blocks() + 1)
       |> Enum.drop(1)
     end
 
-    previous_block = cond do
-      top_block == Block.genesis_block() -> nil
-      true ->
-        Chain.get_block(top_block.header.prev_hash)
+    previous_block = unless top_block == Block.genesis_block() do
+      Chain.get_block(top_block.header.prev_hash)
+    else 
+      nil
     end
 
     try do
@@ -273,6 +274,22 @@ defmodule Aecore.Miner.Worker do
           Block.current_block_version()
         )
       %Block{header: unmined_header, txs: valid_txs}
+
+      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
+
+      case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
+        {:ok, mined_header} ->
+          block = %Block{header: mined_header, txs: valid_txs}
+          Logger.info(fn ->
+              "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+          end)
+          Chain.add_block(block)
+          {:block_found, 0}
+
+        {:error, _message} ->
+          {:no_block_found, start_nonce + @nonce_per_cycle}
+      end
+
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)

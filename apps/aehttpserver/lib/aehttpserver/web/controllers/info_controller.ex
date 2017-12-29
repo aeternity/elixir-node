@@ -35,7 +35,7 @@ defmodule Aehttpserver.Web.InfoController do
       peer_nonce = peer_nonce_headers |> Enum.at(0) |> String.to_integer()
       peer = peer_ip <> peer_port_with_colon
 
-      if(!(peer_nonce == own_nonce)) do
+      unless peer_nonce == own_nonce do
         Peers.schedule_add_peer(peer, peer_nonce)
       end
     end

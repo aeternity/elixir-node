@@ -20,22 +20,22 @@ defmodule Aecore.Txs.Pool.Worker do
     {:ok, initial_pool}
   end
 
-  @spec add_transaction(%SignedTx{}) :: :ok | :error
+  @spec add_transaction(SignedTx.t) :: :ok | :error
   def add_transaction(tx) do
     GenServer.call(__MODULE__, {:add_transaction, tx})
   end
 
-  @spec remove_transaction(%SignedTx{}) :: :ok
+  @spec remove_transaction(SignedTx.t) :: :ok
   def remove_transaction(tx) do
     GenServer.call(__MODULE__, {:remove_transaction, tx})
   end
 
-  @spec get_pool() :: map()
+  @spec get_pool() :: map
   def get_pool() do
     GenServer.call(__MODULE__, :get_pool)
   end
 
-  @spec get_and_empty_pool() :: map()
+  @spec get_and_empty_pool() :: map
   def get_and_empty_pool() do
     GenServer.call(__MODULE__, :get_and_empty_pool)
   end
