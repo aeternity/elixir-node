@@ -48,12 +48,12 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
-  @spec sign(term()) :: {:ok, binary}
+  @spec sign(term) :: {:ok, binary}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})
   end
 
-  @spec sign(term(), binary) :: {:ok, binary}
+  @spec sign(term, binary) :: {:ok, binary}
   def sign(msg, priv_key) do
     GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end
