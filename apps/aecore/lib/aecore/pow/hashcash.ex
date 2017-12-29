@@ -16,7 +16,7 @@ defmodule Aecore.Pow.Hashcash do
     verify(block_header_hash, block_header.difficulty_target)
   end
 
-  @spec verify(charlist() :: integer) :: boolean
+  @spec verify(binary, integer) :: boolean
   def verify(block_header_hash, difficulty) do
     block_header_hash
     |> Bits.extract()

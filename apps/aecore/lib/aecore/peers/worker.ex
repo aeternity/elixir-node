@@ -220,14 +220,13 @@ defmodule Aecore.Peers.Worker do
             {:reply, {:error, "Peer already known"}, state}
           should_a_peer_be_added?(map_size(peers)) ->
             peers_update1 = trim_peers(peers)
-              updated_peers =
-                Map.put(peers_update1, info.peer_nonce,
-                        %{uri: uri, latest_block: info.current_block_hash})
-              Logger.info(fn -> "Added #{uri} to the peer list" end)
-              Sync.ask_peers_for_unknown_blocks(updated_peers)
-              Sync.add_valid_peer_blocks_to_chain()
-              Sync.add_unknown_peer_pool_txs(updated_peers)
-              {:reply, :ok, %{state | peers: updated_peers}}
+            updated_peers = Map.put(peers_update1, info.peer_nonce,
+                              %{uri: uri, latest_block: info.current_block_hash})
+            Logger.info(fn -> "Added #{uri} to the peer list" end)
+            Sync.ask_peers_for_unknown_blocks(updated_peers)
+            Sync.add_valid_peer_blocks_to_chain()
+            Sync.add_unknown_peer_pool_txs(updated_peers)
+            {:reply, :ok, %{state | peers: updated_peers}}
           true ->
             Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
               {:reply, :ok, state}

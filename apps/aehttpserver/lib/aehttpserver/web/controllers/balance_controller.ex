@@ -8,7 +8,7 @@ defmodule Aehttpserver.Web.BalanceController do
         :error ->
           "can't be decoded"
         {:ok, acc} ->
-          case(Chain.chain_state[acc]) do
+          case Chain.chain_state[acc] do
             nil ->
               json conn, %{"balance" => 0, "account" => "unknown"}
             %{balance: balance} ->

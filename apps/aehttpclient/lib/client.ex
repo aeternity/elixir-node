@@ -56,7 +56,7 @@ defmodule Aehttpclient.Client do
     send_to_peer(data, "#{peer}/#{uri}")
   end
 
-  @spec get_peers(term) :: {:ok, list()}
+  @spec get_peers(term) :: {:ok, list}
   def get_peers(uri) do
     get(uri <> "/peers")
   end
@@ -72,12 +72,12 @@ defmodule Aehttpclient.Client do
     get(uri <> "/balance/#{acc}")
   end
 
-  @spec get_account_txs({term, term}) :: {:ok, list()} | :error
+  @spec get_account_txs({term, term}) :: {:ok, list} | :error
   def get_account_txs({uri, acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  @spec get(binary, term) :: {term, struct}
+  @spec get(binary, term) :: {:ok, map} | {:error, binary}
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
@@ -122,8 +122,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp send_to_peer(data, uri) do
-    HTTPoison.post uri, Poison.encode!(data),
-      [{"Content-Type", "application/json"}]
+    HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
   end
 
   defp get_local_port() do
