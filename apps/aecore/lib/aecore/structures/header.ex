@@ -19,10 +19,10 @@ defmodule Aecore.Structures.Header do
 
   use ExConstructor
 
-  @type header() :: %Header{}
+  @type t :: %Header{}
 
-  @spec create(integer(), binary(), binary(), binary(), integer(), integer(), integer()) ::
-          Header.header()
+  @spec create(integer, binary, binary, binary, integer, integer, integer) ::
+          Header.t
   def create(height, prev_hash, txs_hash, chain_state_hash, difficulty, nonce, version) do
     %Header{
       height: height,

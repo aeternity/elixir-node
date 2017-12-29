@@ -39,7 +39,7 @@ defmodule Aecore.Keys.Worker do
      - value: The amount of a transaction
 
   """
-  @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, %SignedTx{}}
+  @spec sign_tx(binary, integer, integer, integer, integer) :: {:ok, SignedTx.t}
   def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
     {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
@@ -48,12 +48,12 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
-  @spec sign(term()) :: {:ok, binary()}
+  @spec sign(term()) :: {:ok, binary}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})
   end
 
-  @spec sign(term(), binary()) :: {:ok, binary()}
+  @spec sign(term(), binary) :: {:ok, binary}
   def sign(msg, priv_key) do
     GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end
@@ -67,22 +67,22 @@ defmodule Aecore.Keys.Worker do
     GenServer.call(__MODULE__, {:verify, {msg, signature, pubkey}})
   end
 
-  @spec pubkey() :: {:ok, binary()} | {:error, :key_not_found}
+  @spec pubkey() :: {:ok, binary} | {:error, :key_not_found}
   def pubkey do
     GenServer.call(__MODULE__, :pubkey)
   end
 
-  @spec open(binary()) :: {:ok, binary()} | {:error, :keys_not_loaded}
+  @spec open(binary) :: {:ok, binary} | {:error, :keys_not_loaded}
   def open(password) do
     GenServer.call(__MODULE__, {:open, password})
   end
 
-  @spec new(binary()) :: {binary(), binary()} | :error
+  @spec new(binary) :: {binary, binary} | :error
   def new(password) do
     GenServer.call(__MODULE__, {:new, password})
   end
 
-  @spec set(binary(), binary(), binary()) :: :ok | :error
+  @spec set(binary, binary, binary) :: :ok | :error
   def set(password, priv, pub) do
     GenServer.call(__MODULE__, {:set, password, priv, pub})
   end

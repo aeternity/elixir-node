@@ -8,7 +8,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
-  @spec validate_block!(Block.block(), Block.block(), map(), list()) :: {:error, term()} | :ok
+  @spec validate_block!(Block.t, Block.t, map, list) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
@@ -46,7 +46,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec single_validate_block(%Block{}) :: {:error, term()} | :ok
+  @spec single_validate_block(Block.t) :: {:error, term()} | :ok
   def single_validate_block(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
@@ -54,7 +54,7 @@ defmodule Aecore.Chain.BlockValidation do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
-      !(validate_block_transactions(block) |> Enum.all?()) ->
+      !(block |> validate_block_transactions() |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
@@ -68,18 +68,18 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.header()) :: binary()
+  @spec block_header_hash(Header.t) :: binary
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(Block.block()) :: list()
+  @spec validate_block_transactions(Block.t) :: list
   def validate_block_transactions(block) do
     block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
+  @spec filter_invalid_transactions_chainstate(list, map) :: list
   def filter_invalid_transactions_chainstate(txs_list, chain_state) do
     {valid_txs_list, _} = List.foldl(
       txs_list,
@@ -88,10 +88,9 @@ defmodule Aecore.Chain.BlockValidation do
         valid_tx = SignedTx.is_valid(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
 
-        cond do
-          valid_tx && valid_chain_state ->
+        if valid_tx && valid_chain_state do
             {valid_txs_list ++ [tx], updated_chain_state}
-          true ->
+        else
             {valid_txs_list, chain_state_acc}
         end
       end
@@ -100,34 +99,31 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(%SignedTx{}, map()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t, map) :: {boolean(), map}
   defp validate_transaction_chainstate(tx, chain_state) do
     chain_state_has_account = Map.has_key?(chain_state, tx.data.from_acc)
-    tx_has_valid_nonce = cond do
-      chain_state_has_account ->
-        tx.data.nonce > Map.get(chain_state, tx.data.from_acc).nonce
-
-      true ->
-        true
+    tx_has_valid_nonce = if chain_state_has_account do
+      tx.data.nonce > Map.get(chain_state, tx.data.from_acc).nonce
+    else
+      true
     end
 
     from_account_has_necessary_balance =
       chain_state_has_account &&
         chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
 
-    cond do
-      tx_has_valid_nonce && from_account_has_necessary_balance ->
-        from_acc_new_state = %{balance: -(tx.data.value + tx.data.fee), nonce: 1, locked: []}
-        to_acc_new_state = %{balance: tx.data.value, nonce: 0, locked: []}
-        chain_state_changes = %{tx.data.from_acc => from_acc_new_state, tx.data.to_acc => to_acc_new_state}
-        updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
-        {true, updated_chain_state}
-      true ->
-        {false, chain_state}
+    if tx_has_valid_nonce && from_account_has_necessary_balance do
+      from_acc_new_state = %{balance: -(tx.data.value + tx.data.fee), nonce: 1, locked: []}
+      to_acc_new_state = %{balance: tx.data.value, nonce: 0, locked: []}
+      chain_state_changes = %{tx.data.from_acc => from_acc_new_state, tx.data.to_acc => to_acc_new_state}
+      updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
+      {true, updated_chain_state}
+    else
+      {false, chain_state}
     end
   end
 
-  @spec calculate_root_hash(list()) :: binary()
+  @spec calculate_root_hash(list) :: binary
   def calculate_root_hash(txs) do
     if Enum.empty?(txs) do
       <<0::256>>
@@ -148,26 +144,26 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(Block.block()) :: integer()
+  @spec calculate_root_hash(Block.t) :: integer
   defp sum_coinbase_transactions(block) do
     block.txs
-    |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) -> tx.data.value
-                    true -> 0
-                  end
-         end
-       )
+    |> Enum.map(fn tx ->
+      if SignedTx.is_coinbase(tx) do
+        tx.data.value
+      else
+        0
+      end
+    end)
     |> Enum.sum()
   end
 
-  @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
+  @spec check_prev_hash(Block.t, Block.t) :: boolean()
   defp check_prev_hash(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     new_block.header.prev_hash == prev_block_header_hash
   end
 
-  @spec check_correct_height(Block.block(), Block.block()) :: boolean()
+  @spec check_correct_height(Block.t, Block.t) :: boolean()
   defp check_correct_height(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end

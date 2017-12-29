@@ -5,7 +5,7 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
 
-  @type block :: %Block{}
+  @type t :: %Block{}
 
   @current_block_version 1
   @genesis_block_version @current_block_version
@@ -13,7 +13,7 @@ defmodule Aecore.Structures.Block do
   defstruct [:header, :txs]
   use ExConstructor
 
-  @spec current_block_version() :: integer()
+  @spec current_block_version() :: integer
   def current_block_version() do
     @current_block_version
   end
@@ -23,7 +23,7 @@ defmodule Aecore.Structures.Block do
     struct(Header, h)
   end
 
-  @spec genesis_block() :: block()
+  @spec genesis_block() :: Block.t
   def genesis_block() do
     h = genesis_header()
     %Block{header: h, txs: []}

@@ -16,7 +16,7 @@ defmodule Aecore.Persistence.Worker do
 
   ## Client side
 
-  @spec write_block_by_hash(block :: map()) :: :ok | {:error, reason :: term()}
+  @spec write_block_by_hash(block :: map) :: :ok | {:error, reason :: term()}
   def write_block_by_hash(%{header: header} = block) do
     hash = BlockValidation.block_header_hash(header)
     GenServer.call(__MODULE__, {:write_block_by_hash, {hash, block}})
@@ -24,7 +24,7 @@ defmodule Aecore.Persistence.Worker do
   def write_block_by_hash(_block), do: {:error, "bad block structure"}
 
   @spec read_block_by_hash(String.t()) ::
-  {:ok, block :: map()} | :not_found | {:error, reason :: term()}
+  {:ok, block :: map} | :not_found | {:error, reason :: term()}
   def read_block_by_hash(hash) when is_binary(hash) do
     GenServer.call(__MODULE__, {:read_block_by_hash, hash})
   end
