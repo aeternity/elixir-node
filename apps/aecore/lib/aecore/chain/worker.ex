@@ -66,7 +66,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
 
-  @spec get_blocks(binary, integer) :: :ok
+  @spec get_blocks(binary, integer) :: list(Block.t)
   def get_blocks(start_block_hash, size) do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end

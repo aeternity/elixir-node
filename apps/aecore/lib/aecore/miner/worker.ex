@@ -216,7 +216,7 @@ defmodule Aecore.Miner.Worker do
         {:ok, mined_header} ->
           block = %Block{header: mined_header, txs: valid_txs}
           Logger.info(fn ->
-              "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
+            "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
           end)
           Chain.add_block(block)
           {:block_found, 0}
