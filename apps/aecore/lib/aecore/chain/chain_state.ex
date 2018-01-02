@@ -17,13 +17,13 @@ defmodule Aecore.Chain.ChainState do
 
   @spec apply_transaction_on_state!(SignedTx.signed_tx(), map(), integer()) :: map()
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
-    add_to_locked = block_height <= transaction.data.lock_time_block
     cond do
       SignedTx.is_coinbase(transaction) ->
-        update_chain_state!(chain_state, transaction.data.to_acc, 
-                            transaction.data.value, -1,
-                            transaction.data.lock_time_block,
-                            add_to_locked)
+        transaction_in!(chain_state,
+                        block_height,
+                        transaction.data.to_acc, 
+                        transaction.data.value,
+                        transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
         if transaction.data.value < 0 do
           throw {:error, "Negative transaction value"}
@@ -32,16 +32,15 @@ defmodule Aecore.Chain.ChainState do
           throw {:error, "Nefative transaction fee"}
         end
         chain_state
-        |> update_chain_state!(transaction.data.from_acc,
-                               -(transaction.data.value + transaction.data.fee),
-                               transaction.data.nonce,
-                               transaction.data.lock_time_block,
-                               false)
-        |> update_chain_state!(transaction.data.to_acc, 
-                               transaction.data.value,
-                               -1,
-                               transaction.data.lock_time_block,
-                               add_to_locked)
+        |> transaction_out!(block_height,
+                            transaction.data.from_acc,
+                            -(transaction.data.value + transaction.data.fee),
+                            transaction.data.nonce,
+                            -1)
+        |> transaction_in!(block_height,
+                           transaction.data.to_acc, 
+                           transaction.data.value,
+                           transaction.data.lock_time_block)
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
@@ -113,36 +112,33 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
-  @spec update_chain_state!(map(), binary(), integer(), integer(), integer(), boolean()) :: map()
-  defp update_chain_state!(chain_state, account, value, nonce, lock_time_block, add_to_locked) do
+  @spec transaction_in!(map(), integer(), binary(), integer(), integer()) :: map()
+  defp transaction_in!(chain_state, block_height, account, value, lock_time_block) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
+    if block_height <= lock_time_block do
+      if value < 0 do
+        throw {:error, "Can't lock a negative transaction"}
+      end
+      new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
+      Map.put(chain_state, account, %{account_state | locked: new_locked})
+    else
+      new_balance = account_state.balance + value
+      if new_balance < 0 do
+        throw {:error, "Negative balance"}
+      end
+      Map.put(chain_state, account, %{account_state | balance: new_balance})
+    end
+  end
 
-    if account_state.nonce >= nonce and nonce != -1 do
+  @spec transaction_out!(map(), integer(), binary(), integer(), integer(), integer()) :: map()
+  defp transaction_out!(chain_state, block_height, account, value, nonce, lock_time_block) do
+    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
+    if account_state.nonce >= nonce do
       throw {:error, "Nonce too small"}
     end
-
-    new_balance = if(add_to_locked) do
-      account_state.balance
-    else
-      account_state.balance + value
-    end
-
-    new_nonce = if nonce == -1 do account_state.nonce else nonce end
-
-    new_locked = if(add_to_locked) do
-      account_state.locked ++ [%{amount: value, block: lock_time_block}]
-    else
-      account_state.locked
-    end
-
-    new_account_state = %{balance: new_balance,
-                          nonce:   new_nonce,
-                          locked:  new_locked}
     
-    if new_account_state.balance < 0 do
-      throw {:error, "Negative balance"}
-    end
-    Map.put(chain_state, account, new_account_state)
+    Map.put(chain_state, account, %{account_state | nonce: nonce})
+    |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
 end
