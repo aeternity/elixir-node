@@ -4,9 +4,13 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
 
-  @type t :: %SignedTx{}
+  @type t :: %SignedTx{} | %SignedTx{
+    data: %TxData{},
+    signature: binary()
+  }
 
   @doc """
     Definition of Aecore SignedTx structure

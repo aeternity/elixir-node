@@ -44,8 +44,9 @@ defmodule Aecore.Peers.Sync do
     Enum.each(peer_uris, fn(peer) ->
       case HttpClient.get_pool_txs(peer) do
         {:ok, deserialized_pool_txs} ->
-          Enum.each(deserialized_pool_txs,
-            fn(tx) -> Pool.add_transaction(tx) end)
+          Enum.each(deserialized_pool_txs, fn(tx) ->
+            Pool.add_transaction(tx)
+          end)
         :error ->
           Logger.error("Couldn't get pool from peer")
       end
