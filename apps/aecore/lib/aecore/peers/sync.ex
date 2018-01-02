@@ -24,12 +24,12 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec add_block_to_state(binary, term) :: :ok
+  @spec add_block_to_state(binary, term()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
-  @spec ask_peers_for_unknown_blocks(map) :: :ok
+  @spec ask_peers_for_unknown_blocks(map()) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
@@ -113,7 +113,7 @@ defmodule Aecore.Peers.Sync do
   #we request peers list from all known peers and choose at random
   #min(peers_we_need_to_have_target_count, peers_we_currently_have)
   #new peers to add.
-  @spec refill :: :ok | {:error, term}
+  @spec refill :: :ok | {:error, term()}
   def refill do
     peers_count = map_size(Peers.all_peers())
     cond do

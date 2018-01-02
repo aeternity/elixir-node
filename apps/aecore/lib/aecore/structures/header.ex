@@ -21,8 +21,7 @@ defmodule Aecore.Structures.Header do
 
   @type t :: %Header{}
 
-  @spec create(integer, binary, binary, binary, integer, integer, integer) ::
-          Header.t
+  @spec create(integer(), binary(), binary(), binary(), integer(), integer(), integer()) :: %Header{}
   def create(height, prev_hash, txs_hash, chain_state_hash, difficulty, nonce, version) do
     %Header{
       height: height,

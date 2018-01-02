@@ -30,12 +30,12 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :is_chain_synced)
   end
 
-  @spec add_peer(term) :: :ok | {:error, term} | :error
+  @spec add_peer(term()) :: :ok | {:error, term} | :error
   def add_peer(uri) do
     GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
-  @spec remove_peer(term) :: :ok | :error
+  @spec remove_peer(term()) :: :ok | :error
   def remove_peer(uri) do
     GenServer.call(__MODULE__, {:remove_peer, uri})
   end
@@ -45,26 +45,26 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :check_peers)
   end
 
-  @spec all_uris() :: list(binary)
+  @spec all_uris() :: list(binary())
   def all_uris() do
     all_peers()
     |> Map.values()
     |> Enum.map(fn(%{uri: uri}) -> uri end)
   end
 
-  @spec all_peers() :: map
+  @spec all_peers() :: map()
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
   end
 
-  @spec genesis_block_header_hash() :: term
+  @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
     Block.genesis_block().header
     |> BlockValidation.block_header_hash()
     |> Base.encode16()
   end
 
-  @spec schedule_add_peer(term, integer) :: term
+  @spec schedule_add_peer(term(), integer()) :: term()
   def schedule_add_peer(uri, nonce) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end
@@ -72,7 +72,7 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Gets a random peer nonce
   """
-  @spec get_peer_nonce() :: integer
+  @spec get_peer_nonce() :: integer()
   def get_peer_nonce() do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
@@ -88,7 +88,7 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  @spec broadcast_block(Block.t) :: :ok
+  @spec broadcast_block(%Block{}) :: :ok
   def broadcast_block(block) do
     spawn(fn ->
       Client.send_block(block, all_uris())
@@ -96,7 +96,7 @@ defmodule Aecore.Peers.Worker do
     :ok
   end
 
-  @spec broadcast_tx(SignedTx.t) :: :ok
+  @spec broadcast_tx(%SignedTx{}) :: :ok
   def broadcast_tx(tx) do
     spawn(fn ->
       Client.send_tx(tx, all_uris())
