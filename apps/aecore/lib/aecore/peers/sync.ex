@@ -7,7 +7,6 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
 
   use GenServer
 
@@ -25,7 +24,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec add_block_to_state(binary(), term()) :: :ok
+  @spec add_block_to_state(binary, term()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
@@ -45,8 +44,9 @@ defmodule Aecore.Peers.Sync do
     Enum.each(peer_uris, fn(peer) ->
       case HttpClient.get_pool_txs(peer) do
         {:ok, deserialized_pool_txs} ->
-          Enum.each(deserialized_pool_txs,
-            fn(tx) -> Pool.add_transaction(tx) end)
+          Enum.each(deserialized_pool_txs, fn(tx) ->
+            Pool.add_transaction(tx)
+          end)
         :error ->
           Logger.error("Couldn't get pool from peer")
       end
@@ -150,7 +150,8 @@ defmodule Aecore.Peers.Sync do
         {:ok, list} ->
           Enum.concat(acc, Enum.map(Map.values(list),
                                     fn(%{"uri" => uri}) -> uri end))
-        :error ->
+        {:error, message} ->
+          Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
           acc
       end
     end)
@@ -182,7 +183,7 @@ defmodule Aecore.Peers.Sync do
   # (that means we can add this chain to ours)
   defp build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
-    has_parent_in_chain = Chain.has_block?(block.header.prev_hash) 
+    has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
@@ -217,7 +218,7 @@ defmodule Aecore.Peers.Sync do
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
 
-              if(block_hash == peer_block_hash) do
+              if block_hash == peer_block_hash do
                 check_peer_block(peer_uri, deserialized_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))
               else

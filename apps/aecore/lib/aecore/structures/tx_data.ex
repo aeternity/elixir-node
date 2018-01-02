@@ -5,7 +5,14 @@ defmodule Aecore.Structures.TxData do
 
   alias Aecore.Structures.TxData
 
-  @type tx_data() :: %TxData{}
+  @type t :: %TxData{} | %TxData{
+    from_acc: binary(),
+    to_acc: binary(),
+    value: non_neg_integer(),
+    nonce: non_neg_integer(),
+    fee: non_neg_integer(),
+    lock_time_block: non_neg_integer()
+  }
 
   @doc """
   Definition of Aecore TxData structure
@@ -16,10 +23,10 @@ defmodule Aecore.Structures.TxData do
      - to_acc: To account is the public address of the account receiving the transaction
      - value: The amount of a transaction
   """
-  defstruct [:nonce, :from_acc, :to_acc, :value, :fee, :lock_time_block]
+  defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), integer(), integer(), integer(), integer()) :: {:ok, %TxData{}}
+  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, %TxData{}}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, %TxData{from_acc: from_acc,
                   to_acc: to_acc,

@@ -64,7 +64,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   ## Proof of Work generation, a single attempt.
   ## We are making call to a nif and the return is
-  ## {:ok, solution :: list()} | {:error, :no_solutions}
+  ## {:ok, solution :: list} | {:error, :no_solutions}
   ## When your NIF is loaded, it will override this function.
   defp generate_single(_header, _nonce, _trims, _theards) do
     :nif_library_not_loaded
@@ -84,14 +84,14 @@ defmodule Aecore.Pow.Cuckoo do
   ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
   ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
   ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  @spec test_target(soln :: list(), target :: integer()) :: true | false
+  @spec test_target(list(), integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     Hashcash.generate(:cuckoo, bin, target)
   end
 
-  @spec hash_header(header :: map()) :: list()
+  @spec hash_header(%Header{} :: map()) :: list()
   defp hash_header(header) do
     :base64.encode_to_string(BlockValidation.block_header_hash(header))
   end

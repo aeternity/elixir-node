@@ -61,12 +61,12 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
-  @spec has_block?(binary()) :: true | false
+  @spec has_block?(binary()) :: boolean()
   def has_block?(hash) do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
 
-  @spec get_blocks(binary(), integer()) :: list(Block.block())
+  @spec get_blocks(binary(), integer()) :: list(%Block{})
   def get_blocks(start_block_hash, size) do
     Enum.reverse(get_blocks([], start_block_hash, size))
   end
@@ -189,8 +189,8 @@ defmodule Aecore.Chain.Worker do
     accounts = for tx <- block.txs do
       [tx.data.from_acc, tx.data.to_acc]
     end
-    accounts = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-    for account <- accounts, into: %{} do
+    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
@@ -213,19 +213,18 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp get_blocks(blocks_acc, next_block_hash, size) do
-    cond do
-      size > 0 ->
-        case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-          {:error, _} -> blocks_acc
-          block ->
-            updated_block_acc = [block | blocks_acc]
-            prev_block_hash = block.header.prev_hash
-            next_size = size - 1
+    if size > 0 do
+      case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
+        {:error, _} -> blocks_acc
+        block ->
+          updated_block_acc = [block | blocks_acc]
+          prev_block_hash = block.header.prev_hash
+          next_size = size - 1
 
-            get_blocks(updated_block_acc, prev_block_hash, next_size)
-        end
-      true ->
-        blocks_acc
+          get_blocks(updated_block_acc, prev_block_hash, next_size)
+      end
+    else
+      blocks_acc
     end
   end
 end

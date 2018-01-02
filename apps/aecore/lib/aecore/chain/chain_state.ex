@@ -13,20 +13,16 @@ defmodule Aecore.Chain.ChainState do
   """
   @spec calculate_block_state(list(), integer()) :: map()
   def calculate_block_state(txs, latest_block_height) do
-    block_state = %{}
+    empty_block_state = %{}
 
-    block_state =
-      for transaction <- txs do
-        updated_block_state =
-          cond do
-            transaction.data.from_acc != nil ->
-              update_block_state(block_state, transaction.data.from_acc,
-                                 -(transaction.data.value + transaction.data.fee),
-                                 transaction.data.nonce, transaction.data.lock_time_block, false)
-
-            true ->
-              block_state
-          end
+    block_state = for transaction <- txs do
+        updated_block_state = if transaction.data.from_acc == nil do
+          empty_block_state
+        else 
+          update_block_state(empty_block_state, transaction.data.from_acc,
+                              -(transaction.data.value + transaction.data.fee),
+                              transaction.data.nonce, transaction.data.lock_time_block, false)   
+        end
 
         add_to_locked = latest_block_height + 1 <= transaction.data.lock_time_block
 
@@ -121,29 +117,25 @@ defmodule Aecore.Chain.ChainState do
 
   @spec update_block_state(map(), binary(), integer(), integer(), integer(), boolean()) :: map()
   defp update_block_state(block_state, account, value, nonce, lock_time_block, add_to_locked) do
-    block_state_filled_empty =
-      cond do
-        !Map.has_key?(block_state, account) ->
-          Map.put(block_state, account, %{balance: 0, nonce: 0, locked: []})
-
-        true ->
-          block_state
-      end
-
-    new_balance = if(add_to_locked) do
+    block_state_filled_empty = if Map.has_key?(block_state, account) do
+      block_state
+    else
+      Map.put(block_state, account, %{balance: 0, nonce: 0, locked: []})
+    end
+    
+    new_balance = if add_to_locked do
       block_state_filled_empty[account].balance
     else
       block_state_filled_empty[account].balance + value
     end
 
-    new_nonce = cond do
-      block_state_filled_empty[account].nonce < nonce ->
-        nonce
-      true ->
-        block_state_filled_empty[account].nonce
-      end
+    new_nonce = if block_state_filled_empty[account].nonce < nonce do
+      nonce
+    else
+      block_state_filled_empty[account].nonce
+    end
 
-    new_locked = if(add_to_locked) do
+    new_locked = if add_to_locked do
       block_state_filled_empty[account].locked ++ [%{amount: value, block: lock_time_block}]
     else
       block_state_filled_empty[account].locked

@@ -12,9 +12,9 @@ defmodule Aehttpserver.Web.BlockController do
     case (block) do
       %Block{} ->
         block_hex_values = Serialization.block(block, :serialize)
-        json conn, block_hex_values
+        json(conn, block_hex_values)
       {:error, message} ->
-        json %{conn | status: 404}, %{error: message}
+        json(%{conn | status: 404}, %{error: message})
     end
   end
 

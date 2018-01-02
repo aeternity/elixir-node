@@ -9,6 +9,7 @@ defmodule Aecore.Pow.Hashcash do
 
   alias Aeutil.Bits
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Structures.Header
 
   @spec verify(map()) :: boolean()
   def verify(%Aecore.Structures.Header{} = block_header) do
@@ -16,7 +17,7 @@ defmodule Aecore.Pow.Hashcash do
     verify(block_header_hash, block_header.difficulty_target)
   end
 
-  @spec verify(charlist() :: integer()) :: boolean()
+  @spec verify(binary(), integer()) :: boolean()
   def verify(block_header_hash, difficulty) do
     block_header_hash
     |> Bits.extract()
@@ -27,21 +28,22 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Find a nonce
   """
-  @spec generate(map(), integer()) :: {:ok, %Aecore.Structures.Header{}} | {:error, term()}
-  def generate(%Aecore.Structures.Header{nonce: nonce} = block_header, start_nonce) do
+  @spec generate(map(), integer()) :: {:ok, %Header{}} | {:error, term()}
+  def generate(%Header{nonce: nonce} = block_header, start_nonce) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
-      case verify(block_header_hash, block_header.difficulty_target) do
-        true -> {:ok, block_header}
-        false ->
-        if nonce <= start_nonce do
-          generate(%{block_header | nonce: nonce + 1}, start_nonce)
-        else
-          {:error, "no solution found"}
-        end
+    case verify(block_header_hash, block_header.difficulty_target) do
+      true -> {:ok, block_header}
+      false ->
+      if nonce <= start_nonce do
+        generate(%{block_header | nonce: nonce + 1}, start_nonce)
+      else
+        {:error, "no solution found"}
       end
+    end
   end
 
-  @spec generate(atom(), map(), integer()) :: boolean()
+  # TODO: this should be renamed or removed
+  @spec generate(:cuckoo, binary(), integer()) :: boolean()
   def generate(:cuckoo, data, target) do
     verify(data, target)
   end

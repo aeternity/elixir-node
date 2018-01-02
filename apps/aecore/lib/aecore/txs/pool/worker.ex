@@ -48,7 +48,7 @@ defmodule Aecore.Txs.Pool.Worker do
         Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
 
     cond do
-      !SignedTx.is_valid(tx) ->
+      !SignedTx.is_valid?(tx) ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
       !is_minimum_fee_met ->
