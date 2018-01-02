@@ -22,11 +22,11 @@ defmodule Aecore.Chain.BlockValidation do
 
     cond do
       # do not check previous block hash for genesis block, there is none
-      !(is_genesis || check_prev_hash(new_block, previous_block)) ->
+      !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
       # do not check previous block height for genesis block, there is none
-      !(is_genesis || check_correct_height(new_block, previous_block)) ->
+      !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->
@@ -68,7 +68,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(%Header{}) :: binary
+  @spec block_header_hash(%Header{}) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
@@ -76,7 +76,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(%Block{}) :: list()
   def validate_block_transactions(block) do
-    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
+    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid?(tx) end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
@@ -85,7 +85,7 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_tx = SignedTx.is_valid(tx)
+        valid_tx = SignedTx.is_valid?(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
 
         if valid_tx && valid_chain_state do
@@ -157,14 +157,14 @@ defmodule Aecore.Chain.BlockValidation do
     |> Enum.sum()
   end
 
-  @spec check_prev_hash(%Block{}, %Block{}) :: boolean()
-  defp check_prev_hash(new_block, previous_block) do
+  @spec check_prev_hash?(%Block{}, %Block{}) :: boolean()
+  defp check_prev_hash?(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     new_block.header.prev_hash == prev_block_header_hash
   end
 
-  @spec check_correct_height(%Block{}, %Block{}) :: boolean()
-  defp check_correct_height(new_block, previous_block) do
+  @spec check_correct_height?(%Block{}, %Block{}) :: boolean()
+  defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
 

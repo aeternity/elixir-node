@@ -29,14 +29,14 @@ defmodule AecoreTxTest do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx} = Keys.sign_tx(to_account, 5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
 
-    assert SignedTx.is_valid(tx)
+    assert SignedTx.is_valid?(tx)
   end
 
   test "negative tx invalid" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx} = Keys.sign_tx(to_account, -5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
 
-    assert !SignedTx.is_valid(tx)
+    assert !SignedTx.is_valid?(tx)
   end
 
 end

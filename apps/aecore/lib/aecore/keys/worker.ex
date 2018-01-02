@@ -58,11 +58,12 @@ defmodule Aecore.Keys.Worker do
     GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end
 
+  @spec verify_tx(%SignedTx{}) :: boolean()
   def verify_tx(tx) do
     verify(tx.data, tx.signature, tx.data.from_acc)
   end
 
-  # @spec verify() :: boolean()
+  @spec verify(binary(), binary(), binary()) :: boolean()
   def verify(msg, signature, pubkey) do
     GenServer.call(__MODULE__, {:verify, {msg, signature, pubkey}})
   end
@@ -124,6 +125,7 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
+  
   def handle_call(
         {:verify, {term, signature, pub_key}},
         _from,
