@@ -4,8 +4,9 @@ defmodule Aecore.Structures.Block do
   """
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
+  alias Aecore.Structures.TxData
 
-  @type t :: %Block{}
+  @type t :: %Block{} | %Block{header: %Header{}, txs: list(%TxData{})}
 
   @current_block_version 1
   @genesis_block_version @current_block_version
