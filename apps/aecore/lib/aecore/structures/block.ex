@@ -13,11 +13,12 @@ defmodule Aecore.Structures.Block do
   defstruct [:header, :txs]
   use ExConstructor
 
-  @spec current_block_version() :: integer
+  @spec current_block_version() :: non_neg_integer()
   def current_block_version() do
     @current_block_version
   end
 
+  @spec genesis_header() :: %Header{}
   defp genesis_header() do
     h = Application.get_env(:aecore, :pow)[:genesis_header]
     struct(Header, h)
