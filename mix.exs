@@ -46,8 +46,6 @@ defmodule EpochElixir.Mixfile do
      {:logger_file_backend, "~> 0.0.10"},
      {:excoveralls, "~> 0.7", only: :test},
      {:uuid, "~> 1.1"},
-     {:distillery, "~> 1.5", runtime: false},
-     {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
-    ]
+     {:distillery, "~> 1.5", runtime: false}    ]
   end
 end

@@ -23,7 +23,7 @@ defmodule Aecore.Structures.Block do
     struct(Header, h)
   end
 
-  @spec genesis_block() :: Block.t
+  @spec genesis_block() :: %Block{}
   def genesis_block() do
     h = genesis_header()
     %Block{header: h, txs: []}
