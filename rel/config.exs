@@ -47,6 +47,7 @@ release :epoch_elixir do
     :runtime_tools,
     aecore: :permanent,
     aehttpclient: :permanent,
-    aehttpserver: :permanent
+    aehttpserver: :permanent,
+    aeutil: :permanent
   ]
 end
