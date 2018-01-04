@@ -18,10 +18,10 @@ defmodule AecoreChainTest do
     []
   end
 
-  @tag timeout: 100_000_000
+  @tag timeout: 20_000
+  @tag :chain
   test "add block" do
-    Miner.resume()
-    Miner.suspend()
+    Miner.mine_sync_block_to_chain
 
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
@@ -38,8 +38,8 @@ defmodule AecoreChainTest do
                                    difficulty_target: 1, nonce: 0,
                                    timestamp: System.system_time(:milliseconds),
                                    version: 1}, txs: []}
-    {:ok, nbh} = Aecore.Pow.Cuckoo.generate(block_unmined.header)
-    block_mined = %{block_unmined | header: nbh}
+
+    {:ok, block_mined} = Miner.mine_sync_block(block_unmined)
 
     top_block_next = Chain.top_block()
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)

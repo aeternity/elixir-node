@@ -33,6 +33,7 @@ defmodule Aehttpserver.Mixfile do
   defp deps do
     [{:phoenix, "~> 1.3.0-rc"},
      {:cowboy, "~> 1.0"},
-     {:cors_plug, "~> 1.2"}]
+     {:cors_plug, "~> 1.2"},
+     {:uuid, "~> 1.1"},]
   end
 end

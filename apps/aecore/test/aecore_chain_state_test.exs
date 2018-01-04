@@ -12,6 +12,7 @@ defmodule AecoreChainStateTest do
   alias Aecore.Chain.ChainState, as: ChainState
   alias Aecore.Chain.Worker, as: Chain
 
+  @tag :chain_state
   test "block state" do
     block = get_block()
     lock_time_block = Enum.at(block.txs, 0).data.lock_time_block
@@ -27,6 +28,7 @@ defmodule AecoreChainStateTest do
       ChainState.calculate_block_state(block.txs, latest_block.header.height)
   end
 
+  @tag :chain_state
   test "chain state" do
     next_block_height = Chain.top_block().header.height + 1
     chain_state =

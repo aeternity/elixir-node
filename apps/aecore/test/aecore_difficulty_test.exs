@@ -8,6 +8,7 @@ defmodule DifficultyTest do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
 
+  @tag :difficulty
   test "difficulty calculation genesis block only" do
     blocks = [
       Block.genesis_block
@@ -16,6 +17,7 @@ defmodule DifficultyTest do
     assert 1 == Difficulty.calculate_next_difficulty(blocks)
   end
 
+  @tag :difficulty
   test "difficulty calculation" do
     blocks = [
       %Block{header: %Header{difficulty_target: 6,
@@ -35,10 +37,11 @@ defmodule DifficultyTest do
     assert 6 == Difficulty.calculate_next_difficulty(blocks)
   end
 
-  test "max difficulty change" do
-    assert 4 == Difficulty.limit_max_difficulty_change(10, 2)
-    assert 10 == Difficulty.limit_max_difficulty_change(10, 9)
-    assert 8 == Difficulty.limit_max_difficulty_change(8, 9)
-    assert 10 == Difficulty.limit_max_difficulty_change(8, 12)
-  end
+  # @tag :difficulty
+  # test "max difficulty change" do
+  #   assert 4 == Difficulty.limit_max_difficulty_change(10, 2)
+  #   assert 10 == Difficulty.limit_max_difficulty_change(10, 9)
+  #   assert 8 == Difficulty.limit_max_difficulty_change(8, 9)
+  #   assert 10 == Difficulty.limit_max_difficulty_change(8, 12)
+  # end
 end
