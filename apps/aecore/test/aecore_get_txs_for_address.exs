@@ -3,21 +3,16 @@ defmodule GetTxsForAddressTest do
   use ExUnit.Case
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.ChainState, as: ChainState
-  alias Aecore.Structures.Block, as: Block
   alias Aecore.Structures.TxData, as: TxData
-  alias Aecore.Structures.SignedTx, as: SignedTx
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.Header, as: Header
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.BlockValidation, as: BlockValidation
   alias Aecore.Txs.Pool.Worker, as: Pool
 
 
-  @tag timeout: 100_000
+  @tag timeout: 20_000
   test "get txs for given address test" do
-    Miner.resume()
-    Miner.suspend()
+    :ok = Miner.mine_sync_block_to_chain
 
     {:ok, from_acc} = Keys.pubkey()
 
@@ -32,16 +27,15 @@ defmodule GetTxsForAddressTest do
 
     assert :ok = Pool.add_transaction(tx1)
 
-    Miner.resume()
-    Miner.suspend()
+    :ok = Miner.mine_sync_block_to_chain
 
     assert 2 <= :erlang.length(Chain.longest_blocks_chain())
     assert 1 == :erlang.length(Pool.get_txs_for_address(to_acc))
   end
 
+  @tag timeout: 20_000
   test "get txs for given address with proof test" do
-    Miner.resume()
-    Miner.suspend()
+    :ok = Miner.mine_sync_block_to_chain
     {:ok, address} = Keys.pubkey
     user_txs = Pool.get_txs_for_address(address)
     user_txs_with_proof = Pool.add_proof_to_txs(user_txs)

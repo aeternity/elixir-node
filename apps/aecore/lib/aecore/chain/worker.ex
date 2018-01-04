@@ -22,7 +22,8 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+    genesis_chain_state =
+      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
@@ -44,7 +45,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
-  @spec top_height() :: integer() 
+  @spec top_height() :: integer()
   def top_height() do
     GenServer.call(__MODULE__, :top_height)
   end
@@ -74,12 +75,14 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
-    new_block_state = ChainState.calculate_block_state(block.txs)
+    new_block_state = ChainState.calculate_block_state(block.txs, prev_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
+    new_chain_state_locked_amounts =
+      ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
 
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, prev_block, new_chain_state, blocks_for_difficulty_calculation)
-    add_validated_block(block, new_chain_state)
+    BlockValidation.validate_block!(block, prev_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
+    add_validated_block(block, new_chain_state_locked_amounts)
   end
 
   @spec add_validated_block(%Block{}, map()) :: :ok
@@ -142,9 +145,9 @@ defmodule Aecore.Chain.Worker do
     {:reply, has_block, state}
   end
 
-  def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state}, 
-                  _from, 
-                  %{blocks_map: blocks_map, chain_states: chain_states, 
+  def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
+                  _from,
+                  %{blocks_map: blocks_map, chain_states: chain_states,
                     txs_index: txs_index, top_height: top_height} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
@@ -156,17 +159,17 @@ defmodule Aecore.Chain.Worker do
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{total_tokens}"
+      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
-    state_update1 = %{state | blocks_map: updated_blocks_map, 
-                              chain_states: updated_chain_states, 
+    state_update1 = %{state | blocks_map: updated_blocks_map,
+                              chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
-      {:reply, :ok, %{state_update1 | top_hash: new_block_hash, 
+      {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
       {:reply, :ok, state_update1}
@@ -181,19 +184,13 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def terminate(_, state) do
-    Persistence.store_state(state)
-    Logger.warn("Terminting, state was stored on disk ...")
-
-  end
-
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
     accounts = for tx <- block.txs do
       [tx.data.from_acc, tx.data.to_acc]
     end
-    accounts = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-    for account <- accounts, into: %{} do
+    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
           tx.data.from_acc == account || tx.data.to_acc == account
         end)

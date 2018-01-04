@@ -9,6 +9,7 @@ defmodule AecorePeersTest do
     []
   end
 
+  @tag :peers
   test "add peer, get all peers, check peers and remove the peer" do
     assert Enum.empty?(Peers.all_peers)
     assert :ok = Peers.check_peers

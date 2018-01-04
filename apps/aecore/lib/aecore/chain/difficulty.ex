@@ -1,8 +1,8 @@
 defmodule Aecore.Chain.Difficulty do
 
-  @number_of_blocks 100
-  @max_difficulty_change 2
-  @target_distance 60_000
+  @number_of_blocks 10
+  @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
+  @target_distance 30_000
 
   def get_number_of_blocks() do
     @number_of_blocks
