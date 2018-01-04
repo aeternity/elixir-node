@@ -143,18 +143,19 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
-    block_user_txs =
     if user_txs == [] do
-      []
+      split_blocks(blocks, address, txs)
     else
+      new_txs =
       for block_user_txs <- user_txs do
         block_user_txs
         |>  Map.put_new(:txs_hash, block.header.txs_hash)
         |>  Map.put_new(:block_hash, block.header.chain_state_hash)
         |>  Map.put_new(:block_height, block.header.height)
       end
+      split_blocks(blocks, address, new_txs)
     end
-    split_blocks(blocks, address, block_user_txs)
+
   end
 
   defp split_blocks([], _address, txs) do
