@@ -28,7 +28,7 @@ true|false   : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 {INT}        : {token, {int, TokenLine, list_to_integer(TokenChars)}}.
 {ID}         : {token, {id, TokenLine, TokenChars}}.
 {TYPE}       : {token, {type, TokenLine, TokenChars}}.
-{DECL}       : {token, {decl, TokenLine, string:tokens(TokenChars, ":")}}.
+%{DECL}       : {token, {decl, TokenLine, string:tokens(TokenChars, ":")}}.
 {WHITESPACE} : skip_token.
 
 Erlang code.
