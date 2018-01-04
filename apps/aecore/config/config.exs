@@ -54,7 +54,7 @@ config :logger, :info,
   level: :info
 
 config :logger, :error,
-  path: path <> "logs/#{timestamp}error.log",
+  path: path <> "/logs/#{timestamp}error.log",
   level: :error
 
 config :aecore, :keys,
