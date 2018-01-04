@@ -1,9 +1,9 @@
-defmodule Aehttpserver.BlockController do
+defmodule Aehttpserver.Web.BlockController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Utils.Serialization
-  alias Aecore.Utils.Blockchain.BlockValidation
+  alias Aeutil.Serialization
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Peers.Sync
 
@@ -19,10 +19,9 @@ defmodule Aehttpserver.BlockController do
   end
 
   def get_blocks(conn, params) do
-    latest_block_hash = case Map.get(params, "from_block") do
+    from_block_hash = case Map.get(params, "from_block") do
       nil ->
-        latest_block = Chain.latest_block()
-        BlockValidation.block_header_hash(latest_block.header)
+        Chain.top_block_hash()
       hash ->
         {_, hash_bin} = Base.decode16(hash)
         hash_bin
@@ -36,7 +35,7 @@ defmodule Aehttpserver.BlockController do
         number
     end
 
-    blocks = Chain.get_blocks(latest_block_hash, count)
+    blocks = Chain.get_blocks(from_block_hash, count)
     blocks_json = Enum.map(
       blocks,
       fn (block) ->
@@ -55,7 +54,7 @@ defmodule Aehttpserver.BlockController do
     ## Becouse we 'conn.body_params' contains decoded json as map with
     ## keys as strings instead of atoms we are doing this workaround
     map = Poison.decode!(Poison.encode!(conn.body_params), [keys: :atoms])
-    block = Aecore.Utils.Serialization.block(map, :deserialize)
+    block = Aeutil.Serialization.block(map, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
     Sync.add_valid_peer_blocks_to_chain()

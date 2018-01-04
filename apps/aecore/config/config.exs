@@ -27,4 +27,39 @@ use Mix.Config
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
+path = Path.absname("apps/aecore")
+%{year: year, month: month, day: day} = DateTime.utc_now()
+timestamp = "#{year}-#{month}-#{day}_"
+
+
+persistence_path = case System.get_env("PERSISTENCE_PATH") do
+  nil -> "apps/aecore/priv/rox_db"
+  env -> env
+end
+
+config :aecore, :persistence,
+  path: Path.absname(persistence_path)
+
+config :logger,
+  compile_time_purge_level: :info,
+  backends: [:console,
+             {LoggerFileBackend, :info},
+             {LoggerFileBackend, :error}]
+
+config :logger, :console,
+  level: :error
+
+config :logger, :info,
+  path: path <> "/logs/#{timestamp}info.log",
+  level: :info
+
+config :logger, :error,
+  path: path <> "/logs/#{timestamp}error.log",
+  level: :error
+
+config :aecore, :keys,
+  password: "secret",
+  dir: "/tmp/keys"
+
+
 import_config "#{Mix.env}.exs"

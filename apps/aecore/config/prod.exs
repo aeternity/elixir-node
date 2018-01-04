@@ -28,14 +28,6 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 
-persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
-
-config :aecore, :persistence,
-  path: Path.absname(persistence_path)
-
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 28},
@@ -72,3 +64,7 @@ config :aecore, :peers,
 
 config :aecore, :miner,
   resumed_by_default: true
+
+config :aecore, :tx_data,
+  miner_fee_bytes_per_token: 100,
+  pool_fee_bytes_per_token: 100

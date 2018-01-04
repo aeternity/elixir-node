@@ -1,4 +1,4 @@
-defmodule Aecore.Utils.Blockchain.Difficulty do
+defmodule Aecore.Chain.Difficulty do
 
   @number_of_blocks 10
   @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
