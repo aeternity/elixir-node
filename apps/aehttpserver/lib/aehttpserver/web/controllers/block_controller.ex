@@ -6,6 +6,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Peers.Sync
+  alias Aecore.Peers.Worker, as: Peers
 
   def show(conn, params) do
     block = Chain.get_block_by_hex_hash(params["hash"])

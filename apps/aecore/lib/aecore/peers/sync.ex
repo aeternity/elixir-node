@@ -32,12 +32,18 @@ defmodule Aecore.Peers.Sync do
 
   @spec ask_peers_for_unknown_blocks(map()) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
-    GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
+    GenServer.cast(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
 
-  @spec add_valid_peer_blocks_to_chain() :: :ok
   def add_valid_peer_blocks_to_chain() do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+  end
+
+  def add_valid_peer_blocks_to_chain(state) do
+    Enum.reduce(state, state, fn({_, block}, acc) ->
+        built_chain = build_chain(acc, block, [])
+        add_built_chain(built_chain, acc)
+      end)
   end
 
   def add_unknown_peer_pool_txs(peers) do
@@ -76,23 +82,20 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, updated_state}
   end
 
-  def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
+  def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
+    filtered_state = add_valid_peer_blocks_to_chain(state)
+    {:reply, :ok, filtered_state}
+  end
+
+  def handle_cast({:ask_peers_for_unknown_blocks, peers}, state) do
     state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: top_block_hash}}, acc) ->
         {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
         Map.merge(acc, check_peer_block(uri, top_hash_decoded, %{}))
       end)
 
-    {:reply, :ok, state}
-  end
+    filtered_state = add_valid_peer_blocks_to_chain(state)
 
-  def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
-    filtered_state =
-      Enum.reduce(state, state, fn({_, block}, acc) ->
-          built_chain = build_chain(acc, block, [])
-          add_built_chain(built_chain, acc)
-      end)
-
-    {:reply, :ok, filtered_state}
+    {:noreply, filtered_state}
   end
 
   #To make sure no peer is more popular in network then others,
@@ -123,8 +126,8 @@ defmodule Aecore.Peers.Sync do
       peers_count < @peers_target_count ->
         all_peers =
           Peers.all_peers()
-            |> Map.values()
-            |> Enum.map(fn(%{uri: uri}) -> uri end)
+          |> Map.values()
+          |> Enum.map(fn(%{uri: uri}) -> uri end)
         new_count = get_newpeers_and_add(all_peers)
         if new_count > 0 do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)
@@ -217,7 +220,6 @@ defmodule Aecore.Peers.Sync do
               BlockValidation.single_validate_block(deserialized_block)
               peer_block_hash =
                 BlockValidation.block_header_hash(deserialized_block.header)
-
               if(block_hash == peer_block_hash) do
                 check_peer_block(peer_uri, deserialized_block.header.prev_hash,
                   Map.put(state, peer_block_hash, deserialized_block))

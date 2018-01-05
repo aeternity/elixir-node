@@ -47,7 +47,7 @@ config :logger,
              {LoggerFileBackend, :error}]
 
 config :logger, :console,
-  level: :error
+  level: :info
 
 config :logger, :info,
   path: path <> "/logs/#{timestamp}info.log",

@@ -223,7 +223,6 @@ defmodule Aecore.Peers.Worker do
                         %{uri: uri, latest_block: info.current_block_hash})
               Logger.info(fn -> "Added #{uri} to the peer list" end)
               Sync.ask_peers_for_unknown_blocks(updated_peers)
-              Sync.add_valid_peer_blocks_to_chain()
               Sync.add_unknown_peer_pool_txs(updated_peers)
               {:reply, :ok, %{state | peers: updated_peers}}
             else
