@@ -187,13 +187,18 @@ defmodule Aecore.Peers.Sync do
   defp build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
-    cond do
-      has_parent_block_in_state ->
-        build_chain(state, state[block.header.prev_hash], [block | chain])
-      has_parent_in_chain ->
-        [block | chain]
-      true ->
-        []
+    block_header_hash = BlockValidation.block_header_hash(block.header)
+    if(!Chain.has_block?(block_header_hash)) do
+      cond do
+        has_parent_block_in_state ->
+          build_chain(state, state[block.header.prev_hash], [block | chain])
+        has_parent_in_chain ->
+          [block | chain]
+        true ->
+          []
+      end
+    else
+      chain
     end
   end
 
@@ -201,9 +206,10 @@ defmodule Aecore.Peers.Sync do
   # deletes the blocks we added from the state
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
+        block_header_hash = BlockValidation.block_header_hash(block.header)
         case Chain.add_block(block) do
           :ok ->
-            Map.delete(acc, BlockValidation.block_header_hash(block.header))
+            Map.delete(acc, block_header_hash)
           :error ->
             acc
         end
