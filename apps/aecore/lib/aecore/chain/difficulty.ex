@@ -1,5 +1,7 @@
 defmodule Aecore.Chain.Difficulty do
 
+  alias Aecore.Structures.Block
+
   @number_of_blocks 10
   @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
   @target_distance 30_000

@@ -203,10 +203,8 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
+  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
   def candidate() do
-  ## Internal
-  @spec mine_next_block(integer) :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
-  defp mine_next_block(start_nonce) do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
@@ -224,8 +222,6 @@ defmodule Aecore.Miner.Worker do
 
     previous_block = unless top_block == Block.genesis_block() do
       Chain.get_block(top_block.header.prev_hash)
-    else 
-      nil
     end
 
     try do
@@ -274,22 +270,6 @@ defmodule Aecore.Miner.Worker do
           Block.current_block_version()
         )
       %Block{header: unmined_header, txs: valid_txs}
-
-      Logger.debug(fn -> "start nonce #{start_nonce}. Final nonce = #{start_nonce + @nonce_per_cycle}" end)
-
-      case Cuckoo.generate(%{unmined_header | nonce: start_nonce + @nonce_per_cycle}) do
-        {:ok, mined_header} ->
-          block = %Block{header: mined_header, txs: valid_txs}
-          Logger.info(fn ->
-            "Mined block ##{block.header.height}, difficulty target #{block.header.difficulty_target}, nonce #{block.header.nonce}"
-          end)
-          Chain.add_block(block)
-          {:block_found, 0}
-
-        {:error, _message} ->
-          {:no_block_found, start_nonce + @nonce_per_cycle}
-      end
-
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
@@ -301,13 +281,9 @@ defmodule Aecore.Miner.Worker do
   ## Internal
 
   def calculate_total_fees(txs) do
-    List.foldl(
-      txs,
-      0,
-      fn (tx, acc) ->
+    List.foldl(txs, 0, fn (tx, acc) ->
         acc + tx.data.fee
-      end
-    )
+    end)
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
