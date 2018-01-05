@@ -11,6 +11,9 @@ defmodule Aehttpclient.Client do
 
   require Logger
 
+  @typedoc "Client request identifier"
+  @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -83,7 +86,7 @@ defmodule Aehttpclient.Client do
     {:ok, response}
   end
 
-  @spec handleResponse(:info, map(), map()) :: {:ok, map()}
+  @spec handleResponse(:info, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:info, body, headers) do
     response = Poison.decode!(body, keys: :atoms!)
     {_, server} = Enum.find(headers, fn(header) ->
@@ -93,13 +96,13 @@ defmodule Aehttpclient.Client do
     {:ok, response_with_server_header}
   end
 
-  @spec handleResponse(:acc_txs, map(), map()) :: {:ok, map()}
+  @spec handleResponse(:acc_txs, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:acc_txs, body, _headers) do
     response = Poison.decode!(body, as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
     {:ok, response}
   end
 
-  @spec handleResponse(:pool_txs, map(), map()) :: {:ok, map()}
+  @spec handleResponse(:pool_txs, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:pool_txs, body, _headers) do
     response = body
       |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
@@ -107,13 +110,13 @@ defmodule Aehttpclient.Client do
     {:ok, response}
   end
 
-  @spec handleResponse(:default, map(), map()) :: {:ok, map()}
+  @spec handleResponse(:default, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:default, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}
   end
 
-  @spec get(binary(), term()) :: {:ok, map()} | {:error, binary()}
+  @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->

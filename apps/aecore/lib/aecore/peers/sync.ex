@@ -198,13 +198,9 @@ defmodule Aecore.Peers.Sync do
   # deletes the blocks we added from the state
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
-        case Chain.add_block(block) do
-          :ok ->
-            Map.delete(acc, BlockValidation.block_header_hash(block.header))
-          :error ->
-            acc
-        end
-      end)
+      Chain.add_block(block)
+      Map.delete(acc, BlockValidation.block_header_hash(block.header))
+    end)
   end
 
   # Gets all unknown blocks, starting from the given one
@@ -215,12 +211,11 @@ defmodule Aecore.Peers.Sync do
           {:ok, deserialized_block} ->
             try do
               BlockValidation.single_validate_block(deserialized_block)
-              peer_block_hash =
-                BlockValidation.block_header_hash(deserialized_block.header)
+              peer_block_hash = BlockValidation.block_header_hash(deserialized_block.header)
 
               if block_hash == peer_block_hash do
-                check_peer_block(peer_uri, deserialized_block.header.prev_hash,
-                  Map.put(state, peer_block_hash, deserialized_block))
+                updated_state = Map.put(state, peer_block_hash, deserialized_block)
+                check_peer_block(peer_uri, deserialized_block.header.prev_hash, updated_state)
               else
                 state
               end
@@ -228,11 +223,12 @@ defmodule Aecore.Peers.Sync do
               {:error, _} ->
                 state
             end
-          :error ->
+          {:error, _} ->
             state
         end
       true ->
         state
     end
   end
+
 end

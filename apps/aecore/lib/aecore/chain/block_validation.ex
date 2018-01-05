@@ -8,7 +8,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
-  @spec validate_block!(%Block{}, %Block{}, map(), list()) :: {:error, term()} | :ok
+  @spec validate_block!(%Block{}, %Block{}, map(), list(%Block{})) :: {:error, term()} | :ok
   def validate_block!(new_block, previous_block, chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
@@ -74,12 +74,15 @@ defmodule Aecore.Chain.BlockValidation do
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(%Block{}) :: list()
+  @spec validate_block_transactions(%Block{}) :: list(boolean())
   def validate_block_transactions(block) do
-    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid?(tx) end)
+    block.txs
+    |> Enum.map(fn tx ->
+      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
+    end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
+  @spec filter_invalid_transactions_chainstate(list(%SignedTx{}), map()) :: list(%SignedTx{})
   def filter_invalid_transactions_chainstate(txs_list, chain_state) do
     {valid_txs_list, _} = List.foldl(
       txs_list,
@@ -148,7 +151,7 @@ defmodule Aecore.Chain.BlockValidation do
   defp sum_coinbase_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      if SignedTx.is_coinbase(tx) do
+      if SignedTx.is_coinbase?(tx) do
         tx.data.value
       else
         0

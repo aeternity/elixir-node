@@ -18,7 +18,7 @@ defmodule Aeutil.Serialization do
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
 
-  @spec tx(map(), :serialize | :deserialize) :: map | {:error, term()}
+  @spec tx(%SignedTx{}, :serialize | :deserialize) :: %SignedTx{}
   def tx(tx, direction) do
     new_data = %{tx.data |
                  from_acc: hex_binary(tx.data.from_acc, direction),

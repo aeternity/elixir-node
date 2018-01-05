@@ -8,7 +8,7 @@ defmodule Aecore.Chain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(list()) :: integer()
+  @spec calculate_next_difficulty(list(%Block{})) :: integer()
   def calculate_next_difficulty(list) do
     [latest_block | _] = list
 

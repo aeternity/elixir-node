@@ -324,13 +324,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp filter_transactions_by_fee(txs) do
+    miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bits =
-        tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+      tx_size_bits = tx
+        |> :erlang.term_to_binary()
+        |> Bits.extract()
+        |> Enum.count()
       tx_size_bytes = tx_size_bits / 8
-
-      tx.data.fee >= Float.floor(tx_size_bytes /
-        Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token])
+      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
 
