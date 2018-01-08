@@ -19,12 +19,13 @@ else       : {token, {else, TokenLine}}.
 func       : {token, {func, TokenLine}}.
 true|false : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 
+: : {token, {':', TokenLine}}.
 ; : {token, {';', TokenLine}}.
 { : {token, {'{', TokenLine}}.
-} : {token, {'{', TokenLine}}.
+} : {token, {'}', TokenLine}}.
 \( : {token, {'(', TokenLine}}.
 \) : {token, {')', TokenLine}}.
-, : {token, {'{', TokenLine}}.
+, : {token, {',', TokenLine}}.
 
 true|false   : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 {OP}+        : {token, {list_to_atom(TokenChars), TokenLine}}.
