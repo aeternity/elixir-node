@@ -19,8 +19,11 @@ defmodule Aecore.Peers.Scheduler do
     Peers.check_peers()
     Sync.introduce_variety()
     Sync.refill()
-    Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
+    if(Peers.is_chain_synced?()) do
+      Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
+    end
     schedule_work()
+
     {:noreply, state}
   end
 
