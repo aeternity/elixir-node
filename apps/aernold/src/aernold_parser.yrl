@@ -7,7 +7,7 @@ type 'if' else
 
 .
 Nonterminals
-file decl decls expr exprId exprAtom
+file decl decls decls1 expr exprId exprAtom
 exprType addOp
 .
 
@@ -15,11 +15,14 @@ Rootsymbol file.
 
 file -> decls : '$1'.
 
-decls -> '$empty' : [].
-decls -> decl : '$1'.
+decls -> 'contract' id '{' decls '}' : {contract, '$1', '$2', '$4'}.
 
-decl -> exprId ':' exprType : {decl, '$1', '$3'}.
-decl -> exprId ':' exprType  '=' exprAtom : {assign, '$1', '$3', '$5'}.
+decls -> decl : '$1'.
+decls -> decl ';' : '$1'.
+decls -> decl ';' decls : {'$1', '$3'}.
+
+decl -> exprId ':' exprType ';' : {decl, '$1', '$3'}.
+decl -> exprId ':' exprType  '=' exprAtom ';' : {assign, '$1', '$3', '$5'}.
 
 %name 'decl' for the lines below needs to be changed for something more appropriate
 decl -> exprId : {decl_id, '$1'}.
