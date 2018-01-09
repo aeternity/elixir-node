@@ -25,12 +25,9 @@ defmodule Aecore.Chain.ChainState do
                         transaction.data.value,
                         transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
-        if transaction.data.value < 0 do
-          throw {:error, "Negative transaction value"}
+        if not SignedTx.is_valid(transaction) do
+          throw {:error, "Invalid transaction"}
         end 
-        if transaction.data.fee < 0 do #TODO: enforce minimal fee
-          throw {:error, "Nefative transaction fee"}
-        end
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,

@@ -26,8 +26,9 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_valid(signed_tx()) :: boolean()
   def is_valid(tx) do
     not_negative = tx.data.value >= 0
+    non_negative_fee = tx.data.fee >= 0
     signature_valid = Keys.verify_tx(tx)
-    not_negative && signature_valid
+    not_negative && non_negative_fee && signature_valid
   end
 
 end
