@@ -89,14 +89,11 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_tx = SignedTx.is_valid(tx)
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
-
-        cond do
-          valid_tx && valid_chain_state ->
-            {valid_txs_list ++ [tx], updated_chain_state}
-          true ->
-            {valid_txs_list, chain_state_acc}
+        if valid_chain_state do
+          {valid_txs_list ++ [tx], updated_chain_state}
+        else
+          {valid_txs_list, chain_state_acc}
         end
       end
     )
