@@ -21,10 +21,6 @@ defmodule Aecore.Peers.Sync do
     {:ok, state}
   end
 
-  def get_state() do
-    GenServer.call(__MODULE__, :get_state)
-  end
-
   @spec add_block_to_state(binary(), term()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
@@ -39,6 +35,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
   end
 
+  @spec add_valid_peer_blocks_to_chain(map()) :: map()
   def add_valid_peer_blocks_to_chain(state) do
     Enum.reduce(state, state, fn({_, block}, acc) ->
         built_chain = build_chain(acc, block, [])
@@ -46,6 +43,7 @@ defmodule Aecore.Peers.Sync do
       end)
   end
 
+  @spec add_unknown_peer_pool_txs(map()) :: :ok
   def add_unknown_peer_pool_txs(peers) do
     peer_uris = peers |> Map.values() |> Enum.map(fn(%{uri: uri}) -> uri end)
     Enum.each(peer_uris, fn(peer) ->
@@ -57,10 +55,6 @@ defmodule Aecore.Peers.Sync do
           Logger.error("Couldn't get pool from peer")
       end
     end)
-  end
-
-  def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
   end
 
   def handle_call({:add_block_to_state, block_hash, block}, _from, state) do
