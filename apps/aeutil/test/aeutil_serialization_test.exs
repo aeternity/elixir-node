@@ -4,6 +4,7 @@ defmodule AeutilSerializationTest do
 
   alias Aeutil.Serialization
 
+  @tag :serialization
   test "serialize a block" do
     block = get_block()
     serialized_block = Serialization.block(block, :serialize)

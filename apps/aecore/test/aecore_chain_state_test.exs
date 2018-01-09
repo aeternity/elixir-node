@@ -12,6 +12,7 @@ defmodule AecoreChainStateTest do
   alias Aecore.Chain.ChainState, as: ChainState
   alias Aecore.Chain.Worker, as: Chain
 
+  @tag :chain_state
   test "chain state" do
     next_block_height = Chain.top_block().header.height + 1
     chain_state =

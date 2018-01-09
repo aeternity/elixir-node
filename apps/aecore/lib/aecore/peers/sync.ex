@@ -150,7 +150,8 @@ defmodule Aecore.Peers.Sync do
         {:ok, list} ->
           Enum.concat(acc, Enum.map(Map.values(list),
                                     fn(%{"uri" => uri}) -> uri end))
-        :error ->
+        {:error, message} ->
+          Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
           acc
       end
     end)
@@ -182,7 +183,7 @@ defmodule Aecore.Peers.Sync do
   # (that means we can add this chain to ours)
   defp build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
-    has_parent_in_chain = Chain.has_block?(block.header.prev_hash) 
+    has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
