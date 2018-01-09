@@ -7,7 +7,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
-  alias Aecore.Keys.Worker, as: KeyManager
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), map(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
@@ -78,14 +77,10 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) ->
-                      true
-                    true ->
-                      KeyManager.verify(tx.data, tx.signature, tx.data.from_acc)
-                  end
-         end
-       )
+      fn tx -> 
+        SignedTx.is_coinbase(tx)
+        || SignedTx.is_valid(tx)
+      end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map(), integer()) :: list()
