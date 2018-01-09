@@ -37,6 +37,15 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
   env -> env
 end
 
+
+aewallet_path = case System.get_env("AEWALLET_PATH") do
+  nil -> "apps/aecore/priv/aewallet"
+  env -> env
+end
+
+config :aecore, :aewallet,
+  path: Path.absname(aewallet_path)
+
 config :aecore, :persistence,
   path: Path.absname(persistence_path)
 
