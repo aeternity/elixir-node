@@ -141,6 +141,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
+  @spec split_blocks(list(%Block{}), String.t, list()) :: list()
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
     if user_txs == [] do
@@ -162,6 +163,7 @@ defmodule Aecore.Txs.Pool.Worker do
     txs
   end
 
+  @spec check_address_tx(list(%SignedTx{}), String.t, list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do
