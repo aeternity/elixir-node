@@ -23,7 +23,7 @@ defmodule Aecore.Peers.Sync do
 
   @spec add_block_to_state(binary(), term()) :: :ok
   def add_block_to_state(block_hash, block) do
-    GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
+    GenServer.cast(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
   @spec ask_peers_for_unknown_blocks(map()) :: :ok
@@ -32,7 +32,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def add_valid_peer_blocks_to_chain() do
-    GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+    GenServer.cast(__MODULE__, :add_valid_peer_blocks_to_chain)
   end
 
   @spec add_valid_peer_blocks_to_chain(map()) :: map()
@@ -57,7 +57,7 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
-  def handle_call({:add_block_to_state, block_hash, block}, _from, state) do
+  def handle_cast({:add_block_to_state, block_hash, block}, state) do
     updated_state =
       case Chain.has_block?(block_hash) do
         true ->
@@ -72,13 +72,12 @@ defmodule Aecore.Peers.Sync do
               state
           end
       end
-
-    {:reply, :ok, updated_state}
+    {:noreply, updated_state}
   end
 
-  def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
+  def handle_cast(:add_valid_peer_blocks_to_chain, state) do
     filtered_state = add_valid_peer_blocks_to_chain(state)
-    {:reply, :ok, filtered_state}
+    {:noreply, filtered_state}
   end
 
   def handle_cast({:ask_peers_for_unknown_blocks, peers}, state) do
@@ -90,6 +89,10 @@ defmodule Aecore.Peers.Sync do
     filtered_state = add_valid_peer_blocks_to_chain(state)
 
     {:noreply, filtered_state}
+  end
+
+  def handle_info(_any, state) do
+    {:noreply, state}
   end
 
   #To make sure no peer is more popular in network then others,

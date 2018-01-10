@@ -15,7 +15,18 @@ defmodule Aecore.Chain.BlockValidation do
     chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
     is_valid_chain_state = ChainState.validate_chain_state(chain_state)
 
-    is_difficulty_target_met = Cuckoo.verify(new_block.header)
+    server = self()
+    work   = fn() -> Cuckoo.verify(new_block.header) end
+    {_pid, _ref} =
+      spawn_monitor(fn() ->
+        send(server, {:worker_reply, self(), work.()})
+      end)
+
+    is_difficulty_target_met =
+      receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     single_validate_block(new_block)
@@ -113,7 +124,7 @@ defmodule Aecore.Chain.BlockValidation do
 
     from_account_has_necessary_balance =
       chain_state_has_account &&
-        chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
+      chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
 
     cond do
       tx_has_valid_nonce && from_account_has_necessary_balance ->

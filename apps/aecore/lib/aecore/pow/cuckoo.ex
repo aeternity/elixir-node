@@ -135,7 +135,7 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
       any ->
         Logger.error("[Cuckoo] Unexpeted error : #{inspect(any)}")
-        wait_for_result(process, buff)
+        exit(:kill)
     end
   end
 

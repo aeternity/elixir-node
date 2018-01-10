@@ -273,7 +273,7 @@ defmodule Aecore.Peers.Worker do
           true ->
             {:error, "Equal peer nonces"}
         end
-      :error ->
+      error ->
         {:error, "Request error"}
     end
   end
