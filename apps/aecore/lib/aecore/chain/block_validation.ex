@@ -17,10 +17,9 @@ defmodule Aecore.Chain.BlockValidation do
 
     server = self()
     work   = fn() -> Cuckoo.verify(new_block.header) end
-    {_pid, _ref} =
-      spawn_monitor(fn() ->
-        send(server, {:worker_reply, self(), work.()})
-      end)
+    spawn(fn() ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
 
     is_difficulty_target_met =
       receive do
