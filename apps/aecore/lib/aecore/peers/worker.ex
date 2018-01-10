@@ -240,7 +240,6 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  # TODO: this function is never called, should it be removed?
   defp trim_peers(peers) do
     if map_size(peers) >= @peers_max_count do
       random_peer = Enum.random(Map.keys(peers))
@@ -255,7 +254,6 @@ defmodule Aecore.Peers.Worker do
     :ets.new(:nonce_table, [:named_table])
   end
 
-  # TODO: this function is never called, should it be removed?
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
@@ -274,7 +272,6 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  # TODO: this function is never called, should it be removed?
   defp should_a_peer_be_added?(peers_count) do
     peers_count < @peers_max_count
     || :rand.uniform() < @probability_of_peer_remove_when_max

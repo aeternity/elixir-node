@@ -41,7 +41,7 @@ defmodule Aecore.Chain.Difficulty do
     end
   end
 
-  @spec calculate_distance(list()) :: float()
+  @spec calculate_distance(list(%Block{})) :: float()
   defp calculate_distance(list) do
     [head | tail] = list
 
