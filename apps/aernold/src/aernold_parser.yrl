@@ -1,17 +1,18 @@
 Terminals
 bool int operator contract id
-type 'if' else
+type 'if' else func
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '{' '}'
 '(' ')' '&&' '||' '>' '<' '==' '<='
-'>=' '!='
+'>=' '!=' ','
 .
 
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement Condition
-Expression Type Atom OpCondition OpCompare Op
+FunctionDefinition FunctionParameters FunctionCall Expression Type Atom
+OpCondition OpCompare Op
 .
 
 Rootsymbol File.
@@ -30,6 +31,7 @@ SimpleStatement -> VariableDeclaration : '$1'.
 SimpleStatement -> VariableDefinition : '$1'.
 
 CompoundStatement -> IfStatement : '$1'.
+CompoundStatement -> FunctionDefinition : '$1'.
 
 VariableDeclaration -> Atom ':' Type : {decl_var, '$1', '$3'}.
 VariableDefinition -> Atom ':' Type  '=' Atom : {def_var, '$1', '$3', '$5'}.
@@ -41,10 +43,19 @@ ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStateme
 ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$1', '$3', '$6', '$8'}.
 ElseStatement -> 'else' '{' Statement '}' : {if_statement, '$1', '$3'}.
 
+FunctionDefinition -> 'func' Atom '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$3', '$6'}.
+
+FunctionCall -> Atom '(' ')' : {func_call, '$1'}.
+FunctionCall -> Atom '(' FunctionParameters ')' : {func_call, '$1', '$3'}.
+
+FunctionParameters -> VariableDeclaration : {func_params, '$1'}.
+FunctionParameters -> VariableDeclaration ',' FunctionParameters : {func_params, '$1', '$3'}.
+
 Condition -> Expression : '$1'.
 Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
 
 Expression -> Atom : '$1'.
+Expression -> FunctionCall : '$1'.
 Expression -> Atom OpCompare Expression : {'$1', '$2', '$3'}.
 Expression -> Atom Op Expression : {'$1', '$2', '$3'}.
 
