@@ -7,6 +7,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SignedTx
 
   @type signed_tx() :: %SignedTx{}
+  @type tx() :: %TxData{}
 
   @doc """
     Definition of Aecore SignedTx structure
@@ -30,25 +31,19 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   @doc """
-  Takes the public key of the receiver and
-  the value that will be sended. Returns signed tx
+  Takes the transaction that needs to be signed
+  and the private key of the sender.
+  Returns a signed tx
 
   ## Parameters
-     - to_acc: The public address of the account receiving the transaction
-     - value: The amount of a transaction
+     - tx_data: The transaction data that it's going to be signed
+     - priv_key: The priv key to sign with
 
   """
-  @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, %SignedTx{}}
-  def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
-    path = Path.join(aewallet_path(), "wallet--2018-1-9-15-32-15")
-    wallet_pass = "1234"
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(path, wallet_pass)
-    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(path, wallet_pass)
-
-    signature = Aewallet.Signing.sign(:erlang.term_to_binary(tx_data), priv_key)
-    signed_tx = %SignedTx{data: tx_data, signature: signature}
-    {:ok, signed_tx}
+  @spec sign_tx(tx(), binary()) :: {:ok, %SignedTx{}}
+  def sign_tx(tx, priv_key) do
+    signature = Aewallet.Signing.sign(:erlang.term_to_binary(tx), priv_key)
+    {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
   defp aewallet_path(), do: Application.get_env(:aecore, :aewallet)[:path]
