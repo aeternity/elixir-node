@@ -10,7 +10,7 @@ defmodule Aecore.Structures.SignedTx do
   @type tx() :: %TxData{}
 
   @doc """
-    Definition of Aecore SignedTx structure
+  Definition of Aecore SignedTx structure
 
   ## Parameters
      - data: Aecore %TxData{} structure
@@ -36,7 +36,7 @@ defmodule Aecore.Structures.SignedTx do
   Returns a signed tx
 
   ## Parameters
-     - tx_data: The transaction data that it's going to be signed
+     - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
 
   """
