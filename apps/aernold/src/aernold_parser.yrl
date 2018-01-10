@@ -1,44 +1,74 @@
 Terminals
-true false int operator contract id
+bool int operator contract id
 type 'if' else
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '{' '}'
-'(' ')' '=='
-
+'(' ')' '&&' '||' '>' '<' '==' '<='
+'>=' '!='
 .
+
 Nonterminals
-file decls decl expr exprAtom exprType
-opAdd opSub opMultiply opDivision
+File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
+VariableDefinition IfStatement ElseIfStatement ElseStatement Condition
+Expression Type Atom OpCondition OpCompare Op
 .
 
-Rootsymbol file.
+Rootsymbol File.
 
-file -> decls : '$1'.
+File -> Contr : '$1'.
 
-decls -> 'contract' id '{' decls '}' : {contract, '$1', '$2', '$4'}.
+Contr -> 'contract' id '{' Statement '}' : {contract, '$1', '$2', '$4'}.
 
-decls -> decl : '$1'.
-decls -> decl ';' : '$1'.
-decls -> decl ';' decls : {'$1', '$3'}.
+Statement -> SimpleStatement ';' : '$1'.
+Statement -> SimpleStatement ';' Statement : {'$1', '$3'}.
+Statement -> CompoundStatement : '$1'.
+Statement -> Expression ';' : '$1'.
+Statement -> Expression ';' Statement : {'$1', '$3'}.
 
-decl -> exprAtom ':' exprType ';' : {decl_var, '$1', '$3'}.
-decl -> exprAtom ':' exprType  '=' exprAtom ';' : {def_var, '$1', '$3', '$5'}.
-decl -> expr : {decl_expr, '$1'}.
+SimpleStatement -> VariableDeclaration : '$1'.
+SimpleStatement -> VariableDefinition : '$1'.
 
-expr -> 'if' '(' expr ')' '{' decls '}' : {if_statemnet, '$1', '$3', '$6'}.
-expr -> exprAtom '=' exprAtom ';' : {expr_assign, '$1', '$3'}.
-expr -> exprAtom '==' exprAtom : {expr_eq, '$1', '$3'}.
+CompoundStatement -> IfStatement : '$1'.
 
-exprType -> type : {type, '$1'}.
+VariableDeclaration -> Atom ':' Type : {decl_var, '$1', '$3'}.
+VariableDefinition -> Atom ':' Type  '=' Atom : {def_var, '$1', '$3', '$5'}.
 
-exprAtom -> int : {int, get_value('$1')}.
-exprAtom -> id : {id, get_value('$1')}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$1', '$3', '$6', '$8'}.
+ElseStatement -> 'else' '{' Statement '}' : {if_statement, '$1', '$3'}.
 
-opAdd -> '+' : '$1'.
-opSub -> '-' : '$1'
-opMultiply -> '*' : '$1'.
-opDivision -> '/' : '$1'.
+Condition -> Expression : '$1'.
+Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
+
+Expression -> Atom : '$1'.
+Expression -> Atom OpCompare Expression : {'$1', '$2', '$3'}.
+Expression -> Atom Op Expression : {'$1', '$2', '$3'}.
+
+Type -> type : {type, '$1'}.
+
+Atom -> id : {id, get_value('$1')}.
+Atom -> int : {int, get_value('$1')}.
+Atom -> bool : {bool, get_value('$1')}.
+
+OpCondition -> '&&' : '$1'.
+OpCondition -> '||' : '$1'.
+
+OpCompare -> '>' : '$1'.
+OpCompare -> '<' : '$1'.
+OpCompare -> '==' : '$1'.
+OpCompare -> '<=' : '$1'.
+OpCompare -> '>=' : '$1'.
+OpCompare -> '!=' : '$1'.
+
+Op -> '+' : '$1'.
+Op -> '-' : '$1'.
+Op -> '*' : '$1'.
+Op -> '/' : '$1'.
+Op -> '=' : '$1'.
 
 Erlang code.
 
