@@ -12,7 +12,7 @@ Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement Condition
 FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
-Type Atom OpCondition OpCompare Op
+Id Type Value OpCondition OpCompare Op
 .
 
 Rootsymbol File.
@@ -34,8 +34,8 @@ SimpleStatement -> VariableDefinition : '$1'.
 CompoundStatement -> IfStatement : '$1'.
 CompoundStatement -> FunctionDefinition : '$1'.
 
-VariableDeclaration -> Atom ':' Type : {decl_var, '$1', '$3'}.
-VariableDefinition -> Atom ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
+VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
+VariableDefinition -> Id ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
 
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
@@ -44,32 +44,35 @@ ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStateme
 ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$1', '$3', '$6', '$8'}.
 ElseStatement -> 'else' '{' Statement '}' : {if_statement, '$1', '$3'}.
 
-FunctionDefinition -> 'func' Atom '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', '$4', '$7'}.
+FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', '$4', '$7'}.
 
-FunctionCall -> Atom '(' ')' : {func_call, '$1'}.
-FunctionCall -> Atom '(' FunctionParameters ')' : {func_call, '$1', '$3'}.
-FunctionCall -> Atom '(' FunctionArguments ')' : {func_call, '$1', '$3'}.
+FunctionCall -> Id '(' ')' : {func_call, '$1'}.
+FunctionCall -> Id '(' FunctionParameters ')' : {func_call, '$1', '$3'}.
+FunctionCall -> Id '(' FunctionArguments ')' : {func_call, '$1', '$3'}.
 
 FunctionParameters -> VariableDeclaration : {func_params, '$1'}.
 FunctionParameters -> VariableDeclaration ',' FunctionParameters : {func_params, '$1', '$3'}.
 
-FunctionArguments -> Atom : {func_args, '$1'}.
-FunctionArguments -> Atom ',' Atom : {func_args, '$1', '$3'}.
+FunctionArguments -> Expression : {func_args, '$1'}.
+FunctionArguments -> Expression ',' FunctionArguments : {func_args, '$1', '$3'}.
 
 Condition -> Expression : '$1'.
 Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
 
-Expression -> Atom : '$1'.
-Expression -> FunctionCall : '$1'.
-Expression -> Atom OpCompare Expression : {'$1', '$2', '$3'}.
-Expression -> Atom Op Expression : {'$1', '$2', '$3'}.
+Expression -> Value : '$1'.
+Expression -> Expression OpCompare Expression : {'$1', '$2', '$3'}.
+Expression -> Expression Op Expression : {'$1', '$2', '$3'}.
+Expression -> '(' Expression ')' : '$2'.
+Expression -> '(' Expression ')' Expression : {'$1', '$3'}.
 
-Type -> type : {type, '$1'}.
+Id -> id : {id, get_value('$1')}.
+Type -> type : '$1'.
 
-Atom -> id : {id, get_value('$1')}.
-Atom -> int : {int, get_value('$1')}.
-Atom -> bool : {bool, get_value('$1')}.
-Atom -> hex : {hex, get_value('$1')}.
+Value -> Id : '$1'.
+Value -> FunctionCall : '$1'.
+Value -> int : {int, get_value('$1')}.
+Value -> bool : {bool, get_value('$1')}.
+Value -> hex : {hex, get_value('$1')}.
 
 OpCondition -> '&&' : '$1'.
 OpCondition -> '||' : '$1'.
