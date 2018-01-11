@@ -3,14 +3,30 @@ defmodule AecoreValidationTest do
   Unit tests for the BlockValidation module
   """
 
-  use ExUnit.Case
+  use ExUnit.Case, async: false, seed: 0
   doctest Aecore.Chain.BlockValidation
 
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
+
+  setup ctx do
+    [
+      wallet_path: File.cwd!
+      |> Path.join("test/aewallet/")
+      |> Path.join("wallet--2018-1-10-10-49-58"),
+      wallet_pass: "1234",
+      to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
+      253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
+      91, 130, 3, 145, 215, 221, 167, 128, 23, 63, 35, 140, 174, 35, 233, 188, 120,
+      63, 63, 29, 61, 179, 181, 221, 195, 61, 207, 76, 135, 26>>,
+      lock_time_block: Chain.top_block().header.height +
+      Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1
+    ]
+  end
 
   @tag :validation
   test "validate new block" do
@@ -59,22 +75,21 @@ defmodule AecoreValidationTest do
                                     blocks_for_difficulty_calculation) == :ok
   end
 
-  test "validate transactions in a block" do
-    {:ok, to_account} = Keys.pubkey()
-    {:ok, tx1} = Keys.sign_tx(to_account, 5,
+  test "validate transactions in a block", ctx do
+    {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
+    {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
                               Map.get(Chain.chain_state,
-                                      to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.top_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
-    {:ok, tx2} = Keys.sign_tx(to_account, 10,
+                                ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
+    {:ok, tx2} = TxData.create(from_acc, ctx.to_acc, 10,
                               Map.get(Chain.chain_state,
-                                      to_account, %{nonce: 0}).nonce + 1, 1,
-                              Chain.top_block().header.height +
-                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
+                                ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
 
-    block = %{Block.genesis_block | txs: [tx1, tx2]}
+    {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
+    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
+
+    block = %{Block.genesis_block | txs: [signed_tx1, signed_tx2]}
     assert block |> BlockValidation.validate_block_transactions
                  |> Enum.all? == true
   end
-
 end
