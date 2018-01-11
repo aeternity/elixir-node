@@ -12,9 +12,9 @@ defmodule Aecore.Structures.TxData do
 
   ## Parameters
   - nonce: A random integer generated on initialisation of a transaction.Must be unique
-     - from_acc: From account is the public address of one account originating the transaction
-     - to_acc: To account is the public address of the account receiving the transaction
-     - value: The amount of a transaction
+  - from_acc: From account is the public address of one account originating the transaction
+  - to_acc: To account is the public address of the account receiving the transaction
+  - value: The amount of a transaction
   """
   defstruct [:nonce, :from_acc, :to_acc, :value, :fee, :lock_time_block]
   use ExConstructor
@@ -31,7 +31,7 @@ defmodule Aecore.Structures.TxData do
 
   @spec hash_tx(tx_data()) :: binary()
   def hash_tx(tx) do
-    :crypto.hash(:sha256, tx)
+    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
 
 end

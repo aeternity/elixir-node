@@ -39,4 +39,21 @@ defmodule Aeutil.Serialization do
       nil
     end
   end
+
+  def merkle_proof(proof, acc) when is_tuple(proof) do
+    proof
+    |> Tuple.to_list()
+    |> merkle_proof(acc)
+  end
+
+  def merkle_proof([], acc), do: acc
+
+  def merkle_proof([head | tail], acc) do
+    if is_tuple(head) do
+      merkle_proof(Tuple.to_list(head), acc)
+    else
+      acc = [hex_binary(head, :serialize)| acc]
+      merkle_proof(tail, acc)
+    end
+  end
 end

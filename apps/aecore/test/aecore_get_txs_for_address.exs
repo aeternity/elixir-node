@@ -40,24 +40,22 @@ defmodule GetTxsForAddressTest do
     user_txs = Pool.get_txs_for_address(address)
     user_txs_with_proof = Pool.add_proof_to_txs(user_txs)
     for user_tx_with_proof <- user_txs_with_proof do
-      transaction = :erlang.term_to_binary(
+      transaction =
         user_tx_with_proof
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
+        |> Map.delete(:proof)
         |> TxData.new()
-      )
+      transaction_bin = :erlang.term_to_binary(transaction)
       key = TxData.hash_tx(transaction)
-      tx_block = Pool.get_block_by_txs_hash(user_tx_with_proof.txs_hash)
-      merkle_tree = BlockValidation.build_merkle_tree(tx_block.txs)
-      merkle_proof = :gb_merkle_trees.merkle_proof(key, merkle_tree)
-
+      tx_block = Chain.get_block(user_tx_with_proof.block_hash)
       assert {:ok, :verified} =
         :gb_merkle_trees.verify_merkle_proof(key,
-          transaction,
-          user_tx_with_proof.txs_hash,
-          merkle_proof)
+          transaction_bin,
+          tx_block.header.txs_hash,
+          user_tx_with_proof.proof)
     end
   end
 end

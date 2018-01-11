@@ -54,23 +54,7 @@ defmodule Aecore.Txs.Pool.Worker do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
 
-  @spec get_block_by_txs_hash(binary()) :: %Block{}
-  def get_block_by_txs_hash(txs_hash) do
-    GenServer.call(__MODULE__, {:get_block_by_txs_hash, txs_hash})
-  end
-
-
   ## Server side
-
-  def handle_call({:get_block_by_txs_hash, txs_hash}, _from, state) do
-    case Enum.find(Chain.longest_blocks_chain(), fn block ->
-          block.header.txs_hash == txs_hash end) do
-      nil ->
-        {:reply, {:error, "Block not found!"}, state}
-      block ->
-        {:reply, block, state}
-    end
-  end
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
     txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
@@ -122,20 +106,18 @@ defmodule Aecore.Txs.Pool.Worker do
   @spec add_proof_to_txs(list()) :: list()
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
-      block = get_block_by_txs_hash(tx.txs_hash)
+      block = Chain.get_block(tx.block_hash)
       tree  = BlockValidation.build_merkle_tree(block.txs)
-      key   = :erlang.term_to_binary(
+      key   =
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
         |> TxData.new()
-      )
-      |> TxData.hash_tx()
+        |> TxData.hash_tx()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
-      serialized_merkle_proof = serialize_merkle_proof(merkle_proof, [])
-      Map.put_new(tx, :proof, serialized_merkle_proof)
+      Map.put_new(tx, :proof, merkle_proof)
     end
   end
 
@@ -151,7 +133,7 @@ defmodule Aecore.Txs.Pool.Worker do
       for block_user_txs <- user_txs do
         block_user_txs
         |>  Map.put_new(:txs_hash, block.header.txs_hash)
-        |>  Map.put_new(:block_hash, block.header.chain_state_hash)
+        |>  Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
         |>  Map.put_new(:block_height, block.header.height)
       end
       split_blocks(blocks, address, new_txs)
@@ -178,20 +160,5 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp check_address_tx([], _address, user_txs) do
     user_txs
-  end
-
-  defp serialize_merkle_proof(proof, acc) when is_tuple(proof) do
-    proof
-    |> Tuple.to_list()
-    |> serialize_merkle_proof(acc)
-  end
-  defp serialize_merkle_proof([], acc), do: acc
-  defp serialize_merkle_proof([head | tail], acc) do
-    if is_tuple(head) do
-      serialize_merkle_proof(Tuple.to_list(head), acc)
-    else
-      acc = [Serialization.hex_binary(head, :serialize)| acc]
-      serialize_merkle_proof(tail, acc)
-    end
   end
 end
