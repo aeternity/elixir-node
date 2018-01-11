@@ -1,8 +1,9 @@
 defmodule Aernold do
 
   def parse(filename) do
-    {:ok, file} = File.read(filename)
-    with {:ok, tokens, _} <- :aernold_lexer.string(to_char_list(file)),
+    file = Path.absname("apps/aernold/" <> filename)
+    {:ok, file_content} = File.read(file)
+    with {:ok, tokens, _} <- :aernold_lexer.string(to_char_list(file_content)),
          {:ok, result} <- :aernold_parser.parse(tokens)
     do
       result

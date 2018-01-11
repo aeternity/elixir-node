@@ -1,0 +1,16 @@
+Contract contract_name {
+
+  a:Int = 5;
+  c:Address = 0x04711AC9E3D5EA12D948A41F8661C498CC5DF93B85C1E91172E571B312EB56AAD2046845456FA416F3DF5D04954AD6E6C6A8FF13A11DA574542B56F58DEFF052E4;
+
+  get_balance(c);
+
+  if(a == b){
+   generate_tx();
+  }
+
+  func foo(a:Int, key:String){
+    test:Int = a + get_balance(key);
+  }
+
+}

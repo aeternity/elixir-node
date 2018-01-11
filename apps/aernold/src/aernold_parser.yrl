@@ -1,6 +1,6 @@
 Terminals
 bool int operator contract id
-type 'if' else func
+type 'if' else func hex
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '{' '}'
@@ -24,6 +24,7 @@ Contr -> 'contract' id '{' Statement '}' : {contract, '$1', '$2', '$4'}.
 Statement -> SimpleStatement ';' : '$1'.
 Statement -> SimpleStatement ';' Statement : {'$1', '$3'}.
 Statement -> CompoundStatement : '$1'.
+Statement -> CompoundStatement  Statement : {'$1', '$2'}.
 Statement -> Expression ';' : '$1'.
 Statement -> Expression ';' Statement : {'$1', '$3'}.
 
@@ -68,6 +69,7 @@ Type -> type : {type, '$1'}.
 Atom -> id : {id, get_value('$1')}.
 Atom -> int : {int, get_value('$1')}.
 Atom -> bool : {bool, get_value('$1')}.
+Atom -> hex : {hex, get_value('$1')}.
 
 OpCondition -> '&&' : '$1'.
 OpCondition -> '||' : '$1'.
@@ -87,6 +89,4 @@ Op -> '=' : '$1'.
 
 Erlang code.
 
-get_value({_,_,Value}) -> Value.
-
-%[{:id, 1, 'a'}, {:":", 1}, {:type, 1, 'Int'}]
+get_value({_, _, Value}) -> Value.
