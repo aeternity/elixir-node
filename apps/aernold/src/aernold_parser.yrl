@@ -11,8 +11,8 @@ type 'if' else func
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement Condition
-FunctionDefinition FunctionParameters FunctionCall Expression Type Atom
-OpCondition OpCompare Op
+FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
+Type Atom OpCondition OpCompare Op
 .
 
 Rootsymbol File.
@@ -34,7 +34,7 @@ CompoundStatement -> IfStatement : '$1'.
 CompoundStatement -> FunctionDefinition : '$1'.
 
 VariableDeclaration -> Atom ':' Type : {decl_var, '$1', '$3'}.
-VariableDefinition -> Atom ':' Type  '=' Atom : {def_var, '$1', '$3', '$5'}.
+VariableDefinition -> Atom ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
 
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
@@ -43,13 +43,17 @@ ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStateme
 ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$1', '$3', '$6', '$8'}.
 ElseStatement -> 'else' '{' Statement '}' : {if_statement, '$1', '$3'}.
 
-FunctionDefinition -> 'func' Atom '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$3', '$6'}.
+FunctionDefinition -> 'func' Atom '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', '$4', '$7'}.
 
 FunctionCall -> Atom '(' ')' : {func_call, '$1'}.
 FunctionCall -> Atom '(' FunctionParameters ')' : {func_call, '$1', '$3'}.
+FunctionCall -> Atom '(' FunctionArguments ')' : {func_call, '$1', '$3'}.
 
 FunctionParameters -> VariableDeclaration : {func_params, '$1'}.
 FunctionParameters -> VariableDeclaration ',' FunctionParameters : {func_params, '$1', '$3'}.
+
+FunctionArguments -> Atom : {func_args, '$1'}.
+FunctionArguments -> Atom ',' Atom : {func_args, '$1', '$3'}.
 
 Condition -> Expression : '$1'.
 Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.

@@ -1,6 +1,8 @@
 defmodule Aernold do
-  def parse(str) do
-    with {:ok, tokens, _} <- :aernold_lexer.string(to_char_list(str)),
+
+  def parse(filename) do
+    {:ok, file} = File.read(filename)
+    with {:ok, tokens, _} <- :aernold_lexer.string(to_char_list(file)),
          {:ok, result} <- :aernold_parser.parse(tokens)
     do
       result
