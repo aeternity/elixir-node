@@ -59,10 +59,10 @@ defmodule Aecore.Txs.Pool.Worker do
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
-          from_acc = Base.encode16(tx.data.from_acc)
-          to_acc = Base.encode16(tx.data.to_acc)
-          Aehttpserver.Web.Endpoint.broadcast!("room:" <> from_acc, "new_msg", %{"body" => "!!!!!!New transaction in the pool!!!!!!"})
-          Aehttpserver.Web.Endpoint.broadcast!("room:" <> to_acc, "new_msg", %{"body" => "!!!!!!New transaction in the pool!!!!!!"})
+          # Broadcasting notifications for new transaction in a pool(per account and every)
+          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.from_acc)})
+          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.to_acc)})
+          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_every})
           Peers.broadcast_tx(tx)
         end
         {:reply, :ok, updated_pool}
