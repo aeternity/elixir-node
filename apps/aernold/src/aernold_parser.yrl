@@ -37,12 +37,13 @@ CompoundStatement -> FunctionDefinition : '$1'.
 VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
 VariableDefinition -> Id ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
 
-IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
-IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$1', '$3', '$6'}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$1', '$3', '$6', '$8'}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$1', '$3', '$6', '$8'}.
-ElseStatement -> 'else' '{' Statement '}' : {if_statement, '$1', '$3'}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$3', '$6'}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$3', '$6', '$8'}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$3', '$6', '$8'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$4', '$7'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$4', '$7', '$9'}.
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$4', '$7', '$9'}.
+ElseStatement -> 'else' '{' Statement '}' : {else_statement, '$3'}.
 
 FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', '$4', '$7'}.
 
