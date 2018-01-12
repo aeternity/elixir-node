@@ -9,6 +9,7 @@ defmodule Aecore do
       Aecore.Txs.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
       Aecore.Persistence.Worker.Supervisor,
+      Aecore.Wallet.Worker.Supervisor,
       supervisor(Exexec, [], function: :start)
     ]
 

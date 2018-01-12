@@ -8,24 +8,20 @@ defmodule AehttpclientTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Wallet.Worker, as: Wallet
 
   setup wallet do
-    [path] =
-      Application.get_env(:aecore, :aewallet)[:path]
-      |> Path.join("*/")
-      |> Path.wildcard()
     [
-      path: path,
       pass: "1234"
     ]
   end
 
   @tag :http_client
   test "Client functions", wallet do
-    {:ok, account} = Aewallet.Wallet.get_public_key(wallet.path, wallet.pass)
+    account = Wallet.get_public_key(wallet.pass)
     hex_acc = Base.encode16(account)
 
-    AehttpclientTest.add_txs_to_pool(wallet.path, wallet.pass)
+    AehttpclientTest.add_txs_to_pool(wallet.pass)
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
                                         Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
@@ -34,16 +30,16 @@ defmodule AehttpclientTest do
     |> elem(1)) == 2
   end
 
-  def add_txs_to_pool(path, pass) do
+  def add_txs_to_pool(pass) do
     Miner.mine_sync_block_to_chain
-    {:ok, to_acc} = Aewallet.Wallet.get_public_key(path, pass)
+    to_acc = Aewallet.Wallet.get_public_key(pass)
 
     from_acc = to_acc
     init_nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce
     {:ok, tx1} = TxData.create(from_acc, to_acc, 5, init_nonce + 1, 10)
     {:ok, tx2} = TxData.create(from_acc, to_acc, 5, init_nonce + 2, 10)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(path, pass)
+    priv_key = Wallet.get_private_key(pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
 

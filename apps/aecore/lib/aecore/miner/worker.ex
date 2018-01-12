@@ -24,15 +24,13 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @wallet_path Application.get_env(:aecore, :aewallet)[:path]
   @wallet_default_pass "1234"
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
                                        nonce: 0,
                                        job: {},
-                                       block_candidate: nil,
-                                       has_wallet: Wallet.has_wallet()}, name: __MODULE__)
+                                       block_candidate: nil}, name: __MODULE__)
   end
 
   def stop(reason) do
@@ -106,13 +104,6 @@ defmodule Aecore.Miner.Worker do
 
   def handle_call({:mining, :stop}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :idle, block_candidate: nil})}
-  end
-  def handle_call({:mining, :start}, _from, %{has_wallet: :false} = state) do
-    ## TODO: The creation of the wallet should not be hardcoded
-    ## Create the aewallet dir
-    :ok = File.mkdir(@wallet_path)
-    Aewallet.Wallet.create_wallet(@wallet_default_pass, "", @wallet_path)
-    {:reply, :ok, mining(%{state | has_wallet: true, miner_state: :running})}
   end
   def handle_call({:mining, :start}, _from, state) do
     {:reply, :ok, mining(%{state | miner_state: :running})}
@@ -250,11 +241,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
-      [path] =
-        Application.get_env(:aecore, :aewallet)[:path]
-        |> Path.join("*/")
-        |> Path.wildcard()
-      {:ok, pubkey} = Aewallet.Wallet.get_public_key(path, @wallet_default_pass)
+      pubkey = Wallet.get_public_key(@wallet_default_pass)
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,

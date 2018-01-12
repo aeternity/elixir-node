@@ -10,6 +10,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Wallet.Worker, as: Wallet
 
   setup do
     Pool.start_link([])
@@ -17,17 +18,8 @@ defmodule MultipleTransactionsTest do
   end
 
   setup wallet do
-    [path] =
-      Application.get_env(:aecore, :aewallet)[:path]
-      |> Path.join("*/")
-      |> Path.wildcard()
     [
-      path: path,
-      pass: "1234",
-      to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
-      253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
-      91, 130, 3, 145, 215, 221, 167, 128, 23, 63, 35, 140, 174, 35, 233, 188, 120,
-      63, 63, 29, 61, 179, 181, 221, 195, 61, 207, 76, 135, 26>>
+      pass: "1234"
     ]
   end
 
@@ -38,16 +30,17 @@ defmodule MultipleTransactionsTest do
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
     {account3_pub_key, _account3_priv_key} = account3
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(wallet.path, wallet.pass)
+    from_acc = Wallet.get_public_key(wallet.pass)
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
+
     {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(wallet.path, wallet.pass)
+    priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -163,7 +156,7 @@ defmodule MultipleTransactionsTest do
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
     {account3_pub_key, _account3_priv_key} = account3
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(wallet.path, wallet.pass)
+    from_acc = Wallet.get_public_key(wallet.pass)
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
@@ -173,7 +166,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(wallet.path, wallet.pass)
+    priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -312,7 +305,7 @@ defmodule MultipleTransactionsTest do
     {account1, account2, account3} = get_accounts_miner_fees()
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(wallet.path, wallet.pass)
+    from_acc = Wallet.get_public_key(wallet.pass)
 
     :ok = Miner.mine_sync_block_to_chain
     :ok = Miner.mine_sync_block_to_chain
@@ -321,7 +314,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(wallet.path, wallet.pass)
+    priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -349,7 +342,7 @@ defmodule MultipleTransactionsTest do
   end
 
   test "locked amount", wallet do
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(wallet.path, wallet.pass)
+    from_acc = Wallet.get_public_key(wallet.pass)
     account1 = get_account_locked_amount()
     {account1_pub_key, _account1_priv_key} = account1
 
@@ -360,8 +353,7 @@ defmodule MultipleTransactionsTest do
       Chain.top_block().header.height +
       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 3)
 
-
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(wallet.path, wallet.pass)
+    priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     Pool.add_transaction(signed_tx1)

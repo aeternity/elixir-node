@@ -9,15 +9,10 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
-
+  alias Aecore.Wallet.Worker, as: Wallet
 
   setup ctx do
-    [path] =
-        Application.get_env(:aecore, :aewallet)[:path]
-        |> Path.join("*/")
-        |> Path.wildcard()
     [
-      wallet_path: path,
       wallet_pass: "1234",
       to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
       253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
@@ -29,16 +24,16 @@ defmodule AecoreTxsPoolTest do
   @tag timeout: 20_000
   @tag :txs_pool
   test "add transaction, remove it and get pool", ctx do
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
+    from_acc = Wallet.get_public_key(ctx.wallet_pass)
 
     {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
     {:ok, tx2} = TxData.create(from_acc, ctx.to_acc, 5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 2, 10)
 
-     :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
+    priv_key = Wallet.get_private_key(ctx.wallet_pass)
 
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
@@ -56,11 +51,11 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", ctx do
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
+    from_acc = Wallet.get_public_key(ctx.wallet_pass)
     {:ok, tx} = TxData.create(from_acc, ctx.to_acc, -5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
+    priv_key = Wallet.get_private_key(ctx.wallet_pass)
     {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
     assert :error = Pool.add_transaction(signed_tx)
   end
