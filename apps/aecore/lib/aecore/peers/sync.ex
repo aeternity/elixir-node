@@ -219,6 +219,7 @@ defmodule Aecore.Peers.Sync do
       false ->
         case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, deserialized_block} ->
+            Logger.info("[Sync] New block : #{inspect(deserialized_block.header.height)} was added to state")
             try do
               BlockValidation.single_validate_block(deserialized_block)
               peer_block_hash =
