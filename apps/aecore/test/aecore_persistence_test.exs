@@ -15,10 +15,11 @@ defmodule PersistenceTest do
 
   @tag timeout: 20_000
   @tag :persistence
-  test "Reading last mined block by his hash from rocksdb" do
+  test "Reading last mined block by his hash and the chainstate from rocksdb" do
     Miner.mine_sync_block_to_chain
     hash = BlockValidation.block_header_hash(Chain.top_block.header)
     assert {:ok, %{header: _header}} = Persistence.read_block_by_hash(hash)
+    assert {:ok, %{}} = Persistence.read_chain_state_by_pubkey()
   end
 
   @tag :persistence
@@ -28,5 +29,8 @@ defmodule PersistenceTest do
 
     assert {:error, "bad hash value"} =
       Aecore.Persistence.Worker.read_block_by_hash(:wrong_input_type)
+
+    assert {:error, "bad chain_state structure"} =
+      Aecore.Persistence.Worker.write_chain_state_by_pubkey(:wrong_input_type)
   end
 end

@@ -161,8 +161,13 @@ defmodule Aecore.Chain.Worker do
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
+
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
+
+    ## Store new chain_state to disk
+    Persistence.write_chain_state_by_pubkey(updated_chain_states)
+
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
