@@ -164,7 +164,7 @@ defmodule Aecore.Chain.Worker do
 
     # Broadcasting notifications for new mined transaction(per account)
     for tx <- new_block.txs do
-      if tx.data.from_acc != nil and tx.data.to_acc !=nil do
+      if tx.data.from_acc != nil and tx.data.to_acc != nil do
         Aehttpserver.Web.Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.from_acc})
         Aehttpserver.Web.Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.to_acc})
       end 
