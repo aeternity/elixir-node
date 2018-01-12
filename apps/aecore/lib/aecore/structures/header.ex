@@ -30,7 +30,7 @@ defmodule Aecore.Structures.Header do
     difficulty_target: integer()
 }
 
-  @spec create(non_neg_integer(), binary(), binary(), binary(), integer(), non_neg_integer(), integer()) :: %Header{}
+  @spec create(non_neg_integer(), binary(), binary(), binary(), integer(), non_neg_integer(), integer()) :: Header.t()
   def create(height, prev_hash, txs_hash, chain_state_hash, difficulty, nonce, version) do
     %Header{
       height: height,

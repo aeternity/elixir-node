@@ -39,7 +39,7 @@ defmodule Aecore.Keys.Worker do
      - value: The amount of a transaction
 
   """
-  @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, %SignedTx{}}
+  @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, SignedTx.t()}
   def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
     {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
@@ -58,7 +58,7 @@ defmodule Aecore.Keys.Worker do
     GenServer.call(__MODULE__, {:sign, msg, priv_key})
   end
 
-  @spec verify_tx(%SignedTx{}) :: boolean()
+  @spec verify_tx(SignedTx.t()) :: boolean()
   def verify_tx(tx) do
     verify(tx.data, tx.signature, tx.data.from_acc)
   end

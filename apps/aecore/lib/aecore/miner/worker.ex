@@ -71,7 +71,7 @@ defmodule Aecore.Miner.Worker do
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
-  @spec mine_sync_block_to_chain() :: %Block{} | error :: term()
+  @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
   def mine_sync_block_to_chain() do
     cblock = candidate()
     case mine_sync_block(cblock) do
@@ -81,7 +81,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Mine single block without adding it to the chain - Sync
-  @spec mine_sync_block(%Block{}) :: {:ok, %Block{}} | {:error, reason :: atom()}
+  @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{} = cblock) do
     if GenServer.call(__MODULE__, :get_state) == :idle do
       mine_sync_block(Cuckoo.generate(cblock.header), cblock)
@@ -278,8 +278,6 @@ defmodule Aecore.Miner.Worker do
 
   end
 
-  ## Internal
-
   def calculate_total_fees(txs) do
     List.foldl(txs, 0, fn (tx, acc) ->
         acc + tx.data.fee
@@ -295,9 +293,10 @@ defmodule Aecore.Miner.Worker do
       fee: 0,
       lock_time_block: lock_time_block
     }
-
     %SignedTx{data: tx_data, signature: nil}
   end
+
+  ## Internal
 
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]

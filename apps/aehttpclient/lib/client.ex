@@ -19,7 +19,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, %Block{}} | {:error, binary()}
+  @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
   def get_block({uri, hash}) do
     hash = Base.encode16(hash)
     case get(uri <> "/block/#{hash}", :block) do
@@ -35,13 +35,13 @@ defmodule Aehttpclient.Client do
     get(uri <> "/pool_txs", :pool_txs)
   end
 
-  @spec send_block(%Block{}, list(binary())) :: :ok
+  @spec send_block(Block.t(), list(binary())) :: :ok
   def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
     post_to_peers("new_block", data, peers)
   end
 
-  @spec send_tx(%SignedTx{}, list(binary())) :: :ok
+  @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
     post_to_peers("new_tx", data, peers)

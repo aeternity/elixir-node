@@ -88,7 +88,7 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  @spec broadcast_block(%Block{}) :: :ok
+  @spec broadcast_block(Block.t()) :: :ok
   def broadcast_block(block) do
     spawn(fn ->
       Client.send_block(block, all_uris())
@@ -96,7 +96,7 @@ defmodule Aecore.Peers.Worker do
     :ok
   end
 
-  @spec broadcast_tx(%SignedTx{}) :: :ok
+  @spec broadcast_tx(SignedTx.t()) :: :ok
   def broadcast_tx(tx) do
     spawn(fn ->
       Client.send_tx(tx, all_uris())

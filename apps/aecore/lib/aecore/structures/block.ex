@@ -6,7 +6,7 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
 
-  @type t :: %Block{} | %Block{header: %Header{}, txs: list(%TxData{})}
+  @type t :: %Block{} | %Block{header: Header.t(), txs: list(TxData.t())}
 
   @current_block_version 1
   @genesis_block_version @current_block_version
@@ -19,13 +19,13 @@ defmodule Aecore.Structures.Block do
     @current_block_version
   end
 
-  @spec genesis_header() :: %Header{}
+  @spec genesis_header() :: Header.t()
   defp genesis_header() do
     h = Application.get_env(:aecore, :pow)[:genesis_header]
     struct(Header, h)
   end
 
-  @spec genesis_block() :: %Block{}
+  @spec genesis_block() :: Block.t()
   def genesis_block() do
     h = genesis_header()
     %Block{header: h, txs: []}
