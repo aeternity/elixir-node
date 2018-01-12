@@ -32,11 +32,11 @@ defmodule AecoreTxsPoolTest do
     {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
 
     {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
-      Map.get(Chain.chain_state, ctx.to_acc, %{nonce: 0}).nonce + 1, 10)
+      Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
     {:ok, tx2} = TxData.create(from_acc, ctx.to_acc, 5,
-      Map.get(Chain.chain_state, ctx.to_acc, %{nonce: 0}).nonce + 2, 10)
+      Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 2, 10)
 
-     Miner.mine_sync_block_to_chain()
+     :ok = Miner.mine_sync_block_to_chain()
 
     {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
 
@@ -48,7 +48,7 @@ defmodule AecoreTxsPoolTest do
     assert :ok = Pool.remove_transaction(signed_tx2)
     assert Enum.count(Pool.get_pool()) == 1
 
-    Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
     assert length(Chain.longest_blocks_chain()) > 1
     assert Enum.count(Chain.top_block().txs) == 2
@@ -58,7 +58,7 @@ defmodule AecoreTxsPoolTest do
   test "add negative transaction fail", ctx do
     {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
     {:ok, tx} = TxData.create(from_acc, ctx.to_acc, -5,
-      Map.get(Chain.chain_state, ctx.to_acc, %{nonce: 0}).nonce + 1, 10)
+      Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
     {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
