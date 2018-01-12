@@ -120,12 +120,24 @@ defmodule Aehttpclient.Client do
     {:ok, response}
   end
 
-  defp send_to_peer(data, uri) do
+  def send_channel_invite(peer_uri, amount) do
+    HTTPoison.post(peer_uri <> "/channel_invite",
+                   Poison.encode!(%{"lock_amount" => amount}),
+                   [{"Content-Type", "application/json"},
+                   {"peer_port", get_local_port()}])
+  end
+
+  def accept_channel_invite(peer_uri, tx) do
+    HTTPoison.post(peer_uri <> "/channel_accept", Poison.encode!(tx),
+                   [{"Content-Type", "application/json"}])
+  end
+
+  def send_to_peer(data, uri) do
     HTTPoison.post uri, Poison.encode!(data),
       [{"Content-Type", "application/json"}]
   end
 
-  defp get_local_port() do
+  def get_local_port() do
     Aehttpserver.Web.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
     |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
     |> elem(1) |> Enum.at(0) |> elem(1)

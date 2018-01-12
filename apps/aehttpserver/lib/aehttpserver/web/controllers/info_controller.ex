@@ -40,8 +40,6 @@ defmodule Aehttpserver.Web.InfoController do
       end
     end
 
-
-
     json(conn, %{current_block_version: top_block.header.version,
                  current_block_height: top_block.header.height,
                  current_block_hash: top_block_header,

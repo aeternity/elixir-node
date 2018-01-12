@@ -14,10 +14,12 @@ defmodule Aehttpserver.Web.Router do
   scope "/", Aehttpserver.Web do
     pipe_through :api
 
-    get "/info", InfoController, :info
     post "/new_tx", NewTxController, :new_tx
-    get "/peers", PeersController, :info
     post "/new_block", BlockController, :new_block
+    post "/channel_invite", ChannelController, :invite
+    post "/channel_accept", ChannelController, :accept
+    get "/info", InfoController, :info
+    get "/peers", PeersController, :info
     get "/blocks", BlockController, :get_blocks
     get "/pool_txs", TxPoolController, :get_pool_txs
     resources "/block", BlockController, param: "hash", only: [:show]

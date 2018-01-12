@@ -6,6 +6,7 @@ defmodule Aecore.Keys.Worker do
 
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.MultisigTx
 
   @filename_pub "key.pub"
   @filename_priv "key"
@@ -59,12 +60,20 @@ defmodule Aecore.Keys.Worker do
   end
 
   def verify_tx(tx) do
-    verify(tx.data, tx.signature, tx.data.from_acc)
+    if(match?(%MultisigTx{}, tx)) do
+      verify(tx.data, tx.signatures)
+    else
+      verify(tx.data, tx.signature, tx.data.from_acc)
+    end
   end
 
   # @spec verify() :: boolean()
   def verify(msg, signature, pubkey) do
     GenServer.call(__MODULE__, {:verify, {msg, signature, pubkey}})
+  end
+
+  def verify(msg, signatures) do
+    GenServer.call(__MODULE__, {:verify, msg, signatures})
   end
 
   @spec pubkey() :: {:ok, binary()} | {:error, :key_not_found}
@@ -141,6 +150,25 @@ defmodule Aecore.Keys.Worker do
       false ->
         {:reply, {:error, "Key length is not valid!"}, state}
     end
+  end
+
+  def handle_call({:verify, msg, signatures}, _from,
+                   %{algo: algo, digest: digest, curve: curve} = state) do
+    result =
+      signatures
+      |> Enum.map(fn{signature, pubkey} ->
+          cond do
+            !is_valid_pub_key(pubkey) ->
+              {:reply, false, state}
+            !:crypto.verify(algo, digest, :erlang.term_to_binary(msg), signature,
+                           [pubkey, :crypto.ec_curve(curve)]) ->
+              {:reply, false, state}
+            true ->
+              {:reply, true, state}
+          end
+        end)
+      |> Enum.all?(fn(result) -> result end)
+    {:reply, result, state}
   end
 
   def handle_call(

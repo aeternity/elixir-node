@@ -49,7 +49,7 @@ defmodule Aehttpserver.Web.BlockController do
     )
     json conn, blocks_json
   end
-
+ 
   def new_block(conn, _params) do
     ## Becouse we 'conn.body_params' contains decoded json as map with
     ## keys as strings instead of atoms we are doing this workaround

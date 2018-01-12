@@ -7,6 +7,7 @@ defmodule Aecore.Txs.Pool.Worker do
   use GenServer
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.MultisigTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Bits
 
@@ -46,9 +47,16 @@ defmodule Aecore.Txs.Pool.Worker do
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
         Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+    is_valid =
+      cond do
+        match?(%MultisigTx{}, tx) ->
+          MultisigTx.is_valid(tx)
+        match?(%SignedTx{}, tx) ->
+          SignedTx.is_valid(tx)
+      end
 
     cond do
-      !SignedTx.is_valid(tx) ->
+      !is_valid ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
       !is_minimum_fee_met ->

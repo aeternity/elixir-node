@@ -30,4 +30,12 @@ defmodule Aecore.Structures.SignedTx do
     not_negative && signature_valid
   end
 
+  @spec is_signed_tx(map()) :: boolean()
+  def is_signed_tx(tx) do
+    if(Map.has_key?(tx, "signature") || Map.has_key?(tx, :signature)) do
+      true
+    else
+      false
+    end
+  end
 end

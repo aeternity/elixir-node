@@ -7,6 +7,8 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.MultisigTx
+  alias Aecore.Structures.ChannelTxData
 
   @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
   def block(block, direction) do
@@ -20,11 +22,44 @@ defmodule Aeutil.Serialization do
 
   @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
   def tx(tx, direction) do
-    new_data = %{tx.data |
-                 from_acc: hex_binary(tx.data.from_acc, direction),
-                 to_acc: hex_binary(tx.data.to_acc, direction)}
-    new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: TxData.new(new_data), signature: new_signature}
+    cond do
+      SignedTx.is_signed_tx(tx) ->
+        new_data = %{tx.data |
+                     from_acc: hex_binary(tx.data.from_acc, direction),
+                     to_acc: hex_binary(tx.data.to_acc, direction)}
+        new_signature = hex_binary(tx.signature, direction)
+        %SignedTx{data: TxData.new(new_data), signature: new_signature}
+      MultisigTx.is_multisig_tx(tx)->
+        if(!Map.has_key?(tx, "data")) do
+          new_data =
+            %ChannelTxData{lock_amounts:
+                           serialize_keys(tx.data.lock_amounts, direction),
+                           fee: tx.data.fee}
+          %MultisigTx{data: new_data,
+                      signatures: serialize_map(tx.signatures, direction)}
+        else
+          new_data =
+            ChannelTxData.new(%{"lock_amounts" =>
+                                serialize_keys(tx["data"]["lock_amounts"],
+                                               direction),
+                                "fee" => tx["data"]["fee"]})
+          MultisigTx.new(%{"data" => new_data,
+                           "signatures" =>
+                           serialize_map(tx["signatures"], direction)})
+        end
+    end
+  end
+
+  def serialize_map(map, direction) do
+    Enum.reduce(map, %{}, fn({key, value}, acc) ->
+        Map.put(acc, hex_binary(key, direction), hex_binary(value, direction))
+      end)
+  end
+
+  def serialize_keys(map, direction) do
+    Enum.reduce(map, %{}, fn({key, value}, acc) ->
+        Map.put(acc, hex_binary(key, direction), value)
+      end)
   end
 
   def hex_binary(data, direction) do

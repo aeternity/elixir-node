@@ -20,7 +20,10 @@ defmodule Aecore.Peers.Worker do
 
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peers: %{},
+                                       nonce: get_peer_nonce(),
+                                       pending_channel_invites: %{}},
+                         name: __MODULE__)
   end
 
   ## Client side
@@ -33,6 +36,18 @@ defmodule Aecore.Peers.Worker do
   @spec add_peer(term) :: :ok | {:error, term()} | :error
   def add_peer(uri) do
     GenServer.call(__MODULE__, {:add_peer, uri})
+  end
+
+  def add_channel_invite(peer_uri, peer_lock_amount) do
+    GenServer.call(__MODULE__, {:add_channel_invite, peer_uri, peer_lock_amount})
+  end
+
+  def remove_channel_invite(peer_uri) do
+    GenServer.call(__MODULE__, {:remove_channel_invite, peer_uri})
+  end
+
+  def pending_channel_invites() do
+    GenServer.call(__MODULE__, {:pending_channel_invites})
   end
 
   @spec remove_peer(term) :: :ok | :error
@@ -136,6 +151,24 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call({:add_peer,uri}, _from, state) do
     add_peer(uri, state)
+  end
+
+  def handle_call({:add_channel_invite, uri, lock_amount}, _from,
+                  %{pending_channel_invites: invites} = state) do
+    updated_invites = Map.put(invites, uri, lock_amount)
+    {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
+  end
+
+  def handle_call({:remove_channel_invite, peer_uri}, _from,
+                  %{pending_channel_invites: invites} = state) do
+    updated_invites = Map.pop(invites, peer_uri)
+
+    {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
+  end
+
+  def handle_call({:pending_channel_invites}, _from,
+                  %{pending_channel_invites: invites} = state) do
+    {:reply, invites, state}
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do

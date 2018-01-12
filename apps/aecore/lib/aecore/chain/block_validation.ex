@@ -5,6 +5,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.MultisigTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
@@ -76,7 +77,18 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
+    Enum.map(block.txs, fn tx ->
+        case tx do
+          %SignedTx{} ->
+            if(SignedTx.is_coinbase(tx)) do
+              true
+            else
+              SignedTx.is_valid(tx)
+            end
+          %MultisigTx{} ->
+            MultisigTx.is_valid(tx)
+        end
+      end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map()) :: list()
