@@ -164,12 +164,12 @@ defmodule Aecore.Chain.Worker do
     end)
 
     # Broadcasting notifications for new mined transaction(per account)
-    for tx <- new_block.txs do
+    Enum.each(new_block.txs, fn(tx) -> 
       if tx.data.from_acc != nil and tx.data.to_acc != nil do
-        Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.from_acc}, tx.data)
-        Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.to_acc}, tx.data)
-      end 
-    end
+        Notify.broadcast_new_mined_transaction(Base.encode16(tx.data.from_acc), tx)
+        Notify.broadcast_new_mined_transaction(Base.encode16(tx.data.to_acc), tx)
+      end
+    end)
 
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
@@ -180,7 +180,7 @@ defmodule Aecore.Chain.Worker do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain
-      Notify.broadcast({:new_block_added_to_chain})
+      Notify.broadcast_new_block_added_to_chain(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
