@@ -43,7 +43,7 @@ defmodule Aecore.Wallet.Worker do
 
   defp has_wallet(true) do
     case get_file_name(@aewallet_dir) do
-      [ ] -> create_wallet(@aewallet_dir)
+      []  -> create_wallet(@aewallet_dir)
       [_] -> :ok
     end
   end
@@ -56,7 +56,6 @@ defmodule Aecore.Wallet.Worker do
   end
 
   defp create_wallet(path) do
-    IO.inspect "Creating a wallet"
     Aewallet.Wallet.create_wallet(@aewallet_pass, "", path)
   end
 
