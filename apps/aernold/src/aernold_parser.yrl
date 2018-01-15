@@ -1,5 +1,5 @@
 Terminals
-bool int operator contract id
+bool int contract id
 type 'if' else func hex
 
 %%Symbols
