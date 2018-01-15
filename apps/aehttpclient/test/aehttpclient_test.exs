@@ -32,7 +32,7 @@ defmodule AehttpclientTest do
 
   def add_txs_to_pool(pass) do
     Miner.mine_sync_block_to_chain
-    to_acc = Aewallet.Wallet.get_public_key(pass)
+    to_acc = Wallet.get_public_key(pass)
 
     from_acc = to_acc
     init_nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce
