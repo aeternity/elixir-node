@@ -25,23 +25,23 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_prev_hash(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
-        # do not check previous block height for genesis block, there is none
-        !(is_genesis || check_correct_height(new_block, previous_block)) ->
+      # do not check previous block height for genesis block, there is none
+      !(is_genesis || check_correct_height(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->
         throw({:error, "Header hash doesnt meet the difficulty target"})
 
-        new_block.header.chain_state_hash != chain_state_hash ->
+      new_block.header.chain_state_hash != chain_state_hash ->
         throw({:error, "Chain state hash not matching"})
 
-        !is_valid_chain_state ->
+      !is_valid_chain_state ->
         throw({:error, "Chain state not valid"})
 
       difficulty != new_block.header.difficulty_target ->
         throw({:error, "Invalid block difficulty"})
 
-        true ->
+      true ->
         :ok
     end
   end
@@ -57,10 +57,10 @@ defmodule Aecore.Chain.BlockValidation do
       !(validate_block_transactions(block) |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
-        coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
+      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
         throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
 
-        block.header.version != Block.current_block_version() ->
+      block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
 
       true ->
@@ -107,7 +107,7 @@ defmodule Aecore.Chain.BlockValidation do
       chain_state_has_account ->
         tx.data.nonce > Map.get(chain_state, tx.data.from_acc).nonce
 
-      true ->
+        true ->
         true
     end
 
