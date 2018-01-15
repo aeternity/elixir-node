@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aehttpserver.Web.Notify
 
   use GenServer
 
@@ -165,8 +166,8 @@ defmodule Aecore.Chain.Worker do
     # Broadcasting notifications for new mined transaction(per account)
     for tx <- new_block.txs do
       if tx.data.from_acc != nil and tx.data.to_acc != nil do
-        Aehttpserver.Web.Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.from_acc})
-        Aehttpserver.Web.Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.to_acc})
+        Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.from_acc}, tx.data)
+        Notify.broadcast({:new_mined_transaction, Base.encode16 tx.data.to_acc}, tx.data)
       end 
     end
 
@@ -179,7 +180,7 @@ defmodule Aecore.Chain.Worker do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain
-      Aehttpserver.Web.Notify.broadcast({:new_block_added_to_chain})
+      Notify.broadcast({:new_block_added_to_chain})
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else

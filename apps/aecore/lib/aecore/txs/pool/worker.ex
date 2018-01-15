@@ -9,6 +9,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Bits
+  alias Aehttpserver.Web.Notify
 
   require Logger
 
@@ -60,9 +61,9 @@ defmodule Aecore.Txs.Pool.Worker do
           Logger.info("Transaction is already in pool")
         else
           # Broadcasting notifications for new transaction in a pool(per account and every)
-          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.from_acc)})
-          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.to_acc)})
-          Aehttpserver.Web.Notify.broadcast({:new_transaction_in_the_pool_every})
+          Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.from_acc)})
+          Notify.broadcast({:new_transaction_in_the_pool_per_account, Base.encode16(tx.data.to_acc)})
+          Notify.broadcast({:new_transaction_in_the_pool_every})
           Peers.broadcast_tx(tx)
         end
         {:reply, :ok, updated_pool}

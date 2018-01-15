@@ -8,8 +8,13 @@ defmodule Aehttpserver.Web.Notify do
   	Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{"body" => "!!!!!!New transaction in the pool for everyone!!!!!!"})
   end
 
-  def broadcast({:new_mined_transaction, acc}) do
-  	Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx:" <> acc, %{"body" => "!!!!!!New mined transaction!!!!!!"})
+  def broadcast({:new_mined_transaction, acc}, tx_data) do
+    data = %{fee: tx_data.fee, 
+             from_acc: Base.encode16(tx_data.from_acc), 
+             to_acc: Base.encode16(tx_data.to_acc), 
+             value: tx_data.value}
+    {:ok, json} = Poison.encode(data)
+  	Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx:" <> acc, %{"body" => json})
   end
 
   def broadcast({:new_block_added_to_chain}) do
