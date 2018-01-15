@@ -11,10 +11,10 @@ defmodule Aehttpserver.Web.NewTxController do
     # Simplest way to convert all keys in map to atoms is to
     # encode and decode it again.
     tx = conn.body_params
-    case tx do
-      %MultisigTx{} ->
+    cond do
+      MultisigTx.is_multisig_tx?(tx) ->
         tx
-      %SignedTx{} ->
+      SignedTx.is_signed_tx?(tx) ->
         tx |> Poison.encode!() |> Poison.decode!([keys: :atoms])
     end
     |> Serialization.tx(:deserialize)

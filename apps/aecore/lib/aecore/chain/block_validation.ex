@@ -97,8 +97,20 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        valid_tx = SignedTx.is_valid(tx)
-        {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc)
+        valid_tx =
+          case tx do
+            %SignedTx{} ->
+              SignedTx.is_valid(tx)
+            %MultisigTx{} ->
+              MultisigTx.is_valid(tx)
+          end
+        {valid_chain_state, updated_chain_state} =
+          case tx do
+            %SignedTx{} ->
+              validate_transaction_chainstate(tx, chain_state_acc)
+            %MultisigTx{} ->
+              validate_channel_transaction_chainstate(tx, chain_state_acc)
+          end
 
         cond do
           valid_tx && valid_chain_state ->
@@ -139,6 +151,28 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
+  @spec validate_channel_transaction_chainstate(%MultisigTx{}, map()) :: {boolean(), map()}
+  defp validate_channel_transaction_chainstate(tx, chain_state) do
+    addresses = Map.keys(tx.signatures)
+    accounts_have_necessary_balance =
+      addresses
+      |> Enum.map(fn(address) ->
+           chain_state[address].balance - tx.data.lock_amounts[address] - (tx.data.fee / 2) >= 0
+         end)
+      |> Enum.all?(fn(result) -> result end)
+    if(accounts_have_necessary_balance) do
+      chain_state_changes =
+        Enum.reduce(addresses, %{}, fn(address), acc ->
+            address_new_state = %{balance: -(tx.data.lock_amounts[address] - (tx.data.fee / 2)), nonce: 1, locked: []}
+            Map.put(acc, address, address_new_state)
+          end)
+      updated_chain_state = ChainState.calculate_chain_state(chain_state_changes, chain_state)
+      {true, updated_chain_state}
+    else
+      {false, chain_state}
+    end
+  end
+
   @spec calculate_root_hash(list()) :: binary()
   def calculate_root_hash(txs) do
     if Enum.empty?(txs) do
@@ -160,10 +194,18 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(Block.block()) :: integer()
+  @spec sum_coinbase_transactions(Block.block()) :: integer()
   defp sum_coinbase_transactions(block) do
-    block.txs
+    Enum.filter(block.txs, fn(tx) ->
+      case tx do
+       %MultisigTx{} ->
+         false
+       %SignedTx{} ->
+         true
+       end
+     end)
     |> Enum.map(
+
          fn tx -> cond do
                     SignedTx.is_coinbase(tx) -> tx.data.value
                     true -> 0

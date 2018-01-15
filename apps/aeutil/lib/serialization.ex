@@ -23,13 +23,13 @@ defmodule Aeutil.Serialization do
   @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
   def tx(tx, direction) do
     cond do
-      SignedTx.is_signed_tx(tx) ->
+      SignedTx.is_signed_tx?(tx) ->
         new_data = %{tx.data |
                      from_acc: hex_binary(tx.data.from_acc, direction),
                      to_acc: hex_binary(tx.data.to_acc, direction)}
         new_signature = hex_binary(tx.signature, direction)
         %SignedTx{data: TxData.new(new_data), signature: new_signature}
-      MultisigTx.is_multisig_tx(tx)->
+      MultisigTx.is_multisig_tx?(tx)->
         if(!Map.has_key?(tx, "data")) do
           new_data =
             %ChannelTxData{lock_amounts:

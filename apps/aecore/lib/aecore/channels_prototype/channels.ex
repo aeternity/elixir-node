@@ -9,20 +9,23 @@ defmodule Aecore.ChannelsPrototype.Channels do
 
   require Logger
 
-  def invite(peer_uri, amount) do
-    Client.send_channel_invite(peer_uri, amount)
+  def invite(peer_uri, amount, fee) do
+    Client.send_channel_invite(peer_uri, amount, fee)
   end
 
   def accept_invite(peer_uri, amount) do
     pending_invites = Peers.pending_channel_invites()
+    IO.inspect(pending_invites)
     if(Map.has_key?(pending_invites, peer_uri)) do
       {:ok, own_pubkey} = Keys.pubkey()
       case Client.get_info(peer_uri) do
         {:ok, info} ->
           peer_pubkey = Base.decode16!(info.public_key)
           lock_amounts =
-            %{own_pubkey => amount, peer_pubkey => pending_invites[peer_uri]}
-          channel_tx_data = %ChannelTxData{lock_amounts: lock_amounts}
+            %{own_pubkey => amount, peer_pubkey =>
+                                    pending_invites[peer_uri].lock_amount}
+          fee = pending_invites[peer_uri].fee
+          channel_tx_data = %ChannelTxData{lock_amounts: lock_amounts, fee: fee}
           {:ok, signature} = Keys.sign(channel_tx_data)
           signatures = %{own_pubkey => signature}
           serialized_multisig_tx =

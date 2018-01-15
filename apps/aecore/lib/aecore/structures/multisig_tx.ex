@@ -13,13 +13,13 @@ defmodule Aecore.Structures.MultisigTx do
     not_negative =
       tx.data.lock_amounts
       |> Map.values
-      |> Enum.all?(fn(amount) -> amount > 0 end)
+      |> Enum.all?(fn(amount) -> amount >= 0 end)
     signature_valid = Keys.verify_tx(tx)
     not_negative && signature_valid
   end
 
-  @spec is_multisig_tx(map()) :: boolean()
-  def is_multisig_tx(tx) do
+  @spec is_multisig_tx?(map()) :: boolean()
+  def is_multisig_tx?(tx) do
     if(Map.has_key?(tx, "signatures") || Map.has_key?(tx, :signatures)) do
       true
     else

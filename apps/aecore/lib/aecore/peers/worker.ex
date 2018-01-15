@@ -38,8 +38,8 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
-  def add_channel_invite(peer_uri, peer_lock_amount) do
-    GenServer.call(__MODULE__, {:add_channel_invite, peer_uri, peer_lock_amount})
+  def add_channel_invite(peer_uri, peer_lock_amount, fee) do
+    GenServer.call(__MODULE__, {:add_channel_invite, peer_uri, peer_lock_amount, fee})
   end
 
   def remove_channel_invite(peer_uri) do
@@ -153,9 +153,11 @@ defmodule Aecore.Peers.Worker do
     add_peer(uri, state)
   end
 
-  def handle_call({:add_channel_invite, uri, lock_amount}, _from,
+  def handle_call({:add_channel_invite, uri, lock_amount, fee}, _from,
                   %{pending_channel_invites: invites} = state) do
-    updated_invites = Map.put(invites, uri, lock_amount)
+    updated_invites = Map.put(invites, uri, %{lock_amount: lock_amount,
+                                              fee: fee})
+
     {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
   end
 
@@ -257,7 +259,7 @@ defmodule Aecore.Peers.Worker do
               Logger.info(fn -> "Added #{uri} to the peer list" end)
               Sync.ask_peers_for_unknown_blocks(updated_peers)
               Sync.add_valid_peer_blocks_to_chain()
-              Sync.add_unknown_peer_pool_txs(updated_peers)
+              #Sync.add_unknown_peer_pool_txs(updated_peers)
               {:reply, :ok, %{state | peers: updated_peers}}
             else
               Logger.debug(fn -> "Max peers reached. #{uri} not added" end)

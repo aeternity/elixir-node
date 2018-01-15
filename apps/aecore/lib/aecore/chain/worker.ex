@@ -9,6 +9,8 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Structures.MultisigTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
@@ -25,7 +27,7 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state =
       ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
     chain_states = %{genesis_block_hash => genesis_chain_state}
-    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+    txs_index = calculate_block_acc_txs_info(Block.genesis_block().txs, Block.genesis_block().header)
 
     {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
   end
@@ -75,7 +77,16 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
-    new_block_state = ChainState.calculate_block_state(block.txs, prev_block.header.height)
+    txs =
+      Enum.filter(block.txs, fn(tx) ->
+        case tx do
+         %MultisigTx{} ->
+           false
+         %SignedTx{} ->
+           true
+         end
+       end)
+    new_block_state = ChainState.calculate_block_state(txs, prev_block.header.height)
     new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
@@ -149,7 +160,16 @@ defmodule Aecore.Chain.Worker do
                   _from,
                   %{blocks_map: blocks_map, chain_states: chain_states,
                     txs_index: txs_index, top_height: top_height} = state) do
-    new_block_txs_index = calculate_block_acc_txs_info(new_block)
+    txs =
+      Enum.filter(new_block.txs, fn(tx) ->
+        case tx do
+         %MultisigTx{} ->
+           false
+         %SignedTx{} ->
+           true
+         end
+       end)
+    new_block_txs_index = calculate_block_acc_txs_info(txs, new_block.header)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
@@ -184,14 +204,14 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  defp calculate_block_acc_txs_info(block) do
-    block_hash = BlockValidation.block_header_hash(block.header)
-    accounts = for tx <- block.txs do
+  defp calculate_block_acc_txs_info(txs, block_header) do
+    block_hash = BlockValidation.block_header_hash(block_header)
+    accounts = for tx <- txs do
       [tx.data.from_acc, tx.data.to_acc]
     end
     accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
     for account <- accounts_unique, into: %{} do
-      acc_txs = Enum.filter(block.txs, fn(tx) ->
+      acc_txs = Enum.filter(txs, fn(tx) ->
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
