@@ -35,15 +35,14 @@ defmodule AernoldLexerTest do
     code =
       'Contract test {
          test:Int = 5;
-         c:Address = 0x0x04711AC9E3;
+         c:Address = 0x04711AC9E3;
        }'
 
     assert :aernold_lexer.string(code) ==
       {:ok, [
               {:contract, 1}, {:id, 1, 'test'}, {:"{", 1},
               {:id, 2, 'test'}, {:":", 2}, {:type, 2, 'Int'}, {:=, 2}, {:int, 2, 5}, {:";", 2},
-              {:id, 3, 'c'}, {:":", 3}, {:type, 3, 'Address'}, {:=, 3}, {:hex, 3, '0'},
-                {:id, 3, 'x04711AC9E3'}, {:";", 3},
+              {:id, 3, 'c'}, {:":", 3}, {:type, 3, 'Address'}, {:=, 3}, {:hex, 3, '04711AC9E3'}, {:";", 3},
               {:"}", 4}
             ], 4}
   end
