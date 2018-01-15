@@ -166,8 +166,7 @@ defmodule Aecore.Chain.Worker do
     # Broadcasting notifications for new mined transaction(per account)
     Enum.each(new_block.txs, fn(tx) -> 
       if tx.data.from_acc != nil and tx.data.to_acc != nil do
-        Notify.broadcast_new_mined_transaction(Base.encode16(tx.data.from_acc), tx)
-        Notify.broadcast_new_mined_transaction(Base.encode16(tx.data.to_acc), tx)
+        Notify.broadcast_new_mined_transaction(tx)
       end
     end)
 
