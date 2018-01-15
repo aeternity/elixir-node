@@ -4,8 +4,10 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Structures.Block
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
+
+  @wallet_pass "1234"
 
   require Logger
 
@@ -22,7 +24,7 @@ defmodule Aehttpserver.Web.InfoController do
 
     own_nonce = Peers.get_peer_nonce()
 
-    {:ok, pubkey} = Keys.pubkey()
+    pubkey = Wallet.get_public_key(@wallet_pass)
     pubkey_hex = Base.encode16(pubkey)
 
     #Add whoever's getting our info
