@@ -1,6 +1,6 @@
 Terminals
-bool int contract id
-type 'if' else func hex
+bool int contract id type 'if'
+else func hex char string
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '{' '}'
@@ -77,6 +77,8 @@ Value -> FunctionCall : '$1'.
 Value -> int : {int, get_value('$1')}.
 Value -> bool : {bool, get_value('$1')}.
 Value -> hex : {hex, get_value('$1')}.
+Value -> char : {char, get_value('$1')}.
+Value -> string : {string, get_value('$1')}.
 
 OpCondition -> '&&' : '$1'.
 OpCondition -> '||' : '$1'.
