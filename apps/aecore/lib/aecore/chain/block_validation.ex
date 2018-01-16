@@ -107,13 +107,13 @@ defmodule Aecore.Chain.BlockValidation do
       chain_state_has_account ->
         tx.data.nonce > Map.get(chain_state, tx.data.from_acc).nonce
 
-      true ->
+        true ->
         true
     end
 
     from_account_has_necessary_balance =
       chain_state_has_account &&
-        chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
+      chain_state[tx.data.from_acc].balance - (tx.data.value + tx.data.fee) >= 0
 
     cond do
       tx_has_valid_nonce && from_account_has_necessary_balance ->
@@ -128,23 +128,32 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_root_hash(list()) :: binary()
-  def calculate_root_hash(txs) do
+  def calculate_root_hash(txs) when txs == [] do
+    <<0::256>>
+  end
+
+  def calculate_root_hash(txs)  do
+    txs
+    |> build_merkle_tree()
+    |> :gb_merkle_trees.root_hash()
+  end
+
+  @spec build_merkle_tree(list()) :: tuple()
+  def build_merkle_tree(txs) do
+    merkle_tree =
     if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =
-        for transaction <- txs do
-          transaction_data_bin = :erlang.term_to_binary(transaction.data)
-          {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-        end
+      for transaction <- txs do
+        transaction_data_bin = :erlang.term_to_binary(transaction.data)
+        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+      end
 
-      merkle_tree =
-        merkle_tree
-        |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-             :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-           end)
-
-      merkle_tree |> :gb_merkle_trees.root_hash()
+      merkle_tree
+      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
+        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
+      end)
     end
   end
 
@@ -152,12 +161,12 @@ defmodule Aecore.Chain.BlockValidation do
   defp sum_coinbase_transactions(block) do
     block.txs
     |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) -> tx.data.value
-                    true -> 0
-                  end
-         end
-       )
+    fn tx -> cond do
+        SignedTx.is_coinbase(tx) -> tx.data.value
+        true -> 0
+      end
+    end
+    )
     |> Enum.sum()
   end
 
