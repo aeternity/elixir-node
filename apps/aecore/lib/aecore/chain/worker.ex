@@ -68,7 +68,12 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_blocks(binary(), integer()) :: :ok
   def get_blocks(start_block_hash, size) do
-    Enum.reverse(get_blocks([], start_block_hash, size))
+    Enum.reverse(get_blocks([], start_block_hash, nil, size))
+  end
+
+  @spec get_blocks(binary(), binary(), integer()) :: :ok
+  def get_blocks(start_block_hash, final_block_hash, size) do
+    Enum.reverse(get_blocks([], start_block_hash, final_block_hash, size))
   end
 
   @spec add_block(%Block{}) :: :ok | {:error, binary()}
@@ -212,9 +217,9 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  defp get_blocks(blocks_acc, next_block_hash, size) do
+  defp get_blocks(blocks_acc, next_block_hash, final_block_hash, size) do
     cond do
-      size > 0 ->
+      next_block_hash != final_block_hash && size > 0 ->
         case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
           {:error, _} -> blocks_acc
           block ->
@@ -222,7 +227,7 @@ defmodule Aecore.Chain.Worker do
             prev_block_hash = block.header.prev_hash
             next_size = size - 1
 
-            get_blocks(updated_block_acc, prev_block_hash, next_size)
+            get_blocks(updated_block_acc, prev_block_hash, final_block_hash, next_size)
         end
       true ->
         blocks_acc
