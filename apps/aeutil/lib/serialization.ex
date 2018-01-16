@@ -52,13 +52,21 @@ defmodule Aeutil.Serialization do
 
   def serialize_map(map, direction) do
     Enum.reduce(map, %{}, fn({key, value}, acc) ->
-        Map.put(acc, hex_binary(key, direction), hex_binary(value, direction))
+        if(is_atom(key)) do
+          Map.put(acc, hex_binary(to_string(key), direction), hex_binary(value, direction))
+        else
+          Map.put(acc, hex_binary(key, direction), hex_binary(value, direction))
+        end
       end)
   end
 
   def serialize_keys(map, direction) do
     Enum.reduce(map, %{}, fn({key, value}, acc) ->
-        Map.put(acc, hex_binary(key, direction), value)
+        if(is_atom(key)) do
+          Map.put(acc, hex_binary(to_string(key), direction), value)
+        else
+          Map.put(acc, hex_binary(key, direction), value)
+        end
       end)
   end
 

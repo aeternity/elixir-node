@@ -38,8 +38,8 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
-  def add_channel_invite(peer_uri, peer_lock_amount, fee) do
-    GenServer.call(__MODULE__, {:add_channel_invite, peer_uri, peer_lock_amount, fee})
+  def add_channel_invite(peer_pubkey, peer_uri, peer_lock_amount, fee) do
+    GenServer.call(__MODULE__, {:add_channel_invite, peer_pubkey, peer_uri, peer_lock_amount, fee})
   end
 
   def remove_channel_invite(peer_uri) do
@@ -153,24 +153,30 @@ defmodule Aecore.Peers.Worker do
     add_peer(uri, state)
   end
 
-  def handle_call({:add_channel_invite, uri, lock_amount, fee}, _from,
+  def handle_call({:add_channel_invite, peer_pubkey, uri, lock_amount, fee}, _from,
                   %{pending_channel_invites: invites} = state) do
-    updated_invites = Map.put(invites, uri, %{lock_amount: lock_amount,
-                                              fee: fee})
+    updated_invites = Map.put(invites, peer_pubkey, %{lock_amount: lock_amount,
+                                              fee: fee,
+                                              uri: uri})
 
     {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
   end
 
-  def handle_call({:remove_channel_invite, peer_uri}, _from,
+  def handle_call({:remove_channel_invite, peer_address}, _from,
                   %{pending_channel_invites: invites} = state) do
-    updated_invites = Map.pop(invites, peer_uri)
+    updated_invites = Map.delete(invites, peer_address)
 
     {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
   end
 
   def handle_call({:pending_channel_invites}, _from,
                   %{pending_channel_invites: invites} = state) do
+
     {:reply, invites, state}
+  end
+
+  def handle_call({:open_channel}, _from, state) do
+
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do

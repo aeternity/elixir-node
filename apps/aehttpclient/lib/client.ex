@@ -124,12 +124,13 @@ defmodule Aehttpclient.Client do
     HTTPoison.post(peer_uri <> "/channel_invite",
                    Poison.encode!(%{"lock_amount" => amount, "fee" => fee}),
                    [{"Content-Type", "application/json"},
-                   {"peer_port", get_local_port()}])
+                    {"peer_port", get_local_port()}])
   end
 
   def accept_channel_invite(peer_uri, tx) do
     HTTPoison.post(peer_uri <> "/channel_accept", Poison.encode!(tx),
-                   [{"Content-Type", "application/json"}])
+                   [{"Content-Type", "application/json"},
+                    {"peer_port", get_local_port()}])
   end
 
   def send_to_peer(data, uri) do

@@ -14,6 +14,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aecore.Keys.Worker, as: Keys
 
   use GenServer
 
@@ -169,6 +170,7 @@ defmodule Aecore.Chain.Worker do
            true
          end
        end)
+    check_for_accepted_channel(new_block.txs)
     new_block_txs_index = calculate_block_acc_txs_info(txs, new_block.header)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
@@ -202,6 +204,29 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  defp check_for_accepted_channel(txs) do
+    {:ok, own_pubkey} = Keys.pubkey()
+    Enum.filter(txs, fn(tx) ->
+      case tx do
+       %MultisigTx{} ->
+         true
+       %SignedTx{} ->
+         false
+       end
+     end)
+    |> Enum.each(fn(tx) ->
+          own_address_present =
+            Map.has_key?(tx.signatures, own_pubkey)
+          peer_address =
+            Enum.find(Map.keys(tx.signatures), fn(address) -> address != own_pubkey end)
+          have_channel_pending_with_peer =
+            Map.has_key?(Peers.pending_channel_invites, peer_address)
+          if(own_address_present && have_channel_pending_with_peer) do
+            Peers.remove_channel_invite(peer_address)
+          end
+        end)
   end
 
   defp calculate_block_acc_txs_info(txs, block_header) do

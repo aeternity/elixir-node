@@ -51,8 +51,17 @@ defmodule Aecore.Chain.BlockValidation do
   def single_validate_block(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
+    txs =
+      Enum.filter(block.txs, fn(tx) ->
+        case tx do
+         %MultisigTx{} ->
+           false
+         %SignedTx{} ->
+           true
+         end
+       end)
     cond do
-      block.header.txs_hash != calculate_root_hash(block.txs) ->
+      block.header.txs_hash != calculate_root_hash(txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
       !(validate_block_transactions(block) |> Enum.all?()) ->

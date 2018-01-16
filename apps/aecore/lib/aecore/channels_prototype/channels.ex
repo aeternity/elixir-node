@@ -13,33 +13,24 @@ defmodule Aecore.ChannelsPrototype.Channels do
     Client.send_channel_invite(peer_uri, amount, fee)
   end
 
-  def accept_invite(peer_uri, amount) do
+  def accept_invite(peer_pubkey, amount) do
     pending_invites = Peers.pending_channel_invites()
-    IO.inspect(pending_invites)
-    if(Map.has_key?(pending_invites, peer_uri)) do
+    if(Map.has_key?(pending_invites, peer_pubkey)) do
       {:ok, own_pubkey} = Keys.pubkey()
-      case Client.get_info(peer_uri) do
-        {:ok, info} ->
-          peer_pubkey = Base.decode16!(info.public_key)
-          lock_amounts =
-            %{own_pubkey => amount, peer_pubkey =>
-                                    pending_invites[peer_uri].lock_amount}
-          fee = pending_invites[peer_uri].fee
-          channel_tx_data = %ChannelTxData{lock_amounts: lock_amounts, fee: fee}
-          {:ok, signature} = Keys.sign(channel_tx_data)
-          signatures = %{own_pubkey => signature}
-          serialized_multisig_tx =
-            Serialization.tx(%MultisigTx{data: channel_tx_data,
-                                         signatures: signatures}, :serialize)
-          Peers.remove_channel_invite(peer_uri)
-          Client.accept_channel_invite(peer_uri, serialized_multisig_tx)
-        {:error, message} ->
-          Logger.error(fn ->
-              "Couldn't get info from #{peer_uri} - #{message}"
-            end)
-      end
+      peer_uri = pending_invites[peer_pubkey].uri
+      lock_amounts =
+        %{own_pubkey => amount, peer_pubkey =>
+                                pending_invites[peer_pubkey].lock_amount}
+      fee = pending_invites[peer_pubkey].fee
+      channel_tx_data = %ChannelTxData{lock_amounts: lock_amounts, fee: fee}
+      {:ok, signature} = Keys.sign(channel_tx_data)
+      signatures = %{own_pubkey => signature}
+      serialized_multisig_tx =
+        Serialization.tx(%MultisigTx{data: channel_tx_data,
+                                     signatures: signatures}, :serialize)
+      Client.accept_channel_invite(peer_uri, serialized_multisig_tx)
     else
-      Logger.error(fn ->"No pending invite from #{peer_uri}" end)
+      Logger.error(fn ->"No pending invite from #{peer_pubkey}" end)
     end
   end
 end

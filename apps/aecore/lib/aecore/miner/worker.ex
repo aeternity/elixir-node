@@ -270,7 +270,7 @@ defmodule Aecore.Miner.Worker do
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
-      root_hash = BlockValidation.calculate_root_hash(Map.values(Pool.get_pool()))
+      root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_block_state =
         ChainState.calculate_block_state(valid_txs, top_block.header.height)
