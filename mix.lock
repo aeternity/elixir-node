@@ -8,7 +8,7 @@
   "erlexec": {:hex, :erlexec, "1.7.1", "6ddbd40fa202084ed0bdaf95a50c334acaa5644ae213b903cd4094a78ae79734", [:rebar3], [], "hexpm"},
   "exconstructor": {:hex, :exconstructor, "1.1.0", "272623a7b203cb2901c20cbb92c5c3ab103cc0087ff7c881979e046043346752", [], [], "hexpm"},
   "excoveralls": {:hex, :excoveralls, "0.7.5", "339e433e5d3bce09400dc8de7b9040741a409c93917849916c136a0f51fdc183", [:mix], [{:exjsx, ">= 3.0.0", [hex: :exjsx, repo: "hexpm", optional: false]}, {:hackney, ">= 0.12.0", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm"},
-  "exexec": {:hex, :exexec, "0.1.0", "4061bffc3845cb1fcc68eb68943335c75d64cfb4b4553c78f41be457df4a8d34", [:mix], [{:erlexec, "~> 1.7", [hex: :erlexec, repo: "hexpm", optional: false]}], "hexpm"},
+  "exexec": {:hex, :exexec, "0.1.0", "4061bffc3845cb1fcc68eb68943335c75d64cfb4b4553c78f41be457df4a8d34", [], [{:erlexec, "~> 1.7", [hex: :erlexec, repo: "hexpm", optional: false]}], "hexpm"},
   "exjsx": {:hex, :exjsx, "4.0.0", "60548841e0212df401e38e63c0078ec57b33e7ea49b032c796ccad8cde794b5c", [], [{:jsx, "~> 2.8.0", [hex: :jsx, repo: "hexpm", optional: false]}], "hexpm"},
   "file_system": {:hex, :file_system, "0.2.2", "7f1e9de4746f4eb8a4ca8f2fbab582d84a4e40fa394cce7bfcb068b988625b06", [:mix], [], "hexpm"},
   "gb_merkle_trees": {:git, "https://github.com/aeternity/gb_merkle_trees.git", "4db7aad81944e2d12981a2ecd23dd59e32ab1651", [ref: "4db7aad"]},
