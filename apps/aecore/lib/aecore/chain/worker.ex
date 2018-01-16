@@ -163,13 +163,6 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    # Broadcasting notifications for new mined transaction(per account)
-    Enum.each(new_block.txs, fn(tx) -> 
-      if tx.data.from_acc != nil and tx.data.to_acc != nil do
-        Notify.broadcast_new_mined_transaction(tx)
-      end
-    end)
-
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
@@ -178,8 +171,8 @@ defmodule Aecore.Chain.Worker do
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
-      # Broadcasting notifications for new block added to chain
-      Notify.broadcast_new_block_added_to_chain(new_block)
+      # Broadcasting notifications for new block added to chain and new mined transaction
+      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
