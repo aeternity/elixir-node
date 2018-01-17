@@ -36,7 +36,7 @@ defmodule Aecore.Structures.TxData do
                   lock_time_block: lock_time_block}}
   end
 
-  @spec hash_tx(tx_data()) :: binary()
+  @spec hash_tx(TxData.t()) :: binary()
   def hash_tx(tx) do
     :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
