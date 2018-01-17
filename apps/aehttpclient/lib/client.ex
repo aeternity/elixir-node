@@ -28,6 +28,28 @@ defmodule Aehttpclient.Client do
     end
   end
 
+  @spec get_raw_blocks({term(), binary(), binary(), integer()}) :: {:ok, term()} | {:error, binary()}
+  def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
+    from_block_hash = Base.encode16(from_block_hash)
+    to_block_hash = Base.encode16(to_block_hash)
+    uri = uri <> "/raw_blocks?" <>
+            "from_block=" <> from_block_hash <>
+            "&to_block=" <> to_block_hash
+    case(get(uri, :raw_blocks)) do
+      {:ok, serialized_blocks} ->
+        deserialized_blocks = Enum.map(
+          serialized_blocks,
+          fn(block) ->
+            Serialization.block(block, :deserialize)
+          end
+        )
+
+        {:ok, deserialized_blocks}
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   def get_pool_txs(uri) do
     get(uri <> "/pool_txs", :pool_txs)
   end
@@ -83,6 +105,9 @@ defmodule Aehttpclient.Client do
         case(identifier) do
           :block ->
             response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
+            {:ok, response}
+          :raw_blocks ->
+            response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
             {:ok, response}
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
