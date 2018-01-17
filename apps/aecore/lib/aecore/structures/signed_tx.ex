@@ -7,7 +7,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
 
-  @type t :: %SignedTx{} | %SignedTx{
+  @type t :: %SignedTx{
     data: TxData.t(),
     signature: binary()
   }

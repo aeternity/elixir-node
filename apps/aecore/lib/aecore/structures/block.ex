@@ -6,7 +6,10 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
 
-  @type t :: %Block{} | %Block{header: Header.t(), txs: list(TxData.t())}
+  @type t :: %Block{
+    header: Header.t(),
+    txs: list(TxData.t())
+  }
 
   @current_block_version 1
   @genesis_block_version @current_block_version

@@ -5,7 +5,7 @@ defmodule Aecore.Structures.TxData do
 
   alias Aecore.Structures.TxData
 
-  @type t :: %TxData{} | %TxData{
+  @type t :: %TxData{
     from_acc: binary(),
     to_acc: binary(),
     value: non_neg_integer(),
