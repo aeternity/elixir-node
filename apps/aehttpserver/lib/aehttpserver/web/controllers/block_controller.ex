@@ -69,8 +69,7 @@ defmodule Aehttpserver.Web.BlockController do
 
     count = case Map.get(params, "count") do
       nil ->
-        # 1000
-        5
+        1000
       count_string ->
         {number, _} = Integer.parse(count_string)
         number

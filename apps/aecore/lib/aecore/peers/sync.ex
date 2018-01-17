@@ -79,7 +79,7 @@ defmodule Aecore.Peers.Sync do
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
     state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: top_block_hash}}, acc) ->
         {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
-        Map.merge(acc, check_peer_block(uri, top_hash_decoded, %{}))
+        Map.merge(acc, check_peer_blocks(uri, top_hash_decoded, %{}))
       end)
 
     {:reply, :ok, state}
@@ -208,30 +208,38 @@ defmodule Aecore.Peers.Sync do
   end
 
   # Gets all unknown blocks, starting from the given one
-  defp check_peer_block(peer_uri, block_hash, state) do
-    case Chain.has_block?(block_hash) do
-      false ->
-        case(HttpClient.get_block({peer_uri, block_hash})) do
-          {:ok, deserialized_block} ->
+  defp check_peer_blocks(peer_uri, from_block_hash, state) do
+    case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
+      {:ok, blocks} ->
+        if(Enum.count(blocks) > 0) do
+          state = Enum.reduce(blocks, state, fn(block, state_acc) ->
             try do
-              BlockValidation.single_validate_block(deserialized_block)
-              peer_block_hash =
-                BlockValidation.block_header_hash(deserialized_block.header)
+              BlockValidation.single_validate_block(block)
+              peer_block_hash = BlockValidation.block_header_hash(block.header)
 
-              if(block_hash == peer_block_hash) do
-                check_peer_block(peer_uri, deserialized_block.header.prev_hash,
-                  Map.put(state, peer_block_hash, deserialized_block))
-              else
-                state
+              case Chain.has_block?(peer_block_hash) do
+                false ->
+                  Map.put(state_acc, peer_block_hash, block)
+                true ->
+                  state_acc
               end
             catch
               {:error, _} ->
-                state
+                state_acc
             end
-          :error ->
+          end)
+
+          earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
+          earliest_block_hash = BlockValidation.block_header_hash(earliest_block.header)
+          if(earliest_block_hash != Chain.top_block_hash()) do
+            check_peer_blocks(peer_uri, earliest_block.header.prev_hash, state)
+          else
             state
+          end
+        else
+          state
         end
-      true ->
+      {:error, _} ->
         state
     end
   end
