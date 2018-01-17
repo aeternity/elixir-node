@@ -80,6 +80,12 @@ defmodule Aecore.Chain.Worker do
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
 
+    ## Store to rockdb latest chain_state for each account
+    ## Consider this to be async
+    Enum.each(new_chain_state, fn({account, data}) ->
+      Persistence.add_account_chain_state(account, data)
+    end)
+
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
     BlockValidation.validate_block!(block, prev_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
     add_validated_block(block, new_chain_state_locked_amounts)
@@ -163,10 +169,7 @@ defmodule Aecore.Chain.Worker do
     end)
 
     ## Store new block to disk
-    Persistence.write_block_by_hash(new_block)
-
-    ## Store new chain_state to disk
-    Persistence.write_chain_state_by_pubkey(updated_chain_states)
+    Persistence.add_block_by_hash(new_block)
 
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,

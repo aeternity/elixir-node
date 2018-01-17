@@ -17,68 +17,93 @@ defmodule Aecore.Persistence.Worker do
 
   ## Client side
 
-  @spec write_block_by_hash(block :: map()) :: :ok | {:error, reason :: term()}
-  def write_block_by_hash(%{header: header} = block) do
+  @spec add_block_by_hash(block :: map()) :: :ok | {:error, reason :: term()}
+  def add_block_by_hash(%{header: header} = block) do
     hash = BlockValidation.block_header_hash(header)
-    GenServer.call(__MODULE__, {:write_block_by_hash, {hash, block}})
+    GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
   end
-  def write_block_by_hash(_block), do: {:error, "bad block structure"}
+  def add_block_by_hash(_block), do: {:error, "bad block structure"}
 
-  @spec read_block_by_hash(String.t()) ::
+  @spec get_block_by_hash(String.t()) ::
   {:ok, block :: map()} | :not_found | {:error, reason :: term()}
-  def read_block_by_hash(hash) when is_binary(hash) do
-    GenServer.call(__MODULE__, {:read_block_by_hash, hash})
+  def get_block_by_hash(hash) when is_binary(hash) do
+    GenServer.call(__MODULE__, {:get_block_by_hash, hash})
   end
-  def read_block_by_hash(_hash), do: {:error, "bad hash value"}
+  def get_block_by_hash(_hash), do: {:error, "bad hash value"}
 
-  @spec write_chain_state_by_pubkey(chain_state :: map()) :: :ok | {:error, reason :: term()}
-  def write_chain_state_by_pubkey(%{} = chain_state) do
-    {:ok, pubkey} = Keys.pubkey()
-    GenServer.call(__MODULE__, {:write_chain_state_by_pubkey, {pubkey, chain_state}})
+  @spec get_all_blocks() ::
+  {:ok, block :: map()} | :not_found | {:error, reason :: term()}
+  def get_all_blocks() do
+    GenServer.call(__MODULE__, :get_all_blocks)
   end
-  def write_chain_state_by_pubkey(_chain_state), do: {:error, "bad chain_state structure"}
 
-  @spec read_chain_state_by_pubkey() ::
+  @spec add_account_chain_state(account :: binary(), chain_state :: map()) :: :ok | {:error, reason :: term()}
+  def add_account_chain_state(account, data) do
+    GenServer.call(__MODULE__, {:add_account_chain_state, {account, data}})
+  end
+
+  @spec get_account_chain_state(account :: binary()) ::
   {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
-  def read_chain_state_by_pubkey() do
-    {:ok, pubkey} = Keys.pubkey()
-    GenServer.call(__MODULE__, {:read_chain_state_by_pubkey, pubkey})
+  def get_account_chain_state(account) do
+    GenServer.call(__MODULE__, {:get_account_chain_state, account})
+  end
+
+  @spec get_all_accounts_chain_states() ::
+  {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
+  def get_all_accounts_chain_states() do
+    GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
 
   ## Server side
 
   def init(_) do
     ## We are creating `blocks_by_hash` family for the blocks
-    ## and `chain_state_by_pubkey` as well
+    ## and `chain_state_by_account` as well
     ## https://github.com/facebook/rocksdb/wiki/Column-Families
-    {:ok, db, %{"blocks_by_hash"       => blocks_family,
-                "chain_state_by_pubkey" => chain_state_family}} =
+    {:ok, db, %{"blocks_by_hash"         => blocks_family,
+                "chain_state_by_account" => chain_state_family}} =
       Rox.open(persistence_path(),
         [create_if_missing: true, auto_create_column_families: true],
-        ["blocks_by_hash", "chain_state_by_pubkey"])
+        ["blocks_by_hash", "chain_state_by_account"])
     {:ok, %{db: db,
             blocks_family: blocks_family,
             chain_state_family: chain_state_family}}
   end
 
-  def handle_call({:write_block_by_hash, {hash, block}}, _from,
+  def handle_call({:add_block_by_hash, {hash, block}}, _from,
     %{db: _db, blocks_family: blocks_family} = state) do
     {:reply, Rox.put(blocks_family, hash, block), state}
   end
 
-  def handle_call({:write_chain_state_by_pubkey, {pubkey, chain_state}}, _from,
+  def handle_call({:add_account_chain_state, {account, chain_state}}, _from,
     %{db: _db, chain_state_family: chain_state_family} = state) do
-    {:reply, Rox.put(chain_state_family, pubkey, chain_state), state}
+    {:reply, Rox.put(chain_state_family, account, chain_state), state}
   end
 
-  def handle_call({:read_block_by_hash, hash}, _from,
+  def handle_call({:get_block_by_hash, hash}, _from,
     %{db: _db, blocks_family: blocks_family} = state) do
     {:reply, Rox.get(blocks_family, hash), state}
   end
 
-  def handle_call({:read_chain_state_by_pubkey, pubkey}, _from,
+  def handle_call({:get_account_chain_state, account}, _from,
     %{db: _db, chain_state_family: chain_state_family} = state) do
-    {:reply, Rox.get(chain_state_family, pubkey), state}
+    {:reply, Rox.get(chain_state_family, account), state}
+  end
+
+  def handle_call(:get_all_blocks, _from,
+    %{db: _db, blocks_family: blocks_family} = state) do
+    all_blocks =
+      Rox.stream(blocks_family)
+      |> Enum.into(%{})
+    {:reply, all_blocks, state}
+  end
+
+  def handle_call(:get_all_accounts_chain_states, _from,
+    %{db: _db, chain_state_family: chain_state_family} = state) do
+    chain_state =
+      Rox.stream(chain_state_family)
+      |> Enum.into(%{})
+    {:reply, chain_state, state}
   end
 
   defp persistence_path(), do: Application.get_env(:aecore, :persistence)[:path]
