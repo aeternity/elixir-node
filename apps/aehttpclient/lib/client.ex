@@ -28,7 +28,7 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @spec get_raw_blocks({term(), binary(), binary(), integer()}) :: {:ok, term()} | {:error, binary()}
+  @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
     from_block_hash = Base.encode16(from_block_hash)
     to_block_hash = Base.encode16(to_block_hash)
