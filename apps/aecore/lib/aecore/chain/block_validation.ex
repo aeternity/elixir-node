@@ -67,20 +67,15 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.t()) :: binary()
+  @spec block_header_hash(Header.header()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(Block.t()) :: list()
+  @spec validate_block_transactions(Block.block()) :: list()
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(
-      fn tx -> 
-        SignedTx.is_coinbase(tx)
-        || SignedTx.is_valid(tx)
-      end)
+    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
   end
 
   @spec filter_invalid_transactions_chainstate(list(), map(), integer()) :: list()
@@ -101,7 +96,7 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(%SignedTx{}, map(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
@@ -111,46 +106,55 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_root_hash(list()) :: binary()
-  def calculate_root_hash(txs) do
+  def calculate_root_hash(txs) when txs == [] do
+    <<0::256>>
+  end
+
+  def calculate_root_hash(txs)  do
+    txs
+    |> build_merkle_tree()
+    |> :gb_merkle_trees.root_hash()
+  end
+
+  @spec build_merkle_tree(list()) :: tuple()
+  def build_merkle_tree(txs) do
+    merkle_tree =
     if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =
-        for transaction <- txs do
-          transaction_data_bin = :erlang.term_to_binary(transaction.data)
-          {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-        end
+      for transaction <- txs do
+        transaction_data_bin = :erlang.term_to_binary(transaction.data)
+        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+      end
 
-      merkle_tree =
-        merkle_tree
-        |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-             :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-           end)
-
-      merkle_tree |> :gb_merkle_trees.root_hash()
+      merkle_tree
+      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
+        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
+      end)
     end
   end
 
-  @spec calculate_root_hash(Block.t()) :: integer()
+  @spec calculate_root_hash(Block.block()) :: integer()
   defp sum_coinbase_transactions(block) do
     block.txs
     |> Enum.map(
-         fn tx -> cond do
-                    SignedTx.is_coinbase(tx) -> tx.data.value
-                    true -> 0
-                  end
-         end
-       )
+    fn tx -> cond do
+        SignedTx.is_coinbase(tx) -> tx.data.value
+        true -> 0
+      end
+    end
+    )
     |> Enum.sum()
   end
 
-  @spec check_prev_hash(Block.t(), Block.t()) :: boolean()
+  @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
   defp check_prev_hash(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     new_block.header.prev_hash == prev_block_header_hash
   end
 
-  @spec check_correct_height(Block.t(), Block.t()) :: boolean()
+  @spec check_correct_height(Block.block(), Block.block()) :: boolean()
   defp check_correct_height(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
