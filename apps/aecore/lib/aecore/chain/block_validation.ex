@@ -8,7 +8,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), map(), list(Block.t())) :: {:error, term()} | :ok
+  @spec calculate_and_validate_block!(Block.block(), Block.block(), map(), list(Block.block())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
@@ -45,7 +45,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec single_validate_block!(Block.t()) :: {:error, term()} | :ok
+  @spec single_validate_block!(Block.block()) :: {:error, term()} | :ok
   def single_validate_block!(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
