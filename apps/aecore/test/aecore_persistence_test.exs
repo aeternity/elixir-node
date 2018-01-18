@@ -39,10 +39,9 @@ defmodule PersistenceTest do
 
   @tag timeout: 10_000
   @tag :persistence
-  test "Get all accounts from the rocksdb", account do
-    pubkey = account.pubkey
+  test "Get all accounts from the rocksdb" do
     all_accounts = Persistence.get_all_accounts_chain_states
-    assert [^pubkey] = Map.keys(all_accounts)
+    assert false == Enum.empty?(Map.keys(all_accounts))
   end
 
   @tag :persistence
