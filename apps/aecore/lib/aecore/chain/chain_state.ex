@@ -133,8 +133,9 @@ defmodule Aecore.Chain.ChainState do
     if account_state.nonce >= nonce do
       throw {:error, "Nonce too small"}
     end
-    
-    Map.put(chain_state, account, %{account_state | nonce: nonce})
+
+    chain_state 
+    |> Map.put(account, %{account_state | nonce: nonce})
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
