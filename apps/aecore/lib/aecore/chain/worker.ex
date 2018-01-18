@@ -217,14 +217,16 @@ defmodule Aecore.Chain.Worker do
        end
      end)
     |> Enum.each(fn(tx) ->
+          pending_invites = Peers.pending_channel_invites()
           own_address_present =
             Map.has_key?(tx.signatures, own_pubkey)
           peer_address =
             Enum.find(Map.keys(tx.signatures), fn(address) -> address != own_pubkey end)
           have_channel_pending_with_peer =
-            Map.has_key?(Peers.pending_channel_invites, peer_address)
+            Map.has_key?(pending_invites, peer_address)
           if(own_address_present && have_channel_pending_with_peer) do
             Peers.remove_channel_invite(peer_address)
+            Peers.open_channel(peer_address, tx, pending_invites[peer_address].uri)
           end
         end)
   end

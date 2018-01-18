@@ -8,6 +8,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.TxData
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
+  alias Aecore.Peers.Worker, as: Peers
 
   require Logger
 
@@ -77,6 +78,10 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
+  def get_open_channels(uri) do
+    get(uri <> "/open_channels", :open_channels)
+  end
+
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
@@ -99,6 +104,12 @@ defmodule Aehttpclient.Client do
               body
               |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
               |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+            {:ok, response}
+          :open_channels ->
+            response =
+              body
+              |> Poison.decode!()
+              |> Enum.map(fn(address) -> Base.decode16!(address) end)
             {:ok, response}
           :default ->
             json_response(body)
@@ -129,6 +140,18 @@ defmodule Aehttpclient.Client do
 
   def accept_channel_invite(peer_uri, tx) do
     HTTPoison.post(peer_uri <> "/channel_accept", Poison.encode!(tx),
+                   [{"Content-Type", "application/json"},
+                    {"peer_port", get_local_port()}])
+  end
+
+  def send_channel_payment_tx(peer_uri, tx) do
+    HTTPoison.post(peer_uri <> "/channel_payment_proposal", Poison.encode!(tx),
+                   [{"Content-Type", "application/json"},
+                    {"peer_port", get_local_port()}])
+  end
+
+  def accept_channel_payment(peer_uri, tx) do
+    HTTPoison.post(peer_uri <> "/channel_payment_acceptance", Poison.encode!(tx),
                    [{"Content-Type", "application/json"},
                     {"peer_port", get_local_port()}])
   end

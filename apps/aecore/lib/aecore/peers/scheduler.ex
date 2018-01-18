@@ -3,6 +3,7 @@ defmodule Aecore.Peers.Scheduler do
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Sync
+  alias Aecore.ChannelsPrototype.Channels
 
   @check_time 60_000
 
@@ -21,6 +22,7 @@ defmodule Aecore.Peers.Scheduler do
     Sync.refill()
     Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
     Sync.add_valid_peer_blocks_to_chain()
+    Channels.check_open_channels()
     schedule_work()
     {:noreply, state}
   end

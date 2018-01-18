@@ -22,7 +22,8 @@ defmodule Aecore.Peers.Worker do
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{peers: %{},
                                        nonce: get_peer_nonce(),
-                                       pending_channel_invites: %{}},
+                                       pending_channel_invites: %{},
+                                       open_channels: %{}},
                          name: __MODULE__)
   end
 
@@ -47,7 +48,35 @@ defmodule Aecore.Peers.Worker do
   end
 
   def pending_channel_invites() do
-    GenServer.call(__MODULE__, {:pending_channel_invites})
+    GenServer.call(__MODULE__, :pending_channel_invites)
+  end
+
+  def open_channel(address, tx, uri) do
+    GenServer.call(__MODULE__, {:open_channel, address, tx, uri})
+  end
+
+  def close_channel(address) do
+    GenServer.call(__MODULE__, {:close_channel, address})
+  end
+
+  def add_channel_tx(address, tx) do
+    GenServer.call(__MODULE__, {:add_channel_tx, address, tx})
+  end
+
+  def add_pending_tx(address,tx) do
+    GenServer.call(__MODULE__, {:add_pending_tx, address, tx})
+  end
+
+  def pending_tx(address) do
+    GenServer.call(__MODULE__, {:pending_tx, address})
+  end
+
+  def accept_pending_tx(address) do
+    GenServer.call(__MODULE__, {:accept_pending_tx, address})
+  end
+
+  def open_channels() do
+    GenServer.call(__MODULE__, :open_channels)
   end
 
   @spec remove_peer(term) :: :ok | :error
@@ -169,14 +198,58 @@ defmodule Aecore.Peers.Worker do
     {:reply, :ok, %{state | pending_channel_invites: updated_invites}}
   end
 
-  def handle_call({:pending_channel_invites}, _from,
+  def handle_call(:pending_channel_invites, _from,
                   %{pending_channel_invites: invites} = state) do
-
     {:reply, invites, state}
   end
 
-  def handle_call({:open_channel}, _from, state) do
+  def handle_call({:open_channel, address, tx, uri}, _from,
+                  %{open_channels: channels} = state) do
+    updated_channels =
+      Map.put(channels, address, %{uri: uri, txs: [tx], pending_tx: nil})
 
+    {:reply, :ok, %{state | open_channels: updated_channels}}
+  end
+
+  def handle_call({:close_channel, address}, _from,
+                  %{open_channels: channels} = state) do
+    updated_channels = Map.delete(channels, address)
+
+    {:reply, :ok, %{state | open_channels: updated_channels}}
+  end
+
+  def handle_call({:add_channel_tx, address, tx}, _from,
+                  %{open_channels: channels} = state) do
+    updated_txs = [tx | channels[address].txs]
+    updated_channels =
+      %{channels | address => %{channels[address] | txs: updated_txs}}
+
+    {:reply, :ok, %{state | open_channels: updated_channels}}
+  end
+
+  def handle_call({:add_pending_tx, address, tx}, _from,
+                  %{open_channels: channels} = state) do
+    updated_channels =
+      %{channels | address =>
+                   %{channels[address] | pending_tx: tx}}
+
+    {:reply, :ok, %{state | open_channels: updated_channels}}
+  end
+
+  def handle_call({:pending_tx, address}, _from,
+                  %{open_channels: channels} = state) do
+    {:reply, channels[address].pending_tx, state}
+  end
+
+  def handle_call({:accept_pending_tx, address}, _from,
+                  %{open_channels: channels} = state) do
+    updated_channels = %{channels[address] | pending_tx: nil}
+
+    {:reply, :ok, %{state | open_channels: updated_channels}}
+  end
+
+  def handle_call(:open_channels, _from, %{open_channels: channels} = state) do
+    {:reply, channels, state}
   end
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
