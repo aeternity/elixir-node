@@ -35,19 +35,7 @@ defmodule Aehttpclient.Client do
     uri = uri <> "/raw_blocks?" <>
             "from_block=" <> from_block_hash <>
             "&to_block=" <> to_block_hash
-    case(get(uri, :raw_blocks)) do
-      {:ok, serialized_blocks} ->
-        deserialized_blocks = Enum.map(
-          serialized_blocks,
-          fn(block) ->
-            Serialization.block(block, :deserialize)
-          end
-        )
-
-        {:ok, deserialized_blocks}
-      {:error, reason} ->
-        {:error, reason}
-    end
+    get(uri, :raw_blocks)
   end
 
   def get_pool_txs(uri) do
@@ -108,7 +96,14 @@ defmodule Aehttpclient.Client do
             {:ok, response}
           :raw_blocks ->
             response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
-            {:ok, response}
+            deserialized_blocks = Enum.map(
+              response,
+              fn(block) ->
+                Serialization.block(block, :deserialize)
+              end
+            )
+
+            {:ok, deserialized_blocks}
           :info ->
             response = Poison.decode!(body, keys: :atoms!)
             {_, server} = Enum.find(headers, fn(header) ->
