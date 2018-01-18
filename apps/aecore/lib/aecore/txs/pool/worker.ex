@@ -14,6 +14,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
+  alias Aehttpserver.Web.Notify
 
   require Logger
 
@@ -80,6 +81,8 @@ defmodule Aecore.Txs.Pool.Worker do
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
+          # Broadcasting notifications for new transaction in a pool(per account and every)
+          Notify.broadcast_new_transaction_in_the_pool(tx)
           Peers.broadcast_tx(tx)
         end
         {:reply, :ok, updated_pool}

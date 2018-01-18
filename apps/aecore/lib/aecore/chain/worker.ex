@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aehttpserver.Web.Notify
 
   use GenServer
 
@@ -161,6 +162,7 @@ defmodule Aecore.Chain.Worker do
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
+
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
@@ -169,6 +171,8 @@ defmodule Aecore.Chain.Worker do
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+      # Broadcasting notifications for new block added to chain and new mined transaction
+      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
