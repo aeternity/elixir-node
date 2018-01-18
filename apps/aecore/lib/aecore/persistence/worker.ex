@@ -37,7 +37,8 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_all_blocks)
   end
 
-  @spec add_account_chain_state(account :: binary(), chain_state :: map()) :: :ok | {:error, reason :: term()}
+  @spec add_account_chain_state(account :: binary(), chain_state :: map()) ::
+  :ok | {:error, reason :: term()}
   def add_account_chain_state(account, data) do
     GenServer.call(__MODULE__, {:add_account_chain_state, {account, data}})
   end
@@ -57,14 +58,13 @@ defmodule Aecore.Persistence.Worker do
   ## Server side
 
   def init(_) do
-    ## We are creating `blocks_by_hash` family for the blocks
-    ## and `chain_state_by_account` as well
-    ## https://github.com/facebook/rocksdb/wiki/Column-Families
-    {:ok, db, %{"blocks_by_hash"         => blocks_family,
-                "chain_state_by_account" => chain_state_family}} =
+    ## We are ensuring that families for the blocks and chain state
+    ## are created. More about them - https://github.com/facebook/rocksdb/wiki/Column-Families
+    {:ok, db, %{"blocks_family"      => blocks_family,
+                "chain_state_family" => chain_state_family}} =
       Rox.open(persistence_path(),
         [create_if_missing: true, auto_create_column_families: true],
-        ["blocks_by_hash", "chain_state_by_account"])
+        ["blocks_family", "chain_state_family"])
     {:ok, %{db: db,
             blocks_family: blocks_family,
             chain_state_family: chain_state_family}}
