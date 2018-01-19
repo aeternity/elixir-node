@@ -214,23 +214,7 @@ defmodule Aecore.Peers.Sync do
         case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
           {:ok, blocks} ->
             if !Enum.empty?(blocks) do
-              state = Enum.reduce(blocks, state, fn(block, state_acc) ->
-                try do
-                  BlockValidation.single_validate_block(block)
-                  peer_block_hash = BlockValidation.block_header_hash(block.header)
-
-                  case Chain.has_block?(peer_block_hash) do
-                    false ->
-                      Map.put(state_acc, peer_block_hash, block)
-                    true ->
-                      state_acc
-                  end
-                catch
-                  {:error, _} ->
-                    state_acc
-                end
-              end)
-
+              state = add_unknown_blocks_to_state(blocks, state)
               earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
               check_peer_blocks(peer_uri, earliest_block.header.prev_hash, state)
             else
@@ -243,4 +227,24 @@ defmodule Aecore.Peers.Sync do
         state
       end
   end
+
+  defp add_unknown_blocks_to_state(blocks, state) do
+    Enum.reduce(blocks, state, fn(block, state_acc) ->
+      try do
+        BlockValidation.single_validate_block(block)
+        peer_block_hash = BlockValidation.block_header_hash(block.header)
+
+        case Chain.has_block?(peer_block_hash) do
+          false ->
+            Map.put(state_acc, peer_block_hash, block)
+          true ->
+            state_acc
+        end
+      catch
+        {:error, _} ->
+          state_acc
+      end
+    end)
+  end
+
 end
