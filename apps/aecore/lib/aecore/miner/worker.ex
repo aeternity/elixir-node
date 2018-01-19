@@ -249,8 +249,47 @@ defmodule Aecore.Miner.Worker do
                    valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
+      chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
+      unmined_header = Header.create(
+        top_block.header.height + 1,
+        top_block_hash,
+        root_hash,
+        chain_state_hash,
+        difficulty,
+        0,
+        Block.current_block_version()
+      )
+      new_block = %Block{header: unmined_header, txs: []}
+      new_block_size_bits = new_block |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+      new_block_size_bytes = new_block_size_bits / 8
+      IO.inspect(new_block_size_bytes)
+
+      {valid_txs_by_block_size, _} =
+        List.foldl(valid_txs, {[], false}, fn(tx, {selected_txs, limit_reached}) ->
+          if !limit_reached do
+            new_selected_txs = [tx | selected_txs]
+            new_selected_txs_size_bits =
+              new_selected_txs |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+            new_selected_txs_size_bytes = new_selected_txs_size_bits / 8
+            IO.inspect(new_block_size_bytes + new_selected_txs_size_bytes)
+            if new_block_size_bytes + new_selected_txs_size_bytes <= 2_000 do
+              IO.inspect("added - #{new_selected_txs_size_bytes}")
+              {new_selected_txs, false}
+            else
+              IO.inspect("not added - #{new_selected_txs_size_bytes}")
+              {selected_txs, true}
+            end
+          else
+            {selected_txs, limit_reached}
+          end
+        end)
+IO.inspect("--------------------")
+      valid_txs_by_block_size = Enum.reverse(valid_txs_by_block_size)
+
+      root_hash = BlockValidation.calculate_root_hash(valid_txs_by_block_size)
+
       new_block_state =
-        ChainState.calculate_block_state(valid_txs, top_block.header.height)
+        ChainState.calculate_block_state(valid_txs_by_block_size, top_block.header.height)
       new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
       new_chain_state_locked_amounts =
         ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
@@ -269,7 +308,7 @@ defmodule Aecore.Miner.Worker do
           #start from nonce 0, will be incremented in mining
           Block.current_block_version()
         )
-      %Block{header: unmined_header, txs: valid_txs}
+      %Block{header: unmined_header, txs: valid_txs_by_block_size}
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
