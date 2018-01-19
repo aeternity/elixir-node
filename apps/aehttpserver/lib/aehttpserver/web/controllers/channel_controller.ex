@@ -104,9 +104,10 @@ defmodule Aehttpserver.Web.ChannelController do
 
   def open_channels(conn, _params) do
     hex_addresses =
-      Peers.open_channels
+      Peers.open_channels()
       |> Map.keys
       |> Enum.map(fn(address) -> Base.encode16(address) end)
+      
     json conn, hex_addresses
   end
 

@@ -38,7 +38,7 @@ defmodule Aecore.ChannelsPrototype.Channels do
   def make_channel_payment(address, amount) do
     channels = Peers.open_channels()
     if(Map.has_key?(channels, address) &&
-       peer_has_channel_open_with_us(channels[address].uri)) do
+      peer_has_channel_open_with_us(channels[address].uri)) do
       {:ok, own_pubkey} = Keys.pubkey()
       last_tx = get_last_valid_channel_tx(channels[address].txs)
       peer_address =
@@ -82,8 +82,8 @@ defmodule Aecore.ChannelsPrototype.Channels do
     serialized_multisig_tx =
       Serialization.tx(%MultisigTx{data: pending_tx.data,
                                    signatures: updated_signatures}, :serialize)
-    Client.accept_channel_payment(channels[address].uri, serialized_multisig_tx)
     Peers.accept_pending_tx(address)
+    Client.accept_channel_payment(channels[address].uri, serialized_multisig_tx)
   end
 
   def get_last_valid_channel_tx(txs) do
@@ -92,7 +92,7 @@ defmodule Aecore.ChannelsPrototype.Channels do
 
   def peer_has_channel_open_with_us(peer_uri) do
     {:ok, pubkey} = Keys.pubkey()
-    open_channels = Client.get_open_channels(peer_uri)
+    {:ok, open_channels} = Client.get_open_channels(peer_uri)
     Enum.any?(open_channels, fn(address) -> address == pubkey end)
   end
 

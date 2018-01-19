@@ -243,7 +243,12 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call({:accept_pending_tx, address}, _from,
                   %{open_channels: channels} = state) do
-    updated_channels = %{channels[address] | pending_tx: nil}
+    updated_channels =
+      %{channels | address =>
+                   %{channels[address] | pending_tx: nil,
+                                         txs:
+                                         [channels[address].pending_tx |
+                                         channels[address].txs]}}
 
     {:reply, :ok, %{state | open_channels: updated_channels}}
   end
