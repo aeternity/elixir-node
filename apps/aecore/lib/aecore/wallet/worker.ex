@@ -8,6 +8,8 @@ defmodule Aecore.Wallet.Worker do
   @aewallet_dir Application.get_env(:aecore, :aewallet)[:path]
   @aewallet_pass "1234"
 
+  ## Client API
+
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{path: @aewallet_dir}, name: __MODULE__)
   end
@@ -18,24 +20,26 @@ defmodule Aecore.Wallet.Worker do
   end
 
   @spec get_public_key(String.t()) :: binary()
-  def get_public_key(password) do
-    GenServer.call(__MODULE__, {:get_pub_key, password})
+  def get_public_key(password, network) do
+    GenServer.call(__MODULE__, {:get_pub_key, {password, network}})
   end
 
   @spec get_private_key(String.t()) :: binary()
-  def get_private_key(password) do
-    GenServer.call(__MODULE__, {:get_priv_key, password})
+  def get_private_key(password, network) do
+    GenServer.call(__MODULE__, {:get_priv_key, {password, network}})
   end
 
-  def handle_call({:get_pub_key, password}, _from, %{path: path} = state) do
-    {:ok, pub_key} =
-      Aewallet.Wallet.get_public_key(get_file_name(path), password)
+  ## Server Callbacks
+
+  def handle_call({:get_pub_key, {password, network}}, _from, %{path: path} = state) do
+    {:ok, pub_key, _} =
+      Aewallet.Wallet.get_public_key(get_file_name(path), password, network)
     {:reply, pub_key, state}
   end
 
-  def handle_call({:get_priv_key, password}, _from, %{path: path} = state) do
-    {:ok, priv_key} =
-      Aewallet.Wallet.get_private_key(get_file_name(path), password)
+  def handle_call({:get_priv_key, {password, network}}, _from, %{path: path} = state) do
+    {:ok, priv_key, _} =
+      Aewallet.Wallet.get_private_key(get_file_name(path), password, network)
     {:reply, priv_key, state}
   end
 
