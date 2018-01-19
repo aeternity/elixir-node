@@ -19,7 +19,7 @@ Rootsymbol File.
 
 File -> Contr : '$1'.
 
-Contr -> 'contract' id '{' Statement '}' : {contract, '$1', '$2', '$4'}.
+Contr -> 'contract' Id '{' Statement '}' : ['$1', '$2', '$4'].
 
 Statement -> SimpleStatement ';' : '$1'.
 Statement -> SimpleStatement ';' Statement : {'$1', '$3'}.
@@ -63,7 +63,7 @@ Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
 Expression -> Value : '$1'.
 Expression -> '!' Value : {'$1', '$2'}.
 Expression -> Expression OpCompare Expression : {'$1', '$2', '$3'}.
-Expression -> Expression Op Expression : {'$1', '$2', '$3'}.
+Expression -> Expression Op Expression : {'$2', '$1', '$3'}.
 Expression -> '(' Expression ')' : '$2'.
 Expression -> '!' '(' Expression ')' : {'$1', '$3'}.
 Expression -> '(' Expression ')' Expression : {'$1', '$3'}.
