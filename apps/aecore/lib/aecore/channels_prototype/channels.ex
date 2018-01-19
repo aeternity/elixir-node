@@ -41,23 +41,27 @@ defmodule Aecore.ChannelsPrototype.Channels do
       peer_has_channel_open_with_us(channels[address].uri)) do
       {:ok, own_pubkey} = Keys.pubkey()
       last_tx = get_last_valid_channel_tx(channels[address].txs)
-      peer_address =
-        Enum.find(Map.keys(last_tx.signatures), fn(address) -> address != own_pubkey end)
-      new_tx_data =
-        ChannelTxData.new(lock_amounts:
-                            %{own_pubkey =>
-                              last_tx.data.lock_amounts[own_pubkey] - amount,
-                              peer_address =>
-                              last_tx.data.lock_amounts[peer_address] + amount},
-                          fee: last_tx.data.fee)
-      {:ok, signature} = Keys.sign(new_tx_data)
-      signatures = %{own_pubkey => signature}
-      serialized_multisig_tx =
-        Serialization.tx(%MultisigTx{data: new_tx_data,
-                                     signatures: signatures}, :serialize)
-      Client.send_channel_payment_tx(channels[address].uri, serialized_multisig_tx)
+      if(last_tx.data.lock_amounts[own_pubkey] - amount > 0) do
+        peer_address =
+          Enum.find(Map.keys(last_tx.signatures), fn(address) -> address != own_pubkey end)
+        new_tx_data =
+          ChannelTxData.new(lock_amounts:
+                              %{own_pubkey =>
+                                last_tx.data.lock_amounts[own_pubkey] - amount,
+                                peer_address =>
+                                last_tx.data.lock_amounts[peer_address] + amount},
+                            fee: last_tx.data.fee)
+        {:ok, signature} = Keys.sign(new_tx_data)
+        signatures = %{own_pubkey => signature}
+        serialized_multisig_tx =
+          Serialization.tx(%MultisigTx{data: new_tx_data,
+                                       signatures: signatures}, :serialize)
+        Client.send_channel_payment_tx(channels[address].uri, serialized_multisig_tx)
+      else
+        Logger.error("Insufficient funds in channel")
+      end
     else
-      Logger.error(fn -> "No open channel with #{address}" end)
+      Logger.error(fn -> "No open channel with #{IO.inspect(address)}" end)
     end
   end
 
