@@ -225,7 +225,7 @@ defmodule Aecore.Peers.Sync do
         end
       true ->
         state
-      end
+    end
   end
 
   defp add_unknown_blocks_to_state(blocks, state) do
