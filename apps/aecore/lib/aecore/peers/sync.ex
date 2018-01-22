@@ -7,7 +7,6 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
 
   use GenServer
 
@@ -25,7 +24,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec add_block_to_state(binary(), term()) :: :ok
+  @spec add_block_to_state(binary, term()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
@@ -45,8 +44,9 @@ defmodule Aecore.Peers.Sync do
     Enum.each(peer_uris, fn(peer) ->
       case HttpClient.get_pool_txs(peer) do
         {:ok, deserialized_pool_txs} ->
-          Enum.each(deserialized_pool_txs,
-            fn(tx) -> Pool.add_transaction(tx) end)
+          Enum.each(deserialized_pool_txs, fn(tx) ->
+            Pool.add_transaction(tx)
+          end)
         :error ->
           Logger.error("Couldn't get pool from peer")
       end
@@ -198,13 +198,9 @@ defmodule Aecore.Peers.Sync do
   # deletes the blocks we added from the state
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
-        case Chain.add_block(block) do
-          :ok ->
-            Map.delete(acc, BlockValidation.block_header_hash(block.header))
-          :error ->
-            acc
-        end
-      end)
+      Chain.add_block(block)
+      Map.delete(acc, BlockValidation.block_header_hash(block.header))
+    end)
   end
 
   # Gets all unknown blocks, starting from the given one
