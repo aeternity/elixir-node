@@ -24,11 +24,11 @@ defmodule Aecore.Chain.BlockValidation do
 
     cond do
       # do not check previous block hash for genesis block, there is none
-      !(is_genesis || check_prev_hash(new_block, previous_block)) ->
+      !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
         throw({:error, "Incorrect previous hash"})
 
       # do not check previous block height for genesis block, there is none
-      !(is_genesis || check_correct_height(new_block, previous_block)) ->
+      !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
       !is_difficulty_target_met ->
@@ -53,7 +53,7 @@ defmodule Aecore.Chain.BlockValidation do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
-      !(validate_block_transactions(block) |> Enum.all?()) ->
+      !(block |> validate_block_transactions() |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
@@ -67,18 +67,21 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.header()) :: binary()
+  @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
-  @spec validate_block_transactions(Block.block()) :: list()
+  @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
-    block.txs |> Enum.map(fn tx -> SignedTx.is_coinbase(tx) ||  SignedTx.is_valid(tx) end)
+    block.txs
+    |> Enum.map(fn tx ->
+      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
+    end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(), map(), integer()) :: list()
+  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
   def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
     {valid_txs_list, _} = List.foldl(
       txs_list,
@@ -96,7 +99,7 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(%SignedTx{}, map(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
@@ -135,27 +138,27 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(Block.block()) :: integer()
+  @spec calculate_root_hash(Block.t()) :: integer()
   defp sum_coinbase_transactions(block) do
     block.txs
-    |> Enum.map(
-    fn tx -> cond do
-        SignedTx.is_coinbase(tx) -> tx.data.value
-        true -> 0
+    |> Enum.map(fn tx ->
+      if SignedTx.is_coinbase?(tx) do
+        tx.data.value
+      else
+        0
       end
-    end
-    )
+    end)
     |> Enum.sum()
   end
 
-  @spec check_prev_hash(Block.block(), Block.block()) :: boolean()
-  defp check_prev_hash(new_block, previous_block) do
+  @spec check_prev_hash?(Block.t(), Block.t()) :: boolean()
+  defp check_prev_hash?(new_block, previous_block) do
     prev_block_header_hash = block_header_hash(previous_block.header)
     new_block.header.prev_hash == prev_block_header_hash
   end
 
-  @spec check_correct_height(Block.block(), Block.block()) :: boolean()
-  defp check_correct_height(new_block, previous_block) do
+  @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
+  defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
 

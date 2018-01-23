@@ -1,6 +1,6 @@
 defmodule Aecore.Chain.ChainState do
   @moduledoc """
-  Module used for calculating the chain states.
+  Module used for calculating the block and chain states.
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
@@ -15,17 +15,17 @@ defmodule Aecore.Chain.ChainState do
     |> update_chain_state_locked(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.signed_tx(), map(), integer()) :: map()
+  @spec apply_transaction_on_state!(SignedTx.t(), map(), integer()) :: map()
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     cond do
-      SignedTx.is_coinbase(transaction) ->
+      SignedTx.is_coinbase?(transaction) ->
         transaction_in!(chain_state,
                         block_height,
                         transaction.data.to_acc, 
                         transaction.data.value,
                         transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
-        if !SignedTx.is_valid(transaction) do
+        if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
         end 
         chain_state
