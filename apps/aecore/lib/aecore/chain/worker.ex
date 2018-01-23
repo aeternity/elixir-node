@@ -67,8 +67,13 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_blocks(binary(), integer()) :: list(Block.t())
-  def get_blocks(start_block_hash, size) do
-    Enum.reverse(get_blocks([], start_block_hash, size))
+  def get_blocks(start_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, nil, count))
+  end
+
+  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  def get_blocks(start_block_hash, final_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
@@ -212,16 +217,16 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  defp get_blocks(blocks_acc, next_block_hash, size) do
-    if size > 0 do
+  defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
+    if next_block_hash != final_block_hash && count > 0 do
       case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
         {:error, _} -> blocks_acc
         block ->
-          updated_block_acc = [block | blocks_acc]
+          updated_blocks_acc = [block | blocks_acc]
           prev_block_hash = block.header.prev_hash
-          next_size = size - 1
+          next_count = count - 1
 
-          get_blocks(updated_block_acc, prev_block_hash, next_size)
+          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
       end
     else
       blocks_acc

@@ -12,7 +12,7 @@ defmodule Aehttpclient.Client do
   require Logger
 
   @typedoc "Client request identifier"
-  @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block
+  @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
@@ -29,6 +29,16 @@ defmodule Aehttpclient.Client do
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
+  def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
+    from_block_hash = Base.encode16(from_block_hash)
+    to_block_hash = Base.encode16(to_block_hash)
+    uri = uri <> "/raw_blocks?" <>
+            "from_block=" <> from_block_hash <>
+            "&to_block=" <> to_block_hash
+    get(uri, :raw_blocks)
   end
 
   def get_pool_txs(uri) do
@@ -84,6 +94,19 @@ defmodule Aehttpclient.Client do
   defp handleResponse(:block, body, _headers) do
     response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
     {:ok, response}
+  end
+
+  @spec handleResponse(:raw_blocks, map(), list(map())) :: {:ok, map()}
+  defp handleResponse(:raw_blocks, body, _headers) do
+    response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
+    deserialized_blocks = Enum.map(
+      response,
+      fn(block) ->
+        Serialization.block(block, :deserialize)
+      end
+    )
+
+    {:ok, deserialized_blocks}
   end
 
   @spec handleResponse(:info, map(), list(map())) :: {:ok, map()}
