@@ -64,7 +64,7 @@ defmodule Aecore.Peers.Sync do
           state
         false ->
           try do
-            BlockValidation.single_validate_block(block)
+            BlockValidation.single_validate_block!(block)
             Map.put(state, block_hash, block)
           catch
             {:error, message} ->
@@ -227,7 +227,7 @@ defmodule Aecore.Peers.Sync do
   defp add_unknown_blocks_to_state(blocks, state) do
     Enum.reduce(blocks, state, fn(block, state_acc) ->
       try do
-        BlockValidation.single_validate_block(block)
+        BlockValidation.single_validate_block!(block)
         peer_block_hash = BlockValidation.block_header_hash(block.header)
 
         case Chain.has_block?(peer_block_hash) do

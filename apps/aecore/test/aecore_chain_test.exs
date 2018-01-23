@@ -27,8 +27,7 @@ defmodule AecoreChainTest do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     chain_state = Chain.chain_state(top_block_hash)
-    new_block_state = ChainState.calculate_block_state([], top_block.header.height)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
     new_chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     block_unmined = %Block{header: %Header{height: top_block.header.height + 1,
@@ -47,13 +46,14 @@ defmodule AecoreChainTest do
                                               Difficulty.get_number_of_blocks)
     top_block_hash_next_hex = top_block_hash_next |> Base.encode16()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
+    previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
     assert top_block_from_chain == Chain.get_block_by_hex_hash(top_block_hash_next_hex)
     assert previous_block.header.height + 1 == top_block_from_chain.header.height
-    assert BlockValidation.validate_block!(top_block_from_chain, previous_block,
-                                            Chain.chain_state(),
-                                            blocks_for_difficulty_calculation)
-    assert :ok == Chain.add_block(block_mined)
+    assert BlockValidation.calculate_and_validate_block!(top_block_from_chain, previous_block,
+                                                         Chain.chain_state(previous_block_hash),
+                                                         blocks_for_difficulty_calculation)
+    assert :ok = Chain.add_block(block_mined)
     assert block_mined == Chain.top_block()
 
     length = length(Chain.longest_blocks_chain())

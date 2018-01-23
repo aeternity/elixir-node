@@ -23,8 +23,7 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state =
-      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
+    genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
@@ -81,14 +80,11 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
-    new_block_state = ChainState.calculate_block_state(block.txs, prev_block.header.height)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
-    new_chain_state_locked_amounts =
-      ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
 
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, prev_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
-    add_validated_block(block, new_chain_state_locked_amounts)
+    new_chain_state = BlockValidation.calculate_and_validate_block!(
+      block, prev_block, prev_block_chain_state, blocks_for_difficulty_calculation)
+    add_validated_block(block, new_chain_state)
   end
 
   @spec add_validated_block(Block.t(), map()) :: :ok
