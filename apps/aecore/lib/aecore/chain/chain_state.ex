@@ -9,7 +9,8 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
-    Enum.reduce(txs, chain_state, fn(transaction, chain_state) ->
+    txs
+    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
       apply_transaction_on_state!(transaction, chain_state, block_height) 
     end)
     |> update_chain_state_locked(block_height)
