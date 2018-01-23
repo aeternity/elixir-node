@@ -64,7 +64,7 @@ defmodule Aecore.Peers.Sync do
           state
         false ->
           try do
-            BlockValidation.single_validate_block(block)
+            BlockValidation.single_validate_block!(block)
             Map.put(state, block_hash, block)
           catch
             {:error, message} ->
@@ -210,7 +210,7 @@ defmodule Aecore.Peers.Sync do
         case(HttpClient.get_block({peer_uri, block_hash})) do
           {:ok, deserialized_block} ->
             try do
-              BlockValidation.single_validate_block(deserialized_block)
+              BlockValidation.single_validate_block!(deserialized_block)
               peer_block_hash = BlockValidation.block_header_hash(deserialized_block.header)
 
               if block_hash == peer_block_hash do
