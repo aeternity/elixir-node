@@ -26,15 +26,12 @@ defmodule Aecore.Txs.Pool.Worker do
     {:ok, initial_pool}
   end
 
-
-  ## Client side
-
-  @spec add_transaction(%SignedTx{}) :: :ok | :error
+  @spec add_transaction(SignedTx.t()) :: :ok | :error
   def add_transaction(tx) do
     GenServer.call(__MODULE__, {:add_transaction, tx})
   end
 
-  @spec remove_transaction(%SignedTx{}) :: :ok
+  @spec remove_transaction(SignedTx.t()) :: :ok
   def remove_transaction(tx) do
     GenServer.call(__MODULE__, {:remove_transaction, tx})
   end
@@ -70,7 +67,7 @@ defmodule Aecore.Txs.Pool.Worker do
       Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
 
     cond do
-      !SignedTx.is_valid(tx) ->
+      !SignedTx.is_valid?(tx) ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
       !is_minimum_fee_met ->
