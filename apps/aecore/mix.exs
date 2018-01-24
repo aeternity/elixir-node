@@ -46,7 +46,7 @@ defmodule Aecore.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:rox, "~> 2.1"},
+      {:rox, "~> 2.2.1"},
       {:exconstructor, "~> 1.1"},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:excoveralls, "~> 0.7", only: :test},
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Compile.Make do
 
   def run(_) do
     File.cd(Path.absname("apps/aecore/src/cuckoo/"))
-    {result, _error_code} = System.cmd("make", ['all'], stderr_to_stdout: true)
+    {result, _error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
     Mix.shell.info result
     :ok
   end
