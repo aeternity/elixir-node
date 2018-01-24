@@ -71,7 +71,7 @@ defmodule Aecore.Miner.Worker do
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
-  @spec mine_sync_block_to_chain() :: %Block{} | error :: term()
+  @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
   def mine_sync_block_to_chain() do
     cblock = candidate()
     case mine_sync_block(cblock) do
@@ -81,7 +81,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Mine single block without adding it to the chain - Sync
-  @spec mine_sync_block(%Block{}) :: {:ok, %Block{}} | {:error, reason :: atom()}
+  @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{} = cblock) do
     if GenServer.call(__MODULE__, :get_state) == :idle do
       mine_sync_block(Cuckoo.generate(cblock.header), cblock)
@@ -203,6 +203,7 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
+  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
   def candidate() do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
@@ -214,30 +215,22 @@ defmodule Aecore.Miner.Worker do
     blocks_for_difficulty_validation = if top_block.header.height == 0 do
       [top_block]
     else
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks() + 1)
+      top_block_hash
+      |> Chain.get_blocks(Difficulty.get_number_of_blocks() + 1)
       |> Enum.drop(1)
     end
 
-    previous_block = cond do
-      top_block == Block.genesis_block() -> nil
-      true ->
-        Chain.get_block(top_block.header.prev_hash)
+    previous_block = unless top_block == Block.genesis_block() do
+      Chain.get_block(top_block.header.prev_hash)
     end
 
     try do
-      BlockValidation.validate_block!(
-        top_block,
-        previous_block,
-        chain_state,
-        blocks_for_difficulty_validation
-      )
-
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state)
+      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
@@ -249,12 +242,8 @@ defmodule Aecore.Miner.Worker do
                    valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_block_state =
-        ChainState.calculate_block_state(valid_txs, top_block.header.height)
-      new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-      new_chain_state_locked_amounts =
-        ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
+      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
@@ -278,16 +267,10 @@ defmodule Aecore.Miner.Worker do
 
   end
 
-  ## Internal
-
   def calculate_total_fees(txs) do
-    List.foldl(
-      txs,
-      0,
-      fn (tx, acc) ->
+    List.foldl(txs, 0, fn (tx, acc) ->
         acc + tx.data.fee
-      end
-    )
+    end)
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
@@ -299,18 +282,20 @@ defmodule Aecore.Miner.Worker do
       fee: 0,
       lock_time_block: lock_time_block
     }
-
     %SignedTx{data: tx_data, signature: nil}
   end
 
-  defp filter_transactions_by_fee(txs) do
-    Enum.filter(txs, fn(tx) ->
-      tx_size_bits =
-        tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-      tx_size_bytes = tx_size_bits / 8
+  ## Internal
 
-      tx.data.fee >= Float.floor(tx_size_bytes /
-        Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token])
+  defp filter_transactions_by_fee(txs) do
+    miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
+    Enum.filter(txs, fn(tx) ->
+      tx_size_bits = tx
+        |> :erlang.term_to_binary()
+        |> Bits.extract()
+        |> Enum.count()
+      tx_size_bytes = tx_size_bits / 8
+      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
 

@@ -7,24 +7,44 @@ defmodule Aecore.Peers.Scheduler do
   @check_time 60_000
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{})
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def init(state) do
+  def init(running_tasks) do
     schedule_work()
-    {:ok, state}
+    {:ok, running_tasks}
   end
 
-  def handle_info(:work, state) do
+  def add_running_task() do
+    GenServer.call(__MODULE__, :add_running_task)
+  end
+
+  def remove_running_task() do
+    GenServer.call(__MODULE__, :remove_running_task)
+  end
+
+  def handle_call(:add_running_task, from, running_tasks) do
+    updated_tasks = Map.put(running_tasks, from, :running)
+
+    {:reply, :ok, updated_tasks}
+  end
+
+  def handle_call(:remove_running_task, from, running_tasks) do
+    updated_tasks = Map.delete(running_tasks, from)
+
+    {:reply, :ok, updated_tasks}
+  end
+
+  def handle_info(:work, running_tasks) do
     Peers.check_peers()
     Sync.introduce_variety()
     Sync.refill()
-    if(Peers.is_chain_synced?()) do
+    if(Enum.empty?(running_tasks)) do
       Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
     end
     schedule_work()
 
-    {:noreply, state}
+    {:noreply, running_tasks}
   end
 
   defp schedule_work() do
