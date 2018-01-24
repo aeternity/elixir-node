@@ -327,7 +327,7 @@ defmodule Aecore.Miner.Worker do
     Enum.reverse(valid_txs_by_block_size)
   end
 
-  defp create_block(valid_txs, top_block, chain_state, difficulty) do
+  defp create_block(top_block, chain_state, difficulty, valid_txs) do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_block_state =
