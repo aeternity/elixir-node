@@ -24,6 +24,7 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
+  @max_block_size_bytes 500_000
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -247,74 +248,26 @@ defmodule Aecore.Miner.Worker do
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
-      root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      chain_state_hash = ChainState.calculate_chain_state_hash(chain_state)
-      unmined_header = Header.create(
-        top_block.header.height + 1,
-        top_block_hash,
-        root_hash,
-        chain_state_hash,
-        difficulty,
-        0,
-        Block.current_block_version()
-      )
-      new_block = %Block{header: unmined_header, txs: []}
+      new_block = create_block(top_block, chain_state, difficulty, [])
       new_block_size_bits = new_block |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
       new_block_size_bytes = new_block_size_bits / 8
-      IO.inspect(new_block_size_bytes)
 
-      {valid_txs_by_block_size, _} =
-        List.foldl(valid_txs, {[], false}, fn(tx, {selected_txs, limit_reached}) ->
-          if !limit_reached do
-            new_selected_txs = [tx | selected_txs]
-            new_selected_txs_size_bits =
-              new_selected_txs |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-            new_selected_txs_size_bytes = new_selected_txs_size_bits / 8
-            IO.inspect(new_block_size_bytes + new_selected_txs_size_bytes)
-            if new_block_size_bytes + new_selected_txs_size_bytes <= 2_000 do
-              IO.inspect("added - #{new_selected_txs_size_bytes}")
-              {new_selected_txs, false}
-            else
-              IO.inspect("not added - #{new_selected_txs_size_bytes}")
-              {selected_txs, true}
-            end
-          else
-            {selected_txs, limit_reached}
-          end
-        end)
-IO.inspect("--------------------")
-      valid_txs_by_block_size = Enum.reverse(valid_txs_by_block_size)
+      valid_txs_by_block_size = filter_transactions_by_block_size(valid_txs, new_block_size_bytes)
 
-      root_hash = BlockValidation.calculate_root_hash(valid_txs_by_block_size)
+      total_fees = calculate_total_fees(valid_txs_by_block_size)
+      valid_txs =
+        List.replace_at(valid_txs_by_block_size, 0,
+          get_coinbase_transaction(pubkey, total_fees,
+                      top_block.header.height + 1 +
+                      Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
 
-      new_block_state =
-        ChainState.calculate_block_state(valid_txs_by_block_size, top_block.header.height)
-      new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
-      new_chain_state_locked_amounts =
-        ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
-
-      top_block_hash = BlockValidation.block_header_hash(top_block.header)
-
-      unmined_header =
-        Header.create(
-          top_block.header.height + 1,
-          top_block_hash,
-          root_hash,
-          chain_state_hash,
-          difficulty,
-          0,
-          #start from nonce 0, will be incremented in mining
-          Block.current_block_version()
-        )
-      %Block{header: unmined_header, txs: valid_txs_by_block_size}
+      create_block(top_block, chain_state, difficulty, valid_txs)
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
       {:error, message}
     end
-
   end
 
   ## Internal
@@ -351,6 +304,53 @@ IO.inspect("--------------------")
       tx.data.fee >= Float.floor(tx_size_bytes /
         Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token])
     end)
+  end
+
+  defp filter_transactions_by_block_size(txs, new_block_size_bytes) do
+    {valid_txs_by_block_size, _} =
+      List.foldl(txs, {[], false}, fn(tx, {selected_txs, limit_reached}) ->
+        if !limit_reached do
+          new_selected_txs = [tx | selected_txs]
+          new_selected_txs_size_bits =
+            new_selected_txs |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+          new_selected_txs_size_bytes = new_selected_txs_size_bits / 8
+          if new_block_size_bytes + new_selected_txs_size_bytes <= @max_block_size_bytes do
+            {new_selected_txs, false}
+          else
+            {selected_txs, true}
+          end
+        else
+          {selected_txs, limit_reached}
+        end
+      end)
+
+    Enum.reverse(valid_txs_by_block_size)
+  end
+
+  defp create_block(valid_txs, top_block, chain_state, difficulty) do
+    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+
+    new_block_state =
+      ChainState.calculate_block_state(valid_txs, top_block.header.height)
+    new_chain_state = ChainState.calculate_chain_state(new_block_state, chain_state)
+    new_chain_state_locked_amounts =
+      ChainState.update_chain_state_locked(new_chain_state, top_block.header.height + 1)
+    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state_locked_amounts)
+
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    unmined_header =
+      Header.create(
+        top_block.header.height + 1,
+        top_block_hash,
+        root_hash,
+        chain_state_hash,
+        difficulty,
+        0,
+        #start from nonce 0, will be incremented in mining
+        Block.current_block_version()
+      )
+    %Block{header: unmined_header, txs: valid_txs}
   end
 
   def coinbase_transaction_value, do: @coinbase_transaction_value
