@@ -70,7 +70,7 @@ Expression -> '(' Expression ')' Expression : {'$1', '$3'}.
 Expression -> '!' '(' Expression ')' Expression : {'$1', '$3', '$5'}.
 
 Id -> id : {id, get_value('$1')}.
-Type -> type : '$1'.
+Type -> type : {type, get_value('$1')}.
 
 Value -> Id : '$1'.
 Value -> FunctionCall : '$1'.

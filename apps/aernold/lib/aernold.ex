@@ -4,50 +4,63 @@ defmodule Aernold do
     int
   end
 
-  defp reduce_to_value({:string, _line, string}, state) do
+  defp reduce_to_value({:string, string}, state) do
     string
   end
 
-  defp reduce_to_value({:char, _line, char}, state) do
+  defp reduce_to_value({:char, char}, state) do
     char
   end
 
-  defp reduce_to_value({:hex, _line, hex}, state) do
+  defp reduce_to_value({:hex, hex}, state) do
     hex
   end
 
   defp reduce_to_value({:id, id}, state) do
-    IO.inspect("ID")
-    IO.inspect(id)
     id
   end
 
+  defp reduce_to_value({:type, type}, state) do
+    type
+  end
+
   defp reduce_to_value({{op, _}, lhs, rhs}, state) do
-    if op == "=" do
-      IO.inspect("Im here")
-      IO.inspect(lhs)
-      IO.inspect(rhs)
-      lhs = reduce_to_value(lhs, state)
-      rhs = reduce_to_value(rhs, state)
-      Map.merge(state, %{lhs => rhs})
+    cond do
+      op == "=" ->
+        IO.inspect("Assign")
+        lhs = reduce_to_value(lhs, state)
+        rhs = reduce_to_value(rhs, state)
+        Map.merge(state, %{lhs => rhs})
+      op == "+" ->
+        IO.inspect("ADD")
+        reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
+      op == "-" ->
+        IO.inspect("SUB")
+        reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
+      op == "*" ->
+        IO.inspect("MUL")
+        reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
+      op == "/" ->
+        IO.inspect("DIV")
+        reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
     end
   end
 
-  defp reduce_to_value({:add_op, lhs, rhs}, state) do
-    reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
-  end
-
-  defp reduce_to_value({:sub_op, lhs, rhs}, state) do
-    reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
-  end
-
-  defp reduce_to_value({:mul_op, lhs, rhs}, state) do
-    reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
-  end
-
-  defp reduce_to_value({:div_op, lhs, rhs}, state) do
-    reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
-  end
+  # defp reduce_to_value({:add_op, lhs, rhs}, state) do
+  #   reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
+  # end
+  #
+  # defp reduce_to_value({:sub_op, lhs, rhs}, state) do
+  #   reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
+  # end
+  #
+  # defp reduce_to_value({:mul_op, lhs, rhs}, state) do
+  #   reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
+  # end
+  #
+  # defp reduce_to_value({:div_op, lhs, rhs}, state) do
+  #   reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
+  # end
 
   defp evaluate_ast([{lhs, _}, rhs | tail], state) do
     IO.puts "-----------------LHS------------------"
@@ -85,8 +98,6 @@ defmodule Aernold do
   def parse_string(string) do
     parse(string)
   end
-
-#Aernold.parse_string("Contract test{a=5;}")
 
   def parse_file(filename) do
     file = Path.absname("apps/aernold/" <> filename)
