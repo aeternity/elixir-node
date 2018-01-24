@@ -24,7 +24,7 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @max_block_size_bytes 2_000
+  @max_block_size_bytes 500_000
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
