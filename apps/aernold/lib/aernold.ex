@@ -4,16 +4,20 @@ defmodule Aernold do
     int
   end
 
-  defp reduce_to_value({:string, string}, state) do
-    string
+  defp reduce_to_value({:bool, bool}, state) do
+    bool
+  end
+
+  defp reduce_to_value({:hex, hex}, state) do
+    to_string(hex)
   end
 
   defp reduce_to_value({:char, char}, state) do
     char
   end
 
-  defp reduce_to_value({:hex, hex}, state) do
-    hex
+  defp reduce_to_value({:string, string}, state) do
+    string
   end
 
   defp reduce_to_value({:id, id}, state) do
@@ -46,22 +50,6 @@ defmodule Aernold do
     end
   end
 
-  # defp reduce_to_value({:add_op, lhs, rhs}, state) do
-  #   reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
-  # end
-  #
-  # defp reduce_to_value({:sub_op, lhs, rhs}, state) do
-  #   reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
-  # end
-  #
-  # defp reduce_to_value({:mul_op, lhs, rhs}, state) do
-  #   reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
-  # end
-  #
-  # defp reduce_to_value({:div_op, lhs, rhs}, state) do
-  #   reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
-  # end
-
   defp evaluate_ast([{lhs, _}, rhs | tail], state) do
     IO.puts "-----------------LHS------------------"
     IO.inspect(lhs)
@@ -85,6 +73,30 @@ defmodule Aernold do
     rhs_value = reduce_to_value(rhs, state)
     IO.inspect(rhs_value)
     evaluate_ast(tail, Map.merge(state, %{lhs_value => rhs_value}))
+  end
+
+  defp evaluate_ast([{:def_var, id, type, value} | tail], state) do
+    hex_regex = ~r{0[xX][0-9a-fA-F]+}
+    extracted_id = reduce_to_value(id, state)
+    IO.inspect("Extracted id = #{extracted_id}")
+    extracted_type = reduce_to_value(type, state)
+    IO.inspect("Extracted type = #{extracted_type}")
+    extracted_value = reduce_to_value(value, state)
+    IO.inspect("Extracted value = #{extracted_value}")
+    cond do
+      extracted_type == 'Int' && !(is_integer(extracted_value)) ->
+        throw({:error, "The value of (#{extracted_id}) must be Integer"})
+      extracted_type == 'Bool' && !(is_boolean(extracted_value)) ->
+        throw({:error, "The value of (#{extracted_id}) must be Boolean"})
+      extracted_type == 'String' && !(String.valid?(extracted_value)) ->
+        throw({:error, "The value of (#{extracted_id}) must be String"})
+      extracted_type == 'Hex' &&  !(extracted_value =~ hex_regex) ->
+        throw({:error, "The value of (#{extracted_id}) must be Hex"})
+      extracted_type == 'Char' && !(is_list(extracted_value)) ->
+        throw({:error, "The value of (#{extracted_id}) must be Char"})
+      true ->
+        evaluate_ast(tail, Map.merge(state, %{extracted_id => {extracted_type, extracted_value}}))
+    end
   end
 
   defp evaluate_ast([], state) do

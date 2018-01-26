@@ -76,7 +76,7 @@ Value -> Id : '$1'.
 Value -> FunctionCall : '$1'.
 Value -> int : {int, get_value('$1')}.
 Value -> bool : {bool, get_value('$1')}.
-Value -> hex : {hex, get_value('$1')}.
+Value -> hex : {hex, get_hex_value('$1')}.
 Value -> char : {char, get_value('$1')}.
 Value -> string : {string, get_value('$1')}.
 
@@ -99,3 +99,4 @@ Op -> '=' : '$1'.
 Erlang code.
 
 get_value({_, _, Value}) -> Value.
+get_hex_value({_, _, Value}) -> "0x" ++ Value.
