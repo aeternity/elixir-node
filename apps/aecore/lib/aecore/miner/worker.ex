@@ -268,7 +268,7 @@ defmodule Aecore.Miner.Worker do
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bits = tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+      tx_size_bytes = tx |> :erlang.term_to_binary() |> :erlang.byte_size()
       tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
