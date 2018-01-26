@@ -1,6 +1,5 @@
 defmodule Aecore.Peers.Sync do
-
-  @peers_target_count Application.get_env(:aecore, :peers)[:peers_target_count]
+  use GenServer
 
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
@@ -9,16 +8,49 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
 
-  use GenServer
-
   require Logger
 
+  @peers_target_count Application.get_env(:aecore, :peers)[:peers_target_count]
+
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{peer_blocks: %{},
+                                       peer_block_tasks: %{},
+                                       chain_sync_running: false},
+                         name: __MODULE__)
   end
 
   def init(state) do
     {:ok, state}
+  end
+
+  @spec get_peer_blocks() :: map()
+  def get_peer_blocks() do
+    GenServer.call(__MODULE__, :get_peer_blocks)
+  end
+
+  @spec add_running_task(String.t()) :: :ok
+  def add_running_task(peer_uri) do
+    GenServer.call(__MODULE__, {:add_running_task, peer_uri})
+  end
+
+  @spec remove_running_task(String.t()) :: :ok
+  def remove_running_task(peer_uri) do
+    GenServer.call(__MODULE__, {:remove_running_task, peer_uri})
+  end
+
+  @spec get_running_tasks() :: map()
+  def get_running_tasks() do
+    GenServer.call(__MODULE__, :get_running_tasks)
+  end
+
+  @spec get_chain_sync_status() :: boolean()
+  def get_chain_sync_status() do
+    GenServer.call(__MODULE__, :get_chain_sync_status)
+  end
+
+  @spec set_chain_sync_status(boolean()) :: :ok
+  def set_chain_sync_status(status) do
+    GenServer.call(__MODULE__, {:set_chain_sync_status, status})
   end
 
   @spec add_block_to_state(binary(), term()) :: :ok
@@ -26,24 +58,61 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
+  @spec remove_block_from_state(binary()) :: :ok
+  def remove_block_from_state(block_hash) do
+    GenServer.call(__MODULE__, {:remove_block_from_state, block_hash})
+  end
+
   @spec ask_peers_for_unknown_blocks(map()) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     Enum.each(peers, fn ({_, %{uri: uri, latest_block: top_block_hash}}) ->
       {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
-      PeerBlocksTask.start_link([uri, top_hash_decoded])
+      if !Map.has_key?(get_running_tasks(), uri) do
+        PeerBlocksTask.start_link([uri, top_hash_decoded])
+      end
     end)
   end
 
-  def add_valid_peer_blocks_to_chain() do
-    GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
+  @spec add_peer_blocks_to_sync_state(String.t(), binary()) :: :ok
+  def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
+    if !Chain.has_block?(from_block_hash) do
+      add_running_task(peer_uri)
+      case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
+        {:ok, blocks} ->
+          if !Enum.empty?(blocks) do
+            Enum.each(blocks, fn(block) ->
+              try do
+                BlockValidation.single_validate_block!(block)
+                peer_block_hash = BlockValidation.block_header_hash(block.header)
+                if !Chain.has_block?(peer_block_hash) do
+                  add_block_to_state(peer_block_hash, block)
+                end
+              catch
+                {:error, message} ->
+                  Logger.error(fn -> message end)
+              end
+            end)
+            earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
+            add_peer_blocks_to_sync_state(peer_uri, earliest_block.header.prev_hash)
+          end
+        {:error, message} ->
+          Logger.error(fn -> message end)
+      end
+    else
+      remove_running_task(peer_uri)
+    end
   end
 
-  @spec add_valid_peer_blocks_to_chain(map()) :: map()
+  @spec add_valid_peer_blocks_to_chain(map()) :: :ok
   def add_valid_peer_blocks_to_chain(state) do
-    Enum.reduce(state, state, fn({_, block}, acc) ->
-        built_chain = build_chain(acc, block, [])
-        add_built_chain(built_chain, acc)
-      end)
+    if !get_chain_sync_status() do
+      set_chain_sync_status(true)
+      Enum.each(state, fn{_, block} ->
+          built_chain = build_chain(state, block, [])
+          add_built_chain(built_chain)
+        end)
+      set_chain_sync_status(false)
+    end
   end
 
   @spec add_unknown_peer_pool_txs(map()) :: :ok
@@ -61,28 +130,62 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
-  def handle_call({:add_block_to_state, block_hash, block},_from, state) do
-    updated_state =
+  def handle_call(:get_peer_blocks, _from, %{peer_blocks: peer_blocks} = state) do
+    {:reply, peer_blocks, state}
+  end
+
+  def handle_call({:add_running_task, peer_uri}, from,
+                  %{peer_block_tasks: peer_block_tasks} = state) do
+    updated_tasks = Map.put(peer_block_tasks, peer_uri, from)
+
+    {:reply, :ok, %{state | peer_block_tasks: updated_tasks}}
+  end
+
+  def handle_call({:remove_running_task, peer_uri}, _from,
+                  %{peer_block_tasks: peer_block_tasks} = state) do
+    updated_tasks = Map.delete(peer_block_tasks, peer_uri)
+
+    {:reply, :ok, %{state | peer_block_tasks: updated_tasks}}
+  end
+
+  def handle_call(:get_running_tasks, _from,
+                  %{peer_block_tasks: peer_block_tasks} = state) do
+    {:reply, peer_block_tasks, state}
+  end
+
+  def handle_call(:get_chain_sync_status, _from,
+                  %{chain_sync_running: chain_sync_running} = state) do
+    {:reply, chain_sync_running, state}
+  end
+
+  def handle_call({:set_chain_sync_status, status}, _from, state) do
+    {:reply, :ok, %{state | chain_sync_running: status}}
+  end
+
+  def handle_call({:add_block_to_state, block_hash, block}, _from,
+                   %{peer_blocks: peer_blocks} = state) do
+    updated_peer_blocks =
       case Chain.has_block?(block_hash) do
         true ->
-          state
+          peer_blocks
         false ->
           try do
             BlockValidation.single_validate_block!(block)
-            Map.put(state, block_hash, block)
+            Map.put(peer_blocks, block_hash, block)
           catch
             {:error, message} ->
-              Logger.error(fn -> "Can't add block to Sync state; #{message}" end)
-              state
+              Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
+              peer_blocks
           end
       end
-    {:reply, :ok, updated_state}
+    {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
   end
 
-  def handle_call(:add_valid_peer_blocks_to_chain, _from, state) do
-    filtered_state = add_valid_peer_blocks_to_chain(state)
+  def handle_call({:remove_block_from_state, block_hash}, _from,
+                   %{peer_blocks: peer_blocks} = state) do
+    updated_peer_blocks = Map.delete(peer_blocks, block_hash)
 
-    {:reply, :ok filtered_state}
+    {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
   end
 
   def handle_info(_any, state) do
@@ -195,40 +298,14 @@ defmodule Aecore.Peers.Sync do
 
   # Adds the given chain to the local chain and
   # deletes the blocks we added from the state
-  defp add_built_chain(chain, state) do
-    Enum.reduce(chain, state, fn (block, acc) ->
+  defp add_built_chain(chain) do
+    Enum.each(chain, fn(block) ->
       case Chain.add_block(block) do
         :ok ->
-          Map.delete(acc, BlockValidation.block_header_hash(block.header))
+          remove_block_from_state(BlockValidation.block_header_hash(block.header))
         :error ->
-          acc
+          Logger.info("Block couldn't be added to chain")
       end
     end)
-  end
-
-  def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
-    if !Chain.has_block?(from_block_hash) do
-      case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
-        {:ok, blocks} ->
-          if !Enum.empty?(blocks) do
-            Enum.each(blocks, fn(block) ->
-              try do
-                BlockValidation.single_validate_block!(block)
-                peer_block_hash = BlockValidation.block_header_hash(block.header)
-                if !Chain.has_block?(peer_block_hash) do
-                  add_block_to_state(peer_block_hash, block)
-                end
-              catch
-                {:error, message} ->
-                  Logger.error(fn -> message end)
-              end
-            end)
-            earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
-            add_peer_blocks_to_sync_state(peer_uri, earliest_block.header.prev_hash)
-          end
-        {:error, message} ->
-          Logger.error(fn -> message end)
-      end
-    end
   end
 end

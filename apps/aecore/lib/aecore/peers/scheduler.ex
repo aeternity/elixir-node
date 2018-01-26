@@ -15,36 +15,14 @@ defmodule Aecore.Peers.Scheduler do
     {:ok, running_tasks}
   end
 
-  def add_running_task() do
-    GenServer.call(__MODULE__, :add_running_task)
-  end
-
-  def remove_running_task() do
-    GenServer.call(__MODULE__, :remove_running_task)
-  end
-
-  def handle_call(:add_running_task, from, running_tasks) do
-    updated_tasks = Map.put(running_tasks, from, :running)
-
-    {:reply, :ok, updated_tasks}
-  end
-
-  def handle_call(:remove_running_task, from, running_tasks) do
-    updated_tasks = Map.delete(running_tasks, from)
-
-    {:reply, :ok, updated_tasks}
-  end
-
-  def handle_info(:work, running_tasks) do
+  def handle_info(:work, state) do
     Peers.check_peers()
     Sync.introduce_variety()
     Sync.refill()
-    if(Enum.empty?(running_tasks)) do
-      Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
-    end
+    Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
     schedule_work()
 
-    {:noreply, running_tasks}
+    {:noreply, state}
   end
 
   defp schedule_work() do
