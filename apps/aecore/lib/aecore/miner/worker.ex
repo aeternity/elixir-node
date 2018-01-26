@@ -24,7 +24,6 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @max_block_size_bytes 500_000
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -228,9 +227,7 @@ defmodule Aecore.Miner.Worker do
                    valid_txs_by_fee]
 
       new_block = create_block(top_block, chain_state, difficulty, [])
-      new_block_size_bits = new_block |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-      new_block_size_bytes = new_block_size_bits / 8
-
+      new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
       valid_txs_by_block_size = filter_transactions_by_block_size(valid_txs, new_block_size_bytes)
 
       total_fees = calculate_total_fees(valid_txs_by_block_size)
@@ -271,11 +268,7 @@ defmodule Aecore.Miner.Worker do
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bits = tx
-        |> :erlang.term_to_binary()
-        |> Bits.extract()
-        |> Enum.count()
-      tx_size_bytes = tx_size_bits / 8
+      tx_size_bits = tx |> :erlang.term_to_binary() |> :erlang.byte_size()
       tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
@@ -285,10 +278,11 @@ defmodule Aecore.Miner.Worker do
       List.foldl(txs, {[], false}, fn(tx, {selected_txs, limit_reached}) ->
         if !limit_reached do
           new_selected_txs = [tx | selected_txs]
-          new_selected_txs_size_bits =
-            new_selected_txs |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-          new_selected_txs_size_bytes = new_selected_txs_size_bits / 8
-          if new_block_size_bytes + new_selected_txs_size_bytes <= @max_block_size_bytes do
+          new_selected_txs_size_bytes =
+            new_selected_txs |> :erlang.term_to_binary() |> :erlang.byte_size()
+          if new_block_size_bytes + new_selected_txs_size_bytes <=
+             Application.get_env(:aecore, :block)[:max_block_size_bytes] do
+
             {new_selected_txs, false}
           else
             {selected_txs, true}
