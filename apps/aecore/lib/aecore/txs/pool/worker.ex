@@ -15,6 +15,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aehttpserver.Web.Notify
+  alias Aecore.VotingPrototype.Validation, as: VotingValidation
 
   require Logger
 
@@ -127,8 +128,7 @@ defmodule Aecore.Txs.Pool.Worker do
     Enum.all?(seq, fn(f) -> f.(tx) end)
   end
   defp tx_validation_sequence(VotingTx, tx) do
-    ## TODO add voting validation function in the seq list
-    seq = [&BlockValidation.is_minimum_fee_met/1]
+    seq = [&VotingValidation.validate/1, &BlockValidation.is_minimum_fee_met/1]
     Enum.all?(seq, fn(f) -> f.(tx.data) end)
   end
 
