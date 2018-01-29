@@ -31,6 +31,7 @@ defmodule AecoreTxsPoolTest do
     assert Enum.empty?(Pool.get_pool())
   end
 
+  @tag :txs_pool
   test "add negative transaction fail" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx} = Keys.sign_tx(to_account, -5, Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)

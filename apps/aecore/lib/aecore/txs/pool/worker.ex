@@ -73,8 +73,8 @@ defmodule Aecore.Txs.Pool.Worker do
         end
       {:reply, :ok, updated_pool}
     else
-      Logger.error("[TxPool] Invalid tx data")
-      {:reply, :ok, tx_pool}
+      Logger.error("[TxPool] Invalid tx")
+      {:reply, :error, tx_pool}
     end
   end
 
