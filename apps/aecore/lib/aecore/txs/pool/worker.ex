@@ -61,9 +61,9 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction,
-				   %SignedTx{data: %VotingTx{}} = tx}, _from, tx_pool) do
-	## TODO validate it
-	updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+                   %SignedTx{data: %VotingTx{}} = tx}, _from, tx_pool) do
+    ## TODO validate it
+    updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
     {:reply, :ok, updated_pool}
   end
 
