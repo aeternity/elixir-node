@@ -228,7 +228,9 @@ defmodule Aecore.Miner.Worker do
 
       new_block = create_block(top_block, chain_state, difficulty, [])
       new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
-      valid_txs_by_block_size = filter_transactions_by_block_size(valid_txs, new_block_size_bytes)
+      valid_txs_by_block_size =
+        filter_transactions_by_block_size(valid_txs, new_block_size_bytes,
+          Application.get_env(:aecore, :block)[:max_block_size_bytes])
 
       total_fees = calculate_total_fees(valid_txs_by_block_size)
       valid_txs =
@@ -268,31 +270,39 @@ defmodule Aecore.Miner.Worker do
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bytes = tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+      tx_size_bytes = Pool.get_tx_size_bytes(tx)
       tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
 
-  defp filter_transactions_by_block_size(txs, new_block_size_bytes) do
-    {valid_txs_by_block_size, _} =
-      List.foldl(txs, {[], false}, fn(tx, {selected_txs, limit_reached}) ->
-        if !limit_reached do
-          new_selected_txs = [tx | selected_txs]
-          new_selected_txs_size_bytes =
-            new_selected_txs |> :erlang.term_to_binary() |> :erlang.byte_size()
-          if new_block_size_bytes + new_selected_txs_size_bytes <=
-             Application.get_env(:aecore, :block)[:max_block_size_bytes] do
+  defp filter_transactions_by_block_size(txs, current_block_size_bytes, max_block_size_bytes) do
+    first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
 
-            {new_selected_txs, false}
-          else
-            {selected_txs, true}
-          end
-        else
-          {selected_txs, limit_reached}
-        end
-      end)
+    filter_transactions_by_block_size(txs, 0, Enum.count(txs), [],
+      current_block_size_bytes, first_tx_size_bytes, max_block_size_bytes)
+  end
 
-    Enum.reverse(valid_txs_by_block_size)
+  defp filter_transactions_by_block_size(txs, current_tx_index, txs_count, filtered_txs,
+    current_block_size_bytes, next_tx_size_bytes, max_block_size_bytes) do
+
+    current_tx = Enum.at(txs, current_tx_index)
+
+    new_filtered_txs = [current_tx | filtered_txs]
+    next_tx_index = current_tx_index + 1
+    if next_tx_index == txs_count do
+      Enum.reverse(new_filtered_txs)
+    else
+      next_tx = Enum.at(txs, next_tx_index)
+      new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
+      new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
+
+      if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do
+        Enum.reverse(new_filtered_txs)
+      else
+        filter_transactions_by_block_size(txs, next_tx_index, txs_count, new_filtered_txs,
+          new_current_block_size_bytes, new_next_tx_size_bytes, max_block_size_bytes)
+      end
+    end
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
