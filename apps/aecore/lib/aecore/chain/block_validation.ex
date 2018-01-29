@@ -9,6 +9,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.TxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
+  alias Aeutil.Bits
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), map(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
@@ -109,6 +110,14 @@ defmodule Aecore.Chain.BlockValidation do
     )
 
     valid_txs_list
+  end
+
+  def is_minimum_fee_met(tx) do
+    tx_size_bits  = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
+    tx_size_bytes = tx_size_bits / 8
+    is_minimum_fee_met =
+      tx.data.fee >= Float.floor(tx_size_bytes /
+      Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
   end
 
   @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}

@@ -14,7 +14,6 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Bits
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -60,42 +59,27 @@ defmodule Aecore.Txs.Pool.Worker do
     {:reply, txs_list, state}
   end
 
-  def handle_call({:add_transaction,
-                   %SignedTx{data: %VotingTx{}} = tx}, _from, tx_pool) do
-    ## TODO validate it
-    updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
-    {:reply, :ok, updated_pool}
-  end
-
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    tx_size_bits = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-    tx_size_bytes = tx_size_bits / 8
-    is_minimum_fee_met =
-      tx.data.fee >= Float.floor(tx_size_bytes /
-      Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
-
-    cond do
-      !SignedTx.is_valid?(tx) ->
-        Logger.error("Invalid transaction")
-        {:reply, :error, tx_pool}
-      !is_minimum_fee_met ->
-        Logger.error("Fee is too low")
-        {:reply, :error, tx_pool}
-      true ->
-        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+    if valid_tx?(tx) do
+      updated_pool = Map.put_new(tx_pool, hash_tx(tx), tx)
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
+          # TODO fix the issues with the broadcasting and user notifications
+
           # Broadcasting notifications for new transaction in a pool(per account and every)
-          Notify.broadcast_new_transaction_in_the_pool(tx)
-          Peers.broadcast_tx(tx)
+          # Notify.broadcast_new_transaction_in_the_pool(tx)
+          # Peers.broadcast_tx(tx)
         end
-        {:reply, :ok, updated_pool}
+      {:reply, :ok, updated_pool}
+    else
+      Logger.error("[TxPool] Invalid tx data")
+      {:reply, :ok, tx_pool}
     end
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)))
+    {_, updated_pool} = Map.pop(tx_pool, hash_tx(tx))
     {:reply, :ok, updated_pool}
   end
 
@@ -130,6 +114,23 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   ## Private functions
+
+  defp valid_tx?(%SignedTx{data: %TxData{}} = tx) do
+    tx_validation_sequence(TxData, tx)
+  end
+  defp valid_tx?(%SignedTx{data: %VotingTx{}} = tx) do
+    tx_validation_sequence(VotingTx, tx)
+  end
+
+  defp tx_validation_sequence(TxData, tx) do
+    seq = [&SignedTx.is_valid?/1, &BlockValidation.is_minimum_fee_met/1]
+    Enum.all?(seq, fn(f) -> f.(tx) end)
+  end
+  defp tx_validation_sequence(VotingTx, tx) do
+    ## TODO add voting validation function in the seq list
+    seq = [&BlockValidation.is_minimum_fee_met/1]
+    Enum.all?(seq, fn(f) -> f.(tx.data) end)
+  end
 
   @spec split_blocks(list(%Block{}), String.t, list()) :: list()
   defp split_blocks([block | blocks], address, txs) do
@@ -168,5 +169,10 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp check_address_tx([], _address, user_txs) do
     user_txs
+  end
+
+  ## TODO move it from here
+  defp hash_tx(tx) do
+    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
 end
