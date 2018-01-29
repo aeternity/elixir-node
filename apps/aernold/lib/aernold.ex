@@ -13,7 +13,7 @@ defmodule Aernold do
   end
 
   defp reduce_to_value({:char, char}, state) do
-    char
+    [char]
   end
 
   defp reduce_to_value({:string, string}, state) do
@@ -28,49 +28,54 @@ defmodule Aernold do
     type
   end
 
-  defp reduce_to_value({{op, _}, lhs, rhs}, state) do
+  defp reduce_to_value({lhs, {op, _}, rhs}, state) do
+    op = to_string(op)
     cond do
-      op == "=" ->
-        IO.inspect("Assign")
-        lhs = reduce_to_value(lhs, state)
-        rhs = reduce_to_value(rhs, state)
-        Map.merge(state, %{lhs => rhs})
       op == "+" ->
-        IO.inspect("ADD")
         reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
       op == "-" ->
-        IO.inspect("SUB")
         reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
       op == "*" ->
-        IO.inspect("MUL")
         reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
       op == "/" ->
-        IO.inspect("DIV")
         reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
+      op == "==" ->
+        #just for testing
+        state =  Map.put(state, 'a', 5)
+        state = Map.put(state, 'b', 5)
+        lhs = reduce_to_value(lhs, state)
+        rhs = reduce_to_value(rhs, state)
+        if Map.has_key?(state, lhs) && Map.has_key?(state, rhs) do
+          lhs_value = Map.get(state, lhs)
+          rhs_value = Map.get(state, rhs)
+          if lhs_value == rhs_value, do: :true, else: :false
+        end
     end
   end
 
-  defp evaluate_ast([{lhs, _}, rhs | tail], state) do
-    IO.puts "-----------------LHS------------------"
-    IO.inspect(lhs)
-    IO.puts "-----------------RHS----------------"
+  defp evaluate_ast([{:contract, _}, rhs | tail], state) do
+    IO.puts "1-----------------RHS----------------1"
     IO.inspect(rhs)
-    IO.puts "..................TAIL..................."
+    IO.puts "1..................TAIL...................1"
     IO.inspect(tail)
     rhs_value = reduce_to_value(rhs, state)
-    evaluate_ast(tail, Map.merge(state, %{lhs => rhs_value}))
+    IO.puts "1----------------reduced RHS --------------1"
+    IO.inspect(rhs_value)
+    evaluate_ast(tail, Map.merge(state, %{:contract => rhs_value}))
   end
 
-  defp evaluate_ast([{op, lhs, rhs} | tail], state) do
-    IO.puts "-----------------LHS------------------"
+  defp evaluate_ast([{lhs, op, rhs} | tail], state) do
+    IO.puts "2-----------------LHS------------------2"
     IO.inspect(lhs)
-    IO.puts "-----------------RHS----------------"
+    IO.puts "2-----------------RHS----------------2"
     IO.inspect(rhs)
-    IO.puts "..................TAIL..................."
+    IO.puts "2..................TAIL...................2"
     IO.inspect(tail)
     lhs_value = reduce_to_value(lhs, state)
+    IO.puts "2-----------------reduced LHS side-------------2"
     IO.inspect(lhs_value)
     rhs_value = reduce_to_value(rhs, state)
+    IO.puts "2-----------------reduced RHS side-------------2"
     IO.inspect(rhs_value)
     evaluate_ast(tail, Map.merge(state, %{lhs_value => rhs_value}))
   end
@@ -98,6 +103,17 @@ defmodule Aernold do
         evaluate_ast(tail, Map.merge(state, %{extracted_id => {extracted_type, extracted_value}}))
     end
   end
+  #it doesnt work correctly right now
+  defp evaluate_ast([{:if_statement, condition, body} | tail], state) do
+    extracted_condition = reduce_to_value(condition, state)
+    IO.inspect(extracted_condition)
+    extracted_body = reduce_to_value(body, state)
+    IO.inspect(extracted_body)
+    if extracted_condition do
+      evaluate_ast(tail, Map.merge(state, %{"if"=> "works"}))
+    end
+  end
+
 
   defp evaluate_ast([], state) do
     state
