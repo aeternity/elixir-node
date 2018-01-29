@@ -12,6 +12,11 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.VotingAnswerTx
+  alias Aecore.Structures.VotingQuestionTx
+  alias Aecore.Structures.VotingTx
   alias Aehttpserver.Web.Notify
 
   use GenServer
@@ -27,7 +32,17 @@ defmodule Aecore.Chain.Worker do
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
-    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
+    ## Initial voting state
+    {registered_voting_questions, registered_voting_answers} =
+      update_voting_txs(Block.genesis_block(), %{}, %{})
+
+    {:ok, %{blocks_map: genesis_block_map,
+            chain_states: chain_states,
+            voting_questions: registered_voting_questions,
+            voting_answers: registered_voting_answers,
+            txs_index: txs_index,
+            top_hash: genesis_block_hash,
+            top_height: 0}}
   end
 
   @spec top_block() :: Block.t()
@@ -110,6 +125,18 @@ defmodule Aecore.Chain.Worker do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
+  def all_registered_voting_questions() do
+    GenServer.call(__MODULE__, :all_registered_voting_questions)
+  end
+
+  def get_voting_question_by_hash(question_hash) do
+    GenServer.call(__MODULE__, {:get_voting_question_by_hash, question_hash})
+  end
+
+  def get_voting_result_for_a_question(question_hash) do
+    GenServer.call(__MODULE__, {:voting_result_for_a_question, question_hash})
+  end
+
   ## Server side
 
   def handle_call(:current_state, _from, state) do
@@ -147,12 +174,20 @@ defmodule Aecore.Chain.Worker do
     {:reply, has_block, state}
   end
 
-  def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
-                  _from,
-                  %{blocks_map: blocks_map, chain_states: chain_states,
-                    txs_index: txs_index, top_height: top_height} = state) do
+  def handle_call({:add_validated_block,
+                   %Block{} = new_block, new_chain_state},
+                   _from,
+                   %{blocks_map: blocks_map, chain_states: chain_states,
+                     voting_questions: registered_voting_questions,
+                     voting_answers: registered_voting_answers,
+                     txs_index: txs_index, top_height: top_height} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
+
+    ## Update the voting questions/answers by checking each tx from the new block
+    {updated_registered_voting_questions, updated_registered_voting_answers} =
+      update_voting_txs(new_block, registered_voting_questions, registered_voting_answers)
+
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
@@ -166,14 +201,18 @@ defmodule Aecore.Chain.Worker do
 
     ## Store new block to disk
     Persistence.write_block_by_hash(new_block)
-    state_update1 = %{state | blocks_map: updated_blocks_map,
-                              chain_states: updated_chain_states,
-                              txs_index: new_txs_index}
+    state_update1 = %{state |
+                      blocks_map: updated_blocks_map,
+                      voting_questions: updated_registered_voting_questions,
+                      voting_answers: updated_registered_voting_answers,
+                      chain_states: updated_chain_states,
+                      txs_index: new_txs_index}
     if top_height < new_block.header.height do
+      ## TODO : serialization fails thats why we commented this region
       ## We send the block to others only if it extends the longest chain
-      Peers.broadcast_block(new_block)
-      # Broadcasting notifications for new block added to chain and new mined transaction
-      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
+      ## Peers.broadcast_block(new_block)
+      ## Broadcasting notifications for new block added to chain and new mined transaction
+      ## Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
@@ -189,9 +228,25 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
+  def handle_call(:all_registered_voting_questions, _from,
+    %{voting_questions: questions} = state) do
+    {:reply, questions, state}
+  end
+
+  def handle_call({:get_voting_question_by_hash, question_hash}, _from,
+    %{voting_questions: questions, chain_states: chain_states, top_hash: top_hash} = state) do
+    {:reply, questions[question_hash], state}
+  end
+
+
+  def handle_call({:voting_result_for_a_question, question_hash}, _from,
+    %{voting_answers: answers, chain_states: chain_states, top_hash: top_hash} = state) do
+    {:reply, calculate_voting_answers(question_hash, answers, chain_states, top_hash), state}
+  end
+
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
-    accounts = for tx <- block.txs do
+    accounts = for %SignedTx{data: data} = tx <- block.txs, data == %TxData{} do
       [tx.data.from_acc, tx.data.to_acc]
     end
     accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
@@ -232,4 +287,60 @@ defmodule Aecore.Chain.Worker do
       blocks_acc
     end
   end
+  ## ============================================================================
+  ##                               Voting
+  ## ============================================================================
+
+
+  ## We are going through each tx in the block and check if it is
+  ## %VotingQuestionTx{} or %VotingAnswerTx{}. If so, question txs we add into
+  ## the accumulator `acc_questions` by their hash and the answers one we add
+  ## to the accumulator `acc_answers` with key hash_question
+  @spec update_voting_txs(Block.t(), questions :: map(), answers :: map())
+  :: {acc_questions :: map(), acc_answers :: map()}
+  defp update_voting_txs(%{txs: txs, header: header} = block, questions, answers) do
+
+    Enum.reduce(txs, {questions, answers},
+      fn(tx, {acc_questions, acc_answers}) ->
+        case tx.data do
+          %VotingTx{data: %VotingQuestionTx{} = data} ->
+            {Map.put(acc_questions, TxData.hash_tx(tx), tx), acc_answers}
+          %VotingTx{data: %VotingAnswerTx{} = data} ->
+             if(questions[data.hash_question] != nil) do
+              if(acc_answers[data.hash_question] != nil) do
+                {acc_questions, Map.put(acc_answers, data.hash_question,
+                    acc_answers[data.hash_question] ++ [tx])}
+              else
+                {acc_questions, Map.put(acc_answers, data.hash_question, [tx])}
+              end
+            else
+              Logger.error("[Chain Worker] No such question hash")
+              {acc_questions, acc_answers}
+            end
+          _other_tx_data ->
+            {acc_questions, acc_answers}
+        end
+      end)
+  end
+
+  ## Curently we are doing simple votes counting.
+  ## TODO : improve it
+  defp calculate_voting_answers(question_hash, registered_answers, chain_states, top_hash) do
+      case registered_answers[question_hash] do
+        nil -> :no_such_question
+        answers ->
+          Enum.reduce(answers, %{},
+            fn(%SignedTx{data:  answer}, acc) ->
+              account = answer.data.from_acc
+              balance = chain_states[top_hash][account].balance
+
+              if(acc[answer.data.answer != nil]) do
+                Map.put(acc, answer.data.answer, acc[answer.data.answer] ++ balance)
+              else
+                Map.put(acc, answer.data.answer, balance)
+              end
+            end)
+      end
+  end
+
 end

@@ -9,6 +9,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.TxData
+  alias Aecore.Structures.VotingTx
   alias Aecore.Chain.BlockValidation
   alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
@@ -57,6 +58,13 @@ defmodule Aecore.Txs.Pool.Worker do
   def handle_call({:get_txs_for_address, address}, _from, state) do
     txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
     {:reply, txs_list, state}
+  end
+
+  def handle_call({:add_transaction,
+				   %SignedTx{data: %VotingTx{}} = tx}, _from, tx_pool) do
+	## TODO validate it
+	updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+    {:reply, :ok, updated_pool}
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do

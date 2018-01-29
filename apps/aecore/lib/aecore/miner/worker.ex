@@ -14,6 +14,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
+  alias Aecore.Structures.VotingTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -228,8 +229,18 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
+
       txs_list = Map.values(Pool.get_pool())
-      ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
+
+      voting_txs = Enum.filter(txs_list, fn(tx) ->
+        !match?(%TxData{}, tx.data)
+      end)
+
+      txs_list_without_voting_txs = Enum.filter(txs_list, fn(tx) ->
+        match?(%TxData{}, tx.data)
+      end)
+
+      ordered_txs_list = Enum.sort(txs_list_without_voting_txs, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
@@ -240,6 +251,8 @@ defmodule Aecore.Miner.Worker do
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
+
+      valid_txs = voting_txs ++ valid_txs
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
@@ -268,7 +281,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   def calculate_total_fees(txs) do
-    List.foldl(txs, 0, fn (tx, acc) ->
+    List.foldl(txs, 0,
+      fn (%SignedTx{data: %VotingTx{} = tx}, acc) ->
+        acc + tx.data.fee
+        (tx, acc) ->
         acc + tx.data.fee
     end)
   end

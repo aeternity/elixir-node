@@ -5,6 +5,8 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.VotingTx
+  alias Aecore.Structures.TxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
@@ -12,7 +14,7 @@ defmodule Aecore.Chain.BlockValidation do
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    
+
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
@@ -76,8 +78,12 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
     block.txs
-    |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
+    |> Enum.map(fn %SignedTx{data: %VotingTx{}} = tx ->
+      ## TODO validate the voting txs
+      ## Consider creating voting validation module
+      true
+      (tx) ->
+        SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
     end)
   end
 
@@ -86,7 +92,13 @@ defmodule Aecore.Chain.BlockValidation do
     {valid_txs_list, _} = List.foldl(
       txs_list,
       {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
+      fn(%VotingTx{} = tx, {valid_txs_list, chain_state_acc}) ->
+        ## TODO validate the tx
+        ## Consider creating voting validation module
+        {valid_chain_state, updated_chain_state} =
+          validate_transaction_chainstate(tx, chain_state_acc, block_height)
+        {valid_txs_list ++ [tx], updated_chain_state}
+        (tx, {valid_txs_list, chain_state_acc}) ->
         {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
         if valid_chain_state do
           {valid_txs_list ++ [tx], updated_chain_state}
@@ -141,12 +153,14 @@ defmodule Aecore.Chain.BlockValidation do
   @spec calculate_root_hash(Block.t()) :: integer()
   defp sum_coinbase_transactions(block) do
     block.txs
-    |> Enum.map(fn tx ->
+    |> Enum.map(fn %TxData{} = tx ->
       if SignedTx.is_coinbase?(tx) do
         tx.data.value
       else
         0
       end
+      (_) ->
+        0
     end)
     |> Enum.sum()
   end

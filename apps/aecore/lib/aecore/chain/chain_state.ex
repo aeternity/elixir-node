@@ -6,29 +6,34 @@ defmodule Aecore.Chain.ChainState do
 
   require Logger
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.VotingTx
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height) 
+      apply_transaction_on_state!(transaction, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), map(), integer()) :: map()
+  def apply_transaction_on_state!(%SignedTx{data: %VotingTx{}}, chain_state, block_height) do
+    ## TODO check if we have to update some how the chain state in here !!
+    chain_state
+  end
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     cond do
       SignedTx.is_coinbase?(transaction) ->
         transaction_in!(chain_state,
                         block_height,
-                        transaction.data.to_acc, 
+                        transaction.data.to_acc,
                         transaction.data.value,
                         transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
-        end 
+        end
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,
@@ -36,7 +41,7 @@ defmodule Aecore.Chain.ChainState do
                             transaction.data.nonce,
                             -1)
         |> transaction_in!(block_height,
-                           transaction.data.to_acc, 
+                           transaction.data.to_acc,
                            transaction.data.value,
                            transaction.data.lock_time_block)
       true ->
@@ -135,7 +140,7 @@ defmodule Aecore.Chain.ChainState do
       throw {:error, "Nonce too small"}
     end
 
-    chain_state 
+    chain_state
     |> Map.put(account, %{account_state | nonce: nonce})
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
