@@ -232,15 +232,16 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
 
-      voting_txs = Enum.filter(txs_list, fn(tx) ->
-        !match?(%TxData{}, tx.data)
-      end)
+      ## Separating the TxData txs from others
+      {txs_data_list, other_txs_list} =
+        Enum.reduce(txs_list, {[], []},
+          fn(%SignedTx{data: %TxData{}} = tx, {acc_tx_data, acc_other})->
+            {acc_tx_data ++ [tx], acc_other}
+            (tx, {acc_tx_data, acc_other}) ->
+              {acc_tx_data, acc_other ++ [tx]}
+          end)
 
-      txs_list_without_voting_txs = Enum.filter(txs_list, fn(tx) ->
-        match?(%TxData{}, tx.data)
-      end)
-
-      ordered_txs_list = Enum.sort(txs_list_without_voting_txs, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
+      ordered_txs_list = Enum.sort(txs_data_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
@@ -252,10 +253,11 @@ defmodule Aecore.Miner.Worker do
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
 
-      valid_txs = voting_txs ++ valid_txs
+      ## Merging the TxData txs with others
+      valid_txs = other_txs_list ++ valid_txs
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+      new_chain_state  = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)
