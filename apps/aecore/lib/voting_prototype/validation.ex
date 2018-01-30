@@ -43,8 +43,8 @@ defmodule Aecore.VotingPrototype.Validation do
        list_validation(data_answer.answer) &&
        binary_validation_from_acc(data_answer.from_acc) &&
        fee_validation(data_answer.fee) &&
-       validate_answer_with_answer_count(question.data, data_answer) &&
-       validate_answer_belongs_to_answers(question.data, data_answer) do
+       validate_answer_with_answer_count(question, data_answer) &&
+       validate_answer_belongs_to_answers(question, data_answer) do
       true
     else
       false

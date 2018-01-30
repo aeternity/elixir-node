@@ -33,13 +33,12 @@ defmodule Aecore.Chain.Worker do
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
     ## Initial voting state
-    {registered_voting_questions, registered_voting_answers} =
-      update_voting_txs(Block.genesis_block(), %{}, %{})
+    voting_state =
+      apply_voting_txs_to_chain(Block.genesis_block(), %{}, chain_states, genesis_block_hash)
 
     {:ok, %{blocks_map: genesis_block_map,
             chain_states: chain_states,
-            voting_questions: registered_voting_questions,
-            voting_answers: registered_voting_answers,
+            voting_state: voting_state,
             txs_index: txs_index,
             top_hash: genesis_block_hash,
             top_height: 0}}
@@ -178,21 +177,21 @@ defmodule Aecore.Chain.Worker do
                    %Block{} = new_block, new_chain_state},
                    _from,
                    %{blocks_map: blocks_map, chain_states: chain_states,
-                     voting_questions: registered_voting_questions,
-                     voting_answers: registered_voting_answers,
+                     voting_state: voting_state,
+                     top_hash: top_block_hash,
                      txs_index: txs_index, top_height: top_height} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
-
-    ## Update the voting questions/answers by checking each tx from the new block
-    {updated_registered_voting_questions, updated_registered_voting_answers} =
-      update_voting_txs(new_block, registered_voting_questions, registered_voting_answers)
 
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
+
+    ## Update the voting state by checking each queston/answer tx from the new block
+    updated_voting_state =
+      apply_voting_txs_to_chain(new_block, voting_state, updated_chain_states, top_block_hash)
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
@@ -203,8 +202,7 @@ defmodule Aecore.Chain.Worker do
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state |
                       blocks_map: updated_blocks_map,
-                      voting_questions: updated_registered_voting_questions,
-                      voting_answers: updated_registered_voting_answers,
+                      voting_state: updated_voting_state,
                       chain_states: updated_chain_states,
                       txs_index: new_txs_index}
     if top_height < new_block.header.height do
@@ -229,19 +227,19 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(:all_registered_voting_questions, _from,
-    %{voting_questions: questions} = state) do
+    %{voting_state: questions} = state) do
     {:reply, questions, state}
   end
 
   def handle_call({:get_voting_question_by_hash, question_hash}, _from,
-    %{voting_questions: questions, chain_states: chain_states, top_hash: top_hash} = state) do
+    %{voting_state: questions, chain_states: chain_states, top_hash: top_hash} = state) do
     {:reply, questions[question_hash], state}
   end
 
 
   def handle_call({:voting_result_for_a_question, question_hash}, _from,
     %{voting_answers: answers, chain_states: chain_states, top_hash: top_hash} = state) do
-    {:reply, calculate_voting_answers(question_hash, answers, chain_states, top_hash), state}
+    {:reply, calculate_vote(question_hash, answers, chain_states, top_hash), state}
   end
 
   defp calculate_block_acc_txs_info(block) do
@@ -287,60 +285,58 @@ defmodule Aecore.Chain.Worker do
       blocks_acc
     end
   end
+
   ## ============================================================================
   ##                               Voting
   ## ============================================================================
 
 
   ## We are going through each tx in the block and check if it is
-  ## %VotingQuestionTx{} or %VotingAnswerTx{}. If so, question txs we add into
-  ## the accumulator `acc_questions` by their hash and the answers one we add
-  ## to the accumulator `acc_answers` with key hash_question
-  @spec update_voting_txs(Block.t(), questions :: map(), answers :: map())
-  :: {acc_questions :: map(), acc_answers :: map()}
-  defp update_voting_txs(%{txs: txs, header: header} = block, questions, answers) do
+  ## %VotingQuestionTx{} or %VotingAnswerTx{}. If so, we add
+  ## to voting_state new question or update already existing question
+  ## with new answer. After we have updated voting state then we calculate
+  ## the voting result for each questions
+  @spec apply_voting_txs_to_chain(Block.t(), map(), map(), binary()) :: map()
+  defp apply_voting_txs_to_chain(
+    %{txs: txs, header: header} = block, voting_state, chain_states, top_hash) do
 
-    Enum.reduce(txs, {questions, answers},
-      fn(tx, {acc_questions, acc_answers}) ->
-        case tx.data do
-          %VotingTx{data: %VotingQuestionTx{} = data} ->
-            {Map.put(acc_questions, TxData.hash_tx(tx), tx), acc_answers}
-          %VotingTx{data: %VotingAnswerTx{} = data} ->
-             if(questions[data.hash_question] != nil) do
-              if(acc_answers[data.hash_question] != nil) do
-                {acc_questions, Map.put(acc_answers, data.hash_question,
-                    acc_answers[data.hash_question] ++ [tx])}
-              else
-                {acc_questions, Map.put(acc_answers, data.hash_question, [tx])}
-              end
-            else
-              Logger.error("[Chain Worker] No such question hash")
-              {acc_questions, acc_answers}
-            end
-          _other_tx_data ->
-            {acc_questions, acc_answers}
-        end
+    updated_voting_state =
+      Enum.reduce(txs, voting_state,
+        fn(tx, voting_state_acc) ->
+          case tx.data do
+            %VotingTx{data: %VotingQuestionTx{} = question_tx} ->
+              voting_state |>
+                Map.put(TxData.hash_tx(question_tx),
+                  %{data: question_tx, answers: [], result: %{}})
+
+            %VotingTx{data: %VotingAnswerTx{hash_question: hash, answer: answer} = answer_tx} ->
+              Map.put(voting_state_acc, hash,
+                %{voting_state_acc[hash] |
+                  answers: voting_state_acc[hash].answers ++ [answer_tx]})
+
+            _different_tx_data_type_than_voting ->
+              voting_state_acc
+          end
+        end)
+
+    Enum.reduce(updated_voting_state, %{},
+      fn({question_hash, value}, acc) ->
+        result =
+          calculate_vote(question_hash, value.answers, chain_states, top_hash)
+        Map.put(acc, question_hash, %{value | result: result})
       end)
   end
 
-  ## Curently we are doing simple votes counting.
-  ## TODO : improve it
-  defp calculate_voting_answers(question_hash, registered_answers, chain_states, top_hash) do
-      case registered_answers[question_hash] do
-        nil -> :no_such_question
-        answers ->
-          Enum.reduce(answers, %{},
-            fn(%SignedTx{data:  answer}, acc) ->
-              account = answer.data.from_acc
-              balance = chain_states[top_hash][account].balance
-
-              if(acc[answer.data.answer != nil]) do
-                Map.put(acc, answer.data.answer, acc[answer.data.answer] ++ balance)
-              else
-                Map.put(acc, answer.data.answer, balance)
-              end
-            end)
-      end
+  defp calculate_vote(question_hash, answers, chain_states, top_hash) do
+    Enum.reduce(answers, %{},
+      fn(%VotingAnswerTx{answer: answer, from_acc: account}, acc) ->
+        balance = chain_states[top_hash][account].balance
+        if(acc[answer] != nil) do
+          Map.put(acc, answer, acc[answer] ++ balance)
+        else
+          Map.put(acc, answer, balance)
+        end
+      end)
   end
 
 end
