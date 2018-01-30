@@ -327,7 +327,7 @@ defmodule Aecore.Chain.Worker do
   ## TODO : improve it
   defp calculate_voting_answers(question_hash, registered_answers, chain_states, top_hash) do
       case registered_answers[question_hash] do
-        nil -> :no_such_question
+        nil -> :no_registered_answers
         answers ->
           Enum.reduce(answers, %{},
             fn(%SignedTx{data:  answer}, acc) ->
