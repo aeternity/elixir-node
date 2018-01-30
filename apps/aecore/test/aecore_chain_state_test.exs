@@ -5,8 +5,6 @@ defmodule AecoreChainStateTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.Block, as: Block
-  alias Aecore.Structures.Header, as: Header
   alias Aecore.Structures.TxData, as: TxData
   alias Aecore.Structures.SignedTx, as: SignedTx
   alias Aecore.Chain.ChainState, as: ChainState

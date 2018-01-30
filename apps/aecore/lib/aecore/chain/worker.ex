@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
-  require Logger
+  use GenServer
 
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
@@ -14,7 +14,9 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
 
-  use GenServer
+  require Logger
+
+  @typep txs_index :: %{binary() => [{binary(), binary()}]}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
@@ -30,7 +32,7 @@ defmodule Aecore.Chain.Worker do
     {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
   end
 
-  @spec top_block() :: Block.t()
+  @spec top_block() :: Block.t
   def top_block() do
     GenServer.call(__MODULE__, :top_block)
   end
@@ -50,13 +52,13 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(term()) :: Block.t()
+  @spec get_block_by_hex_hash(String.t) :: Block.t
   def get_block_by_hex_hash(hash) do
     {:ok, decoded_hash} = Base.decode16(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
-  @spec get_block(binary()) :: Block.t()
+  @spec get_block(binary()) :: Block.t
   def get_block(hash) do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
@@ -66,17 +68,17 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
 
-  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), integer()) :: list(Block.t)
   def get_blocks(start_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t)
   def get_blocks(start_block_hash, final_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
 
-  @spec add_block(Block.t()) :: :ok | {:error, binary()}
+  @spec add_block(Block.t) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
@@ -87,25 +89,27 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), map()) :: :ok
+  @spec add_validated_block(Block.t, ChainState.account_chainstate) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: map()
+  @spec chain_state(binary()) :: ChainState.account_chainstate
   def chain_state(block_hash) do
     GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
-  @spec txs_index() :: map()
+  @spec txs_index() :: txs_index
   def txs_index() do
     GenServer.call(__MODULE__, :txs_index)
   end
 
+  @spec chain_state() :: ChainState.account_chainstate
   def chain_state() do
     top_block_chain_state()
   end
 
+  @spec longest_blocks_chain() :: list(Block.t)
   def longest_blocks_chain() do
     get_blocks(top_block_hash(), top_height() + 1)
   end

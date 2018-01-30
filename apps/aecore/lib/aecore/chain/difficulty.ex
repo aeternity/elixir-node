@@ -10,7 +10,7 @@ defmodule Aecore.Chain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(list(Block.t())) :: integer()
+  @spec calculate_next_difficulty(list(Block.t)) :: integer()
   def calculate_next_difficulty(list) do
     [latest_block | _] = list
 
@@ -41,7 +41,7 @@ defmodule Aecore.Chain.Difficulty do
     end
   end
 
-  @spec calculate_distance(list(Block.t())) :: float()
+  @spec calculate_distance(list(Block.t)) :: float()
   defp calculate_distance(list) do
     [head | tail] = list
 

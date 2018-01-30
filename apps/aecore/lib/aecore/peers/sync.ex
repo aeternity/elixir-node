@@ -29,7 +29,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
 
-  @spec ask_peers_for_unknown_blocks(map()) :: :ok
+  @spec ask_peers_for_unknown_blocks(Peers.peers) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     GenServer.call(__MODULE__, {:ask_peers_for_unknown_blocks, peers})
   end
@@ -39,6 +39,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
   end
 
+  @spec add_unknown_peer_pool_txs(Peers.peers) :: :ok
   def add_unknown_peer_pool_txs(peers) do
     peer_uris = peers |> Map.values() |> Enum.map(fn(%{uri: uri}) -> uri end)
     Enum.each(peer_uris, fn(peer) ->
