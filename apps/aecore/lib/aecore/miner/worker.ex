@@ -235,7 +235,7 @@ defmodule Aecore.Miner.Worker do
       ## Separating the TxData txs from others
       {txs_data_list, other_txs_list} =
         Enum.reduce(txs_list, {[], []},
-          fn(%SignedTx{data: %TxData{}} = tx, {acc_tx_data, acc_other})->
+          fn(%SignedTx{data: %TxData{}} = tx, {acc_tx_data, acc_other}) ->
             {acc_tx_data ++ [tx], acc_other}
             (tx, {acc_tx_data, acc_other}) ->
               {acc_tx_data, acc_other ++ [tx]}
