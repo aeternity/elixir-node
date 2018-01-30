@@ -5,6 +5,9 @@ defmodule Aecore.Wallet.Worker do
 
   use GenServer
 
+  @typedoc "Options for network"
+  @type opts :: :mainnet | :testnet
+
   @aewallet_dir Application.get_env(:aecore, :aewallet)[:path]
   @aewallet_pass "1234"
 
@@ -20,11 +23,21 @@ defmodule Aecore.Wallet.Worker do
   end
 
   @spec get_public_key(String.t()) :: binary()
+  def get_public_key(password) do
+    GenServer.call(__MODULE__, {:get_pub_key, {password, :mainnet}})
+  end
+
+  @spec get_public_key(String.t(), opts()) :: binary()
   def get_public_key(password, network) do
     GenServer.call(__MODULE__, {:get_pub_key, {password, network}})
   end
 
   @spec get_private_key(String.t()) :: binary()
+  def get_private_key(password) do
+    GenServer.call(__MODULE__, {:get_priv_key, {password, :mainnet}})
+  end
+
+  @spec get_private_key(String.t(), opts()) :: binary()
   def get_private_key(password, network) do
     GenServer.call(__MODULE__, {:get_priv_key, {password, network}})
   end
@@ -33,13 +46,13 @@ defmodule Aecore.Wallet.Worker do
 
   def handle_call({:get_pub_key, {password, network}}, _from, %{path: path} = state) do
     {:ok, pub_key, _} =
-      Aewallet.Wallet.get_public_key(get_file_name(path), password, network)
+      Aewallet.Wallet.get_public_key(get_file_name(path), password, network: network)
     {:reply, pub_key, state}
   end
 
   def handle_call({:get_priv_key, {password, network}}, _from, %{path: path} = state) do
-    {:ok, priv_key, _} =
-      Aewallet.Wallet.get_private_key(get_file_name(path), password, network)
+    {:ok, priv_key} =
+      Aewallet.Wallet.get_private_key(get_file_name(path), password, network: network)
     {:reply, priv_key, state}
   end
 
@@ -60,12 +73,14 @@ defmodule Aecore.Wallet.Worker do
   end
 
   defp create_wallet(path) do
-    Aewallet.Wallet.create_wallet(@aewallet_pass, "", path)
+    IO.inspect("Create Wallet path: #{path}")
+
+    Aewallet.Wallet.create_wallet(@aewallet_pass, path)
   end
 
   defp get_file_name(path) do
     path
     |> Path.join("*/")
-    |> Path.wildcard()
+    |> Path.wildcard
   end
 end

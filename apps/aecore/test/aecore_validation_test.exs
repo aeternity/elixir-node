@@ -12,6 +12,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Wallet.Worker, as: Wallet
 
   setup ctx do
     [
@@ -76,7 +77,7 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block", ctx do
-    {:ok, from_acc} = Aewallet.Wallet.get_public_key(ctx.wallet_path, ctx.wallet_pass)
+    from_acc = Wallet.get_public_key(ctx.wallet_pass)
     {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
                               Map.get(Chain.chain_state,
                                 ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
@@ -84,7 +85,7 @@ defmodule AecoreValidationTest do
                               Map.get(Chain.chain_state,
                                 ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
 
-    {:ok, priv_key} = Aewallet.Wallet.get_private_key(ctx.wallet_path, ctx.wallet_pass)
+    priv_key = Wallet.get_private_key(ctx.wallet_pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
 
