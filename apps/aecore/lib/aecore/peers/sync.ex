@@ -97,6 +97,7 @@ defmodule Aecore.Peers.Sync do
           end
         {:error, message} ->
           Logger.error(fn -> message end)
+          remove_running_task(peer_uri)
       end
     else
       remove_running_task(peer_uri)
@@ -282,7 +283,7 @@ defmodule Aecore.Peers.Sync do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     block_header_hash = BlockValidation.block_header_hash(block.header)
-    if(!Chain.has_block?(block_header_hash)) do
+    if !Chain.has_block?(block_header_hash) do
       cond do
         has_parent_block_in_state ->
           build_chain(state, state[block.header.prev_hash], [block | chain])
