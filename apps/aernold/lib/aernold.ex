@@ -1,107 +1,149 @@
 defmodule Aernold do
 
-  defp reduce_to_value({:int, int}, _state) do
-    int
+  defp reduce_to_value({:int, int}, _scope) do
+    if !(is_integer(int)) do
+      throw({:error, "The value must be Integer"})
+    else
+      int
+    end
   end
 
-  defp reduce_to_value({:bool, bool}, _state) do
-    bool
+  defp reduce_to_value('Int', _scope) do
+    0
   end
 
-  defp reduce_to_value({:hex, hex}, _state) do
-    to_string(hex)
+  defp validate_value({:int, int}, id, type) do
+
   end
 
-  defp reduce_to_value({:char, char}, _state) do
-    [char]
+  defp reduce_to_value({:bool, bool}, _scope) do
+    if !(is_boolean(bool)) do
+      throw({:error, "The value must be Boolean"})
+    else
+      bool
+    end
   end
 
-  defp reduce_to_value({:string, string}, _state) do
-    string
+  defp reduce_to_value('Bool', _scope) do
+    false
   end
 
-  defp reduce_to_value({:id, id}, _state) do
-    id
+  defp reduce_to_value({:hex, hex}, _scope) do
+    hex_regex = ~r{0[xX][0-9a-fA-F]+}
+    hex = to_string(hex)
+    if !(hex =~ hex_regex) do
+      throw({:error, "The value must be Hex"})
+    else
+      hex
+    end
   end
 
-  defp reduce_to_value({:type, type}, _state) do
+  defp reduce_to_value('Hex', _scope) do
+    0x0
+  end
+
+  defp reduce_to_value({:char, char}, _scope) do
+    if !(is_list(char)) do
+      throw({:error, "The value must be Char"})
+    else
+      char
+    end
+  end
+
+  defp reduce_to_value('Char', _scope) do
+    ''
+  end
+
+  defp reduce_to_value({:string, string}, _scope) do
+    if !(String.valid?(string)) do
+      throw({:error, "The value must be String"})
+    else
+      string
+    end
+  end
+
+  defp reduce_to_value('String', _scope) do
+    ""
+  end
+
+  defp reduce_to_value({:id, id}, scope) do
+    if !Map.has_key?(scope, id) do
+      throw({:error, "Undefined variable (#{id})"})
+    end
+
+    Map.get(scope, id)
+  end
+
+  defp reduce_to_value({:type, type}, _scope) do
     type
   end
 
-  defp reduce_to_value({lhs, {op, _}, rhs}, state) do
-    op = to_string(op)
-    cond do
-      op == "+" ->
-        reduce_to_value(lhs, state) + reduce_to_value(rhs, state)
-      op == "-" ->
-        reduce_to_value(lhs, state) - reduce_to_value(rhs, state)
-      op == "*" ->
-        reduce_to_value(lhs, state) * reduce_to_value(rhs, state)
-      op == "/" ->
-        reduce_to_value(lhs, state) / reduce_to_value(rhs, state)
-      op == "==" ->
-        #just for testing
-        state =  Map.put(state, 'a', 5)
-        state = Map.put(state, 'b', 5)
-        lhs = reduce_to_value(lhs, state)
-        rhs = reduce_to_value(rhs, state)
-        if Map.has_key?(state, lhs) && Map.has_key?(state, rhs) do
-          lhs_value = Map.get(state, lhs)
-          rhs_value = Map.get(state, rhs)
-          if lhs_value == rhs_value, do: true, else: false
-        end
-    end
+  defp reduce_to_value({lhs, {:==, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value == rhs_value, do: true, else: false
   end
 
-  defp evaluate_ast([{:contract, _}, rhs | tail], state) do
-    rhs_value = reduce_to_value(rhs, state)
-    evaluate_ast(tail, Map.merge(state, %{:contract => rhs_value}))
-  end
-
-  defp evaluate_ast([{{:def_var, id, type, value}} | tail], state) do
+  defp validate_variable_value!(id, type, value, scope) do
     hex_regex = ~r{0[xX][0-9a-fA-F]+}
-    extracted_id = reduce_to_value(id, state)
-    extracted_type = reduce_to_value(type, state)
-    extracted_value = reduce_to_value(value, state)
     cond do
-      extracted_type == 'Int' && !(is_integer(extracted_value)) ->
-        throw({:error, "The value of (#{extracted_id}) must be Integer"})
-      extracted_type == 'Bool' && !(is_boolean(extracted_value)) ->
-        throw({:error, "The value of (#{extracted_id}) must be Boolean"})
-      extracted_type == 'String' && !(String.valid?(extracted_value)) ->
-        throw({:error, "The value of (#{extracted_id}) must be String"})
-      extracted_type == 'Hex' &&  !(extracted_value =~ hex_regex) ->
-        throw({:error, "The value of (#{extracted_id}) must be Hex"})
-      extracted_type == 'Char' && !(is_list(extracted_value)) ->
-        throw({:error, "The value of (#{extracted_id}) must be Char"})
+      type == 'Int' && !(is_integer(value)) ->
+        throw({:error, "The value of (#{id}) must be Integer"})
+      type == 'Bool' && !(is_boolean(value)) ->
+        throw({:error, "The value of (#{id}) must be Boolean"})
+      type == 'String' && !(String.valid?(value)) ->
+        throw({:error, "The value of (#{id}) must be String"})
+      type == 'Hex' &&  !(value =~ hex_regex) ->
+        throw({:error, "The value of (#{id}) must be Hex"})
+      type == 'Char' && !(is_list(value)) ->
+        throw({:error, "The value of (#{id}) must be Char"})
       true ->
-        evaluate_ast(tail, Map.merge(state, %{extracted_id => {extracted_type, extracted_value}}))
+        :ok
     end
   end
 
-  defp evaluate_ast([{:decl_var, id, type} | tail], state) do
-    extracted_id = reduce_to_value(id, state)
-    extracted_type = reduce_to_value(type, state)
-    evaluate_ast(tail, Map.merge(state, %{extracted_id => extracted_type}))
+  defp evaluate_ast({{:contract, _}, _id, body}, scope) do
+    Enum.reduce(body, scope, fn(statement, scope_acc) ->
+      evaluate_ast(statement, scope_acc)
+    end)
   end
 
-  defp evaluate_ast([{:if_statement, condition, body} | tail], state) do
-    extracted_condition = reduce_to_value(condition, state)
-    if extracted_condition do
-      evaluate_ast([body], state)
-    else
-      evaluate_ast(tail, Map.merge(state, %{"if" => extracted_condition}))
-    end
+  defp evaluate_ast({:decl_var, {_, id}, {_, type}}, scope) do
+    default_value = reduce_to_value(type, scope)
+    Map.put(scope, id, %{type: type, value: default_value})
   end
 
-  defp evaluate_ast([{lhs, op, rhs} | tail], state) do
-    lhs_value = reduce_to_value(lhs, state)
-    rhs_value = reduce_to_value(rhs, state)
-    evaluate_ast(tail, Map.merge(state, %{lhs_value => rhs_value}))
+  defp evaluate_ast({:def_var, {_, id}, {_, type}, value}, scope) do
+    extracted_value = reduce_to_value(value, scope)
+
+    validate_variable_value!(id, type, extracted_value, scope)
+
+    Map.put(scope, id, %{type: type, value: extracted_value})
   end
 
-  defp evaluate_ast([], state) do
-    state
+  defp evaluate_ast({{:id, id}, {:=, _}, value}, scope) do
+    extracted_value = reduce_to_value(value, scope)
+    %{type: type} = Map.get(scope, id)
+
+    validate_variable_value!(id, type, extracted_value, scope)
+
+    Map.put(scope, id, %{type: type, value: extracted_value})
+  end
+
+  defp evaluate_ast({:if_statement, condition, body}, scope) do
+    condition_result = reduce_to_value(condition, scope)
+
+    Enum.reduce(body, scope, fn(statement, scope_acc) ->
+      evaluate_ast(statement, scope_acc)
+    end)
+
+    # TODO: make each scope independent
+    # scope
+  end
+
+  defp evaluate_ast({}, scope) do
+    scope
   end
 
   def process_ast(ast) do

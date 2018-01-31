@@ -19,7 +19,7 @@ Rootsymbol File.
 
 File -> Contr : '$1'.
 
-Contr -> 'contract' Id '{' Statement '}' : ['$1', '$2', list_to_tuple('$4')].
+Contr -> 'contract' Id '{' Statement '}' : {'$1', '$2', list_to_tuple('$4')}.
 
 Statement -> SimpleStatement ';' : ['$1'].
 Statement -> SimpleStatement ';' Statement : ['$1' | '$3'].
