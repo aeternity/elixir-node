@@ -73,8 +73,6 @@ defmodule Aecore.Wallet.Worker do
   end
 
   defp create_wallet(path) do
-    IO.inspect("Create Wallet path: #{path}")
-
     Aewallet.Wallet.create_wallet(@aewallet_pass, path)
   end
 
