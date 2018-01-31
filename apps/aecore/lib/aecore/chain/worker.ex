@@ -238,8 +238,14 @@ defmodule Aecore.Chain.Worker do
 
 
   def handle_call({:voting_result_for_a_question, question_hash}, _from,
-    %{voting_answers: answers, chain_states: chain_states, top_hash: top_hash} = state) do
-    {:reply, calculate_vote(question_hash, answers, chain_states, top_hash), state}
+    %{voting_state: questions, chain_states: chain_states, top_hash: top_hash} = state) do
+    if questions[question_hash] != nil do
+      {:reply, calculate_vote(question_hash,
+          questions[question_hash].answers, chain_states, top_hash), state}
+    else
+      {:reply, :no_such_registered_question, state}
+    end
+
   end
 
   defp calculate_block_acc_txs_info(block) do
@@ -306,7 +312,7 @@ defmodule Aecore.Chain.Worker do
           case tx.data do
             %VotingTx{data: %VotingQuestionTx{} = question_tx} ->
               voting_state |>
-                Map.put(TxData.hash_tx(question_tx),
+                Map.put(TxData.hash_tx(tx),
                   %{data: question_tx, answers: [], result: %{}})
 
             %VotingTx{data: %VotingAnswerTx{hash_question: hash, answer: answer} = answer_tx} ->

@@ -36,7 +36,7 @@ defmodule Aecore.VotingPrototype.Validation do
     end
   end
 
-  @spec process(VotingAnswerTx) :: boolean()
+  @spec process(VotingAnswerTx.t()) :: boolean()
   defp process(%VotingAnswerTx{hash_question: hash} = data_answer) do
     question = Chain.get_voting_question_by_hash(hash).data
     if binary_validation_hash_question(data_answer.hash_question) &&
