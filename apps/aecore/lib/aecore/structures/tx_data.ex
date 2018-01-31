@@ -26,7 +26,7 @@ defmodule Aecore.Structures.TxData do
   defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, TxData.t}
+  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, TxData.t()}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, %TxData{from_acc: from_acc,
                   to_acc: to_acc,
@@ -36,7 +36,7 @@ defmodule Aecore.Structures.TxData do
                   lock_time_block: lock_time_block}}
   end
 
-  @spec hash_tx(TxData.t) :: binary()
+  @spec hash_tx(TxData.t()) :: binary()
   def hash_tx(tx) do
     :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end

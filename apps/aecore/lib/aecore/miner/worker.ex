@@ -71,7 +71,7 @@ defmodule Aecore.Miner.Worker do
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
-  @spec mine_sync_block_to_chain() :: Block.t | error :: term()
+  @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
   def mine_sync_block_to_chain() do
     cblock = candidate()
     case mine_sync_block(cblock) do
@@ -81,7 +81,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Mine single block without adding it to the chain - Sync
-  @spec mine_sync_block(Block.t) :: {:ok, Block.t} | {:error, reason :: atom()}
+  @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{} = cblock) do
     if GenServer.call(__MODULE__, :get_state) == :idle do
       mine_sync_block(Cuckoo.generate(cblock.header), cblock)

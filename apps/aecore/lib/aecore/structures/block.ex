@@ -8,7 +8,7 @@ defmodule Aecore.Structures.Block do
 
   @type t :: %Block{
     header: Header.t,
-    txs: list(SignedTx.t)
+    txs: list(SignedTx.t())
   }
 
   @current_block_version 1
@@ -28,7 +28,7 @@ defmodule Aecore.Structures.Block do
     struct(Header, h)
   end
 
-  @spec genesis_block() :: Block.t
+  @spec genesis_block() :: Block.t()
   def genesis_block() do
     h = genesis_header()
     %Block{header: h, txs: []}

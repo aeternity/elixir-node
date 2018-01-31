@@ -28,7 +28,7 @@ defmodule Aecore.Chain.ChainState do
     |> update_chain_state_locked(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t, account_chainstate, integer()) :: account_chainstate
+  @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate, integer()) :: account_chainstate
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     cond do
       SignedTx.is_coinbase?(transaction) ->

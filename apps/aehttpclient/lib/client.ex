@@ -45,19 +45,19 @@ defmodule Aehttpclient.Client do
     get(uri <> "/pool_txs", :pool_txs)
   end
 
-  @spec send_block(Block.t, list(binary())) :: :ok
+  @spec send_block(Block.t(), list(binary())) :: :ok
   def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
     post_to_peers("new_block", data, peers)
   end
 
-  @spec send_tx(SignedTx.t, list(binary())) :: :ok
+  @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
     post_to_peers("new_tx", data, peers)
   end
 
-  @spec post_to_peers(String.t, binary(), list(String.t)) :: :ok
+  @spec post_to_peers(String.t(), binary(), list(String.t())) :: :ok
   defp post_to_peers(uri, data, peers) do
     Enum.each(peers, fn(peer) ->
       post(peer, data, uri)

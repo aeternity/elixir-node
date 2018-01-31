@@ -25,12 +25,12 @@ defmodule Aecore.Txs.Pool.Worker do
     {:ok, initial_pool}
   end
 
-  @spec add_transaction(SignedTx.t) :: :ok | :error
+  @spec add_transaction(SignedTx.t()) :: :ok | :error
   def add_transaction(tx) do
     GenServer.call(__MODULE__, {:add_transaction, tx})
   end
 
-  @spec remove_transaction(SignedTx.t) :: :ok
+  @spec remove_transaction(SignedTx.t()) :: :ok
   def remove_transaction(tx) do
     GenServer.call(__MODULE__, {:remove_transaction, tx})
   end
@@ -46,7 +46,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
 
-  @spec get_txs_for_address(String.t) :: list()
+  @spec get_txs_for_address(String.t()) :: list()
   def get_txs_for_address(address) do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
@@ -122,7 +122,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
-  @spec split_blocks(list(Block.t), String.t, list()) :: list()
+  @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
     if user_txs == [] do
@@ -144,7 +144,7 @@ defmodule Aecore.Txs.Pool.Worker do
     txs
   end
 
-  @spec check_address_tx(list(SignedTx.t), String.t, list()) :: list()
+  @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do
