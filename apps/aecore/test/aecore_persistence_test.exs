@@ -8,12 +8,15 @@ defmodule PersistenceTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
 
-  setup account do
+  setup persistance_state do
     Persistence.start_link([])
     Miner.start_link([])
     Miner.mine_sync_block_to_chain
-    {:ok, pubkey} = Keys.pubkey()
-    [pubkey: pubkey]
+    {:ok, account1} = Keys.pubkey()
+    account2 = <<198, 218, 48, 178, 127, 24, 201, 115, 3, 29, 188, 220, 222, 189, 132, 139,
+      168, 1, 64, 134, 103, 38, 151, 213, 195, 5, 219, 138, 29, 137, 119, 229>>
+    [account1: account1,
+     account2: account2]
   end
 
   @tag timeout: 10_000
@@ -32,24 +35,25 @@ defmodule PersistenceTest do
 
   @tag timeout: 10_000
   @tag :persistence
-  test "Get an account from the rocksdb", account do
+  test "Get chain state from the rocksdb", persistance_state do
+    ## For specific account
     assert {:ok, %{balance: _, locked: _}} =
-      Persistence.get_account_chain_state(account.pubkey)
-  end
+      Persistence.get_account_chain_state(persistance_state.account1)
 
-  @tag timeout: 10_000
-  @tag :persistence
-  test "Get all accounts from the rocksdb" do
+    ## For all accounts
     all_accounts = Persistence.get_all_accounts_chain_states
     assert false == Enum.empty?(Map.keys(all_accounts))
+
   end
 
   @tag :persistence
-  test "Failure cases" do
+  test "Failure cases", persistance_state do
     assert {:error, "bad block structure"} =
       Aecore.Persistence.Worker.add_block_by_hash(:wrong_input_type)
 
     assert {:error, "bad hash value"} =
       Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
+
+    assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)
   end
 end
