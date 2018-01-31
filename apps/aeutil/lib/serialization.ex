@@ -8,7 +8,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
 
-  @spec block(%Block{}, :serialize | :deserialize) :: %Block{}
+  @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
     new_header = %{block.header |
       chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
@@ -18,7 +18,7 @@ defmodule Aeutil.Serialization do
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
 
-  @spec tx(map(), :serialize | :deserialize) :: map() | {:error, term()}
+  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
   def tx(tx, direction) do
     new_data = %{tx.data |
                  from_acc: hex_binary(tx.data.from_acc, direction),
@@ -27,6 +27,7 @@ defmodule Aeutil.Serialization do
     %SignedTx{data: TxData.new(new_data), signature: new_signature}
   end
 
+  @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, direction) do
     if data != nil do
       case(direction) do
@@ -37,6 +38,23 @@ defmodule Aeutil.Serialization do
       end
     else
       nil
+    end
+  end
+
+  def merkle_proof(proof, acc) when is_tuple(proof) do
+    proof
+    |> Tuple.to_list()
+    |> merkle_proof(acc)
+  end
+
+  def merkle_proof([], acc), do: acc
+
+  def merkle_proof([head | tail], acc) do
+    if is_tuple(head) do
+      merkle_proof(Tuple.to_list(head), acc)
+    else
+      acc = [hex_binary(head, :serialize)| acc]
+      merkle_proof(tail, acc)
     end
   end
 end

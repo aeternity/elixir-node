@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aehttpserver.Web.Notify
 
   use GenServer
 
@@ -22,15 +23,14 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state =
-      ChainState.calculate_block_state(Block.genesis_block().txs, Block.genesis_block().header.height)
+    genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
     {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
   end
 
-  @spec top_block() :: %Block{}
+  @spec top_block() :: Block.t()
   def top_block() do
     GenServer.call(__MODULE__, :top_block)
   end
@@ -50,48 +50,45 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(term()) :: %Block{}
+  @spec get_block_by_hex_hash(term()) :: Block.t()
   def get_block_by_hex_hash(hash) do
     {:ok, decoded_hash} = Base.decode16(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
-  @spec get_block(binary()) :: %Block{}
+  @spec get_block(binary()) :: Block.t()
   def get_block(hash) do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
-  @spec has_block?(binary()) :: true | false
+  @spec has_block?(binary()) :: boolean()
   def has_block?(hash) do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
 
-  @spec get_blocks(binary(), integer()) :: :ok
-  def get_blocks(start_block_hash, size) do
-    Enum.reverse(get_blocks([], start_block_hash, size))
+  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  def get_blocks(start_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec add_block(%Block{}) :: :ok | {:error, binary()}
+  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  def get_blocks(start_block_hash, final_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
+  end
+
+  @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
-    new_block_state = ChainState.calculate_block_state(block.txs, prev_block.header.height)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
-    new_chain_state_locked_amounts =
-      ChainState.update_chain_state_locked(new_chain_state, prev_block.header.height + 1)
-
-    ## Store to rockdb latest chain_state for each account
-    ## Consider this to be async
-    Enum.each(new_chain_state, fn({account, data}) ->
-      Persistence.add_account_chain_state(account, data)
-    end)
 
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, prev_block, new_chain_state_locked_amounts, blocks_for_difficulty_calculation)
-    add_validated_block(block, new_chain_state_locked_amounts)
+    new_chain_state = BlockValidation.calculate_and_validate_block!(
+      block, prev_block, prev_block_chain_state, blocks_for_difficulty_calculation)
+
+    add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(%Block{}, map()) :: :ok
+  @spec add_validated_block(Block.t(), map()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
@@ -168,8 +165,14 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    ## Store new block to disk
+    ## Store new block to RocksDB
     Persistence.add_block_by_hash(new_block)
+
+    ## Store to RockDB latest chain_state for each account
+    ## Consider this to be async
+    Enum.each(new_chain_state, fn({account, data}) ->
+      Persistence.add_account_chain_state(account, data)
+    end)
 
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
@@ -177,6 +180,8 @@ defmodule Aecore.Chain.Worker do
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+      # Broadcasting notifications for new block added to chain and new mined transaction
+      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
@@ -220,20 +225,19 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  defp get_blocks(blocks_acc, next_block_hash, size) do
-    cond do
-      size > 0 ->
-        case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-          {:error, _} -> blocks_acc
-          block ->
-            updated_block_acc = [block | blocks_acc]
-            prev_block_hash = block.header.prev_hash
-            next_size = size - 1
+  defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
+    if next_block_hash != final_block_hash && count > 0 do
+      case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
+        {:error, _} -> blocks_acc
+        block ->
+          updated_blocks_acc = [block | blocks_acc]
+          prev_block_hash = block.header.prev_hash
+          next_count = count - 1
 
-            get_blocks(updated_block_acc, prev_block_hash, next_size)
-        end
-      true ->
-        blocks_acc
+          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+      end
+    else
+      blocks_acc
     end
   end
 end

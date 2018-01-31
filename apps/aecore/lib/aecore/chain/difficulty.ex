@@ -1,5 +1,7 @@
 defmodule Aecore.Chain.Difficulty do
 
+  alias Aecore.Structures.Block
+
   @number_of_blocks 10
   @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
   @target_distance 30_000
@@ -8,7 +10,7 @@ defmodule Aecore.Chain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(list()) :: integer()
+  @spec calculate_next_difficulty(list(Block.t())) :: integer()
   def calculate_next_difficulty(list) do
     [latest_block | _] = list
 
@@ -17,8 +19,7 @@ defmodule Aecore.Chain.Difficulty do
     else
       distance = calculate_distance(list)
 
-      next_difficulty =
-        (latest_block.header.difficulty_target * (@target_distance / distance))
+      next_difficulty = (latest_block.header.difficulty_target * (@target_distance / distance))
         |> Float.ceil()
         |> round()
 
@@ -40,7 +41,7 @@ defmodule Aecore.Chain.Difficulty do
     end
   end
 
-  @spec calculate_distance(list) :: float()
+  @spec calculate_distance(list(Block.t())) :: float()
   defp calculate_distance(list) do
     [head | tail] = list
 
