@@ -282,11 +282,29 @@ defmodule Aecore.Miner.Worker do
       current_block_size_bytes, first_tx_size_bytes, max_block_size_bytes)
   end
 
+  # Filters transactions by current block size in bytes by
+  # given max block size in bytes, recursively.
+  #
+  # `txs` - array of transactions to be filtered
+  # `current_tx_index` - index in the array of txs of the current transaction we are checking
+  # `txs_count` - size of txs array
+  # `filtered_txs` - selected transactions for the new block; stored in reverse order
+  # `current_block_size_bytes` - stores the initial block size + filtered_txs (in bytes)
+  # `next_tx_size_bytes` - size of the next transaction to be included
+  # `max_block_size_bytes`
+  #
+  # Returns `filtered_txs` upon reaching the end of the txs array
+  # or upon reaching a transaction that would make the new block's size
+  # bigger than the max block size. Calls itself otherwise.
   defp filter_transactions_by_block_size(txs, current_tx_index, txs_count, filtered_txs,
     current_block_size_bytes, next_tx_size_bytes, max_block_size_bytes) do
 
     current_tx = Enum.at(txs, current_tx_index)
 
+    # If the function is called, then we know the current transaction won't
+    # make the new block's size bigger than max block size, so we add it
+    # to filtered_txs and proceed to check the size of the block with the
+    # next transaction, if there is one.
     new_filtered_txs = [current_tx | filtered_txs]
     next_tx_index = current_tx_index + 1
     if next_tx_index == txs_count do
