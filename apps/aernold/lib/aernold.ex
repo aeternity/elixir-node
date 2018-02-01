@@ -12,10 +12,6 @@ defmodule Aernold do
     0
   end
 
-  defp validate_value({:int, int}, id, type) do
-
-  end
-
   defp reduce_to_value({:bool, bool}, _scope) do
     if !(is_boolean(bool)) do
       throw({:error, "The value must be Boolean"})
@@ -71,18 +67,89 @@ defmodule Aernold do
       throw({:error, "Undefined variable (#{id})"})
     end
 
-    Map.get(scope, id)
+    %{value: value} = Map.get(scope, id)
+    value
   end
 
   defp reduce_to_value({:type, type}, _scope) do
     type
   end
 
+  ## Arithmetic operations
+  ## TODO: arithemetic operations priority
+  defp reduce_to_value({lhs, {:+, _}, rhs}, scope) do
+    result = reduce_to_value(lhs, scope) + reduce_to_value(rhs, scope)
+  end
+
+  defp reduce_to_value({lhs, {:-, _}, rhs}, scope) do
+    result = reduce_to_value(lhs, scope) - reduce_to_value(rhs, scope)
+  end
+
+  defp reduce_to_value({lhs, {:*, _}, rhs}, scope) do
+    result = reduce_to_value(lhs, scope) * reduce_to_value(rhs, scope)
+  end
+
+  defp reduce_to_value({lhs, {:/, _}, rhs}, scope) do
+    result = Integer.floor_div(reduce_to_value(lhs, scope), reduce_to_value(rhs, scope))
+  end
+
+  ## Equality Operators
   defp reduce_to_value({lhs, {:==, _}, rhs}, scope) do
     lhs_value = reduce_to_value(lhs, scope)
     rhs_value = reduce_to_value(rhs, scope)
 
     if lhs_value == rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:!=, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value != rhs_value, do: true, else: false
+  end
+
+  ## Relational operators
+  ## TODO: discuss if we want to have these outside of if
+  defp reduce_to_value({lhs, {:>, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value > rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:>=, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value >= rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:<, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value < rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:<=, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value <= rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:&&, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value && rhs_value, do: true, else: false
+  end
+
+  defp reduce_to_value({lhs, {:||, _}, rhs}, scope) do
+    lhs_value = reduce_to_value(lhs, scope)
+    rhs_value = reduce_to_value(rhs, scope)
+
+    if lhs_value || rhs_value, do: true, else: false
   end
 
   defp validate_variable_value!(id, type, value, scope) do
@@ -116,7 +183,6 @@ defmodule Aernold do
 
   defp evaluate_ast({:def_var, {_, id}, {_, type}, value}, scope) do
     extracted_value = reduce_to_value(value, scope)
-
     validate_variable_value!(id, type, extracted_value, scope)
 
     Map.put(scope, id, %{type: type, value: extracted_value})
@@ -133,10 +199,13 @@ defmodule Aernold do
 
   defp evaluate_ast({:if_statement, condition, body}, scope) do
     condition_result = reduce_to_value(condition, scope)
-
-    Enum.reduce(body, scope, fn(statement, scope_acc) ->
-      evaluate_ast(statement, scope_acc)
-    end)
+    if condition_result do
+      Enum.reduce(body, scope, fn(statement, scope_acc) ->
+        evaluate_ast(statement, scope_acc)
+      end)
+    else
+      scope
+    end
 
     # TODO: make each scope independent
     # scope
@@ -161,7 +230,7 @@ defmodule Aernold do
   end
 
   defp parse(content) do
-    with {:ok, tokens, _} <- :aernold_lexer.string(to_char_list(content)),
+    with {:ok, tokens, _} <- :aernold_lexer.string(to_charlist(content)),
          {:ok, result} <- :aernold_parser.parse(tokens)
     do
       process_ast(result)
