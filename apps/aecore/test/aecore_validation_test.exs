@@ -16,7 +16,7 @@ defmodule AecoreValidationTest do
 
   setup ctx do
     [
-      wallet_pass: " ",
+      wallet_pass: Application.get_env(:aecore, :aewallet)[:pass],
       to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
       253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
       91, 130, 3, 145, 215, 221, 167, 128, 23, 63, 35, 140, 174, 35, 233, 188, 120,

@@ -19,7 +19,7 @@ defmodule MultipleTransactionsTest do
 
   setup wallet do
     [
-      pass: " "
+      pass: Application.get_env(:aecore, :aewallet)[:pass]
     ]
   end
 

@@ -45,10 +45,11 @@ defmodule Aecore.Structures.SignedTx do
 
   """
   @spec sign_tx(TxData.t(), binary()) :: {:ok, SignedTx.t()}
-  def sign_tx(tx, priv_key) do
+  def sign_tx(%TxData{} = tx, priv_key) when byte_size(priv_key) == 32 do
     signature = Signing.sign(:erlang.term_to_binary(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
-
-  defp aewallet_path(), do: Application.get_env(:aecore, :aewallet)[:path]
+  def sign_tx(tx, _priv_key) do
+    {:error, "Wrong Transaction data structure"}
+  end
 end
