@@ -30,7 +30,7 @@ defmodule Aecore.Chain.Worker do
             chain_states: chain_states,
             txs_index: txs_index,
             top_hash: genesis_block_hash,
-            top_height: 0}}
+            top_height: 0}, 0}
   end
 
   @spec top_block() :: Block.t()
@@ -210,7 +210,7 @@ defmodule Aecore.Chain.Worker do
     chain_states =
       case Persistence.get_all_accounts_chain_states() do
         chain_states when chain_states == %{} -> state.chain_states
-        chain_states -> chain_states
+        chain_states -> %{top_hash => chain_states}
       end
 
     blocks_map =
@@ -220,7 +220,7 @@ defmodule Aecore.Chain.Worker do
       end
 
     {:noreply, %{state |
-                 chain_states: %{top_hash => chain_states},
+                 chain_states: chain_states,
                  blocks_map: blocks_map,
                  top_hash: top_hash,
                  top_height: top_height}}
