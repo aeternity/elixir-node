@@ -9,7 +9,7 @@ defmodule Aecore.Wallet.Worker do
   @type opts :: :mainnet | :testnet
 
   @aewallet_dir Application.get_env(:aecore, :aewallet)[:path]
-  @aewallet_pass "1234"
+  @aewallet_pass " "
 
   ## Client API
 

@@ -16,10 +16,7 @@ defmodule AecoreValidationTest do
 
   setup ctx do
     [
-      wallet_path: File.cwd!
-      |> Path.join("test/aewallet/")
-      |> Path.join("wallet--2018-1-10-10-49-58"),
-      wallet_pass: "1234",
+      wallet_pass: " ",
       to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
       253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
       91, 130, 3, 145, 215, 221, 167, 128, 23, 63, 35, 140, 174, 35, 233, 188, 120,
@@ -75,9 +72,9 @@ defmodule AecoreValidationTest do
     _ = BlockValidation.calculate_and_validate_block!(
       new_block, prev_block, %{}, blocks_for_difficulty_calculation)
     wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 2}}
-    assert {:error, "Incorrect height"} == catch_throw( 
+    assert {:error, "Incorrect height"} == catch_throw(
       BlockValidation.calculate_and_validate_block!(
-        wrong_height_block, prev_block, %{}, 
+        wrong_height_block, prev_block, %{},
         blocks_for_difficulty_calculation))
   end
 

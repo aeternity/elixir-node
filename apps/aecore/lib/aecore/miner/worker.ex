@@ -24,7 +24,7 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @wallet_default_pass "1234"
+  @wallet_default_pass " "
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,

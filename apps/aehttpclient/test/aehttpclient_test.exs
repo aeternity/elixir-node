@@ -12,7 +12,7 @@ defmodule AehttpclientTest do
 
   setup wallet do
     [
-      pass: "1234"
+      pass: " "
     ]
   end
 
