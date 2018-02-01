@@ -41,6 +41,15 @@ defmodule Aeutil.Serialization do
     end
   end
 
+  def convert_map_keys(map,type) do
+    case type do
+      :to_atom -> Map.new(map, fn {k, v} -> 
+        if !is_atom k do {String.to_atom(k), v}  else {k, v}  end end)
+      :to_string -> Map.new(map, fn {k, v} -> 
+        if is_atom k do {Kernel.to_string(k), v} else {k, v} end end)
+    end
+  end
+
   def merkle_proof(proof, acc) when is_tuple(proof) do
     proof
     |> Tuple.to_list()
