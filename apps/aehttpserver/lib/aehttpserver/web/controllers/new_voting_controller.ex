@@ -8,7 +8,7 @@ defmodule Aehttpserver.Web.VotingController do
 
   def new_question(conn, _params) do
     question = Serialization.convert_map_keys(conn.body_params, :to_atom)
-    bin_from_acc= Serialization.hex_binary(question.from_acc, :deserialize)
+    bin_from_acc = Serialization.hex_binary(question.from_acc, :deserialize)
     question = %{question | from_acc: bin_from_acc}
     response =
     case Manager.register_question question do
