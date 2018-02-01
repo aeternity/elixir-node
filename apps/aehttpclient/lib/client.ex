@@ -14,6 +14,8 @@ defmodule Aehttpclient.Client do
   @typedoc "Client request identifier"
   @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
+  @spec handle_response(req_kind(), map(), list(map())) :: {:ok, map()}
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -89,13 +91,11 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  @spec handle_response(:block, map(), map()) :: {:ok, map()}
   defp handle_response(:block, body, _headers) do
     response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
     {:ok, response}
   end
 
-  @spec handle_response(:raw_blocks, map(), list(map())) :: {:ok, map()}
   defp handle_response(:raw_blocks, body, _headers) do
     response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
     deserialized_blocks = Enum.map(
@@ -108,7 +108,6 @@ defmodule Aehttpclient.Client do
     {:ok, deserialized_blocks}
   end
 
-  @spec handle_response(:info, map(), list(map())) :: {:ok, map()}
   defp handle_response(:info, body, headers) do
     response = Poison.decode!(body, keys: :atoms!)
     {_, server} = Enum.find(headers, fn(header) ->
@@ -118,13 +117,11 @@ defmodule Aehttpclient.Client do
     {:ok, response_with_server_header}
   end
 
-  @spec handle_response(:acc_txs, map(), list(map())) :: {:ok, map()}
   defp handle_response(:acc_txs, body, _headers) do
     response = Poison.decode!(body, as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
     {:ok, response}
   end
 
-  @spec handle_response(:pool_txs, map(), list(map())) :: {:ok, map()}
   defp handle_response(:pool_txs, body, _headers) do
     response = body
       |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
@@ -132,7 +129,6 @@ defmodule Aehttpclient.Client do
     {:ok, response}
   end
 
-  @spec handle_response(:default, map(), list(map())) :: {:ok, map()}
   defp handle_response(:default, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}
