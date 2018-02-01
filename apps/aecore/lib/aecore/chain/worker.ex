@@ -26,8 +26,11 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-
-    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
+    {:ok, %{blocks_map: genesis_block_map,
+            chain_states: chain_states,
+            txs_index: txs_index,
+            top_hash: genesis_block_hash,
+            top_height: 0}}
   end
 
   @spec top_block() :: Block.t()
@@ -195,6 +198,32 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  def handle_info(:timeout, state) do
+    {top_hash, top_height} =
+      case Persistence.get_latest_block_height_and_hash() do
+        :not_found -> {state.top_hash, state.top_height}
+        {:ok, latest_block} -> {latest_block.hash, latest_block.height}
+      end
+
+    chain_states =
+      case Persistence.get_all_accounts_chain_states() do
+        chain_states when chain_states == %{} -> state.chain_states
+        chain_states -> chain_states
+      end
+
+    blocks_map =
+      case Persistence.get_all_blocks() do
+        blocks_map when blocks_map == %{} -> state.blocks_map
+        blocks_map -> blocks_map
+      end
+
+    {:noreply, %{state |
+                 chain_states: %{top_hash => chain_states},
+                 blocks_map: blocks_map,
+                 top_hash: top_hash,
+                 top_height: top_height}}
   end
 
   defp calculate_block_acc_txs_info(block) do
