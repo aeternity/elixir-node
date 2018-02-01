@@ -5,6 +5,7 @@ defmodule Aecore.Structures.SignedTx do
 
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aewallet.Signing
 
   @typedoc "Structure of the TxData"
   @type tx() :: %TxData{}
@@ -25,15 +26,15 @@ defmodule Aecore.Structures.SignedTx do
   defstruct [:data, :signature]
   use ExConstructor
 
-  @spec is_coinbase(signed_tx()) :: boolean()
-  def is_coinbase(%{data: %{from_acc: key}, signature: signature}) do
+  @spec is_coinbase?(t()) :: boolean()
+  def is_coinbase?(%{data: %{from_acc: key}, signature: signature}) do
     key == nil && signature == nil
   end
 
-  @spec is_valid(signed_tx()) :: boolean()
-  def is_valid(%{data: data, signature: signature}) do
-    data.value >= 0 && data.fee >= 0
-      Aewallet.Signing.verify(:erlang.term_to_binary(data), signature, data.from_acc)
+  @spec is_valid?(t()) :: boolean()
+  def is_valid?(%{data: data, signature: signature}) do
+    data.value >= 0 && data.fee >= 0 &&
+      Signing.verify(:erlang.term_to_binary(data), signature, data.from_acc)
   end
 
   @doc """
@@ -46,9 +47,9 @@ defmodule Aecore.Structures.SignedTx do
      - priv_key: The priv key to sign with
 
   """
-  @spec sign_tx(tx(), binary()) :: {:ok, %SignedTx{}}
+  @spec sign_tx(tx(), binary()) :: {:ok, t()}
   def sign_tx(tx, priv_key) do
-    signature = Aewallet.Signing.sign(:erlang.term_to_binary(tx), priv_key)
+    signature = Signing.sign(:erlang.term_to_binary(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 

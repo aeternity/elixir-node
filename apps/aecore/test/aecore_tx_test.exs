@@ -9,6 +9,7 @@ defmodule AecoreTxTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aewallet.Signing
 
   setup wallet do
     [
@@ -47,7 +48,7 @@ defmodule AecoreTxTest do
 
     signature = signed_tx.signature
     message = :erlang.term_to_binary(signed_tx.data)
-    assert :true = Aewallet.Signing.verify(message, signature, from_acc)
+    assert :true = Signing.verify(message, signature, from_acc)
   end
 
   test "positive tx valid", wallet  do
@@ -60,7 +61,7 @@ defmodule AecoreTxTest do
 
     signature = signed_tx.signature
     message = :erlang.term_to_binary(signed_tx.data)
-    assert :true = Aewallet.Signing.verify(message, signature, from_acc)
+    assert :true = Signing.verify(message, signature, from_acc)
   end
 
   test "negative tx invalid", wallet do
@@ -71,7 +72,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert false == SignedTx.is_valid(signed_tx)
+    assert false == SignedTx.is_valid?(signed_tx)
   end
 
   test "coinbase tx invalid", wallet do
@@ -82,6 +83,6 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert !SignedTx.is_coinbase(signed_tx)
+    assert !SignedTx.is_coinbase?(signed_tx)
   end
 end

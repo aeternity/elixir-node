@@ -11,7 +11,7 @@ defmodule Aecore.Chain.ChainState do
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height) 
+      apply_transaction_on_state!(transaction, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -22,13 +22,13 @@ defmodule Aecore.Chain.ChainState do
       SignedTx.is_coinbase?(transaction) ->
         transaction_in!(chain_state,
                         block_height,
-                        transaction.data.to_acc, 
+                        transaction.data.to_acc,
                         transaction.data.value,
                         transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
-        end 
+        end
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,
@@ -36,7 +36,7 @@ defmodule Aecore.Chain.ChainState do
                             transaction.data.nonce,
                             -1)
         |> transaction_in!(block_height,
-                           transaction.data.to_acc, 
+                           transaction.data.to_acc,
                            transaction.data.value,
                            transaction.data.lock_time_block)
       true ->
@@ -135,7 +135,7 @@ defmodule Aecore.Chain.ChainState do
       throw {:error, "Nonce too small"}
     end
 
-    chain_state 
+    chain_state
     |> Map.put(account, %{account_state | nonce: nonce})
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
