@@ -12,9 +12,9 @@ defmodule Aehttpserver.Web.BlockController do
     case (block) do
       %Block{} ->
         block_hex_values = Serialization.block(block, :serialize)
-        json conn, block_hex_values
+        json(conn, block_hex_values)
       {:error, message} ->
-        json %{conn | status: 404}, %{error: message}
+        json(%{conn | status: 404}, %{error: message})
     end
   end
 
@@ -47,6 +47,42 @@ defmodule Aehttpserver.Web.BlockController do
         }
       end
     )
+    json conn, blocks_json
+  end
+
+  def get_raw_blocks(conn, params) do
+    from_block_hash = case Map.get(params, "from_block") do
+      nil ->
+        Chain.top_block_hash()
+      hash ->
+        {_, hash_bin} = Base.decode16(hash)
+        hash_bin
+    end
+
+    to_block_hash = case Map.get(params, "to_block") do
+      nil ->
+        BlockValidation.block_header_hash(Block.genesis_block().header)
+      hash ->
+        {_, hash_bin} = Base.decode16(hash)
+        hash_bin
+    end
+
+    count = case Map.get(params, "count") do
+      nil ->
+        1000
+      count_string ->
+        {number, _} = Integer.parse(count_string)
+        number
+    end
+
+    blocks = Chain.get_blocks(from_block_hash, to_block_hash, count)
+    blocks_json = Enum.map(
+      blocks,
+      fn(block) ->
+        Serialization.block(block, :serialize)
+      end
+    )
+
     json conn, blocks_json
   end
 

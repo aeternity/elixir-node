@@ -16,7 +16,7 @@ defmodule Aecore.Persistence.Worker do
 
   ## Client side
 
-  @spec write_block_by_hash(block :: map()) :: :ok | {:error, reason :: term()}
+  @spec write_block_by_hash(Block.t()) :: :ok | {:error, reason :: term()}
   def write_block_by_hash(%{header: header} = block) do
     hash = BlockValidation.block_header_hash(header)
     GenServer.call(__MODULE__, {:write_block_by_hash, {hash, block}})

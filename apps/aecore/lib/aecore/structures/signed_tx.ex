@@ -6,15 +6,21 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
 
-  @type signed_tx() :: %SignedTx{}
+  @typedoc "Structure of the TxData"
   @type tx() :: %TxData{}
+
+  @typedoc "Structure of the SignedTx module"
+  @type t :: %SignedTx{
+    data: tx(),
+    signature: binary()
+  }
 
   @doc """
   Definition of Aecore SignedTx structure
 
   ## Parameters
-     - data: Aecore %TxData{} structure
-     - signature: Signed %TxData{} with the private key of the sender
+     * data: Aecore %TxData{} structure
+     * signature: Signed %TxData{} with the private key of the sender
   """
   defstruct [:data, :signature]
   use ExConstructor
@@ -26,7 +32,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid(signed_tx()) :: boolean()
   def is_valid(%{data: data, signature: signature}) do
-    data.value >= 0 &&
+    data.value >= 0 && data.fee >= 0
       Aewallet.Signing.verify(:erlang.term_to_binary(data), signature, data.from_acc)
   end
 
