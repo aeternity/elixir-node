@@ -33,7 +33,7 @@ defmodule Aecore.VotingPrototype.Manager do
   defp process(tx_type, tx_data) do
     {:ok, voting_tx} = build_struct(tx_type, tx_data)
     {:ok, signed_tx} = sign_tx(voting_tx)
-    :ok = Pool.add_transaction(signed_tx)
+    Pool.add_transaction(signed_tx)
   end
 
   def build_struct(structure, data) do

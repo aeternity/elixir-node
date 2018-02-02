@@ -20,7 +20,7 @@ defmodule VotingTest do
     []
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 30_000
   @tag :voting
   test "Valid question with valid answer" do
     {hash_q, sign_tx} = valid_question_tx()
@@ -32,7 +32,7 @@ defmodule VotingTest do
     assert %{["yes"] => _} = Chain.get_voting_result_for_a_question(hash_q)
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 30_000
   @tag :voting
   test "Valid question with invalid answer" do
     {hash_q, sign_tx} = valid_question_tx()
@@ -44,7 +44,7 @@ defmodule VotingTest do
     assert %{} == Chain.get_voting_result_for_a_question(hash_q)
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 30_000
   @tag :voting
   test "Invalid question" do
     {hash_q, sign_tx} = invalid_question_tx()
