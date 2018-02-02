@@ -89,22 +89,22 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), ChainState.account_chainstate) :: :ok
+  @spec add_validated_block(Block.t(), ChainState.account_chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate
+  @spec chain_state(binary()) :: ChainState.account_chainstate()
   def chain_state(block_hash) do
     GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
-  @spec txs_index() :: txs_index
+  @spec txs_index() :: txs_index()
   def txs_index() do
     GenServer.call(__MODULE__, :txs_index)
   end
 
-  @spec chain_state() :: ChainState.account_chainstate
+  @spec chain_state() :: ChainState.account_chainstate()
   def chain_state() do
     top_block_chain_state()
   end
