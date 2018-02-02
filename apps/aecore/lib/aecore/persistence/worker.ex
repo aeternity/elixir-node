@@ -6,18 +6,28 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
+  alias Rox.Batch
   alias Aecore.Chain.BlockValidation
   alias Aecore.Keys.Worker, as: Keys
 
   require Logger
 
-  @latest_block_key "latest_block"
+  @latest_block_key "latest_block_info"
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  ## Client side
+  @doc """
+  Every key that it takes is a task type and
+  every value is the is the data tha we want to persist
+
+  The purpose of this function is to write many tasks in once
+  """
+  @spec batch_write(map()) :: atom()
+  def batch_write(operations) do
+    GenServer.call(__MODULE__, {:batch_write, operations})
+  end
 
   @spec add_block_by_hash(Block.t()) :: :ok | {:error, reason :: term()}
   def add_block_by_hash(%{header: header} = block) do
@@ -67,7 +77,8 @@ defmodule Aecore.Persistence.Worker do
 
   def init(_) do
     ## We are ensuring that families for the blocks and chain state
-    ## are created. More about them - https://github.com/facebook/rocksdb/wiki/Column-Families
+    ## are created. More about them -
+    ## https://github.com/facebook/rocksdb/wiki/Column-Families
     {:ok, db, %{"blocks_family"       => blocks_family,
                 "latest_block_family" => latest_block_family,
                 "chain_state_family"  => chain_state_family}} =
@@ -80,13 +91,33 @@ defmodule Aecore.Persistence.Worker do
             chain_state_family: chain_state_family}}
   end
 
-  def handle_call({:add_block_by_hash, {hash, block}}, _from,
-    %{db: _db, latest_block_family: latest_block_family,
-      blocks_family: blocks_family} = state) do
-    :ok = Rox.put(latest_block_family, @latest_block_key,
-      %{hash: hash, height: block.header.height})
-    :ok = Rox.put(blocks_family, hash, block)
+  def handle_call({:batch_write, operations}, _from,
+    %{db: db, blocks_family: blocks_family,
+      chain_state_family: chain_state_family,
+      latest_block_family: latest_block_family} = state) do
+
+    batch =
+      Enum.reduce(operations, Batch.new(),
+        fn({type, data}, batch_acc) ->
+          ## TODO better way of getting the family
+          family =
+            case type do
+              :chain_state -> chain_state_family
+              :block -> blocks_family
+              :latest_block_info -> latest_block_family
+            end
+          Enum.reduce(data, batch_acc,
+            fn({key, val}, batch_acc_) ->
+              Batch.put(batch_acc_, family, key, val)
+            end)
+        end)
+    Batch.write(batch, db)
     {:reply, :ok, state}
+  end
+
+  def handle_call({:add_block_by_hash, {hash, block}}, _from,
+    %{db: _db, blocks_family: blocks_family} = state) do
+    {:reply, Rox.put(blocks_family, hash, block), state}
   end
 
   def handle_call({:add_account_chain_state, {account, chain_state}}, _from,
@@ -114,7 +145,14 @@ defmodule Aecore.Persistence.Worker do
 
   def handle_call(:get_latest_block_height_and_hash, _from,
     %{db: _db, latest_block_family: latest_block_family} = state) do
-    {:reply, Rox.get(latest_block_family, @latest_block_key), state}
+    hash   = Rox.get(latest_block_family, "top_hash")
+    height = Rox.get(latest_block_family, "top_height")
+    reply  =
+      case hash == :not_found or height == :not_found do
+        true -> :not_found
+        _ -> {:ok, %{hash: elem(hash, 1), height: elem(height, 1)}}
+      end
+    {:reply, reply, state}
   end
 
   def handle_call(:get_all_accounts_chain_states, _from,

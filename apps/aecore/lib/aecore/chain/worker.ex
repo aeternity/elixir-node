@@ -168,19 +168,17 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    ## Store new block to RocksDB
-    Persistence.add_block_by_hash(new_block)
-
-    ## Store to RockDB latest chain_state for each account
-    ## Consider this to be async
-    Enum.each(new_chain_state, fn({account, data}) ->
-      Persistence.add_account_chain_state(account, data)
-    end)
-
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
+      ## Store to RocksDB latest chain_state, latest block and latest block info
+      Persistence.batch_write(%{:chain_state => new_chain_state,
+                                :block => %{new_block_hash => new_block},
+                                :latest_block_info => %{"top_hash" => new_block_hash,
+                                                        "top_height" => new_block.header.height}})
+
+
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain and new mined transaction
