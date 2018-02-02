@@ -25,8 +25,8 @@ defmodule Aehttpserver.Web.Router do
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
-    post "/voting/new_voting/question", VotingController, :voting_request
-    post "/voting/new_voting/answer", VotingController, :voting_request
+    post "/voting/register/question", VotingController, :voting_request
+    post "/voting/register/answer", VotingController, :voting_request
     post "/voting/get_registered_questions", VotingController, :show_registered_questions
   end
 
