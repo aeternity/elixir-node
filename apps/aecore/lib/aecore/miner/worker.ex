@@ -24,7 +24,6 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
-  @wallet_default_pass Application.get_env(:aecore, :aewallet)[:pass]
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -234,7 +233,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
-      pubkey = Wallet.get_public_key(@wallet_default_pass)
+      pubkey = Wallet.get_public_key(Wallet.get_aewallet_dir())
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,

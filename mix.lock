@@ -1,4 +1,4 @@
-%{"aewallet": {:git, "https://github.com/aeternity/elixir-wallet.git", "f57255a782aacd0ffaf585cc72eec908bd31cdf4", [branch: "master"]},
+%{"aewallet": {:git, "https://github.com/aeternity/elixir-wallet.git", "3492f186d7b58df789f8489c80b4eaaa51dab35e", []},
   "base58check": {:git, "https://github.com/quanterall/base58check.git", "e012da96735852902df672d1543298cdf8f9664c", []},
   "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [:mix], [], "hexpm"},
   "certifi": {:hex, :certifi, "2.0.0", "a0c0e475107135f76b8c1d5bc7efb33cd3815cb3cf3dea7aefdd174dabead064", [:rebar3], [], "hexpm"},

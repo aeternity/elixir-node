@@ -10,13 +10,10 @@ defmodule Aecore.Wallet.Worker do
   @typedoc "Options for network"
   @type opts :: :mainnet | :testnet
 
-  @aewallet_dir Application.get_env(:aecore, :aewallet)[:path]
-  @aewallet_pass Application.get_env(:aecore, :aewallet)[:pass]
-
   ## Client API
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{path: @aewallet_dir, pubkey: nil}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{path: get_aewallet_dir(), pubkey: nil}, name: __MODULE__)
   end
 
   def init(%{path: path} = state) do
@@ -50,7 +47,7 @@ defmodule Aecore.Wallet.Worker do
   ## Server Callbacks
 
   def handle_call({:get_pub_key, {password, network}}, _from, %{pubkey: nil} = state) do
-    {:ok, pub_key, _} =
+    {:ok, pub_key} =
       Wallet.get_public_key(get_file_name(state.path), password, network: network)
     {:reply, pub_key, %{state | pubkey: pub_key}}
   end
@@ -67,6 +64,14 @@ defmodule Aecore.Wallet.Worker do
 
   ## Inner functions
 
+  def get_aewallet_dir() do
+    Application.get_env(:aecore, :aewallet)[:path]
+  end
+
+  def get_aewallet_pass() do
+    Application.get_env(:aecore, :aewallet)[:pass]
+  end
+
   defp has_wallet(:ok, path), do: create_wallet(path)
   defp has_wallet({:error, :eexist}, path) do
     case get_file_name(path) do
@@ -80,7 +85,7 @@ defmodule Aecore.Wallet.Worker do
 
   defp create_wallet(path) do
     {:ok, _mnemonic, _path, _wallet_type} =
-      Wallet.create_wallet(@aewallet_pass, path)
+      Wallet.create_wallet(get_aewallet_pass(), path)
     :ok
   end
 

@@ -48,7 +48,7 @@ defmodule EpochElixir.Mixfile do
      {:excoveralls, "~> 0.7", only: :test},
      {:uuid, "~> 1.1"},
      {:distillery, "~> 1.5", runtime: false},
-     {:aewallet, github: "aeternity/elixir-wallet", branch: "master"}
+     {:aewallet, github: "aeternity/elixir-wallet"}
     ]
   end
 end
