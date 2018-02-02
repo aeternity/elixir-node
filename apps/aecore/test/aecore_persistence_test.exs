@@ -26,7 +26,7 @@ defmodule PersistenceTest do
     assert {:ok, %{header: _header}} = Persistence.get_block_by_hash(hash)
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 20_000
   @tag :persistence
   test "Get all blocks from the rocksdb" do
     assert Aecore.Chain.Worker.top_block ==
