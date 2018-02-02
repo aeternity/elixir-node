@@ -48,6 +48,11 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
+  @spec is_pubkey?(binary) :: boolean()
+  def is_pubkey?(value) do
+    byte_size(value) == 65
+  end
+
   @spec sign(term()) :: {:ok, binary()}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})

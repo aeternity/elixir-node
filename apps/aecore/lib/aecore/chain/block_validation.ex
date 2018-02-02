@@ -1,4 +1,5 @@
 defmodule Aecore.Chain.BlockValidation do
+  require Logger
 
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
@@ -87,10 +88,11 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
-        if valid_chain_state do
+        {{is_valid, reason}, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
+        if is_valid do
           {valid_txs_list ++ [tx], updated_chain_state}
         else
+          Logger.warn("Filtering out invalid tx. Reason: #{reason}")
           {valid_txs_list, chain_state_acc}
         end
       end
@@ -102,9 +104,9 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
-      {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
+      {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
     catch
-      {:error, _} -> {false, chain_state}
+      {:error, reason} -> {{false, reason}, chain_state}
     end
   end
 

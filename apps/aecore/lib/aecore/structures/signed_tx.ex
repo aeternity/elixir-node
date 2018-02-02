@@ -29,7 +29,10 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(tx) do
-    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+    tx.data.from_acc != nil 
+    && tx.data.value >= 0 
+    && tx.data.fee >= 0 
+    && Keys.verify_tx(tx)
   end
 
 end
