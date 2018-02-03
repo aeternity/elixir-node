@@ -172,7 +172,6 @@ defmodule Aecore.Chain.Worker do
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
-      ## Store to RocksDB latest chain_state, latest block and latest block info
       Persistence.batch_write(%{:chain_state => new_chain_state,
                                 :block => %{new_block_hash => new_block},
                                 :latest_block_info => %{"top_hash" => new_block_hash,
@@ -186,6 +185,8 @@ defmodule Aecore.Chain.Worker do
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
+        Persistence.batch_write(%{:chain_state => new_chain_state,
+                                  :block => %{new_block_hash => new_block}})
       {:reply, :ok, state_update1}
     end
   end
