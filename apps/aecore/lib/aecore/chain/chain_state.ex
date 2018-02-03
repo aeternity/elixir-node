@@ -9,11 +9,11 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.Header
   alias Aecore.Structures.Account
-  alias Aecore.Structures.Voting
+  alias Aecore.Structures.VotingOnChain
   alias Aecore.Keys.Worker, as: Keys
 
-  @voting_create "Voting.create"
-  @voting_vote "Voting.vote"
+  @voting_onchain_create "VotingOnChain.create"
+  def addr_voting_on_chain_create do @voting_onchain_create end
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
@@ -44,10 +44,13 @@ defmodule Aecore.Chain.ChainState do
                                                        block_height) 
                                      end)
       case transaction.data.to_acc do
-        @voting_create ->
-          chain_state
-        @voting_vote ->
-          chain_state
+        @voting_onchain_create ->
+          voting = VotingOnChain.create_from_tx!(transaction.data, block_height)
+          voting_hash = VotingOnChain.get_hash(voting)
+          if Map.has_key?(chain_state, voting_hash) do
+            throw {:error, "Identical voting already exists."}
+          end
+          Map.put(chain_state, voting_hash, voting)
         address ->
           case Map.get(chain_state, address, Account.empty()) do
             account = %Account{} -> 
@@ -57,10 +60,10 @@ defmodule Aecore.Chain.ChainState do
               Map.put(chain_state, 
                       address, 
                       Account.tx_in!(account, transaction.data, block_height))
-            voting = %Voting{} ->
+            voting = %VotingOnChain{} ->
               Map.put(chain_state,
                       address,
-                      Voting.tx_in!(voting, transaction.data, block_height))
+                      VotingOnChain.tx_in!(voting, transaction.data, block_height))
             _ ->
               throw {:error, "Invalid contract type on chainstate"}
           end
@@ -94,17 +97,21 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(map()) :: integer()
   def calculate_total_tokens(chain_state) do
-    Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
-      {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
-      locked_tokens =
-        Enum.reduce(data.locked, 0, fn(%{amount: amount}, locked_sum) ->
-          locked_sum + amount
-         end)
-      new_total_tokens = total_tokens + data.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + data.balance
-      new_total_locked_tokens = total_locked_tokens + locked_tokens
-
-      {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
+    Enum.reduce(chain_state, {0, 0, 0}, fn({_account, object}, acc) ->
+      case object do
+        account = %Account{} ->
+          {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
+          locked_tokens =
+            Enum.reduce(account.locked, 0, fn(%{amount: amount}, locked_sum) ->
+              locked_sum + amount
+            end)
+          new_total_tokens = total_tokens + account.balance + locked_tokens
+          new_total_unlocked_tokens = total_unlocked_tokens + account.balance
+          new_total_locked_tokens = total_locked_tokens + locked_tokens
+          {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
+        _ ->
+          acc
+      end
     end)
   end
 

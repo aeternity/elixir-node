@@ -48,6 +48,12 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
+  def sign_txdata(data) do
+    {:ok, signature} = sign(data)
+    signed_tx = %SignedTx{data: data, signature: signature}
+    {:ok, signed_tx}
+  end
+
   @spec is_pubkey?(binary) :: boolean()
   def is_pubkey?(value) do
     byte_size(value) == 65
