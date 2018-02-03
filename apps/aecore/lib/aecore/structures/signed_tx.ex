@@ -35,4 +35,9 @@ defmodule Aecore.Structures.SignedTx do
     && Keys.verify_tx(tx)
   end
 
+  @spec hash(SignedTx.t()) :: binary()
+  def hash(tx) do
+    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
+  end
+
 end

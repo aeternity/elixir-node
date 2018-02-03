@@ -48,8 +48,8 @@ defmodule Aecore.Keys.Worker do
     {:ok, signed_tx}
   end
 
-  def sign_txdata(data) do
-    {:ok, signature} = sign(data)
+  def sign_txdata(data, priv_key \\ nil) do
+    {:ok, signature} = if priv_key == nil do sign(data) else sign(data, priv_key) end
     signed_tx = %SignedTx{data: data, signature: signature}
     {:ok, signed_tx}
   end

@@ -87,7 +87,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)))
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash(tx))
     {:reply, :ok, updated_pool}
   end
 

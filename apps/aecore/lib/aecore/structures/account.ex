@@ -6,6 +6,7 @@ defmodule Aecore.Structures.Account do
   require Logger
   alias Aecore.Structures.TxData
   alias Aecore.Structures.Account
+  alias Aecore.Structures.Header
 
   @type t :: %Account{
     balance: non_neg_integer(),
@@ -31,12 +32,12 @@ defmodule Aecore.Structures.Account do
              locked: []}
   end
 
-  @spec tx_in!(Account.t() | nil, TxData.t(), integer()) :: Account.t()
-  def tx_in!(nil, tx, block_height) do
-    tx_in!(empty(), tx, block_height)
+  @spec tx_in!(Account.t() | nil, TxData.t(), Header.t()) :: Account.t()
+  def tx_in!(nil, tx, header) do
+    tx_in!(empty(), tx, header)
   end
-  def tx_in!(account, tx, block_height) do
-    if block_height <= tx.lock_time_block do
+  def tx_in!(account, tx, header) do
+    if header.height <= tx.lock_time_block do
       if tx.value < 0 do
         throw {:error, "Can't lock a negative transaction"}
       end
@@ -51,8 +52,8 @@ defmodule Aecore.Structures.Account do
     end
   end
 
-  @spec tx_out!(Account.t(), TxData.t(), integer()) :: Account.t()
-  def tx_out!(account, tx, _block_height) do
+  @spec tx_out!(Account.t(), TxData.t(), Header.t()) :: Account.t()
+  def tx_out!(account, tx, _header) do
     if account.nonce >= tx.nonce do
       throw {:error, "Nonce too small"}
     end
@@ -66,8 +67,8 @@ defmodule Aecore.Structures.Account do
     %Account{account | balance: new_balance, nonce: tx.nonce}
   end
 
-  @spec update_locked(Account.t(), integer()) :: Account.t() 
-  def update_locked(account, new_height) do
+  @spec update_locked(Account.t(), Header.t()) :: Account.t() 
+  def update_locked(account, header) do
     {unlocked_amount, updated_locked} = 
       Enum.reduce(
         account.locked,
@@ -75,14 +76,14 @@ defmodule Aecore.Structures.Account do
         fn(%{amount: amount, block: lock_time_block},
            {amount_update_value, updated_locked}) ->
           cond do
-            lock_time_block > new_height ->
+            lock_time_block > header.height ->
               {amount_update_value, 
                updated_locked ++ [%{amount: amount, block: lock_time_block}]}
-            lock_time_block == new_height ->
+            lock_time_block == header.height ->
               {amount_update_value + amount, 
                updated_locked}
             true ->
-              Logger.error(fn -> "Update chain state locked: new block height (#{new_height}) greater than lock time block (#{lock_time_block})" end)
+              Logger.error(fn -> "Update chain state locked: new block height (#{header.height}) greater than lock time block (#{lock_time_block})" end)
               {amount_update_value,
                updated_locked}
           end

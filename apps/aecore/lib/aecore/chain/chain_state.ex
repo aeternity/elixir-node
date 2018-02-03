@@ -6,7 +6,6 @@ defmodule Aecore.Chain.ChainState do
 
   require Logger
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
   alias Aecore.Structures.Header
   alias Aecore.Structures.Account
   alias Aecore.Structures.VotingOnChain
@@ -15,23 +14,23 @@ defmodule Aecore.Chain.ChainState do
   @voting_onchain_create "VotingOnChain.create"
   def addr_voting_on_chain_create do @voting_onchain_create end
 
-  @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
-  def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
+  @spec calculate_and_validate_chain_state!(list(), map(), Header.t()) :: map()
+  def calculate_and_validate_chain_state!(txs, chain_state, header) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_tx!(transaction, chain_state, block_height) 
+      apply_tx!(transaction, chain_state, header) 
     end)
-    |> update_chain_state_locked(block_height)
+    |> update_chain_state_locked(header)
   end
 
-  @spec apply_tx!(SignedTx.t(), map(), integer()) :: map()
-  def apply_tx!(transaction, chain_state, block_height) do
+  @spec apply_tx!(SignedTx.t(), map(), Header.t()) :: map()
+  def apply_tx!(transaction, chain_state, header) do
     if SignedTx.is_coinbase?(transaction) do
       apply_fun_on_map(chain_state, transaction.data.to_acc,
                        fn a ->
                          Account.tx_in!(a,
                                         transaction.data,
-                                        block_height)
+                                        header)
                        end)
     else
       if !SignedTx.is_valid?(transaction) do
@@ -41,11 +40,11 @@ defmodule Aecore.Chain.ChainState do
                                      fn a -> 
                                        Account.tx_out!(a, 
                                                        transaction.data, 
-                                                       block_height) 
+                                                       header) 
                                      end)
       case transaction.data.to_acc do
         @voting_onchain_create ->
-          voting = VotingOnChain.create_from_tx!(transaction.data, block_height)
+          voting = VotingOnChain.create_from_tx!(transaction.data, header)
           voting_hash = VotingOnChain.get_hash(voting)
           if Map.has_key?(chain_state, voting_hash) do
             throw {:error, "Identical voting already exists."}
@@ -59,11 +58,11 @@ defmodule Aecore.Chain.ChainState do
               end
               Map.put(chain_state, 
                       address, 
-                      Account.tx_in!(account, transaction.data, block_height))
+                      Account.tx_in!(account, transaction.data, header))
             voting = %VotingOnChain{} ->
               Map.put(chain_state,
                       address,
-                      VotingOnChain.tx_in!(voting, transaction.data, block_height))
+                      VotingOnChain.tx_in!(voting, transaction.data, header))
             _ ->
               throw {:error, "Invalid contract type on chainstate"}
           end
@@ -115,12 +114,12 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec update_chain_state_locked(map(), integer()) :: map()
-  def update_chain_state_locked(chain_state, new_block_height) do
+  @spec update_chain_state_locked(map(), Header.t()) :: map()
+  def update_chain_state_locked(chain_state, header) do
     Enum.reduce(chain_state, %{}, fn({address, object}, acc) ->
       case object do
         account = %Account{} ->
-          Map.put(acc, address, Account.update_locked(account, new_block_height))
+          Map.put(acc, address, Account.update_locked(account, header))
         other ->
           Map.put(acc, address, other)
       end

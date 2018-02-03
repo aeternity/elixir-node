@@ -209,28 +209,25 @@ defmodule Aecore.Miner.Worker do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
-    # We take an extra block and then drop one at the head of the list
-    # so the miner's blocks for difficulty calculation are the same as
-    # the blocks in the add_block function
-    blocks_for_difficulty_validation = if top_block.header.height == 0 do
-      [top_block]
-    else
-      top_block_hash
-      |> Chain.get_blocks(Difficulty.get_number_of_blocks() + 1)
-      |> Enum.drop(1)
-    end
-
-    previous_block = unless top_block == Block.genesis_block() do
-      Chain.get_block(top_block.header.prev_hash)
-    end
-
     try do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
+
+      chain_calculation_header =
+        Header.create(
+          top_block.header.height + 1,
+          top_block_hash,
+          <<0>>,
+          <<0>>,
+          difficulty,
+          0,
+          Block.current_block_version()
+        )
+
+      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, chain_calculation_header)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
@@ -242,7 +239,7 @@ defmodule Aecore.Miner.Worker do
                    valid_txs_by_fee]
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, chain_calculation_header)
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)

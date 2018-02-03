@@ -3,6 +3,7 @@ defmodule Aecore.Structures.VotingOnChain do
   Aecore structure of a transaction data.
   """
   alias Aecore.Structures.TxData
+  alias Aecore.Structures.Header
   alias Aecore.Structures.VotingOnChain
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.ChainState
@@ -40,9 +41,9 @@ defmodule Aecore.Structures.VotingOnChain do
                    state: initial_state}
   end
 
-  @spec create_from_tx!(TxData.t(), integer()) :: VotingOnChain.t()
-  def create_from_tx!(tx, block_height) do
-    if tx.data.start_height < block_height do
+  @spec create_from_tx!(TxData.t(), Header.t()) :: VotingOnChain.t()
+  def create_from_tx!(tx, header) do
+    if tx.data.start_height < header.height do
       throw {:error, "start_height smaller then current height"}
     end
     if tx.data.end_height <= tx.data.start_height do
@@ -55,7 +56,7 @@ defmodule Aecore.Structures.VotingOnChain do
     create(tx.from_acc, tx.data.comment, tx.data.start_height, tx.data.end_height, tx.data.formula, tx.data.initial_state)
   end
 
-  def create_question_tx(comment, start_height, end_height, formula, initial_state) do
+  def create_question_tx(comment, start_height, end_height, formula, initial_state, nocheck \\ false) do
     {:ok, pubkey} = Keys.pubkey()
     data = %{comment: comment,
              start_height: start_height,
@@ -69,19 +70,21 @@ defmodule Aecore.Structures.VotingOnChain do
                               25,
                               0,
                               data)
-    create_from_tx!(tx, Chain.top_height() + 1) #We check if voting can be created in next block
+    if !nocheck do
+      create_from_tx!(tx, Chain.top_height() + 1) #We check if voting can be created in next block
+    end
     tx
   end
 
-  @spec tx_in!(VotingOnChain.t(), TxData.t(), integer()) :: VotingOnChain.t()
-  def tx_in!(voting, tx, block_height) do
+  @spec tx_in!(VotingOnChain.t(), TxData.t(), Header.t()) :: VotingOnChain.t()
+  def tx_in!(voting, tx, header) do
     if tx.value != 0 do
       throw {:error, "Vote tx shouldn't contain tokens"}
     end
-    if block_height <= voting.start_height || block_height > voting.end_height do
+    if header.height <= voting.start_height || header.height > voting.end_height do
       throw {:error, "Tx outside of timeframe"}
     end
-    voter_at_start = Map.get(Chain.chain_state(), tx.from_acc) #FIXME: we should get the chainstate at start. This requires some important changes (access to prev_block hash in this function, access to n-th prev block by block hash)
+    voter_at_start = Map.get(Chain.get_chain_state_by_height(voting.start_height, header.prev_hash), tx.from_acc)
     if voter_at_start == nil do
       throw {:error, "Voter didn't exist at VotingOnChain start"}
     end
@@ -98,6 +101,20 @@ defmodule Aecore.Structures.VotingOnChain do
                         initial_state: voting.initial_state}
     voting_bin = :erlang.term_to_binary(constant_fields)
     :crypto.hash(:sha256, voting_bin)
+  end
+
+  def code_single_choice do @single_choice end
+  
+  def get_single_choice_initial_state(choices) do
+    results = Enum.reduce(choices, %{}, fn (choice, acc) -> Map.put(acc, choice, 0) end)
+    %{voters: %{}, results: results}
+  end
+
+  def code_multi_choice do @multi_choice end
+  
+  def get_multi_choice_initial_state(choices) do
+    results = Enum.reduce(choices, %{}, fn (choice, acc) -> Map.put(acc, choice, 0) end)
+    %{voters: %{}, results: results}
   end
 
   defp get_formula_fun!(formula) do
