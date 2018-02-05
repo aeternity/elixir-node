@@ -12,7 +12,7 @@ defmodule ASTNode do
   end
 
   def evaluate({:decl_var, {_, id}, {_, type}}, {_prev_val, scope}) do
-    default_value = Reducer.to_value(type, scope)
+    default_value = Reducer.to_value(type, {nil, scope})
     scope = Map.put(scope, id, %{type: type, value: default_value})
     {default_value, scope}
   end
@@ -27,7 +27,7 @@ defmodule ASTNode do
   end
 
   def evaluate({{:id, id}, {:=, _}, value}, {_prev_val, scope}) do
-    extracted_value = Reducer.to_value(value, scope)
+    extracted_value = Reducer.to_value(value, {nil, scope})
     %{type: type} = Map.get(scope, id)
 
     ASTNodeUtils.validate_variable_value!(id, type, extracted_value, scope)
@@ -60,6 +60,26 @@ defmodule ASTNode do
     func_returned_value = Reducer.to_value({:func_call, id, args}, {nil, scope})
 
     {func_returned_value, scope}
+  end
+
+  def evaluate({:int, int}, {_, scope}) do
+    extracted_value = Reducer.to_value({:int, int}, {nil, scope})
+  end
+
+  def evaluate({:bool, bool}, {_, scope}) do
+    extracted_value = Reducer.to_value({:bool, bool}, {nil, scope})
+  end
+
+  def evaluate({:hex, hex}, {_, scope}) do
+    extracted_value = Reducer.to_value({:hex, hex}, {nil, scope})
+  end
+
+  def evaluate({:char, char}, {_, scope}) do
+    extracted_value = Reducer.to_value({:char, char}, {nil, scope})
+  end
+
+  def evaluate({:string, string}, {_, scope}) do
+    extracted_value = Reducer.to_value({:string, string}, {nil, scope})
   end
 
 end
