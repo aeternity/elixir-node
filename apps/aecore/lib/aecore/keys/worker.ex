@@ -125,7 +125,7 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
-  
+
   def handle_call(
         {:verify, {term, signature, pub_key}},
         _from,

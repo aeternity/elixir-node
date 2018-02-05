@@ -10,7 +10,6 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Structures.TxData
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
@@ -107,8 +106,8 @@ defmodule Aecore.Txs.Pool.Worker do
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
       block = Chain.get_block(tx.block_hash)
-      tree  = BlockValidation.build_merkle_tree(block.txs)
-      key   =
+      tree = BlockValidation.build_merkle_tree(block.txs)
+      key =
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
@@ -123,7 +122,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   ## Private functions
 
-  @spec split_blocks(list(%Block{}), String.t, list()) :: list()
+  @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
     if user_txs == [] do
@@ -145,7 +144,7 @@ defmodule Aecore.Txs.Pool.Worker do
     txs
   end
 
-  @spec check_address_tx(list(%SignedTx{}), String.t, list()) :: list()
+  @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do

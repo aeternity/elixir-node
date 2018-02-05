@@ -150,7 +150,7 @@ defmodule Aecore.Pow.Cuckoo do
         solution =
         for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
         {:ok, {:generated, solution}}
-      any ->
+      _ ->
         {:error, :no_solution}
     end
   end

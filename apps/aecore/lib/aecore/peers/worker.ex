@@ -18,6 +18,7 @@ defmodule Aecore.Peers.Worker do
   @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
   @probability_of_peer_remove_when_max 0.5
 
+  @type peers :: %{integer() => %{latest_block: String.t(), uri: String.t()}}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
@@ -30,12 +31,12 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :is_chain_synced)
   end
 
-  @spec add_peer(term()) :: :ok | {:error, term} | :error
+  @spec add_peer(String.t()) :: :ok | {:error, term} | :error
   def add_peer(uri) do
     GenServer.call(__MODULE__, {:add_peer, uri})
   end
 
-  @spec remove_peer(term()) :: :ok | :error
+  @spec remove_peer(String.t()) :: :ok | :error
   def remove_peer(uri) do
     GenServer.call(__MODULE__, {:remove_peer, uri})
   end
@@ -52,7 +53,7 @@ defmodule Aecore.Peers.Worker do
     |> Enum.map(fn(%{uri: uri}) -> uri end)
   end
 
-  @spec all_peers() :: map()
+  @spec all_peers() :: peers
   def all_peers() do
     GenServer.call(__MODULE__, :all_peers)
   end
@@ -64,7 +65,7 @@ defmodule Aecore.Peers.Worker do
     |> Base.encode16()
   end
 
-  @spec schedule_add_peer(term(), integer()) :: term()
+  @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}
   def schedule_add_peer(uri, nonce) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end

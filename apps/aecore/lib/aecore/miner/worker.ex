@@ -95,6 +95,7 @@ defmodule Aecore.Miner.Worker do
     cblock  = %{cblock | header: cheader}
     mine_sync_block(Cuckoo.generate(cheader), cblock)
   end
+
   defp mine_sync_block(%Header{} = mined_header, cblock) do
     {:ok, %{cblock | header: mined_header}}
   end
@@ -185,7 +186,7 @@ defmodule Aecore.Miner.Worker do
     {}
   end
 
-  defp handle_worker_reply(pid, reply, %{job: job} = state) do
+  defp handle_worker_reply(_pid, reply, %{job: job} = state) do
     worker_reply(reply, %{state | job: cleanup_after_worker(job)})
   end
 
