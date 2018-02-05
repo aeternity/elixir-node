@@ -63,23 +63,29 @@ defmodule ASTNode do
   end
 
   def evaluate({:int, int}, {_, scope}) do
-    extracted_value = Reducer.to_value({:int, int}, {nil, scope})
+    evaluate_raw_value({:int, int}, {nil, scope})
   end
 
   def evaluate({:bool, bool}, {_, scope}) do
-    extracted_value = Reducer.to_value({:bool, bool}, {nil, scope})
+    evaluate_raw_value({:bool, bool}, {nil, scope})
   end
 
   def evaluate({:hex, hex}, {_, scope}) do
-    extracted_value = Reducer.to_value({:hex, hex}, {nil, scope})
+    evaluate_raw_value({:hex, hex}, {nil, scope})
   end
 
   def evaluate({:char, char}, {_, scope}) do
-    extracted_value = Reducer.to_value({:char, char}, {nil, scope})
+    evaluate_raw_value({:char, char}, {nil, scope})
   end
 
   def evaluate({:string, string}, {_, scope}) do
-    extracted_value = Reducer.to_value({:string, string}, {nil, scope})
+    evaluate_raw_value({:string, string}, {nil, scope})
+  end
+
+  defp evaluate_raw_value(node, {prev_val, scope}) do
+    extracted_value = Reducer.to_value(node, {prev_val, scope})
+
+    {extracted_value, scope}
   end
 
 end
