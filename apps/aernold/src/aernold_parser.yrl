@@ -31,19 +31,19 @@ Statement -> Expression ';' Statement : ['$1' | '$3'].
 SimpleStatement -> VariableDeclaration : '$1'.
 SimpleStatement -> VariableDefinition : '$1'.
 
-CompoundStatement -> IfStatement : '$1'.
+CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
 VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
 VariableDefinition -> Id ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
 
-IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$3', list_to_tuple('$6')}.
-IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$3', list_to_tuple('$6'), '$8'}.
-IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$3', list_to_tuple('$6'), '$8'}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : {if_statement, '$4', list_to_tuple('$7')}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : {if_statement, '$4', list_to_tuple('$7'), '$9'}.
-ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : {if_statement, '$4', list_to_tuple('$7'), '$9'}.
-ElseStatement -> 'else' '{' Statement '}' : {else_statement, list_to_tuple('$3')}.
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : [{'$3', list_to_tuple('$6')}].
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseStatement : [{'$3', list_to_tuple('$6')} | '$8'].
+IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : [{'$3', list_to_tuple('$6')} | '$8'].
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : [{'$4', list_to_tuple('$7')}].
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : [{'$4', list_to_tuple('$7')} | '$9'].
+ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : [{'$4', list_to_tuple('$7')} | '$9'].
+ElseStatement -> 'else' '{' Statement '}' : [{{bool, true}, list_to_tuple('$3')}].
 
 FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', list_to_tuple('$4'), list_to_tuple('$7')}.
 

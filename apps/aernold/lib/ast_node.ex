@@ -36,15 +36,27 @@ defmodule ASTNode do
     {extracted_value, scope}
   end
 
-  def evaluate({:if_statement, condition, body}, {_prev_val, scope}) do
-    condition_result = Reducer.to_value(condition, {nil, scope})
-    if condition_result do
-      Enum.reduce(body, {nil, scope}, fn(statement, {prev_val, scope_acc}) ->
-        ASTNode.evaluate(statement, {prev_val, scope_acc})
+  def evaluate({:if_statement, statements}, {_prev_val, scope}) do
+    {_, {if_statement_val, if_statement_scope}} = Enum.reduce(statements, {false, {nil, scope}},
+      fn({condition, body}, {has_true_condition, {prev_val_acc, scope_acc}}) ->
+        if has_true_condition do
+          {has_true_condition, {prev_val_acc, scope_acc}}
+        else
+          condition_result = Reducer.to_value(condition, {nil, scope})
+          if condition_result do
+            {statement_result, statement_scope} =
+              Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
+                ASTNode.evaluate(statement, {prev_val_acc, scope_acc})
+              end)
+
+            {true, {statement_result, statement_scope}}
+          else
+            {false, {prev_val_acc, scope_acc}}
+          end
+        end
       end)
-    else
-      {nil, scope}
-    end
+
+    {if_statement_val, if_statement_scope}
   end
 
   def evaluate({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
