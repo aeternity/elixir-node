@@ -10,7 +10,7 @@ defmodule Aehttpserver.Web.OracleController do
     binary_oracle_hash = Base.decode16(body["oracle_hash"])
     case binary_oracle_hash do
       {:ok, binary_hash} ->
-        case Oracle.respond(binary_hash, body["response"], body["fee"]) do
+        case Oracle.respond(binary_hash, body["response"], body["fee"], 10) do
           :ok ->
             json conn, %{:status => :ok}
           :error ->

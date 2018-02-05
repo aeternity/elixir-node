@@ -5,8 +5,8 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
 
   use GenServer
 
@@ -24,7 +24,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :get_state)
   end
 
-  @spec add_block_to_state(binary(), term()) :: :ok
+  @spec add_block_to_state(binary, term()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
@@ -39,6 +39,20 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, :add_valid_peer_blocks_to_chain)
   end
 
+  def add_unknown_peer_pool_txs(peers) do
+    peer_uris = peers |> Map.values() |> Enum.map(fn(%{uri: uri}) -> uri end)
+    Enum.each(peer_uris, fn(peer) ->
+      case HttpClient.get_pool_txs(peer) do
+        {:ok, deserialized_pool_txs} ->
+          Enum.each(deserialized_pool_txs, fn(tx) ->
+            Pool.add_transaction(tx)
+          end)
+        :error ->
+          Logger.error("Couldn't get pool from peer")
+      end
+    end)
+  end
+
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
@@ -50,7 +64,7 @@ defmodule Aecore.Peers.Sync do
           state
         false ->
           try do
-            BlockValidation.single_validate_block(block)
+            BlockValidation.single_validate_block!(block)
             Map.put(state, block_hash, block)
           catch
             {:error, message} ->
@@ -65,7 +79,7 @@ defmodule Aecore.Peers.Sync do
   def handle_call({:ask_peers_for_unknown_blocks, peers}, _from, state) do
     state = Enum.reduce(peers, state, fn ({_, %{uri: uri, latest_block: top_block_hash}}, acc) ->
         {:ok, top_hash_decoded} = Base.decode16(top_block_hash)
-        Map.merge(acc, check_peer_block(uri, top_hash_decoded, %{}))
+        Map.merge(acc, check_peer_blocks(uri, top_hash_decoded, %{}))
       end)
 
     {:reply, :ok, state}
@@ -136,7 +150,8 @@ defmodule Aecore.Peers.Sync do
         {:ok, list} ->
           Enum.concat(acc, Enum.map(Map.values(list),
                                     fn(%{"uri" => uri}) -> uri end))
-        :error ->
+        {:error, message} ->
+          Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
           acc
       end
     end)
@@ -168,7 +183,7 @@ defmodule Aecore.Peers.Sync do
   # (that means we can add this chain to ours)
   defp build_chain(state, block, chain) do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
-    has_parent_in_chain = Chain.has_block?(block.header.prev_hash) 
+    has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     cond do
       has_parent_block_in_state ->
         build_chain(state, state[block.header.prev_hash], [block | chain])
@@ -183,41 +198,49 @@ defmodule Aecore.Peers.Sync do
   # deletes the blocks we added from the state
   defp add_built_chain(chain, state) do
     Enum.reduce(chain, state, fn (block, acc) ->
-        case Chain.add_block(block) do
-          :ok ->
-            Map.delete(acc, BlockValidation.block_header_hash(block.header))
-          :error ->
-            acc
-        end
-      end)
+      Chain.add_block(block)
+      Map.delete(acc, BlockValidation.block_header_hash(block.header))
+    end)
   end
 
   # Gets all unknown blocks, starting from the given one
-  defp check_peer_block(peer_uri, block_hash, state) do
-    case Chain.has_block?(block_hash) do
+  defp check_peer_blocks(peer_uri, from_block_hash, state) do
+    case Chain.has_block?(from_block_hash) do
       false ->
-        case(HttpClient.get_block({peer_uri, block_hash})) do
-          {:ok, deserialized_block} ->
-            try do
-              BlockValidation.single_validate_block(deserialized_block)
-              peer_block_hash =
-                BlockValidation.block_header_hash(deserialized_block.header)
-
-              if(block_hash == peer_block_hash) do
-                check_peer_block(peer_uri, deserialized_block.header.prev_hash,
-                  Map.put(state, peer_block_hash, deserialized_block))
-              else
-                state
-              end
-            catch
-              {:error, _} ->
-                state
+        case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
+          {:ok, blocks} ->
+            if !Enum.empty?(blocks) do
+              state = add_unknown_blocks_to_state(blocks, state)
+              earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
+              check_peer_blocks(peer_uri, earliest_block.header.prev_hash, state)
+            else
+              state
             end
-          :error ->
+          {:error, _} ->
             state
         end
       true ->
         state
     end
   end
+
+  defp add_unknown_blocks_to_state(blocks, state) do
+    Enum.reduce(blocks, state, fn(block, state_acc) ->
+      try do
+        BlockValidation.single_validate_block!(block)
+        peer_block_hash = BlockValidation.block_header_hash(block.header)
+
+        case Chain.has_block?(peer_block_hash) do
+          false ->
+            Map.put(state_acc, peer_block_hash, block)
+          true ->
+            state_acc
+        end
+      catch
+        {:error, _} ->
+          state_acc
+      end
+    end)
+  end
+
 end

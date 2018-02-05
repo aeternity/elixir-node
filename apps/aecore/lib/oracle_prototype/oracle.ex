@@ -9,10 +9,10 @@ defmodule Aecore.OraclePrototype.Oracle do
 
   require Logger
 
-  @spec register(map(), map(), binary(), integer()) :: :ok | :error
-  def register(query_format, response_format, description, fee) do
+  @spec register(map(), map(), binary(), integer(), integer()) :: :ok | :error
+  def register(query_format, response_format, description, fee, nonce) do
     case OracleRegistrationTxData.create(query_format, response_format,
-                                         description, fee) do
+                                         description, fee, nonce) do
       :error ->
         :error
       tx_data ->
@@ -34,10 +34,10 @@ defmodule Aecore.OraclePrototype.Oracle do
     end
   end
 
-  @spec query(binary(), any(), integer(), integer()) :: :ok | :error
-  def query(oracle_hash, query_data, query_fee, response_fee) do
+  @spec query(binary(), any(), integer(), integer(), integer()) :: :ok | :error
+  def query(oracle_hash, query_data, query_fee, response_fee, nonce) do
       case OracleQueryTxData.create(oracle_hash, query_data,
-                                    query_fee, response_fee) do
+                                    query_fee, response_fee, nonce) do
         :error ->
           :error
         tx_data ->
@@ -45,9 +45,9 @@ defmodule Aecore.OraclePrototype.Oracle do
       end
   end
 
-  @spec respond(binary(), any(), integer()) :: :ok | :error
-  def respond(oracle_hash, response, fee) do
-    case OracleResponseTxData.create(oracle_hash, response, fee) do
+  @spec respond(binary(), any(), integer(), integer()) :: :ok | :error
+  def respond(oracle_hash, response, fee, nonce) do
+    case OracleResponseTxData.create(oracle_hash, response, fee, nonce) do
       :error ->
         :error
       tx_data ->

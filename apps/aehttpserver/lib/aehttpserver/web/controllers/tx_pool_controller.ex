@@ -16,6 +16,14 @@ defmodule Aehttpserver.Web.TxPoolController do
     end
   end
 
+  def get_pool_txs(conn, _params) do
+    pool_txs =
+      Pool.get_pool()
+      |> Map.values
+      |> Enum.map(fn(tx) -> Serialization.tx(tx, :serialize) end)
+    json conn, pool_txs
+  end
+
   def get_acc_txs(pool_txs, acc) do
     Enum.filter(pool_txs, fn(tx) ->
         tx.data.from_acc == acc || tx.data.to_acc == acc

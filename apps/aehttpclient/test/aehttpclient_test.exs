@@ -8,25 +8,26 @@ defmodule AehttpclientTest do
   alias Aehttpclient.Client
   alias Aecore.Miner.Worker, as: Miner
 
+  @tag :http_client
   test "Client functions" do
     account = Keys.pubkey() |> elem(1) |> Base.encode16()
     add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
-      Base.decode16!("C061E48A6F7FB2634E0C012B168D41F4773A38BD9E5EA28E5BE7D04186127BA0")})
+                                        Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
     assert {:ok, _} = Client.get_peers("localhost:4000")
     assert Enum.count(Client.get_account_txs({"localhost:4000", account})
-      |> elem(1)) == 2
+    |> elem(1)) == 2
   end
 
   def add_txs_to_pool() do
-    Miner.resume()
-    Miner.suspend()
+    Miner.mine_sync_block_to_chain
     {:ok, to_account} = Keys.pubkey()
-    {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)
-    {:ok, tx2} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 10)
+
+    init_nonce = Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce
+    {:ok, tx1} = Keys.sign_tx(to_account, 5, init_nonce + 1, 10)
+    {:ok, tx2} = Keys.sign_tx(to_account, 5, init_nonce + 2, 10)
+
     Pool.add_transaction(tx1)
     Pool.add_transaction(tx2)
   end

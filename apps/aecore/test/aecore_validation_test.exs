@@ -12,6 +12,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
 
+  @tag :validation
   test "validate new block" do
     new_block =
       %Block{header: %Header{chain_state_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -19,17 +20,21 @@ defmodule AecoreValidationTest do
                              0, 0, 0, 0, 0, 0>>,
                              difficulty_target: 0,
                              height: 1,
-                             nonce: 248_312_374,
-                             pow_evidence: [8_081, 47_553, 48_385, 49_312, 51_555,
-                                            64_159, 71_996, 78_044, 90_415, 102_863,
-                                            113_010, 124_096, 126_548, 148_419,
-                                            164_411, 166_884, 181_371, 195_117,
-                                            195_929, 204_532, 214_522, 238_027,
-                                            239_685, 245_406, 271_421, 277_983,
-                                            289_169, 329_736, 330_930, 334_253,
-                                            339_312, 342_060, 384_756, 393_044,
-                                            410_582, 414_490, 429_226, 429_839,
-                                            430_507, 482_481, 493_187, 510_666],
+                             nonce: 248_312_405,
+                             pow_evidence: [383_234, 616_365, 623_137, 633_764,
+                                            31_313_631, 31_326_664, 31_346_130,
+                                            31_346_561, 31_373_638, 31_646_332,
+                                            32_306_533, 32_313_362, 32_323_637,
+                                            32_353_630, 32_363_064, 32_366_432,
+                                            32_383_636, 32_386_561, 32_653_839,
+                                            32_663_066, 33_356_265, 33_396_261,
+                                            33_613_630, 33_616_333, 34_333_337,
+                                            34_333_662, 34_393_965, 34_626_164,
+                                            35_306_265, 35_333_837, 35_336_639,
+                                            35_386_633, 35_393_931, 36_313_261,
+                                            36_323_663, 37_313_335, 37_323_632,
+                                            37_616_562, 37_616_634, 37_626_535,
+                                            37_653_934, 37_656_233],
                              prev_hash: <<5, 106, 166, 218, 144, 176, 219, 99,
                              63, 101, 99, 156, 27, 61, 128, 219, 23, 42, 195,
                              177, 173, 135, 126, 228, 52, 17, 142, 35, 9, 218,
@@ -50,16 +55,27 @@ defmodule AecoreValidationTest do
       version: 1},
       txs: []}
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    assert BlockValidation.validate_block!(new_block, prev_block, %{},
-                                    blocks_for_difficulty_calculation) == :ok
+    _ = BlockValidation.calculate_and_validate_block!(
+      new_block, prev_block, %{}, blocks_for_difficulty_calculation)
+    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 2}}
+    assert {:error, "Incorrect height"} == catch_throw( 
+      BlockValidation.calculate_and_validate_block!(
+        wrong_height_block, prev_block, %{}, 
+        blocks_for_difficulty_calculation))
   end
 
   test "validate transactions in a block" do
     {:ok, to_account} = Keys.pubkey()
     {:ok, tx1} = Keys.sign_tx(to_account, 5,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.top_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
     {:ok, tx2} = Keys.sign_tx(to_account, 10,
-                              Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1, 1)
+                              Map.get(Chain.chain_state,
+                                      to_account, %{nonce: 0}).nonce + 1, 1,
+                              Chain.top_block().header.height +
+                                Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1)
 
     block = %{Block.genesis_block | txs: [tx1, tx2]}
     assert block |> BlockValidation.validate_block_transactions

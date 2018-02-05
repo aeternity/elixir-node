@@ -16,6 +16,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
 
   use GenServer
@@ -27,7 +28,7 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
-    genesis_chain_state = ChainState.calculate_block_state(Block.genesis_block().txs)
+    genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
     registered_oracles = generate_registrated_oracles_map(Block.genesis_block())
@@ -42,7 +43,7 @@ defmodule Aecore.Chain.Worker do
             top_height: 0}}
   end
 
-  @spec top_block() :: %Block{}
+  @spec top_block() :: Block.t()
   def top_block() do
     GenServer.call(__MODULE__, :top_block)
   end
@@ -62,43 +63,52 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(term()) :: %Block{}
+  @spec get_block_by_hex_hash(term()) :: Block.t()
   def get_block_by_hex_hash(hash) do
     {:ok, decoded_hash} = Base.decode16(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
-  @spec get_block(binary()) :: %Block{}
+  @spec get_block(binary()) :: Block.t()
   def get_block(hash) do
     GenServer.call(__MODULE__, {:get_block, hash})
   end
 
-  @spec has_block?(binary()) :: true | false
+  @spec has_block?(binary()) :: boolean()
   def has_block?(hash) do
     GenServer.call(__MODULE__, {:has_block, hash})
   end
 
-  @spec get_blocks(binary(), integer()) :: :ok
-  def get_blocks(start_block_hash, size) do
-    Enum.reverse(get_blocks([], start_block_hash, size))
+  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  def get_blocks(start_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec add_block(%Block{}) :: :ok | {:error, binary()}
+  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  def get_blocks(start_block_hash, final_block_hash, count) do
+    Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
+  end
+
+  @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
     prev_block = get_block(block.header.prev_hash) #TODO: catch error
     prev_block_chain_state = chain_state(block.header.prev_hash)
-    txs_list_without_oracle_txs = Enum.filter(block.txs, fn(tx) ->
-        match?(%TxData{}, tx.data)
-      end)
-    new_block_state = ChainState.calculate_block_state(txs_list_without_oracle_txs)
-    new_chain_state = ChainState.calculate_chain_state(new_block_state, prev_block_chain_state)
 
-    blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
-    BlockValidation.validate_block!(block, prev_block, new_chain_state, blocks_for_difficulty_calculation)
-    add_validated_block(block, new_chain_state)
+    blocks_for_difficulty_calculation =
+      get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
+
+    try do
+      new_chain_state =
+        BlockValidation.calculate_and_validate_block!(block, prev_block,
+          prev_block_chain_state, blocks_for_difficulty_calculation)
+      add_validated_block(block, new_chain_state)
+    catch
+      {:error, message} ->
+        Logger.error(fn -> "Failed to add block, #{message}" end)
+    end
   end
 
-  @spec add_validated_block(%Block{}, map()) :: :ok
+  @spec add_validated_block(Block.t(), map()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
@@ -175,9 +185,9 @@ defmodule Aecore.Chain.Worker do
                     oracle_responses: oracle_responses,
                     top_height: top_height} = state) do
     handle_oracle_queries(new_block)
-    new_block_txs_index = calculate_block_acc_txs_info(new_block)
-    new_txs_index =
-      update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
+    #new_block_txs_index = calculate_block_acc_txs_info(new_block)
+    #new_txs_index =
+      #update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
     new_block_registered_oracles = generate_registrated_oracles_map(new_block)
     new_registered_oracles =
       Map.merge(new_block_registered_oracles, registered_oracles)
@@ -190,18 +200,21 @@ defmodule Aecore.Chain.Worker do
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{total_tokens}"
+      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
-    ## Store new block to disk
+
+    # Store new block to disk
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
-                              txs_index: new_txs_index,
+                              #txs_index: new_txs_index,
                               registered_oracles: new_registered_oracles,
                               oracle_responses: new_oracle_responses}
     if top_height < new_block.header.height do
-      ## We send the block to others only if it extends the longest chain
+      # We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+      # Broadcasting notifications for new block added to chain and new mined transaction
+      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
@@ -244,9 +257,9 @@ defmodule Aecore.Chain.Worker do
     accounts = for tx <- txs_list_without_oracle_txs do
       [tx.data.from_acc, tx.data.to_acc]
     end
-    accounts = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-    for account <- accounts, into: %{} do
-      acc_txs = Enum.filter(txs_list_without_oracle_txs, fn(tx) ->
+    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts_unique, into: %{} do
+      acc_txs = Enum.filter(block.txs, fn(tx) ->
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
@@ -313,20 +326,19 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  defp get_blocks(blocks_acc, next_block_hash, size) do
-    cond do
-      size > 0 ->
-        case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-          {:error, _} -> blocks_acc
-          block ->
-            updated_block_acc = [block | blocks_acc]
-            prev_block_hash = block.header.prev_hash
-            next_size = size - 1
+  defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
+    if next_block_hash != final_block_hash && count > 0 do
+      case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
+        {:error, _} -> blocks_acc
+        block ->
+          updated_blocks_acc = [block | blocks_acc]
+          prev_block_hash = block.header.prev_hash
+          next_count = count - 1
 
-            get_blocks(updated_block_acc, prev_block_hash, next_size)
-        end
-      true ->
-        blocks_acc
+          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+      end
+    else
+      blocks_acc
     end
   end
 end

@@ -4,10 +4,14 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.TxData
 
-  @type signed_tx() :: %SignedTx{}
+  @type t :: %SignedTx{
+    data: TxData.t(),
+    signature: binary()
+  }
 
   @doc """
     Definition of Aecore SignedTx structure
@@ -19,8 +23,8 @@ defmodule Aecore.Structures.SignedTx do
   defstruct [:data, :signature]
   use ExConstructor
 
-  @spec is_coinbase(signed_tx()) :: boolean()
-  def is_coinbase(tx) do
+  @spec is_coinbase?(SignedTx.t()) :: boolean()
+  def is_coinbase?(tx) do
     if(match?(%TxData{}, tx.data)) do
       tx.data.from_acc == nil && tx.signature == nil
     else
@@ -28,8 +32,8 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
-  @spec is_valid(signed_tx()) :: boolean()
-  def is_valid(tx) do
+  @spec is_valid?(SignedTx.t()) :: boolean()
+  def is_valid?(tx) do
     if(match?(%TxData{}, tx.data)) do
       not_negative = tx.data.value >= 0
       signature_valid = Keys.verify_tx(tx)
