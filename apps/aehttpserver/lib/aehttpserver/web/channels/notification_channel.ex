@@ -1,6 +1,6 @@
 defmodule Aehttpserver.Web.NotificationChannel do
   use Phoenix.Channel
-  
+
   require Logger
 
   def join("room:notifications", _message, socket) do

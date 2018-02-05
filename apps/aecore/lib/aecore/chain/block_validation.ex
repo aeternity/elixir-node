@@ -19,7 +19,17 @@ defmodule Aecore.Chain.BlockValidation do
 
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
-    is_difficulty_target_met = Cuckoo.verify(new_block.header)
+    server = self()
+    work   = fn() -> Cuckoo.verify(new_block.header) end
+    spawn(fn() ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_difficulty_target_met =
+      receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     cond do
