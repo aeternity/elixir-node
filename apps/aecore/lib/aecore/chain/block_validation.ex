@@ -12,14 +12,24 @@ defmodule Aecore.Chain.BlockValidation do
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    
+
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
 
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
-    is_difficulty_target_met = Cuckoo.verify(new_block.header)
+    server = self()
+    work   = fn() -> Cuckoo.verify(new_block.header) end
+    spawn(fn() ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_difficulty_target_met =
+      receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     cond do
