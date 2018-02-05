@@ -8,7 +8,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), Chainstate.account_chainstate, list(Block.t())) :: {:error, term()} | :ok
+  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
