@@ -12,6 +12,12 @@ defmodule PersistenceTest do
     Persistence.start_link([])
     Miner.start_link([])
     Miner.mine_sync_block_to_chain
+    path = Application.get_env(:aecore, :persistence)[:path]
+    on_exit fn ->
+      File.rm_rf(path)
+      :ok
+    end
+
     {:ok, account1} = Keys.pubkey()
     account2 = <<198, 218, 48, 178, 127, 24, 201, 115, 3, 29, 188, 220, 222, 189, 132, 139,
       168, 1, 64, 134, 103, 38, 151, 213, 195, 5, 219, 138, 29, 137, 119, 229>>
