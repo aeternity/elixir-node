@@ -1,7 +1,7 @@
 defmodule ASTNodeUtils do
 
   def validate_variable_value!(id, type, value, scope) do
-    hex_regex = ~r{0[xX][0-9a-fA-F]+}
+    hex_regex = ~r{[0-9a-fA-F]+}
     cond do
       type == 'Int' && !(is_integer(value)) ->
         throw({:error, "The value of (#{id}) must be Integer"})

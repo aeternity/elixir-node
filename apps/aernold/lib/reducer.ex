@@ -1,5 +1,7 @@
 defmodule Reducer do
 
+  alias Aecore.Chain.Worker, as: Chain
+
   def to_value({:int, int}, {_, _scope}) do
     if !(is_integer(int)) do
       throw({:error, "The value must be Integer"})
@@ -25,7 +27,7 @@ defmodule Reducer do
   end
 
   def to_value({:hex, hex}, {_, _scope}) do
-    hex_regex = ~r{0[xX][0-9a-fA-F]+}
+    hex_regex = ~r{[0-9a-fA-F]+}
     hex = to_string(hex)
     if !(hex =~ hex_regex) do
       throw({:error, "The value must be Hex"})
@@ -77,20 +79,20 @@ defmodule Reducer do
 
   ## Arithmetic operations
   ## TODO: arithemetic operations priority
-  def to_value({lhs, {:+, _}, rhs}, {prev_val, scope}) do
-    to_value(lhs, {prev_val, scope}) + to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
+    to_value(lhs, {nil, scope}) + to_value(rhs, {nil, scope})
   end
 
-  def to_value({lhs, {:-, _}, rhs}, {prev_val, scope}) do
-    to_value(lhs, {prev_val, scope}) - to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:-, _}, rhs}, {_prev_val, scope}) do
+    to_value(lhs, {nil, scope}) - to_value(rhs, {nil, scope})
   end
 
-  def to_value({lhs, {:*, _}, rhs}, {prev_val, scope}) do
-    to_value(lhs, {prev_val, scope}) * to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:*, _}, rhs}, {_prev_val, scope}) do
+    to_value(lhs, {nil, scope}) * to_value(rhs, {nil, scope})
   end
 
-  def to_value({lhs, {:/, _}, rhs}, {prev_val, scope}) do
-    Integer.floor_div(to_value(lhs, {prev_val, scope}), to_value(rhs, {prev_val, scope}))
+  def to_value({lhs, {:/, _}, rhs}, {_prev_val, scope}) do
+    Integer.floor_div(to_value(lhs, {nil, scope}), to_value(rhs, {nil, scope}))
   end
 
   ## Equality Operators
@@ -101,55 +103,66 @@ defmodule Reducer do
     if lhs_value == rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:!=, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:!=, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value != rhs_value, do: true, else: false
   end
 
   ## Relational operators
-  ## TODO: discuss if we want to have these outside of if
-  def to_value({lhs, {:>, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:>, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value > rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:>=, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:>=, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value >= rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:<, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:<, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value < rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:<=, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:<=, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value <= rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:&&, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  ##Logic operators
+  ##TODO: discuss if we want logic operators outside if statements
+  def to_value({lhs, {:&&, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value && rhs_value, do: true, else: false
   end
 
-  def to_value({lhs, {:||, _}, rhs}, {prev_val, scope}) do
-    lhs_value = to_value(lhs, {prev_val, scope})
-    rhs_value = to_value(rhs, {prev_val, scope})
+  def to_value({lhs, {:||, _}, rhs}, {_prev_val, scope}) do
+    lhs_value = to_value(lhs, {nil, scope})
+    rhs_value = to_value(rhs, {nil, scope})
 
     if lhs_value || rhs_value, do: true, else: false
+  end
+
+  def to_value({:func_call, {_, 'account_balance'}, {param}}, {_, scope}) do
+    {_, extracted_param} = to_value(param, {nil, scope}) |> Base.decode16()
+      case(Chain.chain_state[extracted_param]) do
+        nil ->
+          0
+        %{balance: balance} ->
+          balance
+      end
   end
 
   def to_value({:func_call, {_, id}, args}, {_prev_val, scope}) do
