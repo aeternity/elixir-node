@@ -1,5 +1,6 @@
 defmodule Aecore.Structures.ContractSignTx do
   require Logger
+  alias __MODULE__
 
   @type t :: %ContractSignTx{
     signature: binary(),
