@@ -65,8 +65,8 @@ Expression -> Expression OpCompare Expression : {'$1', '$2', '$3'}.
 Expression -> Expression Op Expression : {'$1', '$2', '$3'}.
 Expression -> '(' Expression ')' : '$2'.
 Expression -> '!' '(' Expression ')' : {'$1', '$3'}.
-Expression -> '(' Expression ')' Expression : {'$1', '$3'}.
-Expression -> '!' '(' Expression ')' Expression : {'$1', '$3', '$5'}.
+Expression -> '(' Expression ')' Op Expression : {'$2', '$4', '$5'}.
+Expression -> '!' '(' Expression ')' Op Expression : {'$3', '$5', '$6'}.
 
 Id -> id : {id, get_value('$1')}.
 Type -> type : {type, get_value('$1')}.
