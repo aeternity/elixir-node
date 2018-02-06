@@ -1,4 +1,5 @@
 defmodule Aehttpserver.Web.VotingController do
+  require Logger
   use Aehttpserver.Web, :controller
 
   alias Aecore.VotingPrototype.Manager
@@ -10,47 +11,45 @@ defmodule Aehttpserver.Web.VotingController do
     [_h | t] = conn.path_info
     request = t
     case request do
-      ["register", "question"] ->
+      ["register", "question"] -> 
         schema = Schema.question
         case ExJsonSchema.Validator.validate(schema, params) do
           :ok ->
-            question = Serialization.convert_map_keys(params, :to_atom)
-            bin_from_acc = Serialization.hex_binary(question.from_acc, :deserialize)
-            question = %{question | from_acc: bin_from_acc}
-              case Manager.register_question question do
-                :ok -> json(conn, %{"Registered question status" => "ok"})
-                _ -> json(conn, %{"Registered question status" =>
-                "Invalid question voting request"})
-              end
-            {:error, reason} ->
+            if params["start_block_height"] >= Aecore.Chain.Worker.top_height do
+            question = convert_and_serialize_binary_fields(params, :question)
+            json(conn, register_and_respond(question, :question))
+            else
+            json(conn, %{"command" => "Register question", "status" => "Error",
+                         "response" => "Error, Invalid start_block_height"})
+            end
+          {:error, reason} ->
               reason_list = for {x, y} <- reason, do: [x, y]
-              json(conn, reason_list)
-        end
-
-      ["register", "answer"] ->
+              json(conn, %{"command"=> "Register question", "status" => "Error", 
+                           "response" => reason_list})   
+        end 
+      ["register", "answer"] ->      
         schema = Schema.answer
         case ExJsonSchema.Validator.validate(schema, params) do
           :ok ->
-            answer = Serialization.convert_map_keys(params, :to_atom)
-            bin_from_acc = Serialization.hex_binary(answer.from_acc, :deserialize)
-            bin_hash_question =
-              Serialization.hex_binary(answer.hash_question, :deserialize)
-            answer = %{answer | from_acc: bin_from_acc,
-                                hash_question: bin_hash_question}
-              case Manager.register_answer answer do
-                :ok -> json(conn, %{"Registered answer status" => "ok"})
-                _ -> json(conn, %{"Registered answer status" =>
-                "Invalid voting answer request"})
-              end
+            answer = convert_and_serialize_binary_fields(params,:answer)
+            answers_question_close_block_height = 
+            Aecore.Chain.Worker.get_voting_question_by_hash(answer.hash_question).data.close_block_height 
+            if answers_question_close_block_height >= Aecore.Chain.Worker.top_height do
+            json(conn, register_and_respond(answer, :answer))
+            else 
+            json(conn, %{"command" => "Register answer", "status" => "Error",
+                         "response" => "Error, Voting is over"})
+            end  
           {:error, reason} ->
             reason_list = for {x, y} <- reason, do: [x, y]
-            json(conn, reason_list)
-        end
-
-      _ -> json(conn, %{"Registered answer status" =>
-      "Invalid answer voting request"})
+            json(conn, %{"command"=> "Register answer", "status" => "Error", 
+                         "response" => reason_list})
+        end 
+           _ -> json(conn, %{"command" => "Register answer", "status" => "Error",
+                             "response" => "Error, Invalid answer voting request"})
     end
   end
+
 
   def show_registered_questions(conn,_params) do
     questions =  Worker.all_registered_voting_questions
@@ -67,6 +66,41 @@ defmodule Aehttpserver.Web.VotingController do
         question: value_map.data.question,
         start_block_height: value_map.data.start_block_height},
       result: value_map.result}) end)
-    json(conn, questions)
+    json(conn, %{"command" => "Get registered questions", "status" => "ok",
+                 "response" => questions})
   end
+
+  defp register_and_respond(tx,type) do
+    case type do
+      :answer -> 
+        case Manager.register_answer tx do
+          :ok -> %{"command" => "Register answer","status" => "Ok",
+                   "response" => "Registered answer"}
+          _ -> %{"command" => "Register answer","status" => "Error",
+                 "response" => "Couldn't register an answer"}
+        end
+      :question ->
+        case Manager.register_question tx do
+          :ok -> %{"command" => "Register question","status" => "Ok",
+                   "response" => "Registered question"}
+          _ -> %{"command" => "Register question", "status" => "Error", 
+                 "response" => "Couldn't register a question"}
+        end
+      _ -> Logger.error "[error] Invalid given type"
+    end
+  end
+
+  defp convert_and_serialize_binary_fields(tx,type)do
+    case type do
+      :answer -> 
+        tx = Serialization.convert_map_keys(tx, :to_atom)
+        %{tx | from_acc: Serialization.hex_binary(tx.from_acc, :deserialize),
+               hash_question: Serialization.hex_binary(tx.hash_question, :deserialize)}
+      :question -> 
+        tx = Serialization.convert_map_keys(tx, :to_atom)
+        %{tx | from_acc: Serialization.hex_binary(tx.from_acc, :deserialize)}
+      _ -> Logger.error "[error] Invalid given type"
+    end
+  end
+
 end
