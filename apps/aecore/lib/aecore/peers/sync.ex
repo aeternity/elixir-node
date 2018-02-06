@@ -57,7 +57,7 @@ defmodule Aecore.Peers.Sync do
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
-  
+
   @spec remove_block_from_state(binary()) :: :ok
   def remove_block_from_state(block_hash) do
     GenServer.call(__MODULE__, {:remove_block_from_state, block_hash})
@@ -101,6 +101,18 @@ defmodule Aecore.Peers.Sync do
       end
     else
       remove_running_task(peer_uri)
+    end
+  end
+
+  @spec add_valid_peer_blocks_to_chain(map()) :: :ok
+  def add_valid_peer_blocks_to_chain(state) do
+    if !get_chain_sync_status() do
+      set_chain_sync_status(true)
+      Enum.each(state, fn{_, block} ->
+          built_chain = build_chain(state, block, [])
+          add_built_chain(built_chain)
+        end)
+      set_chain_sync_status(false)
     end
   end
 

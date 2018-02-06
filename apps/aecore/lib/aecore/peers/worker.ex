@@ -266,7 +266,7 @@ defmodule Aecore.Peers.Worker do
           true ->
             {:ok, info}
         end
-      error ->
+      _error ->
         {:error, "Request error"}
     end
   end
