@@ -90,9 +90,7 @@ defmodule Aehttpserver.Web.BlockController do
   def new_block(conn, _params) do
     ## Becouse we 'conn.body_params' contains decoded json as map with
     ## keys as strings instead of atoms we are doing this workaround
-    block = conn.body_params
-    built_block = Block.new(%{block | "header" => Header.new(block["header"])})
-    block = Aeutil.Serialization.block(built_block, :deserialize)
+    block = Aeutil.Serialization.block(conn.body_params, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
     Sync.add_valid_peer_blocks_to_chain()

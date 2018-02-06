@@ -5,6 +5,14 @@ defmodule Aecore.Structures.OracleResponseTxData do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys.Worker, as: Keys
 
+  @type t :: %OracleResponseTxData{
+    operator: binary(),
+    oracle_hash: binary(),
+    response: map(),
+    fee: non_neg_integer(),
+    nonce: non_neg_integer()
+  }
+
   defstruct [:operator,
              :oracle_hash,
              :response,

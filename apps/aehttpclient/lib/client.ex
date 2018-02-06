@@ -98,7 +98,7 @@ defmodule Aehttpclient.Client do
 
   @spec handleResponse(:raw_blocks, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:raw_blocks, body, _headers) do
-    response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
+    response = Poison.decode!(body)
     deserialized_blocks = Enum.map(
       response,
       fn(block) ->
@@ -128,7 +128,7 @@ defmodule Aehttpclient.Client do
   @spec handleResponse(:pool_txs, map(), list(map())) :: {:ok, map()}
   defp handleResponse(:pool_txs, body, _headers) do
     response = body
-      |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+      |> Poison.decode!()
       |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
     {:ok, response}
   end
@@ -157,7 +157,6 @@ defmodule Aehttpclient.Client do
   end
 
   defp send_to_peer(data, uri) do
-    IO.inspect(data)
     HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
   end
 

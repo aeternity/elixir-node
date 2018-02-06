@@ -7,6 +7,15 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   require Logger
 
+  @type t :: %OracleQueryTxData{
+    sender: binary(),
+    oracle_hash: binary(),
+    query_data: map(),
+    query_fee: non_neg_integer(),
+    fee: non_neg_integer(),
+    nonce: non_neg_integer()
+  }
+
   defstruct [:sender,
              :oracle_hash,
              :query_data,

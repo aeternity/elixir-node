@@ -5,6 +5,15 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
 
   require Logger
 
+  @type t :: %OracleRegistrationTxData{
+    operator: binary(),
+    query_format: map(),
+    response_format: map(),
+    description: String.t(),
+    fee: non_neg_integer(),
+    nonce: non_neg_integer()
+  }
+
   defstruct [:operator,
              :query_format,
              :response_format,

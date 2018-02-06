@@ -7,7 +7,6 @@ defmodule Aehttpserver.Web.NewTxController do
 
   def new_tx(conn, _params) do
     conn.body_params
-    |> Serialization.build_tx()
     |> Serialization.tx(:deserialize)
     |> Pool.add_transaction()
 

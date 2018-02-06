@@ -4,12 +4,65 @@ defmodule Aeutil.Serialization do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleResponseTxData
 
+  @type transaction_types :: TxData.t() |
+                             OracleQueryTxData.t() |
+                             OracleRegistrationTxData.t() |
+                             OracleResponseTxData.t()
+
+  @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
+  def block(block, direction) do
+    {new_header, new_txs} =
+      case direction do
+        :deserialize ->
+          built_header = Header.new(block["header"])
+          header = header(built_header, direction)
+          txs = Enum.map(block["txs"], fn(tx) ->
+              tx(tx, direction)
+            end)
+          {header, txs}
+        :serialize ->
+          header = header(block.header, direction)
+          txs = Enum.map(block.txs, fn(tx) ->
+              tx(tx, direction)
+            end)
+          {header, txs}
+      end
+    Block.new(header: new_header, txs: new_txs)
+  end
+
+  @spec header(Header.t(), :serialize | :deserialize) :: Header.t()
+  def header(header, direction) do
+    %{header |
+      chain_state_hash: hex_binary(header.chain_state_hash, direction),
+      prev_hash: hex_binary(header.prev_hash, direction),
+      txs_hash: hex_binary(header.txs_hash, direction)}
+  end
+
+  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
+  def tx(tx, direction) do
+    {new_data, new_signature} =
+      case direction do
+        :deserialize ->
+          built_tx_data = build_tx(tx).data
+          data = serialize_tx_data(built_tx_data, direction)
+          signature = hex_binary(tx["signature"], direction)
+          {data, signature}
+        :serialize ->
+          data = serialize_tx_data(tx.data, direction)
+          signature = hex_binary(tx.signature, direction)
+          {data, signature}
+      end
+    %SignedTx{data: new_data, signature: new_signature}
+  end
+
+  @spec build_tx(map()) :: transaction_types()
   def build_tx(tx) do
     cond do
       TxData.is_tx_data_tx(tx["data"]) ->
@@ -23,40 +76,22 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
-  def block(block, direction) do
-    new_header = %{block.header |
-      chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
-      prev_hash: hex_binary(block.header.prev_hash, direction),
-      txs_hash: hex_binary(block.header.txs_hash, direction)}
-    new_txs =
-      Enum.map(block.txs, fn(tx) ->
-          if(direction == :deserialize) do
-            tx |> build_tx() |> tx(direction)
-          else
-            tx(tx, direction)
-          end
-        end)
-    Block.new(%{block | header: new_header, txs: new_txs})
-  end
-
-  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
-  def tx(tx, direction) do
-    new_data =
-      case tx.data do
-        %TxData{} ->
-          %{tx.data | from_acc: hex_binary(tx.data.from_acc, direction),
-                      to_acc: hex_binary(tx.data.to_acc, direction)}
-        %OracleRegistrationTxData{} ->
-          %{tx.data | operator: hex_binary(tx.data.operator, direction)}
-        %OracleResponseTxData{} ->
-          %{tx.data | operator: hex_binary(tx.data.operator, direction)}
-        %OracleQueryTxData{} ->
-          %{tx.data | sender: hex_binary(tx.data.sender, direction),
-                      oracle_hash: hex_binary(tx.data.oracle_hash, direction)}
-      end
-    new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: new_data, signature: new_signature}
+  @spec serialize_tx_data(transaction_types(),
+                          :serialize | :deserialize) :: transaction_types()
+  def serialize_tx_data(tx_data, direction) do
+    case tx_data do
+      %TxData{} ->
+        %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction),
+                    to_acc: hex_binary(tx_data.to_acc, direction)}
+      %OracleRegistrationTxData{} ->
+        %{tx_data | operator: hex_binary(tx_data.operator, direction)}
+      %OracleResponseTxData{} ->
+        %{tx_data | operator: hex_binary(tx_data.operator, direction),
+                    oracle_hash: hex_binary(tx_data.oracle_hash, direction)}}
+      %OracleQueryTxData{} ->
+        %{tx_data | sender: hex_binary(tx_data.sender, direction),
+                    oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
+    end
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
