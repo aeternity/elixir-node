@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
-  require Logger
+  use GenServer
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.TxData
@@ -20,7 +20,9 @@ defmodule Aecore.Chain.Worker do
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
 
-  use GenServer
+  require Logger
+
+  @typep txs_index :: %{binary() => [{binary(), binary()}]}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
@@ -119,12 +121,12 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: map()
+  @spec chain_state(binary()) :: ChainState.account_chainstate()
   def chain_state(block_hash) do
     GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
-  @spec txs_index() :: map()
+  @spec txs_index() :: txs_index()
   def txs_index() do
     GenServer.call(__MODULE__, :txs_index)
   end
@@ -143,6 +145,7 @@ defmodule Aecore.Chain.Worker do
     top_block_chain_state()
   end
 
+  @spec longest_blocks_chain() :: list(Block.t())
   def longest_blocks_chain() do
     get_blocks(top_block_hash(), top_height() + 1)
   end

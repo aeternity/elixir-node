@@ -47,4 +47,5 @@ defmodule Aecore.Structures.TxData do
     Map.has_key?(tx, "value") && Map.has_key?(tx, "nonce") &&
     Map.has_key?(tx, "fee") && Map.has_key?(tx, "lock_time_block")
   end
+
 end
