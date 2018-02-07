@@ -59,8 +59,8 @@ defmodule VotingTest do
           possible_answer_count: 1,
           answers: ["yes", "no"],
           from_acc: pubkey,
-          start_block_height: 1,
-          close_block_height: 10,
+          start_block_height: Chain.top_height,
+          close_block_height: Chain.top_height + 10,
           fee: 10}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
@@ -76,8 +76,8 @@ defmodule VotingTest do
           possible_answer_count: 4,
           answers: ["black", "white", "red", "blue"],
           from_acc: pubkey,
-          start_block_height: 11,
-          close_block_height: 10,
+          start_block_height: Chain.top_height + 1,
+          close_block_height: Chain.top_height,
           fee: 10}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
