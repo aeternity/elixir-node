@@ -92,7 +92,7 @@ defmodule Aecore.Chain.BlockValidation do
     end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
+  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), ChainState.account_chainstate(), integer()) :: list(SignedTx.t())
   def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
     {valid_txs_list, _} = List.foldl(
       txs_list,
@@ -110,7 +110,7 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       case tx do
