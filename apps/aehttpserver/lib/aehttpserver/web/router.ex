@@ -27,7 +27,7 @@ defmodule Aehttpserver.Web.Router do
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
     post "/voting/register/question", VotingController, :voting_request
     post "/voting/register/answer", VotingController, :voting_request
-    post "/voting/get_registered_questions", VotingController, :show_registered_questions
+    post "/voting/show_registered_questions", VotingController, :show_registered_questions
   end
 
   scope "/node", Aehttpserver.Web do

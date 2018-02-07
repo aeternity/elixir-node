@@ -52,7 +52,8 @@ defmodule Aecore.VotingPrototype.Validation do
 
   @spec validate_blocks_interval(non_neg_integer, non_neg_integer) :: boolean()
   defp validate_blocks_interval(start_block_height, close_block_height) do
-    if start_block_height < close_block_height do
+    if start_block_height < close_block_height
+    and Chain.top_height() < close_block_height do
       true
     else
       Logger.error("Invalid block range!")

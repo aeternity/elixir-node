@@ -7,73 +7,29 @@ defmodule Aehttpserver.Web.VotingController do
   alias Aecore.Chain.Worker
   alias Aeutil.ValidateVotingJsonSchema, as: Schema
 
+  ## API
+
   def voting_request(conn, params) do
-    [_h | t] = conn.path_info
-    request = t
+    [_ | request] = conn.path_info
 
     case request do
-      ["register", "question"] ->
-        schema = Schema.question()
+      [command, type] when command == "register"
+      and type == "question" or type == "answer" ->
 
-        case ExJsonSchema.Validator.validate(schema, params) do
+        case ExJsonSchema.Validator.validate(get_schema(type), params) do
           :ok ->
-            if params["start_block_height"] >= Aecore.Chain.Worker.top_height() do
-              question = convert_and_serialize_binary_fields(params, :question)
-              json(conn, register_and_respond(question, :question))
-            else
-              json(conn, %{
-                "command" => "Register question",
-                "status" => "Error",
-                "response" => "Error, Invalid start_block_height"
-              })
-            end
+            data = convert_and_serialize_binary_fields(params, String.to_atom(type))
+            json(conn, register_and_respond(data, String.to_atom(type)))
 
           {:error, reason} ->
-            reason_list = for {x, y} <- reason, do: [x, y]
-
-            json(conn, %{
-              "command" => "Register question",
-              "status" => "Error",
-              "response" => reason_list
-            })
+            reason_list = for {x, y} <- reason do [x, y] end
+            json(conn, build_json_response("#{command}_#{type}",
+                  "error", reason_list))
         end
 
-      ["register", "answer"] ->
-        schema = Schema.answer()
-
-        case ExJsonSchema.Validator.validate(schema, params) do
-          :ok ->
-            answer = convert_and_serialize_binary_fields(params, :answer)
-
-            answers_question_close_block_height =
-              Aecore.Chain.Worker.get_voting_question_by_hash(answer.hash_question).data.close_block_height
-
-            if answers_question_close_block_height >= Aecore.Chain.Worker.top_height() do
-              json(conn, register_and_respond(answer, :answer))
-            else
-              json(conn, %{
-                "command" => "Register answer",
-                "status" => "Error",
-                "response" => "Error, Voting is over"
-              })
-            end
-
-          {:error, reason} ->
-            reason_list = for {x, y} <- reason, do: [x, y]
-
-            json(conn, %{
-              "command" => "Register answer",
-              "status" => "Error",
-              "response" => reason_list
-            })
-        end
-
-      _ ->
-        json(conn, %{
-          "command" => "Register answer",
-          "status" => "Error",
-          "response" => "Error, Invalid answer voting request"
-        })
+        _ ->
+        json(conn, build_json_response("unknown",
+              "error", "unknown request"))
     end
   end
 
@@ -97,68 +53,50 @@ defmodule Aehttpserver.Web.VotingController do
         })
       end)
 
-    json(conn, %{
-      "command" => "Get registered questions",
-      "status" => "ok",
-      "response" => questions
-    })
+    json(conn, build_json_response("show_registered questions", "ok", questions))
+
   end
 
-  defp register_and_respond(tx, type) do
-    
-    case type do
-      :answer ->
-        case Manager.register_answer(tx) do
-          :ok ->
-            %{
-              "command" => "Register answer", 
-              "status" => "Ok",
-              "response" => "Registered answer"
-            }
-
-          _ ->
-            %{
-              "command" => "Register answer",
-              "status" => "Error",
-              "response" => "Couldn't register an answer"
-            }
-        end
-
-      :question ->
-        case Manager.register_question(tx) do
-          :ok ->
-            %{
-              "command" => "Register question",
-              "status" => "Ok",
-              "response" => "Registered question"
-            }
-
-          _ ->
-            %{
-              "command" => "Register question",
-              "status" => "Error",
-              "response" => "Couldn't register a question"
-            }
-        end
-
-      _ ->
+  defp register_and_respond(tx, type) when type == :answer or type == :question do
+    handler = registration_handler(type)
+    case handler.(tx) do
+      :ok ->
+        build_json_response("register_#{Atom.to_string(type)}", "ok",
+          "registered #{Atom.to_string(type)}")
+      reason ->
         Logger.error("[error] Invalid given type")
+        build_json_response("register_#{Atom.to_string(type)}", "error", "reason ???")
     end
   end
 
   defp convert_and_serialize_binary_fields(tx, type) do
-   
+
     case type do
       :answer ->
         tx = Serialization.convert_map_keys(tx, :to_atom)
         %{tx | from_acc: Serialization.hex_binary(tx.from_acc, :deserialize),
-               hash_question: Serialization.hex_binary(tx.hash_question, :deserialize)}
+          hash_question: Serialization.hex_binary(tx.hash_question, :deserialize)}
       :question ->
         tx = Serialization.convert_map_keys(tx, :to_atom)
         %{tx | from_acc: Serialization.hex_binary(tx.from_acc, :deserialize)}
 
-      _ ->
+        _ ->
         Logger.error("[error] Invalid given type")
+        build_json_response("uknown", "error", "unknown type to serialize")
     end
   end
+
+  defp build_json_response(command, status, response) do
+    %{"commnad"  => command,
+      "status"   => status,
+      "response" => response}
+  end
+
+  defp get_schema("question"), do: Schema.question()
+  defp get_schema("answer"), do: Schema.answer()
+
+  defp registration_handler(:question), do: &Manager.register_question/1
+  defp registration_handler(:answer), do: &Manager.register_answer/1
+
+
 end
