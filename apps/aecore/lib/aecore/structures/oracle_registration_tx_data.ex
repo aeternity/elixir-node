@@ -2,6 +2,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
 
   alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Chain.Worker, as: Chain
 
   require Logger
 
@@ -22,8 +23,8 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
              :nonce]
   use ExConstructor
 
-  @spec create(map(), map(), binary(), integer(), integer()) :: %OracleRegistrationTxData{}
-  def create(query_format, response_format, description, fee, nonce) do
+  @spec create(map(), map(), binary(), integer()) :: %OracleRegistrationTxData{}
+  def create(query_format, response_format, description, fee) do
     try do
       ExJsonSchema.Schema.resolve(query_format)
       ExJsonSchema.Schema.resolve(response_format)
@@ -32,7 +33,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
                                 query_format: query_format,
                                 response_format: response_format,
                                 description: description,
-                                fee: fee, nonce: nonce}
+                                fee: fee, nonce: Chain.lowest_valid_nonce()}
     rescue
       e ->
        Logger.error("Invalid query or response format definition; " <> e.message)

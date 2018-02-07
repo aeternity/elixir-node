@@ -77,8 +77,7 @@ end
 
 config :aecore, :operator,
   is_node_operator: is_operator,
-  oracle_url: "localhost:4001",
-  oracles_list: []
+  oracles: %{}
 
 config :aecore, :miner,
   resumed_by_default: false

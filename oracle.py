@@ -16,9 +16,8 @@ class S(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = json.loads(self.rfile.read(content_length))['data']
-        print post_data['query_data']['currency']
         get_data = json.loads(urllib2.urlopen("https://api.fixer.io/latest?symbols=" + post_data['query_data']['currency']).read())
-        payload = {"oracle_hash":post_data['oracle_hash'], "response":get_data, "fee":10, "nonce": 10}
+        payload = {"oracle_hash":post_data['oracle_hash'], "response":get_data, "fee":10}
         req = urllib2.Request('http://localhost:4000/oracle_response')
         req.add_header('Content-Type', 'application/json')
         response = urllib2.urlopen(req, json.dumps(payload))
