@@ -92,7 +92,7 @@ defmodule Aehttpclient.Client do
 
   @spec handleResponse(:block, map(), map()) :: {:ok, map()}
   defp handleResponse(:block, body, _headers) do
-    response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
+    response = Poison.decode!(body)
     {:ok, response}
   end
 
