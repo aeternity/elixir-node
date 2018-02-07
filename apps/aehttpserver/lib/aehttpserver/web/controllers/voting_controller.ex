@@ -82,12 +82,12 @@ defmodule Aehttpserver.Web.VotingController do
 
         _ ->
         Logger.error("[error] Invalid given type")
-        build_json_response("uknown", "error", "unknown type to serialize")
+        build_json_response("unknown", "error", "unknown type to serialize")
     end
   end
 
   defp build_json_response(command, status, response) do
-    %{"commnad"  => command,
+    %{"command"  => command,
       "status"   => status,
       "response" => response}
   end
