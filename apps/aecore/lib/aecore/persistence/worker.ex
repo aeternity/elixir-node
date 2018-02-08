@@ -12,8 +12,6 @@ defmodule Aecore.Persistence.Worker do
 
   require Logger
 
-  @latest_block_key "latest_block_info"
-
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -85,9 +83,9 @@ defmodule Aecore.Persistence.Worker do
     ## We are ensuring that families for the blocks and chain state
     ## are created. More about them -
     ## https://github.com/facebook/rocksdb/wiki/Column-Families
-    {:ok, db, %{"blocks_family"       => blocks_family,
+    {:ok, db, %{"blocks_family"            => blocks_family,
                 "latest_block_info_family" => latest_block_info_family,
-                "chain_state_family"  => chain_state_family}} =
+                "chain_state_family"       => chain_state_family}} =
       Rox.open(persistence_path(),
         [create_if_missing: true, auto_create_column_families: true],
         ["blocks_family", "latest_block_info_family", "chain_state_family"])
@@ -121,27 +119,27 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call({:add_block_by_hash, {hash, block}}, _from,
-    %{db: _db, blocks_family: blocks_family} = state) do
+    %{blocks_family: blocks_family} = state) do
     {:reply, Rox.put(blocks_family, hash, block, write_options()), state}
   end
 
   def handle_call({:add_account_chain_state, {account, chain_state}}, _from,
-    %{db: _db, chain_state_family: chain_state_family} = state) do
+    %{chain_state_family: chain_state_family} = state) do
     {:reply, Rox.put(chain_state_family, account, chain_state, write_options()), state}
   end
 
   def handle_call({:get_block_by_hash, hash}, _from,
-    %{db: _db, blocks_family: blocks_family} = state) do
+    %{blocks_family: blocks_family} = state) do
     {:reply, Rox.get(blocks_family, hash), state}
   end
 
   def handle_call({:get_account_chain_state, account}, _from,
-    %{db: _db, chain_state_family: chain_state_family} = state) do
+    %{chain_state_family: chain_state_family} = state) do
     {:reply, Rox.get(chain_state_family, account), state}
   end
 
   def handle_call(:get_all_blocks, _from,
-    %{db: _db, blocks_family: blocks_family} = state) do
+    %{blocks_family: blocks_family} = state) do
     all_blocks =
       Rox.stream(blocks_family)
       |> Enum.into(%{})
@@ -149,7 +147,7 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call(:get_latest_block_height_and_hash, _from,
-    %{db: _db, latest_block_info_family: latest_block_info_family} = state) do
+    %{latest_block_info_family: latest_block_info_family} = state) do
     hash   = Rox.get(latest_block_info_family, "top_hash")
     height = Rox.get(latest_block_info_family, "top_height")
     reply  =
@@ -161,14 +159,14 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call({:update_latest_block_height_and_hash, hash, height}, _from,
-    %{db: _db, latest_block_info_family: latest_block_info_family} = state) do
+    %{latest_block_info_family: latest_block_info_family} = state) do
     :ok = Rox.put(latest_block_info_family, "top_hash", hash, write_options())
     :ok = Rox.put(latest_block_info_family, "top_height", height, write_options())
     {:reply, :ok, state}
   end
 
   def handle_call(:get_all_accounts_chain_states, _from,
-    %{db: _db, chain_state_family: chain_state_family} = state) do
+    %{chain_state_family: chain_state_family} = state) do
     chain_state =
       Rox.stream(chain_state_family)
       |> Enum.into(%{})
