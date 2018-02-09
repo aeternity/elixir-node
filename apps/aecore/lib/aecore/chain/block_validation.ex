@@ -7,6 +7,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
+  alias Aeutil.Serialization
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
@@ -79,7 +80,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = :erlang.term_to_binary(header)
+    block_header_bin = Serialization.term_to_msgpack(header)
     :crypto.hash(:sha256, block_header_bin)
   end
 
@@ -137,7 +138,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
       for transaction <- txs do
-        transaction_data_bin = :erlang.term_to_binary(transaction.data)
+        transaction_data_bin = Serialization.term_to_msgpack(transaction.data)
         {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
       end
 

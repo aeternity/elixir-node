@@ -57,4 +57,19 @@ defmodule Aeutil.Serialization do
       merkle_proof(tail, acc)
     end
   end
+
+  @spec term_to_msgpack(term()) :: map()
+  def term_to_msgpack(term) do
+    case term do
+      %Block{} ->
+        Map.from_struct(%{term | header: Map.from_struct(term.header)})
+      %SignedTx{} ->
+        Map.from_struct(%{term | data: Map.from_struct(term.data)})
+      %{__struct__: _} ->
+        Map.from_struct(term)
+      _ ->
+        term
+    end
+    |> Msgpax.pack!(iodata: false)
+  end
 end

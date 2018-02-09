@@ -19,6 +19,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Bits
   alias Aecore.Peers.Worker, as: Peers
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -292,7 +293,7 @@ defmodule Aecore.Miner.Worker do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
       tx_size_bits = tx
-        |> :erlang.term_to_binary()
+        |> Serialization.term_to_msgpack()
         |> Bits.extract()
         |> Enum.count()
       tx_size_bytes = tx_size_bits / 8

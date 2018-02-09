@@ -4,6 +4,7 @@ defmodule Aecore.Structures.TxData do
   """
 
   alias Aecore.Structures.TxData
+  alias Aeutil.Serialization
 
   @type t :: %TxData{
     from_acc: binary(),
@@ -38,7 +39,7 @@ defmodule Aecore.Structures.TxData do
 
   @spec hash_tx(TxData.t()) :: binary()
   def hash_tx(tx) do
-    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
+    :crypto.hash(:sha256, Serialization.term_to_msgpack(tx))
   end
 
 end

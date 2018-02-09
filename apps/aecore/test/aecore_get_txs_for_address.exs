@@ -8,7 +8,7 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.BlockValidation, as: BlockValidation
   alias Aecore.Txs.Pool.Worker, as: Pool
-
+  alias Aeutil.Serialization
 
   @tag timeout: 20_000
   test "get txs for given address test" do
@@ -48,7 +48,7 @@ defmodule GetTxsForAddressTest do
         |> Map.delete(:signature)
         |> Map.delete(:proof)
         |> TxData.new()
-      transaction_bin = :erlang.term_to_binary(transaction)
+      transaction_bin = Serialization.term_to_msgpack(transaction)
       key = TxData.hash_tx(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
       assert {:ok, :verified} =
