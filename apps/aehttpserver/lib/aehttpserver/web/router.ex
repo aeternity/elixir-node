@@ -22,12 +22,12 @@ defmodule Aehttpserver.Web.Router do
     get "/blocks", BlockController, :get_blocks
     get "/raw_blocks", BlockController, :get_raw_blocks
     get "/pool_txs", TxPoolController, :get_pool_txs
+    get "/voting/show_registered_questions", VotingController, :show_registered_questions
     resources "/block", BlockController, param: "hash", only: [:show]
     resources "/balance", BalanceController, param: "account", only: [:show]
     resources "/tx_pool", TxPoolController, param: "account", only: [:show]
     post "/voting/register/question", VotingController, :voting_request
     post "/voting/register/answer", VotingController, :voting_request
-    post "/voting/show_registered_questions", VotingController, :show_registered_questions
   end
 
   scope "/node", Aehttpserver.Web do
