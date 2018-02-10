@@ -16,7 +16,7 @@ ENV LC_ALL en_US.UTF-8
 RUN curl https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb -o erlang-solutions_1.0_all.deb
 RUN dpkg -i erlang-solutions_1.0_all.deb
 RUN apt-get update
-RUN apt-get install -y esl-erlang=1:20.0 elixir
+RUN apt-get install -y esl-erlang=1:20.0 elixir=1.5.1-1
 
 # use elixir user for running
 COPY . /elixir_research
