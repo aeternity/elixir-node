@@ -11,7 +11,7 @@ defmodule ASTNodeUtils do
         throw({:error, "The value of (#{id}) must be String"})
       type == 'Hex' &&  !(value =~ hex_regex) ->
         throw({:error, "The value of (#{id}) must be Hex"})
-      type == 'Char' && !(is_list(value)) ->
+      type == 'Char' && !(String.valid?(value)) ->
         throw({:error, "The value of (#{id}) must be Char"})
       true ->
         :ok

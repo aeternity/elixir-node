@@ -8,32 +8,45 @@ defmodule ASTNode do
     end)
   end
 
-  def evaluate({:id, _} = id, {_prev_val, scope}) do
-    value = Reducer.to_value(id, {nil, scope})
+  def evaluate({:id, id}, {_prev_val, scope}) do
+    if !Map.has_key?(scope, id) do
+      throw({:error, "Undefined variable (#{id})"})
+    end
+
+    %{value: value} = Map.get(scope, id)
+
     {value, scope}
   end
 
+  def evaluate({:type, type}, {_prev_val, scope}) do
+    {type, scope}
+  end
+
   def evaluate({:decl_var, {_, id}, {_, type}}, {_prev_val, scope}) do
-    default_value = Reducer.to_value(type, {nil, scope})
+    {default_value, _} = evaluate(type, {nil, scope})
     scope = Map.put(scope, id, %{type: type, value: default_value})
+
     {default_value, scope}
   end
 
   def evaluate({:def_var, {_, id}, {_, type}, value}, {_prev_val, scope}) do
-    extracted_value = Reducer.to_value(value, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
 
     ASTNodeUtils.validate_variable_value!(id, type, extracted_value, scope)
 
     scope = Map.put(scope, id, %{type: type, value: extracted_value})
+
     {extracted_value, scope}
   end
 
   def evaluate({{:id, id}, {:=, _}, value}, {_prev_val, scope}) do
-    extracted_value = Reducer.to_value(value, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
     %{type: type} = Map.get(scope, id)
+
     ASTNodeUtils.validate_variable_value!(id, type, extracted_value, scope)
 
     scope = Map.put(scope, id, %{type: type, value: extracted_value})
+
     {extracted_value, scope}
   end
 
@@ -43,11 +56,11 @@ defmodule ASTNode do
         if has_true_condition do
           {has_true_condition, {prev_val_acc, scope_acc}}
         else
-          condition_result = Reducer.to_value(condition, {nil, scope})
+          {condition_result, _} = evaluate(condition, {nil, scope})
           if condition_result do
             {statement_result, statement_scope} =
               Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
-                ASTNode.evaluate(statement, {prev_val_acc, scope_acc})
+                evaluate(statement, {prev_val_acc, scope_acc})
               end)
 
             {true, {statement_result, statement_scope}}
@@ -63,17 +76,17 @@ defmodule ASTNode do
   end
 
   def evaluate({:switch_statement, {param, cases}}, {prev_val, scope}) do
-    param_extracted_value = Reducer.to_value(param, {prev_val, scope})
+    {param_extracted_value, _} = evaluate(param, {prev_val, scope})
     {_, {switch_statement_val, switch_statement_scope}} = Enum.reduce(cases, {false, {nil, scope}},
       fn({case_param, body}, {has_matched_case, {prev_val_acc, scope_acc}}) ->
         if has_matched_case do
           {has_matched_case, {prev_val_acc, scope_acc}}
         else
-          case_param_value = Reducer.to_value(case_param, {nil, scope})
+          {case_param_value, _} = evaluate(case_param, {nil, scope})
           if case_param_value == param_extracted_value do
             {statement_result, statement_scope} =
               Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
-                ASTNode.evaluate(statement, {prev_val_acc, scope_acc})
+                evaluate(statement, {prev_val_acc, scope_acc})
               end)
 
             {true, {statement_result, statement_scope}}
@@ -88,101 +101,130 @@ defmodule ASTNode do
     {switch_statement_val, updated_scope}
   end
 
-  ## Arithmetic operations
+  # Arithmetic operations
   def evaluate({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
-    result = Reducer.to_value(lhs, {nil, scope}) + Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = lhs_value + rhs_value
+
     {result, scope}
   end
 
   def evaluate({lhs, {:-, _}, rhs}, {_prev_val, scope}) do
-    result = Reducer.to_value(lhs, {nil, scope}) - Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = lhs_value - rhs_value
+
     {result, scope}
   end
 
   def evaluate({lhs, {:*, _}, rhs}, {_prev_val, scope}) do
-    result = Integer.floor_div(Reducer.to_value(lhs, {nil, scope}), Reducer.to_value(rhs, {nil, scope}))
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = lhs_value * rhs_value
+
     {result, scope}
   end
 
-  def evaluate({lhs, {:*, _}, rhs}, {_prev_val, scope}) do
-    result = Reducer.to_value(lhs, {nil, scope}) * Reducer.to_value(rhs, {nil, scope})
+  def evaluate({lhs, {:/, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = Integer.floor_div(lhs_value, rhs_value)
+
     {result, scope}
   end
 
-  ##Equality operators
+  #Equality operators
   def evaluate({lhs, {:==, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = if lhs_value == rhs_value, do: true, else: false
+
     {result, scope}
   end
 
   def evaluate({lhs, {:!=, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
-    result = result = if lhs_value != rhs_value, do: true, else: false
+    result = if lhs_value != rhs_value, do: true, else: false
+
     {result, scope}
   end
 
-  ## Relational operators
+  # Relational operators
   def evaluate({lhs, {:>, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = if lhs_value > rhs_value, do: true, else: false
+
     {result, scope}
   end
 
   def evaluate({lhs, {:>=, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = if lhs_value >= rhs_value, do: true, else: false
+
     {result, scope}
   end
 
   def evaluate({lhs, {:<, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = if lhs_value < rhs_value, do: true, else: false
+
     {result, scope}
   end
 
   def evaluate({lhs, {:<=, _}, rhs}, {_prev_val, scope}) do
-    lhs_value = Reducer.to_value(lhs, {nil, scope})
-    rhs_value = Reducer.to_value(rhs, {nil, scope})
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = if lhs_value <= rhs_value, do: true, else: false
+
     {result, scope}
   end
 
   ##Logic operators
   #TODO: discuss if we want logic operators outside if statements
-  # def evaluate({lhs, {:&&, _}, rhs}, {_prev_val, scope}) do
-  #   lhs_value = Reducer.to_value(lhs, {nil, scope})
-  #   rhs_value = Reducer.to_value(rhs, {nil, scope})
-  #
-  #   if lhs_value && rhs_value, do: true, else: false
-  # end
-  #
-  # def evaluate({lhs, {:||, _}, rhs}, {_prev_val, scope}) do
-  #   lhs_value = Reducer.to_value(lhs, {nil, scope})
-  #   rhs_value = Reducer.to_value(rhs, {nil, scope})
-  #
-  #   if lhs_value || rhs_value, do: true, else: false
-  # end
+  def evaluate({lhs, {:&&, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = if lhs_value && rhs_value, do: true, else: false
+
+    {result, scope}
+  end
+
+  def evaluate({lhs, {:||, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = if lhs_value || rhs_value, do: true, else: false
+
+    {result, scope}
+  end
 
   def evaluate({:func_call, {_, 'account_balance'}, {param}}, {_prev_val, scope}) do
-    {_, extracted_param} = Reducer.to_value(param, {nil, scope}) |> Base.decode16()
-      balance = case(Chain.chain_state[extracted_param]) do
+    {extracted_param, _} = evaluate(param, {nil, scope})
+    {_, decoded_extracted_param} = Base.decode16(extracted_param)
+    balance =
+      case(Chain.chain_state[decoded_extracted_param]) do
         nil ->
           0
         %{balance: balance} ->
-        balance
+          balance
       end
+
     {balance, scope}
   end
 
@@ -191,35 +233,65 @@ defmodule ASTNode do
   end
 
   def evaluate({:func_call, id, args}, {_prev_val, scope}) do
-    func_returned_value = Reducer.to_value({:func_call, id, args}, {nil, scope})
+    {_, {_, _, params, body} = func} = Enum.find(scope, fn(s) ->
+      scope_val = elem(s, 1)
+      if !is_map(scope_val) do
+        elem(scope_val, 0) == :func_definition
+      else
+        false
+      end
+    end)
+
+    {_, scope} = Enum.reduce(params, {0, scope}, fn(param, {args_index, scope_acc}) ->
+      arg = elem(args, args_index)
+      {_, id, type} = param
+      var_def = {:def_var, id, type, arg}
+
+      {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+      {args_index + 1, scope_acc}
+    end)
+
+    {func_returned_value, scope} = Enum.reduce(body, {nil, scope}, fn(statement, {prev_val, scope_acc}) ->
+      evaluate(statement, {prev_val, scope_acc})
+    end)
 
     {func_returned_value, scope}
   end
 
   def evaluate({:int, int}, {_, scope}) do
-    evaluate_raw_value({:int, int}, {nil, scope})
+    {int, scope}
+  end
+
+  def evaluate('Int', {_, scope}) do
+    {0, scope}
   end
 
   def evaluate({:bool, bool}, {_, scope}) do
-    evaluate_raw_value({:bool, bool}, {nil, scope})
+    {bool, scope}
+  end
+
+  def evaluate('Bool', {_, scope}) do
+    {false, scope}
   end
 
   def evaluate({:hex, hex}, {_, scope}) do
-    evaluate_raw_value({:hex, hex}, {nil, scope})
+    {to_string(hex), scope}
+  end
+
+  def evaluate('Hex', {_, scope}) do
+    {0x0, scope}
   end
 
   def evaluate({:char, char}, {_, scope}) do
-    evaluate_raw_value({:char, char}, {nil, scope})
+    {List.to_string([char]), scope}
+  end
+
+  def evaluate('Char', {_, scope}) do
+    {'', scope}
   end
 
   def evaluate({:string, string}, {_, scope}) do
-    evaluate_raw_value({:string, string}, {nil, scope})
-  end
-
-  defp evaluate_raw_value(node, {prev_val, scope}) do
-    extracted_value = Reducer.to_value(node, {prev_val, scope})
-
-    {extracted_value, scope}
+    {string, scope}
   end
 
 end
