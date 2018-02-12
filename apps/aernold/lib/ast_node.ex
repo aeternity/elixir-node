@@ -57,7 +57,9 @@ defmodule ASTNode do
         end
       end)
 
-    {if_statement_val, if_statement_scope}
+    updated_scope = ASTNodeUtils.update_scope(scope, if_statement_scope)
+
+    {if_statement_val, updated_scope}
   end
 
   def evaluate({:switch_statement, {param, cases}}, {prev_val, scope}) do
@@ -81,7 +83,9 @@ defmodule ASTNode do
         end
       end)
 
-    {switch_statement_val, switch_statement_scope}
+    updated_scope = ASTNodeUtils.update_scope(scope, switch_statement_scope)
+
+    {switch_statement_val, updated_scope}
   end
 
   ## Arithmetic operations

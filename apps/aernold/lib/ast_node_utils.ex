@@ -18,4 +18,14 @@ defmodule ASTNodeUtils do
     end
   end
 
+  def update_scope(old_scope, new_scope) do
+    Enum.reduce(new_scope, old_scope, fn({var_id, var_value}, scope_acc) ->
+      if Map.has_key?(scope_acc, var_id) do
+        Map.replace!(scope_acc, var_id,  var_value)
+      else
+        scope_acc
+      end
+    end)
+  end
+
 end
