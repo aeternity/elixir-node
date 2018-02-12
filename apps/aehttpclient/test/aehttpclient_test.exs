@@ -14,7 +14,7 @@ defmodule AehttpclientTest do
     add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
-                                        Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
+                                        Base.decode16!("BC545DDED42DE4E0A56FA7DA191F3C9F0EA369CEA220417F80BCA24B7C08E583")})
     assert {:ok, _} = Client.get_peers("localhost:4000")
     assert Enum.count(Client.get_account_txs({"localhost:4000", account})
     |> elem(1)) == 2

@@ -75,7 +75,7 @@ defmodule Aecore.Chain.ChainState do
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
       for {account, data} <- chain_state do
-        {account, Serialization.term_to_msgpack(data)}
+        {account, Serialization.pack_binary(data)}
       end
 
     if Enum.empty?(merkle_tree_data) do

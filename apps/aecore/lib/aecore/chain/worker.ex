@@ -205,7 +205,7 @@ defmodule Aecore.Chain.Worker do
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
-          tx_bin = Serialization.term_to_msgpack(tx)
+          tx_bin = Serialization.pack_binary(tx)
           :crypto.hash(:sha256, tx_bin)
         end)
       tx_tuples = Enum.map(tx_hashes, fn(hash) ->

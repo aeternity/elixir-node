@@ -48,7 +48,7 @@ defmodule GetTxsForAddressTest do
         |> Map.delete(:signature)
         |> Map.delete(:proof)
         |> TxData.new()
-      transaction_bin = Serialization.term_to_msgpack(transaction)
+      transaction_bin = Serialization.pack_binary(transaction)
       key = TxData.hash_tx(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
       assert {:ok, :verified} =

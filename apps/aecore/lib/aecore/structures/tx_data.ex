@@ -39,7 +39,7 @@ defmodule Aecore.Structures.TxData do
 
   @spec hash_tx(TxData.t()) :: binary()
   def hash_tx(tx) do
-    :crypto.hash(:sha256, Serialization.term_to_msgpack(tx))
+    :crypto.hash(:sha256, Serialization.pack_binary(tx))
   end
 
 end

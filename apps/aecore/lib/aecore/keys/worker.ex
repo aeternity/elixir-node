@@ -135,7 +135,7 @@ defmodule Aecore.Keys.Worker do
     case is_valid_pub_key(pub_key) do
       true ->
         result =
-          :crypto.verify(algo, digest, Serialization.term_to_msgpack(term), signature, [
+          :crypto.verify(algo, digest, Serialization.pack_binary(term), signature, [
                 pub_key,
                 :crypto.ec_curve(curve)
               ])
@@ -152,7 +152,7 @@ defmodule Aecore.Keys.Worker do
         %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.term_to_msgpack(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end
@@ -163,7 +163,7 @@ defmodule Aecore.Keys.Worker do
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.term_to_msgpack(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end

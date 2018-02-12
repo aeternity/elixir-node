@@ -211,21 +211,6 @@ defmodule Aecore.Miner.Worker do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
-    # We take an extra block and then drop one at the head of the list
-    # so the miner's blocks for difficulty calculation are the same as
-    # the blocks in the add_block function
-    blocks_for_difficulty_validation = if top_block.header.height == 0 do
-      [top_block]
-    else
-      top_block_hash
-      |> Chain.get_blocks(Difficulty.get_number_of_blocks() + 1)
-      |> Enum.drop(1)
-    end
-
-    previous_block = unless top_block == Block.genesis_block() do
-      Chain.get_block(top_block.header.prev_hash)
-    end
-
     try do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
@@ -293,7 +278,7 @@ defmodule Aecore.Miner.Worker do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
       tx_size_bits = tx
-        |> Serialization.term_to_msgpack()
+        |> Serialization.pack_binary()
         |> Bits.extract()
         |> Enum.count()
       tx_size_bytes = tx_size_bits / 8

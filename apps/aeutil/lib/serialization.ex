@@ -58,8 +58,8 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec term_to_msgpack(term()) :: map()
-  def term_to_msgpack(term) do
+  @spec pack_binary(term()) :: map()
+  def pack_binary(term) do
     case term do
       %Block{} ->
         Map.from_struct(%{term | header: Map.from_struct(term.header)})

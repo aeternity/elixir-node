@@ -60,7 +60,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    tx_size_bits = tx |> Serialization.term_to_msgpack |> Bits.extract() |> Enum.count()
+    tx_size_bits = tx |> Serialization.pack_binary |> Bits.extract() |> Enum.count()
     tx_size_bytes = tx_size_bits / 8
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
@@ -74,7 +74,7 @@ defmodule Aecore.Txs.Pool.Worker do
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
       true ->
-        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, Serialization.term_to_msgpack(tx)), tx)
+        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, Serialization.pack_binary(tx)), tx)
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
@@ -87,7 +87,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, Serialization.term_to_msgpack(tx)))
+    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, Serialization.pack_binary(tx)))
     {:reply, :ok, updated_pool}
   end
 
