@@ -13,7 +13,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -275,7 +275,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
-    tx_data = %TxData{
+    tx_data = %SpendTx{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,

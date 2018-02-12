@@ -4,7 +4,7 @@ defmodule Aecore.Keys.Worker do
   """
   use GenServer
 
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
 
   @filename_pub "key.pub"
@@ -42,7 +42,7 @@ defmodule Aecore.Keys.Worker do
   @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, SignedTx.t()}
   def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
-    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
+    {:ok, tx_data} = SpendTx.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
     {:ok, signed_tx}
