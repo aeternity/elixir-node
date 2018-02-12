@@ -60,6 +60,30 @@ defmodule ASTNode do
     {if_statement_val, if_statement_scope}
   end
 
+  def evaluate({:switch_statement, {param, cases}}, {prev_val, scope}) do
+    param_extracted_value = Reducer.to_value(param, {prev_val, scope})
+    {_, {switch_statement_val, switch_statement_scope}} = Enum.reduce(cases, {false, {nil, scope}},
+      fn({case_param, body}, {has_matched_case, {prev_val_acc, scope_acc}}) ->
+        if has_matched_case do
+          {has_matched_case, {prev_val_acc, scope_acc}}
+        else
+          case_param_value = Reducer.to_value(case_param, {nil, scope})
+          if case_param_value == param_extracted_value do
+            {statement_result, statement_scope} =
+              Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
+                ASTNode.evaluate(statement, {prev_val_acc, scope_acc})
+              end)
+
+            {true, {statement_result, statement_scope}}
+          else
+            {false, {prev_val_acc, scope_acc}}
+          end
+        end
+      end)
+
+    {switch_statement_val, switch_statement_scope}
+  end
+
   ## Arithmetic operations
   def evaluate({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
     result = Reducer.to_value(lhs, {nil, scope}) + Reducer.to_value(rhs, {nil, scope})

@@ -22,6 +22,8 @@ Rules.
 Contract   : {token, {contract, TokenLine}}.
 if         : {token, {'if', TokenLine}}.
 else       : {token, {else, TokenLine}}.
+switch     : {token, {switch, TokenLine}}.
+case       : {token, {'case', TokenLine}}.
 func       : {token, {func, TokenLine}}.
 true|false : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 

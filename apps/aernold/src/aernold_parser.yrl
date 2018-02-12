@@ -1,6 +1,6 @@
 Terminals
 bool int contract id type 'if'
-else func hex char string
+else switch 'case' func hex char string
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '{' '}'
@@ -10,7 +10,8 @@ else func hex char string
 
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
-VariableDefinition IfStatement ElseIfStatement ElseStatement Condition
+VariableDefinition IfStatement ElseIfStatement ElseStatement SwitchStatement
+SwitchCase Condition
 FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
 Id Type Value OpCondition OpCompare Op
 .
@@ -32,6 +33,7 @@ SimpleStatement -> VariableDeclaration : '$1'.
 SimpleStatement -> VariableDefinition : '$1'.
 
 CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
+CompoundStatement -> SwitchStatement : {switch_statement, '$1'}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
 VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
@@ -44,6 +46,11 @@ ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' : [{'$4', lis
 ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseIfStatement : [{'$4', list_to_tuple('$7')} | '$9'].
 ElseIfStatement -> 'else' 'if' '(' Condition ')' '{' Statement '}' ElseStatement : [{'$4', list_to_tuple('$7')} | '$9'].
 ElseStatement -> 'else' '{' Statement '}' : [{{bool, true}, list_to_tuple('$3')}].
+
+SwitchStatement -> switch '(' Expression ')' '{' SwitchCase '}' : {'$3', list_to_tuple('$6')}.
+
+SwitchCase -> 'case' Expression ':' Statement : [{'$2', list_to_tuple('$4')}].
+SwitchCase -> 'case' Expression ':' Statement SwitchCase : [{'$2', list_to_tuple('$4')} | '$5'].
 
 FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', list_to_tuple('$4'), list_to_tuple('$7')}.
 
