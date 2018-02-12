@@ -13,7 +13,7 @@ File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement SwitchStatement
 SwitchCase Condition
 FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
-Id Type Value OpCondition OpCompare Op
+Id Type Value OpCondition OpCompare Op DataStructure TupleDeclaration TupleValues
 .
 
 Rootsymbol File.
@@ -28,6 +28,10 @@ Statement -> CompoundStatement : ['$1'].
 Statement -> CompoundStatement  Statement : ['$1' | '$2'].
 Statement -> Expression ';' : ['$1'].
 Statement -> Expression ';' Statement : ['$1' | '$3'].
+Statement -> DataStructure ';' : ['$1'].
+Statement -> DataStructure ';' Statement : ['$1' | '$3'].
+
+DataStructure -> TupleDeclaration : '$1'.
 
 SimpleStatement -> VariableDeclaration : '$1'.
 SimpleStatement -> VariableDefinition : '$1'.
@@ -36,8 +40,13 @@ CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
 CompoundStatement -> SwitchStatement : {switch_statement, '$1'}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
+
+TupleDeclaration -> '{' '}' : {decl_tuple, 'empty'}.
+TupleDeclaration -> '{' TupleValues '}' : {decl_tuple, list_to_tuple('$2')}.
 VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
 VariableDefinition -> Id ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
+%TODO: Tuple definition a = {1, 2}; b:Tuple = {3,4}
+%VariableDefinition -> Id ':' Type  '=' DataStructure : {def_var, '$1', '$3', '$5'}.
 
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' : [{'$3', list_to_tuple('$6')}].
 IfStatement -> 'if' '(' Condition ')' '{' Statement '}' ElseStatement : [{'$3', list_to_tuple('$6')} | '$8'].
@@ -77,6 +86,9 @@ Expression -> '!' '(' Expression ')' Op Expression : {'$3', '$5', '$6'}.
 
 Id -> id : {id, get_value('$1')}.
 Type -> type : {type, get_value('$1')}.
+
+TupleValues -> Value : ['$1'].
+TupleValues -> Value ',' TupleValues: ['$1' | '$3'].
 
 Value -> Id : '$1'.
 Value -> FunctionCall : '$1'.

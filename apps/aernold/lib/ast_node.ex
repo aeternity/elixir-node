@@ -29,6 +29,18 @@ defmodule ASTNode do
     {default_value, scope}
   end
 
+  def evaluate({:decl_tuple, value}, {_prev_val, scope}) do
+    tuple_values = if value != :empty do
+      Enum.reduce(value, [], fn(values, acc) -> [Reducer.to_value(values, {nil, scope} ) | acc] end)
+      |> Enum.reverse
+      |> List.to_tuple
+    else
+      {}
+    end
+
+    {tuple_values, scope}
+  end
+
   def evaluate({:def_var, {_, id}, {_, type}, value}, {_prev_val, scope}) do
     {extracted_value, _} = evaluate(value, {nil, scope})
 
@@ -214,6 +226,11 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  def evaluate({:func_call, {_, 'print'}, {param}}, {_prev_val, scope}) do
+    extracted_param = Reducer.to_value(param, {nil, scope})
+    {IO.inspect(extracted_param), scope}
+  end
+
   def evaluate({:func_call, {_, 'account_balance'}, {param}}, {_prev_val, scope}) do
     {extracted_param, _} = evaluate(param, {nil, scope})
     {_, decoded_extracted_param} = Base.decode16(extracted_param)
@@ -292,6 +309,10 @@ defmodule ASTNode do
 
   def evaluate({:string, string}, {_, scope}) do
     {string, scope}
+  end
+
+  def evaluate('Tuple', {_, scope}) do
+    {{}, scope}
   end
 
 end
