@@ -33,11 +33,4 @@ defmodule Aecore.Structures.OracleResponseTxData do
       :error
     end
   end
-
-  @spec is_oracle_response_tx(map()) :: boolean()
-  def is_oracle_response_tx(tx) do
-    Map.has_key?(tx, "operator") && Map.has_key?(tx, "oracle_hash") &&
-    Map.has_key?(tx, "response") && Map.has_key?(tx, "fee") &&
-    Map.has_key?(tx, "nonce")
-  end
 end

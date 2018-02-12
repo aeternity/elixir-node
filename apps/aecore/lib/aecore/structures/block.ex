@@ -4,11 +4,11 @@ defmodule Aecore.Structures.Block do
   """
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SignedTx
 
   @type t :: %Block{
     header: Header.t(),
-    txs: list(TxData.t())
+    txs: list(SignedTx.t())
   }
 
   @current_block_version 1

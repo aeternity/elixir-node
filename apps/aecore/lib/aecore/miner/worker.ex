@@ -230,8 +230,6 @@ defmodule Aecore.Miner.Worker do
       new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
       chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
-      #valid_txs_with_oracle_registration_txs = oracle_registration_txs ++ valid_txs
-
       root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
       top_block_hash = BlockValidation.block_header_hash(top_block.header)

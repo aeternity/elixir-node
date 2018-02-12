@@ -40,11 +40,4 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
        :error
     end
   end
-
-  @spec is_oracle_registration_tx(map()) :: boolean()
-  def is_oracle_registration_tx(tx) do
-    Map.has_key?(tx, "operator") && Map.has_key?(tx, "query_format") &&
-    Map.has_key?(tx, "response_format") && Map.has_key?(tx, "description") &&
-    Map.has_key?(tx, "fee") && Map.has_key?(tx, "nonce")
-  end
 end

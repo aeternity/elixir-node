@@ -28,7 +28,7 @@ defmodule Aecore.Chain.ChainState do
           %SignedTx{data: %TxData{}} ->
             apply_transaction_on_state!(transaction, chain_state, block_height)
           _oracle_tx ->
-            apply_transaction_on_state!(transaction, chain_state)
+            apply_oracle_transaction_on_state!(transaction, chain_state)
         end
       catch
         {:error, message} ->
@@ -67,23 +67,23 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def apply_transaction_on_state!(%SignedTx{data: %OracleRegistrationTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleRegistrationTxData{}} =
                                   transaction, chain_state) do
-    apply_oracle_transaction_on_state!(chain_state,
-                                       transaction.data.operator,
-                                       -transaction.data.fee,
-                                       transaction.data.nonce)
+    deduct_from_account_state!(chain_state,
+                               transaction.data.operator,
+                               -transaction.data.fee,
+                               transaction.data.nonce)
   end
 
-  def apply_transaction_on_state!(%SignedTx{data: %OracleResponseTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleResponseTxData{}} =
                                  transaction, chain_state) do
-    apply_oracle_transaction_on_state!(chain_state,
-                                      transaction.data.operator,
-                                      -transaction.data.fee,
-                                      transaction.data.nonce)
+    deduct_from_account_state!(chain_state,
+                               transaction.data.operator,
+                               -transaction.data.fee,
+                               transaction.data.nonce)
   end
 
-  def apply_transaction_on_state!(%SignedTx{data: %OracleQueryTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleQueryTxData{}} =
                                   transaction, chain_state) do
     operator_address =
       Chain.registered_oracles[transaction.data.oracle_hash].data.operator
@@ -207,7 +207,7 @@ defmodule Aecore.Chain.ChainState do
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
-  defp apply_oracle_transaction_on_state!(chain_state, account, value, nonce) do
+  defp deduct_from_account_state!(chain_state, account, value, nonce) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
     cond do
       account_state.balance + value < 0 ->
@@ -219,5 +219,4 @@ defmodule Aecore.Chain.ChainState do
         Map.put(chain_state, account, %{account_state | balance: new_balance})
     end
   end
-
 end

@@ -43,4 +43,31 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
+  @spec is_oracle_query_tx(map()) :: boolean()
+  def is_oracle_query_tx(tx) do
+    Map.has_key?(tx, "sender") && Map.has_key?(tx, "oracle_hash") &&
+    Map.has_key?(tx, "query_data") && Map.has_key?(tx, "query_fee") &&
+    Map.has_key?(tx, "fee") && Map.has_key?(tx, "nonce")
+  end
+
+  @spec is_oracle_registration_tx(map()) :: boolean()
+  def is_oracle_registration_tx(tx) do
+    Map.has_key?(tx, "operator") && Map.has_key?(tx, "query_format") &&
+    Map.has_key?(tx, "response_format") && Map.has_key?(tx, "description") &&
+    Map.has_key?(tx, "fee") && Map.has_key?(tx, "nonce")
+  end
+
+  @spec is_oracle_response_tx(map()) :: boolean()
+  def is_oracle_response_tx(tx) do
+    Map.has_key?(tx, "operator") && Map.has_key?(tx, "oracle_hash") &&
+    Map.has_key?(tx, "response") && Map.has_key?(tx, "fee") &&
+    Map.has_key?(tx, "nonce")
+  end
+  
+  @spec is_tx_data_tx(map()) :: boolean()
+  def is_tx_data_tx(tx) do
+    Map.has_key?(tx, "from_acc") && Map.has_key?(tx, "to_acc") &&
+    Map.has_key?(tx, "value") && Map.has_key?(tx, "nonce") &&
+    Map.has_key?(tx, "fee") && Map.has_key?(tx, "lock_time_block")
+  end
 end

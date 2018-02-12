@@ -117,7 +117,7 @@ defmodule Aecore.Chain.BlockValidation do
         %SignedTx{data: %TxData{}} ->
           {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
         _oracle_tx ->
-          {true, ChainState.apply_transaction_on_state!(tx, chain_state)}
+          {true, ChainState.apply_oracle_transaction_on_state!(tx, chain_state)}
       end
     catch
       {:error, _} -> {false, chain_state}

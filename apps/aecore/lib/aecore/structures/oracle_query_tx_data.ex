@@ -41,11 +41,4 @@ defmodule Aecore.Structures.OracleQueryTxData do
                            fee: fee, nonce: Chain.lowest_valid_nonce()}
     end
   end
-
-  @spec is_oracle_query_tx(map()) :: boolean()
-  def is_oracle_query_tx(tx) do
-    Map.has_key?(tx, "sender") && Map.has_key?(tx, "oracle_hash") &&
-    Map.has_key?(tx, "query_data") && Map.has_key?(tx, "query_fee") &&
-    Map.has_key?(tx, "fee") && Map.has_key?(tx, "nonce")
-  end
 end

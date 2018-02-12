@@ -40,12 +40,4 @@ defmodule Aecore.Structures.TxData do
   def hash_tx(tx) do
     :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
-
-  @spec is_tx_data_tx(map()) :: boolean()
-  def is_tx_data_tx(tx) do
-    Map.has_key?(tx, "from_acc") && Map.has_key?(tx, "to_acc") &&
-    Map.has_key?(tx, "value") && Map.has_key?(tx, "nonce") &&
-    Map.has_key?(tx, "fee") && Map.has_key?(tx, "lock_time_block")
-  end
-
 end

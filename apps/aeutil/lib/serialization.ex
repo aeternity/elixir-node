@@ -65,13 +65,13 @@ defmodule Aeutil.Serialization do
   @spec build_tx(map()) :: transaction_types()
   def build_tx(tx) do
     cond do
-      TxData.is_tx_data_tx(tx["data"]) ->
+      SignedTx.is_tx_data_tx(tx["data"]) ->
         SignedTx.new(%{tx | "data" => TxData.new(tx["data"])})
-      OracleQueryTxData.is_oracle_query_tx(tx["data"]) ->
+      SignedTx.is_oracle_query_tx(tx["data"]) ->
         SignedTx.new(%{tx | "data" => OracleQueryTxData.new(tx["data"])})
-      OracleRegistrationTxData.is_oracle_registration_tx(tx["data"]) ->
+      SignedTx.is_oracle_registration_tx(tx["data"]) ->
         SignedTx.new(%{tx | "data" => OracleRegistrationTxData.new(tx["data"])})
-      OracleResponseTxData.is_oracle_response_tx(tx["data"]) ->
+      SignedTx.is_oracle_response_tx(tx["data"]) ->
         SignedTx.new(%{tx | "data" => OracleResponseTxData.new(tx["data"])})
     end
   end

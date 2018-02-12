@@ -18,7 +18,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
-  alias Aeutil.Serialization
+  alias Aehttpclient.Client
 
   require Logger
 
@@ -316,8 +316,8 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_txs_index_or_oracle_responses(map1, map2) do
-    Map.merge(map1, map2,
+  defp update_txs_index_or_oracle_responses(prev_block_data, new_block_data) do
+    Map.merge(prev_block_data, new_block_data,
       fn(_, current_list, new_block_list) ->
         current_list ++ new_block_list
       end)
@@ -347,20 +347,19 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
+  @doc """
+  Goes through every block transaction and checks if it's a query
+  tranasction, if the node has an oracle registered and it is referenced in
+  one of the queries, the transaction is posted to the oracle server mapped
+  to the oracle hash.
+  """
   defp handle_oracle_queries (block) do
     if Application.get_env(:aecore, :operator)[:is_node_operator] do
       oracles = Application.get_env(:aecore, :operator)[:oracles]
       Enum.each(block.txs, fn(tx) ->
           if(match?(%OracleQueryTxData{}, tx.data) &&
              Map.has_key?(oracles, tx.data.oracle_hash)) do
-            encoded_tx_hex_hash =
-              tx
-              |> Serialization.tx(:serialize)
-              |> Poison.encode!()
-            HTTPoison.post(oracles[tx.data.oracle_hash],
-                           encoded_tx_hex_hash,
-                           [{"Content-Type", "application/json"}],
-                           [stream_to: self()])
+            Client.post_query_to_oracle(tx, oracles[tx.data.oracle_hash])
           end
         end)
     end
