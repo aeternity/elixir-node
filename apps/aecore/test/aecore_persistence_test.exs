@@ -14,7 +14,9 @@ defmodule PersistenceTest do
     Miner.mine_sync_block_to_chain
     path = Application.get_env(:aecore, :persistence)[:path]
     on_exit fn ->
-      File.rm_rf(path)
+      if File.exists?(path) do
+        File.rm_rf(path)
+      end
       :ok
     end
 
