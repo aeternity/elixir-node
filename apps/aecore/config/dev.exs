@@ -34,7 +34,8 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
 end
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+  path: Path.absname(persistence_path),
+  write_options: [sync: true, disable_wal: false]
 
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
