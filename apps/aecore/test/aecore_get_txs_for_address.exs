@@ -49,7 +49,7 @@ defmodule GetTxsForAddressTest do
         |> Map.delete(:proof)
         |> SpendTx.new()
       transaction_bin = :erlang.term_to_binary(transaction)
-      key = SpendTx.hash_tx(transaction)
+      key = SignedTx.hash_tx(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
       assert {:ok, :verified} =
         :gb_merkle_trees.verify_merkle_proof(key,
