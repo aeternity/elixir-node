@@ -6,7 +6,7 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aehttpclient.Client
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -36,8 +36,8 @@ defmodule AehttpclientTest do
 
     from_acc = to_acc
     init_nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce
-    {:ok, tx1} = TxData.create(from_acc, to_acc, 5, init_nonce + 1, 10)
-    {:ok, tx2} = TxData.create(from_acc, to_acc, 5, init_nonce + 2, 10)
+    {:ok, tx1} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 1, 10)
+    {:ok, tx2} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 2, 10)
 
     priv_key = Wallet.get_private_key(pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)

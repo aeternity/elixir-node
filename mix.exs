@@ -2,8 +2,7 @@ defmodule EpochElixir.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :epoch_elixir,
-     apps_path: "apps",
+    [apps_path: "apps",
      version: "0.1.0",
      elixir: "~> 1.5.1",
      build_embedded: Mix.env == :prod,
@@ -16,14 +15,6 @@ defmodule EpochElixir.Mixfile do
      test_coverage: [tool: ExCoveralls],
      preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test]]
   end
-
-
-  def application do
-    # Specify extra applications you'll use from Erlang/Elixir
-    [applications: [:crypto, :elixir_wallet],
-     mod: {EpochElixir.Application, []}]
-  end
-
 
   # Dependencies can be Hex packages:
   #

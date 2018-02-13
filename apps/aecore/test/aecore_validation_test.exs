@@ -9,7 +9,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
@@ -80,10 +80,10 @@ defmodule AecoreValidationTest do
 
   test "validate transactions in a block", ctx do
     from_acc = Wallet.get_public_key(ctx.wallet_pass)
-    {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
+    {:ok, tx1} = SpendTx.create(from_acc, ctx.to_acc, 5,
                               Map.get(Chain.chain_state,
                                 ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
-    {:ok, tx2} = TxData.create(from_acc, ctx.to_acc, 10,
+    {:ok, tx2} = SpendTx.create(from_acc, ctx.to_acc, 10,
                               Map.get(Chain.chain_state,
                                 ctx.to_acc, %{nonce: 0}).nonce + 1, 1, ctx.lock_time_block)
 

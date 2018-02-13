@@ -7,7 +7,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
@@ -37,7 +37,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
 
-    {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     priv_key = Wallet.get_private_key(wallet.pass)
@@ -61,7 +61,7 @@ defmodule MultipleTransactionsTest do
     # account1 => 0; account2 => 90
 
     # account A has 100 tokens, spends 100 (+10 fee) to B should be invalid
-    {:ok, tx3} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx3} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, signed_tx3} = SignedTx.sign_tx(tx3, priv_key)
@@ -101,7 +101,7 @@ defmodule MultipleTransactionsTest do
     # account A has 100 tokens, spends 40 (+10 fee) to B, and two times 20 (+10 fee) to C,
     # last transaction to C should be invalid, others be included
     account1_initial_nonce2 = Map.get(Chain.chain_state, account1_pub_key, %{nonce: 0}).nonce
-    {:ok, tx8} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx8} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, signed_tx8} = SignedTx.sign_tx(tx8, priv_key)
@@ -125,7 +125,7 @@ defmodule MultipleTransactionsTest do
     # account1 => 20; account2 => 160; account3 => 60
 
     # account C has 100 tokens, spends 90 (+10 fee) to B, B spends 90 (+10 fee) to A should succeed
-    {:ok, tx12} = TxData.create(from_acc, account3_pub_key, 40,
+    {:ok, tx12} = SpendTx.create(from_acc, account3_pub_key, 40,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, signed_tx12} = SignedTx.sign_tx(tx12, priv_key)
@@ -163,7 +163,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
 
-    {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     priv_key = Wallet.get_private_key(wallet.pass)
@@ -186,7 +186,7 @@ defmodule MultipleTransactionsTest do
     # account1 => 0; account2 => 90
 
     # account A has 100 tokens, spends 100 (+10 fee) to B should be invalid
-    {:ok, tx3} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx3} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, signed_tx3} = SignedTx.sign_tx(tx3, priv_key)
@@ -235,7 +235,7 @@ defmodule MultipleTransactionsTest do
 
     # account A has 100 tokens, spends 40 (+10 fee) to B, and two times 20 (+10 fee) to C,
     # last transaction to C should be invalid, others be included
-    {:ok, tx8} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx8} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     {:ok, signed_tx8} = SignedTx.sign_tx(tx8, priv_key)
@@ -271,7 +271,7 @@ defmodule MultipleTransactionsTest do
     # account1 => 20; account2 => 160; account3 => 60
 
     # account A has 100 tokens, spends 90 (+10 fee) to B, B spends 90 (+10 fee) to C should succeed
-    {:ok, tx12} = TxData.create(from_acc, account1_pub_key, 80,
+    {:ok, tx12} = SpendTx.create(from_acc, account1_pub_key, 80,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
 
@@ -311,14 +311,14 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
-    {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 100,
+    {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     priv_key = Wallet.get_private_key(wallet.pass)
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
-    {:ok, tx2} = TxData.create(from_acc, account2_pub_key, 100,
+    {:ok, tx2} = SpendTx.create(from_acc, account2_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 2, 10)
 
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
@@ -348,7 +348,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
-    {:ok, tx1} = TxData.create(from_acc, account1_pub_key, 90,
+    {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 90,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10,
       Chain.top_block().header.height +
       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 3)
@@ -474,7 +474,7 @@ defmodule MultipleTransactionsTest do
   defp create_signed_tx(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {from_acc_pub_key, from_acc_priv_key} = from_acc
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
-    {:ok, tx_data} = TxData.create(from_acc_pub_key, to_acc_pub_key, value,
+    {:ok, tx_data} = SpendTx.create(from_acc_pub_key, to_acc_pub_key, value,
       nonce, fee, lock_time_block)
     {:ok, %{signature: signature}} = SignedTx.sign_tx(tx_data, from_acc_priv_key)
 

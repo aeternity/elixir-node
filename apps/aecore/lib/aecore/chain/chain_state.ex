@@ -4,19 +4,30 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  require Logger
   alias Aecore.Structures.SignedTx
 
-  @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
+  require Logger
+
+  @type account_chainstate() ::
+          %{binary() =>
+            %{balance: integer(),
+              locked: [%{amount: integer(), block: integer()}],
+              nonce: integer()}}
+
+  @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) :: account_chainstate()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
       apply_transaction_on_state!(transaction, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
+    txs
+    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
+      apply_transaction_on_state!(transaction, chain_state, block_height)    end)
+    |> update_chain_state_locked(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), map(), integer()) :: map()
+  @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) :: account_chainstate()
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     cond do
       SignedTx.is_coinbase?(transaction) ->
@@ -39,6 +50,16 @@ defmodule Aecore.Chain.ChainState do
                            transaction.data.to_acc,
                            transaction.data.value,
                            transaction.data.lock_time_block)
+        chain_state
+        |> transaction_out!(block_height,
+                            transaction.data.from_acc,
+                            -(transaction.data.value + transaction.data.fee),
+                            transaction.data.nonce,
+                            -1)
+        |> transaction_in!(block_height,
+                           transaction.data.to_acc,
+                           transaction.data.value,
+                           transaction.data.lock_time_block)
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
@@ -48,7 +69,7 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(map()) :: binary()
+  @spec calculate_chain_state_hash(account_chainstate()) :: binary()
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
       for {account, data} <- chain_state do
@@ -68,7 +89,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(map()) :: integer()
+  @spec calculate_total_tokens(account_chainstate()) :: integer()
   def calculate_total_tokens(chain_state) do
     Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
@@ -85,7 +106,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
 
-  @spec update_chain_state_locked(map(), integer()) :: map()
+  @spec update_chain_state_locked(account_chainstate(), integer()) :: account_chainstate()
   def update_chain_state_locked(chain_state, new_block_height) do
     Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
       {unlocked_amount, updated_locked} =
@@ -105,12 +126,11 @@ defmodule Aecore.Chain.ChainState do
                 {amount_update_value, updated_locked}
             end
           end)
-
         Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
       end)
   end
 
-  @spec transaction_in!(map(), integer(), binary(), integer(), integer()) :: map()
+  @spec transaction_in!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()
   defp transaction_in!(chain_state, block_height, account, value, lock_time_block) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
     if block_height <= lock_time_block do
@@ -128,7 +148,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec transaction_out!(map(), integer(), binary(), integer(), integer(), integer()) :: map()
+  @spec transaction_out!(account_chainstate(), integer(), binary(), integer(), integer(), integer()) :: account_chainstate()
   defp transaction_out!(chain_state, block_height, account, value, nonce, lock_time_block) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
     if account_state.nonce >= nonce do

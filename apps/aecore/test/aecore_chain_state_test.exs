@@ -5,7 +5,7 @@ defmodule AecoreChainStateTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.TxData, as: TxData
+  alias Aecore.Structures.SpendTx, as: SpendTx
   alias Aecore.Structures.SignedTx, as: SignedTx
   alias Aecore.Chain.ChainState, as: ChainState
   alias Aecore.Chain.Worker, as: Chain
@@ -39,11 +39,11 @@ defmodule AecoreChainStateTest do
   test "chain state", wallet do
     next_block_height = Chain.top_block().header.height + 1
 
-    tx_1 = %TxData{from_acc: wallet.b_pub_key, to_acc: wallet.a_pub_key,
+    tx_1 = %SpendTx{from_acc: wallet.b_pub_key, to_acc: wallet.a_pub_key,
                    value: 1, nonce: 2, fee: 0, lock_time_block: 0}
     {:ok, signed_tx1} = SignedTx.sign_tx(tx_1, wallet.b_priv_key)
 
-    tx_2 = %TxData{from_acc: wallet.c_pub_key, to_acc: wallet.a_pub_key,
+    tx_2 = %SpendTx{from_acc: wallet.c_pub_key, to_acc: wallet.a_pub_key,
               value: 2, nonce: 2, fee: 0, lock_time_block: 0}
     {:ok, signed_tx2} = SignedTx.sign_tx(tx_2, wallet.c_priv_key)
 

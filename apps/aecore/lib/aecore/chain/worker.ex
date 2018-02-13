@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Worker do
   Module for working with chain
   """
 
-  require Logger
+  use GenServer
 
   alias Aecore.Structures.Block
   alias Aecore.Chain.ChainState
@@ -14,7 +14,9 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
 
-  use GenServer
+  require Logger
+
+  @typep txs_index :: %{binary() => [{binary(), binary()}]}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
@@ -26,8 +28,11 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-
-    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
+    {:ok, %{blocks_map: genesis_block_map,
+            chain_states: chain_states,
+            txs_index: txs_index,
+            top_hash: genesis_block_hash,
+            top_height: 0}, 0}
   end
 
   @spec top_block() :: Block.t()
@@ -50,7 +55,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(term()) :: Block.t()
+  @spec get_block_by_hex_hash(String.t()) :: Block.t()
   def get_block_by_hex_hash(hash) do
     {:ok, decoded_hash} = Base.decode16(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
@@ -84,28 +89,31 @@ defmodule Aecore.Chain.Worker do
     blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
     new_chain_state = BlockValidation.calculate_and_validate_block!(
       block, prev_block, prev_block_chain_state, blocks_for_difficulty_calculation)
+
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), map()) :: :ok
+  @spec add_validated_block(Block.t(), ChainState.account_chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: map()
+  @spec chain_state(binary()) :: ChainState.account_chainstate()
   def chain_state(block_hash) do
     GenServer.call(__MODULE__, {:chain_state, block_hash})
   end
 
-  @spec txs_index() :: map()
+  @spec txs_index() :: txs_index()
   def txs_index() do
     GenServer.call(__MODULE__, :txs_index)
   end
 
+  @spec chain_state() :: ChainState.account_chainstate()
   def chain_state() do
     top_block_chain_state()
   end
 
+  @spec longest_blocks_chain() :: list(Block.t())
   def longest_blocks_chain() do
     get_blocks(top_block_hash(), top_height() + 1)
   end
@@ -164,12 +172,16 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    ## Store new block to disk
-    Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
+      Persistence.batch_write(%{:chain_state => new_chain_state,
+                                :block => %{new_block_hash => new_block},
+                                :latest_block_info => %{"top_hash" => new_block_hash,
+                                                        "top_height" => new_block.header.height}})
+
+
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain and new mined transaction
@@ -177,6 +189,8 @@ defmodule Aecore.Chain.Worker do
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
+        Persistence.batch_write(%{:chain_state => new_chain_state,
+                                  :block => %{new_block_hash => new_block}})
       {:reply, :ok, state_update1}
     end
   end
@@ -187,6 +201,32 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  def handle_info(:timeout, state) do
+    {top_hash, top_height} =
+      case Persistence.get_latest_block_height_and_hash() do
+        :not_found -> {state.top_hash, state.top_height}
+        {:ok, latest_block} -> {latest_block.hash, latest_block.height}
+      end
+
+    chain_states =
+      case Persistence.get_all_accounts_chain_states() do
+        chain_states when chain_states == %{} -> state.chain_states
+        chain_states -> %{top_hash => chain_states}
+      end
+
+    blocks_map =
+      case Persistence.get_all_blocks() do
+        blocks_map when blocks_map == %{} -> state.blocks_map
+        blocks_map -> blocks_map
+      end
+
+    {:noreply, %{state |
+                 chain_states: chain_states,
+                 blocks_map: blocks_map,
+                 top_hash: top_hash,
+                 top_height: top_height}}
   end
 
   defp calculate_block_acc_txs_info(block) do

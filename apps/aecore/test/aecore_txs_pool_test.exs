@@ -8,7 +8,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
 
   setup ctx do
@@ -26,9 +26,9 @@ defmodule AecoreTxsPoolTest do
   test "add transaction, remove it and get pool", ctx do
     from_acc = Wallet.get_public_key(ctx.wallet_pass)
 
-    {:ok, tx1} = TxData.create(from_acc, ctx.to_acc, 5,
+    {:ok, tx1} = SpendTx.create(from_acc, ctx.to_acc, 5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
-    {:ok, tx2} = TxData.create(from_acc, ctx.to_acc, 5,
+    {:ok, tx2} = SpendTx.create(from_acc, ctx.to_acc, 5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 2, 10)
 
     :ok = Miner.mine_sync_block_to_chain()
@@ -52,7 +52,7 @@ defmodule AecoreTxsPoolTest do
 
   test "add negative transaction fail", ctx do
     from_acc = Wallet.get_public_key(ctx.wallet_pass)
-    {:ok, tx} = TxData.create(from_acc, ctx.to_acc, -5,
+    {:ok, tx} = SpendTx.create(from_acc, ctx.to_acc, -5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
     priv_key = Wallet.get_private_key(ctx.wallet_pass)

@@ -7,7 +7,7 @@ defmodule AecoreTxTest do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
 
@@ -41,7 +41,7 @@ defmodule AecoreTxTest do
   @tag :tx
   test "create and verify a signed tx", tx do
     from_acc = Wallet.get_public_key(tx.wallet_pass)
-    {:ok, tx_data} = TxData.create(from_acc, tx.to_acc, 5, tx.nonce, 1, tx.lock_time_block)
+    {:ok, tx_data} = SpendTx.create(from_acc, tx.to_acc, 5, tx.nonce, 1, tx.lock_time_block)
 
     priv_key = Wallet.get_private_key(tx.wallet_pass)
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
@@ -53,7 +53,7 @@ defmodule AecoreTxTest do
 
   test "positive tx valid", wallet  do
     from_acc = Wallet.get_public_key(wallet.pass)
-    {:ok, tx_data} = TxData.create(from_acc, wallet.to_acc, 5,
+    {:ok, tx_data} = SpendTx.create(from_acc, wallet.to_acc, 5,
       Map.get(Chain.chain_state, wallet.to_acc, %{nonce: 0}).nonce + 1, 1)
 
     priv_key = Wallet.get_private_key(wallet.pass)
@@ -66,7 +66,7 @@ defmodule AecoreTxTest do
 
   test "negative tx invalid", wallet do
     from_acc = Wallet.get_public_key(wallet.pass)
-    {:ok, tx_data} = TxData.create(from_acc, wallet.to_acc, -5,
+    {:ok, tx_data} = SpendTx.create(from_acc, wallet.to_acc, -5,
       Map.get(Chain.chain_state, wallet.to_acc, %{nonce: 0}).nonce + 1, 1)
 
     priv_key = Wallet.get_private_key(wallet.pass)
@@ -77,7 +77,7 @@ defmodule AecoreTxTest do
 
   test "coinbase tx invalid", wallet do
     from_acc = Wallet.get_public_key(wallet.pass)
-    {:ok, tx_data} = TxData.create(from_acc, wallet.to_acc, 5,
+    {:ok, tx_data} = SpendTx.create(from_acc, wallet.to_acc, 5,
       Map.get(Chain.chain_state, wallet.to_acc, %{nonce: 0}).nonce + 1, 1)
 
     priv_key = Wallet.get_private_key(wallet.pass)

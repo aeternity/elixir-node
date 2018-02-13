@@ -3,13 +3,13 @@ defmodule Aecore.Structures.SignedTx do
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aewallet.Signing
 
   @typedoc "Structure of the SignedTx module"
   @type t :: %SignedTx{
-    data: TxData.t(),
+    data: SpendTx.t(),
     signature: binary()
   }
 
@@ -17,8 +17,8 @@ defmodule Aecore.Structures.SignedTx do
   Definition of Aecore SignedTx structure
 
   ## Parameters
-     * data: Aecore %TxData{} structure
-     * signature: Signed %TxData{} with the private key of the sender
+     - data: Aecore %SpendTx{} structure
+     - signature: Signed %SpendTx{} with the private key of the sender
   """
   defstruct [:data, :signature]
   use ExConstructor
@@ -44,8 +44,8 @@ defmodule Aecore.Structures.SignedTx do
      - priv_key: The priv key to sign with
 
   """
-  @spec sign_tx(TxData.t(), binary()) :: {:ok, SignedTx.t()}
-  def sign_tx(%TxData{} = tx, priv_key) when byte_size(priv_key) == 32 do
+  @spec sign_tx(SpendTx.t(), binary()) :: {:ok, SignedTx.t()}
+  def sign_tx(%SpendTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
     signature = Signing.sign(:erlang.term_to_binary(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
