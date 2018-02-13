@@ -31,13 +31,13 @@ defmodule ASTNode do
 
   def evaluate({:decl_tuple, value}, {_prev_val, scope}) do
     tuple_values = if value != :empty do
-      Enum.reduce(value, [], fn(values, acc) -> [Reducer.to_value(values, {nil, scope} ) | acc] end)
+      Enum.reduce(value, [], fn(values, acc) -> [elem(evaluate(values, {nil, scope}), 0) | acc] end)
       |> Enum.reverse
       |> List.to_tuple
     else
       {}
     end
-
+    
     {tuple_values, scope}
   end
 
@@ -227,7 +227,7 @@ defmodule ASTNode do
   end
 
   def evaluate({:func_call, {_, 'print'}, {param}}, {_prev_val, scope}) do
-    extracted_param = Reducer.to_value(param, {nil, scope})
+    {extracted_param, _} = evaluate(param, {nil, scope})
     {IO.inspect(extracted_param), scope}
   end
 
