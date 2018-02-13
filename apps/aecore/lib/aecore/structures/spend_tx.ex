@@ -1,11 +1,11 @@
-defmodule Aecore.Structures.TxData do
+defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
 
-  @type t :: %TxData{
+  @type t :: %SpendTx{
     from_acc: binary(),
     to_acc: binary(),
     value: non_neg_integer(),
@@ -15,7 +15,7 @@ defmodule Aecore.Structures.TxData do
   }
 
   @doc """
-  Definition of Aecore TxData structure
+  Definition of Aecore SpendTx structure
 
   ## Parameters
   - nonce: A random integer generated on initialisation of a transaction.Must be unique
@@ -26,9 +26,9 @@ defmodule Aecore.Structures.TxData do
   defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, TxData.t()}
+  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, SpendTx.t()}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
-    {:ok, %TxData{from_acc: from_acc,
+    {:ok, %SpendTx{from_acc: from_acc,
                   to_acc: to_acc,
                   value: value,
                   nonce: nonce,
@@ -36,7 +36,7 @@ defmodule Aecore.Structures.TxData do
                   lock_time_block: lock_time_block}}
   end
 
-  @spec hash_tx(TxData.t()) :: binary()
+  @spec hash_tx(SpendTx.t()) :: binary()
   def hash_tx(tx) do
     :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
