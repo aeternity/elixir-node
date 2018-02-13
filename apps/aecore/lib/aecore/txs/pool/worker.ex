@@ -8,7 +8,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
@@ -113,8 +113,8 @@ defmodule Aecore.Txs.Pool.Worker do
         |> Map.delete(:block_hash)
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
-        |> TxData.new()
-        |> TxData.hash_tx()
+        |> SpendTx.new()
+        |> SpendTx.hash_tx()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end

@@ -3,7 +3,7 @@ defmodule GetTxsForAddressTest do
   use ExUnit.Case
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.TxData, as: TxData
+  alias Aecore.Structures.SpendTx, as: SpendTx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.BlockValidation, as: BlockValidation
@@ -47,9 +47,9 @@ defmodule GetTxsForAddressTest do
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
         |> Map.delete(:proof)
-        |> TxData.new()
+        |> SpendTx.new()
       transaction_bin = :erlang.term_to_binary(transaction)
-      key = TxData.hash_tx(transaction)
+      key = SpendTx.hash_tx(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
       assert {:ok, :verified} =
         :gb_merkle_trees.verify_merkle_proof(key,
