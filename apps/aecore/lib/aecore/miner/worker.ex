@@ -233,7 +233,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
-      pubkey = Wallet.get_public_key(Wallet.get_aewallet_dir())
+      pubkey = Wallet.get_public_key()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,

@@ -40,6 +40,10 @@ defmodule Aecore.Wallet.Worker do
     Application.get_env(:aecore, :aewallet)[:pass]
   end
 
+  @spec get_public_key() :: binary()
+  def get_public_key() do
+    GenServer.call(__MODULE__, {:get_pub_key, {Wallet.get_aewallet_pass(), :mainnet}})
+  end
 
   @spec get_public_key(String.t()) :: binary()
   def get_public_key(password) do
@@ -49,6 +53,11 @@ defmodule Aecore.Wallet.Worker do
   @spec get_public_key(String.t(), opts()) :: binary()
   def get_public_key(password, network) do
     GenServer.call(__MODULE__, {:get_pub_key, {password, network}})
+  end
+
+  @spec get_private_key() :: binary()
+  def get_private_key() do
+    GenServer.call(__MODULE__, {:get_priv_key, {Wallet.get_aewallet_pass(), :mainnet}})
   end
 
   @spec get_private_key(String.t()) :: binary()
