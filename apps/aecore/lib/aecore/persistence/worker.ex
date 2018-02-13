@@ -141,7 +141,8 @@ defmodule Aecore.Persistence.Worker do
   def handle_call(:get_all_blocks, _from,
     %{blocks_family: blocks_family} = state) do
     all_blocks =
-      Rox.stream(blocks_family)
+      blocks_family
+      |> Rox.stream()
       |> Enum.into(%{})
     {:reply, all_blocks, state}
   end
@@ -168,7 +169,8 @@ defmodule Aecore.Persistence.Worker do
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
     chain_state =
-      Rox.stream(chain_state_family)
+      chain_state_family    
+      |> Rox.stream()
       |> Enum.into(%{})
     {:reply, chain_state, state}
   end
