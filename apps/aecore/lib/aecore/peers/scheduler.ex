@@ -7,12 +7,12 @@ defmodule Aecore.Peers.Scheduler do
   @check_time 60_000
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{})
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def init(state) do
+  def init(running_tasks) do
     schedule_work()
-    {:ok, state}
+    {:ok, running_tasks}
   end
 
   def handle_info(:work, state) do
@@ -20,8 +20,8 @@ defmodule Aecore.Peers.Scheduler do
     Sync.introduce_variety()
     Sync.refill()
     Sync.ask_peers_for_unknown_blocks(Peers.all_peers())
-    Sync.add_valid_peer_blocks_to_chain()
     schedule_work()
+
     {:noreply, state}
   end
 

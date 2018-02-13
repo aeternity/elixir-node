@@ -87,13 +87,11 @@ defmodule Aehttpserver.Web.BlockController do
   end
 
   def new_block(conn, _params) do
-    ## Becouse we 'conn.body_params' contains decoded json as map with
-    ## keys as strings instead of atoms we are doing this workaround
     map = Poison.decode!(Poison.encode!(conn.body_params), [keys: :atoms])
     block = Aeutil.Serialization.block(map, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
-    Sync.add_valid_peer_blocks_to_chain()
+    Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
     json conn, %{ok: "new block received"}
   end
 end

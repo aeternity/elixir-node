@@ -13,7 +13,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -95,6 +95,7 @@ defmodule Aecore.Miner.Worker do
     cblock  = %{cblock | header: cheader}
     mine_sync_block(Cuckoo.generate(cheader), cblock)
   end
+
   defp mine_sync_block(%Header{} = mined_header, cblock) do
     {:ok, %{cblock | header: mined_header}}
   end
@@ -185,7 +186,7 @@ defmodule Aecore.Miner.Worker do
     {}
   end
 
-  defp handle_worker_reply(pid, reply, %{job: job} = state) do
+  defp handle_worker_reply(_pid, reply, %{job: job} = state) do
     worker_reply(reply, %{state | job: cleanup_after_worker(job)})
   end
 
@@ -274,7 +275,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
-    tx_data = %TxData{
+    tx_data = %SpendTx{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,

@@ -8,18 +8,28 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), map(), list(Block.t())) :: {:error, term()} | :ok
+  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    
+
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
 
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
-    is_difficulty_target_met = Cuckoo.verify(new_block.header)
+    server = self()
+    work   = fn() -> Cuckoo.verify(new_block.header) end
+    spawn(fn() ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_difficulty_target_met =
+      receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
+
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
     cond do
@@ -67,7 +77,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.t()) :: binary()
+  @spec block_header_hash(Header.t) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = :erlang.term_to_binary(header)
     :crypto.hash(:sha256, block_header_bin)
@@ -99,7 +109,7 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
@@ -108,20 +118,20 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(list()) :: binary()
+  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
   def calculate_root_hash(txs) when txs == [] do
     <<0::256>>
   end
 
+  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
   def calculate_root_hash(txs)  do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
   end
 
-  @spec build_merkle_tree(list()) :: tuple()
+  @spec build_merkle_tree(list(SignedTx.t())) :: tuple()
   def build_merkle_tree(txs) do
-    merkle_tree =
     if Enum.empty?(txs) do
       <<0::256>>
     else
@@ -161,5 +171,4 @@ defmodule Aecore.Chain.BlockValidation do
   defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
-
 end
