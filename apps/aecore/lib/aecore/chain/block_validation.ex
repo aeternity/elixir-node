@@ -59,6 +59,7 @@ defmodule Aecore.Chain.BlockValidation do
   def single_validate_block!(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
+    block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
     cond do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
@@ -71,6 +72,9 @@ defmodule Aecore.Chain.BlockValidation do
 
       block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
+
+      block_size_bytes > Application.get_env(:aecore, :block)[:max_block_size_bytes] ->
+        throw({:error, "Block size is too big"})
 
       true ->
         :ok
