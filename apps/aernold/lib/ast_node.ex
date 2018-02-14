@@ -287,10 +287,12 @@ defmodule ASTNode do
   end
 
   def evaluate({:func_call, id, args}, {_prev_val, scope}) do
+    {_, func_name} = id
     {_, {_, _, params, body} = func} = Enum.find(scope, fn(s) ->
+      scope_key = elem(s, 0)
       scope_val = elem(s, 1)
       if !is_map(scope_val) do
-        elem(scope_val, 0) == :func_definition
+        elem(scope_val, 0) == :func_definition && scope_key == func_name
       else
         false
       end
