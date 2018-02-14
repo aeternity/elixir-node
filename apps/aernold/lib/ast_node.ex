@@ -29,18 +29,6 @@ defmodule ASTNode do
     {default_value, scope}
   end
 
-  def evaluate({:decl_tuple, value}, {_prev_val, scope}) do
-    tuple_values = if value != :empty do
-      Enum.reduce(value, [], fn(values, acc) -> [elem(evaluate(values, {nil, scope}), 0) | acc] end)
-      |> Enum.reverse
-      |> List.to_tuple
-    else
-      {}
-    end
-    
-    {tuple_values, scope}
-  end
-
   def evaluate({:def_var, {_, id}, {_, type}, value}, {_prev_val, scope}) do
     {extracted_value, _} = evaluate(value, {nil, scope})
 
@@ -49,6 +37,55 @@ defmodule ASTNode do
     scope = Map.put(scope, id, %{type: type, value: extracted_value})
 
     {extracted_value, scope}
+  end
+
+  def evaluate({:def_tuple, {_, id}, {_, type}, value}, {_prev_val, scope}) do
+    IO.inspect("def_tuple")
+    tuple_values = if value != :{} do
+      Enum.reduce(value, [], fn(values, acc) -> [elem(evaluate(values, {nil, scope}), 0) | acc] end)
+      |> Enum.reverse
+      |> List.to_tuple
+    else
+      {}
+    end
+
+    scope = Map.put(scope, id, %{type: type, value: tuple_values})
+
+    {tuple_values, scope}
+  end
+
+  def evaluate({:decl_list, {_, id}, {_, type}, {_, list_type}}, {_prav_val, scope}) do
+    {default_value, _} = evaluate(type, {nil, scope})
+
+    if type == 'List' do
+      scope = Map.put(scope, id, %{type: {type, list_type}, value: default_value})
+    else
+      throw ({:error, "The type of (#{id}) must be List"})
+    end
+
+    {default_value, scope}
+  end
+
+  def evaluate({:def_list, {_, id}, {_, type}, {_, list_type}, value}, {_prev_val, scope}) do
+    if type == 'List' do
+      list_values = if value != :empty do
+        Enum.reduce(value, [], fn(values, acc) ->
+          {curr_value, _} = evaluate(values, {nil, scope})
+          if ASTNodeUtils.validate_variable_value!(id, list_type, curr_value, scope) == :ok do
+            [elem(evaluate(values, {nil, scope}), 0) | acc]
+          end
+        end)
+        |> Enum.reverse
+      else
+        []
+      end
+    else
+      throw ({:error, "The type of (#{id}) must be List"})
+    end
+
+    scope = Map.put(scope, id, %{type: {type, list_type}, value: list_values})
+
+    {list_values, scope}
   end
 
   def evaluate({{:id, id}, {:=, _}, value}, {_prev_val, scope}) do
@@ -313,6 +350,10 @@ defmodule ASTNode do
 
   def evaluate('Tuple', {_, scope}) do
     {{}, scope}
+  end
+
+  def evaluate('List', {_, scope}) do
+    {[], scope}
   end
 
 end

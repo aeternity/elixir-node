@@ -1,17 +1,20 @@
-Contract contract_name {
+Contract test{
 
-  a:Int = 5;
-  b:String = "test";
-  c:Address = 0x04711AC9E3D5EA12D948A41F8661C498CC5DF93B85C1E91172E571B312EB56AAD2046845456FA416F3DF5D04954AD6E6C6A8FF13A11DA574542B56F58DEFF052E4;
-
-  get_balance(c);
-
-  if(a == b){
-   generate_tx();
+  func sum(a:Int, b:Int){
+    a+b;
   }
 
-  func foo(a:Int, key:String){
-    test:Int = a + get_balance(key);
+  tokens:Int;
+  value:Int;
+  address:Hex = 0x04DD680699FC41EC12C9E4D04B29B59EE69CF6EBFA46E7A6C85D9B6717FF412CA9C79952F655C641A87ED3C4C8B30FDD6AE7D9BA6F8189E7249E3A10FC1AE29158;
+
+  tokens = account_balance(address);
+
+  if(tokens <= 100){
+    print("not enough tokens");
+  }else{
+    value = sum(tokens, 25);
+    print(value);
   }
 
 }
