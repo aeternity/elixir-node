@@ -114,7 +114,7 @@ defmodule Aecore.Txs.Pool.Worker do
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
         |> SpendTx.new()
-        |> SignedTx.hash_tx()
+        |> :erlang.term_to_binary()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end

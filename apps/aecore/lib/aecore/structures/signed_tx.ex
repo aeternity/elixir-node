@@ -32,7 +32,7 @@ defmodule Aecore.Structures.SignedTx do
     tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
   end
 
-  @spec hash_tx(SpendTx.t()) :: binary()
+  @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
     :crypto.hash(:sha256, :erlang.term_to_binary(data))
   end
