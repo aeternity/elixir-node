@@ -19,6 +19,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
   alias Aehttpclient.Client
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -332,7 +333,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
-          tx_bin = :erlang.term_to_binary(tx)
+          tx_bin = Serialization.pack_binary(tx)
           :crypto.hash(:sha256, tx_bin)
         end)
       tx_tuples = Enum.map(tx_hashes, fn(hash) ->
@@ -373,12 +374,10 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  @doc """
-  Goes through every block transaction and checks if it's a query
-  tranasction, if the node has an oracle registered and it is referenced in
-  one of the queries, the transaction is posted to the oracle server mapped
-  to the oracle hash.
-  """
+  # Goes through every block transaction and checks if it's a query
+  # tranasction, if the node has an oracle registered and it is referenced in
+  # one of the queries, the transaction is posted to the oracle server mapped
+  # to the oracle hash.
   defp handle_oracle_queries (block) do
     if Application.get_env(:aecore, :operator)[:is_node_operator] do
       oracles = Application.get_env(:aecore, :operator)[:oracles]
