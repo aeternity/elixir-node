@@ -1,7 +1,8 @@
 defmodule Aernold do
 
   def process_ast(ast) do
-    ASTNode.evaluate(ast, {nil, %{}})
+    {_, scope} = ASTNode.evaluate_func_definitions(ast, %{})
+    ASTNode.evaluate(ast, {nil, scope})
   end
 
   def parse_string(string) do

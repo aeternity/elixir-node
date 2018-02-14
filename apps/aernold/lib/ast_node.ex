@@ -356,4 +356,18 @@ defmodule ASTNode do
     {[], scope}
   end
 
+  def evaluate_func_definitions({{:contract, _}, _id, body}, scope) do
+    scope_with_functions =
+      Enum.reduce(body, scope, fn statement, scope_acc ->
+        case statement do
+          {:func_definition, {_, id}, _, _} ->
+            Map.put(scope_acc, id, statement)
+          _ ->
+            scope_acc
+        end
+      end)
+
+    {nil, scope_with_functions}
+  end
+
 end
