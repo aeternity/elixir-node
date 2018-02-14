@@ -6,6 +6,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
   @type t :: %SignedTx{
     data: SpendTx.t(),
@@ -34,7 +35,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    :crypto.hash(:sha256, :erlang.term_to_binary(data))
+    :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
 end

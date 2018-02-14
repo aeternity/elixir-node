@@ -13,6 +13,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
+  alias Aeutil.Serialization
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -59,8 +60,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    tx_size_bits = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-    tx_size_bytes = tx_size_bits / 8
+    tx_size_bytes = get_tx_size_bytes(tx)
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
       Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
@@ -118,6 +118,11 @@ defmodule Aecore.Txs.Pool.Worker do
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
+  end
+
+  @spec get_tx_size_bytes(SignedTx.t()) :: integer()
+  def get_tx_size_bytes(tx) do
+    tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
   ## Private functions
