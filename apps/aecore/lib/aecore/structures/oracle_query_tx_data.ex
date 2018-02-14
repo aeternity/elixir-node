@@ -24,7 +24,7 @@ defmodule Aecore.Structures.OracleQuerySpendTx do
              :nonce]
   use ExConstructor
 
-  @spec create(binary(), map(), integer(), integer()) :: %OracleQuerySpendTx{}
+  @spec create(binary(), map(), integer(), integer()) :: t()
   def create(oracle_hash, query_data, query_fee, fee) do
     registered_oracles = Chain.registered_oracles()
     query_format = registered_oracles[oracle_hash].data.query_format

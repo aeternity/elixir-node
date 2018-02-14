@@ -23,7 +23,7 @@ defmodule Aecore.Structures.OracleRegistrationSpendTx do
              :nonce]
   use ExConstructor
 
-  @spec create(map(), map(), binary(), integer()) :: %OracleRegistrationSpendTx{}
+  @spec create(map(), map(), binary(), integer()) :: t
   def create(query_format, response_format, description, fee) do
     try do
       ExJsonSchema.Schema.resolve(query_format)

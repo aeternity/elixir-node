@@ -20,7 +20,7 @@ defmodule Aecore.Structures.OracleResponseSpendTx do
              :nonce]
   use ExConstructor
 
-  @spec create(binary(), any(), integer()) :: %OracleResponseSpendTx{}
+  @spec create(binary(), any(), integer()) :: t
   def create(oracle_hash, response, fee) do
     registered_oracles = Chain.registered_oracles()
     response_format = registered_oracles[oracle_hash].data.response_format
