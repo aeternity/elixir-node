@@ -6,7 +6,7 @@ defmodule AecoreCuckooTest do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
 
   @moduledoc """
   Unit tests for the cuckoo module
@@ -46,7 +46,7 @@ defmodule AecoreCuckooTest do
     txs_hash: <<170, 58, 122, 219, 147, 41, 59, 140, 28, 127, 153, 68, 245, 18,
     205, 22, 147, 124, 157, 182, 123, 24, 41, 71, 132, 6, 162, 20, 227, 255, 25,
     25>>, version: 1},
-    txs: [%SignedTx{data: %TxData{fee: 0,
+    txs: [%SignedTx{data: %SpendTx{fee: 0,
     from_acc: nil, lock_time_block: 11, nonce: 0,
     to_acc: <<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93,
     202, 223, 118, 74, 222, 92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52,

@@ -5,7 +5,7 @@ defmodule Aeutil.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
@@ -24,7 +24,7 @@ defmodule Aeutil.Serialization do
                  from_acc: hex_binary(tx.data.from_acc, direction),
                  to_acc: hex_binary(tx.data.to_acc, direction)}
     new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: TxData.new(new_data), signature: new_signature}
+    %SignedTx{data: SpendTx.new(new_data), signature: new_signature}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()

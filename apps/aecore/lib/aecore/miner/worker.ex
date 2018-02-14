@@ -13,7 +13,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -227,31 +227,26 @@ defmodule Aecore.Miner.Worker do
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
-      root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
-      new_chain_state = ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
-      chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+      new_block = create_block(top_block, chain_state, difficulty, [])
+      new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
+      valid_txs_by_block_size =
+        filter_transactions_by_block_size(valid_txs, new_block_size_bytes,
+          Application.get_env(:aecore, :block)[:max_block_size_bytes])
 
-      top_block_hash = BlockValidation.block_header_hash(top_block.header)
+      total_fees = calculate_total_fees(valid_txs_by_block_size)
+      valid_txs =
+        List.replace_at(valid_txs_by_block_size, 0,
+          get_coinbase_transaction(pubkey, total_fees,
+                      top_block.header.height + 1 +
+                      Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
 
-      unmined_header =
-        Header.create(
-          top_block.header.height + 1,
-          top_block_hash,
-          root_hash,
-          chain_state_hash,
-          difficulty,
-          0,
-          #start from nonce 0, will be incremented in mining
-          Block.current_block_version()
-        )
-      %Block{header: unmined_header, txs: valid_txs}
+      create_block(top_block, chain_state, difficulty, valid_txs)
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
       {:error, message}
     end
-
   end
 
   def calculate_total_fees(txs) do
@@ -261,7 +256,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
-    tx_data = %TxData{
+    tx_data = %SpendTx{
       from_acc: nil,
       to_acc: to_acc,
       value: @coinbase_transaction_value + total_fees,
@@ -277,13 +272,80 @@ defmodule Aecore.Miner.Worker do
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
-      tx_size_bits = tx
-        |> Serialization.pack_binary()
-        |> Bits.extract()
-        |> Enum.count()
-      tx_size_bytes = tx_size_bits / 8
+      tx_size_bytes = Pool.get_tx_size_bytes(tx)
       tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
+  end
+
+  defp filter_transactions_by_block_size(txs, current_block_size_bytes, max_block_size_bytes) do
+    first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
+
+    filter_transactions_by_block_size(txs, 0, Enum.count(txs), [],
+      current_block_size_bytes, first_tx_size_bytes, max_block_size_bytes)
+  end
+
+  # Filters transactions by current block size in bytes by
+  # given max block size in bytes, recursively.
+  #
+  # `txs` - array of transactions to be filtered
+  # `current_tx_index` - index in the array of txs of the current transaction we are checking
+  # `txs_count` - size of txs array
+  # `filtered_txs` - selected transactions for the new block; stored in reverse order
+  # `current_block_size_bytes` - stores the initial block size + filtered_txs (in bytes)
+  # `next_tx_size_bytes` - size of the next transaction to be included
+  # `max_block_size_bytes`
+  #
+  # Returns `filtered_txs` upon reaching the end of the txs array
+  # or upon reaching a transaction that would make the new block's size
+  # bigger than the max block size. Calls itself otherwise.
+  defp filter_transactions_by_block_size(txs, current_tx_index, txs_count, filtered_txs,
+    current_block_size_bytes, next_tx_size_bytes, max_block_size_bytes) do
+
+    current_tx = Enum.at(txs, current_tx_index)
+
+    # If the function is called, then we know the current transaction won't
+    # make the new block's size bigger than max block size, so we add it
+    # to filtered_txs and proceed to check the size of the block with the
+    # next transaction, if there is one.
+    new_filtered_txs = [current_tx | filtered_txs]
+    next_tx_index = current_tx_index + 1
+    if next_tx_index == txs_count do
+      Enum.reverse(new_filtered_txs)
+    else
+      next_tx = Enum.at(txs, next_tx_index)
+      new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
+      new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
+
+      if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do
+        Enum.reverse(new_filtered_txs)
+      else
+        filter_transactions_by_block_size(txs, next_tx_index, txs_count, new_filtered_txs,
+          new_current_block_size_bytes, new_next_tx_size_bytes, max_block_size_bytes)
+      end
+    end
+  end
+
+  defp create_block(top_block, chain_state, difficulty, valid_txs) do
+    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+
+    new_chain_state =
+      ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    unmined_header =
+      Header.create(
+        top_block.header.height + 1,
+        top_block_hash,
+        root_hash,
+        chain_state_hash,
+        difficulty,
+        0,
+        #start from nonce 0, will be incremented in mining
+        Block.current_block_version()
+      )
+    %Block{header: unmined_header, txs: valid_txs}
   end
 
   def coinbase_transaction_value, do: @coinbase_transaction_value
