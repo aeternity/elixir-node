@@ -36,9 +36,4 @@ defmodule Aecore.Structures.SpendTx do
                   lock_time_block: lock_time_block}}
   end
 
-  @spec hash_tx(SpendTx.t()) :: binary()
-  def hash_tx(tx) do
-    :crypto.hash(:sha256, Serialization.pack_binary(tx))
-  end
-
 end
