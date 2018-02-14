@@ -21,7 +21,7 @@ defmodule Aecore.SigningPrototype.Validation do
 
   @spec process(ContractProposalTx.t()) :: boolean()
   defp process(%ContractProposalTx{} = data_proposal) do
-    ## TODO: Write validation on ContractProposalTx
+
   end
 
   @spec process(ContractSignTx.t()) :: boolean()
