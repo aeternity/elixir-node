@@ -5,16 +5,16 @@ defmodule Aeutil.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleQuerySpendTx
+  alias Aecore.Structures.OracleRegistrationSpendTx
+  alias Aecore.Structures.OracleResponseSpendTx
 
-  @type transaction_types :: TxData.t() |
-                             OracleQueryTxData.t() |
-                             OracleRegistrationTxData.t() |
-                             OracleResponseTxData.t()
+  @type transaction_types :: SpendTx.t() |
+                             OracleQuerySpendTx.t() |
+                             OracleRegistrationSpendTx.t() |
+                             OracleResponseSpendTx.t()
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
@@ -65,14 +65,14 @@ defmodule Aeutil.Serialization do
   @spec build_tx(map()) :: transaction_types()
   def build_tx(tx) do
     cond do
-      SignedTx.is_tx_data_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => TxData.new(tx["data"])})
+      SignedTx.is_spend_tx(tx["data"]) ->
+        SignedTx.new(%{tx | "data" => SpendTx.new(tx["data"])})
       SignedTx.is_oracle_query_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleQueryTxData.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleQuerySpendTx.new(tx["data"])})
       SignedTx.is_oracle_registration_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleRegistrationTxData.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleRegistrationSpendTx.new(tx["data"])})
       SignedTx.is_oracle_response_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleResponseTxData.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleResponseSpendTx.new(tx["data"])})
     end
   end
 
@@ -80,15 +80,15 @@ defmodule Aeutil.Serialization do
                           :serialize | :deserialize) :: transaction_types()
   def serialize_tx_data(tx_data, direction) do
     case tx_data do
-      %TxData{} ->
+      %SpendTx{} ->
         %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction),
                     to_acc: hex_binary(tx_data.to_acc, direction)}
-      %OracleRegistrationTxData{} ->
+      %OracleRegistrationSpendTx{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction)}
-      %OracleResponseTxData{} ->
+      %OracleResponseSpendTx{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction),
                     oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
-      %OracleQueryTxData{} ->
+      %OracleQuerySpendTx{} ->
         %{tx_data | sender: hex_binary(tx_data.sender, direction),
                     oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
     end

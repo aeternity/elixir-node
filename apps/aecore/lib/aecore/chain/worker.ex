@@ -6,10 +6,10 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
-  alias Aecore.Structures.TxData
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationSpendTx
+  alias Aecore.Structures.OracleQuerySpendTx
+  alias Aecore.Structures.OracleResponseSpendTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -230,21 +230,27 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    # Store new block to disk
-    Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index,
                               registered_oracles: new_registered_oracles,
                               oracle_responses: new_oracle_responses}
     if top_height < new_block.header.height do
-      # We send the block to others only if it extends the longest chain
+      Persistence.batch_write(%{:chain_state => new_chain_state,
+                                :block => %{new_block_hash => new_block},
+                                :latest_block_info => %{"top_hash" => new_block_hash,
+                                                        "top_height" => new_block.header.height}})
+
+
+      ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else
+        Persistence.batch_write(%{:chain_state => new_chain_state,
+                                  :block => %{new_block_hash => new_block}})
       {:reply, :ok, state_update1}
     end
   end
@@ -265,15 +271,35 @@ defmodule Aecore.Chain.Worker do
     {:reply, oracle_responses, state}
   end
 
+  def handle_info(:timeout, state) do
+    {top_hash, top_height} =
+      case Persistence.get_latest_block_height_and_hash() do
+        :not_found -> {state.top_hash, state.top_height}
+        {:ok, latest_block} -> {latest_block.hash, latest_block.height}
+      end
+
+    chain_states =
+      case Persistence.get_all_accounts_chain_states() do
+        chain_states when chain_states == %{} -> state.chain_states
+        chain_states -> %{top_hash => chain_states}
+      end
+
+    blocks_map =
+      case Persistence.get_all_blocks() do
+        blocks_map when blocks_map == %{} -> state.blocks_map
+        blocks_map -> blocks_map
+      end
+
+    {:noreply, %{state |
+                 chain_states: chain_states,
+                 blocks_map: blocks_map,
+                 top_hash: top_hash,
+                 top_height: top_height}}
+  end
+
   # Handle info from HTTPoison.post async call
   def handle_info(_, state) do
     {:noreply, state}
-  end
-
-  def terminate(_, state) do
-    Persistence.store_state(state)
-    Logger.warn("Terminting, state was stored on disk ...")
-
   end
 
   defp calculate_block_acc_txs_info(block) do
@@ -281,13 +307,13 @@ defmodule Aecore.Chain.Worker do
     accounts =
       for tx <- block.txs do
         case tx.data do
-          %TxData{} ->
+          %SpendTx{} ->
             [tx.data.from_acc, tx.data.to_acc]
-          %OracleRegistrationTxData{} ->
+          %OracleRegistrationSpendTx{} ->
             tx.data.operator
-          %OracleResponseTxData{} ->
+          %OracleResponseSpendTx{} ->
             tx.data.operator
-          %OracleQueryTxData{} ->
+          %OracleQuerySpendTx{} ->
             tx.data.sender
         end
       end
@@ -295,13 +321,13 @@ defmodule Aecore.Chain.Worker do
     for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
           case tx.data do
-            %TxData{} ->
+            %SpendTx{} ->
               tx.data.from_acc == account || tx.data.to_acc == account
-            %OracleRegistrationTxData{} ->
+            %OracleRegistrationSpendTx{} ->
               tx.data.operator == account
-            %OracleResponseTxData{} ->
+            %OracleResponseSpendTx{} ->
               tx.data.operator == account
-            %OracleQueryTxData{} ->
+            %OracleQuerySpendTx{} ->
               tx.data.sender == account
           end
         end)
@@ -325,7 +351,7 @@ defmodule Aecore.Chain.Worker do
 
   defp generate_registrated_oracles_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
-        if(match?(%OracleRegistrationTxData{}, tx.data)) do
+        if(match?(%OracleRegistrationSpendTx{}, tx.data)) do
           Map.put(acc, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
         else
           acc
@@ -335,7 +361,7 @@ defmodule Aecore.Chain.Worker do
 
   defp generate_oracle_response_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
-        if(match?(%OracleResponseTxData{}, tx.data)) do
+        if(match?(%OracleResponseSpendTx{}, tx.data)) do
           if(acc[tx.data.oracle_hash] != nil) do
             Map.put(acc, tx.data.oracle_hash,acc[tx.data.oracle_hash] ++ [tx])
           else
@@ -357,7 +383,7 @@ defmodule Aecore.Chain.Worker do
     if Application.get_env(:aecore, :operator)[:is_node_operator] do
       oracles = Application.get_env(:aecore, :operator)[:oracles]
       Enum.each(block.txs, fn(tx) ->
-          if(match?(%OracleQueryTxData{}, tx.data) &&
+          if(match?(%OracleQuerySpendTx{}, tx.data) &&
              Map.has_key?(oracles, tx.data.oracle_hash)) do
             Client.post_query_to_oracle(tx, oracles[tx.data.oracle_hash])
           end

@@ -81,3 +81,6 @@ config :aecore, :tx_data,
 config :aecore, :operator,
   is_node_operator: true,
   oracles: %{}
+
+config :aecore, :block,
+  max_block_size_bytes: 500_000

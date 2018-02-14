@@ -5,7 +5,7 @@ defmodule Aehttpclient.Client do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
@@ -129,7 +129,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:acc_txs, body, _headers) do
-    response = Poison.decode!(body, as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+    response = Poison.decode!(body, as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
     {:ok, response}
   end
 

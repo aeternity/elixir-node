@@ -5,10 +5,10 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationSpendTx
+  alias Aecore.Structures.OracleQuerySpendTx
+  alias Aecore.Structures.OracleResponseSpendTx
   alias Aecore.Chain.Worker, as: Chain
 
   require Logger
@@ -25,7 +25,7 @@ defmodule Aecore.Chain.ChainState do
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
       try do
         case transaction do
-          %SignedTx{data: %TxData{}} ->
+          %SignedTx{data: %SpendTx{}} ->
             apply_transaction_on_state!(transaction, chain_state, block_height)
           _oracle_tx ->
             apply_oracle_transaction_on_state!(transaction, chain_state)
@@ -67,7 +67,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleRegistrationTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleRegistrationSpendTx{}} =
                                   transaction, chain_state) do
     deduct_from_account_state!(chain_state,
                                transaction.data.operator,
@@ -75,7 +75,7 @@ defmodule Aecore.Chain.ChainState do
                                transaction.data.nonce)
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleResponseTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleResponseSpendTx{}} =
                                  transaction, chain_state) do
     deduct_from_account_state!(chain_state,
                                transaction.data.operator,
@@ -83,7 +83,7 @@ defmodule Aecore.Chain.ChainState do
                                transaction.data.nonce)
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleQueryTxData{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleQuerySpendTx{}} =
                                   transaction, chain_state) do
     operator_address =
       Chain.registered_oracles[transaction.data.oracle_hash].data.operator

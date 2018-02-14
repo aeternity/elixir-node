@@ -34,7 +34,8 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
 end
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+  path: Path.absname(persistence_path),
+  write_options: [sync: true, disable_wal: false]
 
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
@@ -91,3 +92,6 @@ config :aecore, :tx_data,
   lock_time_coinbase: 10,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100
+
+config :aecore, :block,
+  max_block_size_bytes: 500_000
