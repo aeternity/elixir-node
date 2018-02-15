@@ -6,12 +6,12 @@ defmodule Aecore.Chain.ChainState do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationSpendTx
-  alias Aecore.Structures.OracleQuerySpendTx
-  alias Aecore.Structures.OracleResponseSpendTx
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
-  
+
   require Logger
 
   @type account_chainstate() ::
@@ -23,13 +23,17 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) ::  account_chainstate()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
-    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
+    |> Enum.reduce(chain_state, fn(tx, chain_state) ->
       try do
-        case transaction do
+        case tx do
           %SignedTx{data: %SpendTx{}} ->
-            apply_transaction_on_state!(transaction, chain_state, block_height)
-          _oracle_tx ->
-            apply_oracle_transaction_on_state!(transaction, chain_state)
+            apply_transaction_on_state!(tx, chain_state, block_height)
+          %SignedTx{data: %OracleRegistrationTxData{}} ->
+            apply_oracle_transaction_on_state!(tx, chain_state)
+          %SignedTx{data: %OracleResponseTxData{}} ->
+            apply_oracle_transaction_on_state!(tx, chain_state)
+          %SignedTx{data: %OracleQueryTxData{}} ->
+            apply_oracle_transaction_on_state!(tx, chain_state)
         end
       catch
         {:error, message} ->
@@ -68,7 +72,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleRegistrationSpendTx{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleRegistrationTxData{}} =
                                   transaction, chain_state) do
     deduct_from_account_state!(chain_state,
                                transaction.data.operator,
@@ -76,7 +80,7 @@ defmodule Aecore.Chain.ChainState do
                                transaction.data.nonce)
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleResponseSpendTx{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleResponseTxData{}} =
                                  transaction, chain_state) do
     deduct_from_account_state!(chain_state,
                                transaction.data.operator,
@@ -84,33 +88,24 @@ defmodule Aecore.Chain.ChainState do
                                transaction.data.nonce)
   end
 
-  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleQuerySpendTx{}} =
+  def apply_oracle_transaction_on_state!(%SignedTx{data: %OracleQueryTxData{}} =
                                   transaction, chain_state) do
     operator_address =
       Chain.registered_oracles[transaction.data.oracle_hash].data.operator
-    sender_state =
-      Map.get(chain_state, transaction.data.sender,
-              %{balance: 0, nonce: 0, locked: []})
     operator_state =
       Map.get(chain_state, operator_address,
               %{balance: 0, nonce: 0, locked: []})
-    cond do
-      sender_state.balance -
-        (transaction.data.query_fee + transaction.data.fee) < 0 ->
-        throw {:error, "Negative balance"}
-      sender_state.nonce >= transaction.data.nonce ->
-        throw {:error, "Nonce too small"}
-      true ->
-        new_sender_balance =
-          sender_state.balance - (transaction.data.query_fee + transaction.data.fee)
-        new_operator_balance =
-          operator_state.balance + transaction.data.query_fee
+    sender_updated_state =
+      deduct_from_account_state!(chain_state, transaction.data.sender,
+                                 - (transaction.data.query_fee +
+                                    transaction.data.fee),
+                                 transaction.data.nonce)
+    new_operator_balance =
+      operator_state.balance + transaction.data.query_fee
 
-        %{chain_state | transaction.data.sender =>
-                          %{sender_state | balance: new_sender_balance},
-                        operator_address =>
-                          %{operator_state | balance: new_operator_balance}}
-    end
+    %{sender_updated_state |
+        operator_address =>
+          %{operator_state | balance: new_operator_balance}}
   end
 
   @doc """

@@ -7,9 +7,9 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationSpendTx
-  alias Aecore.Structures.OracleQuerySpendTx
-  alias Aecore.Structures.OracleResponseSpendTx
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -310,11 +310,11 @@ defmodule Aecore.Chain.Worker do
         case tx.data do
           %SpendTx{} ->
             [tx.data.from_acc, tx.data.to_acc]
-          %OracleRegistrationSpendTx{} ->
+          %OracleRegistrationTxData{} ->
             tx.data.operator
-          %OracleResponseSpendTx{} ->
+          %OracleResponseTxData{} ->
             tx.data.operator
-          %OracleQuerySpendTx{} ->
+          %OracleQueryTxData{} ->
             tx.data.sender
         end
       end
@@ -324,11 +324,11 @@ defmodule Aecore.Chain.Worker do
           case tx.data do
             %SpendTx{} ->
               tx.data.from_acc == account || tx.data.to_acc == account
-            %OracleRegistrationSpendTx{} ->
+            %OracleRegistrationTxData{} ->
               tx.data.operator == account
-            %OracleResponseSpendTx{} ->
+            %OracleResponseTxData{} ->
               tx.data.operator == account
-            %OracleQuerySpendTx{} ->
+            %OracleQueryTxData{} ->
               tx.data.sender == account
           end
         end)
@@ -352,7 +352,7 @@ defmodule Aecore.Chain.Worker do
 
   defp generate_registrated_oracles_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
-        if(match?(%OracleRegistrationSpendTx{}, tx.data)) do
+        if(match?(%OracleRegistrationTxData{}, tx.data)) do
           Map.put(acc, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
         else
           acc
@@ -362,7 +362,7 @@ defmodule Aecore.Chain.Worker do
 
   defp generate_oracle_response_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
-        if(match?(%OracleResponseSpendTx{}, tx.data)) do
+        if(match?(%OracleResponseTxData{}, tx.data)) do
           if(acc[tx.data.oracle_hash] != nil) do
             Map.put(acc, tx.data.oracle_hash,acc[tx.data.oracle_hash] ++ [tx])
           else
@@ -382,7 +382,7 @@ defmodule Aecore.Chain.Worker do
     if Application.get_env(:aecore, :operator)[:is_node_operator] do
       oracles = Application.get_env(:aecore, :operator)[:oracles]
       Enum.each(block.txs, fn(tx) ->
-          if(match?(%OracleQuerySpendTx{}, tx.data) &&
+          if(match?(%OracleQueryTxData{}, tx.data) &&
              Map.has_key?(oracles, tx.data.oracle_hash)) do
             Client.post_query_to_oracle(tx, oracles[tx.data.oracle_hash])
           end

@@ -1,8 +1,8 @@
 defmodule Aecore.OraclePrototype.Oracle do
 
-  alias Aecore.Structures.OracleRegistrationSpendTx
-  alias Aecore.Structures.OracleQuerySpendTx
-  alias Aecore.Structures.OracleResponseSpendTx
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -18,7 +18,7 @@ defmodule Aecore.OraclePrototype.Oracle do
   """
   @spec register(map(), map(), binary(), integer(), String.t()) :: :ok | :error
   def register(query_format, response_format, description, fee, oracle_uri) do
-    case OracleRegistrationSpendTx.create(query_format, response_format,
+    case OracleRegistrationTxData.create(query_format, response_format,
                                          description, fee) do
       :error ->
         :error
@@ -46,7 +46,7 @@ defmodule Aecore.OraclePrototype.Oracle do
   """
   @spec query(binary(), any(), integer(), integer()) :: :ok | :error
   def query(oracle_hash, query_data, query_fee, response_fee) do
-      case OracleQuerySpendTx.create(oracle_hash, query_data,
+      case OracleQueryTxData.create(oracle_hash, query_data,
                                     query_fee, response_fee) do
         :error ->
           :error
@@ -61,7 +61,7 @@ defmodule Aecore.OraclePrototype.Oracle do
   """
   @spec respond(binary(), any(), integer()) :: :ok | :error
   def respond(oracle_hash, response, fee) do
-    case OracleResponseSpendTx.create(oracle_hash, response, fee) do
+    case OracleResponseTxData.create(oracle_hash, response, fee) do
       :error ->
         :error
       tx_data ->

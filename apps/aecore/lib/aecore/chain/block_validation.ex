@@ -6,6 +6,9 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
@@ -121,7 +124,11 @@ defmodule Aecore.Chain.BlockValidation do
       case tx do
         %SignedTx{data: %SpendTx{}} ->
           {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
-        _oracle_tx ->
+        %SignedTx{data: %OracleRegistrationTxData{}} ->
+          {true, ChainState.apply_oracle_transaction_on_state!(tx, chain_state)}
+        %SignedTx{data: %OracleResponseTxData{}} ->
+          {true, ChainState.apply_oracle_transaction_on_state!(tx, chain_state)}
+        %SignedTx{data: %OracleQueryTxData{}} ->
           {true, ChainState.apply_oracle_transaction_on_state!(tx, chain_state)}
       end
     catch

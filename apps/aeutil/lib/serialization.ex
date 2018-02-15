@@ -7,14 +7,14 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.OracleQuerySpendTx
-  alias Aecore.Structures.OracleRegistrationSpendTx
-  alias Aecore.Structures.OracleResponseSpendTx
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleResponseTxData
 
   @type transaction_types :: SpendTx.t() |
-                             OracleQuerySpendTx.t() |
-                             OracleRegistrationSpendTx.t() |
-                             OracleResponseSpendTx.t()
+                             OracleQueryTxData.t() |
+                             OracleRegistrationTxData.t() |
+                             OracleResponseTxData.t()
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
@@ -68,11 +68,11 @@ defmodule Aeutil.Serialization do
       SignedTx.is_spend_tx(tx["data"]) ->
         SignedTx.new(%{tx | "data" => SpendTx.new(tx["data"])})
       SignedTx.is_oracle_query_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleQuerySpendTx.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleQueryTxData.new(tx["data"])})
       SignedTx.is_oracle_registration_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleRegistrationSpendTx.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleRegistrationTxData.new(tx["data"])})
       SignedTx.is_oracle_response_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleResponseSpendTx.new(tx["data"])})
+        SignedTx.new(%{tx | "data" => OracleResponseTxData.new(tx["data"])})
     end
   end
 
@@ -83,12 +83,12 @@ defmodule Aeutil.Serialization do
       %SpendTx{} ->
         %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction),
                     to_acc: hex_binary(tx_data.to_acc, direction)}
-      %OracleRegistrationSpendTx{} ->
+      %OracleRegistrationTxData{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction)}
-      %OracleResponseSpendTx{} ->
+      %OracleResponseTxData{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction),
                     oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
-      %OracleQuerySpendTx{} ->
+      %OracleQueryTxData{} ->
         %{tx_data | sender: hex_binary(tx_data.sender, direction),
                     oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
     end

@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleRegistrationSpendTx do
+defmodule Aecore.Structures.OracleRegistrationTxData do
 
   alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
@@ -6,7 +6,7 @@ defmodule Aecore.Structures.OracleRegistrationSpendTx do
 
   require Logger
 
-  @type t :: %OracleRegistrationSpendTx{
+  @type t :: %OracleRegistrationTxData{
     operator: binary(),
     query_format: map(),
     response_format: map(),
@@ -23,13 +23,13 @@ defmodule Aecore.Structures.OracleRegistrationSpendTx do
              :nonce]
   use ExConstructor
 
-  @spec create(map(), map(), binary(), integer()) :: t
+  @spec create(map(), map(), binary(), integer()) :: OracleRegistrationTxData.t()
   def create(query_format, response_format, description, fee) do
     try do
       ExJsonSchema.Schema.resolve(query_format)
       ExJsonSchema.Schema.resolve(response_format)
       {:ok, pubkey} = Keys.pubkey()
-      %OracleRegistrationSpendTx{operator: pubkey,
+      %OracleRegistrationTxData{operator: pubkey,
                                 query_format: query_format,
                                 response_format: response_format,
                                 description: description,

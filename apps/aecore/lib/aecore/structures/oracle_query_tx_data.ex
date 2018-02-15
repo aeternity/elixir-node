@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleQuerySpendTx do
+defmodule Aecore.Structures.OracleQueryTxData do
 
   alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
@@ -7,7 +7,7 @@ defmodule Aecore.Structures.OracleQuerySpendTx do
 
   require Logger
 
-  @type t :: %OracleQuerySpendTx{
+  @type t :: %OracleQueryTxData{
     sender: binary(),
     oracle_hash: binary(),
     query_data: map(),
@@ -24,7 +24,7 @@ defmodule Aecore.Structures.OracleQuerySpendTx do
              :nonce]
   use ExConstructor
 
-  @spec create(binary(), map(), integer(), integer()) :: t()
+  @spec create(binary(), map(), integer(), integer()) :: OracleQueryTxData.t()
   def create(oracle_hash, query_data, query_fee, fee) do
     registered_oracles = Chain.registered_oracles()
     query_format = registered_oracles[oracle_hash].data.query_format
@@ -36,7 +36,7 @@ defmodule Aecore.Structures.OracleQuerySpendTx do
         :error
       true ->
         {:ok, pubkey} = Keys.pubkey()
-        %OracleQuerySpendTx{sender: pubkey, oracle_hash: oracle_hash,
+        %OracleQueryTxData{sender: pubkey, oracle_hash: oracle_hash,
                            query_data: query_data, query_fee: query_fee,
                            fee: fee, nonce: Chain.lowest_valid_nonce()}
     end
