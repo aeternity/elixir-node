@@ -28,11 +28,11 @@ defmodule Aeutil.Serialization do
     new_data = %{tx.data |
                  from_acc: hex_binary(tx.data.from_acc, direction),
                  to_acc: hex_binary(tx.data.to_acc, direction)}
-    new_signature = hex_binary(tx.signature, direction)
+    new_signature = base64_binary(tx.signature, direction)
     %SignedTx{data: SpendTx.new(new_data), signature: new_signature}
   end
 
-  @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
+  @spec hex_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def hex_binary(data, direction) do
     if data != nil do
       case(direction) do
@@ -61,6 +61,21 @@ defmodule Aeutil.Serialization do
         end
       :deserialize ->
         Bits.bech32_decode(data)
+    end
+  end
+
+  @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
+  def base64_binary(data, direction) do
+    if data != nil do
+      case(direction) do
+        :serialize ->
+          IO.inspect(data)
+          Base.encode64(data)
+        :deserialize ->
+          Base.decode64!(data)
+      end
+    else
+      nil
     end
   end
 
