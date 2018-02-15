@@ -165,7 +165,20 @@ defmodule Aecore.Chain.Worker do
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
-    updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
+    updated_blocks_map  = Map.put(blocks_map, new_block_hash, new_block)
+    hundred_blocks_map  =
+    if Kernel.map_size(updated_blocks_map) > 100 do
+      [{_,b} | sorted_blocks] =
+        Enum.sort(updated_blocks_map,
+          fn({_,b1}, {_,b2}) ->
+            b1.header.timestamp < b2.header.timestamp
+          end)
+      Logger.info("Block ##{b.header.height} has been removed from memory")
+      Enum.into(sorted_blocks, %{})
+    else
+      updated_blocks_map
+    end
+
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
@@ -173,7 +186,7 @@ defmodule Aecore.Chain.Worker do
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    state_update1 = %{state | blocks_map: updated_blocks_map,
+    state_update1 = %{state | blocks_map: hundred_blocks_map,
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
@@ -218,7 +231,7 @@ defmodule Aecore.Chain.Worker do
       end
 
     blocks_map =
-      case Persistence.get_all_blocks() do
+      case Persistence.get_hundred_blocks() do
         blocks_map when blocks_map == %{} -> state.blocks_map
         blocks_map -> blocks_map
       end

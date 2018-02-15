@@ -41,6 +41,12 @@ defmodule Aecore.Persistence.Worker do
   end
   def get_block_by_hash(_hash), do: {:error, "bad hash value"}
 
+  @spec get_hundred_blocks() ::
+  {:ok, map()} | :not_found | {:error, reason :: term()}
+  def get_hundred_blocks() do
+    GenServer.call(__MODULE__, :get_hundred_blocks)
+  end
+
   @spec get_all_blocks() ::
   {:ok, map()} | :not_found | {:error, reason :: term()}
   def get_all_blocks() do
@@ -138,6 +144,27 @@ defmodule Aecore.Persistence.Worker do
     {:reply, Rox.get(chain_state_family, account), state}
   end
 
+  def handle_call(:get_hundred_blocks, _from,
+    %{blocks_family: blocks_family} = state) do
+    all_blocks =
+      blocks_family
+      |> Rox.stream()
+      |> Enum.into([])
+
+    hundred_blocks =
+    if length(all_blocks) > 100 do
+      list = Enum.sort(all_blocks,
+        fn({_,b1}, {_,b2}) ->
+          b1.header.timestamp > b2.header.timestamp
+        end)
+      Enum.take(list, 5)
+    else
+      all_blocks
+    end
+    {:reply, Enum.into(hundred_blocks, %{}), state}
+  end
+
+
   def handle_call(:get_all_blocks, _from,
     %{blocks_family: blocks_family} = state) do
     all_blocks =
@@ -169,7 +196,7 @@ defmodule Aecore.Persistence.Worker do
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
     chain_state =
-      chain_state_family    
+      chain_state_family
       |> Rox.stream()
       |> Enum.into(%{})
     {:reply, chain_state, state}
