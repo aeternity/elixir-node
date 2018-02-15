@@ -69,7 +69,6 @@ defmodule Aeutil.Serialization do
     if data != nil do
       case(direction) do
         :serialize ->
-          IO.inspect(data)
           Base.encode64(data)
         :deserialize ->
           Base.decode64!(data)
