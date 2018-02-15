@@ -3,8 +3,11 @@ defmodule Aeutil.ValidateContractJsonSchema do
   def proposal() do
     %{
       "type" => "object",
-      "required" => ["contract_hash", "participants", "ttl", "fee"],
+      "required" => ["name", "contract_hash", "participants", "ttl", "fee"],
       "properties" => %{
+        "name" => %{
+      "type" => "string"
+    },
         "contract_hash" => %{
       "type" => "string"
     },

@@ -9,15 +9,17 @@ defmodule Aecore.Structures.ContractProposalTx do
     fee: integer()
   }
 
-  defstruct [:contract_hash,
+  defstruct [:name,
+             :contract_hash,
              :participants,
              :ttl,
              :fee
             ]
   use ExConstructor
 
-  def create(contract_hash, participants, ttl, fee) do
-    {:ok, %ContractProposalTx{contract_hash: contract_hash,
+  def create(name, contract_hash, participants, ttl, fee) do
+    {:ok, %ContractProposalTx{name: name,
+                              contract_hash: contract_hash,
                               participants: participants,
                               ttl: ttl,
                               fee: fee}}
