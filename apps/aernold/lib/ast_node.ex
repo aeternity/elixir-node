@@ -2,7 +2,16 @@ defmodule ASTNode do
 
   alias Aecore.Chain.Worker, as: Chain
 
-  def evaluate({{:contract, _}, _id, body}, {prev_val, scope}) do
+  def evaluate({{:contract, _}, _id, params, args, body}, {prev_val, scope}) do
+    {_, scope} = Enum.reduce(params, {0, scope}, fn(param, {args_index, scope_acc}) ->
+      arg = elem(args, args_index)
+      {_, id, type} = param
+      var_def = {:def_var, id, type, arg}
+
+      {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+      {args_index + 1, scope_acc}
+    end)
+
     Enum.reduce(body, {prev_val, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
       evaluate(statement, {prev_val_acc, scope_acc})
     end)
@@ -358,7 +367,7 @@ defmodule ASTNode do
     {[], scope}
   end
 
-  def evaluate_func_definitions({{:contract, _}, _id, body}, scope) do
+  def evaluate_func_definitions({{:contract, _}, _id, _params, _args, body}, scope) do
     scope_with_functions =
       Enum.reduce(body, scope, fn statement, scope_acc ->
         case statement do

@@ -22,6 +22,7 @@ Rootsymbol File.
 File -> Contr : '$1'.
 
 Contr -> 'contract' Id '{' Statement '}' : {'$1', '$2', list_to_tuple('$4')}.
+Contr -> 'contract' Id '(' FunctionParameters ')' '{' Statement '}' '(' FunctionArguments ')' ';' : {'$1', '$2', list_to_tuple('$4'), list_to_tuple('$10'), list_to_tuple('$7')}.
 
 Statement -> SimpleStatement ';' : ['$1'].
 Statement -> SimpleStatement ';' Statement : ['$1' | '$3'].
