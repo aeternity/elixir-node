@@ -31,7 +31,7 @@ defmodule Aehttpserver.Web.TxController do
                     to_acc: Serialization.hex_binary(tx.to_acc, :serialize),
                     txs_hash: Serialization.bech32_binary(tx.txs_hash, :txs, :serialize),
                     block_hash: Serialization.bech32_binary(tx.block_hash, :header, :serialize),
-                    signature: Serialization.hex_binary(tx.signature, :serialize)
+                    signature: Serialization.base64_binary(tx.signature, :serialize)
                    } end))
         end
     end
