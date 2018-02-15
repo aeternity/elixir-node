@@ -6,6 +6,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
 
@@ -32,7 +33,6 @@ defmodule Aecore.Chain.BlockValidation do
     end
 
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
-
     cond do
       # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
@@ -50,6 +50,9 @@ defmodule Aecore.Chain.BlockValidation do
 
       difficulty != new_block.header.difficulty_target ->
         throw({:error, "Invalid block difficulty"})
+
+      !valid_header_timestamp(new_block) -> 
+        throw({:error, "Invalid header timestamp"})
 
       true ->
         new_chain_state
@@ -176,4 +179,28 @@ defmodule Aecore.Chain.BlockValidation do
   defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
+
+  @spec valid_header_timestamp(Block.t()) :: boolean()
+  defp valid_header_timestamp(%Block{header: new_block_header}) do
+    case new_block_header.timestamp <= :os.system_time() + 3_600_000 do
+      true ->
+        top_block = Chain.top_block()
+        last_blocks = Chain.get_blocks(top_block, 10)
+
+        last_blocks_timestamps =
+          Enum.reduce(last_blocks, [], fn block, acc -> acc = acc ++ [block.header.timestamp] end)
+
+        average = Enum.sum(last_blocks) / 10
+
+        if new_block_header.timestamp > average do
+          true
+        else
+          false
+        end
+
+      false ->
+        false
+    end
+  end
+
 end
