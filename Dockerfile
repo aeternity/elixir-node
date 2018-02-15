@@ -18,23 +18,29 @@ RUN dpkg -i erlang-solutions_1.0_all.deb
 RUN apt-get update
 RUN apt-get install -y esl-erlang=1:20.0 elixir=1.5.1-1
 
-# use elixir user for running
-COPY . /elixir_research
+# install rust dependency for rocksdb persistence
+USER elixir
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+ENV PATH=/home/elixir/.cargo/env:/home/elixir/.cargo/bin:$PATH
+
+# copy source
+USER root
 WORKDIR /elixir_research
+COPY . /elixir_research
 RUN chown -R elixir:elixir /elixir_research
 USER elixir
 
-# install rust dependency for rocksdb persistence
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-ENV PATH=/home/elixir/.cargo/env:/home/elixir/.cargo/bin:$PATH
+# set environment
+ENV MIX_ENV=docker
+ENV SHELL=/bin/sh
 
 # install hex dependencies
 RUN mix local.hex --force
 RUN mix local.rebar --force
 RUN mix deps.get
+RUN mix deps.compile
+RUN mix compile
 
-# set environment and set entrypoint
-ENV MIX_ENV=docker
-ENV SHELL=/bin/sh
+# set entrypoint
 EXPOSE 4000
 ENTRYPOINT ["iex", "-S", "mix", "phx.server"]
