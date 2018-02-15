@@ -6,6 +6,7 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -14,6 +15,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   require Logger
 
@@ -58,7 +60,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block_by_hex_hash(String.t()) :: Block.t()
   def get_block_by_hex_hash(hash) do
-    {:ok, decoded_hash} = Base.decode16(hash)
+    decoded_hash = Bits.bech32_decode(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end
 
@@ -170,7 +172,7 @@ defmodule Aecore.Chain.Worker do
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
+      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
     state_update1 = %{state | blocks_map: updated_blocks_map,

@@ -6,6 +6,7 @@ defmodule Aecore.Chain.ChainState do
 
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   require Logger
 
@@ -130,6 +131,11 @@ defmodule Aecore.Chain.ChainState do
           end)
         Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
       end)
+  end
+
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("cs", bin)
   end
 
   @spec transaction_in!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()

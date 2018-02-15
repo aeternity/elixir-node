@@ -62,7 +62,7 @@ defmodule Aecore.Peers.Worker do
   def genesis_block_header_hash() do
     Block.genesis_block().header
     |> BlockValidation.block_header_hash()
-    |> Base.encode16()
+    |> Header.bech32_encode()
   end
 
   @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}

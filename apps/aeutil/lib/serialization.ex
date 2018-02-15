@@ -3,17 +3,22 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
+  alias __MODULE__
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Chain.ChainState
+  alias Aeutil.Bits
+
+  @type hash_types :: :chainstate | :header | :txs
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
     new_header = %{block.header |
-      chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
-      prev_hash: hex_binary(block.header.prev_hash, direction),
-      txs_hash: hex_binary(block.header.txs_hash, direction)}
+      chain_state_hash: bech32_binary(block.header.chain_state_hash, :chainstate, direction),
+      prev_hash: bech32_binary(block.header.prev_hash, :header, direction),
+      txs_hash: bech32_binary(block.header.txs_hash, :txs, direction)}
     new_txs = Enum.map(block.txs, fn(tx) -> tx(tx, direction) end)
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
@@ -38,6 +43,24 @@ defmodule Aeutil.Serialization do
       end
     else
       nil
+    end
+  end
+
+  @spec bech32_binary(binary() | String.t, Serialization.hash_types(),
+                      :serialize | :deserialize) :: String.t() | binary()
+  def bech32_binary(data, hash_type, direction) do
+    case direction do
+      :serialize ->
+        case hash_type do
+          :header ->
+            Header.bech32_encode(data)
+          :txs ->
+            SignedTx.bech32_encode_root(data)
+          :chainstate ->
+            ChainState.bech32_encode(data)
+        end
+      :deserialize ->
+        Bits.bech32_decode(data)
     end
   end
 

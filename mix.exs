@@ -38,6 +38,7 @@ defmodule EpochElixir.Mixfile do
      {:excoveralls, "~> 0.7", only: :test},
      {:uuid, "~> 1.1"},
      {:distillery, "~> 1.5", runtime: false},
-     {:msgpax, "~> 2.0"}]
+     {:msgpax, "~> 2.0"},
+     {:bip0173, "~> 0.1.2"}]
   end
 end

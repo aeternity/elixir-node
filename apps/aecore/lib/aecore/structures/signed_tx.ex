@@ -7,6 +7,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   @type t :: %SignedTx{
     data: SpendTx.t(),
@@ -38,4 +39,13 @@ defmodule Aecore.Structures.SignedTx do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("tx", bin)
+  end
+
+  @spec bech32_encode_root(binary()) :: String.t()
+  def bech32_encode_root(bin) do
+    Bits.bech32_encode("tr", bin)
+  end
 end
