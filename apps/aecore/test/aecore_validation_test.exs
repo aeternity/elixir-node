@@ -9,54 +9,24 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
 
   @tag :validation
   test "validate new block" do
-    new_block =
-      %Block{header: %Header{chain_state_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0, 0, 0, 0>>,
-                             difficulty_target: 0,
-                             height: 1,
-                             nonce: 248_312_405,
-                             pow_evidence: [383_234, 616_365, 623_137, 633_764,
-                                            31_313_631, 31_326_664, 31_346_130,
-                                            31_346_561, 31_373_638, 31_646_332,
-                                            32_306_533, 32_313_362, 32_323_637,
-                                            32_353_630, 32_363_064, 32_366_432,
-                                            32_383_636, 32_386_561, 32_653_839,
-                                            32_663_066, 33_356_265, 33_396_261,
-                                            33_613_630, 33_616_333, 34_333_337,
-                                            34_333_662, 34_393_965, 34_626_164,
-                                            35_306_265, 35_333_837, 35_336_639,
-                                            35_386_633, 35_393_931, 36_313_261,
-                                            36_323_663, 37_313_335, 37_323_632,
-                                            37_616_562, 37_616_634, 37_626_535,
-                                            37_653_934, 37_656_233],
-                             prev_hash: <<5, 106, 166, 218, 144, 176, 219, 99,
-                             63, 101, 99, 156, 27, 61, 128, 219, 23, 42, 195,
-                             177, 173, 135, 126, 228, 52, 17, 142, 35, 9, 218,
-                             87, 3>>,
-                             timestamp: 5000,
-                             txs_hash: <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                             0, 0>>,
-                             version: 1},
-             txs: []}
-    prev_block = %Block{header: %Header{difficulty_target: 0,
-      height: 0, nonce: 1114,
-      prev_hash: <<0::256>>,
-      chain_state_hash: <<0::256>>,
-      timestamp: 4000,
-      pow_evidence: nil,
-      txs_hash: <<0::256>>,
-      version: 1},
-      txs: []}
+    new_block = get_new_block()
+    prev_block = get_prev_block()
+
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    assert BlockValidation.validate_block!(new_block, prev_block, %{},
-                                    blocks_for_difficulty_calculation) == :ok
+    _ = BlockValidation.calculate_and_validate_block!(
+      new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
+    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 3}}
+    assert {:error, "Incorrect height"} == catch_throw(
+      BlockValidation.calculate_and_validate_block!(
+        wrong_height_block, prev_block, get_chain_state(),
+        blocks_for_difficulty_calculation))
   end
 
   test "validate transactions in a block" do
@@ -77,4 +47,63 @@ defmodule AecoreValidationTest do
                  |> Enum.all? == true
   end
 
+  def get_new_block() do
+    %Block{header: %Header{chain_state_hash: <<100,
+    126, 168, 5, 157, 180, 101, 231, 52, 4, 199, 197, 80, 234, 98, 146, 95,
+    154, 120, 252, 235, 15, 11, 210, 185, 212, 233, 50, 179, 27, 64, 35>>,
+    difficulty_target: 1, height: 2, nonce: 54,
+    pow_evidence: [3964, 316334, 366465, 376566, 386164, 623237, 633065, 643432,
+    643561, 653138, 653833, 31323331, 31323834, 31373436, 31383066, 31386335,
+    31613935, 32313438, 32356432, 33303439, 33383035, 33386236, 33393063,
+    33663337, 34326534, 34333833, 34613162, 34623533, 34663436, 35353130,
+    35376262, 35656432, 36303437, 36306330, 36313862, 36323634, 36386134,
+    36623130, 36626131, 37343836, 37353437, 37643235],
+    prev_hash: <<55, 64, 192, 115, 139, 134, 169, 4, 34, 58, 167, 7, 162, 142,
+    37, 211, 18, 226, 50, 221, 144, 34, 249, 79, 84, 219, 165, 63, 188, 186,
+    213, 202>>, timestamp: 1518426070901,
+    txs_hash: <<73, 160, 195, 51, 40, 152, 177, 68, 126, 28, 250, 214, 176, 20,
+    202, 175, 222, 181, 108, 11, 106, 182, 80, 122, 179, 208, 233, 75, 222, 83,
+    102, 160>>, version: 1},
+    txs: [%SignedTx{data: %SpendTx{fee: 0,
+    from_acc: nil, lock_time_block: 12, nonce: 0,
+    to_acc: <<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93,
+     202, 223, 118, 74, 222, 92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52,
+     96, 19, 203, 81, 87, 85, 42, 30, 111, 104, 8, 98, 177, 233, 236, 157,
+     118, 30, 223, 11, 32, 118, 9, 122, 57, 7, 143, 127, 1, 103, 242, 116,
+     234, 47>>, value: 100}, signature: nil}]}
+  end
+
+  def get_prev_block() do
+    %Block{header: %Header{chain_state_hash: <<230,
+    129, 113, 45, 47, 180, 171, 8, 15, 55, 74, 106, 150, 170, 190, 220, 32, 87,
+    30, 102, 106, 67, 131, 247, 17, 56, 115, 147, 17, 115, 143, 196>>,
+    difficulty_target: 1, height: 1, nonce: 20,
+    pow_evidence: [323237, 333766, 346430, 363463, 366336, 383965, 653638,
+    663034, 31313230, 31316539, 31326462, 31383531, 31636130, 32343435,
+    32346663, 32363234, 32613339, 32626666, 32636335, 32656637, 32663432,
+    33356639, 33363166, 33366138, 33393033, 33613465, 34316561, 34353064,
+    35303264, 35356635, 35373439, 35613039, 35616266, 35663939, 36336334,
+    36376631, 36396432, 36613239, 36613539, 36626364, 36643466, 37343266],
+    prev_hash: <<188, 84, 93, 222, 212, 45, 228, 224, 165, 111, 167, 218, 25, 31,
+    60, 159, 14, 163, 105, 206, 162, 32, 65, 127, 128, 188, 162, 75, 124, 8,
+    229, 131>>, timestamp: 1518426067973,
+    txs_hash: <<170, 58, 122, 219, 147, 41, 59, 140, 28, 127, 153, 68, 245, 18,
+    205, 22, 147, 124, 157, 182, 123, 24, 41, 71, 132, 6, 162, 20, 227, 255,
+    25, 25>>, version: 1},
+    txs: [%SignedTx{data: %SpendTx{fee: 0,
+    from_acc: nil, lock_time_block: 11, nonce: 0,
+    to_acc: <<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93,
+     202, 223, 118, 74, 222, 92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52,
+     96, 19, 203, 81, 87, 85, 42, 30, 111, 104, 8, 98, 177, 233, 236, 157,
+     118, 30, 223, 11, 32, 118, 9, 122, 57, 7, 143, 127, 1, 103, 242, 116,
+     234, 47>>, value: 100}, signature: nil}]}
+  end
+
+  def get_chain_state() do
+    %{<<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93, 202, 223,
+    118, 74, 222, 92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52, 96, 19, 203,
+    81, 87, 85, 42, 30, 111, 104, 8, 98, 177, 233, 236, 157, 118, 30, 223, 11,
+    32, 118, 9, 122, 57, 7, 143, 127, 1, 103, 242, 116, 234, 47>> =>
+    %{balance: 0, locked: [%{amount: 100, block: 11}], nonce: 0}}
+  end
 end

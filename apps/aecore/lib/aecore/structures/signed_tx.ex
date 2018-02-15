@@ -4,30 +4,38 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
-  @type signed_tx() :: %SignedTx{}
+  @type t :: %SignedTx{
+    data: SpendTx.t(),
+    signature: binary()
+  }
 
   @doc """
     Definition of Aecore SignedTx structure
 
   ## Parameters
-     - data: Aecore %TxData{} structure
-     - signature: Signed %TxData{} with the private key of the sender
+     - data: Aecore %SpendTx{} structure
+     - signature: Signed %SpendTx{} with the private key of the sender
   """
   defstruct [:data, :signature]
   use ExConstructor
 
-  @spec is_coinbase(signed_tx()) :: boolean()
-  def is_coinbase(tx) do
+  @spec is_coinbase?(SignedTx.t()) :: boolean()
+  def is_coinbase?(tx) do
     tx.data.from_acc == nil && tx.signature == nil
   end
 
-  @spec is_valid(signed_tx()) :: boolean()
-  def is_valid(tx) do
-    not_negative = tx.data.value >= 0
-    signature_valid = Keys.verify_tx(tx)
-    not_negative && signature_valid
+  @spec is_valid?(SignedTx.t()) :: boolean()
+  def is_valid?(tx) do
+    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+  end
+
+  @spec hash_tx(SignedTx.t()) :: binary()
+  def hash_tx(%SignedTx{data: data}) do
+    :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
 end

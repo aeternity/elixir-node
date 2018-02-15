@@ -150,7 +150,7 @@ defmodule Aecore.Pow.Cuckoo do
         solution =
         for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
         {:ok, {:generated, solution}}
-      any ->
+      _ ->
         {:error, :no_solution}
     end
   end
@@ -174,7 +174,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
   ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
   ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  @spec test_target(soln :: list(), target :: integer()) :: true | false
+  @spec test_target(list(), integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)

@@ -60,7 +60,7 @@ defmodule AeutilSerializationTest do
     155, 248, 3, 179, 250, 105, 208, 85, 217, 215, 244, 150, 87, 214, 225, 71,
     160, 240>>, version: 1},
     txs:
-    [%Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{from_acc: nil,
+    [%Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{from_acc: nil,
     nonce: 743_183_534_114,
     to_acc: <<4, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149,
       224, 16, 95, 203, 138, 175, 20, 173, 236, 11, 119, 247, 239, 229, 214,

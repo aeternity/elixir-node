@@ -1,3 +1,6 @@
+# Git
+.git
+
 # The directory Mix will write compiled artifacts to.
 /_build
 
@@ -33,13 +36,5 @@ apps/aecore/src/c_src/
 # Ignore Logs created by aecore
 apps/aecore/logs
 
-<<<<<<< HEAD
-# Ignore auto-generated lexer.erl
-apps/aernold/src/aernold_lexer.erl
-
-# Ignore auto-generated parser.erl
-apps/aernold/src/aernold_parser.erl
-=======
 # Ignore linter directories
 .elixir_ls/
->>>>>>> 05f04c3b11085fd6aa358e71575abbb82960e4cd

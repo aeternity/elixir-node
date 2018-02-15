@@ -34,7 +34,8 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
 end
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+  path: Path.absname(persistence_path),
+  write_options: [sync: true, disable_wal: false]
 
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
@@ -46,21 +47,14 @@ config :aecore, :pow,
     txs_hash: <<0::256>>,
     chain_state_hash: <<0 :: 256>>,
     timestamp: 1_507_275_094_308,
-    nonce: 76,
-    pow_evidence: [323333, 333635, 356466,
-                   636139, 646165, 663665,
-                   663739, 31306333, 31373934,
-                   31376265, 31613030, 31633064,
-                   31636339, 31653839, 32303738,
-                   32306461, 32313830, 32323733,
-                   32393364, 32396234, 33323435,
-                   33346230, 33616139, 34323339,
-                   34326132, 34326539, 34373434,
-                   34643263, 35316335, 35363536,
-                   35626131, 35653164, 36303962,
-                   36323737, 36393163, 36666663,
-                   37336636, 37356164, 37626237,
-                   37633337, 37663630, 37666439],
+    nonce: 304,
+    pow_evidence:
+      [383737, 616161, 623333, 653164, 663632, 31303565, 31333936,
+      31336163, 31366633, 31386437, 31613832, 31633235, 32326637, 32333235,
+      32336337, 32383039, 32633234, 33303136, 33363732, 33373436, 33396366,
+      34316464, 34376137, 34393162, 34653465, 34663031, 35303132, 35306366,
+      35346664, 36343336, 36393136, 36396538, 36613461, 36623066, 36633134,
+      36633766, 36663432, 36666664, 37363561, 37393762, 37633162, 37643561],
 
     version: 1,
     difficulty_target: 1
@@ -82,3 +76,6 @@ config :aecore, :tx_data,
   lock_time_coinbase: 10,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100
+
+config :aecore, :block,
+  max_block_size_bytes: 500_000
