@@ -6,7 +6,9 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do

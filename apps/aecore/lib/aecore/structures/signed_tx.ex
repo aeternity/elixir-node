@@ -5,11 +5,12 @@ defmodule Aecore.Structures.SignedTx do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
 
   @type t :: %SignedTx{
-    data: SpendTx.t(),
+    data: SpendTx.t() | DataTx.t(),
     signature: binary()
   }
 
@@ -30,12 +31,19 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(tx) do
-    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+
+    case tx.data do
+      %DataTx{} ->
+        tx.data.fee >= 0 && Keys.verify_tx(tx)
+      %SpendTx{} ->
+        tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+    end
+
+
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
-
 end
