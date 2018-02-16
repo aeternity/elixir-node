@@ -2,7 +2,8 @@ defmodule EpochElixir.Mixfile do
   use Mix.Project
 
   def project do
-    [apps_path: "apps",
+    [app: :elixir_research,
+     apps_path: "apps",
      version: "0.1.0",
      elixir: "~> 1.5.1",
      build_embedded: Mix.env == :prod,

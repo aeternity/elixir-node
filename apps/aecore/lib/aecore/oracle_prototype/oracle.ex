@@ -24,7 +24,7 @@ defmodule Aecore.OraclePrototype.Oracle do
         :error
       tx_data ->
         signed_tx = sign_tx(tx_data)
-        signed_tx_hash = :crypto.hash(:sha256, :erlang.term_to_binary(signed_tx))
+        signed_tx_hash = SignedTx.hash_tx(signed_tx)
         oracles_list = Application.get_env(:aecore, :operator)[:oracles]
         updated_oracles_map = Map.put(oracles_list, signed_tx_hash, oracle_uri)
         case Pool.add_transaction(signed_tx) do

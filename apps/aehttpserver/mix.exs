@@ -34,6 +34,7 @@ defmodule Aehttpserver.Mixfile do
     [{:phoenix, "~> 1.3.0-rc"},
      {:cowboy, "~> 1.0"},
      {:cors_plug, "~> 1.2"},
-     {:uuid, "~> 1.1"},]
+     {:uuid, "~> 1.1"},
+     {:aeutil, in_umbrella: true}]
   end
 end

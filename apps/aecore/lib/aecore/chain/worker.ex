@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -35,7 +36,7 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-    registered_oracles = generate_registrated_oracles_map(Block.genesis_block())
+    registered_oracles = generate_registered_oracles_map(Block.genesis_block())
     oracle_responses = generate_oracle_response_map(Block.genesis_block())
 
     {:ok, %{blocks_map: genesis_block_map,
@@ -214,7 +215,7 @@ defmodule Aecore.Chain.Worker do
     new_txs_index =
       update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
 
-    new_block_registered_oracles = generate_registrated_oracles_map(new_block)
+    new_block_registered_oracles = generate_registered_oracles_map(new_block)
     new_registered_oracles =
       Map.merge(new_block_registered_oracles, registered_oracles)
     new_block_oracle_responses = generate_oracle_response_map(new_block)
@@ -350,10 +351,10 @@ defmodule Aecore.Chain.Worker do
       end)
   end
 
-  defp generate_registrated_oracles_map(block) do
+  defp generate_registered_oracles_map(block) do
     Enum.reduce(block.txs, %{}, fn(tx, acc) ->
         if(match?(%OracleRegistrationTxData{}, tx.data)) do
-          Map.put(acc, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+          Map.put(acc, SignedTx.hash_tx(tx), tx)
         else
           acc
         end

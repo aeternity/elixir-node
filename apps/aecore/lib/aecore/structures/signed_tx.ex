@@ -7,6 +7,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
+  alias Aeutil.Serialization
 
   @type t :: %SignedTx{
     data: SpendTx.t(),
@@ -69,5 +70,10 @@ defmodule Aecore.Structures.SignedTx do
     Map.has_key?(tx, "from_acc") && Map.has_key?(tx, "to_acc") &&
     Map.has_key?(tx, "value") && Map.has_key?(tx, "nonce") &&
     Map.has_key?(tx, "fee") && Map.has_key?(tx, "lock_time_block")
+  end
+
+  @spec hash_tx(SignedTx.t()) :: binary()
+  def hash_tx(%SignedTx{data: data}) do
+    :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 end
