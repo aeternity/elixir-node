@@ -231,7 +231,7 @@ defmodule Aecore.Chain.Worker do
       end
 
     blocks_map =
-      case Persistence.get_hundred_blocks() do
+      case Persistence.get_blocks(100) do
         blocks_map when blocks_map == %{} -> state.blocks_map
         blocks_map -> blocks_map
       end
