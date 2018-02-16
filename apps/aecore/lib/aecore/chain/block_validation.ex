@@ -10,8 +10,8 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
 
-  @last_blocks_count 10
-  @hour 3_600_000
+  @timestamp_validation_blocks_count 10
+  @timestamp_validation_future_limit_ms 3_600_000
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
@@ -186,19 +186,14 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_timestamp(Block.t()) :: boolean()
   defp valid_header_timestamp(%Block{header: new_block_header}) do
-    case new_block_header.timestamp <= System.system_time(:milliseconds) + @hour do
+    case new_block_header.timestamp <= System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
       true ->
-        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @last_blocks_count)
+        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
 
         last_blocks_timestamps =
           for block <- last_blocks, do: block.header.timestamp
 
-        avg = 
-          if Enum.empty?(last_blocks_timestamps) do
-            0
-          else
-            Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)  
-          end
+        avg = Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)
 
         new_block_header.timestamp >= avg
 
