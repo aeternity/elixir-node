@@ -313,6 +313,27 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  ##TODO: not working right now
+  def evaluate({:func_call, {_, 'insert_at'}, {list, index, value}}, {_prev_val, scope}) do
+    {extracted_list} = evaluate(list, {nil, scope})
+    {extracted_index} = evaluate(index, {nil, scope})
+    {extracted_value} = evaluate(value, {nil, scope})
+
+    result = List.insert_at(extracted_list, extracted_index, extracted_value)
+
+    {result, scope}
+  end
+
+  ##TODO: not working right now
+  def evaluate({:func_call, {_, 'append'}, {tuple, value}}, {_prev_val, scope}) do
+    {extracted_value} = evaluate(value, {nil, scope})
+    {extracted_tuple} = evaluate(tuple, {nil, scope})
+
+    result = Tuple.append(extracted_tuple, extracted_value)
+
+    {result, scope}
+  end
+
   def evaluate({:func_definition, {_, id}, _, _} = func, {_prev_val, scope}) do
     {nil, Map.put(scope, id, func)}
   end
@@ -397,7 +418,7 @@ defmodule ASTNode do
     {{}, scope}
   end
 
-  #TODO: make independat lists homogenous as well
+  #TODO: make independent lists homogenous as well
   def evaluate({:list, values}, {_, scope}) do
     list_values = if values != :empty do
       Enum.reduce(values, [], fn(value, acc) ->
