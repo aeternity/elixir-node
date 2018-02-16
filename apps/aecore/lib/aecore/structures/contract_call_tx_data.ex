@@ -1,11 +1,11 @@
-defmodule Aecore.Structures.ContractCallTx do
+defmodule Aecore.Structures.ContractCallTxData do
 
   alias __MODULE__
   alias Aecore.Chain.Worker, as: Chain
 
   require Logger
 
-  @type t :: %ContractCallTx {
+  @type t :: %ContractCallTxData {
     contract_proposal_tx_hash: binary(),
     contract_params: String.t(),
     fee: non_neg_integer(),
@@ -28,7 +28,7 @@ defmodule Aecore.Structures.ContractCallTx do
       Logger.error("No contract proposed with that hash")
       :error
     else
-      {:ok, %ContractCallTx{
+      {:ok, %ContractCallTxData{
           contract_proposal_tx_hash: contract_proposal_tx_hash,
           contract_params: contract_params,
           fee: fee,

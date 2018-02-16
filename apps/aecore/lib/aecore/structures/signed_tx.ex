@@ -6,6 +6,8 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.ContractProposalTxData
+  alias Aecore.Structures.ContractCallTxData
   alias Aeutil.Serialization
 
   @type t :: %SignedTx{
@@ -25,12 +27,24 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_coinbase?(SignedTx.t()) :: boolean()
   def is_coinbase?(tx) do
-    tx.data.from_acc == nil && tx.signature == nil
+    if(match?(%SpendTx{}, tx.data)) do
+      tx.data.from_acc == nil && tx.signature == nil
+    else
+      false
+    end
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(tx) do
-    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+    case tx.data do
+      %SpendTx{} ->
+        tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+      %ContractCallTxData{} ->
+        # TODO: add check if there is such proposed contract
+        true
+      _ ->
+        true
+    end
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()

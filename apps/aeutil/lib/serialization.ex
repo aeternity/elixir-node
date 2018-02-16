@@ -7,6 +7,8 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.ContractProposalTxData
+  alias Aecore.Structures.ContractCallTxData
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
@@ -20,11 +22,26 @@ defmodule Aeutil.Serialization do
 
   @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
   def tx(tx, direction) do
-    new_data = %{tx.data |
-                 from_acc: hex_binary(tx.data.from_acc, direction),
-                 to_acc: hex_binary(tx.data.to_acc, direction)}
+    new_tx_data =
+      case tx.data do
+        %SpendTx{} ->
+          new_data = %{tx.data |
+                       from_acc: hex_binary(tx.data.from_acc, direction),
+                       to_acc: hex_binary(tx.data.to_acc, direction)}
+          SpendTx.new(new_data)
+        %ContractProposalTxData{} ->
+          new_data = %{tx.data |
+                       creator: hex_binary(tx.data.creator, direction)}
+          ContractProposalTxData.new(new_data)
+        %ContractCallTxData{} ->
+          new_data = %{tx.data |
+                       contract_proposal_tx_hash:
+                        hex_binary(tx.data.contract_proposal_tx_hash, direction)}
+          ContractCallTxData.new(new_data)
+      end
+
     new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: SpendTx.new(new_data), signature: new_signature}
+    %SignedTx{data: new_tx_data, signature: new_signature}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()

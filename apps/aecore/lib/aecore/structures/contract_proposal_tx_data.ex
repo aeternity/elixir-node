@@ -1,8 +1,8 @@
-defmodule Aecore.Structures.ContractProposalTx do
+defmodule Aecore.Structures.ContractProposalTxData do
 
   alias __MODULE__
 
-  @type t :: %ContractProposalTx {
+  @type t :: %ContractProposalTxData {
     creator: binary(),
     contract: String.t(),
     fee: non_neg_integer(),
@@ -20,7 +20,7 @@ defmodule Aecore.Structures.ContractProposalTx do
 
   @spec create(binary(), string(), integer(), integer()) :: t
   def create(creator, contract, fee, nonce) do
-    {:ok, %ContractProposalTx{
+    {:ok, %ContractProposalTxData{
         creator: creator,
         contract: contract,
         fee: fee,

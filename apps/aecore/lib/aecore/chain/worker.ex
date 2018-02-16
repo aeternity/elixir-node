@@ -6,12 +6,15 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.ContractProposalTxData
+  alias Aecore.Structures.ContractCallTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
 
@@ -29,11 +32,13 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+    proposed_contracts = generate_proposed_contracts_map(Block.genesis_block())
     {:ok, %{blocks_map: genesis_block_map,
             chain_states: chain_states,
             txs_index: txs_index,
+            proposed_contracts: proposed_contracts,
             top_hash: genesis_block_hash,
-            top_height: 0}, 0}
+            top_height: 0}}
   end
 
   @spec top_block() :: Block.t()
@@ -109,6 +114,16 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :txs_index)
   end
 
+  @spec proposed_contracts() :: %{binary() => ContractProposalTxData.t()}
+  def proposed_contracts() do
+    GenServer.call(__MODULE__, :proposed_contracts)
+  end
+
+  @spec lowest_valid_nonce() :: integer()
+  def lowest_valid_nonce() do
+    GenServer.call(__MODULE__, :lowest_valid_nonce)
+  end
+
   @spec chain_state() :: ChainState.account_chainstate()
   def chain_state() do
     top_block_chain_state()
@@ -159,9 +174,14 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
                   _from,
                   %{blocks_map: blocks_map, chain_states: chain_states,
-                    txs_index: txs_index, top_height: top_height} = state) do
+                    txs_index: txs_index, proposed_contracts: proposed_contracts,
+                    top_height: top_height} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
+
+    new_block_proposed_contracts = generate_proposed_contracts_map(new_block)
+    new_proposed_contracts = Map.merge(new_block_proposed_contracts, proposed_contracts)
+
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
@@ -175,7 +195,8 @@ defmodule Aecore.Chain.Worker do
 
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
-                              txs_index: new_txs_index}
+                              txs_index: new_txs_index,
+                              proposed_contracts: new_proposed_contracts}
     if top_height < new_block.header.height do
       Persistence.batch_write(%{:chain_state => new_chain_state,
                                 :block => %{new_block_hash => new_block},
@@ -202,6 +223,23 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  def handle_call(:proposed_contracts, _from, %{proposed_contracts: proposed_contracts} = state) do
+    {:reply, proposed_contracts, state}
+  end
+
+  def handle_call(:lowest_valid_nonce, _from, %{chain_states: chain_states, top_hash: top_hash} = state) do
+    {:ok, pubkey} = Keys.pubkey()
+    chain_state = chain_states[top_hash]
+    lowest_valid_nonce =
+      if Map.has_key?(chain_state, pubkey) do
+        chain_state[pubkey].nonce + 1
+      else
+        1
+      end
+
+    {:reply, lowest_valid_nonce, state}
   end
 
   def handle_info(:timeout, state) do
@@ -255,6 +293,16 @@ defmodule Aecore.Chain.Worker do
     Map.merge(current_txs_index, new_block_txs_index,
       fn(_, current_list, new_block_list) ->
         current_list ++ new_block_list
+      end)
+  end
+
+  defp generate_proposed_contracts_map(block) do
+    Enum.reduce(block.txs, %{}, fn(tx, acc) ->
+        if(match?(%ContractProposalTxData{}, tx.data)) do
+          Map.put(acc, SignedTx.hash_tx(tx), tx)
+        else
+          acc
+        end
       end)
   end
 
