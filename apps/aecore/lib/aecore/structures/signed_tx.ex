@@ -6,9 +6,10 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.ContractTx
 
   @type t :: %SignedTx{
-    data: TxData.t(),
+    data: TxData.t() | ContractTx.t() ,
     signature: binary()
   }
 

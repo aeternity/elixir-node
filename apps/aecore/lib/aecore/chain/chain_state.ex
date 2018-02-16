@@ -6,12 +6,15 @@ defmodule Aecore.Chain.ChainState do
 
   require Logger
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.ContractTx
+  alias Aecore.Structures.ContractProposalTx
+  alias Aecore.Structures.ContractSignTx
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height) 
+      apply_transaction_on_state!(transaction, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -22,13 +25,13 @@ defmodule Aecore.Chain.ChainState do
       SignedTx.is_coinbase?(transaction) ->
         transaction_in!(chain_state,
                         block_height,
-                        transaction.data.to_acc, 
+                        transaction.data.to_acc,
                         transaction.data.value,
                         transaction.data.lock_time_block)
       transaction.data.from_acc != nil ->
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
-        end 
+        end
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,
@@ -36,12 +39,28 @@ defmodule Aecore.Chain.ChainState do
                             transaction.data.nonce,
                             -1)
         |> transaction_in!(block_height,
-                           transaction.data.to_acc, 
+                           transaction.data.to_acc,
                            transaction.data.value,
                            transaction.data.lock_time_block)
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
+  end
+
+  def apply_contract_transaction_on_state!(%SignedTx{data: %ContractProposalTx{}} =
+    transaction, chain_state) do
+    deduct_from_account_state!(chain_state,
+      transaction.contract_hash,
+      -transaction.fee,
+      transaction.nonce)
+  end
+
+  def apply_contract_transaction_on_state!(%SignedTx{data: %ContractSignTx{}} =
+    transaction, chain_state) do
+    deduct_from_account_state!(chain_state,
+      transaction.contract_hash,
+      -transaction.fee,
+      transaction.nonce)
   end
 
   @doc """
@@ -135,9 +154,21 @@ defmodule Aecore.Chain.ChainState do
       throw {:error, "Nonce too small"}
     end
 
-    chain_state 
+    chain_state
     |> Map.put(account, %{account_state | nonce: nonce})
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
+  defp deduct_from_account_state!(chain_state, account, value, nonce) do
+    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
+    cond do
+      account_state.balance + value < 0 ->
+        throw {:error, "Negative balance"}
+      account_state.nonce >= nonce ->
+        throw {:error, "Nonce too small"}
+      true ->
+        new_balance = account_state.balance + value
+        Map.put(chain_state, account, %{account_state | balance: new_balance})
+    end
+  end
 end
