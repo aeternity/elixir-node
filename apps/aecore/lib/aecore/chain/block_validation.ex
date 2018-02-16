@@ -10,6 +10,9 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
 
+  @last_blocks_count 10
+  @hour 3_600_000
+
   @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
@@ -64,6 +67,7 @@ defmodule Aecore.Chain.BlockValidation do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
     block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
+
     cond do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
@@ -182,21 +186,21 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_timestamp(Block.t()) :: boolean()
   defp valid_header_timestamp(%Block{header: new_block_header}) do
-    case new_block_header.timestamp <= :os.system_time() + 3_600_000 do
+    case new_block_header.timestamp <= System.system_time(:milliseconds) + @hour do
       true ->
-        top_block = Chain.top_block()
-        last_blocks = Chain.get_blocks(top_block, 10)
+        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @last_blocks_count)
 
         last_blocks_timestamps =
-          Enum.reduce(last_blocks, [], fn block, acc -> acc = acc ++ [block.header.timestamp] end)
+          for block <- last_blocks, do: block.header.timestamp
 
-        average = Enum.sum(last_blocks) / 10
+        avg = 
+          if Enum.empty?(last_blocks_timestamps) do
+            0
+          else
+            Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)  
+          end
 
-        if new_block_header.timestamp > average do
-          true
-        else
-          false
-        end
+        new_block_header.timestamp >= avg
 
       false ->
         false
