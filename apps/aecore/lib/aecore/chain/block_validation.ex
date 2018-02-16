@@ -166,7 +166,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(Block.t()) :: integer()
+  @spec sum_coinbase_transactions(Block.t()) :: integer()
   defp sum_coinbase_transactions(block) do
     txs_list_without_oracle_txs = Enum.filter(block.txs, fn(tx) ->
         match?(%SpendTx{}, tx.data)
