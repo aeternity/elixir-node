@@ -1,6 +1,6 @@
 defmodule ASTNodeUtils do
 
-  def validate_variable_value!(id, type, value, scope) do
+  def validate_variable_value!(id, type, value, _scope) do
     hex_regex = ~r{[0-9a-fA-F]+}
     cond do
       type == 'Int' && !(is_integer(value)) ->

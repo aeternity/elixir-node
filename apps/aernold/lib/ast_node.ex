@@ -48,10 +48,9 @@ defmodule ASTNode do
     {extracted_value, scope}
   end
 
-  def evaluate({:def_tuple, {_, id}, {_, type}, value}, {_prev_val, scope}) do
-    IO.inspect("def_tuple")
-    tuple_values = if value != :{} do
-      Enum.reduce(value, [], fn(values, acc) -> [elem(evaluate(values, {nil, scope}), 0) | acc] end)
+  def evaluate({:def_tuple, {_, id}, {_, type}, values}, {_prev_val, scope}) do
+    tuple_values = if values != :empty do
+      Enum.reduce(values, [], fn(value, acc) -> [elem(evaluate(value, {nil, scope}), 0) | acc] end)
       |> Enum.reverse
       |> List.to_tuple
     else
@@ -66,8 +65,8 @@ defmodule ASTNode do
   def evaluate({:decl_list, {_, id}, {_, type}, {_, list_type}}, {_prav_val, scope}) do
     {default_value, _} = evaluate(type, {nil, scope})
 
-    if type == 'List' do
-      scope = Map.put(scope, id, %{type: {type, list_type}, value: default_value})
+    scope = if type == 'List' do
+      Map.put(scope, id, %{type: {type, list_type}, value: default_value})
     else
       throw ({:error, "The type of (#{id}) must be List"})
     end
@@ -75,13 +74,13 @@ defmodule ASTNode do
     {default_value, scope}
   end
 
-  def evaluate({:def_list, {_, id}, {_, type}, {_, list_type}, value}, {_prev_val, scope}) do
-    if type == 'List' do
-      list_values = if value != :empty do
-        Enum.reduce(value, [], fn(values, acc) ->
-          {curr_value, _} = evaluate(values, {nil, scope})
+  def evaluate({:def_list, {_, id}, {_, type}, {_, list_type}, values}, {_prev_val, scope}) do
+    list_values = if type == 'List' do
+      if values != :empty do
+        Enum.reduce(values, [], fn(value, acc) ->
+          {curr_value, _} = evaluate(value, {nil, scope})
           if ASTNodeUtils.validate_variable_value!(id, list_type, curr_value, scope) == :ok do
-            [elem(evaluate(values, {nil, scope}), 0) | acc]
+            [elem(evaluate(value, {nil, scope}), 0) | acc]
           end
         end)
         |> Enum.reverse
@@ -291,6 +290,29 @@ defmodule ASTNode do
     {balance, scope}
   end
 
+  def evaluate({:func_call, {_, 'elem'}, {data_struct, index}}, {_prev_val, scope}) do
+    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
+
+    result = cond do
+      is_tuple(extracted_data_struct) == true -> elem(extracted_data_struct, extracted_index)
+      is_list(extracted_data_struct) == true -> Enum.at(extracted_data_struct, extracted_index)
+    end
+
+    {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'size'}, {data_struct}}, {_prev_val, scope}) do
+    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+
+    result = cond do
+      is_tuple(extracted_data_struct) == true -> tuple_size(extracted_data_struct)
+      is_list(extracted_data_struct) == true -> Enum.count(extracted_data_struct)
+    end
+
+    {result, scope}
+  end
+
   def evaluate({:func_definition, {_, id}, _, _} = func, {_prev_val, scope}) do
     {nil, Map.put(scope, id, func)}
   end
@@ -359,8 +381,35 @@ defmodule ASTNode do
     {string, scope}
   end
 
+  def evaluate({:tuple, values}, {_, scope}) do
+    tuple_values = if values != :empty do
+      Enum.reduce(values, [], fn(value, acc) -> [elem(evaluate(value, {nil, scope}), 0) | acc] end)
+      |> Enum.reverse
+      |> List.to_tuple
+    else
+      {}
+    end
+
+    {tuple_values, scope}
+  end
+
   def evaluate('Tuple', {_, scope}) do
     {{}, scope}
+  end
+
+  #TODO: make independat lists homogenous as well
+  def evaluate({:list, values}, {_, scope}) do
+    list_values = if values != :empty do
+      Enum.reduce(values, [], fn(value, acc) ->
+        {curr_value, _} = evaluate(value, {nil, scope})
+        [elem(evaluate(value, {nil, scope}), 0) | acc]
+      end)
+      |> Enum.reverse
+    else
+      []
+    end
+
+    {list_values, scope}
   end
 
   def evaluate('List', {_, scope}) do
