@@ -273,14 +273,23 @@ defmodule Aecore.Chain.Worker do
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
-      case(GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-        {:error, _} -> blocks_acc
-        block ->
-          updated_blocks_acc = [block | blocks_acc]
-          prev_block_hash = block.header.prev_hash
-          next_count = count - 1
+      next_attempt = fn(block) -> get_blocks([block | blocks_acc],
+                                             block.header.prev_hash,
+                                             final_block_hash, count - 1) end
 
-          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+      ## At first we are making attempt to get the block from the chain state.
+      ## If there is no such block then we check into the db.
+      case (GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
+        {:error, _} ->
+          case Persistence.get_block_by_hash(next_block_hash) do
+            {:ok, block} ->
+              next_attempt.(block)
+            _ ->
+              blocks_acc
+          end
+
+        block ->
+          next_attempt.(block)
       end
     else
       blocks_acc
