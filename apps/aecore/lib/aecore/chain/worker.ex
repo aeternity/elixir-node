@@ -167,7 +167,7 @@ defmodule Aecore.Chain.Worker do
 
     updated_blocks_map  = Map.put(blocks_map, new_block_hash, new_block)
     hundred_blocks_map  =
-    if Kernel.map_size(updated_blocks_map) > 100 do
+    if Kernel.map_size(updated_blocks_map) > number_of_blocks_in_memory() do
       [{_,b} | sorted_blocks] =
         Enum.sort(updated_blocks_map,
           fn({_,b1}, {_,b2}) ->
@@ -231,7 +231,7 @@ defmodule Aecore.Chain.Worker do
       end
 
     blocks_map =
-      case Persistence.get_blocks(100) do
+      case Persistence.get_blocks(number_of_blocks_in_memory()) do
         blocks_map when blocks_map == %{} -> state.blocks_map
         blocks_map -> blocks_map
       end
@@ -294,5 +294,9 @@ defmodule Aecore.Chain.Worker do
     else
       blocks_acc
     end
+  end
+
+  defp number_of_blocks_in_memory() do
+    Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 end
