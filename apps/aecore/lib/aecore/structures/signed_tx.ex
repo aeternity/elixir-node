@@ -7,7 +7,6 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.ContractProposalTxData
   alias Aecore.Structures.ContractCallTxData
   alias Aeutil.Serialization
 
