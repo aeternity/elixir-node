@@ -92,12 +92,12 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:block, body, _headers) do
-    response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
+    response = Poison.decode!(body)
     {:ok, response}
   end
 
   defp handle_response(:raw_blocks, body, _headers) do
-    response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
+    response = Poison.decode!(body)
     deserialized_blocks = Enum.map(
       response,
       fn(block) ->
@@ -123,8 +123,9 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:pool_txs, body, _headers) do
-    response = body
-      |> Poison.decode!(as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
+    response =
+      body
+      |> Poison.decode!()
       |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
     {:ok, response}
   end

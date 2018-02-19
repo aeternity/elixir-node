@@ -6,6 +6,8 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -231,25 +233,36 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp calculate_block_acc_txs_info(block) do
-    block_hash = BlockValidation.block_header_hash(block.header)
-    accounts = for tx <- block.txs do
-      [tx.data.from_acc, tx.data.to_acc]
+  block_hash = BlockValidation.block_header_hash(block.header)
+  accounts =
+    for tx <- block.txs do
+      case tx.data do
+        %SpendTx{} ->
+          [tx.data.from_acc, tx.data.to_acc]
+        %DataTx{} ->
+          tx.data.from_acc
+      end
     end
-    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-    for account <- accounts_unique, into: %{} do
-      acc_txs = Enum.filter(block.txs, fn(tx) ->
-          tx.data.from_acc == account || tx.data.to_acc == account
-        end)
-      tx_hashes = Enum.map(acc_txs, fn(tx) ->
-          tx_bin = Serialization.pack_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
-        end)
-      tx_tuples = Enum.map(tx_hashes, fn(hash) ->
-          {block_hash, hash}
-        end)
-      {account, tx_tuples}
-    end
+  accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+  for account <- accounts_unique, into: %{} do
+    acc_txs = Enum.filter(block.txs, fn(tx) ->
+        case tx.data do
+          %SpendTx{} ->
+            tx.data.from_acc == account || tx.data.to_acc == account
+          %DataTx{} ->
+            tx.data.from_acc == account
+        end
+      end)
+    tx_hashes = Enum.map(acc_txs, fn(tx) ->
+        tx_bin = Serialization.pack_binary(tx)
+        :crypto.hash(:sha256, tx_bin)
+      end)
+    tx_tuples = Enum.map(tx_hashes, fn(hash) ->
+        {block_hash, hash}
+      end)
+    {account, tx_tuples}
   end
+end
 
   defp update_txs_index(current_txs_index, new_block_txs_index) do
     Map.merge(current_txs_index, new_block_txs_index,
