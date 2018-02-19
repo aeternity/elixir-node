@@ -6,6 +6,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aewallet.Signing
+  alias Aeutil.Serialization
 
   @typedoc "Structure of the SignedTx module"
   @type t :: %SignedTx{
@@ -52,4 +53,10 @@ defmodule Aecore.Structures.SignedTx do
   def sign_tx(tx, _priv_key) do
     {:error, "Wrong Transaction data structure"}
   end
+
+  @spec hash_tx(SignedTx.t()) :: binary()
+  def hash_tx(%SignedTx{data: data}) do
+    :crypto.hash(:sha256, Serialization.pack_binary(data))
+  end
+
 end

@@ -5,6 +5,7 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -73,7 +74,7 @@ defmodule Aecore.Chain.ChainState do
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
       for {account, data} <- chain_state do
-        {account, :erlang.term_to_binary(data)}
+        {account, Serialization.pack_binary(data)}
       end
 
     if Enum.empty?(merkle_tree_data) do

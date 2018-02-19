@@ -2,7 +2,8 @@ defmodule EpochElixir.Mixfile do
   use Mix.Project
 
   def project do
-    [apps_path: "apps",
+    [app: :elixir_research,
+     apps_path: "apps",
      version: "0.1.0",
      elixir: "~> 1.5.1",
      build_embedded: Mix.env == :prod,
@@ -39,7 +40,8 @@ defmodule EpochElixir.Mixfile do
      {:excoveralls, "~> 0.7", only: :test},
      {:uuid, "~> 1.1"},
      {:distillery, "~> 1.5", runtime: false},
-     {:aewallet, github: "aeternity/elixir-wallet"}
+     {:aewallet, github: "aeternity/elixir-wallet"},
+     {:msgpax, "~> 2.0"}
     ]
   end
 end

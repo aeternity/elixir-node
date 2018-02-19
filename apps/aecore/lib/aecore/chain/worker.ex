@@ -13,6 +13,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -240,7 +241,7 @@ defmodule Aecore.Chain.Worker do
           tx.data.from_acc == account || tx.data.to_acc == account
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
-          tx_bin = :erlang.term_to_binary(tx)
+          tx_bin = Serialization.pack_binary(tx)
           :crypto.hash(:sha256, tx_bin)
         end)
       tx_tuples = Enum.map(tx_hashes, fn(hash) ->

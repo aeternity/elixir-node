@@ -19,6 +19,7 @@ defmodule Aecore.Miner.Worker do
   alias Aeutil.Bits
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aeutil.Serialization
 
   require Logger
 

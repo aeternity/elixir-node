@@ -2,7 +2,7 @@ defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-
+  alias Aeutil.Serialization
   alias Aecore.Structures.SpendTx
 
   @type t :: %SpendTx{
@@ -34,11 +34,6 @@ defmodule Aecore.Structures.SpendTx do
                   nonce: nonce,
                   fee: fee,
                   lock_time_block: lock_time_block}}
-  end
-
-  @spec hash_tx(SpendTx.t()) :: binary()
-  def hash_tx(tx) do
-    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
 
 end

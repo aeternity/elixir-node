@@ -13,6 +13,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
+  alias Aeutil.Serialization
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -72,7 +73,7 @@ defmodule Aecore.Txs.Pool.Worker do
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
       true ->
-        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+        updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
@@ -85,7 +86,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)))
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
     {:reply, :ok, updated_pool}
   end
 
@@ -113,7 +114,7 @@ defmodule Aecore.Txs.Pool.Worker do
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
         |> SpendTx.new()
-        |> SpendTx.hash_tx()
+        |> :erlang.term_to_binary()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end

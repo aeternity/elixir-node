@@ -24,7 +24,7 @@ defmodule AehttpclientTest do
     AehttpclientTest.add_txs_to_pool(wallet.pass)
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
-                                        Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
+                                        Base.decode16!("081D8520AE7E1FAE2886DA06948E8F1D1E71144E74657C74A6D18D4F59285071")})
     assert {:ok, _} = Client.get_peers("localhost:4000")
     assert Enum.count(Client.get_account_txs({"localhost:4000", hex_acc})
     |> elem(1)) == 2
