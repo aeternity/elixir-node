@@ -171,7 +171,7 @@ defmodule Aecore.Chain.Worker do
       [{_,b} | sorted_blocks] =
         Enum.sort(updated_blocks_map,
           fn({_,b1}, {_,b2}) ->
-            b1.header.timestamp < b2.header.timestamp
+            b1.header.height < b2.header.height
           end)
       Logger.info("Block ##{b.header.height} has been removed from memory")
       Enum.into(sorted_blocks, %{})
