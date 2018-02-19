@@ -123,7 +123,10 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:pool_txs, body, _headers) do
-    response = Poison.decode!(body)
+    response =
+      body
+      |> Poison.decode!()
+      |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
     {:ok, response}
   end
 

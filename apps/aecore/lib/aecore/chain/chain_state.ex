@@ -1,4 +1,3 @@
-
 defmodule Aecore.Chain.ChainState do
   @moduledoc """
   Module used for calculating the block and chain states.

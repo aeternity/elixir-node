@@ -9,6 +9,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
 
@@ -275,6 +276,13 @@ defmodule MultipleTransactionsTest do
     assert 0 == Chain.chain_state[account1_pub_key].balance
     assert 150 == Chain.chain_state[account2_pub_key].balance
     assert 150 == Chain.chain_state[account3_pub_key].balance
+
+    tx15 = DataTx.create(:poe, %{some: "data"}, 5, 1)
+    assert :ok = Pool.add_transaction(tx15)
+
+    :ok = Miner.mine_sync_block_to_chain
+    :ok = Miner.mine_sync_block_to_chain
+    Pool.get_and_empty_pool()
   end
 
   @tag timeout: 10_000_000
