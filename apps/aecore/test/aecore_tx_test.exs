@@ -10,6 +10,7 @@ defmodule AecoreTxTest do
   alias Aecore.Structures.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
+  alias Aeutil.Serialization
 
   setup wallet do
     [
@@ -47,7 +48,7 @@ defmodule AecoreTxTest do
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     signature = signed_tx.signature
-    message = :erlang.term_to_binary(signed_tx.data)
+    message = Serialization.pack_binary(signed_tx.data)
     assert :true = Signing.verify(message, signature, from_acc)
   end
 
@@ -60,7 +61,7 @@ defmodule AecoreTxTest do
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     signature = signed_tx.signature
-    message = :erlang.term_to_binary(signed_tx.data)
+    message = Serialization.pack_binary(signed_tx.data)
     assert :true = Signing.verify(message, signature, from_acc)
   end
 
