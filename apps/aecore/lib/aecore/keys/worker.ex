@@ -47,6 +47,15 @@ defmodule Aecore.Keys.Worker do
     %SignedTx{data: data, signature: signature}
   end
 
+  @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, SignedTx.t()}
+  def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
+    {:ok, from_acc} = pubkey()
+    %{data: tx_data} = SpendTx.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
+    {:ok, signature} = sign(tx_data)
+    signed_tx = %SignedTx{data: tx_data, signature: signature}
+    {:ok, signed_tx}
+  end
+
   @spec sign(term()) :: {:ok, binary()}
   def sign(msg) do
     GenServer.call(__MODULE__, {:sign, msg})

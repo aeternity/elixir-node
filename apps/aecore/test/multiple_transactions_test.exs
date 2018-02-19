@@ -440,7 +440,7 @@ defmodule MultipleTransactionsTest do
   defp create_signed_tx(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {from_acc_pub_key, from_acc_priv_key} = from_acc
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
-    {:ok, tx_data} = SpendTx.create(from_acc_pub_key, to_acc_pub_key, value,
+    %{data: tx_data} = SpendTx.create(from_acc_pub_key, to_acc_pub_key, value,
                                    nonce, fee, lock_time_block)
     {:ok, signature} = Keys.sign(tx_data, from_acc_priv_key)
 

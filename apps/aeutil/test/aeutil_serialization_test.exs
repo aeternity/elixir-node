@@ -10,7 +10,8 @@ defmodule AeutilSerializationTest do
     serialized_block = Serialization.block(block, :serialize)
     assert check_header_values(serialized_block)
     assert check_transactions(serialized_block)
-    assert Serialization.block(serialized_block, :deserialize) == block
+    block_map = get_block_map()
+    assert Serialization.block(block_map, :deserialize) == block
   end
 
   def check_header_values(block) do
@@ -69,4 +70,18 @@ defmodule AeutilSerializationTest do
       11, 212, 44>>, value: 100}, signature: nil}]}
   end
 
+  def get_block_map() do
+    %{"header" => %{"chain_state_hash" => "1EDAC277262822AEDE54B5CAF7C45E40096DDE1C71AFCE7117A1386D32A33E22",
+    "difficulty_target" => 11, "height" => 105, "nonce" => 707,
+    "pow_evidence" => nil,
+    "prev_hash" => "007AA00E493DAC7CF1E9B65B35EEE9D08A1A3BD357F59547A954795FB39608CB",
+    "timestamp" => 1508834903252,
+    "txs_hash" => "01655DD17C16C5ACDEF6D21CE4F49BF803B3FA69D055D9D7F49657D6E147A0F0",
+    "version" => 1},
+    "txs" => [%{"data" => %{"fee" => nil, "from_acc" => nil,
+       "lock_time_block" => nil, "nonce" => 743183534114,
+       "to_acc" => "04796F1CC043603B81E93AA017AA95E0105FCB8AAF14ADEC0B77F7EFE5D6F93ED601A4635FA78D4BCD9AC7F78DF098EB01112C45B5247BB4AA7D5DEEB9D40BD42C",
+       "value" => 100}, "signature" => nil}]}
+
+  end
 end
