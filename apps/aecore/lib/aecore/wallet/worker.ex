@@ -6,6 +6,7 @@ defmodule Aecore.Wallet.Worker do
   use GenServer
 
   alias Aewallet.Wallet
+  alias Aewallet.Encoding
 
   @typedoc "Options for network"
   @type opts :: :mainnet | :testnet
@@ -42,12 +43,12 @@ defmodule Aecore.Wallet.Worker do
 
   @spec get_public_key() :: binary()
   def get_public_key() do
-    GenServer.call(__MODULE__, {:get_pub_key, {get_aewallet_pass(), :mainnet}})
+    get_public_key(get_aewallet_pass())
   end
 
   @spec get_public_key(String.t()) :: binary()
   def get_public_key(password) do
-    GenServer.call(__MODULE__, {:get_pub_key, {password, :mainnet}})
+    get_public_key(password, :mainnet)
   end
 
   @spec get_public_key(String.t(), opts()) :: binary()
@@ -57,17 +58,29 @@ defmodule Aecore.Wallet.Worker do
 
   @spec get_private_key() :: binary()
   def get_private_key() do
-    GenServer.call(__MODULE__, {:get_priv_key, {get_aewallet_pass(), :mainnet}})
+    get_private_key(get_aewallet_pass())
   end
 
   @spec get_private_key(String.t()) :: binary()
   def get_private_key(password) do
-    GenServer.call(__MODULE__, {:get_priv_key, {password, :mainnet}})
+    get_private_key(password, :mainnet)
   end
 
   @spec get_private_key(String.t(), opts()) :: binary()
   def get_private_key(password, network) do
     GenServer.call(__MODULE__, {:get_priv_key, {password, network}})
+  end
+
+  def encode(pub_key, :ae) do
+    GenServer.call(__MODULE__, {:bech32_encode, {pub_key, :ae}})
+  end
+
+  def encode(pub_key, :btc) do
+    GenServer.call(__MODULE__, {:bech32_encode, {pub_key, :btc}})
+  end
+
+  def decode(formatted_key) do
+    GenServer.call(__MODULE__, {:bech32_decode, formatted_key})
   end
 
   ## Server Callbacks
@@ -86,6 +99,16 @@ defmodule Aecore.Wallet.Worker do
     {:ok, priv_key} =
       Wallet.get_private_key(get_file_name(path), password, network: network)
     {:reply, priv_key, state}
+  end
+
+  def handle_call({:bech32_encode, {pub_key, prefix}}, _from, state) do
+    formatted_key = Encoding.encode(pub_key, prefix)
+    {:reply, formatted_key, state}
+  end
+
+  def handle_call({:bech32_decode, formatted_key}, _from, state) do
+    {:ok, pub_key} = Encoding.decode(formatted_key)
+    {:reply, pub_key, state}
   end
 
   ## Inner functions
