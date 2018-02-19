@@ -33,4 +33,24 @@ defmodule Aecore.Structures.SignedTx do
     tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
   end
 
+  @spec is_spend_tx(map()) :: boolean()
+  def is_spend_tx(tx) do
+    Map.has_key?(tx, "from_acc") && Map.has_key?(tx, "to_acc") &&
+    Map.has_key?(tx, "value") && Map.has_key?(tx, "nonce") &&
+    Map.has_key?(tx, "fee") && Map.has_key?(tx, "lock_time_block")
+  end
+
+  def is_contract_proposal_tx(tx) do
+    Map.has_key?(tx, "name") && Map.has_key?(tx, "contract_hash") &&
+    Map.has_key?(tx, "participants") && Map.has_key?(tx, "from_acc") &&
+    Map.has_key?(tx, "ttl") && Map.has_key?(tx, "fee") &&
+    Map.has_key?(tx, "nonce")
+  end
+
+  def is_contract_sign_tx(tx) do
+    Map.has_key?(tx, "signature") && Map.has_key?(tx, "pub_key") &&
+    Map.has_key?(tx, "contract_hash") && Map.has_key?(tx, "fee") &&
+    Map.has_key?(tx, "nonce")
+  end
+
 end
