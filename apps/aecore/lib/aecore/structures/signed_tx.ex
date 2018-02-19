@@ -32,7 +32,7 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%{data: data, signature: signature}) do
     data.value >= 0 && data.fee >= 0 &&
-      Signing.verify(:erlang.term_to_binary(data), signature, data.from_acc)
+      Signing.verify(Serialization.pack_binary(data), signature, data.from_acc)
   end
 
   @doc """
@@ -47,7 +47,7 @@ defmodule Aecore.Structures.SignedTx do
   """
   @spec sign_tx(SpendTx.t(), binary()) :: {:ok, SignedTx.t()}
   def sign_tx(%SpendTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
-    signature = Signing.sign(:erlang.term_to_binary(tx), priv_key)
+    signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
   def sign_tx(tx, _priv_key) do
