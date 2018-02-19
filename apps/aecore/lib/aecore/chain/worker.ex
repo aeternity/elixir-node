@@ -168,13 +168,13 @@ defmodule Aecore.Chain.Worker do
     updated_blocks_map  = Map.put(blocks_map, new_block_hash, new_block)
     hundred_blocks_map  =
     if Kernel.map_size(updated_blocks_map) > number_of_blocks_in_memory() do
-      [{_,b} | sorted_blocks] =
+      [genesis_block, {_, b} | sorted_blocks] =
         Enum.sort(updated_blocks_map,
           fn({_,b1}, {_,b2}) ->
             b1.header.height < b2.header.height
           end)
       Logger.info("Block ##{b.header.height} has been removed from memory")
-      Enum.into(sorted_blocks, %{})
+      Enum.into([genesis_block | sorted_blocks], %{})
     else
       updated_blocks_map
     end
