@@ -6,6 +6,7 @@ defmodule Aecore.Structures.ContractCallTxData do
   require Logger
 
   @type t :: %ContractCallTxData {
+    caller: binary(),
     contract_proposal_tx_hash: binary(),
     contract_params: String.t(),
     fee: non_neg_integer(),
@@ -13,6 +14,7 @@ defmodule Aecore.Structures.ContractCallTxData do
   }
 
   defstruct [
+    :caller,
     :contract_proposal_tx_hash,
     :contract_params,
     :fee,
@@ -21,14 +23,15 @@ defmodule Aecore.Structures.ContractCallTxData do
 
   use ExConstructor
 
-  @spec create(binary(), String.t(), integer(), integer()) :: t
-  def create(contract_proposal_tx_hash, contract_params, fee, nonce) do
+  @spec create(binary(), binary(), String.t(), integer(), integer()) :: t
+  def create(caller, contract_proposal_tx_hash, contract_params, fee, nonce) do
     proposed_contracts = Chain.proposed_contracts()
-    if !Map.has_key(proposed_contracts, contract_proposal_tx_hash) do
+    if !Map.has_key?(proposed_contracts, contract_proposal_tx_hash) do
       Logger.error("No contract proposed with that hash")
       :error
     else
       {:ok, %ContractCallTxData{
+          caller: caller,
           contract_proposal_tx_hash: contract_proposal_tx_hash,
           contract_params: contract_params,
           fee: fee,
