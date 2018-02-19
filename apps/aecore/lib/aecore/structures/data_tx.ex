@@ -5,13 +5,14 @@ defmodule  Aecore.Structures.DataTx do
 
   alias Aecore.Structures.DataTx
   alias Aecore.Keys.Worker, as: Keys
-   @type t :: %DataTx{
+
+  @type t :: %DataTx{
     type: atom(),
     payload: any(),
     from_acc: binary(),
-    fee: integer(),
+    fee: non_neg_integer(),
     nonce: non_neg_integer()
-   }
+  }
 
   @doc """
   Definition of Aecore DataT structure
@@ -27,20 +28,15 @@ defmodule  Aecore.Structures.DataTx do
   defstruct [:type, :payload, :from_acc , :fee, :nonce]
   use ExConstructor
 
-#  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, DataTx.t()}
-  def create(type, payload, from_acc, fee, nonce) do
-     tx_data =
-       %DataTx{type: type,
-               payload: payload,
-               from_acc: from_acc,
-               fee: fee,
-               nonce: nonce}
+  @spec create(atom(), map(), integer(), integer()) :: {:ok, DataTx.t()}
+  def create(type, payload, fee, nonce) do
+    {:ok, pubkey} = Keys.pubkey()
+    tx_data =
+      %DataTx{type: type,
+              payload: payload,
+              from_acc: pubkey,
+              fee: fee,
+              nonce: nonce}
     Keys.sign_tx(tx_data)
   end
-
-  @spec hash_tx(DataTx.t()) :: binary()
-  def hash_tx(tx) do
-    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
-  end
-
 end

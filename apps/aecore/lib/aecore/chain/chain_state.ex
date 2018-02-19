@@ -1,3 +1,4 @@
+
 defmodule Aecore.Chain.ChainState do
   @moduledoc """
   Module used for calculating the block and chain states.
@@ -5,6 +6,8 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aeutil.Serialization
 
   require Logger
@@ -15,16 +18,23 @@ defmodule Aecore.Chain.ChainState do
               locked: [%{amount: integer(), block: integer()}],
               nonce: integer()}}
 
-  @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) :: account_chainstate()
+  @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) ::  account_chainstate()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
-    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height)
-    end)
-    |> update_chain_state_locked(block_height)
-    txs
-    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height)
+    |> Enum.reduce(chain_state, fn(tx, chain_state) ->
+      try do
+        case tx do
+          %SignedTx{data: %SpendTx{}} ->
+            apply_transaction_on_state!(tx, chain_state, block_height)
+          %SignedTx{data: %DataTx{}} ->
+            deduct_from_account_state!(chain_state, tx.data.from_acc,
+                                       -tx.data.fee, tx.data.nonce)
+        end
+      catch
+        {:error, message} ->
+          Logger.error(fn -> message end)
+          chain_state
+      end
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -42,16 +52,6 @@ defmodule Aecore.Chain.ChainState do
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
         end
-        chain_state
-        |> transaction_out!(block_height,
-                            transaction.data.from_acc,
-                            -(transaction.data.value + transaction.data.fee),
-                            transaction.data.nonce,
-                            -1)
-        |> transaction_in!(block_height,
-                           transaction.data.to_acc,
-                           transaction.data.value,
-                           transaction.data.lock_time_block)
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,
@@ -162,4 +162,16 @@ defmodule Aecore.Chain.ChainState do
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
+  def deduct_from_account_state!(chain_state, account, value, nonce) do
+    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
+    cond do
+      account_state.balance + value < 0 ->
+        throw {:error, "Negative balance"}
+      account_state.nonce >= nonce ->
+        throw {:error, "Nonce too small"}
+      true ->
+        new_balance = account_state.balance + value
+        Map.put(chain_state, account, %{account_state | balance: new_balance})
+    end
+  end
 end

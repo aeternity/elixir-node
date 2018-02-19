@@ -5,6 +5,8 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
@@ -82,7 +84,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.t) :: binary()
+  @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = Serialization.pack_binary(header)
     :crypto.hash(:sha256, block_header_bin)
@@ -117,7 +119,16 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
-      {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
+      case tx do
+        %SignedTx{data: %SpendTx{}} ->
+          {true, ChainState.apply_transaction_on_state!(tx, chain_state,
+                                                        block_height)}
+        %SignedTx{data: %DataTx{}} ->
+          {true, ChainState.deduct_from_account_state!(chain_state,
+                                                       tx.data.from_acc,
+                                                       -tx.data.fee,
+                                                       tx.data.nonce)}
+      end
     catch
       {:error, _} -> {false, chain_state}
     end

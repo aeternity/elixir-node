@@ -7,7 +7,7 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.SignedTx
 
   @type t :: %Block{
-    header: Header.t,
+    header: Header.t(),
     txs: list(SignedTx.t())
   }
 
@@ -22,7 +22,7 @@ defmodule Aecore.Structures.Block do
     @current_block_version
   end
 
-  @spec genesis_header() :: Header.t
+  @spec genesis_header() :: Header.t()
   defp genesis_header() do
     h = Application.get_env(:aecore, :pow)[:genesis_header]
     struct(Header, h)
