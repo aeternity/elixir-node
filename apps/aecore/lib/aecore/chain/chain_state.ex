@@ -5,6 +5,9 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.ContractProposalTxData
+  alias Aecore.Structures.ContractCallTxData
   alias Aeutil.Serialization
 
   require Logger
@@ -30,7 +33,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) :: account_chainstate()
-  def apply_transaction_on_state!(transaction, chain_state, block_height) do
+  def apply_transaction_on_state!(%SignedTx{data: %SpendTx{}} = transaction, chain_state, block_height) do
     cond do
       SignedTx.is_coinbase?(transaction) ->
         transaction_in!(chain_state,
@@ -42,16 +45,7 @@ defmodule Aecore.Chain.ChainState do
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
         end
-        chain_state
-        |> transaction_out!(block_height,
-                            transaction.data.from_acc,
-                            -(transaction.data.value + transaction.data.fee),
-                            transaction.data.nonce,
-                            -1)
-        |> transaction_in!(block_height,
-                           transaction.data.to_acc,
-                           transaction.data.value,
-                           transaction.data.lock_time_block)
+
         chain_state
         |> transaction_out!(block_height,
                             transaction.data.from_acc,
@@ -65,6 +59,28 @@ defmodule Aecore.Chain.ChainState do
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
+  end
+
+  @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) :: account_chainstate()
+  def apply_transaction_on_state!(%SignedTx{data: %ContractProposalTxData{}} =
+                                  transaction, chain_state, block_height) do
+    transaction_out!(chain_state,
+                     block_height,
+                     transaction.data.creator,
+                     -transaction.data.fee,
+                     transaction.data.nonce,
+                     -1)
+  end
+
+  @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) :: account_chainstate()
+  def apply_transaction_on_state!(%SignedTx{data: %ContractCallTxData{}} =
+                                  transaction, chain_state, block_height) do
+    transaction_out!(chain_state,
+                     block_height,
+                     transaction.data.caller,
+                     -transaction.data.fee,
+                     transaction.data.nonce,
+                     -1)
   end
 
   @doc """

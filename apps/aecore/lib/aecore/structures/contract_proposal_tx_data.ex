@@ -18,7 +18,7 @@ defmodule Aecore.Structures.ContractProposalTxData do
 
   use ExConstructor
 
-  @spec create(binary(), string(), integer(), integer()) :: t
+  @spec create(binary(), String.t(), integer(), integer()) :: t
   def create(creator, contract, fee, nonce) do
     {:ok, %ContractProposalTxData{
         creator: creator,

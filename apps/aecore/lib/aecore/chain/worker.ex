@@ -6,6 +6,8 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.ContractProposalTxData
   alias Aecore.Structures.ContractCallTxData
   alias Aecore.Chain.ChainState
@@ -176,6 +178,8 @@ defmodule Aecore.Chain.Worker do
                   %{blocks_map: blocks_map, chain_states: chain_states,
                     txs_index: txs_index, proposed_contracts: proposed_contracts,
                     top_height: top_height} = state) do
+    process_contract_calls(new_block, proposed_contracts)
+
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
@@ -270,13 +274,29 @@ defmodule Aecore.Chain.Worker do
 
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
-    accounts = for tx <- block.txs do
-      [tx.data.from_acc, tx.data.to_acc]
-    end
+    accounts =
+      for tx <- block.txs do
+        case tx.data do
+          %SpendTx{} ->
+            [tx.data.from_acc, tx.data.to_acc]
+          %ContractProposalTxData{} ->
+            tx.data.creator
+          %ContractCallTxData{} ->
+            tx.data.caller
+        end
+      end
+
     accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
     for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
-          tx.data.from_acc == account || tx.data.to_acc == account
+          case tx.data do
+            %SpendTx{} ->
+              tx.data.from_acc == account || tx.data.to_acc == account
+            %ContractProposalTxData{} ->
+              tx.data.creator == account
+            %ContractCallTxData{} ->
+              tx.data.caller == account
+          end
         end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
           tx_bin = Serialization.pack_binary(tx)
@@ -304,6 +324,16 @@ defmodule Aecore.Chain.Worker do
           acc
         end
       end)
+  end
+
+  defp process_contract_calls(block, proposed_contracts) do
+    Enum.each(block.txs, fn(tx) ->
+      if(match?(%ContractCallTxData{}, tx.data)) do
+        contract_proposal_tx = Map.get(proposed_contracts, tx.data.contract_proposal_tx_hash)
+        complete_code = contract_proposal_tx.data.contract <> tx.data.contract_params
+        Aernold.parse_string(complete_code)
+      end
+    end)
   end
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do

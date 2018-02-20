@@ -4,9 +4,9 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.ContractProposalTxData
   alias Aecore.Structures.ContractCallTxData
   alias Aeutil.Serialization
 
@@ -40,8 +40,11 @@ defmodule Aecore.Structures.SignedTx do
       %SpendTx{} ->
         tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
       %ContractCallTxData{} ->
-        # TODO: add check if there is such proposed contract
-        true
+        if(Map.has_key?(Chain.proposed_contracts(), tx.data.contract_proposal_tx_hash)) do
+          true
+        else
+          false
+        end
       _ ->
         true
     end
