@@ -15,18 +15,13 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.Worker, as: Chain
 
   @tag :validation
-  test "validate new block" do
+  test "validate block header timestamp" do
     new_block = get_new_block()
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    _ = BlockValidation.calculate_and_validate_block!(
-      new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
-    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 3}}
-    assert {:error, "Incorrect height"} == catch_throw(
-      BlockValidation.calculate_and_validate_block!(
-        wrong_height_block, prev_block, get_chain_state(),
-        blocks_for_difficulty_calculation))
+    assert {:error,"Invalid header timestamp"} == catch_throw(BlockValidation.calculate_and_validate_block!(
+      new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation))
   end
 
   test "validate transactions in a block" do

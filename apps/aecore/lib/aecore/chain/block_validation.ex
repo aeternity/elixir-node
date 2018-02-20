@@ -54,7 +54,7 @@ defmodule Aecore.Chain.BlockValidation do
       difficulty != new_block.header.difficulty_target ->
         throw({:error, "Invalid block difficulty"})
 
-      !valid_header_timestamp(new_block) -> 
+      !valid_header_timestamp?(new_block) -> 
         throw({:error, "Invalid header timestamp"})
 
       true ->
@@ -184,8 +184,8 @@ defmodule Aecore.Chain.BlockValidation do
     previous_block.header.height + 1 == new_block.header.height
   end
 
-  @spec valid_header_timestamp(Block.t()) :: boolean()
-  defp valid_header_timestamp(%Block{header: new_block_header}) do
+  @spec valid_header_timestamp?(Block.t()) :: boolean()
+  defp valid_header_timestamp?(%Block{header: new_block_header}) do
     case new_block_header.timestamp <= System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
       true ->
         last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
