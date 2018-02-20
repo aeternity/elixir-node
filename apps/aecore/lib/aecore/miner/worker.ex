@@ -17,14 +17,13 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aeutil.Bits
   alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Serialization
 
   require Logger
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
+  @new_candidate_nonce_count 500
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -158,7 +157,12 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: candidate()})
   end
   defp mining(%{miner_state: :running, block_candidate: cblock} = state) do
-    cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
+    nonce = next_nonce(cblock.header.nonce)
+    cblock = case rem(nonce, @new_candidate_nonce_count) do
+      0 -> candidate()
+      _ -> cblock
+    end
+    cheader = %{cblock.header | nonce: nonce}
     cblock  = %{cblock | header: cheader}
     work = fn() -> Cuckoo.generate(cheader) end
     start_worker(work, %{state | block_candidate: cblock})
