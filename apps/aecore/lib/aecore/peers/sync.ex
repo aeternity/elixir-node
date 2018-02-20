@@ -7,6 +7,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
+  alias Aeutil.Bits
 
   require Logger
 

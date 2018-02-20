@@ -58,8 +58,8 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(String.t()) :: Block.t()
-  def get_block_by_hex_hash(hash) do
+  @spec get_block_by_bech32_hash(String.t()) :: Block.t()
+  def get_block_by_bech32_hash(hash) do
     decoded_hash = Bits.bech32_decode(hash)
     GenServer.call(__MODULE__, {:get_block, decoded_hash})
   end

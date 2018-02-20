@@ -10,11 +10,11 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    block = Chain.get_block_by_hex_hash(params["hash"])
+    block = Chain.get_block_by_bech32_hash(params["hash"])
     case (block) do
       %Block{} ->
-        block_hex_values = Serialization.block(block, :serialize)
-        json(conn, block_hex_values)
+        serialized_block = Serialization.block(block, :serialize)
+        json(conn, serialized_block)
       {:error, message} ->
         json(%{conn | status: 404}, %{error: message})
     end
