@@ -53,7 +53,14 @@ defmodule Aehttpclient.Client do
 
   @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
-    data = Serialization.tx(tx, :serialize)
+    data =
+      case tx do
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+          Serialization.tx(tx, :voting_tx, :serialize)
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+          Serialization.tx(tx, :spend_tx, :serialize)
+      end
+
     post_to_peers("new_tx", data, peers)
   end
 
@@ -129,7 +136,13 @@ defmodule Aehttpclient.Client do
   defp handleResponse(:pool_txs, body, _headers) do
     response = body
       |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
-      |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+      |> Enum.map(fn(tx) ->
+        case tx do
+          %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+            Serialization.tx(tx, :voting_tx, :deserialize)
+          %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+            Serialization.tx(tx, :spend_tx, :deserialize)
+        end end)
     {:ok, response}
   end
 

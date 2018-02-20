@@ -206,11 +206,9 @@ defmodule Aecore.Chain.Worker do
                       chain_states: updated_chain_states,
                       txs_index: new_txs_index}
     if top_height < new_block.header.height do
-      ## TODO : serialization fails thats why we commented this region
-      ## We send the block to others only if it extends the longest chain
-      ## Peers.broadcast_block(new_block)
+      Peers.broadcast_block(new_block)
       ## Broadcasting notifications for new block added to chain and new mined transaction
-      ## Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
+      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
                                       top_height: new_block.header.height}}
     else

@@ -9,6 +9,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.TxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
+  alias Aecore.VotingPrototype.Validation, as: VotingValidation
   alias Aeutil.Bits
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), map(), list(Block.t())) :: {:error, term()} | :ok
@@ -79,10 +80,8 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
     block.txs
-    |> Enum.map(fn %SignedTx{data: %VotingTx{}} = tx ->
-      ## TODO validate the voting txs
-      ## Consider creating voting validation module
-      true
+    |> Enum.map(fn %SignedTx{data: %VotingTx{data: data}} ->
+      VotingValidation.validate(%VotingTx{data: data})
       (tx) ->
         SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
     end)

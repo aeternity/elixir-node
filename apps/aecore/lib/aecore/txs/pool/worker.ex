@@ -66,11 +66,9 @@ defmodule Aecore.Txs.Pool.Worker do
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
-          # TODO fix the issues with the broadcasting and user notifications
-
           # Broadcasting notifications for new transaction in a pool(per account and every)
-          # Notify.broadcast_new_transaction_in_the_pool(tx)
-          # Peers.broadcast_tx(tx)
+          Notify.broadcast_new_transaction_in_the_pool(tx)
+          Peers.broadcast_tx(tx)
         end
       {:reply, :ok, updated_pool}
     else

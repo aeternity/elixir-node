@@ -7,6 +7,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  require Logger
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
@@ -14,8 +15,32 @@ defmodule Aeutil.Serialization do
       chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
       prev_hash: hex_binary(block.header.prev_hash, direction),
       txs_hash: hex_binary(block.header.txs_hash, direction)}
-    new_txs = Enum.map(block.txs, fn(tx) -> tx(tx, direction) end)
+    new_txs = Enum.map(block.txs, fn(tx) ->
+      case tx do
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+          tx(tx, :voting_tx, direction)
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+          tx(tx, :spend_tx, direction)
+      end end)
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
+  end
+
+  @spec tx(SignedTx.t(), atom(), :serialize | :deserialize) :: SignedTx.t()
+  def tx(tx, type, direction) do
+    case type do
+      :spend_tx ->
+        new_data = %{tx.data |
+                     from_acc: hex_binary(tx.data.from_acc, direction),
+                     to_acc: hex_binary(tx.data.to_acc, direction)}
+        new_signature = hex_binary(tx.signature, direction)
+        %SignedTx{data: TxData.new(new_data), signature: new_signature}
+      :voting_tx ->
+        new_data = %{tx.data.data |
+                     from_acc: hex_binary(tx.data.data.from_acc, direction)}
+        new_signature = hex_binary(tx.signature, direction)
+        %SignedTx{data: TxData.new(new_data), signature: new_signature}
+        _ -> Logger.error("Unidentified type")
+    end
   end
 
   @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
@@ -43,9 +68,9 @@ defmodule Aeutil.Serialization do
 
   def convert_map_keys(map,type) do
     case type do
-      :to_atom -> Map.new(map, fn {k, v} -> 
+      :to_atom -> Map.new(map, fn {k, v} ->
         if !is_atom k do {String.to_atom(k), v}  else {k, v}  end end)
-      :to_string -> Map.new(map, fn {k, v} -> 
+      :to_string -> Map.new(map, fn {k, v} ->
         if is_atom k do {Kernel.to_string(k), v} else {k, v} end end)
     end
   end
