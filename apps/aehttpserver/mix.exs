@@ -8,7 +8,7 @@ defmodule Aehttpserver.Mixfile do
      config_path: "../../config/config.exs",
      deps_path: "../../deps",
      lockfile: "../../mix.lock",
-     elixir: "~> 1.4",
+     elixir: "~> 1.5.1",
      elixirc_paths: elixirc_paths(Mix.env),
      compilers: [:phoenix] ++ Mix.compilers,
      start_permanent: Mix.env == :prod,
@@ -31,10 +31,10 @@ defmodule Aehttpserver.Mixfile do
   #
   # Type `mix help deps` for examples and options.
   defp deps do
-    [{:phoenix, "~> 1.3.0-rc"},
+    [{:phoenix, "~> 1.3.0"},
      {:cowboy, "~> 1.0"},
-     {:cors_plug, "~> 1.2"},
-     {:uuid, "~> 1.1"},
+     {:cors_plug, "~> 1.5.0"},
+     {:uuid, "~> 1.1.8"},
      {:aeutil, in_umbrella: true}]
   end
 end
