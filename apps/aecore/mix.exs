@@ -8,7 +8,7 @@ defmodule Aecore.Mixfile do
      config_path: "../../config/config.exs",
      deps_path: "../../deps",
      lockfile: "../../mix.lock",
-     elixir: "~> 1.5",
+     elixir: "~> 1.6",
      compilers: [:app, :make, :elixir],
      aliases: aliases(),
      build_embedded: Mix.env == :prod,
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Compile.Make do
 
   def run(_) do
     File.cd(Path.absname("apps/aecore/src/cuckoo/"))
-    {result, _error_code} = System.cmd("make", ['all'], stderr_to_stdout: true)
+    {result, _error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
     Mix.shell.info result
     :ok
   end
