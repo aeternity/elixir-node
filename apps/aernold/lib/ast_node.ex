@@ -195,6 +195,15 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  def evaluate({lhs, {:%, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result = rem(lhs_value, rhs_value)
+
+    {result, scope}
+  end
+
   #Equality operators
   def evaluate({lhs, {:==, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})

@@ -11,7 +11,7 @@ HEX        = 0x{HEXDIGIT}+
 INT        = {DIGIT}+
 DECL       = {ID}[:]{TYPE}
 CON        = {}
-OP         = [+\-=!<>:&|/*]
+OP         = [+\-=!<>:&|/*%]
 
 CHARTEXT = ([^\'\\]|(\\.))
 STRINGTEXT = ([^\"\\]|(\\.))
