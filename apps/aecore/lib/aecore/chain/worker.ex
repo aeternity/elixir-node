@@ -59,17 +59,37 @@ defmodule Aecore.Chain.Worker do
   @spec get_block_by_hex_hash(String.t()) :: Block.t()
   def get_block_by_hex_hash(hash) do
     {:ok, decoded_hash} = Base.decode16(hash)
-    GenServer.call(__MODULE__, {:get_block, decoded_hash})
+    get_block(decoded_hash)
   end
 
   @spec get_block(binary()) :: Block.t()
-  def get_block(hash) do
-    GenServer.call(__MODULE__, {:get_block, hash})
+  def get_block(block_hash) do
+    ## At first we are making attempt to get the block from the chain state.
+    ## If there is no such block then we check into the db.
+    block = case (GenServer.call(__MODULE__, {:get_block_from_memory_unsafe, block_hash})) do
+      {:error, _} ->
+        case Persistence.get_block_by_hash(block_hash) do
+          {:ok, block} -> block
+          _ -> nil
+        end
+      block ->
+        block
+    end
+
+
+    if block != nil do
+      block
+    else
+      {:error, "Block not found"}
+    end
   end
 
   @spec has_block?(binary()) :: boolean()
   def has_block?(hash) do
-    GenServer.call(__MODULE__, {:has_block, hash})
+    case get_block(hash) do
+      {:error, _} -> false
+      block -> true
+    end
   end
 
   @spec get_blocks(binary(), integer()) :: list(Block.t())
@@ -141,7 +161,7 @@ defmodule Aecore.Chain.Worker do
     {:reply, top_height, state}
   end
 
-  def handle_call({:get_block, block_hash}, _from, %{blocks_map: blocks_map} = state) do
+  def handle_call({:get_block_from_memory_unsafe, block_hash}, _from, %{blocks_map: blocks_map} = state) do
     block = blocks_map[block_hash]
 
     if block != nil do
@@ -149,11 +169,6 @@ defmodule Aecore.Chain.Worker do
     else
       {:reply, {:error, "Block not found"}, state}
     end
-  end
-
-  def handle_call({:has_block, hash}, _from, %{blocks_map: blocks_map} = state) do
-    has_block = Map.has_key?(blocks_map, hash)
-    {:reply, has_block, state}
   end
 
   def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
@@ -166,18 +181,7 @@ defmodule Aecore.Chain.Worker do
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
     updated_blocks_map  = Map.put(blocks_map, new_block_hash, new_block)
-    hundred_blocks_map  =
-    if Kernel.map_size(updated_blocks_map) > number_of_blocks_in_memory() do
-      [genesis_block, {_, b} | sorted_blocks] =
-        Enum.sort(updated_blocks_map,
-          fn({_,b1}, {_,b2}) ->
-            b1.header.height < b2.header.height
-          end)
-      Logger.info("Block ##{b.header.height} has been removed from memory")
-      Enum.into([genesis_block | sorted_blocks], %{})
-    else
-      updated_blocks_map
-    end
+    hundred_blocks_map  = discard_blocks_from_memory(updated_blocks_map)
 
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
 
@@ -243,6 +247,21 @@ defmodule Aecore.Chain.Worker do
                  top_height: top_height}}
   end
 
+
+  defp discard_blocks_from_memory(block_map) do
+    if map_size(block_map) > number_of_blocks_in_memory() do
+      [genesis_block, {_, b} | sorted_blocks] =
+        Enum.sort(block_map,
+          fn({_, b1}, {_, b2}) ->
+            b1.header.height < b2.header.height
+          end)
+      Logger.info("Block ##{b.header.height} has been removed from memory")
+      Enum.into([genesis_block | sorted_blocks], %{})
+    else
+      block_map
+    end
+  end
+
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
     accounts = for tx <- block.txs do
@@ -273,23 +292,14 @@ defmodule Aecore.Chain.Worker do
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
-      next_attempt = fn(block) -> get_blocks([block | blocks_acc],
-                                             block.header.prev_hash,
-                                             final_block_hash, count - 1) end
-
-      ## At first we are making attempt to get the block from the chain state.
-      ## If there is no such block then we check into the db.
-      case (GenServer.call(__MODULE__, {:get_block, next_block_hash})) do
-        {:error, _} ->
-          case Persistence.get_block_by_hash(next_block_hash) do
-            {:ok, block} ->
-              next_attempt.(block)
-            _ ->
-              blocks_acc
-          end
-
+      case get_block(next_block_hash) do
+        {:error, _} -> blocks_acc
         block ->
-          next_attempt.(block)
+          updated_blocks_acc = [block | blocks_acc]
+          prev_block_hash = block.header.prev_hash
+          next_count = count - 1
+
+          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
       end
     else
       blocks_acc
