@@ -476,8 +476,7 @@ defmodule MultipleTransactionsTest do
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
     {:ok, tx_data} = SpendTx.create(from_acc_pub_key, to_acc_pub_key, value,
       nonce, fee, lock_time_block)
-    {:ok, %{signature: signature}} = SignedTx.sign_tx(tx_data, from_acc_priv_key)
-
-    %SignedTx{data: tx_data, signature: signature}
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, from_acc_priv_key)
+    signed_tx
   end
 end

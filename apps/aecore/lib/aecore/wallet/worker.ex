@@ -8,6 +8,9 @@ defmodule Aecore.Wallet.Worker do
   alias Aewallet.Wallet
   alias Aewallet.Encoding
 
+  @typedoc "Wallet type"
+  @type wallet_type :: :ae | :btc
+
   @typedoc "Options for network"
   @type opts :: :mainnet | :testnet
 
@@ -29,7 +32,7 @@ defmodule Aecore.Wallet.Worker do
   Gets the default dir for storing the wallet
   """
   @spec get_aewallet_dir() :: String.t()
-  def get_aewallet_dir do
+  def get_aewallet_dir() do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
@@ -37,7 +40,7 @@ defmodule Aecore.Wallet.Worker do
   Gets the default password for the dafault wallet
   """
   @spec get_aewallet_pass() :: String.t()
-  def get_aewallet_pass do
+  def get_aewallet_pass() do
     Application.get_env(:aecore, :aewallet)[:pass]
   end
 
@@ -71,16 +74,35 @@ defmodule Aecore.Wallet.Worker do
     GenServer.call(__MODULE__, {:get_priv_key, {password, network}})
   end
 
+  @doc """
+  Encodes compressed public key to a human readable format.
+  Using the Bech32 formatting based on BIP-0173
+
+  ## Examples
+      iex> Aecore.Wallet.Worker.encode(pub_key, :ae)
+      "ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u"
+
+      iex> Aecode.Wallet.Worker.decode(pub_key, :btc)
+      "btc1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc963alrmy"
+  """
+  @spec encode(binary(), wallet_type()) :: String.t()
   def encode(pub_key, :ae) do
-    GenServer.call(__MODULE__, {:bech32_encode, {pub_key, :ae}})
+    Encoding.encode(pub_key, :ae)
   end
-
   def encode(pub_key, :btc) do
-    GenServer.call(__MODULE__, {:bech32_encode, {pub_key, :btc}})
+    Encoding.encode(pub_key, :btc)
   end
 
+  @doc """
+  Decodes an encoded/formatted public key to its compressed version
+
+  ## Examples
+      iex> Aewallet.Encoding.decode("ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u")
+      {:ok, compressed_pubkey}
+  """
+  @spec decode(String.t()) :: binary()
   def decode(formatted_key) do
-    GenServer.call(__MODULE__, {:bech32_decode, formatted_key})
+    {:ok, pub_key} = Encoding.decode(formatted_key)
   end
 
   ## Server Callbacks
@@ -99,16 +121,6 @@ defmodule Aecore.Wallet.Worker do
     {:ok, priv_key} =
       Wallet.get_private_key(get_file_name(path), password, network: network)
     {:reply, priv_key, state}
-  end
-
-  def handle_call({:bech32_encode, {pub_key, prefix}}, _from, state) do
-    formatted_key = Encoding.encode(pub_key, prefix)
-    {:reply, formatted_key, state}
-  end
-
-  def handle_call({:bech32_decode, formatted_key}, _from, state) do
-    {:ok, pub_key} = Encoding.decode(formatted_key)
-    {:reply, pub_key, state}
   end
 
   ## Inner functions

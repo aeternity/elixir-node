@@ -24,7 +24,8 @@ defmodule Aecore.Chain.ChainState do
     |> update_chain_state_locked(block_height)
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height)    end)
+      apply_transaction_on_state!(transaction, chain_state, block_height)
+    end)
     |> update_chain_state_locked(block_height)
   end
 

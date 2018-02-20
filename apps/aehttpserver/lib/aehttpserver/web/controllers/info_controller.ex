@@ -22,7 +22,7 @@ defmodule Aehttpserver.Web.InfoController do
 
     own_nonce = Peers.get_peer_nonce()
 
-    pubkey = Wallet.get_public_key(Wallet.get_aewallet_pass())
+    pubkey = Wallet.get_public_key()
     pubkey_hex = Base.encode16(pubkey)
 
     #Add whoever's getting our info
