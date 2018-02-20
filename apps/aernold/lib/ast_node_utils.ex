@@ -28,4 +28,56 @@ defmodule ASTNodeUtils do
     end)
   end
 
+  ##This is from elixir v1.6, the following will be removed
+  ##once the project migrates to v1.6
+  def ascii_printable?(list, counter \\ :infinity)
+
+  def ascii_printable?(_, 0) do
+    true
+  end
+
+  def ascii_printable?([char | rest], counter)
+      when is_integer(char) and char >= 32 and char <= 126 do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\n | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\r | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\t | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\v | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\b | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\f | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\e | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([?\a | rest], counter) do
+    ascii_printable?(rest, decrement(counter))
+  end
+
+  def ascii_printable?([], _counter), do: true
+  def ascii_printable?(_, _counter), do: false
+
+  @compile {:inline, decrement: 1}
+  defp decrement(:infinity), do: :infinity
+  defp decrement(counter), do: counter - 1
+
 end

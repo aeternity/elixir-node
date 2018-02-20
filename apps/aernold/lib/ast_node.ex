@@ -313,23 +313,31 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  ##TODO: not working right now
-  def evaluate({:func_call, {_, 'insert_at'}, {list, index, value}}, {_prev_val, scope}) do
-    {extracted_list} = evaluate(list, {nil, scope})
-    {extracted_index} = evaluate(index, {nil, scope})
-    {extracted_value} = evaluate(value, {nil, scope})
+  def evaluate({:func_call, {_, 'insert_at'}, {data_struct, index, value}}, {_prev_val, scope}) do
+    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
 
-    result = List.insert_at(extracted_list, extracted_index, extracted_value)
+    result = insert_at(extracted_data_struct, extracted_index, extracted_value)
 
     {result, scope}
   end
 
-  ##TODO: not working right now
-  def evaluate({:func_call, {_, 'append'}, {tuple, value}}, {_prev_val, scope}) do
-    {extracted_value} = evaluate(value, {nil, scope})
-    {extracted_tuple} = evaluate(tuple, {nil, scope})
+  def evaluate({:func_call, {_, 'delete_at'}, {data_struct, index}}, {_prev_val, scope}) do
+    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
 
-    result = Tuple.append(extracted_tuple, extracted_value)
+
+    result = delete_at(extracted_data_struct, extracted_index)
+
+    {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'append'}, {tuple, value}}, {_prev_val, scope}) do
+    {extracted_tuple, _} = evaluate(tuple, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
+
+    result = append(extracted_tuple, extracted_value)
 
     {result, scope}
   end
@@ -449,6 +457,24 @@ defmodule ASTNode do
       end)
 
     {nil, scope_with_functions}
+  end
+
+  defp delete_at(data_struct, index) do
+    cond do
+      is_tuple(data_struct) == true -> Tuple.delete_at(data_struct, index)
+      is_list(data_struct) == true -> List.delete_at(data_struct, index)
+    end
+  end
+
+  defp insert_at(data_struct, index, value) do
+    cond do
+      is_tuple(data_struct) == true -> Tuple.insert_at(data_struct, index, value)
+      is_list(data_struct) == true -> List.insert_at(data_struct, index, value)
+    end
+  end
+
+  def append(tuple, value) do
+    Tuple.append(tuple, value)
   end
 
 end
