@@ -52,7 +52,6 @@ defmodule AecoreValidationTest do
   end
 
   def get_new_block() do
-
     chain_state_hash = <<100, 126, 168, 5, 157, 180, 101, 231, 52, 4, 199,
       197, 80, 234, 98, 146, 95, 154, 120, 252, 235, 15, 11, 210, 185, 212,
       233, 50, 179, 27, 64, 35>>
@@ -98,7 +97,6 @@ defmodule AecoreValidationTest do
   end
 
   def get_prev_block() do
-
     chain_state_hash = <<230, 129, 113, 45, 47, 180, 171, 8, 15, 55, 74,
       106, 150, 170, 190, 220, 32, 87, 30, 102, 106, 67, 131, 247, 17,
       56, 115, 147, 17, 115, 143, 196>>

@@ -2,16 +2,21 @@ defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-  alias Aeutil.Serialization
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Keys.Worker, as: Keys
 
-  @type t :: %SpendTx{
-    from_acc: binary(),
+  @behaviour Aecore.Structures.Transaction
+
+  alias Aeutil.Serialization
+
+  @typedoc "Arbitrary structure data of a transaction"
+  @type payload ::map()
+
+  @typedoc "Reason for the error"
+  @type reason :: String.t()
+
+  @typedoc "Structure of the Spend Transaction type"
+  @type t :: %__MODULE__{
     to_acc: binary(),
     value: non_neg_integer(),
-    nonce: non_neg_integer(),
-    fee: non_neg_integer(),
     lock_time_block: non_neg_integer()
   }
 
@@ -19,24 +24,31 @@ defmodule Aecore.Structures.SpendTx do
   Definition of Aecore SpendTx structure
 
   ## Parameters
-  - nonce: A random integer generated on initialisation of a transaction.Must be unique
-  - from_acc: From account is the public address of one account originating the transaction
   - to_acc: To account is the public address of the account receiving the transaction
   - value: The amount of a transaction
   """
-  defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
+  defstruct [:to_acc, :value, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, SpendTx.t()}
-  def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
-    tx_data =
-      %SpendTx{from_acc: from_acc,
-                to_acc: to_acc,
-                value: value,
-                nonce: nonce,
-                fee: fee,
-                lock_time_block: lock_time_block}
-    Keys.sign_tx(tx_data)
+  @spec init(payload()) :: SpendTx.t()
+  def init(%{to_acc: to_acc, value: value, lock_time_block: lock} = payload) do
+    %__MODULE__{to_acc: to_acc,
+             value: value,
+             lock_time_block: lock}
+  end
+
+  @spec is_valid(SpendTx.t()) :: :ok | {:error, reason()}
+  def is_valid(%__MODULE__{value: value}) do
+    if value >= 0 do
+      :ok
+    else
+      {:error, "Value not enough"}
+    end
+  end
+
+  @spec
+  def process_chain_state() do
+
   end
 
 end

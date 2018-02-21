@@ -1,0 +1,13 @@
+  /home/georgi/work/elixir-projects/elixir-research-GH203/elixir-research/apps/aecore/lib/aecore/structures:
+  total used in directory 44 available 7930488
+  drwxrwxr-x  2 georgi georgi 4096 Feb 21 13:00 .
+   drwxrwxr-x 10 georgi georgi 4096 Feb 21 10:0..
+  -rw-rw-r--  1 georgi georgi  792 Feb 21 10:06 block.ex
+  -rw-rw-r--  1 georgi georgi 1129 Feb 21 10:06 data_tx.ex~
+  -rw-rw-r--  1 georgi georgi 1447 Feb 21 13:00 data_tx.ex
+  -rw-rw-r--  1 georgi georgi 1046 Feb 21 10:06 header.ex
+  -rw-rw-r--  1 georgi georgi 1643 Feb 21 11:34 signed_tx.ex~
+  -rw-rw-r--  1 georgi georgi  904 Feb 21 12:57 signed_tx.ex
+  -rw-rw-r--  1 georgi georgi 1342 Feb 21 12:35 spend_tx.ex~
+  -rw-rw-r--  1 georgi georgi 1179 Feb 21 12:54 spend_tx.ex
+  -rw-rw-r--  1 georgi georgi  409 Feb 21 12:52 transaction.ex

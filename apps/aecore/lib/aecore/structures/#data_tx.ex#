@@ -49,8 +49,6 @@ defmodule  Aecore.Structures.DataTx do
     end
   end
 
-
-
   def deduct_fee!(chain_state, account, fee, nonce) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
     cond do
@@ -65,5 +63,7 @@ defmodule  Aecore.Structures.DataTx do
         Map.put(chain_state, account, %{account_state | balance: new_balance})
     end
   end
+
+  
 
 end

@@ -27,7 +27,7 @@ defmodule Aecore.Chain.ChainState do
             apply_transaction_on_state!(tx, chain_state, block_height)
           %SignedTx{data: %DataTx{}} ->
             deduct_from_account_state!(chain_state, tx.data.from_acc,
-                                       -tx.data.fee, tx.data.nonce)
+                                       tx.data.fee, tx.data.nonce)
         end
       catch
         {:error, message} ->
@@ -47,20 +47,23 @@ defmodule Aecore.Chain.ChainState do
                         transaction.data.to_acc,
                         transaction.data.value,
                         transaction.data.lock_time_block)
+
       transaction.data.from_acc != nil ->
         if !SignedTx.is_valid?(transaction) do
           throw {:error, "Invalid transaction"}
-        end
-        chain_state
-        |> transaction_out!(block_height,
+        else
+          chain_state
+          |> transaction_out!(block_height,
                             transaction.data.from_acc,
                             -(transaction.data.value + transaction.data.fee),
                             transaction.data.nonce,
                             -1)
-        |> transaction_in!(block_height,
+          |> transaction_in!(block_height,
                            transaction.data.to_acc,
                            transaction.data.value,
                            transaction.data.lock_time_block)
+        end
+
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
@@ -161,15 +164,17 @@ defmodule Aecore.Chain.ChainState do
     |> transaction_in!(block_height, account, value, lock_time_block)
   end
 
-  def deduct_from_account_state!(chain_state, account, value, nonce) do
+  def deduct_from_account_state!(chain_state, account, fee, nonce) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
     cond do
-      account_state.balance + value < 0 ->
+      account_state.balance - fee < 0 ->
         throw {:error, "Negative balance"}
+
       account_state.nonce >= nonce ->
         throw {:error, "Nonce too small"}
+
       true ->
-        new_balance = account_state.balance + value
+        new_balance = account_state.balance - fee
         Map.put(chain_state, account, %{account_state | balance: new_balance})
     end
   end
