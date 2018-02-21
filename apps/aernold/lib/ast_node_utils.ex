@@ -28,6 +28,21 @@ defmodule ASTNodeUtils do
     end)
   end
 
+  ##This is going to be optimised (probably with spawn for each cond)
+  def check_list_item_type(list) do
+    cond do
+      Enum.all?(list, fn(x) -> is_integer(x) end) != true ->
+        throw({:error, "Lists must be homogeneous"})
+      Enum.all?(list, fn(x) -> is_bitstring(x) end) != false ->
+        throw({:error, "Lists must be homogeneous"})
+      Enum.all?(list, fn(x) -> is_list(x) end) != false ->
+        throw({:error, "Lists must be homogeneous"})
+      Enum.all?(list, fn(x) -> is_boolean(x) end) != false ->
+        throw({:error, "Lists must be homogeneous"})
+      true -> list
+    end
+  end
+
   ##This is from elixir v1.6, the following will be removed
   ##once the project migrates to v1.6
   def ascii_printable?(list, counter \\ :infinity)

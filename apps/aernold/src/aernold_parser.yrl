@@ -11,10 +11,9 @@ else switch 'case' func hex char string
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement SwitchStatement
-SwitchCase Condition
-FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
-Id Type Value OpCondition OpCompare Op DataStructure TupleDefinition TupleValues
-ListDeclaration ListDefinition ListValues Tuple List
+SwitchCase FunctionDefinition FunctionParameters FunctionCall FunctionArguments
+Expression Condition Id Type Value OpCondition OpCompare Op DataStructure
+TupleDefinition TupleValues ListDeclaration ListDefinition ListValues Tuple List
 .
 
 Rootsymbol File.
@@ -34,7 +33,6 @@ Statement -> Expression ';' Statement : ['$1' | '$3'].
 Statement -> DataStructure ';' : ['$1'].
 Statement -> DataStructure ';' Statement : ['$1' | '$3'].
 
-%DataStructure -> TupleDefinition : '$1'.
 DataStructure -> ListDeclaration : '$1'.
 DataStructure -> ListDefinition : '$1'.
 
@@ -45,13 +43,7 @@ CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
 CompoundStatement -> SwitchStatement : {switch_statement, '$1'}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
-%TODO: to be able to do {}; or {1,2};
-%TupleDefinition -> Tuple : {tuple, '$1'}.
-%TupleDefinition -> Id ':' Type '=' Tuple : {def_tuple, '$1', '$3', '$1'}.
-%TupleDefinition -> Id ':' Type '=' '{' TupleValues '}': {def_tuple, '$1', '$3', list_to_tuple('$6')}.
-
 ListDeclaration -> Id ':' Type '<' Type '>' : {decl_list, '$1', '$3', '$5'}.
-%ListDefinition -> List : {list, '$1'}.
 ListDefinition -> Id ':' Type '<' Type '>' '=' '[' ']' : {def_list, '$1', '$3', '$5', 'empty'}.
 ListDefinition -> Id ':' Type '<' Type '>' '=' '[' ListValues ']' : {def_list, '$1', '$3', '$5', list_to_tuple('$9')}.
 
@@ -86,7 +78,6 @@ Condition -> Expression : '$1'.
 Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
 
 Expression -> Value : '$1'.
-%Expression -> DataStructure : '$1'.
 Expression -> '!' Value : {'$1', '$2'}.
 Expression -> Expression OpCompare Expression : {'$1', '$2', '$3'}.
 Expression -> Expression Op Expression : {'$1', '$2', '$3'}.
@@ -140,5 +131,3 @@ Op -> '=' : '$1'.
 Erlang code.
 
 get_value({_, _, Value}) -> Value.
-
-%get_hex_value({_, _, Value}) -> "0x" ++ Value.

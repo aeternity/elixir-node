@@ -158,7 +158,7 @@ defmodule ASTNode do
     {switch_statement_val, updated_scope}
   end
 
-  # Arithmetic operations
+  ## Arithmetic operations
   def evaluate({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})
     {rhs_value, _} = evaluate(rhs, {nil, scope})
@@ -204,7 +204,7 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  #Equality operators
+  ## Equality operators
   def evaluate({lhs, {:==, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})
     {rhs_value, _} = evaluate(rhs, {nil, scope})
@@ -223,7 +223,7 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  # Relational operators
+  ## Relational operators
   def evaluate({lhs, {:>, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})
     {rhs_value, _} = evaluate(rhs, {nil, scope})
@@ -260,8 +260,6 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  ##Logic operators
-  #TODO: discuss if we want logic operators outside if statements
   def evaluate({lhs, {:&&, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})
     {rhs_value, _} = evaluate(rhs, {nil, scope})
@@ -278,11 +276,6 @@ defmodule ASTNode do
     result = if lhs_value || rhs_value, do: true, else: false
 
     {result, scope}
-  end
-
-  def evaluate({:func_call, {_, 'print'}, {param}}, {_prev_val, scope}) do
-    {extracted_param, _} = evaluate(param, {nil, scope})
-    {IO.inspect(extracted_param), scope}
   end
 
   def evaluate({:func_call, {_, 'account_balance'}, {param}}, {_prev_val, scope}) do
@@ -329,6 +322,10 @@ defmodule ASTNode do
 
     result = insert_at(extracted_data_struct, extracted_index, extracted_value)
 
+    if is_list(result) do
+      ASTNodeUtils.check_list_item_type(result)
+    end
+
     {result, scope}
   end
 
@@ -357,7 +354,7 @@ defmodule ASTNode do
 
   def evaluate({:func_call, id, args}, {_prev_val, scope}) do
     {_, func_name} = id
-    {_, {_, _, params, body} = func} = Enum.find(scope, fn(s) ->
+    {_, {_, _, params, body} = _func} = Enum.find(scope, fn(s) ->
       scope_key = elem(s, 0)
       scope_val = elem(s, 1)
       if !is_map(scope_val) do
@@ -439,10 +436,10 @@ defmodule ASTNode do
   def evaluate({:list, values}, {_, scope}) do
     list_values = if values != :empty do
       Enum.reduce(values, [], fn(value, acc) ->
-        {curr_value, _} = evaluate(value, {nil, scope})
         [elem(evaluate(value, {nil, scope}), 0) | acc]
       end)
       |> Enum.reverse
+      |> ASTNodeUtils.check_list_item_type
     else
       []
     end
