@@ -10,7 +10,7 @@ defmodule Aehttpserver.Web.NewTxController do
     ## encode and decode it again.
     Poison.encode!(conn.body_params)
     |> Poison.decode!([keys: :atoms])
-    |> Serialization.tx(:deserialize)
+    |> Serialization.map_to_tx(:deserialize)
     |> Pool.add_transaction()
     json conn, %{:status => :new_tx_added}
   end
