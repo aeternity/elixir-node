@@ -2,7 +2,6 @@ defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization, as: Serialization
-  alias Aecore.Structures.TxData
 
   def show(conn, params) do
     account_bin =

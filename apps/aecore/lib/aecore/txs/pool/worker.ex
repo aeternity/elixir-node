@@ -8,12 +8,12 @@ defmodule Aecore.Txs.Pool.Worker do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
+  alias Aeutil.Serialization
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -60,8 +60,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    tx_size_bits = tx |> :erlang.term_to_binary() |> Bits.extract() |> Enum.count()
-    tx_size_bytes = tx_size_bits / 8
+    tx_size_bytes = get_tx_size_bytes(tx)
     is_minimum_fee_met =
       tx.data.fee >= Float.floor(tx_size_bytes /
       Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
@@ -74,7 +73,7 @@ defmodule Aecore.Txs.Pool.Worker do
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
       true ->
-        updated_pool = Map.put_new(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)), tx)
+        updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
@@ -87,7 +86,7 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, :crypto.hash(:sha256, :erlang.term_to_binary(tx)))
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
     {:reply, :ok, updated_pool}
   end
 
@@ -107,23 +106,28 @@ defmodule Aecore.Txs.Pool.Worker do
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
       block = Chain.get_block(tx.block_hash)
-      tree  = BlockValidation.build_merkle_tree(block.txs)
-      key   =
+      tree = BlockValidation.build_merkle_tree(block.txs)
+      key =
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
-        |> TxData.new()
-        |> TxData.hash_tx()
+        |> SpendTx.new()
+        |> :erlang.term_to_binary()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
   end
 
+  @spec get_tx_size_bytes(SignedTx.t()) :: integer()
+  def get_tx_size_bytes(tx) do
+    tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+  end
+
   ## Private functions
 
-  @spec split_blocks(list(%Block{}), String.t, list()) :: list()
+  @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do
     user_txs = check_address_tx(block.txs, address, txs)
     if user_txs == [] do
@@ -145,7 +149,7 @@ defmodule Aecore.Txs.Pool.Worker do
     txs
   end
 
-  @spec check_address_tx(list(%SignedTx{}), String.t, list()) :: list()
+  @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do

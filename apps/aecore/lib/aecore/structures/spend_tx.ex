@@ -1,11 +1,11 @@
-defmodule Aecore.Structures.TxData do
+defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
+  alias Aeutil.Serialization
+  alias Aecore.Structures.SpendTx
 
-  alias Aecore.Structures.TxData
-
-  @type t :: %TxData{
+  @type t :: %SpendTx{
     from_acc: binary(),
     to_acc: binary(),
     value: non_neg_integer(),
@@ -16,7 +16,7 @@ defmodule Aecore.Structures.TxData do
   }
 
   @doc """
-  Definition of Aecore TxData structure
+  Definition of Aecore SpendTx structure
 
   ## Parameters
   - nonce: A random integer generated on initialisation of a transaction.Must be unique
@@ -29,18 +29,13 @@ defmodule Aecore.Structures.TxData do
 
   @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), map()) :: {:ok, TxData.t()}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0, data \\ %{}) do
-    {:ok, %TxData{from_acc: from_acc,
+    {:ok, %SpendTx{from_acc: from_acc,
                   to_acc: to_acc,
                   value: value,
                   nonce: nonce,
                   fee: fee,
                   lock_time_block: lock_time_block,
                   data: data}}
-  end
-
-  @spec hash_tx(TxData.t()) :: binary()
-  def hash_tx(tx) do
-    :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
 
 end

@@ -3,6 +3,7 @@ elixir:
   - 1.5.2
 otp_release:
   - 20.0
+
 env:
   - MIX_ENV=test
 
@@ -15,7 +16,7 @@ script:
   - mix credo list --ignore readability,design,refactor
 
 cache:
-  - $TRAVIS_BUILD_DIR/target
-  - $HOME/.cargo
-  - deps
-  - _build
+  directories:
+    - $HOME/.cargo
+    - deps
+    - _build

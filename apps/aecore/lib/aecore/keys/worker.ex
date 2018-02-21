@@ -4,8 +4,9 @@ defmodule Aecore.Keys.Worker do
   """
   use GenServer
 
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
   @filename_pub "key.pub"
   @filename_priv "key"
@@ -42,7 +43,7 @@ defmodule Aecore.Keys.Worker do
   @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, SignedTx.t()}
   def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
-    {:ok, tx_data} = TxData.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
+    {:ok, tx_data} = SpendTx.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
     {:ok, signed_tx}
@@ -130,7 +131,7 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
-  
+
   def handle_call(
         {:verify, {term, signature, pub_key}},
         _from,
@@ -139,7 +140,7 @@ defmodule Aecore.Keys.Worker do
     case is_valid_pub_key(pub_key) do
       true ->
         result =
-          :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
+          :crypto.verify(algo, digest, Serialization.pack_binary(term), signature, [
                 pub_key,
                 :crypto.ec_curve(curve)
               ])
@@ -156,7 +157,7 @@ defmodule Aecore.Keys.Worker do
         %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end
@@ -167,7 +168,7 @@ defmodule Aecore.Keys.Worker do
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end

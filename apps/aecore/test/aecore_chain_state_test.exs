@@ -7,7 +7,7 @@ defmodule AecoreChainStateTest do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState, as: ChainState
@@ -21,9 +21,9 @@ defmodule AecoreChainStateTest do
     c = String.duplicate("c", 65)
     chain_state =
       ChainState.calculate_and_validate_chain_state!([
-        %SignedTx{data: %TxData{from_acc: b, to_acc: a,
+        %SignedTx{data: %SpendTx{from_acc: b, to_acc: a,
               value: 1, nonce: 2, fee: 0, lock_time_block: 0}, signature: <<0>>},
-        %SignedTx{data: %TxData{from_acc: c, to_acc: a,
+        %SignedTx{data: %SpendTx{from_acc: c, to_acc: a,
               value: 2, nonce: 2, fee: 0, lock_time_block: 0}, signature: <<0>>}],
         %{a => %Account{balance: 3, nonce: 100, locked: [%{amount: 1, block: next_block_height}]},
           b => %Account{balance: 5, nonce: 1, locked: [%{amount: 1, block: next_block_height + 1}]},

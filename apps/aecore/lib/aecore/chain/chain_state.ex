@@ -12,10 +12,14 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.Voting
   alias Aecore.Keys.Worker, as: Keys
 
-  @voting_create "Voting.create"
-  @voting_vote "Voting.vote"
 
-  @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
+  @type account_chainstate() ::
+          %{binary() =>
+            %{balance: integer(),
+              locked: [%{amount: integer(), block: integer()}],
+              nonce: integer()}}
+
+  @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) :: account_chainstate()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
@@ -72,11 +76,11 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(map()) :: binary()
+  @spec calculate_chain_state_hash(account_chainstate()) :: binary()
   def calculate_chain_state_hash(chain_state) do
     merkle_tree_data =
       for {account, data} <- chain_state do
-        {account, :erlang.term_to_binary(data)}
+        {account, Serialization.pack_binary(data)}
       end
 
     if Enum.empty?(merkle_tree_data) do
@@ -92,7 +96,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(map()) :: integer()
+  @spec calculate_total_tokens(account_chainstate()) :: integer()
   def calculate_total_tokens(chain_state) do
     Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
@@ -108,26 +112,35 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec update_chain_state_locked(map(), integer()) :: map()
+
+  @spec update_chain_state_locked(account_chainstate(), integer()) :: account_chainstate()
   def update_chain_state_locked(chain_state, new_block_height) do
-    Enum.reduce(chain_state, %{}, fn({address, object}, acc) ->
-      case object do
-        account = %Account{} ->
-          Map.put(acc, address, Account.update_locked(account, new_block_height))
-        other ->
-          Map.put(acc, address, other)
-      end
-    end)
+    Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
+      {unlocked_amount, updated_locked} =
+          Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
+            cond do
+              lock_time_block > new_block_height ->
+                {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
+              lock_time_block == new_block_height ->
+                {amount_update_value + amount, updated_locked}
+
+              true ->
+                Logger.error(fn ->
+                  "Update chain state locked:
+                   new block height (#{new_block_height}) greater than lock time block (#{lock_time_block})"
+                end)
+
+                {amount_update_value, updated_locked}
+            end
+          end)
+        Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
+      end)
   end
 
   defp apply_fun_on_map(map, key, function) do
     Map.put(map, key, function.(Map.get(map, key)))
   end
 
-  """
-  @spec is_hash?(binary()) :: boolean()
-  defp is_hash?(value) do
-    byte_size(value) == 32
   end
-  """
+
 end
