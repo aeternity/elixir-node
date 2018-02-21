@@ -4,7 +4,7 @@ defmodule Aecore.Structures.Account do
   """
 
   require Logger
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
 
   @type t :: %Account{
@@ -31,7 +31,7 @@ defmodule Aecore.Structures.Account do
              locked: []}
   end
 
-  @spec tx_in!(Account.t() | nil, TxData.t(), integer()) :: Account.t()
+  @spec tx_in!(Account.t() | nil, SpendTx.t(), integer()) :: Account.t()
   def tx_in!(nil, tx, block_height) do
     tx_in!(empty(), tx, block_height)
   end
@@ -51,7 +51,7 @@ defmodule Aecore.Structures.Account do
     end
   end
 
-  @spec tx_out!(Account.t(), TxData.t(), integer()) :: Account.t()
+  @spec tx_out!(Account.t(), SpendTx.t(), integer()) :: Account.t()
   def tx_out!(account, tx, _block_height) do
     if account.nonce >= tx.nonce do
       throw {:error, "Nonce too small"}

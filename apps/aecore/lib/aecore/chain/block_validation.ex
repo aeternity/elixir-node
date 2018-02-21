@@ -116,7 +116,7 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {true, map()} | {{false, binary()}, map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
