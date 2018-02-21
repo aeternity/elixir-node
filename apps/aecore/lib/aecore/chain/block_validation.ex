@@ -45,6 +45,9 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
+      !valid_header_timestamp?(new_block) -> 
+        throw({:error, "Invalid header timestamp"})
+
       !is_difficulty_target_met ->
         throw({:error, "Header hash doesnt meet the difficulty target"})
 
@@ -53,9 +56,6 @@ defmodule Aecore.Chain.BlockValidation do
 
       difficulty != new_block.header.difficulty_target ->
         throw({:error, "Invalid block difficulty"})
-
-      !valid_header_timestamp?(new_block) -> 
-        throw({:error, "Invalid header timestamp"})
 
       true ->
         new_chain_state
