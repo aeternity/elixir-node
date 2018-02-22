@@ -6,10 +6,11 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.ContractTx
+  alias Aecore.Structures.ContractProposalTx
+  alias Aecore.Structures.ContractSignTx
 
   @type t :: %SignedTx{
-    data: TxData.t() | ContractTx.t() ,
+    data: TxData.t() | ContractProposalTx.t() | ContractSignTx.t() ,
     signature: binary()
   }
 
@@ -26,6 +27,10 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_coinbase?(SignedTx.t()) :: boolean()
   def is_coinbase?(tx) do
     tx.data.from_acc == nil && tx.signature == nil
+  end
+
+  def is_valid?(%SignedTx{data: %ContractProposalTx{}} = tx)do
+    tx.data.fee >= 0 && Keys.verify_tx(tx)
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()

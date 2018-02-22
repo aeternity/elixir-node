@@ -4,23 +4,23 @@ defmodule Aecore.Structures.ContractSignTx do
 
   @type t :: %ContractSignTx{
     signature: binary(),
-    pub_key: binary(),
+    from_acc: binary(),
     contract_hash: binary(),
     fee: integer(),
     nonce: integer()
   }
 
   defstruct [:signature,
-             :pub_key,
+             :from_acc,
              :contract_hash,
              :fee,
              :nonce
             ]
   use ExConstructor
 
-  def create(signature, pub_key, contract_hash, fee, nonce) do
+  def create(signature, from_acc, contract_hash, fee, nonce) do
     {:ok, %ContractSignTx{signature: signature,
-                          pub_key: pub_key,
+                          from_acc: from_acc,
                           contract_hash: contract_hash,
                           fee: fee,
                           nonce: nonce}}

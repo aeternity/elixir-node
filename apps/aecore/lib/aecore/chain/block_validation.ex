@@ -5,6 +5,9 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.ContractProposalTx
+  alias Aecore.Structures.ContractSignTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
 
@@ -12,7 +15,7 @@ defmodule Aecore.Chain.BlockValidation do
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
-    
+
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
@@ -102,7 +105,14 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_transaction_chainstate(SignedTx.t(), map(), integer()) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
-      {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
+      case tx do
+        %SignedTx{data: %TxData{}} ->
+          {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
+        %SignedTx{data: %ContractProposalTx{}} ->
+          {true, ChainState.apply_contract_transaction_on_state!(tx, chain_state)}
+        %SignedTx{data: %ContractSignTx{}} ->
+          {true, ChainState.apply_contract_transaction_on_state!(tx, chain_state)}
+      end
     catch
       {:error, _} -> {false, chain_state}
     end

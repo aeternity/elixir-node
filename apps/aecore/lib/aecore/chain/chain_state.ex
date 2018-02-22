@@ -50,17 +50,17 @@ defmodule Aecore.Chain.ChainState do
   def apply_contract_transaction_on_state!(%SignedTx{data: %ContractProposalTx{}} =
     transaction, chain_state) do
     deduct_from_account_state!(chain_state,
-      transaction.contract_hash,
-      -transaction.fee,
-      transaction.nonce)
+      transaction.data.contract_hash,
+      -transaction.data.fee,
+      transaction.data.nonce)
   end
 
   def apply_contract_transaction_on_state!(%SignedTx{data: %ContractSignTx{}} =
     transaction, chain_state) do
     deduct_from_account_state!(chain_state,
-      transaction.contract_hash,
-      -transaction.fee,
-      transaction.nonce)
+      transaction.data.contract_hash,
+      -transaction.data.fee,
+      transaction.data.nonce)
   end
 
   @doc """
@@ -164,8 +164,10 @@ defmodule Aecore.Chain.ChainState do
     cond do
       account_state.balance + value < 0 ->
         throw {:error, "Negative balance"}
+
       account_state.nonce >= nonce ->
         throw {:error, "Nonce too small"}
+
       true ->
         new_balance = account_state.balance + value
         Map.put(chain_state, account, %{account_state | balance: new_balance})

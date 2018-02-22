@@ -6,6 +6,7 @@ defmodule Aecore.Keys.Worker do
 
   alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
   @filename_pub "key.pub"
   @filename_priv "key"
@@ -125,16 +126,16 @@ defmodule Aecore.Keys.Worker do
       0
     }
   end
-  
+
   def handle_call(
-        {:verify, {term, signature, pub_key}},
-        _from,
-        %{algo: algo, digest: digest, curve: curve} = state
-      ) do
+    {:verify, {term, signature, pub_key}},
+    _from,
+    %{algo: algo, digest: digest, curve: curve} = state
+  ) do
     case is_valid_pub_key(pub_key) do
       true ->
         result =
-          :crypto.verify(algo, digest, :erlang.term_to_binary(term), signature, [
+          :crypto.verify(algo, digest, Serialization.pack_binary(term), signature, [
                 pub_key,
                 :crypto.ec_curve(curve)
               ])
@@ -146,23 +147,23 @@ defmodule Aecore.Keys.Worker do
   end
 
   def handle_call(
-        {:sign, term},
-        _from,
-        %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
-      ) do
+    {:sign, term},
+    _from,
+    %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
+  ) do
     signature =
-      :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end
 
   def handle_call(
-        {:sign, term, priv_key},
-        _from,
-        %{algo: algo, digest: digest, curve: curve} = state
-      ) do
+    {:sign, term, priv_key},
+    _from,
+    %{algo: algo, digest: digest, curve: curve} = state
+  ) do
     signature =
-      :crypto.sign(algo, digest, :erlang.term_to_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
 
     {:reply, {:ok, signature}, state}
   end
@@ -187,10 +188,10 @@ defmodule Aecore.Keys.Worker do
   end
 
   def handle_call(
-        {:new, password},
-        _from,
+    {:new, password},
+    _from,
         %{type: key_type, keys_dir: keys_dir, curve: curve} = state
-      ) do
+  ) do
     try do
       {new_pub_file, new_priv_file} = p_gen_filename(keys_dir)
 
@@ -203,10 +204,10 @@ defmodule Aecore.Keys.Worker do
         %{
           state
           | pub: new_pub_key,
-            priv: new_priv_key,
-            pass: password,
-            pub_file: new_pub_file,
-            priv_file: new_priv_file
+          priv: new_priv_key,
+          pass: password,
+          pub_file: new_pub_file,
+          priv_file: new_priv_file
         }
       }
     catch

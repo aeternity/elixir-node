@@ -9,14 +9,14 @@ defmodule Aeutil.ValidateContractJsonSchema do
       "type" => "string"
     },
         "contract_hash" => %{
-      "type" => "string"
-    },
+          "type" => "string"
+        },
         "participants" => %{
           "type" => "array",
           "uniqueItems" => true,
           "items" => %{
             "type" => "string"
-            }
+          }
         },
         "ttl" => %{
           "type" => "integer",
@@ -51,4 +51,4 @@ defmodule Aeutil.ValidateContractJsonSchema do
       }
     } |> ExJsonSchema.Schema.resolve
   end
-  end
+end

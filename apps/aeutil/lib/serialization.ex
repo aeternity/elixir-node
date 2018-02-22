@@ -81,7 +81,7 @@ defmodule Aeutil.Serialization do
             to_acc: hex_binary(tx_data.to_acc, direction)}
         %ContractProposalTx{} ->
           %{tx_data | contract_hash: hex_binary(tx_data.contract_hash, direction),
-            participants: hex_binary(tx_data.participants, direction),
+            participants: Enum.map(tx_data.participants, fn x -> hex_binary(x, :serialize) end),
             from_acc: hex_binary(tx_data.from_acc, direction)}
         %ContractSignTx{} ->
           %{tx_data | signature: hex_binary(tx_data.signature, direction),
