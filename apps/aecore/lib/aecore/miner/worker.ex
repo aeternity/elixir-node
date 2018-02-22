@@ -218,13 +218,13 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
+      valid_txs_by_chainstate = ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       {_, pubkey} = Keys.pubkey()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
-      valid_txs = [get_coinbase_transaction(pubkey, total_fees,
+      valid_txs = [create_coinbase_tx(pubkey, total_fees,
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
@@ -238,7 +238,7 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_block_size)
       valid_txs =
         List.replace_at(valid_txs_by_block_size, 0,
-          get_coinbase_transaction(pubkey, total_fees,
+          create_coinbase_tx(pubkey, total_fees,
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
 
@@ -256,7 +256,7 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
+  def create_coinbase_tx(to_acc, total_fees, lock_time_block) do
     payload =  %{to_acc: to_acc,
                  value: @coinbase_transaction_value + total_fees,
                  lock_time_block: lock_time_block}

@@ -98,43 +98,6 @@ defmodule Aecore.Chain.BlockValidation do
     end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
-  def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
-    {valid_txs_list, _} = List.foldl(
-      txs_list,
-      {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {valid_chain_state, updated_chain_state} =
-          validate_transaction_chainstate(tx, chain_state_acc, block_height)
-        if valid_chain_state do
-          {valid_txs_list ++ [tx], updated_chain_state}
-        else
-          {valid_txs_list, chain_state_acc}
-        end
-      end
-    )
-
-    valid_txs_list
-  end
-
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
-  defp validate_transaction_chainstate(tx, chain_state, block_height) do
-    try do
-      case tx do
-        %SignedTx{data: %SpendTx{}} ->
-          {true, ChainState.apply_transaction_on_state!(tx, chain_state,
-                                                        block_height)}
-        %SignedTx{data: %DataTx{}} ->
-          {true, ChainState.deduct_from_account_state!(chain_state,
-                                                       tx.data.from_acc,
-                                                       tx.data.fee,
-                                                       tx.data.nonce)}
-      end
-    catch
-      {:error, _} -> {false, chain_state}
-    end
-  end
-
   @spec calculate_root_hash(list(SignedTx.t())) :: binary()
   def calculate_root_hash(txs) when txs == [] do
     <<0::256>>

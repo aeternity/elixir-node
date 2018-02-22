@@ -11,6 +11,9 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
 
+  @typedoc "Structure that holds the account info"
+  @type account_chainstate :: map()
+
   @type t :: %__MODULE__{
     data: DataTx.t(),
     signature: binary()
@@ -22,7 +25,7 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%SignedTx{data: data, signature: signature} = tx) do
+  def is_valid?(%SignedTx{data: data} = tx) do
     if Keys.verify_tx(tx) do
       case DataTx.is_valid(data) do
         :ok -> true
@@ -36,6 +39,9 @@ defmodule Aecore.Structures.SignedTx do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
-
+  @spec reward(DataTx.t(), account_chainstate(), integer()) :: account_chainstate()
+  def reward(%DataTx{type: type, payload: payload}, account_state, block_height) do
+    type.reward(payload, account_state, block_height)
+  end
 
 end

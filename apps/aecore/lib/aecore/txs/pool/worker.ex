@@ -69,9 +69,11 @@ defmodule Aecore.Txs.Pool.Worker do
       !SignedTx.is_valid?(tx) ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
+
       !is_minimum_fee_met ->
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
+
       true ->
         updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
         if tx_pool == updated_pool do

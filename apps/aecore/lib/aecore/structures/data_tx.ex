@@ -34,10 +34,10 @@ defmodule  Aecore.Structures.DataTx do
   @spec init(atom(), map(), binary(), integer(), integer()) :: {:ok, DataTx.t()}
   def init(type, payload, from_acc, fee, nonce) do
     {:ok,  %__MODULE__{type: type,
-                  payload: type.init(payload),
-                  from_acc: from_acc,
-                  fee: fee,
-                  nonce: nonce}}
+                       payload: type.init(payload),
+                       from_acc: from_acc,
+                       fee: fee,
+                       nonce: nonce}}
   end
 
   @spec is_valid(DataTx.t()) :: :ok | {:error, reason()}
@@ -49,21 +49,10 @@ defmodule  Aecore.Structures.DataTx do
     end
   end
 
+  def process_chainstate(%__MODULE__{type: type, payload: payload} = tx,
+                         account_state, block_height) do
 
-
-  def deduct_fee!(chain_state, account, fee, nonce) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-    cond do
-      account_state.balance - fee < 0 ->
-        throw {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        throw {:error, "Nonce too small"}
-
-      true ->
-        new_balance = account_state.balance - fee
-        Map.put(chain_state, account, %{account_state | balance: new_balance})
-    end
+    type.process_chainstate(payload, tx.from_acc, tx.fee, tx.nonce, account_state, block_height)
   end
 
 end

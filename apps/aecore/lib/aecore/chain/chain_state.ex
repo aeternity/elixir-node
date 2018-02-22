@@ -21,47 +21,28 @@ defmodule Aecore.Chain.ChainState do
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(tx, chain_state) ->
-      try do
-        case tx do
-          %SignedTx{data: %SpendTx{}} ->
-            apply_transaction_on_state!(tx, chain_state, block_height)
-          %SignedTx{data: %DataTx{}} ->
-            deduct_from_account_state!(chain_state, tx.data.from_acc,
-                                       tx.data.fee, tx.data.nonce)
-        end
-      catch
-        {:error, message} ->
-          Logger.error(fn -> message end)
-          chain_state
-      end
+      validate_tx(tx, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) :: account_chainstate()
-  def apply_transaction_on_state!(transaction, chain_state, block_height) do
-    cond do
-      SignedTx.is_coinbase?(transaction) ->
-        transaction_in!(chain_state,
-                        block_height,
-                        transaction.data.to_acc,
-                        transaction.data.value,
-                        transaction.data.lock_time_block)
+  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chain_state, block_height) do
+    account = data.payload.to_acc
+    account_state = Map.get(chainstate, account, %{balance: 0, nonce: 0, locked: []})
 
-      transaction.data.from_acc != nil ->
-        if !SignedTx.is_valid?(transaction) do
-          throw {:error, "Invalid transaction"}
+    cond do
+      SignedTx.is_coinbase?(tx) ->
+        new_accaunt_state = SignedTx.reward(data, account_state, block_height)
+        Map.put(chain_state, account, new_account_state)
+
+
+      data.from_acc != nil ->
+        if SignedTx.is_valid?(tx) do
+          new_account_state = DataTx.process_chainstate(data, account_state, block_height)
+          Map.put(chain_state, account, new_account_state)
         else
-          chain_state
-          |> transaction_out!(block_height,
-                            transaction.data.from_acc,
-                            -(transaction.data.value + transaction.data.fee),
-                            transaction.data.nonce,
-                            -1)
-          |> transaction_in!(block_height,
-                           transaction.data.to_acc,
-                           transaction.data.value,
-                           transaction.data.lock_time_block)
+          throw {:error, "Invalid transaction"}
         end
 
       true ->
@@ -134,48 +115,38 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
-  @spec transaction_in!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()
-  defp transaction_in!(chain_state, block_height, account, value, lock_time_block) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-    if block_height <= lock_time_block do
-      if value < 0 do
-        throw {:error, "Can't lock a negative transaction"}
+  def filter_invalid_txs(txs_list, chain_state, block_height) do
+    {valid_txs_list, _} = List.foldl(
+      txs_list,
+      {[], chain_state},
+      fn (tx, {valid_txs_list, chain_state_acc}) ->
+        {valid_chain_state, updated_chain_state} = validate_tx(tx, chain_state_acc, block_height)
+
+        if valid_chain_state do
+          {valid_txs_list ++ [tx], updated_chain_state}
+        else
+          {valid_txs_list, chain_state_acc}
+        end
+
+      end)
+
+    valid_txs_list
+  end
+
+  @spec validate_tx(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
+  defp validate_tx(tx, chain_state, block_height) do
+    try do
+      case tx do
+        %SignedTx{data: %SpendTx{}} ->
+          {true, apply_transaction_on_state!(tx, chain_state, block_height)}
+        %SignedTx{data: %DataTx{}} ->
+          {true, deduct_from_account_state!(chain_state,tx.data.from_acc,
+                                                       tx.data.fee,
+                                                       tx.data.nonce)}
       end
-      new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
-      Map.put(chain_state, account, %{account_state | locked: new_locked})
-    else
-      new_balance = account_state.balance + value
-      if new_balance < 0 do
-        throw {:error, "Negative balance"}
-      end
-      Map.put(chain_state, account, %{account_state | balance: new_balance})
+    catch
+      {:error, _} -> {false, chain_state}
     end
   end
 
-  @spec transaction_out!(account_chainstate(), integer(), binary(), integer(), integer(), integer()) :: account_chainstate()
-  defp transaction_out!(chain_state, block_height, account, value, nonce, lock_time_block) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-    if account_state.nonce >= nonce do
-      throw {:error, "Nonce too small"}
-    end
-
-    chain_state
-    |> Map.put(account, %{account_state | nonce: nonce})
-    |> transaction_in!(block_height, account, value, lock_time_block)
-  end
-
-  def deduct_from_account_state!(chain_state, account, fee, nonce) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-    cond do
-      account_state.balance - fee < 0 ->
-        throw {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        throw {:error, "Nonce too small"}
-
-      true ->
-        new_balance = account_state.balance - fee
-        Map.put(chain_state, account, %{account_state | balance: new_balance})
-    end
-  end
 end
