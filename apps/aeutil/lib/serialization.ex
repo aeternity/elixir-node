@@ -23,13 +23,7 @@ defmodule Aeutil.Serialization do
 
     new_txs =
       Enum.map(block.txs, fn tx ->
-        case tx do
-          %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
-            tx(tx, :voting_tx, direction)
-
-          %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
-            tx(tx, :spend_tx, direction)
-        end
+        map_to_tx(tx, direction)
       end)
 
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
@@ -79,6 +73,19 @@ defmodule Aeutil.Serialization do
     end
   end
 
+  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
+  def tx(tx, direction) do
+    new_data = %{
+      tx.data
+      | from_acc: hex_binary(tx.data.from_acc, direction),
+        to_acc: hex_binary(tx.data.to_acc, direction)
+    }
+
+    new_signature = hex_binary(tx.signature, direction)
+    %SignedTx{data: TxData.new(new_data), signature: new_signature}
+  end
+
+  @spec map_to_tx(map(), :serialize | :deserialize) :: SignedTx.t()
   def map_to_tx(map, direction) do
     case map do
       %{
@@ -127,15 +134,6 @@ defmodule Aeutil.Serialization do
         %SignedTx{data: TxData.new(new_map), signature: new_signature}
     end
   end
-
-  # @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
-  # def tx(tx, direction) do
-  #   new_data = %{tx.data |
-  #                from_acc: hex_binary(tx.data.from_acc, direction),
-  #                to_acc: hex_binary(tx.data.to_acc, direction)}
-  #   new_signature = hex_binary(tx.signature, direction)
-  #   %SignedTx{data: TxData.new(new_data), signature: new_signature}
-  # end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, direction) do

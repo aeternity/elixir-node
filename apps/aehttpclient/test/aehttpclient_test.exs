@@ -8,17 +8,17 @@ defmodule AehttpclientTest do
   alias Aehttpclient.Client
   alias Aecore.Miner.Worker, as: Miner
 
-#  @tag :http_client
-# test "Client functions" do
-#    account = Keys.pubkey() |> elem(1) |> Base.encode16()
-#    add_txs_to_pool()
-#    assert {:ok, _} = Client.get_info("localhost:4000")
-#    assert {:ok, _} = Client.get_block({"localhost:4000",
-#                                        Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
-#    assert {:ok, _} = Client.get_peers("localhost:4000")
-#    assert Enum.count(Client.get_account_txs({"localhost:4000", account})
-#    |> elem(1)) == 2
-#  end
+ @tag :http_client
+test "Client functions" do
+   account = Keys.pubkey() |> elem(1) |> Base.encode16()
+   add_txs_to_pool()
+   assert {:ok, _} = Client.get_info("localhost:4000")
+   assert {:ok, _} = Client.get_block({"localhost:4000",
+                                       Base.decode16!("414CDFBB4F7090BB11B4ACAD482D2610E651557D54900E61405E51B20FFBAF69")})
+   assert {:ok, _} = Client.get_peers("localhost:4000")
+   assert Enum.count(Client.get_account_txs({"localhost:4000", account})
+   |> elem(1)) == 2
+ end
 
   def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain
