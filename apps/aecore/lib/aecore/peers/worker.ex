@@ -11,6 +11,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.BlockValidation
+  alias Aeutil.Bits
 
   require Logger
 
@@ -60,9 +61,7 @@ defmodule Aecore.Peers.Worker do
 
   @spec genesis_block_header_hash() :: term()
   def genesis_block_header_hash() do
-    Block.genesis_block().header
-    |> BlockValidation.block_header_hash()
-    |> Base.encode16()
+    BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
   @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}
@@ -158,7 +157,8 @@ defmodule Aecore.Peers.Worker do
     filtered_peers = :maps.filter(fn(_, %{uri: uri}) ->
         case Client.get_info(uri) do
           {:ok, info} ->
-            info.genesis_block_hash == genesis_block_header_hash()
+            binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+            binary_genesis_hash == genesis_block_header_hash()
           _ ->
             false
         end
@@ -256,10 +256,11 @@ defmodule Aecore.Peers.Worker do
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
+        binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
         cond do
           own_nonce == info.peer_nonce ->
             {:error, "Equal peer nonces"}
-          info.genesis_block_hash != genesis_block_header_hash() ->
+          binary_genesis_hash != genesis_block_header_hash() ->
             {:error, "Genesis header hash not valid"}
           !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
             {:error, "Peer is not an aehttpserver"}
