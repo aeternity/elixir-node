@@ -59,5 +59,4 @@ defmodule AecoreChainTest do
     length = length(Chain.longest_blocks_chain())
     assert length > 1
   end
-
 end

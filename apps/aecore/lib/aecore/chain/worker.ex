@@ -61,7 +61,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_block_by_bech32_hash(String.t()) :: Block.t()
   def get_block_by_bech32_hash(hash) do
     decoded_hash = Bits.bech32_decode(hash)
-    GenServer.call(__MODULE__, {:get_block, decoded_hash})
+    GenServer.call(__MODULE__, {:get_block_from_memory_unsafe, decoded_hash})
   end
 
   @spec get_block(binary()) :: Block.t()
