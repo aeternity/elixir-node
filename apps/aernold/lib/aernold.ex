@@ -1,5 +1,4 @@
 defmodule Aernold do
-
   def process_ast(ast) do
     {_, scope} = ASTNode.evaluate_func_definitions(ast, %{})
     ASTNode.evaluate(ast, {nil, scope})
@@ -17,12 +16,12 @@ defmodule Aernold do
 
   defp parse(content) do
     with {:ok, tokens, _} <- :aernold_lexer.string(to_charlist(content)),
-         {:ok, result} <- :aernold_parser.parse(tokens)
-    do
+         {:ok, result} <- :aernold_parser.parse(tokens) do
       process_ast(result)
     else
       {:error, reason, _} ->
         reason
+
       {:error, {_, :aernold_lexer, reason}} ->
         to_string(reason)
     end

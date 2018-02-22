@@ -1,18 +1,18 @@
 defmodule ASTNode do
-
   alias Aecore.Chain.Worker, as: Chain
 
   def evaluate({{:contract, _}, _id, params, args, body}, {prev_val, scope}) do
-    {_, scope} = Enum.reduce(params, {0, scope}, fn(param, {args_index, scope_acc}) ->
-      arg = elem(args, args_index)
-      {_, id, type} = param
-      var_def = {:def_var, id, type, arg}
+    {_, scope} =
+      Enum.reduce(params, {0, scope}, fn param, {args_index, scope_acc} ->
+        arg = elem(args, args_index)
+        {_, id, type} = param
+        var_def = {:def_var, id, type, arg}
 
-      {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
-      {args_index + 1, scope_acc}
-    end)
+        {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+        {args_index + 1, scope_acc}
+      end)
 
-    Enum.reduce(body, {prev_val, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
+    Enum.reduce(body, {prev_val, scope}, fn statement, {prev_val_acc, scope_acc} ->
       evaluate(statement, {prev_val_acc, scope_acc})
     end)
   end
@@ -49,13 +49,16 @@ defmodule ASTNode do
   end
 
   def evaluate({:def_tuple, {_, id}, {_, type}, values}, {_prev_val, scope}) do
-    tuple_values = if values != :empty do
-      Enum.reduce(values, [], fn(value, acc) -> [elem(evaluate(value, {nil, scope}), 0) | acc] end)
-      |> Enum.reverse
-      |> List.to_tuple
-    else
-      {}
-    end
+    tuple_values =
+      if values != :empty do
+        Enum.reduce(values, [], fn value, acc ->
+          [elem(evaluate(value, {nil, scope}), 0) | acc]
+        end)
+        |> Enum.reverse()
+        |> List.to_tuple()
+      else
+        {}
+      end
 
     scope = Map.put(scope, id, %{type: type, value: tuple_values})
 
@@ -65,31 +68,34 @@ defmodule ASTNode do
   def evaluate({:decl_list, {_, id}, {_, type}, {_, list_type}}, {_prav_val, scope}) do
     {default_value, _} = evaluate(type, {nil, scope})
 
-    scope = if type == 'List' do
-      Map.put(scope, id, %{type: {type, list_type}, value: default_value})
-    else
-      throw ({:error, "The type of (#{id}) must be List"})
-    end
+    scope =
+      if type == 'List' do
+        Map.put(scope, id, %{type: {type, list_type}, value: default_value})
+      else
+        throw({:error, "The type of (#{id}) must be List"})
+      end
 
     {default_value, scope}
   end
 
   def evaluate({:def_list, {_, id}, {_, type}, {_, list_type}, values}, {_prev_val, scope}) do
-    list_values = if type == 'List' do
-      if values != :empty do
-        Enum.reduce(values, [], fn(value, acc) ->
-          {curr_value, _} = evaluate(value, {nil, scope})
-          if ASTNodeUtils.validate_variable_value!(id, list_type, curr_value, scope) == :ok do
-            [elem(evaluate(value, {nil, scope}), 0) | acc]
-          end
-        end)
-        |> Enum.reverse
+    list_values =
+      if type == 'List' do
+        if values != :empty do
+          Enum.reduce(values, [], fn value, acc ->
+            {curr_value, _} = evaluate(value, {nil, scope})
+
+            if ASTNodeUtils.validate_variable_value!(id, list_type, curr_value, scope) == :ok do
+              [elem(evaluate(value, {nil, scope}), 0) | acc]
+            end
+          end)
+          |> Enum.reverse()
+        else
+          []
+        end
       else
-        []
+        throw({:error, "The type of (#{id}) must be List"})
       end
-    else
-      throw ({:error, "The type of (#{id}) must be List"})
-    end
 
     scope = Map.put(scope, id, %{type: {type, list_type}, value: list_values})
 
@@ -108,15 +114,18 @@ defmodule ASTNode do
   end
 
   def evaluate({:if_statement, statements}, {_prev_val, scope}) do
-    {_, {if_statement_val, if_statement_scope}} = Enum.reduce(statements, {false, {nil, scope}},
-      fn({condition, body}, {has_true_condition, {prev_val_acc, scope_acc}}) ->
+    {_, {if_statement_val, if_statement_scope}} =
+      Enum.reduce(statements, {false, {nil, scope}}, fn {condition, body},
+                                                        {has_true_condition,
+                                                         {prev_val_acc, scope_acc}} ->
         if has_true_condition do
           {has_true_condition, {prev_val_acc, scope_acc}}
         else
           {condition_result, _} = evaluate(condition, {nil, scope})
+
           if condition_result do
             {statement_result, statement_scope} =
-              Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
+              Enum.reduce(body, {nil, scope}, fn statement, {prev_val_acc, scope_acc} ->
                 evaluate(statement, {prev_val_acc, scope_acc})
               end)
 
@@ -134,15 +143,18 @@ defmodule ASTNode do
 
   def evaluate({:switch_statement, {param, cases}}, {prev_val, scope}) do
     {param_extracted_value, _} = evaluate(param, {prev_val, scope})
-    {_, {switch_statement_val, switch_statement_scope}} = Enum.reduce(cases, {false, {nil, scope}},
-      fn({case_param, body}, {has_matched_case, {prev_val_acc, scope_acc}}) ->
+
+    {_, {switch_statement_val, switch_statement_scope}} =
+      Enum.reduce(cases, {false, {nil, scope}}, fn {case_param, body},
+                                                   {has_matched_case, {prev_val_acc, scope_acc}} ->
         if has_matched_case do
           {has_matched_case, {prev_val_acc, scope_acc}}
         else
           {case_param_value, _} = evaluate(case_param, {nil, scope})
+
           if case_param_value == param_extracted_value do
             {statement_result, statement_scope} =
-              Enum.reduce(body, {nil, scope}, fn(statement, {prev_val_acc, scope_acc}) ->
+              Enum.reduce(body, {nil, scope}, fn statement, {prev_val_acc, scope_acc} ->
                 evaluate(statement, {prev_val_acc, scope_acc})
               end)
 
@@ -281,10 +293,12 @@ defmodule ASTNode do
   def evaluate({:func_call, {_, 'account_balance'}, {param}}, {_prev_val, scope}) do
     {extracted_param, _} = evaluate(param, {nil, scope})
     {_, decoded_extracted_param} = Base.decode16(extracted_param)
+
     balance =
-      case(Chain.chain_state[decoded_extracted_param]) do
+      case Chain.chain_state()[decoded_extracted_param] do
         nil ->
           0
+
         %{balance: balance} ->
           balance
       end
@@ -296,10 +310,11 @@ defmodule ASTNode do
     {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
     {extracted_index, _} = evaluate(index, {nil, scope})
 
-    result = cond do
-      is_tuple(extracted_data_struct) == true -> elem(extracted_data_struct, extracted_index)
-      is_list(extracted_data_struct) == true -> Enum.at(extracted_data_struct, extracted_index)
-    end
+    result =
+      cond do
+        is_tuple(extracted_data_struct) == true -> elem(extracted_data_struct, extracted_index)
+        is_list(extracted_data_struct) == true -> Enum.at(extracted_data_struct, extracted_index)
+      end
 
     {result, scope}
   end
@@ -307,10 +322,11 @@ defmodule ASTNode do
   def evaluate({:func_call, {_, 'size'}, {data_struct}}, {_prev_val, scope}) do
     {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
 
-    result = cond do
-      is_tuple(extracted_data_struct) == true -> tuple_size(extracted_data_struct)
-      is_list(extracted_data_struct) == true -> Enum.count(extracted_data_struct)
-    end
+    result =
+      cond do
+        is_tuple(extracted_data_struct) == true -> tuple_size(extracted_data_struct)
+        is_list(extracted_data_struct) == true -> Enum.count(extracted_data_struct)
+      end
 
     {result, scope}
   end
@@ -333,7 +349,6 @@ defmodule ASTNode do
     {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
     {extracted_index, _} = evaluate(index, {nil, scope})
 
-
     result = delete_at(extracted_data_struct, extracted_index)
 
     {result, scope}
@@ -354,28 +369,33 @@ defmodule ASTNode do
 
   def evaluate({:func_call, id, args}, {_prev_val, scope}) do
     {_, func_name} = id
-    {_, {_, _, params, body} = _func} = Enum.find(scope, fn(s) ->
-      scope_key = elem(s, 0)
-      scope_val = elem(s, 1)
-      if !is_map(scope_val) do
-        elem(scope_val, 0) == :func_definition && scope_key == func_name
-      else
-        false
-      end
-    end)
 
-    {_, scope} = Enum.reduce(params, {0, scope}, fn(param, {args_index, scope_acc}) ->
-      arg = elem(args, args_index)
-      {_, id, type} = param
-      var_def = {:def_var, id, type, arg}
+    {_, {_, _, params, body} = _func} =
+      Enum.find(scope, fn s ->
+        scope_key = elem(s, 0)
+        scope_val = elem(s, 1)
 
-      {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
-      {args_index + 1, scope_acc}
-    end)
+        if !is_map(scope_val) do
+          elem(scope_val, 0) == :func_definition && scope_key == func_name
+        else
+          false
+        end
+      end)
 
-    {func_returned_value, scope} = Enum.reduce(body, {nil, scope}, fn(statement, {prev_val, scope_acc}) ->
-      evaluate(statement, {prev_val, scope_acc})
-    end)
+    {_, scope} =
+      Enum.reduce(params, {0, scope}, fn param, {args_index, scope_acc} ->
+        arg = elem(args, args_index)
+        {_, id, type} = param
+        var_def = {:def_var, id, type, arg}
+
+        {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+        {args_index + 1, scope_acc}
+      end)
+
+    {func_returned_value, scope} =
+      Enum.reduce(body, {nil, scope}, fn statement, {prev_val, scope_acc} ->
+        evaluate(statement, {prev_val, scope_acc})
+      end)
 
     {func_returned_value, scope}
   end
@@ -417,13 +437,16 @@ defmodule ASTNode do
   end
 
   def evaluate({:tuple, values}, {_, scope}) do
-    tuple_values = if values != :empty do
-      Enum.reduce(values, [], fn(value, acc) -> [elem(evaluate(value, {nil, scope}), 0) | acc] end)
-      |> Enum.reverse
-      |> List.to_tuple
-    else
-      {}
-    end
+    tuple_values =
+      if values != :empty do
+        Enum.reduce(values, [], fn value, acc ->
+          [elem(evaluate(value, {nil, scope}), 0) | acc]
+        end)
+        |> Enum.reverse()
+        |> List.to_tuple()
+      else
+        {}
+      end
 
     {tuple_values, scope}
   end
@@ -432,17 +455,18 @@ defmodule ASTNode do
     {{}, scope}
   end
 
-  #TODO: make independent lists homogenous as well
+  # TODO: make independent lists homogenous as well
   def evaluate({:list, values}, {_, scope}) do
-    list_values = if values != :empty do
-      Enum.reduce(values, [], fn(value, acc) ->
-        [elem(evaluate(value, {nil, scope}), 0) | acc]
-      end)
-      |> Enum.reverse
-      |> ASTNodeUtils.check_list_item_type
-    else
-      []
-    end
+    list_values =
+      if values != :empty do
+        Enum.reduce(values, [], fn value, acc ->
+          [elem(evaluate(value, {nil, scope}), 0) | acc]
+        end)
+        |> Enum.reverse()
+        |> ASTNodeUtils.check_list_item_type()
+      else
+        []
+      end
 
     {list_values, scope}
   end
@@ -457,6 +481,7 @@ defmodule ASTNode do
         case statement do
           {:func_definition, {_, id}, _, _} ->
             Map.put(scope_acc, id, statement)
+
           _ ->
             scope_acc
         end
@@ -482,5 +507,4 @@ defmodule ASTNode do
   def append(tuple, value) do
     Tuple.append(tuple, value)
   end
-
 end
