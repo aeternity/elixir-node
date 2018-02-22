@@ -48,25 +48,17 @@ defmodule Aecore.Chain.ChainState do
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     cond do
       SignedTx.is_coinbase?(transaction) ->
-        transaction_in!(chain_state,
-                        block_height,
-                        transaction.data.to_acc,
-                        transaction.data.value,
-                        transaction.data.lock_time_block)
-      transaction.data.from_acc != nil ->
-        if !SignedTx.is_valid?(transaction) do
-          throw {:error, "Invalid transaction"}
-        end
         chain_state
-        |> transaction_out!(block_height,
-                            transaction.data.from_acc,
-                            -(transaction.data.value + transaction.data.fee),
-                            transaction.data.nonce,
-                            -1)
-        |> transaction_in!(block_height,
-                           transaction.data.to_acc,
-                           transaction.data.value,
-                           transaction.data.lock_time_block)
+        |> apply_transaction_addition!(block_height, transaction)
+
+      transaction.data.from_acc != nil ->
+        if !SignedTx.is_valid?(transaction), do: throw {:error, "Invalid transaction"}
+
+        chain_state
+        |> apply_transaction_nonce!(transaction)
+        |> apply_transaction_deduction!(block_height, transaction)
+        |> apply_transaction_addition!(block_height, transaction)
+
       true ->
         throw {:error, "Noncoinbase transaction with from_acc=nil"}
     end
@@ -173,34 +165,54 @@ defmodule Aecore.Chain.ChainState do
       end)
   end
 
-  @spec transaction_in!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()
-  defp transaction_in!(chain_state, block_height, account, value, lock_time_block) do
+  @spec apply_to_state!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()
+  defp apply_to_state!(chain_state, block_height, account, value, lock_time_block) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
+
     if block_height <= lock_time_block do
       if value < 0 do
         throw {:error, "Can't lock a negative transaction"}
       end
+
       new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
       Map.put(chain_state, account, %{account_state | locked: new_locked})
+
     else
       new_balance = account_state.balance + value
       if new_balance < 0 do
         throw {:error, "Negative balance"}
       end
       Map.put(chain_state, account, %{account_state | balance: new_balance})
+
     end
   end
 
-  @spec transaction_out!(account_chainstate(), integer(), binary(), integer(), integer(), integer()) :: account_chainstate()
-  defp transaction_out!(chain_state, block_height, account, value, nonce, lock_time_block) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-    if account_state.nonce >= nonce do
+  @spec apply_transaction_nonce!(account_chainstate(), SignedTx.t()) :: account_chainstate()
+  defp apply_transaction_nonce!(chain_state, transaction) do
+    account_state = Map.get(chain_state, transaction.data.from_acc, %{balance: 0, nonce: 0, locked: []})
+    if account_state.nonce >= transaction.data.nonce do
       throw {:error, "Nonce too small"}
     end
 
+    chain_state |> Map.put(transaction.data.from_acc, %{account_state | nonce: transaction.data.nonce})
+  end
+
+  @spec apply_transaction_deduction!(account_chainstate(), non_neg_integer(), SignedTx.t()) :: account_chainstate()
+  defp apply_transaction_deduction!(chain_state, block_height, transaction) do
     chain_state
-    |> Map.put(account, %{account_state | nonce: nonce})
-    |> transaction_in!(block_height, account, value, lock_time_block)
+    |> apply_to_state!(block_height,
+                       transaction.data.from_acc,
+                       -(transaction.data.value + transaction.data.fee),
+                       -1)
+  end
+
+  @spec apply_transaction_addition!(account_chainstate(), non_neg_integer(), SignedTx.t()) :: account_chainstate()
+  defp apply_transaction_addition!(chain_state, block_height, transaction) do
+    chain_state
+    |> apply_to_state!(block_height,
+                       transaction.data.to_acc,
+                       transaction.data.value,
+                       transaction.data.lock_time_block)
   end
 
   defp deduct_from_account_state!(chain_state, account, value, nonce) do

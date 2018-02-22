@@ -28,6 +28,34 @@ To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
 
+#### **Oracle usage**
+Start the node as oracle operator -  `IS_OPERATOR=true iex -S mix phx.server`
+
+Registering an oracle:
+  `Aecore.OraclePrototype.Oracle.register(query_format, response_format, description, fee, oracle_uri)`
+  The query and response formats are treated as json schemas with which the queries and responses
+  are validated. The passed oracle uri isn't part of the transaction that gets created when
+  registering an oracle, but it is stored as an environment variable mapped to the corresponding
+  oracle (transaction) hash. If a node wants to serve as an oracle operator, an oracle server
+  should be set up to handle queries. One node can run multiple oracles.
+
+  To list all registered oracles -  `Aecore.Chain.Worker.registered_oracles()`
+
+Querying an oracle:
+  `Aecore.OraclePrototype.Oracle.query(oracle_hash, query_data, query_fee, response_fee)`
+  The oracle hash is the hash of the oracle registration transaction.This transaction
+  includes two fees - a query fee which is processed as a normal fee which is given
+  to the miner and a response fee which is given to the oracle as a way to cover
+  his response transaction fee.
+
+Oracle responses:
+  Whenever a new block is mined and a query transaction that references one of our
+  oracles is present, the query is posted to the corresponding oracle server.
+  That server must post a response back to the node's `/oracle_response` endpoint
+  ({"oracle_hash": oracle hash in hex, "response": response data, "fee": fee})
+
+All transactions have to be mined in order to take effect.
+
 #### **API calls**
 To add a block to the blockchain:
 
