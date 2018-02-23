@@ -3,6 +3,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
+  alias Aeutil.Bits
 
   require Logger
 
@@ -39,5 +40,10 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
        Logger.error("Invalid query or response format definition; " <> e.message)
        :error
     end
+  end
+
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("or", bin)
   end
 end

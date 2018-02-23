@@ -34,5 +34,4 @@ defmodule Aecore.Structures.SpendTx do
                   fee: fee,
                   lock_time_block: lock_time_block}}
   end
-
 end

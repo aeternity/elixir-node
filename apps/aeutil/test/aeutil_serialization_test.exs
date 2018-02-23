@@ -18,10 +18,10 @@ defmodule AeutilSerializationTest do
     [_head | values] = Map.values(block.header)
     for value <- values do
       if is_binary(value) do
-        case(Base.decode16(value)) do
+        case(SegwitAddr.decode(value)) do
           {:ok, _} ->
             true
-          :error ->
+          {:error, _} ->
             false
         end
       else
@@ -50,38 +50,79 @@ defmodule AeutilSerializationTest do
 
   def get_block() do
     %Aecore.Structures.Block{
-    header: %Aecore.Structures.Header{chain_state_hash: <<30,
-    218, 194, 119, 38, 40, 34, 174, 222, 84, 181, 202, 247, 196, 94, 64, 9, 109,
-    222, 28, 113, 175, 206, 113, 23, 161, 56, 109, 50, 163, 62, 34>>,
-    difficulty_target: 11, height: 105, nonce: 707,
-    prev_hash: <<0, 122, 160, 14, 73, 61, 172, 124, 241, 233, 182, 91, 53, 238,
-    233, 208, 138, 26, 59, 211, 87, 245, 149, 71, 169, 84, 121, 95, 179, 150, 8,
-    203>>, timestamp: 1_508_834_903_252,
-    txs_hash: <<1, 101, 93, 209, 124, 22, 197, 172, 222, 246, 210, 28, 228, 244,
-    155, 248, 3, 179, 250, 105, 208, 85, 217, 215, 244, 150, 87, 214, 225, 71,
-    160, 240>>, version: 1},
-    txs:
-    [%Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{from_acc: nil,
-    nonce: 743_183_534_114,
-    to_acc: <<4, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149,
-      224, 16, 95, 203, 138, 175, 20, 173, 236, 11, 119, 247, 239, 229, 214,
-      249, 62, 214, 1, 164, 99, 95, 167, 141, 75, 205, 154, 199, 247, 141, 240,
-      152, 235, 1, 17, 44, 69, 181, 36, 123, 180, 170, 125, 93, 238, 185, 212,
-      11, 212, 44>>, value: 100}, signature: nil}]}
+      header: %Aecore.Structures.Header{
+        chain_state_hash: <<194, 149, 104, 199, 218, 174, 149, 130, 255, 177, 230,
+          47, 179, 137, 241, 104, 127, 121, 29, 77, 194, 62, 109, 10, 227, 8, 34,
+          147, 173, 69, 0, 139>>,
+        difficulty_target: 1,
+        height: 1,
+        nonce: 100,
+        pow_evidence: [396336, 613835, 623264, 643439, 663633, 31623636, 31626565,
+         31626637, 31653763, 31653833, 32333339, 32343965, 32666364, 33303064,
+         33303165, 33373336, 33376466, 33626562, 34336337, 34353866, 34373463,
+         34373830, 34386163, 34626436, 34636265, 34653262, 35316363, 35323832,
+         35393435, 35393436, 35393563, 35626634, 35656164, 36323365, 36333337,
+         36343231, 36393361, 36396432, 36616666, 37343638, 37623335, 37623936],
+        prev_hash: <<8, 29, 133, 32, 174, 126, 31, 174, 40, 134, 218, 6, 148, 142,
+          143, 29, 30, 113, 20, 78, 116, 101, 124, 116, 166, 209, 141, 79, 89, 40,
+          80, 113>>,
+        timestamp: 1519382030538,
+        txs_hash: <<187, 45, 76, 248, 118, 32, 183, 125, 6, 117, 210, 91, 190, 55,
+          34, 29, 180, 222, 31, 247, 239, 233, 79, 182, 46, 41, 228, 36, 148, 161,
+          168, 161>>,
+        version: 1
+      },
+      txs: [
+        %Aecore.Structures.SignedTx{
+          data: %Aecore.Structures.SpendTx{
+            fee: 0,
+            from_acc: nil,
+            lock_time_block: 11,
+            nonce: 0,
+            to_acc:  <<4, 89, 53, 128, 121, 117, 1, 174, 193, 199, 63, 36, 12, 123, 218, 29, 87,
+              199, 161, 174, 235, 161, 192, 148, 222, 157, 135, 152, 185, 11, 41, 244, 224,
+              57, 22, 195, 71, 159, 178, 248, 18, 49, 180, 136, 31, 127, 119, 254, 22, 36,
+              164, 173, 185, 138, 50, 126, 89, 81, 12, 91, 169, 185, 211, 52, 219>>,
+            value: 100
+          },
+          signature: nil
+        }
+      ]
+    }
   end
 
   def get_block_map() do
-    %{"header" => %{"chain_state_hash" => "1EDAC277262822AEDE54B5CAF7C45E40096DDE1C71AFCE7117A1386D32A33E22",
-    "difficulty_target" => 11, "height" => 105, "nonce" => 707,
-    "pow_evidence" => nil,
-    "prev_hash" => "007AA00E493DAC7CF1E9B65B35EEE9D08A1A3BD357F59547A954795FB39608CB",
-    "timestamp" => 1508834903252,
-    "txs_hash" => "01655DD17C16C5ACDEF6D21CE4F49BF803B3FA69D055D9D7F49657D6E147A0F0",
-    "version" => 1},
-    "txs" => [%{"data" => %{"fee" => nil, "from_acc" => nil,
-       "lock_time_block" => nil, "nonce" => 743183534114,
-       "to_acc" => "04796F1CC043603B81E93AA017AA95E0105FCB8AAF14ADEC0B77F7EFE5D6F93ED601A4635FA78D4BCD9AC7F78DF098EB01112C45B5247BB4AA7D5DEEB9D40BD42C",
-       "value" => 100}, "signature" => nil}]}
-
+    %{
+      "header" => %{
+        "chain_state_hash" => "cs1qc22k3376462c9la3uchm8z03dplhj82dcglx6zhrpq3f8t29qz9sx0dzud",
+        "difficulty_target" => 1,
+        "height" => 1,
+        "nonce" => 100,
+        "pow_evidence" => [396336, 613835, 623264, 643439, 663633, 31623636,
+         31626565, 31626637, 31653763, 31653833, 32333339, 32343965, 32666364,
+         33303064, 33303165, 33373336, 33376466, 33626562, 34336337, 34353866,
+         34373463, 34373830, 34386163, 34626436, 34636265, 34653262, 35316363,
+         35323832, 35393435, 35393436, 35393563, 35626634, 35656164, 36323365,
+         36333337, 36343231, 36393361, 36396432, 36616666, 37343638, 37623335,
+         37623936],
+        "prev_hash" => "bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp",
+        "timestamp" => 1519382030538,
+        "txs_hash" => "tr1qhvk5e7rkyzmh6pn46fdmudezrk6du8lhal55ld3w98jzf99p4zsskjf0a4",
+        "version" => 1
+      },
+      "txs" => [
+        %{
+          "data" => %{
+            "fee" => 0,
+            "from_acc" => nil,
+            "lock_time_block" => 11,
+            "nonce" => 0,
+            "to_acc" => "04593580797501AEC1C73F240C7BDA1D57C7A1AEEBA1C094DE9D8798B90B29F4E03916C3479FB2F81231B4881F7F77FE1624A4ADB98A327E59510C5BA9B9D334DB",
+            "value" => 100
+          },
+          "signature" => nil
+        }
+      ]
+    }
   end
 end

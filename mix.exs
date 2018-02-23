@@ -39,6 +39,7 @@ defmodule EpochElixir.Mixfile do
      {:ex_json_schema, "~> 0.5.4"},
      {:excoveralls, "~> 0.8.1", only: :test},
      {:distillery, "~> 1.5.2", runtime: false},
-     {:msgpax, "~> 2.1.1"}]
+     {:msgpax, "~> 2.1.1"},
+     {:bip0173, "~> 0.1.2"}]
   end
 end

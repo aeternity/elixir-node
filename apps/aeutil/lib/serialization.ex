@@ -3,6 +3,7 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
+  alias __MODULE__
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
@@ -10,11 +11,15 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Chain.ChainState
+  alias Aeutil.Bits
 
   @type transaction_types :: SpendTx.t() |
                              OracleQueryTxData.t() |
                              OracleRegistrationTxData.t() |
                              OracleResponseTxData.t()
+
+  @type hash_types :: :chainstate | :header | :oracle_reg_tx | :txs
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
@@ -40,44 +45,44 @@ defmodule Aeutil.Serialization do
   @spec header(Header.t(), :serialize | :deserialize) :: Header.t()
   def header(header, direction) do
     %{header |
-      chain_state_hash: hex_binary(header.chain_state_hash, direction),
-      prev_hash: hex_binary(header.prev_hash, direction),
-      txs_hash: hex_binary(header.txs_hash, direction)}
+      chain_state_hash: bech32_binary(header.chain_state_hash, :chainstate, direction),
+      prev_hash: bech32_binary(header.prev_hash, :header, direction),
+      txs_hash: bech32_binary(header.txs_hash, :txs, direction)}
   end
 
-  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
+  @spec tx(SignedTx.t() | map(), :serialize | :deserialize) :: SignedTx.t()
   def tx(tx, direction) do
     {new_data, new_signature} =
       case direction do
         :deserialize ->
-          built_tx_data = build_tx(tx).data
+          built_tx_data = build_tx_data(tx["data"])
           data = serialize_tx_data(built_tx_data, direction)
-          signature = hex_binary(tx["signature"], direction)
+          signature = base64_binary(tx["signature"], direction)
           {data, signature}
         :serialize ->
           data = serialize_tx_data(tx.data, direction)
-          signature = hex_binary(tx.signature, direction)
+          signature = base64_binary(tx.signature, direction)
           {data, signature}
       end
     %SignedTx{data: new_data, signature: new_signature}
   end
 
-  @spec build_tx(map()) :: transaction_types()
-  def build_tx(tx) do
+  @spec build_tx_data(map()) :: transaction_types()
+  def build_tx_data(tx_data) do
     cond do
-      SignedTx.is_spend_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => SpendTx.new(tx["data"])})
-      SignedTx.is_oracle_query_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleQueryTxData.new(tx["data"])})
-      SignedTx.is_oracle_registration_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleRegistrationTxData.new(tx["data"])})
-      SignedTx.is_oracle_response_tx(tx["data"]) ->
-        SignedTx.new(%{tx | "data" => OracleResponseTxData.new(tx["data"])})
+      SignedTx.is_spend_tx(tx_data) ->
+        SpendTx.new(tx_data)
+      SignedTx.is_oracle_query_tx(tx_data) ->
+        OracleQueryTxData.new(tx_data)
+      SignedTx.is_oracle_registration_tx(tx_data) ->
+        OracleRegistrationTxData.new(tx_data)
+      SignedTx.is_oracle_response_tx(tx_data) ->
+        OracleResponseTxData.new(tx_data)
     end
   end
 
   @spec serialize_tx_data(transaction_types(),
-                          :serialize | :deserialize) :: transaction_types()
+                          :serialize | :deserialize) :: Serialization.transaction_types()
   def serialize_tx_data(tx_data, direction) do
     case tx_data do
       %SpendTx{} ->
@@ -87,14 +92,16 @@ defmodule Aeutil.Serialization do
         %{tx_data | operator: hex_binary(tx_data.operator, direction)}
       %OracleResponseTxData{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction),
-                    oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
+                    oracle_hash: bech32_binary(tx_data.oracle_hash,
+                                               :oracle_reg_tx, direction)}
       %OracleQueryTxData{} ->
         %{tx_data | sender: hex_binary(tx_data.sender, direction),
-                    oracle_hash: hex_binary(tx_data.oracle_hash, direction)}
+                    oracle_hash: bech32_binary(tx_data.oracle_hash,
+                                               :oracle_reg_tx, direction)}
     end
   end
 
-  @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
+  @spec hex_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def hex_binary(data, direction) do
     if data != nil do
       case(direction) do
@@ -102,6 +109,40 @@ defmodule Aeutil.Serialization do
           Base.encode16(data)
         :deserialize ->
           Base.decode16!(data)
+      end
+    else
+      nil
+    end
+  end
+
+  @spec bech32_binary(binary() | String.t, Serialization.hash_types(),
+                      :serialize | :deserialize) :: String.t() | binary()
+  def bech32_binary(data, hash_type, direction) do
+    case direction do
+      :serialize ->
+        case hash_type do
+          :header ->
+            Header.bech32_encode(data)
+          :oracle_reg_tx ->
+            OracleRegistrationTxData.bech32_encode(data)
+          :txs ->
+            SignedTx.bech32_encode_root(data)
+          :chainstate ->
+            ChainState.bech32_encode(data)
+        end
+      :deserialize ->
+        Bits.bech32_decode(data)
+    end
+  end
+
+  @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
+  def base64_binary(data, direction) do
+    if data != nil do
+      case(direction) do
+        :serialize ->
+          Base.encode64(data)
+        :deserialize ->
+          Base.decode64!(data)
       end
     else
       nil
