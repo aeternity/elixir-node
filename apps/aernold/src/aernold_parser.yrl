@@ -5,15 +5,17 @@ else switch 'case' func hex char string
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '%' '{' '}'
 '(' ')' '&&' '||' '>' '<' '==' '<='
-'>=' '!=' ',' '!' '[' ']'
+'>=' '!=' ',' '!' '[' ']' '=>' '%{'
 .
 
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement SwitchStatement
-SwitchCase FunctionDefinition FunctionParameters FunctionCall FunctionArguments
-Expression Condition Id Type Value OpCondition OpCompare Op DataStructure
-TupleDefinition TupleValues ListDeclaration ListDefinition ListValues Tuple List
+SwitchCase Condition
+FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
+Id Type Value OpCondition OpCompare Op DataStructure TupleDefinition TupleValues
+ListDeclaration ListDefinition ListValues MapDeclaration MapDefinition MapValues
+Tuple List Map
 .
 
 Rootsymbol File.
@@ -33,8 +35,11 @@ Statement -> Expression ';' Statement : ['$1' | '$3'].
 Statement -> DataStructure ';' : ['$1'].
 Statement -> DataStructure ';' Statement : ['$1' | '$3'].
 
+%DataStructure -> TupleDefinition : '$1'.
 DataStructure -> ListDeclaration : '$1'.
 DataStructure -> ListDefinition : '$1'.
+DataStructure -> MapDeclaration : '$1'.
+DataStructure -> MapDefinition : '$1'.
 
 SimpleStatement -> VariableDeclaration : '$1'.
 SimpleStatement -> VariableDefinition : '$1'.
@@ -43,9 +48,18 @@ CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
 CompoundStatement -> SwitchStatement : {switch_statement, '$1'}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
+%TODO: to be able to do {}; or {1,2};
+%TupleDefinition -> Tuple : {tuple, '$1'}.
+%TupleDefinition -> Id ':' Type '=' Tuple : {def_tuple, '$1', '$3', '$1'}.
+%TupleDefinition -> Id ':' Type '=' '{' TupleValues '}': {def_tuple, '$1', '$3', list_to_tuple('$6')}.
+
 ListDeclaration -> Id ':' Type '<' Type '>' : {decl_list, '$1', '$3', '$5'}.
+%ListDefinition -> List : {list, '$1'}.
 ListDefinition -> Id ':' Type '<' Type '>' '=' '[' ']' : {def_list, '$1', '$3', '$5', 'empty'}.
 ListDefinition -> Id ':' Type '<' Type '>' '=' '[' ListValues ']' : {def_list, '$1', '$3', '$5', list_to_tuple('$9')}.
+
+MapDeclaration -> Id ':' Type '<' Type ',' Type '>' : {decl_map, '$1', '$3', '$5', '$7'}.
+MapDefinition -> Id ':' Type '<' Type ',' Type '>' '=' '%{' MapValues '}' : {def_map, '$1', '$3', '$5', '$7', list_to_tuple('$11')}.
 
 VariableDeclaration -> Id ':' Type : {decl_var, '$1', '$3'}.
 VariableDefinition -> Id ':' Type  '=' Expression : {def_var, '$1', '$3', '$5'}.
@@ -78,6 +92,7 @@ Condition -> Expression : '$1'.
 Condition -> Expression OpCondition Condition : {'$1', '$2', '$3'}.
 
 Expression -> Value : '$1'.
+%Expression -> DataStructure : '$1'.
 Expression -> '!' Value : {'$1', '$2'}.
 Expression -> Expression OpCompare Expression : {'$1', '$2', '$3'}.
 Expression -> Expression Op Expression : {'$1', '$2', '$3'}.
@@ -92,19 +107,26 @@ Type -> type : {type, get_value('$1')}.
 Tuple -> '{' '}' : 'empty'.
 Tuple -> '{' TupleValues '}' : '$2'.
 
-TupleValues -> Value : ['$1'].
-TupleValues -> Value ',' TupleValues: ['$1' | '$3'].
+TupleValues -> Expression : ['$1'].
+TupleValues -> Expression ',' TupleValues: ['$1' | '$3'].
 
 List -> '[' ']' : 'empty'.
 List -> '[' ListValues ']' : '$2'.
 
-ListValues -> Value : ['$1'].
-ListValues -> Value ',' ListValues: ['$1' | '$3'].
+ListValues -> Expression : ['$1'].
+ListValues -> Expression ',' ListValues: ['$1' | '$3'].
+
+Map -> '%{' '}' : 'empty'.
+Map -> '%{' MapValues '}' : list_to_tuple('$2').
+
+MapValues -> Expression '=>' Expression : [{'$1', '$3'}].
+MapValues -> Expression '=>' Expression ',' MapValues : [{'$1', '$3'} | '$5'].
 
 Value -> Id : '$1'.
 Value -> FunctionCall : '$1'.
 Value -> List : {list, '$1'}.
 Value -> Tuple : {tuple, '$1'}.
+Value -> Map : {map, '$1'}.
 Value -> int : {int, get_value('$1')}.
 Value -> bool : {bool, get_value('$1')}.
 Value -> hex : {hex, get_value('$1')}.
@@ -131,3 +153,5 @@ Op -> '=' : '$1'.
 Erlang code.
 
 get_value({_, _, Value}) -> Value.
+
+%get_hex_value({_, _, Value}) -> "0x" ++ Value.

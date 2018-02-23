@@ -52,4 +52,51 @@ defmodule ASTNodeUtils do
         list
     end
   end
+
+  def validate_map_key_or_value!(type, value) do
+    hex_regex = ~r{[0-9a-fA-F]+}
+
+    cond do
+      (type == 'Int' || type == :int) && !is_integer(value) ->
+        throw({:error, "Map key/value type mismatch"})
+
+      (type == 'Bool' || type == :bool) && !is_boolean(value) ->
+        throw({:error, "Map key/value type mismatch"})
+
+      (type == 'String' || type == :string) && !String.valid?(value) ->
+        throw({:error, "Map key/value type mismatch"})
+
+      (type == 'Hex' || type == :hex) && !(value =~ hex_regex) ->
+        throw({:error, "Map key/value type mismatch"})
+
+      (type == 'Char' || type == :char) && !String.valid?(value) ->
+        throw({:error, "Map key/value type mismatch"})
+
+      true ->
+        :ok
+    end
+  end
+
+  def value_to_map_key!(type, value) do
+    cond do
+      type == 'Int' || type == :int ->
+        Integer.to_string(value)
+
+      type == 'Bool' || type == :bool ->
+        value
+
+      type == 'String' || type == :string ->
+        value
+
+      type == 'Hex' || type == :hex ->
+        value
+
+      type == 'Char' || type == :char ->
+        value
+
+      true ->
+        throw({:error, "Illegal map key value"})
+    end
+  end
+
 end

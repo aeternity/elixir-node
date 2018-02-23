@@ -102,6 +102,30 @@ defmodule ASTNode do
     {list_values, scope}
   end
 
+  def evaluate({:decl_map, {_, id}, {_, 'Map' = type}, {_, keys_type}, {_, values_type}}, {_prev_val, scope}) do
+    scope = Map.put(scope, id, %{type: {type, {keys_type, values_type}}, value: %{}})
+
+    {nil, scope}
+  end
+
+  def evaluate({:def_map, {_, id}, {_, 'Map' = type}, {_, keys_type}, {_, values_type}, map_values}, {_prev_val, scope}) do
+    map = Enum.reduce(map_values, %{}, fn({{key_type, key_value} = key, {value_type, value_value} = value}, acc) ->
+      {key_extracted_value, _} = evaluate(key, {nil, scope})
+      ASTNodeUtils.validate_map_key_or_value!(keys_type, key_extracted_value);
+
+      {value_extracted_value, _} = evaluate(value, {nil, scope})
+      ASTNodeUtils.validate_map_key_or_value!(values_type, value_extracted_value);
+
+      map_key = ASTNodeUtils.value_to_map_key!(key_type, key_value)
+
+      Map.put(acc, map_key, value_value)
+    end)
+
+    scope = Map.put(scope, id, %{type: {type, {keys_type, values_type}}, value: map})
+
+    {map, scope}
+  end
+
   def evaluate({{:id, id}, {:=, _}, value}, {_prev_val, scope}) do
     {extracted_value, _} = evaluate(value, {nil, scope})
     %{type: type} = Map.get(scope, id)
@@ -455,7 +479,6 @@ defmodule ASTNode do
     {{}, scope}
   end
 
-  # TODO: make independent lists homogenous as well
   def evaluate({:list, values}, {_, scope}) do
     list_values =
       if values != :empty do
@@ -469,6 +492,28 @@ defmodule ASTNode do
       end
 
     {list_values, scope}
+  end
+
+  def evaluate({:map, key_value_pairs}, {_, scope}) do
+    map_values =
+      if key_value_pairs != :empty do
+        {{keys_type, _}, {values_type, _}} = elem(key_value_pairs, 0)
+        Enum.reduce(key_value_pairs, %{}, fn {{key_type, key_value} = key, {value_type, value_value} = value}, acc ->
+          {key_extracted_value, _} = evaluate(key, {nil, scope})
+          ASTNodeUtils.validate_map_key_or_value!(keys_type, key_extracted_value);
+
+          {value_extracted_value, _} = evaluate(value, {nil, scope})
+          ASTNodeUtils.validate_map_key_or_value!(values_type, value_extracted_value);
+
+          map_key = ASTNodeUtils.value_to_map_key!(keys_type, key_value)
+
+          Map.put(acc, map_key, value_value)
+        end)
+      else
+        %{}
+      end
+
+    {map_values, scope}
   end
 
   def evaluate('List', {_, scope}) do
