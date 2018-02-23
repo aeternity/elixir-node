@@ -38,7 +38,8 @@ persistence_path = case System.get_env("PERSISTENCE_PATH") do
 end
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+  path: Path.absname(persistence_path),
+  number_of_blocks_in_memory: 100
 
 config :logger,
   compile_time_purge_level: :info,

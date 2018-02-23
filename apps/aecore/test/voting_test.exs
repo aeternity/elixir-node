@@ -8,7 +8,6 @@ defmodule VotingTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys.Worker, as: Keys
-  alias Aecore.Structures.TxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.VotingQuestionTx
@@ -61,12 +60,13 @@ defmodule VotingTest do
           from_acc: pubkey,
           start_block_height: Chain.top_height,
           close_block_height: Chain.top_height + 10,
-          fee: 10}
+          fee: 10,
+          nonce: 1}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
-    hash = TxData.hash_tx(sign_tx)
+    hash = SignedTx.hash_tx(sign_tx)
     {hash, sign_tx}
   end
 
@@ -78,12 +78,13 @@ defmodule VotingTest do
           from_acc: pubkey,
           start_block_height: Chain.top_height + 1,
           close_block_height: Chain.top_height,
-          fee: 10}
+          fee: 10,
+          nonce: 2}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
-    hash = TxData.hash_tx(sign_tx)
+    hash = SignedTx.hash_tx(sign_tx)
     {hash, sign_tx}
   end
 
@@ -92,12 +93,13 @@ defmodule VotingTest do
     a = %{hash_question: hash_q,
           answer: ["yes"],
           from_acc: pubkey,
-          fee: 10}
+          fee: 10,
+          nonce: 3}
 
     voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
-    hash = TxData.hash_tx(sign_tx)
+    hash = SignedTx.hash_tx(sign_tx)
     {hash, sign_tx}
   end
 
@@ -106,12 +108,13 @@ defmodule VotingTest do
     a = %{hash_question: hash_q,
           answer: ["maybe"],
           from_acc: pubkey,
-          fee: 10}
+          fee: 10,
+          nonce: 4}
 
     voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
-    hash = TxData.hash_tx(sign_tx)
+    hash = SignedTx.hash_tx(sign_tx)
     {hash, sign_tx}
   end
 end

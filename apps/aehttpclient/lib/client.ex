@@ -4,8 +4,9 @@ defmodule Aehttpclient.Client do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.SpendTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
@@ -14,14 +15,16 @@ defmodule Aehttpclient.Client do
   @typedoc "Client request identifier"
   @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
+  @spec handle_response(req_kind(), map(), list(map())) :: {:ok, map()}
+
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
+  @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
   def get_block({uri, hash}) do
-    hash = Base.encode16(hash)
+    hash = Header.bech32_encode(hash)
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
@@ -33,8 +36,8 @@ defmodule Aehttpclient.Client do
 
   @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    from_block_hash = Base.encode16(from_block_hash)
-    to_block_hash = Base.encode16(to_block_hash)
+    from_block_hash = Header.bech32_encode(from_block_hash)
+    to_block_hash = Header.bech32_encode(to_block_hash)
     uri = uri <> "/raw_blocks?" <>
             "from_block=" <> from_block_hash <>
             "&to_block=" <> to_block_hash
@@ -57,19 +60,18 @@ defmodule Aehttpclient.Client do
       case tx do
         %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
           Serialization.tx(tx, :voting_tx, :serialize)
-        %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
           Serialization.tx(tx, :spend_tx, :serialize)
       end
 
     post_to_peers("new_tx", data, peers)
   end
 
-  @spec post_to_peers(binary(), binary(), list(binary())) :: :ok
+  @spec post_to_peers(String.t(), binary(), list(String.t())) :: :ok
   defp post_to_peers(uri, data, peers) do
-    for peer <- peers do
+    Enum.each(peers, fn(peer) ->
       post(peer, data, uri)
-    end
-    :ok
+    end)
   end
 
   defp post(peer, data, uri) do
@@ -97,14 +99,12 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  @spec handleResponse(:block, map(), map()) :: {:ok, map()}
-  defp handleResponse(:block, body, _headers) do
+  defp handle_response(:block, body, _headers) do
     response = Poison.decode!(body, as: %Block{}, keys: :atoms!)
     {:ok, response}
   end
 
-  @spec handleResponse(:raw_blocks, map(), list(map())) :: {:ok, map()}
-  defp handleResponse(:raw_blocks, body, _headers) do
+  defp handle_response(:raw_blocks, body, _headers) do
     response = Poison.decode!(body, as: [%Block{}], keys: :atoms!)
     deserialized_blocks = Enum.map(
       response,
@@ -116,8 +116,7 @@ defmodule Aehttpclient.Client do
     {:ok, deserialized_blocks}
   end
 
-  @spec handleResponse(:info, map(), list(map())) :: {:ok, map()}
-  defp handleResponse(:info, body, headers) do
+  defp handle_response(:info, body, headers) do
     response = Poison.decode!(body, keys: :atoms!)
     {_, server} = Enum.find(headers, fn(header) ->
       header == {"server", "aehttpserver"}
@@ -126,28 +125,26 @@ defmodule Aehttpclient.Client do
     {:ok, response_with_server_header}
   end
 
-  @spec handleResponse(:acc_txs, map(), list(map())) :: {:ok, map()}
-  defp handleResponse(:acc_txs, body, _headers) do
-    response = Poison.decode!(body, as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+  defp handle_response(:acc_txs, body, _headers) do
+    response = Poison.decode!(body, as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
     {:ok, response}
   end
 
-  @spec handleResponse(:pool_txs, map(), list(map())) :: {:ok, map()}
-  defp handleResponse(:pool_txs, body, _headers) do
+  defp handle_response(:pool_txs, body, _headers) do
     response = body
-      |> Poison.decode!(as: [%SignedTx{data: %TxData{}}], keys: :atoms!)
+      |> Poison.decode!(as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
       |> Enum.map(fn(tx) ->
         case tx do
           %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
             Serialization.tx(tx, :voting_tx, :deserialize)
-          %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+          %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
             Serialization.tx(tx, :spend_tx, :deserialize)
         end end)
+
     {:ok, response}
   end
 
-  @spec handleResponse(:default, map(), list(map())) :: {:ok, map()}
-  defp handleResponse(:default, body, _headers) do
+  defp handle_response(:default, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}
   end
@@ -156,7 +153,7 @@ defmodule Aehttpclient.Client do
   defp get(uri, identifier \\ :default) do
     case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
-        handleResponse(identifier, body, headers)
+        handle_response(identifier, body, headers)
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         {:error, "Response 404"}
       {:ok, %HTTPoison.Response{status_code: 400}} ->

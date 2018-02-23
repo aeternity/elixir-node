@@ -8,12 +8,13 @@ defmodule Aecore.Txs.Pool.Worker do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
-  alias Aecore.Structures.TxData
   alias Aecore.Structures.VotingTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
+  alias Aeutil.Bits
+  alias Aeutil.Serialization
   alias Aehttpserver.Web.Notify
   alias Aecore.VotingPrototype.Validation, as: VotingValidation
 
@@ -61,8 +62,29 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    if valid_tx?(tx) do
-      updated_pool = Map.put_new(tx_pool, hash_tx(tx), tx)
+    tx_size_bytes = get_tx_size_bytes(tx)
+    is_minimum_fee_met =
+      case tx do
+        %SignedTx{data: %SpendTx{}} ->
+          tx.data.fee >= Float.floor(tx_size_bytes /
+          Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+        %SignedTx{data: %VotingTx{}} ->
+          tx.data.data.fee >= Float.floor(tx_size_bytes /
+          Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+      end
+
+    cond do
+      !SignedTx.is_valid?(tx) ->
+        Logger.error("Invalid signed transaction")
+        {:reply, :error, tx_pool}
+      !is_minimum_fee_met ->
+        Logger.error("Fee is too low")
+        {:reply, :error, tx_pool}
+      !valid_tx?(tx) ->
+        Logger.error("Invalid transaction")
+        {:reply, :error, tx_pool}
+      true ->
+        updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
         if tx_pool == updated_pool do
           Logger.info("Transaction is already in pool")
         else
@@ -71,14 +93,11 @@ defmodule Aecore.Txs.Pool.Worker do
           Peers.broadcast_tx(tx)
         end
       {:reply, :ok, updated_pool}
-    else
-      Logger.error("[TxPool] Invalid tx")
-      {:reply, :error, tx_pool}
     end
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
-    {_, updated_pool} = Map.pop(tx_pool, hash_tx(tx))
+    {_, updated_pool} = Map.pop(tx_pool, SignedTx.hash_tx(tx))
     {:reply, :ok, updated_pool}
   end
 
@@ -98,30 +117,34 @@ defmodule Aecore.Txs.Pool.Worker do
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
       block = Chain.get_block(tx.block_hash)
-      tree  = BlockValidation.build_merkle_tree(block.txs)
-      key   =
+      tree = BlockValidation.build_merkle_tree(block.txs)
+      key =
         tx
         |> Map.delete(:txs_hash)
         |> Map.delete(:block_hash)
         |> Map.delete(:block_height)
         |> Map.delete(:signature)
-        |> TxData.new()
-        |> TxData.hash_tx()
+        |> SpendTx.new()
+        |> :erlang.term_to_binary()
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
   end
 
-  ## Private functions
+  @spec get_tx_size_bytes(SignedTx.t()) :: integer()
+  def get_tx_size_bytes(tx) do
+    tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+  end
 
-  defp valid_tx?(%SignedTx{data: %TxData{}} = tx) do
-    tx_validation_sequence(TxData, tx)
+  ## Private functions
+  defp valid_tx?(%SignedTx{data: %SpendTx{}} = tx) do
+    tx_validation_sequence(SpendTx, tx)
   end
   defp valid_tx?(%SignedTx{data: %VotingTx{}} = tx) do
     tx_validation_sequence(VotingTx, tx)
   end
 
-  defp tx_validation_sequence(TxData, tx) do
+  defp tx_validation_sequence(SpendTx, tx) do
     seq = [&SignedTx.is_valid?/1, &BlockValidation.is_minimum_fee_met/1]
     Enum.all?(seq, fn(f) -> f.(tx) end)
   end
@@ -152,7 +175,7 @@ defmodule Aecore.Txs.Pool.Worker do
     txs
   end
 
-  @spec check_address_tx(list(%SignedTx{}), String.t, list()) :: list()
+  @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
     if tx.data.from_acc == address or tx.data.to_acc == address  do

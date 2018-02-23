@@ -18,7 +18,7 @@ defmodule Aehttpserver.Web.Notify do
           %{"body" => Serialization.tx(tx, :voting_tx, :serialize)}
         )
 
-      %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+      %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
         if tx.data.from_acc != nil do
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
@@ -61,7 +61,7 @@ defmodule Aehttpserver.Web.Notify do
             )
           end
 
-        %Aecore.Structures.SignedTx{data: %Aecore.Structures.TxData{}} ->
+        %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
             "new_mined_spend_tx_everyone",

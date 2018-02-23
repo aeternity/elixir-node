@@ -1,8 +1,9 @@
 defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aeutil.Serialization, as: Serialization
-  alias Aecore.Structures.TxData
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.SignedTx
+  alias Aeutil.Serialization
 
   def show(conn, params) do
     account_bin =
@@ -19,9 +20,9 @@ defmodule Aehttpserver.Web.TxController do
                   %{tx |
                     from_acc: Serialization.hex_binary(tx.from_acc, :serialize),
                     to_acc: Serialization.hex_binary(tx.to_acc, :serialize),
-                    txs_hash: Serialization.hex_binary(tx.txs_hash, :serialize),
-                    block_hash: Serialization.hex_binary(tx.block_hash, :serialize),
-                    signature: Serialization.hex_binary(tx.signature, :serialize),
+                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
+                    block_hash: Header.bech32_encode(tx.block_hash),
+                    signature: Serialization.base64_binary(tx.signature, :serialize),
                     proof: Serialization.merkle_proof(tx.proof, [])
                    } end))
 
@@ -30,9 +31,9 @@ defmodule Aehttpserver.Web.TxController do
                   %{tx |
                     from_acc: Serialization.hex_binary(tx.from_acc, :serialize),
                     to_acc: Serialization.hex_binary(tx.to_acc, :serialize),
-                    txs_hash: Serialization.hex_binary(tx.txs_hash, :serialize),
-                    block_hash: Serialization.hex_binary(tx.block_hash, :serialize),
-                    signature: Serialization.hex_binary(tx.signature, :serialize)
+                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
+                    block_hash: Header.bech32_encode(tx.block_hash),
+                    signature: Serialization.base64_binary(tx.signature, :serialize)
                    } end))
         end
     end
