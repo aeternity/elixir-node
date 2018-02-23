@@ -33,11 +33,11 @@ defmodule  Aecore.Structures.DataTx do
 
   @spec init(atom(), map(), binary(), integer(), integer()) :: {:ok, DataTx.t()}
   def init(type, payload, from_acc, fee, nonce) do
-    {:ok,  %__MODULE__{type: type,
-                       payload: type.init(payload),
-                       from_acc: from_acc,
-                       fee: fee,
-                       nonce: nonce}}
+    %__MODULE__{type: type,
+                payload: type.init(payload),
+                from_acc: from_acc,
+                fee: fee,
+                nonce: nonce}
   end
 
   @spec is_valid(DataTx.t()) :: :ok | {:error, reason()}
@@ -50,9 +50,14 @@ defmodule  Aecore.Structures.DataTx do
   end
 
   def process_chainstate(%__MODULE__{type: type, payload: payload} = tx,
-                         account_state, block_height) do
+    block_height, chainstate) do
 
-    type.process_chainstate(payload, tx.from_acc, tx.fee, tx.nonce, account_state, block_height)
+    from_acc = tx.from_acc
+    account_state = chainstate.accounts.from_acc
+    subdomain_chainstate = Map.get(chainstate, type, %{})
+
+    type.process_chainstate!(payload, tx.from_acc, tx.fee,
+      tx.nonce, block_height, account_state, subdomain_chainstate)
   end
 
 end

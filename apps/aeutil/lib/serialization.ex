@@ -114,10 +114,16 @@ defmodule Aeutil.Serialization do
     case term do
       %Block{} ->
         Map.from_struct(%{term | header: Map.from_struct(term.header)})
+
       %SignedTx{} ->
         Map.from_struct(%{term | data: Map.from_struct(term.data)})
+
+      %DataTx{} ->
+        Map.from_struct(%{term | payload: Map.from_struct(term.payload)})
+
       %{__struct__: _} ->
         Map.from_struct(term)
+
       _ ->
         term
     end
