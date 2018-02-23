@@ -20,7 +20,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
     
     blocks_for_difficulty_calculation = [new_block, prev_block]
-   # _ = BlockValidation.calculate_and_validate_block!(new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
+    _ = BlockValidation.calculate_and_validate_block!(new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
     wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
     assert {:error, "Incorrect height"} == catch_throw(BlockValidation.calculate_and_validate_block!(
       wrong_height_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation))
@@ -32,7 +32,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
-    #_ = BlockValidation.calculate_and_validate_block!(new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
+    _ = BlockValidation.calculate_and_validate_block!(new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
     wrong_timestamp_block = %Block{new_block | header: %Header{new_block.header | timestamp: 10}}
     assert {:error,"Invalid header timestamp"} == catch_throw(BlockValidation.calculate_and_validate_block!(
       wrong_timestamp_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation))
