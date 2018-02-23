@@ -6,15 +6,28 @@ defmodule Aecore.Chain.ChainState do
 
   require Logger
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.ContractTx
+  alias Aecore.Structures.TxData
   alias Aecore.Structures.ContractProposalTx
   alias Aecore.Structures.ContractSignTx
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
-    |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_transaction_on_state!(transaction, chain_state, block_height)
+    |> Enum.reduce(chain_state, fn(tx, chain_state) ->
+      try do
+        case tx do
+          %SignedTx{data: %TxData{}} ->
+            apply_transaction_on_state!(tx, chain_state, block_height)
+          %SignedTx{data: %ContractProposalTx{}} ->
+            apply_contract_transaction_on_state!(tx, chain_state)
+          %SignedTx{data: %ContractSignTx{}} ->
+            apply_contract_transaction_on_state!(tx, chain_state)
+        end
+      catch
+        {:error, message} ->
+          Logger.error(fn -> message end)
+        chain_state
+      end
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -50,7 +63,7 @@ defmodule Aecore.Chain.ChainState do
   def apply_contract_transaction_on_state!(%SignedTx{data: %ContractProposalTx{}} =
     transaction, chain_state) do
     deduct_from_account_state!(chain_state,
-      transaction.data.contract_hash,
+      transaction.data.from_acc,
       -transaction.data.fee,
       transaction.data.nonce)
   end
@@ -58,7 +71,7 @@ defmodule Aecore.Chain.ChainState do
   def apply_contract_transaction_on_state!(%SignedTx{data: %ContractSignTx{}} =
     transaction, chain_state) do
     deduct_from_account_state!(chain_state,
-      transaction.data.contract_hash,
+      transaction.data.from_acc,
       -transaction.data.fee,
       transaction.data.nonce)
   end

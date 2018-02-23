@@ -85,7 +85,7 @@ defmodule Aeutil.Serialization do
             from_acc: hex_binary(tx_data.from_acc, direction)}
         %ContractSignTx{} ->
           %{tx_data | signature: hex_binary(tx_data.signature, direction),
-            pubkey: hex_binary(tx_data.pubkey, direction),
+            from_acc: hex_binary(tx_data.from_acc, direction),
             contract_hash: hex_binary(tx_data.contract_hash, direction)}
       end
     end

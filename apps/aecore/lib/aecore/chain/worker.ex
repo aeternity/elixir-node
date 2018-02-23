@@ -6,6 +6,10 @@ defmodule Aecore.Chain.Worker do
   require Logger
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.TxData
+  alias Aecore.Structures.ContractProposalTx
+  alias Aecore.Structures.ContractSignTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -13,6 +17,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
+  alias Aeutil.Serialization
 
   use GenServer
 
@@ -26,8 +31,13 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-
-    {:ok, %{blocks_map: genesis_block_map, chain_states: chain_states, txs_index: txs_index, top_hash: genesis_block_hash, top_height: 0}}
+    {:ok,
+     %{blocks_map: genesis_block_map,
+       chain_states: chain_states,
+       txs_index: txs_index,
+       top_hash: genesis_block_hash,
+       top_height: 0,
+       contracts_chainstate: %{}}}
   end
 
   @spec top_block() :: Block.t()
@@ -158,7 +168,8 @@ defmodule Aecore.Chain.Worker do
 
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
-
+    updated_contracts_chain_states = update_contract_chainstate(new_block.txs)
+    IO.inspect(updated_contracts_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
@@ -168,7 +179,8 @@ defmodule Aecore.Chain.Worker do
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
-                              txs_index: new_txs_index}
+                              txs_index: new_txs_index
+                               }
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
@@ -191,21 +203,36 @@ defmodule Aecore.Chain.Worker do
 
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
-    accounts = for tx <- block.txs do
-      [tx.data.from_acc, tx.data.to_acc]
+    accounts =
+    for tx <- block.txs do
+      case tx.data do
+        %TxData{} ->
+          [tx.data.from_acc, tx.data.to_acc]
+        %ContractProposalTx{} ->
+          tx.data.from_acc
+        %ContractSignTx{} ->
+          tx.data.from_acc
+      end
     end
     accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
     for account <- accounts_unique, into: %{} do
       acc_txs = Enum.filter(block.txs, fn(tx) ->
-          tx.data.from_acc == account || tx.data.to_acc == account
-        end)
+        case tx.data do
+          %TxData{} ->
+            tx.data.from_acc == account || tx.data.to_acc == account
+          %ContractProposalTx{} ->
+            tx.data.from_acc == account
+          %ContractSignTx{} ->
+            tx.data.from_acc == account
+        end
+      end)
       tx_hashes = Enum.map(acc_txs, fn(tx) ->
-          tx_bin = :erlang.term_to_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
-        end)
+        tx_bin = Serialization.pack_binary(tx)
+        :crypto.hash(:sha256, tx_bin)
+      end)
       tx_tuples = Enum.map(tx_hashes, fn(hash) ->
-          {block_hash, hash}
-        end)
+        {block_hash, hash}
+      end)
       {account, tx_tuples}
     end
   end
@@ -232,4 +259,24 @@ defmodule Aecore.Chain.Worker do
       blocks_acc
     end
   end
+
+  defp update_contract_chainstate(txs) do
+    filtered_txs = filter_contract_txs(txs)
+    if filtered_txs != nil do
+      for x <- filtered_txs do
+        %{x.contract_hash =>
+          %{contract_data: [participants: x.participants, ttl: x.ttl],
+            accepted: [] }}
+      end
+    else
+      []
+    end
+  end
+
+  def filter_contract_txs(txs) do
+    Enum.filter(txs, fn x -> x.data.__struct__ == %ContractSignTx{} end)
+
+  end
+
+
 end

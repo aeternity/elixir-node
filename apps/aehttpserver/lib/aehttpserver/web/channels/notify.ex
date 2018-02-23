@@ -17,9 +17,9 @@ defmodule Aehttpserver.Web.Notify do
       if tx.data.from_acc != nil do
         Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx:" <> Base.encode16(tx.data.from_acc), %{"body" => Serialization.tx(tx, :serialize)})
       end
-      if tx.data.to_acc != nil do
-        Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx:" <> Base.encode16(tx.data.to_acc), %{"body" => Serialization.tx(tx, :serialize)})
-     end
+    #  if tx.data.to_acc != nil do
+     #   Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx:" <> Base.encode16(tx.data.to_acc), %{"body" => Serialization.tx(tx, :serialize)})
+     # end
     end)
     Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{"body" => Serialization.block(block, :serialize)})
   end

@@ -29,6 +29,11 @@ defmodule Aecore.Structures.SignedTx do
     tx.data.from_acc == nil && tx.signature == nil
   end
 
+
+  def is_valid?(%SignedTx{data: %ContractSignTx{}} = tx)do
+    tx.data.fee >= 0 && Keys.verify_tx(tx)
+  end
+
   def is_valid?(%SignedTx{data: %ContractProposalTx{}} = tx)do
     tx.data.fee >= 0 && Keys.verify_tx(tx)
   end
