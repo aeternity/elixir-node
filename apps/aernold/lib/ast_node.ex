@@ -468,6 +468,58 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  def evaluate(
+        {:func_call, {_, 'Map'}, {_, 'get'}, {{_, id} = map_id, {key_type, key_value} = key}},
+        {_prev_val, scope}
+      ) do
+    {extracted_map, _} = evaluate(map_id, {nil, scope})
+    {extracted_key, _} = evaluate(key, {nil, scope})
+
+    {_, {map_key_type, map_value_type}} = Map.get(scope, id).type
+
+    ASTNodeUtils.validate_map_key_or_value!(map_key_type, extracted_key)
+
+    result = Map.get(extracted_map, extracted_key)
+
+    {result, scope}
+  end
+
+  def evaluate(
+        {:func_call, {_, 'Map'}, {_, 'put'},
+         {{_, id} = map_id, {key_type, key_value} = key, value}},
+        {_prev_val, scope}
+      ) do
+    {extracted_map, _} = evaluate(map_id, {nil, scope})
+    {extracted_key, _} = evaluate(key, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
+
+    {_, {map_key_type, map_value_type}} = Map.get(scope, id).type
+
+    ASTNodeUtils.validate_map_key_or_value!(map_key_type, extracted_key)
+    ASTNodeUtils.validate_map_key_or_value!(map_value_type, extracted_value)
+
+    result =
+      Map.put(extracted_map, ASTNodeUtils.value_to_map_key!(key_type, key_value), extracted_value)
+
+    {result, scope}
+  end
+
+  def evaluate(
+        {:func_call, {_, 'Map'}, {_, 'delete'}, {{_, id} = map_id, {key_type, key_value} = key}},
+        {_prev_val, scope}
+      ) do
+    {extracted_map, _} = evaluate(map_id, {nil, scope})
+    {extracted_key, _} = evaluate(key, {nil, scope})
+
+    {_, {map_key_type, map_value_type}} = Map.get(scope, id).type
+
+    ASTNodeUtils.validate_map_key_or_value!(map_key_type, extracted_key)
+
+    result = Map.delete(extracted_map, extracted_key)
+
+    {result, scope}
+  end
+
   def evaluate({:func_definition, {_, id}, _, _} = func, {_prev_val, scope}) do
     {nil, Map.put(scope, id, func)}
   end
