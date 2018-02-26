@@ -50,6 +50,10 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_chain_state)
   end
 
+  def contracts_chainstate() do
+    GenServer.call(__MODULE__, :contracts_chainstate)
+  end
+
   @spec top_block_hash() :: binary()
   def top_block_hash() do
     GenServer.call(__MODULE__, :top_block_hash)
@@ -116,6 +120,10 @@ defmodule Aecore.Chain.Worker do
     top_block_chain_state()
   end
 
+  def get_contracts_chainstate() do
+    contracts_chainstate()
+  end
+
   def longest_blocks_chain() do
     get_blocks(top_block_hash(), top_height() + 1)
   end
@@ -132,6 +140,10 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:top_block_hash,  _from, %{top_hash: top_hash} = state) do
     {:reply, top_hash, state}
+  end
+
+  def handle_call(:contracts_chainstate, _from, %{contracts_chainstate: contracts_chainstate} = state) do
+    {:reply, contracts_chainstate, state}
   end
 
   def handle_call(:top_block_chain_state, _from, %{chain_states: chain_states, top_hash: top_hash} = state) do
@@ -160,7 +172,8 @@ defmodule Aecore.Chain.Worker do
   def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
                   _from,
                   %{blocks_map: blocks_map, chain_states: chain_states,
-                    txs_index: txs_index, top_height: top_height} = state) do
+                    txs_index: txs_index, top_height: top_height,
+                    contracts_chainstate: contracts_chainstate} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn(tx) -> Pool.remove_transaction(tx) end)
@@ -168,7 +181,10 @@ defmodule Aecore.Chain.Worker do
 
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
-    updated_contracts_chain_states = update_contract_chainstate(new_block.txs)
+    updated_contracts_chain_states =
+      new_block.txs
+      |> filter_contract_txs()
+      |> update_contract_chainstate(contracts_chainstate)
     IO.inspect(updated_contracts_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
@@ -179,7 +195,8 @@ defmodule Aecore.Chain.Worker do
     Persistence.write_block_by_hash(new_block)
     state_update1 = %{state | blocks_map: updated_blocks_map,
                               chain_states: updated_chain_states,
-                              txs_index: new_txs_index
+                              txs_index: new_txs_index,
+                              contracts_chainstate: updated_contracts_chain_states
                                }
     if top_height < new_block.header.height do
       ## We send the block to others only if it extends the longest chain
@@ -260,22 +277,23 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_contract_chainstate(txs) do
-    filtered_txs = filter_contract_txs(txs)
-    if filtered_txs != nil do
-      for x <- filtered_txs do
-        %{x.contract_hash =>
-          %{contract_data: [participants: x.participants, ttl: x.ttl],
-            accepted: [] }}
-      end
-    else
-      []
-    end
+  defp update_contract_chainstate([tx | txs], contracts_chainstate) do
+    contracts_chainstate =
+      Map.put(contracts_chainstate, tx.contract_hash,
+        %{contract_data: [participants: tx.participants, ttl: tx.ttl],
+          accepted: [] })
+    update_contract_chainstate(txs, contracts_chainstate)
+  end
+
+  defp update_contract_chainstate([], contracts_chainstate) do
+    contracts_chainstate
   end
 
   def filter_contract_txs(txs) do
-    Enum.filter(txs, fn x -> x.data.__struct__ == %ContractSignTx{} end)
-
+    #Enum.filter(txs, fn x -> x.data.__struct__ == ContractProposalTx end)
+    for filtered_tx <- txs,
+      filtered_tx.data.__struct__ == ContractProposalTx,
+      do: filtered_tx.data
   end
 
 
