@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Compile.Make do
 
   def run(_) do
     File.cd(Path.absname("apps/aecore/src/cuckoo/"))
-    {result, _error_code} = System.cmd("make", ['all'], stderr_to_stdout: true)
+    {result, _error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
     Mix.shell.info result
     :ok
   end

@@ -169,7 +169,7 @@ defmodule Aecore.Persistence.Worker do
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
     chain_state =
-      chain_state_family    
+      chain_state_family
       |> Rox.stream()
       |> Enum.into(%{})
     {:reply, chain_state, state}

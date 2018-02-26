@@ -11,12 +11,16 @@ defmodule Aecore.Chain.ChainState do
 
   require Logger
 
+  @typedoc "Public key representing an account"
+  @type pubkey() :: binary()
+
+  @typedoc "State of an account"
+  @type acc_state() :: %{balance: integer(),
+                         locked: [%{amount: integer(), block: integer()}],
+                         nonce: integer()}
+
   @typedoc "Structure of the accounts"
-  @type accounts() ::
-          %{binary() =>
-            %{balance: integer(),
-              locked: [%{amount: integer(), block: integer()}],
-              nonce: integer()}}
+  @type accounts() :: %{pubkey() => acc_state()}
 
   @typedoc "Structure of the chainstate"
   @type chainstate() :: map()
@@ -32,13 +36,17 @@ defmodule Aecore.Chain.ChainState do
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
+    IO.inspect "APPLY VE"
     cond do
       SignedTx.is_coinbase?(tx) ->
-        accounts = Map.get(chainstate, :accounts, %{})
-        to_acc_state = Map.get(accounts, data.payload.to_acc, %{balance: 0, nonce: 0, locked: []})
+        to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, %{balance: 0, nonce: 0, locked: []})
         new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
-        new_accounts_state = Map.put(accounts, data.payload.to_acc, new_to_acc_state)
-        Map.put(chainstate, :accounts, new_accounts_state)
+        new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
+
+        p = Map.put(chainstate, :accounts, new_accounts_state)
+        IO.inspect "apply"
+        IO.inspect p
+        p
 
       data.from_acc != nil ->
         if SignedTx.is_valid?(tx) do
@@ -53,9 +61,10 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec update_chain_state_locked(chainstate(), integer()) :: chainstate()
-  def update_chain_state_locked(%{accounts: chain_state}, new_block_height) do
-    Enum.reduce(chain_state, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
-      {unlocked_amount, updated_locked} =
+  def update_chain_state_locked(%{accounts: accounts} = chainstate, new_block_height) do
+    accounts =
+      Enum.reduce(accounts, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
+        {unlocked_amount, updated_locked} =
           Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
             cond do
               lock_time_block > new_block_height ->
@@ -66,15 +75,15 @@ defmodule Aecore.Chain.ChainState do
 
               true ->
                 Logger.error(fn ->
-                  "Update chain state locked:
-                   new block height (#{new_block_height}) greater than lock time block (#{lock_time_block})"
+                                    "Update chain state locked:
+                                    new block height (#{new_block_height}) greater than lock time block (#{lock_time_block})"
                 end)
-
                 {amount_update_value, updated_locked}
             end
           end)
         Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
       end)
+    h = Map.put(chainstate, :accounts, accounts)
   end
 
   @doc """
@@ -82,9 +91,9 @@ defmodule Aecore.Chain.ChainState do
   returns the root hash of the tree.
   """
   @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chain_state) do
+  def calculate_chain_state_hash(%{accounts: accounts} = chainstate) do
     merkle_tree_data =
-      for {account, data} <- chain_state do
+      for {account, data} <- accounts do
         {account, Serialization.pack_binary(data)}
       end
 
@@ -92,25 +101,23 @@ defmodule Aecore.Chain.ChainState do
       <<0::256>>
     else
       merkle_tree =
-        merkle_tree_data
-        |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-             :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-           end)
-
+        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn(node, merkle_tree) ->
+          :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
+        end)
       :gb_merkle_trees.root_hash(merkle_tree)
     end
   end
 
-  @spec calculate_total_tokens(chainstate()) :: integer()
-  def calculate_total_tokens(chain_state) do
-    Enum.reduce(chain_state, {0, 0, 0}, fn({_account, data}, acc) ->
+  @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
+  def calculate_total_tokens(%{accounts: accounts}) do
+    Enum.reduce(accounts, {0, 0, 0}, fn({_pubkey, acc_state}, acc) ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
       locked_tokens =
-        Enum.reduce(data.locked, 0, fn(%{amount: amount}, locked_sum) ->
+        Enum.reduce(acc_state.locked, 0, fn(%{amount: amount}, locked_sum) ->
           locked_sum + amount
          end)
-      new_total_tokens = total_tokens + data.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + data.balance
+      new_total_tokens = total_tokens + acc_state.balance + locked_tokens
+      new_total_unlocked_tokens = total_unlocked_tokens + acc_state.balance
       new_total_locked_tokens = total_locked_tokens + locked_tokens
 
       {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
