@@ -42,7 +42,7 @@ defmodule AernoldTest do
     code = "
       Contract test(){
         list:List<Int> = [1,2];
-        elem(list, 0);
+        List.at(list, 0);
       }();
     "
 
@@ -55,7 +55,7 @@ defmodule AernoldTest do
     code = "
       Contract test(){
         list:List<Int> = [1,2];
-        size(list);
+        List.size(list);
       }();
     "
 
@@ -69,7 +69,7 @@ defmodule AernoldTest do
     code = "
       Contract test(){
         list:List<Int> = [1, 2];
-        list = insert_at(list, 2, 3);
+        list = List.insert_at(list, 2, 3);
       }();
     "
 
@@ -78,11 +78,24 @@ defmodule AernoldTest do
     assert returned_value == [1, 2, 3]
   end
 
+  test "revers list" do
+    code = "
+      Contract test(){
+        list:List<Int> = [1, 2, 3];
+        list = List.reverse(list);
+      }();
+    "
+
+    {returned_value, _scope} = Aernold.parse_string(code)
+
+    assert returned_value == [3, 2, 1]
+  end
+
   test "delete_at list" do
     code = "
       Contract test(){
         list:List<Int> = [1, 2, 3];
-        list = delete_at(list, 0);
+        list = List.delete_at(list, 0);
       }();
     "
 
@@ -109,7 +122,7 @@ defmodule AernoldTest do
     code = "
       Contract test(){
         tuple:Tuple = {1, \"string\", 3};
-        elem(tuple, 1);
+        Tuple.elem(tuple, 1);
       }();
     "
 
@@ -122,7 +135,7 @@ defmodule AernoldTest do
     code = "
       Contract test(){
         tuple:Tuple = {1, \"string\", 3};
-        size(tuple);
+        Tuple.size(tuple);
       }();
     "
 
@@ -136,7 +149,7 @@ defmodule AernoldTest do
       Contract test(){
         c:Char = 'c';
         tuple:Tuple = {\"string\", [1, 2]};
-        tuple = insert_at(tuple, 2, c);
+        tuple = Tuple.insert_at(tuple, 2, c);
       }();
     "
 
@@ -150,7 +163,7 @@ defmodule AernoldTest do
       Contract test(){
         c:Char = 'c';
         tuple:Tuple = {\"string\", [1, 2], 'c'};
-        tuple = delete_at(tuple, 0);
+        tuple = Tuple.delete_at(tuple, 0);
       }();
     "
 
@@ -164,7 +177,7 @@ defmodule AernoldTest do
       Contract test(){
         c:Char = 'c';
         tuple:Tuple = {\"string\", [1, 2], 'c'};
-        tuple = append(tuple, 4);
+        tuple = Tuple.append(tuple, 4);
       }();
     "
 

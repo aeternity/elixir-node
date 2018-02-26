@@ -1,5 +1,6 @@
 defmodule ASTNode do
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   def evaluate({{:contract, _}, _id, params, args, body}, {prev_val, scope}) do
     {_, scope} =
@@ -338,12 +339,12 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  def evaluate({:func_call, {_, 'account_balance'}, {param}}, {_prev_val, scope}) do
-    {extracted_param, _} = evaluate(param, {nil, scope})
-    {_, decoded_extracted_param} = Base.decode16(extracted_param)
+  def evaluate({:func_call, {_, 'account_balance'}, {account}}, {_prev_val, scope}) do
+    {extracted_account, _} = evaluate(account, {nil, scope})
+    {_, decoded_extracted_account} = Base.decode16(extracted_account)
 
     balance =
-      case Chain.chain_state()[decoded_extracted_param] do
+      case Chain.chain_state()[decoded_extracted_account] do
         nil ->
           0
 
@@ -354,37 +355,44 @@ defmodule ASTNode do
     {balance, scope}
   end
 
-  def evaluate({:func_call, {_, 'elem'}, {data_struct, index}}, {_prev_val, scope}) do
-    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+  ## it does nothing special for now
+  def evaluate({:func_call, {_, 'txs_for_account'}, {account}}, {_prev_val, scope}) do
+    {extracted_account, _} = evaluate(account, {nil, scope})
+    {_, decoded_extracted_account} = Base.decode16(extracted_account)
+
+    account_txs = Pool.get_txs_for_address(decoded_extracted_account)
+
+    {account_txs, scope}
+  end
+
+  ## List functions
+
+  def evaluate({:func_call, {_, 'List'}, {_, 'at'}, {list, index}}, {_prev_val, scope}) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
     {extracted_index, _} = evaluate(index, {nil, scope})
 
-    result =
-      cond do
-        is_tuple(extracted_data_struct) == true -> elem(extracted_data_struct, extracted_index)
-        is_list(extracted_data_struct) == true -> Enum.at(extracted_data_struct, extracted_index)
-      end
+    result = Enum.at(extracted_list, extracted_index)
 
     {result, scope}
   end
 
-  def evaluate({:func_call, {_, 'size'}, {data_struct}}, {_prev_val, scope}) do
-    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+  def evaluate({:func_call, {_, 'List'}, {_, 'size'}, {list}}, {_prev_val, scope}) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
 
-    result =
-      cond do
-        is_tuple(extracted_data_struct) == true -> tuple_size(extracted_data_struct)
-        is_list(extracted_data_struct) == true -> Enum.count(extracted_data_struct)
-      end
+    result = Enum.count(extracted_list)
 
     {result, scope}
   end
 
-  def evaluate({:func_call, {_, 'insert_at'}, {data_struct, index, value}}, {_prev_val, scope}) do
-    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+  def evaluate(
+        {:func_call, {_, 'List'}, {_, 'insert_at'}, {list, index, value}},
+        {_prev_val, scope}
+      ) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
     {extracted_index, _} = evaluate(index, {nil, scope})
     {extracted_value, _} = evaluate(value, {nil, scope})
 
-    result = insert_at(extracted_data_struct, extracted_index, extracted_value)
+    result = List.insert_at(extracted_list, extracted_index, extracted_value)
 
     if is_list(result) do
       ASTNodeUtils.check_list_item_type(result)
@@ -393,20 +401,69 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  def evaluate({:func_call, {_, 'delete_at'}, {data_struct, index}}, {_prev_val, scope}) do
-    {extracted_data_struct, _} = evaluate(data_struct, {nil, scope})
+  def evaluate({:func_call, {_, 'List'}, {_, 'delete_at'}, {list, index}}, {_prev_val, scope}) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
     {extracted_index, _} = evaluate(index, {nil, scope})
 
-    result = delete_at(extracted_data_struct, extracted_index)
+    result = List.delete_at(extracted_list, extracted_index)
 
     {result, scope}
   end
 
-  def evaluate({:func_call, {_, 'append'}, {tuple, value}}, {_prev_val, scope}) do
+  def evaluate({:func_call, {_, 'List'}, {_, 'reverse'}, {list}}, {_prev_val, scope}) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
+
+    result = Enum.reverse(extracted_list)
+
+    {result, scope}
+  end
+
+  ## Tuple functions
+
+  def evaluate({:func_call, {_, 'Tuple'}, {_, 'elem'}, {tuple, index}}, {_prev_val, scope}) do
+    {extracted_tuple, _} = evaluate(tuple, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
+
+    result = elem(extracted_tuple, extracted_index)
+
+    {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'Tuple'}, {_, 'size'}, {tuple}}, {_prev_val, scope}) do
+    {extracted_tuple, _} = evaluate(tuple, {nil, scope})
+
+    result = tuple_size(extracted_tuple)
+
+    {result, scope}
+  end
+
+  def evaluate(
+        {:func_call, {_, 'Tuple'}, {_, 'insert_at'}, {tuple, index, value}},
+        {_prev_val, scope}
+      ) do
+    {extracted_tuple, _} = evaluate(tuple, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
+    {extracted_value, _} = evaluate(value, {nil, scope})
+
+    result = Tuple.insert_at(extracted_tuple, extracted_index, extracted_value)
+
+    {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'Tuple'}, {_, 'delete_at'}, {tuple, index}}, {_prev_val, scope}) do
+    {extracted_tuple, _} = evaluate(tuple, {nil, scope})
+    {extracted_index, _} = evaluate(index, {nil, scope})
+
+    result = Tuple.delete_at(extracted_tuple, extracted_index)
+
+    {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'Tuple'}, {_, 'append'}, {tuple, value}}, {_prev_val, scope}) do
     {extracted_tuple, _} = evaluate(tuple, {nil, scope})
     {extracted_value, _} = evaluate(value, {nil, scope})
 
-    result = append(extracted_tuple, extracted_value)
+    result = Tuple.append(extracted_tuple, extracted_value)
 
     {result, scope}
   end
@@ -575,23 +632,5 @@ defmodule ASTNode do
       end)
 
     {nil, scope_with_functions}
-  end
-
-  defp delete_at(data_struct, index) do
-    cond do
-      is_tuple(data_struct) == true -> Tuple.delete_at(data_struct, index)
-      is_list(data_struct) == true -> List.delete_at(data_struct, index)
-    end
-  end
-
-  defp insert_at(data_struct, index, value) do
-    cond do
-      is_tuple(data_struct) == true -> Tuple.insert_at(data_struct, index, value)
-      is_list(data_struct) == true -> List.insert_at(data_struct, index, value)
-    end
-  end
-
-  def append(tuple, value) do
-    Tuple.append(tuple, value)
   end
 end
