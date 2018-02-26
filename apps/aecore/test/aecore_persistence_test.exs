@@ -27,7 +27,7 @@ defmodule PersistenceTest do
      account2: account2]
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 40_000
   @tag :persistence
   test "Get last mined block by his hash from the rocksdb" do
     hash = BlockValidation.block_header_hash(Chain.top_block.header)
