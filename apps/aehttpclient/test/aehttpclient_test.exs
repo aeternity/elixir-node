@@ -9,22 +9,17 @@ defmodule AehttpclientTest do
   alias Aecore.Structures.SpendTx
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-
-  setup wallet do
-    [
-      pass: " "
-    ]
-  end
+  alias Aeutil.Bits
 
   @tag :http_client
-  test "Client functions", wallet do
-    account = Wallet.get_public_key(wallet.pass)
+  test "Client functions" do
+    account = Wallet.get_public_key(Wallet.get_aewallet_pass())
     hex_acc = Base.encode16(account)
 
-    AehttpclientTest.add_txs_to_pool(wallet.pass)
+    AehttpclientTest.add_txs_to_pool(Wallet.get_aewallet_pass())
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
-                                        Base.decode16!("081D8520AE7E1FAE2886DA06948E8F1D1E71144E74657C74A6D18D4F59285071")})
+                                        Bits.bech32_decode("bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp")})
     assert {:ok, _} = Client.get_peers("localhost:4000")
     assert Enum.count(Client.get_account_txs({"localhost:4000", hex_acc})
     |> elem(1)) == 2

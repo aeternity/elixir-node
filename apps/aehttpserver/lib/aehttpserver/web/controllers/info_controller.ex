@@ -2,6 +2,7 @@ defmodule Aehttpserver.Web.InfoController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Wallet.Worker, as: Wallet
@@ -13,12 +14,12 @@ defmodule Aehttpserver.Web.InfoController do
     top_block = Chain.top_block()
     top_block_header = top_block.header
       |> BlockValidation.block_header_hash()
-      |> Base.encode16()
+      |> Header.bech32_encode()
 
     genesis_block_header = Block.genesis_block().header
     genesis_block_hash = genesis_block_header
      |> BlockValidation.block_header_hash()
-     |> Base.encode16()
+     |> Header.bech32_encode()
 
     own_nonce = Peers.get_peer_nonce()
 

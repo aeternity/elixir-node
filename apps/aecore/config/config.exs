@@ -53,7 +53,8 @@ config :aecore, :aewallet,
   path: Path.absname(aewallet_path)
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+  path: Path.absname(persistence_path),
+  number_of_blocks_in_memory: 100
 
 config :logger,
   compile_time_purge_level: :info,

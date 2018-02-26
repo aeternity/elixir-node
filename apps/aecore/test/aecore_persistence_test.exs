@@ -54,6 +54,13 @@ defmodule PersistenceTest do
 
   end
 
+  @tag timeout: 10_000
+  @tag :persistence
+  test "Get latest two blocks from rocksdb" do
+    assert 2 == Kernel.map_size(Persistence.get_blocks(2))
+  end
+
+  @tag timeout: 20_000
   @tag :persistence
   test "Failure cases", persistance_state do
     assert {:error, "bad block structure"} =
@@ -63,5 +70,7 @@ defmodule PersistenceTest do
       Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
 
     assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)
+
+    assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
   end
 end

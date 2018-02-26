@@ -44,11 +44,11 @@ defmodule AecoreChainTest do
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)
     blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash_next,
                                               Difficulty.get_number_of_blocks)
-    top_block_hash_next_hex = top_block_hash_next |> Base.encode16()
+    top_block_hash_next_bech32 = top_block_hash_next |> Header.bech32_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
-    assert top_block_from_chain == Chain.get_block_by_hex_hash(top_block_hash_next_hex)
+    assert top_block_from_chain == Chain.get_block_by_bech32_hash(top_block_hash_next_bech32)
     assert previous_block.header.height + 1 == top_block_from_chain.header.height
     assert BlockValidation.calculate_and_validate_block!(top_block_from_chain, previous_block,
                                                          Chain.chain_state(previous_block_hash),
@@ -59,5 +59,4 @@ defmodule AecoreChainTest do
     length = length(Chain.longest_blocks_chain())
     assert length > 1
   end
-
 end

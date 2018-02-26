@@ -5,14 +5,16 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Peers.Sync
+  alias Aeutil.Bits
 
   def show(conn, params) do
-    block = Chain.get_block_by_hex_hash(params["hash"])
+    block = Chain.get_block_by_bech32_hash(params["hash"])
     case (block) do
       %Block{} ->
-        block_hex_values = Serialization.block(block, :serialize)
-        json(conn, block_hex_values)
+        serialized_block = Serialization.block(block, :serialize)
+        json(conn, serialized_block)
       {:error, message} ->
         json(%{conn | status: 404}, %{error: message})
     end
@@ -23,7 +25,7 @@ defmodule Aehttpserver.Web.BlockController do
       nil ->
         Chain.top_block_hash()
       hash ->
-        {_, hash_bin} = Base.decode16(hash)
+        hash_bin = Bits.bech32_decode(hash)
         hash_bin
     end
 
@@ -41,7 +43,7 @@ defmodule Aehttpserver.Web.BlockController do
       fn (block) ->
         hash = BlockValidation.block_header_hash(block.header)
         %{
-          "hash" => Base.encode16(hash),
+          "hash" => Header.bech32_encode(hash),
           "header" => Serialization.block(block, :serialize).header,
           "tx_count" => Enum.count(block.txs)
         }
@@ -55,7 +57,7 @@ defmodule Aehttpserver.Web.BlockController do
       nil ->
         Chain.top_block_hash()
       hash ->
-        {_, hash_bin} = Base.decode16(hash)
+        hash_bin = Bits.bech32_decode(hash)
         hash_bin
     end
 
@@ -63,7 +65,7 @@ defmodule Aehttpserver.Web.BlockController do
       nil ->
         BlockValidation.block_header_hash(Block.genesis_block().header)
       hash ->
-        {_, hash_bin} = Base.decode16(hash)
+        hash_bin = Bits.bech32_decode(hash)
         hash_bin
     end
 
