@@ -61,7 +61,7 @@ defmodule VotingTest do
           start_block_height: Chain.top_height,
           close_block_height: Chain.top_height + 10,
           fee: 10,
-          nonce: 1}
+          nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
@@ -79,7 +79,7 @@ defmodule VotingTest do
           start_block_height: Chain.top_height + 1,
           close_block_height: Chain.top_height,
           fee: 10,
-          nonce: 2}
+          nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
     voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
@@ -94,7 +94,7 @@ defmodule VotingTest do
           answer: ["yes"],
           from_acc: pubkey,
           fee: 10,
-          nonce: 3}
+          nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
     voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
@@ -109,7 +109,7 @@ defmodule VotingTest do
           answer: ["maybe"],
           from_acc: pubkey,
           fee: 10,
-          nonce: 4}
+          nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
     voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
