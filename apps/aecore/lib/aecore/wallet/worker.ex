@@ -17,13 +17,14 @@ defmodule Aecore.Wallet.Worker do
   ## Client API
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{path: get_aewallet_dir(), pubkey: nil}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %{pubkey: nil}, name: __MODULE__)
   end
 
-  def init(%{path: path} = state) do
-    :ok = path
-    |> File.mkdir()
-    |> has_wallet(path)
+  def init(state) do
+    :ok =
+      get_aewallet_dir()
+      |> File.mkdir()
+      |> has_wallet(get_aewallet_dir())
 
     {:ok, state}
   end
@@ -109,7 +110,10 @@ defmodule Aecore.Wallet.Worker do
 
   def handle_call({:get_pub_key, {password, network}}, _from, %{pubkey: nil} = state) do
     {:ok, pub_key} =
-      Wallet.get_public_key(get_file_name(state.path), password, network: network)
+      get_aewallet_dir()
+      |> get_file_name()
+      |> Wallet.get_public_key(password, network: network)
+
     {:reply, pub_key, %{state | pubkey: pub_key}}
   end
 
@@ -117,9 +121,12 @@ defmodule Aecore.Wallet.Worker do
     {:reply, key, state}
   end
 
-  def handle_call({:get_priv_key, {password, network}}, _from, %{path: path} = state) do
+  def handle_call({:get_priv_key, {password, network}}, _from, state) do
     {:ok, priv_key} =
-      Wallet.get_private_key(get_file_name(path), password, network: network)
+      get_aewallet_dir()
+      |> get_file_name()
+      |> Wallet.get_private_key(password, network: network)
+
     {:reply, priv_key, state}
   end
 
