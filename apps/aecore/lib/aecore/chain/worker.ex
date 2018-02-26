@@ -184,7 +184,7 @@ defmodule Aecore.Chain.Worker do
     updated_contracts_chain_states =
       new_block.txs
       |> filter_contract_txs()
-      |> update_contract_chainstate(contracts_chainstate)
+      |> update_contract_chainstate(new_block.header.block_height, contracts_chainstate)
     IO.inspect(updated_contracts_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
@@ -277,15 +277,17 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_contract_chainstate([tx | txs], contracts_chainstate) do
+  defp update_contract_chainstate([tx | txs], block_height, contracts_chainstate) do
     contracts_chainstate =
       Map.put(contracts_chainstate, tx.contract_hash,
-        %{contract_data: [participants: tx.participants, ttl: tx.ttl],
+        %{participants: tx.participants,
+          ttl: tx.ttl,
+          block_height: block_height,
           accepted: [] })
-    update_contract_chainstate(txs, contracts_chainstate)
+    update_contract_chainstate(txs, block_height,contracts_chainstate)
   end
 
-  defp update_contract_chainstate([], contracts_chainstate) do
+  defp update_contract_chainstate([], _,contracts_chainstate) do
     contracts_chainstate
   end
 
