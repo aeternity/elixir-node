@@ -4,7 +4,7 @@ else switch 'case' func hex char string
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '%' '{' '}'
-'(' ')' '&&' '||' '>' '<' '==' '<='
+'(' ')' '&&' '||' '>' '<' '==' '<=' '.'
 '>=' '!=' ',' '!' '[' ']' '=>' '%{'
 .
 
@@ -74,6 +74,7 @@ FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {
 
 FunctionCall -> Id '(' ')' : {func_call, '$1'}.
 FunctionCall -> Id '(' FunctionArguments ')' : {func_call, '$1', list_to_tuple('$3')}.
+FunctionCall -> Type '.' Id '(' FunctionArguments ')' : {func_call, '$1', '$3', list_to_tuple('$5')}.
 
 FunctionParameters -> VariableDeclaration : ['$1'].
 FunctionParameters -> VariableDeclaration ',' FunctionParameters : ['$1' | '$3'].
