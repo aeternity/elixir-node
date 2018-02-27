@@ -225,30 +225,46 @@ defmodule Aecore.Miner.Worker do
       txs_list = Map.values(Pool.get_pool())
 
       ## Separating the SpendTx txs from others
-      {txs_data_list, voting_txs_list} =
-        Enum.reduce(txs_list, {[], []},
-          fn(%SignedTx{data: %SpendTx{}} = tx, {acc_tx_data, acc_other}) ->
-            {acc_tx_data ++ [tx], acc_other}
-            (%SignedTx{data:
-                       %VotingTx{data: %VotingQuestionTx{start_block_height:
-                                                         start_height}}} = tx,
-              {acc_tx_data, acc_other}) ->
+      # {txs_data_list, voting_txs_list} =
+      #   Enum.reduce(txs_list, {[], []},
+      #     fn(%SignedTx{data: %SpendTx{}} = tx, {acc_tx_data, acc_other}) ->
+      #       {acc_tx_data ++ [tx], acc_other}
+      #       (%SignedTx{data:
+      #                  %VotingTx{data: %VotingQuestionTx{start_block_height:
+      #                                                    start_height}}} = tx,
+      #         {acc_tx_data, acc_other}) ->
+      #
+      #       ## If the start block height is too heigher then
+      #       ## we do not want to register that question yet.
+      #       ## The tx will stay in the pool.
+      #       if Chain.top_height + 1 < start_height do
+      #         {acc_tx_data, acc_other}
+      #       else
+      #         {acc_tx_data, acc_other ++ [tx]}
+      #       end
+      #
+      #       (tx, {acc_tx_data, acc_other}) ->
+      #         {acc_tx_data, acc_other ++ [tx]}
+      #     end)
+      #
+      # ordered_txs_list = Enum.sort(txs_data_list,
+      #   fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
 
-            ## If the start block height is too heigher then
-            ## we do not want to register that question yet.
-            ## The tx will stay in the pool.
-            if Chain.top_height + 1 < start_height do
-              {acc_tx_data, acc_other}
-            else
-              {acc_tx_data, acc_other ++ [tx]}
-            end
 
-            (tx, {acc_tx_data, acc_other}) ->
-              {acc_tx_data, acc_other ++ [tx]}
-          end)
+      ordered_txs_list = Enum.sort txs_list, fn tx1,tx2 ->
+        case tx1 do
+          %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+            tx1.data.data.nonce
+          _ -> tx1.data.nonce
+        end
+        <
+        case tx2 do
+          %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+            tx2.data.data.nonce
+            _ -> tx2.data.nonce
+        end
+      end
 
-      ordered_txs_list = Enum.sort(txs_data_list,
-        fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
       valid_txs_by_chainstate =
         BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list,
           chain_state, top_block.header.height + 1)
@@ -297,7 +313,7 @@ defmodule Aecore.Miner.Worker do
           get_coinbase_transaction(pubkey, total_fees,
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
-      valid_txs = voting_txs_list ++ valid_txs
+      # valid_txs = voting_txs_list ++ valid_txs
       create_block(top_block, chain_state, difficulty, valid_txs)
 
     catch
@@ -334,7 +350,12 @@ defmodule Aecore.Miner.Worker do
     miners_fee_bytes_per_token = Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
     Enum.filter(txs, fn(tx) ->
       tx_size_bytes = Pool.get_tx_size_bytes(tx)
-      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+      case tx do
+        %SignedTx{data: %SpendTx{}} ->
+          tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+        %SignedTx{data: %VotingTx{}} ->
+          tx.data.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+      end
     end)
   end
 
