@@ -36,17 +36,13 @@ defmodule Aecore.Chain.ChainState do
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
-    IO.inspect "APPLY VE"
+
     cond do
       SignedTx.is_coinbase?(tx) ->
         to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, %{balance: 0, nonce: 0, locked: []})
         new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
         new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
-
-        p = Map.put(chainstate, :accounts, new_accounts_state)
-        IO.inspect "apply"
-        IO.inspect p
-        p
+        Map.put(chainstate, :accounts, new_accounts_state)
 
       data.from_acc != nil ->
         if SignedTx.is_valid?(tx) do
@@ -63,27 +59,29 @@ defmodule Aecore.Chain.ChainState do
   @spec update_chain_state_locked(chainstate(), integer()) :: chainstate()
   def update_chain_state_locked(%{accounts: accounts} = chainstate, new_block_height) do
     accounts =
-      Enum.reduce(accounts, %{}, fn({account, %{balance: balance, nonce: nonce, locked: locked}}, acc) ->
+      Enum.reduce(accounts, %{}, fn({pubkey, account_state}, acc) ->
         {unlocked_amount, updated_locked} =
-          Enum.reduce(locked, {0, []}, fn(%{amount: amount, block: lock_time_block}, {amount_update_value, updated_locked}) ->
+          Enum.reduce(account_state.locked, {0, []}, fn(locked, {amount_update_value, updated_locked}) ->
             cond do
-              lock_time_block > new_block_height ->
-                {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
+              locked.block > new_block_height ->
+                {amount_update_value, updated_locked ++ [%{amount: locked.amount, block: locked.block}]}
 
-              lock_time_block == new_block_height ->
-                {amount_update_value + amount, updated_locked}
+              locked.block == new_block_height ->
+                {amount_update_value + locked.amount, updated_locked}
 
               true ->
                 Logger.error(fn ->
-                                    "Update chain state locked:
-                                    new block height (#{new_block_height}) greater than lock time block (#{lock_time_block})"
+                  "Update chain state locked:
+                  new block height (#{new_block_height}) greater than lock time block (#{locked.block})"
                 end)
                 {amount_update_value, updated_locked}
             end
           end)
-        Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
+        Map.put(acc, pubkey, %{balance: account_state.balance + unlocked_amount,
+                               nonce: account_state.nonce,
+                               locked: updated_locked})
       end)
-    h = Map.put(chainstate, :accounts, accounts)
+      Map.put(chainstate, :accounts, accounts)
   end
 
   @doc """
@@ -107,6 +105,7 @@ defmodule Aecore.Chain.ChainState do
       :gb_merkle_trees.root_hash(merkle_tree)
     end
   end
+
 
   @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
   def calculate_total_tokens(%{accounts: accounts}) do

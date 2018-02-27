@@ -111,7 +111,7 @@ defmodule Aecore.Persistence.Worker do
             end
           Enum.reduce(data, batch_acc,
             fn({key, val}, batch_acc_) ->
-              Batch.put(batch_acc_, family, key, val)
+              Batch.put(batch_acc_, family, to_string(key), val)
             end)
         end)
     Batch.write(batch, db)

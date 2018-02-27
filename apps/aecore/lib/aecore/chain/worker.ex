@@ -30,6 +30,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state =
       ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{accounts: %{}}, 0)
+
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
     {:ok, %{blocks_map: genesis_block_map,
@@ -180,10 +181,10 @@ defmodule Aecore.Chain.Worker do
                               chain_states: updated_chain_states,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
-      Persistence.batch_write(%{:chain_state => new_chain_state,
+      Persistence.batch_write(%{:chain_state => %{:chain_state => new_chain_state},
                                 :block => %{new_block_hash => new_block},
-                                :latest_block_info => %{"top_hash" => new_block_hash,
-                                                        "top_height" => new_block.header.height}})
+                                :latest_block_info => %{:top_hash => new_block_hash,
+                                                        :top_height => new_block.header.height}})
 
 
       ## We send the block to others only if it extends the longest chain
@@ -217,7 +218,7 @@ defmodule Aecore.Chain.Worker do
     chain_states =
       case Persistence.get_all_accounts_chain_states() do
         chain_states when chain_states == %{} -> state.chain_states
-        chain_states -> %{top_hash => chain_states}
+        chain_states -> %{top_hash => chain_states["chain_state"]}
       end
 
     blocks_map =

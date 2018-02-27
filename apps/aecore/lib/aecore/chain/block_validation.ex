@@ -19,7 +19,6 @@ defmodule Aecore.Chain.BlockValidation do
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
-
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     server = self()
@@ -133,7 +132,7 @@ defmodule Aecore.Chain.BlockValidation do
     block.txs
     |> Enum.map(fn tx ->
       if SignedTx.is_coinbase?(tx) do
-        tx.data.value
+        tx.data.payload.value
       else
         0
       end
