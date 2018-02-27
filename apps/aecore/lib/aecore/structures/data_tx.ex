@@ -43,7 +43,9 @@ defmodule  Aecore.Structures.DataTx do
   @spec is_valid(DataTx.t()) :: :ok | {:error, reason()}
   def is_valid(%__MODULE__{type: type, payload: payload, fee: fee}) do
     if fee >= 0 do
-      type.is_valid(payload)
+      payload
+      |> type.init()
+      |> type.is_valid()
     else
       {:error, "Fee not enough"}
     end
@@ -56,8 +58,10 @@ defmodule  Aecore.Structures.DataTx do
     account_state = chainstate.accounts.from_acc
     subdomain_chainstate = Map.get(chainstate, type, %{})
 
-    type.process_chainstate!(payload, tx.from_acc, tx.fee,
-      tx.nonce, block_height, account_state, subdomain_chainstate)
+    payload
+    |> type.init()
+    |> type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
+                                account_state, subdomain_chainstate)
   end
 
 end

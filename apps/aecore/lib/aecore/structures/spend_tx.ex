@@ -54,7 +54,7 @@ defmodule Aecore.Structures.SpendTx do
     if value >= 0 do
       :ok
     else
-      {:error, "Value not enough"}
+      {:error, "Value cannot be a negative number"}
     end
   end
 

@@ -133,11 +133,6 @@ defmodule Aecore.Persistence.Worker do
     {:reply, Rox.get(blocks_family, hash), state}
   end
 
-  def handle_call({:get_account_chain_state, account}, _from,
-    %{chain_state_family: chain_state_family} = state) do
-    {:reply, Rox.get(chain_state_family, account), state}
-  end
-
   def handle_call(:get_all_blocks, _from,
     %{blocks_family: blocks_family} = state) do
     all_blocks =
@@ -145,6 +140,21 @@ defmodule Aecore.Persistence.Worker do
       |> Rox.stream()
       |> Enum.into(%{})
     {:reply, all_blocks, state}
+  end
+
+  def handle_call({:get_account_chain_state, account}, _from,
+    %{chain_state_family: chain_state_family} = state) do
+    accounts = Rox.get(chain_state_family, "chain_state")
+    {:reply, Rox.get(accounts, account), state}
+  end
+
+  def handle_call(:get_all_accounts_chain_states, _from,
+    %{chain_state_family: chain_state_family} = state) do
+    chain_state =
+      chain_state_family
+      |> Rox.stream()
+      |> Enum.into(%{})
+    {:reply, chain_state, state}
   end
 
   def handle_call(:get_latest_block_height_and_hash, _from,
@@ -164,15 +174,6 @@ defmodule Aecore.Persistence.Worker do
     :ok = Rox.put(latest_block_info_family, "top_hash", hash, write_options())
     :ok = Rox.put(latest_block_info_family, "top_height", height, write_options())
     {:reply, :ok, state}
-  end
-
-  def handle_call(:get_all_accounts_chain_states, _from,
-    %{chain_state_family: chain_state_family} = state) do
-    chain_state =
-      chain_state_family
-      |> Rox.stream()
-      |> Enum.into(%{})
-    {:reply, chain_state, state}
   end
 
   defp persistence_path(), do: Application.get_env(:aecore, :persistence)[:path]

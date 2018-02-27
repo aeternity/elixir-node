@@ -89,10 +89,10 @@ defmodule Aecore.Chain.ChainState do
   returns the root hash of the tree.
   """
   @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(%{accounts: accounts} = chainstate) do
+  def calculate_chain_state_hash(chainstate) do
     merkle_tree_data =
-      for {account, data} <- accounts do
-        {account, Serialization.pack_binary(data)}
+      for {accounts, data} <- chainstate do
+        {accounts, Serialization.pack_binary(data)}
       end
 
     if Enum.empty?(merkle_tree_data) do
