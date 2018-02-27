@@ -1,7 +1,10 @@
 defmodule Aehttpserver.Web.OracleController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.OraclePrototype.Oracle
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aeutil.Serialization
   alias Aeutil.Bits
 
   require Logger
@@ -9,11 +12,46 @@ defmodule Aehttpserver.Web.OracleController do
   def oracle_response(conn, _params) do
     body = conn.body_params
     binary_oracle_hash = Bits.bech32_decode(body["oracle_hash"])
+
     case Oracle.respond(binary_oracle_hash, body["response"], body["fee"]) do
       :ok ->
-        json conn, %{:status => :ok}
+        json(conn, %{:status => :ok})
+
       :error ->
-        json conn, %{:status => :error}
+        json(conn, %{:status => :error})
+    end
+  end
+
+  def registered_oracles(conn, _params) do
+    registered_oracles = Chain.registered_oracles()
+
+    serialized_oracle_list =
+      if Enum.empty?(registered_oracles) do
+        %{}
+      else
+        Enum.reduce(Chain.registered_oracles(), %{}, fn {hash, tx}, acc ->
+          Map.put(
+            acc,
+            OracleRegistrationTxData.bech32_encode(hash),
+            Serialization.tx(tx, :serialize)
+          )
+        end)
+      end
+
+    json(conn, serialized_oracle_list)
+  end
+
+  def oracle_query(conn, _params) do
+    body = conn.body_params
+    binary_oracle_hash = Bits.bech32_decode(body["hash"])
+    parsed_query = Poison.decode!(~s(#{body["query"]}))
+
+    case Oracle.query(binary_oracle_hash, parsed_query, body["fee"], body["query_fee"]) do
+      :ok ->
+        json(conn, %{:status => :ok})
+
+      :error ->
+        json(conn, %{:status => :error})
     end
   end
 end

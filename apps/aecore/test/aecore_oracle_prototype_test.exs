@@ -1,7 +1,7 @@
-defmodule AecoreOraclePrototypeTest do
+defmodule AecoreOracleTest do
   use ExUnit.Case
 
-  alias Aecore.OraclePrototype.Oracle
+  alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 

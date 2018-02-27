@@ -1,5 +1,4 @@
-defmodule Aecore.OraclePrototype.Oracle do
-
+defmodule Aecore.Oracle.Oracle do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
@@ -18,21 +17,27 @@ defmodule Aecore.OraclePrototype.Oracle do
   """
   @spec register(map(), map(), binary(), integer(), String.t()) :: :ok | :error
   def register(query_format, response_format, description, fee, oracle_uri) do
-    case OracleRegistrationTxData.create(query_format, response_format,
-                                         description, fee) do
+    case OracleRegistrationTxData.create(query_format, response_format, description, fee) do
       :error ->
         :error
+
       tx_data ->
         signed_tx = sign_tx(tx_data)
         signed_tx_hash = SignedTx.hash_tx(signed_tx)
         oracles_list = Application.get_env(:aecore, :operator)[:oracles]
         updated_oracles_map = Map.put(oracles_list, signed_tx_hash, oracle_uri)
+
         case Pool.add_transaction(signed_tx) do
           :ok ->
-            Application.put_env(:aecore, :operator,
-                                [is_node_operator: true,
-                                 oracles: updated_oracles_map])
+            Application.put_env(
+              :aecore,
+              :operator,
+              is_node_operator: true,
+              oracles: updated_oracles_map
+            )
+
             :ok
+
           :error ->
             :error
         end
@@ -46,13 +51,13 @@ defmodule Aecore.OraclePrototype.Oracle do
   """
   @spec query(binary(), any(), integer(), integer()) :: :ok | :error
   def query(oracle_hash, query_data, query_fee, response_fee) do
-      case OracleQueryTxData.create(oracle_hash, query_data,
-                                    query_fee, response_fee) do
-        :error ->
-          :error
-        tx_data ->
-          Pool.add_transaction(sign_tx(tx_data))
-      end
+    case OracleQueryTxData.create(oracle_hash, query_data, query_fee, response_fee) do
+      :error ->
+        :error
+
+      tx_data ->
+        Pool.add_transaction(sign_tx(tx_data))
+    end
   end
 
   @doc """
@@ -64,8 +69,23 @@ defmodule Aecore.OraclePrototype.Oracle do
     case OracleResponseTxData.create(oracle_hash, response, fee) do
       :error ->
         :error
+
       tx_data ->
         Pool.add_transaction(sign_tx(tx_data))
+    end
+  end
+
+  @spec data_valid?(map(), map()) :: true | false
+  def data_valid?(format, data) do
+    schema = ExJsonSchema.Schema.resolve(format)
+
+    case ExJsonSchema.Validator.validate(schema, data) do
+      :ok ->
+        true
+
+      {:error, message} ->
+        Logger.error(message)
+        false
     end
   end
 
