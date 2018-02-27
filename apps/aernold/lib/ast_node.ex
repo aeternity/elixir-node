@@ -510,7 +510,7 @@ defmodule ASTNode do
     {result, scope}
   end
 
-  ##Map functions
+  ## Map functions
 
   def evaluate(
         {:func_call, {_, 'Map'}, {_, 'get'}, {{_, id} = map_id, {_key_type, _key_value} = key}},
@@ -570,6 +570,7 @@ defmodule ASTNode do
 
   def evaluate({:func_call, id, args}, {_prev_val, scope}) do
     {_, func_name} = id
+    initial_scope = scope
 
     {_, {_, _, params, body} = _func} =
       Enum.find(scope, fn s ->
@@ -583,13 +584,18 @@ defmodule ASTNode do
         end
       end)
 
+    initial_scope_size = Enum.count(scope)
+    # initialize parameters in scope with the given arguments
     {_, scope} =
       Enum.reduce(params, {0, scope}, fn param, {args_index, scope_acc} ->
         arg = elem(args, args_index)
 
         case param do
           {_, id, type} ->
-            var_def = {:def_var, id, type, arg}
+            {_, {_, id}, _} = param
+            # add private suffix to the parameter name
+            # so that we don't overwrite it in the existing scope
+            var_def = {:def_var, {:id, List.to_string(id) <> "_param"}, type, arg}
 
             {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
             {args_index + 1, scope_acc}
@@ -608,12 +614,27 @@ defmodule ASTNode do
         end
       end)
 
+    # revert the parameters' names to their original ones
+    {_, scope} =
+      Enum.reduce(scope, {1, %{}}, fn s, {current_index, scope_acc} ->
+        scope_key = elem(s, 0)
+        scope_val = elem(s, 1)
+
+        if current_index <= initial_scope_size do
+          {current_index + 1, Map.put(scope_acc, scope_key, scope_val)}
+        else
+          new_scope_key = scope_key |> String.replace("_param", "") |> String.to_charlist()
+
+          {current_index + 1, Map.put(scope_acc, new_scope_key, scope_val)}
+        end
+      end)
+
     {func_returned_value, scope} =
       Enum.reduce(body, {nil, scope}, fn statement, {prev_val, scope_acc} ->
         evaluate(statement, {prev_val, scope_acc})
       end)
 
-    {func_returned_value, scope}
+    {func_returned_value, initial_scope}
   end
 
   def evaluate({:int, int}, {_, scope}) do
