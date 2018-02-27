@@ -184,7 +184,7 @@ defmodule Aecore.Chain.Worker do
     updated_contracts_chain_states =
       new_block.txs
       |> filter_contract_txs()
-      |> update_contract_chainstate(new_block.header.block_height, contracts_chainstate)
+      |> update_contract_chainstate(new_block.header.height, contracts_chainstate)
     IO.inspect(updated_contracts_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
@@ -209,6 +209,7 @@ defmodule Aecore.Chain.Worker do
       {:reply, :ok, state_update1}
     end
   end
+
 
   def handle_call({:chain_state, block_hash}, _from, %{chain_states: chain_states} = state) do
     {:reply, chain_states[block_hash], state}
@@ -291,7 +292,7 @@ defmodule Aecore.Chain.Worker do
     contracts_chainstate
   end
 
-  def filter_contract_txs(txs) do
+  defp filter_contract_txs(txs) do
     #Enum.filter(txs, fn x -> x.data.__struct__ == ContractProposalTx end)
     for filtered_tx <- txs,
       filtered_tx.data.__struct__ == ContractProposalTx,
