@@ -127,6 +127,7 @@ To use the interpreter you can either call `Aernold.parse_string(contract)` or `
     tuple:Tuple = {1, true, "String", 'char'};
     {1, true, "String", 'char'};
     insert_at({1, 2}, 0, 2);
+
   ```
 
   Built-in functions for tuples:
@@ -150,6 +151,32 @@ To use the interpreter you can either call `Aernold.parse_string(contract)` or `
   - Appends a value at the end of a tuple:
 
   - `Tuple.append(tuple, value);`
+
+  **Map**
+
+  Map is a key-value data structure
+
+  ```
+
+    map:Map<Int, String>;
+    map:Map = %{1 => "one", 2 => "two"};
+    %{true => "yes", false => "no"};
+
+  ```
+
+  Built-in functions for maps:
+
+  - Returns the value of a specific key:
+
+    `Tuple.get(map, key);`
+
+  - Inserts a given key-value pair into the map:
+
+    `Map.put(map, key, value);`
+
+  - Deletes the entry in a map for a specific key:
+
+    `Map.delete(map, key);`  
 
   **Built-in functions**
 

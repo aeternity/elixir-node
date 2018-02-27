@@ -38,6 +38,32 @@ defmodule AernoldTest do
     assert returned_value == [1, 2]
   end
 
+  test "list concat" do
+    code = "
+      Contract test(){
+        list:List<Int>;
+        list = [1, 2] ++ [3, 4];
+      }();
+    "
+
+    {returned_value, _scope} = Aernold.parse_string(code)
+
+    assert returned_value == [1, 2, 3, 4]
+  end
+
+  test "list remove first occurrence" do
+    code = "
+      Contract test(){
+        list:List<Int>;
+        list = [1, 2, 3, 4, 1, 2] -- [1, 2];
+      }();
+    "
+
+    {returned_value, _scope} = Aernold.parse_string(code)
+
+    assert returned_value == [3, 4, 1, 2]
+  end
+
   test "list elem" do
     code = "
       Contract test(){
@@ -63,7 +89,6 @@ defmodule AernoldTest do
 
     assert returned_value == 2
   end
-
 
   test "insert_at list" do
     code = "
@@ -103,7 +128,6 @@ defmodule AernoldTest do
 
     assert returned_value == [2, 3]
   end
-
 
   test "tuple declaration and definition" do
     code = "
@@ -186,4 +210,19 @@ defmodule AernoldTest do
     assert returned_value == {"string", [1, 2], 'c', 4}
   end
 
+  test "map declaration and definition" do
+    code = "
+      Contract test(){
+        map:Map<Int, String>;
+        map = %{
+          1 => \"one\",
+          2 => \"two\"
+        };
+      }();
+    "
+
+    {returned_value, _scope} = Aernold.parse_string(code)
+
+    assert returned_value == %{1 => "one", 2 => "two"}
+  end
 end

@@ -133,7 +133,7 @@ defmodule ASTNode do
       ) do
     map =
       Enum.reduce(map_values, %{}, fn {{key_type, key_value} = key,
-                                       {value_type, value_value} = value},
+                                       {_value_type, value_value} = value},
                                       acc ->
         {key_extracted_value, _} = evaluate(key, {nil, scope})
         ASTNodeUtils.validate_map_key_or_value!(keys_type, key_extracted_value)
@@ -261,6 +261,48 @@ defmodule ASTNode do
     {rhs_value, _} = evaluate(rhs, {nil, scope})
 
     result = rem(lhs_value, rhs_value)
+
+    {result, scope}
+  end
+
+  def evaluate({lhs, {:++, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result =
+      cond do
+        !is_list(lhs_value) ->
+          throw({:error, "Argument error, value must be list"})
+
+        !is_list(rhs_value) ->
+          throw({:error, "Argument error, value must be list"})
+
+        true ->
+          lhs_value ++ rhs_value
+      end
+
+    ASTNodeUtils.check_list_item_type(result)
+
+    {result, scope}
+  end
+
+  def evaluate({lhs, {:--, _}, rhs}, {_prev_val, scope}) do
+    {lhs_value, _} = evaluate(lhs, {nil, scope})
+    {rhs_value, _} = evaluate(rhs, {nil, scope})
+
+    result =
+      cond do
+        !is_list(lhs_value) ->
+          throw({:error, "Argument error, value must be list"})
+
+        !is_list(rhs_value) ->
+          throw({:error, "Argument error, value must be list"})
+
+        true ->
+          lhs_value -- rhs_value
+      end
+
+    ASTNodeUtils.check_list_item_type(result)
 
     {result, scope}
   end
@@ -468,14 +510,16 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  ##Map functions
+
   def evaluate(
-        {:func_call, {_, 'Map'}, {_, 'get'}, {{_, id} = map_id, {key_type, key_value} = key}},
+        {:func_call, {_, 'Map'}, {_, 'get'}, {{_, id} = map_id, {_key_type, _key_value} = key}},
         {_prev_val, scope}
       ) do
     {extracted_map, _} = evaluate(map_id, {nil, scope})
     {extracted_key, _} = evaluate(key, {nil, scope})
 
-    {_, {map_key_type, map_value_type}} = Map.get(scope, id).type
+    {_, {map_key_type, _map_value_type}} = Map.get(scope, id).type
 
     ASTNodeUtils.validate_map_key_or_value!(map_key_type, extracted_key)
 
@@ -505,13 +549,13 @@ defmodule ASTNode do
   end
 
   def evaluate(
-        {:func_call, {_, 'Map'}, {_, 'delete'}, {{_, id} = map_id, {key_type, key_value} = key}},
+        {:func_call, {_, 'Map'}, {_, 'delete'}, {{_, id} = map_id, {_key_type, _key_value} = key}},
         {_prev_val, scope}
       ) do
     {extracted_map, _} = evaluate(map_id, {nil, scope})
     {extracted_key, _} = evaluate(key, {nil, scope})
 
-    {_, {map_key_type, map_value_type}} = Map.get(scope, id).type
+    {_, {map_key_type, _map_value_type}} = Map.get(scope, id).type
 
     ASTNodeUtils.validate_map_key_or_value!(map_key_type, extracted_key)
 
@@ -647,8 +691,8 @@ defmodule ASTNode do
       if key_value_pairs != :empty do
         {{keys_type, _}, {values_type, _}} = elem(key_value_pairs, 0)
 
-        Enum.reduce(key_value_pairs, %{}, fn {{key_type, key_value} = key,
-                                              {value_type, value_value} = value},
+        Enum.reduce(key_value_pairs, %{}, fn {{_key_type, key_value} = key,
+                                              {_value_type, value_value} = value},
                                              acc ->
           {key_extracted_value, _} = evaluate(key, {nil, scope})
           ASTNodeUtils.validate_map_key_or_value!(keys_type, key_extracted_value)

@@ -39,6 +39,8 @@ true|false : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 \%{ : {token, {'%{', TokenLine}}.
 => : {token, {'=>', TokenLine}}.
 \. : {token, {'.', TokenLine}}.
+\+\+ : {token, {'++', TokenLine}}.
+\-\- : {token, {'--', TokenLine}}.
 
 "{STRINGTEXT}*" : parse_string(TokenLine, TokenChars).
 '{CHARTEXT}'    : parse_char(TokenLine, TokenChars).
