@@ -185,7 +185,6 @@ defmodule Aecore.Chain.Worker do
       new_block.txs
       |> filter_contract_txs()
       |> update_contract_chainstate(new_block.header.height, contracts_chainstate)
-    IO.inspect(updated_contracts_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
@@ -278,7 +277,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_contract_chainstate([tx | txs], block_height, contracts_chainstate) do
+  defp update_contract_chainstate([{tx, :proposal} | txs], block_height, contracts_chainstate) do
     contracts_chainstate =
       Map.put(contracts_chainstate, tx.contract_hash,
         %{participants: tx.participants,
@@ -288,16 +287,25 @@ defmodule Aecore.Chain.Worker do
     update_contract_chainstate(txs, block_height,contracts_chainstate)
   end
 
+  defp update_contract_chainstate([{tx, :sign} | txs], block_height, contracts_chainstate) do
+
+    #TODO make contract_signTx logic
+    contracts_chainstate
+  end
+
   defp update_contract_chainstate([], _,contracts_chainstate) do
     contracts_chainstate
   end
 
-  defp filter_contract_txs(txs) do
-    #Enum.filter(txs, fn x -> x.data.__struct__ == ContractProposalTx end)
-    for filtered_tx <- txs,
-      filtered_tx.data.__struct__ == ContractProposalTx,
+  def filter_contract_txs(txs, :proposal) do
+    filtered_proposal_txs = for filtered_tx <- txs,
+      filtered_tx.data.__struct__ == ContractProposalTx ,
       do: filtered_tx.data
   end
 
-
+  def filter_contract_txs(txs, :sign) do
+    filtered_signed_txs = for filtered_tx <- txs,
+      filtered_tx.data.__struct__ == ContractSignTx ,
+      do: filtered_tx.data
+  end
 end
