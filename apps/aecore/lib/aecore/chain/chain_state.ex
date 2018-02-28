@@ -26,10 +26,10 @@ defmodule Aecore.Chain.ChainState do
   @type chainstate() :: map()
 
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
-  def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
+  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs
-    |> Enum.reduce(chain_state, fn(tx, chain_state) ->
-      apply_transaction_on_state!(tx, chain_state, block_height)
+    |> Enum.reduce(chainstate, fn(tx, chainstate) ->
+      apply_transaction_on_state!(tx, chainstate, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -91,9 +91,9 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state_hash(chainstate()) :: binary()
   def calculate_chain_state_hash(chainstate) do
     merkle_tree_data =
-      for {accounts, data} <- chainstate do
-        {accounts, Serialization.pack_binary(data)}
-      end
+    for {accounts, data} <- chainstate.accounts do
+      {accounts, Serialization.pack_binary(data)}
+    end
 
     if Enum.empty?(merkle_tree_data) do
       <<0::256>>

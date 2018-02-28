@@ -45,38 +45,41 @@ defmodule Aeutil.Serialization do
    {new_data, new_signature} =
      case direction do
        :deserialize ->
-         built_tx_data = build_tx_data(tx)
-         data = serialize_tx_data(built_tx_data, direction)
+         tx_data = tx["data"]
+         built_tx_data =
+           DataTx.init(tx_data["type"], tx_data["payload"], tx_data["from_acc"], tx_data["fee"], tx_data["nonce"])
+         data = DataTx.serialize(built_tx_data, direction) # serialize_tx_data(built_tx_data, direction)
          signature = hex_binary(tx["signature"], direction)
          {data, signature}
+
        :serialize ->
-         data = serialize_tx_data(tx.data, direction)
+         data = DataTx.serialize(tx.data, direction) # serialize_tx_data(tx.data, direction)
          signature = hex_binary(tx.signature, direction)
          {data, signature}
      end
    %SignedTx{data: new_data, signature: new_signature}
   end
 
-  def build_tx_data(tx) do
-    cond do
-      SignedTx.is_spend_tx(tx["data"]) ->
-        SpendTx.new(tx["data"])
-      SignedTx.is_data_tx(tx["data"]) ->
-        DataTx.new(tx["data"])
-    end
-  end
+  # def build_tx_data(tx) do
+  #   cond do
+  #     SignedTx.is_spend_tx(tx["data"]) ->
+  #       SpendTx.new(tx["data"])
+  #     SignedTx.is_data_tx(tx["data"]) ->
+  #       DataTx.new(tx["data"])
+  #   end
+  # end
 
-  @spec serialize_tx_data(transaction_types(),
-                          :serialize | :deserialize) :: transaction_types()
-  def serialize_tx_data(tx_data, direction) do
-    case tx_data do
-      %SpendTx{} ->
-        %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction),
-                    to_acc: hex_binary(tx_data.to_acc, direction)}
-      %DataTx{} ->
-        %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction)}
-    end
-  end
+  # @spec serialize_tx_data(transaction_types(),
+  #                         :serialize | :deserialize) :: transaction_types()
+  # def serialize_tx_data(tx_data, direction) do
+  #   case tx_data do
+  #     %SpendTx{} ->
+  #       %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction),
+  #                   to_acc: hex_binary(tx_data.to_acc, direction)}
+  #     %DataTx{} ->
+  #       %{tx_data | from_acc: hex_binary(tx_data.from_acc, direction)}
+  #   end
+  # end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, direction) do

@@ -8,7 +8,7 @@ defmodule Aecore.Structures.SpendTx do
   alias Aeutil.Serialization
 
   @typedoc "Arbitrary structure data of a transaction"
-  @type payload :: map()
+  @type payload :: %__MODULE__{} | map()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -42,6 +42,8 @@ defmodule Aecore.Structures.SpendTx do
   defstruct [:to_acc, :value, :lock_time_block]
   use ExConstructor
 
+  # Callbacks
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{to_acc: to_acc, value: value, lock_time_block: lock} = payload) do
     %__MODULE__{to_acc: to_acc,
@@ -67,14 +69,19 @@ defmodule Aecore.Structures.SpendTx do
     non_neg_integer(), account_state(), subdomain_chainstate()) ::
   {account_state(), subdomain_chainstate()}
   def process_chainstate!(%__MODULE__{} = tx, from_acc, fee, nonce, block_height,
-    account_state, %{}) do
+                          accounts, %{}) do
 
-    case preprocess_check(tx, account_state, fee, nonce, block_height, %{}) do
+    case preprocess_check(tx, accounts[from_acc], fee, nonce, block_height, %{}) do
       :ok ->
-        account_state
-        |> deduct_fee(fee, nonce)
-        |> transaction_out(block_height, tx.value * -1, nonce, -1)
-        |> transaction_in(block_height, tx.value, tx.lock_time_block)
+        new_from_account_state =
+          accounts[from_acc]
+          |> deduct_fee(fee, nonce)
+          |> transaction_out(block_height, tx.value * -1, nonce, -1)
+        new_accounts = Map.put(accounts, from_acc, new_from_account_state)
+
+        new_to_account_state =
+          transaction_in(accounts[tx.to_acc], block_height, tx.value, tx.lock_time_block)
+        Map.put(new_accounts, tx.to_acc, new_to_account_state)
 
       {:error, reason} = err ->
         throw err
@@ -101,6 +108,20 @@ defmodule Aecore.Structures.SpendTx do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
   end
+
+  def serialize(%{}=tx, :serialize) do
+    Map.put(tx, :to_acc, Serialization.hex_binary(tx.to_acc, :serialize))
+  end
+
+  def serialize(%{} = tx, :deserialize) do
+    new_tx=
+      Enum.reduce(tx, %{}, fn({key, value}, new_tx) ->
+        Map.put(new_tx, String.to_atom(key), value)
+      end)
+    Map.put(new_tx, :to_acc, Serialization.hex_binary(new_tx.to_acc, :deserialize))
+  end
+
+  # Inner functions
 
   @spec transaction_in(account_state(), integer(), integer(), integer()) :: account_state()
   defp transaction_in(account_state, block_height, value, lock_time_block) do

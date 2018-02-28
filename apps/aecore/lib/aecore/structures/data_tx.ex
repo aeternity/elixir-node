@@ -4,6 +4,7 @@ defmodule  Aecore.Structures.DataTx do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aeutil.Serialization
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -51,17 +52,23 @@ defmodule  Aecore.Structures.DataTx do
     end
   end
 
-  def process_chainstate(%__MODULE__{type: type, payload: payload} = tx,
-    block_height, chainstate) do
+  def process_chainstate(%__MODULE__{} = tx, block_height, chainstate) do
+    account_state = chainstate.accounts
+    subdomain_chainstate = Map.get(chainstate, tx.type, %{})
 
-    from_acc = tx.from_acc
-    account_state = chainstate.accounts.from_acc
-    subdomain_chainstate = Map.get(chainstate, type, %{})
-
-    payload
-    |> type.init()
-    |> type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
+    new_accounts_state =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
                                 account_state, subdomain_chainstate)
+      Map.put(chainstate, :accounts, new_accounts_state)
   end
 
+  def serialize(%__MODULE__{} = tx, direction) do
+    init(tx.type,
+      tx.type.serialize(tx.payload, direction),
+      Serialization.hex_binary(tx.from_acc, direction),
+      tx.fee,
+      tx.nonce)
+  end
 end
