@@ -289,23 +289,38 @@ defmodule Aecore.Chain.Worker do
 
   defp update_contract_chainstate([{tx, :sign} | txs], block_height, contracts_chainstate) do
 
-    #TODO make contract_signTx logic
-    contracts_chainstate
+    sign_existance = Enum.any?(contracts_chainstate[tx.contract_hash].accepted,
+      fn(x) -> x == tx.from_acc end)
+    sign_acceptance = length(contracts_chainstate[tx.contract_hash].accepted) <
+      length(contracts_chainstate[tx.contract_hash].participants)
+
+    if !sign_existance && sign_acceptance  do
+      accepted_state = %{contracts_chainstate[tx.contract_hash] |
+                         accepted: contracts_chainstate[tx.contract_hash].accepted ++ [tx.from_acc]}
+      contracts_chainstate = %{contracts_chainstate | tx.contract_hash => accepted_state}
+      update_contract_chainstate(txs, block_height, contracts_chainstate)
+    else
+      update_contract_chainstate(txs, block_height, contracts_chainstate)
+    end
   end
 
   defp update_contract_chainstate([], _,contracts_chainstate) do
     contracts_chainstate
   end
 
-  def filter_contract_txs(txs, :proposal) do
-    filtered_proposal_txs = for filtered_tx <- txs,
-      filtered_tx.data.__struct__ == ContractProposalTx ,
-      do: filtered_tx.data
-  end
+  def filter_contract_txs(txs) do
 
-  def filter_contract_txs(txs, :sign) do
-    filtered_signed_txs = for filtered_tx <- txs,
-      filtered_tx.data.__struct__ == ContractSignTx ,
-      do: filtered_tx.data
+    #Changed
+    filtered_txs = []
+    Enum.reduce(txs, filtered_txs, fn(tx, filtered_txs) ->
+      case tx.data.__struct__ do
+        ContractProposalTx ->
+          filtered_txs ++ [{tx.data, :proposal}]
+        ContractSignTx ->
+          filtered_txs ++ [{tx.data, :sign}]
+        _ ->
+          filtered_txs
+      end
+    end)
   end
 end

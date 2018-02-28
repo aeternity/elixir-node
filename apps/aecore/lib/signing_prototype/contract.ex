@@ -10,7 +10,10 @@ defmodule Aecore.SigningPrototype.Contract do
   def add_proposal(name, contract_hash, participants, from_acc, ttl, fee, nonce) do
     {:ok, data} =
       ContractProposalTx.create(name, contract_hash, participants, from_acc, ttl, fee, nonce)
-    Pool.add_transaction(sign_tx(data))
+    case SigningValidation.validate(data) do
+      true -> Pool.add_transaction(sign_tx(data))
+      false -> :error
+    end
   end
 
   def add_signing(signature, from_acc, contract_hash, fee, nonce) do
