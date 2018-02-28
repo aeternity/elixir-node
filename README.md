@@ -149,27 +149,27 @@ To suspend/stop the miner from mining:
 
 - To get all transactions for an account
 
-  `GET localhost:4000/tx/{account_hash}`
+  `GET localhost:4000/tx/{account}`
 
-  Where *account_hash* is the hash representation of an account binary
+  Where *account* is a hex encoded public key
 
 - To get a block by hash
 
   `GET localhost:4000/block/{block_hash}`
 
-  Where *block_hash* is the bech32 representation of a block structure
+  Where *block_hash* is the bech32 encoded block header hash
 
 - To get an account balance:
 
-  `GET localhost:4000/balance/{account_hash}`
+  `GET localhost:4000/balance/{account}`
 
-  Where *account_hash* is the hash representation of an account binary
+  Where *account* is a hex encoded public key
 
 - To get the transaction pool of an account:
 
-  `GET localhost:4000/tx_pool/{account_hash}`  
+  `GET localhost:4000/tx_pool/{account}`  
 
-  Where *account_hash* is the hash representation of an account binary
+  Where *account* is a hex encoded public key
 
 ### Running the tests
 
