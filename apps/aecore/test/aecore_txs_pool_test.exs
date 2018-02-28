@@ -27,8 +27,8 @@ defmodule AecoreTxsPoolTest do
 
     Miner.mine_sync_block_to_chain
     assert length(Chain.longest_blocks_chain()) > 1
-    assert Enum.count(Chain.top_block().txs) == 2
-    assert Enum.empty?(Pool.get_pool())
+    assert Enum.count(Chain.top_block().txs) == 1
+    assert !Enum.empty?(Pool.get_pool())
   end
 
   test "add negative transaction fail" do
