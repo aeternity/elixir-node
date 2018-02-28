@@ -17,20 +17,14 @@ defmodule MultipleTransactionsTest do
     []
   end
 
-  setup wallet do
-    [
-      pass: Application.get_env(:aecore, :aewallet)[:pass]
-    ]
-  end
-
   @tag timeout: 10_000_000
   @tag :multiple_transaction
-  test "in one block", wallet do
+  test "in one block" do
     {account1, account2, account3} = get_accounts_one_block()
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
     {account3_pub_key, _account3_priv_key} = account3
-    from_acc = Wallet.get_public_key(wallet.pass)
+    from_acc = Wallet.get_public_key()
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
@@ -40,7 +34,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    priv_key = Wallet.get_private_key(wallet.pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -156,7 +150,7 @@ defmodule MultipleTransactionsTest do
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
     {account3_pub_key, _account3_priv_key} = account3
-    from_acc = Wallet.get_public_key(wallet.pass)
+    from_acc = Wallet.get_public_key()
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
@@ -166,7 +160,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    priv_key = Wallet.get_private_key(wallet.pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -305,7 +299,7 @@ defmodule MultipleTransactionsTest do
     {account1, account2, account3} = get_accounts_miner_fees()
     {account1_pub_key, _account1_priv_key} = account1
     {account2_pub_key, _account2_priv_key} = account2
-    from_acc = Wallet.get_public_key(wallet.pass)
+    from_acc = Wallet.get_public_key()
 
     :ok = Miner.mine_sync_block_to_chain
     :ok = Miner.mine_sync_block_to_chain
@@ -314,7 +308,7 @@ defmodule MultipleTransactionsTest do
     {:ok, tx1} = SpendTx.create(from_acc, account1_pub_key, 100,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    priv_key = Wallet.get_private_key(wallet.pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -342,7 +336,7 @@ defmodule MultipleTransactionsTest do
   end
 
   test "locked amount", wallet do
-    from_acc = Wallet.get_public_key(wallet.pass)
+    from_acc = Wallet.get_public_key()
     account1 = get_account_locked_amount()
     {account1_pub_key, _account1_priv_key} = account1
 
@@ -353,7 +347,7 @@ defmodule MultipleTransactionsTest do
       Chain.top_block().header.height +
       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 3)
 
-    priv_key = Wallet.get_private_key(wallet.pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
 
     Pool.add_transaction(signed_tx1)

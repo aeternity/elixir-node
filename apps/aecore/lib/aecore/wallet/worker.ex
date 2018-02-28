@@ -6,6 +6,7 @@ defmodule Aecore.Wallet.Worker do
   use GenServer
 
   alias Aewallet.Wallet
+  alias Aewallet.KeyPair
   alias Aewallet.Encoding
 
   @typedoc "Wallet type"
@@ -47,32 +48,42 @@ defmodule Aecore.Wallet.Worker do
 
   @spec get_public_key() :: binary()
   def get_public_key() do
-    get_public_key(get_aewallet_pass())
+    get_public_key("")
   end
 
   @spec get_public_key(String.t()) :: binary()
-  def get_public_key(password) do
-    get_public_key(password, :mainnet)
+  def get_public_key(derivation_path) do
+    get_public_key(derivation_path, get_aewallet_pass())
   end
 
-  @spec get_public_key(String.t(), opts()) :: binary()
-  def get_public_key(password, network) do
-    GenServer.call(__MODULE__, {:get_pub_key, {password, network}})
+  @spec get_public_key(String.t(), String.t()) :: binary()
+  def get_public_key(derivation_path, password) do
+    get_public_key(derivation_path, password, :mainnet)
+  end
+
+  @spec get_public_key(String.t(), String.t(), opts()) :: binary()
+  def get_public_key(derivation_path, password, network) do
+    GenServer.call(__MODULE__, {:get_pub_key, {derivation_path, password, network}})
   end
 
   @spec get_private_key() :: binary()
   def get_private_key() do
-    get_private_key(get_aewallet_pass())
+    get_private_key("")
   end
 
   @spec get_private_key(String.t()) :: binary()
-  def get_private_key(password) do
-    get_private_key(password, :mainnet)
+  def get_private_key(derivation_path) do
+    get_private_key(derivation_path, get_aewallet_pass())
   end
 
-  @spec get_private_key(String.t(), opts()) :: binary()
-  def get_private_key(password, network) do
-    GenServer.call(__MODULE__, {:get_priv_key, {password, network}})
+  @spec get_private_key(String.t(), String.t()) :: binary()
+  def get_private_key(derivation_path, password) do
+    get_private_key(derivation_path, password, :mainnet)
+  end
+
+  @spec get_private_key(String.t(), String.t(), opts()) :: binary()
+  def get_private_key(derivation_path, password, network) do
+    GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
   end
 
   @doc """
@@ -108,7 +119,7 @@ defmodule Aecore.Wallet.Worker do
 
   ## Server Callbacks
 
-  def handle_call({:get_pub_key, {password, network}}, _from, %{pubkey: nil} = state) do
+  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
     {:ok, pub_key} =
       get_aewallet_dir()
       |> get_file_name()
@@ -117,20 +128,53 @@ defmodule Aecore.Wallet.Worker do
     {:reply, pub_key, %{state | pubkey: pub_key}}
   end
 
-  def handle_call({:get_pub_key, {password, network}}, _from, %{pubkey: key} = state) do
-    {:reply, key, state}
+  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: key} = state) do
+    pub_key =
+    if derivation_path == "" do
+      key
+    else
+      key = derive_key(derivation_path, password)
+      KeyPair.compress(key.key)
+    end
+
+    {:reply, pub_key, state}
   end
 
-  def handle_call({:get_priv_key, {password, network}}, _from, state) do
-    {:ok, priv_key} =
-      get_aewallet_dir()
-      |> get_file_name()
-      |> Wallet.get_private_key(password, network: network)
+  def handle_call({:get_priv_key, {derivation_path, password, network}}, _from, state) do
+    priv_key =
+    if derivation_path == "" do
+      {:ok, priv_key} =
+        get_aewallet_dir()
+        |> get_file_name()
+        |> Wallet.get_private_key(password, network: network)
+
+      priv_key
+    else
+      key = derive_key(derivation_path, password)
+      key.key
+    end
 
     {:reply, priv_key, state}
   end
 
   ## Inner functions
+
+  @spec derive_ley(String.t(), String.t()) :: map()
+  defp derive_key(derivation_path, password) do
+    password
+    |> get_seed()
+    |> KeyPair.generate_master_key()
+    |> KeyPair.derive(derivation_path)
+  end
+
+  @spec get_seed(String.t()) :: binary()
+  defp get_seed(password) do
+    {:ok, seed} =
+      get_aewallet_dir()
+      |> get_file_name()
+      |> Wallet.get_seed(password)
+    seed
+  end
 
   @spec has_wallet(:ok, String.t()) :: :ok
   defp has_wallet(:ok, path), do: create_wallet(path)

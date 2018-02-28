@@ -13,10 +13,10 @@ defmodule AehttpclientTest do
 
   @tag :http_client
   test "Client functions" do
-    account = Wallet.get_public_key(Wallet.get_aewallet_pass())
+    account = Wallet.get_public_key()
     hex_acc = Base.encode16(account)
 
-    AehttpclientTest.add_txs_to_pool(Wallet.get_aewallet_pass())
+    AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
     assert {:ok, _} = Client.get_block({"localhost:4000",
                                         Bits.bech32_decode("bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp")})
@@ -25,16 +25,16 @@ defmodule AehttpclientTest do
     |> elem(1)) == 2
   end
 
-  def add_txs_to_pool(pass) do
+  def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain
-    to_acc = Wallet.get_public_key(pass)
+    to_acc = Wallet.get_public_key()
 
     from_acc = to_acc
     init_nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce
     {:ok, tx1} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 1, 10)
     {:ok, tx2} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 2, 10)
 
-    priv_key = Wallet.get_private_key(pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
 

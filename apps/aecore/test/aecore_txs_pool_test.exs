@@ -13,7 +13,6 @@ defmodule AecoreTxsPoolTest do
 
   setup ctx do
     [
-      wallet_pass: Application.get_env(:aecore, :aewallet)[:pass],
       to_acc: <<4, 3, 85, 89, 175, 35, 38, 163, 5, 16, 147, 44, 147, 215, 20, 21, 141, 92,
       253, 96, 68, 201, 43, 224, 168, 79, 39, 135, 113, 36, 201, 236, 179, 76, 186,
       91, 130, 3, 145, 215, 221, 167, 128, 23, 63, 35, 140, 174, 35, 233, 188, 120,
@@ -24,7 +23,7 @@ defmodule AecoreTxsPoolTest do
   @tag timeout: 20_000
   @tag :txs_pool
   test "add transaction, remove it and get pool", ctx do
-    from_acc = Wallet.get_public_key(ctx.wallet_pass)
+    from_acc = Wallet.get_public_key()
 
     {:ok, tx1} = SpendTx.create(from_acc, ctx.to_acc, 5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
@@ -33,7 +32,7 @@ defmodule AecoreTxsPoolTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    priv_key = Wallet.get_private_key(ctx.wallet_pass)
+    priv_key = Wallet.get_private_key()
 
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
@@ -51,11 +50,11 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", ctx do
-    from_acc = Wallet.get_public_key(ctx.wallet_pass)
+    from_acc = Wallet.get_public_key()
     {:ok, tx} = SpendTx.create(from_acc, ctx.to_acc, -5,
       Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1, 10)
 
-    priv_key = Wallet.get_private_key(ctx.wallet_pass)
+    priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
     assert :error = Pool.add_transaction(signed_tx)
   end
