@@ -247,3 +247,12 @@ Oracle responses:
   ```
 
 All transactions have to be mined in order to take effect.
+
+### Docker
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory
+
+ - Build container `docker build . -t elixir-research`
+ - Run node in container `docker run --name elixir-research -it -p 4000:4000 elixir-research`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
