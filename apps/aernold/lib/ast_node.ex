@@ -219,6 +219,93 @@ defmodule ASTNode do
     {switch_statement_val, updated_scope}
   end
 
+  # TODO: to be refactored!
+  def evaluate(
+        {:foreach_statement, {{_, id}, as, statements}} = a,
+        {prev_val, scope}
+      ) do
+    {_, %{type: {type, values_type}} = variable} =
+      Enum.find(scope, fn s ->
+        scope_key = elem(s, 0)
+        scope_val = elem(s, 1)
+
+        %{type: {type, _}} = scope_val
+
+        is_map(scope_val) && scope_key == id && Enum.member?(['List', 'Map'], type)
+      end)
+
+    if variable == nil do
+      throw({:error, "Invalid type passed to foreach"})
+    end
+
+    {returned_value, updated_scope} =
+      variable.value
+      |> Stream.with_index()
+      |> Enum.reduce({nil, scope}, fn {value, key}, {returned_value, scope_acc} ->
+        {key, value} =
+          case type do
+            'List' ->
+              {key, value}
+
+            'Map' ->
+              {key, value} = value
+          end
+
+        values_type =
+          if !is_tuple(values_type) do
+            Tuple.append({}, values_type)
+          else
+            values_type
+          end
+
+        {_, value_as} = elem(as, tuple_size(as) - 1)
+
+        value_type_charlist = elem(values_type, tuple_size(values_type) - 1)
+
+        value_type_atom =
+          value_type_charlist |> List.to_string() |> String.downcase() |> String.to_atom()
+
+        var_def =
+          {:def_var, {:id, value_as}, {:type, value_type_charlist}, {value_type_atom, value}}
+
+        {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+
+        scope_acc =
+          if tuple_size(as) == 2 do
+            {_, key_as} = elem(as, 0)
+
+            if tuple_size(values_type) == 1 do
+              var_def = {:def_var, {:id, key_as}, {:type, 'Int'}, {:int, key}}
+
+              {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+              scope_acc
+            else
+              key_type_charlist = elem(values_type, 0)
+
+              key_type_atom =
+                value_type_charlist |> List.to_string() |> String.downcase() |> String.to_atom()
+
+              var_def =
+                {:def_var, {:id, key_as}, {:type, key_type_charlist}, {key_type_atom, key}}
+
+              {_, scope_acc} = evaluate(var_def, {nil, scope_acc})
+              scope_acc
+            end
+          else
+            scope_acc
+          end
+
+        {returned_value, scope_acc} =
+          Enum.reduce(statements, {nil, scope_acc}, fn s, {prev_val, scope_acc} ->
+            evaluate(s, {prev_val, scope_acc})
+          end)
+
+        {returned_value, scope_acc}
+      end)
+
+    {returned_value, updated_scope}
+  end
+
   ## Arithmetic operations
   def evaluate({lhs, {:+, _}, rhs}, {_prev_val, scope}) do
     {lhs_value, _} = evaluate(lhs, {nil, scope})
@@ -379,6 +466,12 @@ defmodule ASTNode do
     result = if lhs_value || rhs_value, do: true, else: false
 
     {result, scope}
+  end
+
+  def evaluate({:func_call, {_, 'print'}, {value}}, {_prev_val, scope}) do
+    {extracted_value, _} = evaluate(value, {nil, scope})
+
+    {IO.inspect(extracted_value), scope}
   end
 
   def evaluate({:func_call, {_, 'account_balance'}, {account}}, {_prev_val, scope}) do
@@ -584,11 +677,7 @@ defmodule ASTNode do
         scope_key = elem(s, 0)
         scope_val = elem(s, 1)
 
-        if !is_map(scope_val) do
-          elem(scope_val, 0) == :func_definition && scope_key == func_name
-        else
-          false
-        end
+        !is_map(scope_val) && elem(scope_val, 0) == :func_definition && scope_key == func_name
       end)
 
     initial_scope_size = Enum.count(scope)

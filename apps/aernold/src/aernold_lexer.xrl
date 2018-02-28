@@ -24,6 +24,8 @@ if         : {token, {'if', TokenLine}}.
 else       : {token, {else, TokenLine}}.
 switch     : {token, {switch, TokenLine}}.
 case       : {token, {'case', TokenLine}}.
+foreach    : {token, {foreach, TokenLine}}.
+as         : {token, {as, TokenLine}}.
 func       : {token, {func, TokenLine}}.
 true|false : {token, {bool, TokenLine, list_to_atom(TokenChars)}}.
 

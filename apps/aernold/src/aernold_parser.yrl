@@ -1,6 +1,6 @@
 Terminals
 bool int contract id type 'if'
-else switch 'case' func hex char string
+else switch 'case' foreach as func hex char string
 
 %%Symbols
 ':' ';' '=' '+' '-' '*' '/' '%' '{' '}'
@@ -12,7 +12,7 @@ else switch 'case' func hex char string
 Nonterminals
 File Contr Statement SimpleStatement CompoundStatement VariableDeclaration
 VariableDefinition IfStatement ElseIfStatement ElseStatement SwitchStatement
-SwitchCase Condition
+SwitchCase Condition ForeachStatement
 FunctionDefinition FunctionParameters FunctionCall FunctionArguments Expression
 Id Type Value OpCondition OpCompare Op DataStructure TupleDefinition TupleValues
 ListDeclaration ListDefinition ListValues MapDeclaration MapDefinition MapValues
@@ -46,6 +46,7 @@ SimpleStatement -> VariableDefinition : '$1'.
 
 CompoundStatement -> IfStatement : {if_statement, list_to_tuple('$1')}.
 CompoundStatement -> SwitchStatement : {switch_statement, '$1'}.
+CompoundStatement -> ForeachStatement : {foreach_statement, '$1'}.
 CompoundStatement -> FunctionDefinition : '$1'.
 
 ListDeclaration -> Id ':' Type '<' Type '>' : {decl_list, '$1', '$3', '$5'}.
@@ -70,6 +71,9 @@ SwitchStatement -> switch '(' Expression ')' '{' SwitchCase '}' : {'$3', list_to
 
 SwitchCase -> 'case' Expression ':' Statement : [{'$2', list_to_tuple('$4')}].
 SwitchCase -> 'case' Expression ':' Statement SwitchCase : [{'$2', list_to_tuple('$4')} | '$5'].
+
+ForeachStatement -> 'foreach' '(' Value 'as' Id ')' '{' Statement '}' : {'$3', {'$5'}, list_to_tuple('$8')}.
+ForeachStatement -> 'foreach' '(' Value 'as' Id '=>' Id ')' '{' Statement '}' : {'$3', {'$5', '$7'}, list_to_tuple('$10')}.
 
 FunctionDefinition -> 'func' Id '(' FunctionParameters ')' '{' Statement '}' : {func_definition, '$2', list_to_tuple('$4'), list_to_tuple('$7')}.
 
