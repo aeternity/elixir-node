@@ -117,6 +117,10 @@ To use the interpreter you can either call `Aernold.parse_string(contract)` or `
 
     `List.reverse(list);`
 
+  - Returns a sorted list. Uses merge sort algorithm
+
+    `List.sort(list)`
+
   **Tuple**
 
   Tuple are data structures with fixed number of elements and a tuple can
@@ -168,7 +172,7 @@ To use the interpreter you can either call `Aernold.parse_string(contract)` or `
 
   - Returns the value of a specific key:
 
-    `Tuple.get(map, key);`
+    `Map.get(map, key);`
 
   - Inserts a given key-value pair into the map:
 

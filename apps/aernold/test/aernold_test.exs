@@ -103,7 +103,7 @@ defmodule AernoldTest do
     assert returned_value == [1, 2, 3]
   end
 
-  test "revers list" do
+  test "reversе list" do
     code = "
       Contract test(){
         list:List<Int> = [1, 2, 3];
@@ -127,6 +127,19 @@ defmodule AernoldTest do
     {returned_value, _scope} = Aernold.parse_string(code)
 
     assert returned_value == [2, 3]
+  end
+
+  test "sort list" do
+    code = "
+      Contract test(){
+        list:List<Int> = [3, 2, 1];
+        list = List.sort(list);
+      }();
+    "
+
+    {returned_value, _scope} = Aernold.parse_string(code)
+
+    assert returned_value == [1, 2, 3]
   end
 
   test "tuple declaration and definition" do
@@ -223,6 +236,6 @@ defmodule AernoldTest do
 
     {returned_value, _scope} = Aernold.parse_string(code)
 
-    assert returned_value == %{1 => "one", 2 => "two"}
+    assert returned_value == %{"1" => "one", "2" => "two"}
   end
 end

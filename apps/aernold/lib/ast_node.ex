@@ -460,6 +460,13 @@ defmodule ASTNode do
     {result, scope}
   end
 
+  def evaluate({:func_call, {_, 'List'}, {_, 'sort'}, {list}}, {_prev_val, scope}) do
+    {extracted_list, _} = evaluate(list, {nil, scope})
+
+    result = Enum.sort(extracted_list)
+
+    {result, scope}
+  end
   ## Tuple functions
 
   def evaluate({:func_call, {_, 'Tuple'}, {_, 'elem'}, {tuple, index}}, {_prev_val, scope}) do
@@ -591,7 +598,7 @@ defmodule ASTNode do
         arg = elem(args, args_index)
 
         case param do
-          {_, id, type} ->
+          {_, _id, type} ->
             {_, {_, id}, _} = param
             # add private suffix to the parameter name
             # so that we don't overwrite it in the existing scope
@@ -629,7 +636,7 @@ defmodule ASTNode do
         end
       end)
 
-    {func_returned_value, scope} =
+    {func_returned_value, _scope} =
       Enum.reduce(body, {nil, scope}, fn statement, {prev_val, scope_acc} ->
         evaluate(statement, {prev_val, scope_acc})
       end)

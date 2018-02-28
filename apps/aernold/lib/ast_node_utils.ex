@@ -15,7 +15,7 @@ defmodule ASTNodeUtils do
       type == 'Hex' && !(value =~ hex_regex) ->
         throw({:error, "The value of (#{id}) must be Hex"})
 
-      type == 'Char' && !(is_list(value)) ->
+      type == 'Char' && !is_list(value) ->
         throw({:error, "The value of (#{id}) must be Char"})
 
       true ->
@@ -36,20 +36,20 @@ defmodule ASTNodeUtils do
   ## This is going to be optimised (probably with spawn for each cond)
   def check_list_item_type(list) do
     cond do
-      Enum.all?(list, fn x -> is_integer(x) end) != true ->
-        throw({:error, "Lists must be homogeneous"})
+      Enum.all?(list, fn x -> is_integer(x) end) != false ->
+        list
 
       Enum.all?(list, fn x -> is_bitstring(x) end) != false ->
-        throw({:error, "Lists must be homogeneous"})
+        list
 
       Enum.all?(list, fn x -> is_list(x) end) != false ->
-        throw({:error, "Lists must be homogeneous"})
+        list
 
       Enum.all?(list, fn x -> is_boolean(x) end) != false ->
-        throw({:error, "Lists must be homogeneous"})
+        list
 
       true ->
-        list
+        throw({:error, "Lists must be homogeneous"})
     end
   end
 
@@ -98,5 +98,4 @@ defmodule ASTNodeUtils do
         throw({:error, "Illegal map key value"})
     end
   end
-
 end
