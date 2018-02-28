@@ -5,6 +5,9 @@ defmodule Aecore.Keys.Worker do
   use GenServer
 
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
 
@@ -61,7 +64,19 @@ defmodule Aecore.Keys.Worker do
 
   @spec verify_tx(SignedTx.t()) :: boolean()
   def verify_tx(tx) do
-    verify(tx.data, tx.signature, tx.data.from_acc)
+    case tx do
+      %SignedTx{data: %SpendTx{}} ->
+        verify(tx.data, tx.signature, tx.data.from_acc)
+
+      %SignedTx{data: %OracleRegistrationTxData{}} ->
+        verify(tx.data, tx.signature, tx.data.operator)
+
+      %SignedTx{data: %OracleQueryTxData{}} ->
+        verify(tx.data, tx.signature, tx.data.sender)
+
+      %SignedTx{data: %OracleResponseTxData{}} ->
+        verify(tx.data, tx.signature, tx.data.operator)
+    end
   end
 
   @spec verify(binary(), binary(), binary()) :: boolean()
@@ -136,11 +151,12 @@ defmodule Aecore.Keys.Worker do
       true ->
         result =
           :crypto.verify(algo, digest, Serialization.pack_binary(term), signature, [
-                pub_key,
-                :crypto.ec_curve(curve)
-              ])
+            pub_key,
+            :crypto.ec_curve(curve)
+          ])
 
         {:reply, result, state}
+
       false ->
         {:reply, {:error, "Key length is not valid!"}, state}
     end
@@ -152,7 +168,10 @@ defmodule Aecore.Keys.Worker do
         %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [
+        priv_key,
+        :crypto.ec_curve(curve)
+      ])
 
     {:reply, {:ok, signature}, state}
   end
@@ -163,7 +182,10 @@ defmodule Aecore.Keys.Worker do
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [
+        priv_key,
+        :crypto.ec_curve(curve)
+      ])
 
     {:reply, {:ok, signature}, state}
   end
