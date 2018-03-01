@@ -57,6 +57,57 @@ To inspect all transactions in the Transaction Pool:
 
 `Aecore.Txs.Pool.Worker.get_pool() :: map() `
 
+#### **OnChainVoting**
+
+*This part assumes you have aliased `Aecore.Structures.VotingOnChain` to `VotingOnChain`*
+
+To create a new voting sign and submit question tx created with:
+
+`VotingOnChain.create_question_tx(question, start_height, end_height, formula, initial_state)`
+where:
+- question - binary string representing the question asked
+- start\_height - voting will be possible after top block reaches this height, question tx is valid only if block height <= start\_height
+- end\_height - last block height when votes can be mined (a vote is valid if current block height is \>start\_height and <= end\_height)
+- formula - binary reresenting the formula used in voting (see #) currently this can be one of the strings returned by:
+    - `Aecore.Structures.VotingOnChain.code_single_choice` - for single choice per voter
+    - `Aecore.Structures.VotingOnChain.code_multi_choice` - for multiple choices per voter 
+- initial\_state - Initial state of voting contains information about choices. You can get it with:
+    - `Aecore.Structures.VotingOnChain.get_single_choice_initial_state` for single\choice voting - with list of strings representing choices as parameter
+    - `Aecore.Structures.VotingOnChain.get_single_choice_initial_state` for single\choice voting - with list of strings representing choices as parameter
+
+Weight of the voting depends on the balances of accounts on start\_height (after tx at start\_height).
+
+example:
+`VotingOnChain.create_question_tx("The voting", Chain.top_height + 2, Chain.top_height + 3, VotingOnChain.code_single_choice, VotingOnChain.get_single_choice_initial_state(["a", "b", "c"]))`
+
+To get voting hash:
+
+`Voting.get_hash(voting_tx)`
+
+where `voting_tx` is the question tx TxData.
+
+To vote in single choice voting sign and submit tx created with:
+
+`TxData.create(pk, voting_hash, 0, Chain.chain_state[pk].nonce + 1, 10, 0, %{choice: your_choice})`
+where:
+- pk - your pubkey
+- voting\_hash - the hash of voting you would like to vote in
+- your\_choice - string representing your choice (as in voting creation tx) 
+
+To vote in multi choice voting sign and submit tx created with:
+
+`TxData.create(pk, voting_hash, 0, Chain.chain_state[pk].nonce + 1, 10, 0, %{choices: list_of_your_choices})`
+where:
+- pk - your pubkey
+- voting\_hash - the hash of voting you would like to vote in
+- list\_of\_your\_choices - list of strings representing your choices (as in voting creation tx), for vote to validate all choices have to be valid
+
+To get the state of voting (and results after voting is finished):
+
+`Chain.chain_state()[voting_hash]` 
+
+where voting\_hash is the hash of voting.
+
 ## Running the tests
 
 To run the automatic tests:
