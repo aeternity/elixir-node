@@ -179,3 +179,12 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
+
+### Docker
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory
+
+ - Build container `docker build . -t elixir-research`
+ - Run node in container `docker run --name elixir-research -it -p 4000:4000 elixir-research`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining

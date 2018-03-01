@@ -21,8 +21,8 @@ defmodule AehttpclientTest do
     assert {:ok, _} = Client.get_block({"localhost:4000",
                                         Bits.bech32_decode("bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp")})
     assert {:ok, _} = Client.get_peers("localhost:4000")
-    assert Enum.count(Client.get_account_txs({"localhost:4000", hex_acc})
-    |> elem(1)) == 2
+    assert Enum.count(Client.get_account_txs({"localhost:4000", account})
+    |> elem(1)) == 3
   end
 
   def add_txs_to_pool() do
