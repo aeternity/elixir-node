@@ -61,8 +61,8 @@ config :aecore, :pow,
   }
 
 config :aecore, :peers,
-  peers_target_count: 3,
-  peers_max_count: 4
+  peers_target_count: 5,
+  peers_max_count: 8
 
 config :aecore, :miner,
   resumed_by_default: false

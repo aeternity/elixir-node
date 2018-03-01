@@ -4,12 +4,11 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  require Logger
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.Account
-  alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Serialization
+  alias Aeutil.Bits
+
+  require Logger
 
   @type account_chainstate() :: %{binary() => map()}
 
@@ -112,6 +111,13 @@ defmodule Aecore.Chain.ChainState do
           Map.put(acc, address, other)
       end
     end)
+  end
+
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("cs", bin)
+  end
+
   end
 
   defp apply_fun_on_map(map, key, function) do

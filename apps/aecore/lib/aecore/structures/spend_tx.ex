@@ -2,7 +2,7 @@ defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-  alias Aeutil.Serialization
+
   alias Aecore.Structures.SpendTx
 
   @type t :: %SpendTx{
@@ -37,5 +37,4 @@ defmodule Aecore.Structures.SpendTx do
                   lock_time_block: lock_time_block,
                   data: data}}
   end
-
 end

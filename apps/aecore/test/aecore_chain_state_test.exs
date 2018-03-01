@@ -5,74 +5,68 @@ defmodule AecoreChainStateTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Keys.Worker, as: Keys
+
+  setup wallet do
+    [
+      a_pub_key: <<4, 16, 237, 169, 120, 141, 247, 208, 230, 42, 148, 48, 197, 186, 62, 216, 15,
+      184, 80, 37, 35, 79, 67, 63, 189, 173, 148, 248, 80, 60, 255, 45, 133, 151,
+      149, 66, 34, 171, 100, 101, 30, 58, 0, 161, 123, 164, 189, 225, 245, 79, 38,
+      16, 171, 117, 149, 203, 140, 97, 116, 253, 130, 248, 224, 179, 164>>,
+
+      b_priv_key: <<22, 132, 116, 219, 203, 89, 110, 175, 27, 101, 191, 56, 132, 79, 126, 251,
+      153, 30, 54, 41, 229, 165, 125, 198, 109, 67, 186, 132, 60, 112, 15, 64>>,
+
+      b_pub_key: <<4, 157, 132, 19, 126, 48, 144, 239, 87, 216, 235, 145, 163, 52, 135, 69, 35,
+      34, 244, 252, 209, 12, 218, 213, 147, 105, 130, 205, 8, 178, 81, 196, 101,
+      184, 63, 33, 166, 223, 239, 48, 98, 204, 214, 97, 16, 225, 28, 26, 43, 173,
+      201, 205, 248, 1, 79, 238, 23, 152, 199, 243, 176, 5, 112, 111, 193>>,
+
+      c_priv_key: <<130, 201, 184, 98, 98, 73, 194, 7, 46, 130, 10, 145, 109, 254, 227, 69, 11,
+      223, 33, 194, 225, 68, 198, 72, 179, 85, 190, 6, 32, 74, 124, 137>>,
+
+      c_pub_key: <<4, 81, 181, 128, 248, 136, 64, 17, 157, 125, 226, 13, 190, 84, 85, 50, 51,
+      170, 28, 90, 251, 112, 135, 33, 138, 142, 204, 13, 245, 133, 1, 21, 233, 54,
+      144, 177, 17, 178, 41, 187, 201, 163, 157, 141, 169, 64, 48, 26, 128, 197,
+      96, 92, 24, 27, 186, 47, 205, 140, 115, 11, 210, 247, 172, 74, 165>>
+    ]
+  end
 
   @tag :chain_state
-  test "chain state" do
+  test "chain state", wallet do
     next_block_height = Chain.top_block().header.height + 1
-    {{ap, as}, {bp, bs}, {cp, cs}} = get_accounts()
-    tx1 = %SpendTx{from_acc: bp, to_acc: ap, value: 1, nonce: 2, 
-      fee: 0, lock_time_block: 0}
-    {:ok, sig_tx1} = Keys.sign(tx1, bs)
-    signed_tx1 = %SignedTx{data: tx1, signature: sig_tx1}
-    tx2 = %SpendTx{from_acc: cp, to_acc: ap, value: 2, nonce: 2, 
-      fee: 0, lock_time_block: 0}
-    {:ok, sig_tx2} = Keys.sign(tx2, cs)
-    signed_tx2 = %SignedTx{data: tx2, signature: sig_tx2}  
+
+    tx_1 = %SpendTx{from_acc: wallet.b_pub_key, to_acc: wallet.a_pub_key,
+                   value: 1, nonce: 2, fee: 0, lock_time_block: 0}
+    {:ok, signed_tx1} = SignedTx.sign_tx(tx_1, wallet.b_priv_key)
+
+    tx_2 = %SpendTx{from_acc: wallet.c_pub_key, to_acc: wallet.a_pub_key,
+              value: 2, nonce: 2, fee: 0, lock_time_block: 0}
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_2, wallet.c_priv_key)
+
     chain_state =
       ChainState.calculate_and_validate_chain_state!([signed_tx1, signed_tx2],
-        %{ap => %Account{balance: 3, nonce: 100, locked: [%{amount: 1, block: next_block_height}]},
-          bp => %Account{balance: 5, nonce: 1, locked: [%{amount: 1, block: next_block_height + 1}]},
-          cp => %Account{balance: 4, nonce: 1, locked: [%{amount: 1, block: next_block_height}]}}, 1)
-    assert %{ap => %Account{balance: 6, nonce: 100,
-                             locked: [%{amount: 1, block: next_block_height}]},
-             bp => %Account{balance: 4, nonce: 2,
-                             locked: [%{amount: 1, block: next_block_height + 1}]},
-             cp => %Account{balance: 2, nonce: 2,
-               locked: [%{amount: 1, block: next_block_height}]}}
-      == chain_state
+        %{wallet.a_pub_key => %Account{balance: 3, nonce: 100, locked: [%{amount: 1, block: next_block_height}]},
+          wallet.b_pub_key => %Account{balance: 5, nonce: 1, locked: [%{amount: 1, block: next_block_height + 1}]},
+          wallet.c_pub_key => %Account{balance: 4, nonce: 1, locked: [%{amount: 1, block: next_block_height}]}}, 1)
+
+    assert %{wallet.a_pub_key => %Account{balance: 6, nonce: 100,
+                      locked: [%{amount: 1, block: next_block_height}]},
+             wallet.b_pub_key => %Account{balance: 4, nonce: 2,
+                      locked: [%{amount: 1, block: next_block_height + 1}]},
+             wallet.c_pub_key => %Account{balance: 2, nonce: 2,
+                      locked: [%{amount: 1, block: next_block_height}]}} == chain_state
 
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(chain_state, next_block_height)
-    assert %{ap => %Account{balance: 7, nonce: 100, locked: []},
-             bp => %Account{balance: 4, nonce: 2, locked: [%{amount: 1, block: next_block_height + 1}]},
-             cp => %Account{balance: 3, nonce: 2, locked: []}} 
-      == new_chain_state_locked_amounts
+
+    assert %{wallet.a_pub_key => %Account{balance: 7, nonce: 100, locked: []},
+             wallet.b_pub_key => %Account{balance: 4, nonce: 2, locked: [%{amount: 1, block: next_block_height + 1}]},
+             wallet.c_pub_key => %Account{balance: 3, nonce: 2, locked: []}} == new_chain_state_locked_amounts
   end
 
-  defp get_accounts do
-    account1 = {
-        <<4, 113, 73, 130, 150, 200, 126, 80, 231, 110, 11, 224, 246, 121, 247, 201,
-          166, 210, 85, 162, 163, 45, 147, 212, 141, 68, 28, 179, 91, 161, 139, 237,
-          168, 61, 115, 74, 188, 140, 143, 160, 232, 230, 187, 220, 17, 24, 249, 202,
-          222, 19, 20, 136, 175, 241, 203, 82, 23, 76, 218, 9, 72, 42, 11, 123, 127>>,
-        <<198, 218, 48, 178, 127, 24, 201, 115, 3, 29, 188, 220, 222, 189, 132, 139,
-          168, 1, 64, 134, 103, 38, 151, 213, 195, 5, 219, 138, 29, 137, 119, 229>>
-      }
-    account2 = {
-        <<4, 44, 202, 225, 249, 173, 82, 71, 56, 32, 113, 206, 123, 220, 201, 169, 40,
-          91, 56, 206, 54, 114, 162, 48, 226, 255, 87, 3, 113, 161, 45, 231, 163, 50,
-          116, 30, 204, 109, 69, 255, 54, 78, 238, 249, 34, 139, 9, 35, 99, 246, 181,
-          238, 165, 123, 67, 66, 217, 176, 227, 237, 64, 84, 65, 73, 141>>,
-        <<44, 81, 132, 144, 204, 94, 98, 172, 51, 110, 175, 30, 195, 124, 217, 172,
-          242, 240, 60, 102, 96, 91, 195, 138, 253, 247, 130, 188, 62, 229, 62, 37>>
-      }
-    account3 = {
-        <<4, 11, 38, 199, 95, 205, 49, 85, 168, 55, 88, 105, 244, 159, 57, 125, 71,
-          128, 119, 87, 224, 135, 195, 98, 218, 32, 225, 96, 254, 88, 55, 219, 164,
-          148, 30, 203, 57, 24, 121, 208, 160, 116, 231, 94, 229, 135, 225, 47, 16,
-          162, 250, 63, 103, 111, 249, 66, 67, 21, 133, 54, 152, 61, 119, 51, 188>>,
-      <<19, 239, 205, 35, 76, 49, 9, 230, 59, 169, 195, 217, 222, 135, 204, 201, 160,
- 126, 253, 20, 230, 122, 184, 193, 131, 53, 157, 50, 117, 29, 195, 47>>
-      }
-    {account1, account2, account3}
-  end
-        
 end

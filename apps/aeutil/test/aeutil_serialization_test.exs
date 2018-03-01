@@ -17,10 +17,10 @@ defmodule AeutilSerializationTest do
     [_head | values] = Map.values(block.header)
     for value <- values do
       if is_binary(value) do
-        case(Base.decode16(value)) do
+        case(SegwitAddr.decode(value)) do
           {:ok, _} ->
             true
-          :error ->
+          {:error, _} ->
             false
         end
       else
