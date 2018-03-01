@@ -109,51 +109,67 @@ To suspend/stop the miner from mining:
 
 ### HTTP-API
 
-- The node will run an http API at `localhost:4000`
+- The node will run an http API at: `localhost:4000`
 
 - To get the current info of the node:
 
-  `localhost:4000/info`
+  `GET localhost:4000/info`
 
 - To get the peers your node is connected to:
 
-  `localhost:4000/peers`
+  `GET localhost:4000/peers`
 
 - To get all blocks from the current chain:
 
-  `localhost:4000/blocks`  
+  `GET localhost:4000/blocks`  
 
 - To get all blocks with full information about the blocks:
 
-  `localhost:4000/raw_blocks`
+  `GET localhost:4000/raw_blocks`
 
 - To get the transactions in the Transaction Pool:
 
-  `localhost:4000/pool_txs`
+  `GET localhost:4000/pool_txs`
 
 - To post new transaction to the Transaction Pool:
 
-  `localhost:4000/new_tx/"serialized_tx"`
+  `POST localhost:4000/new_tx`
+
+  Body: **serialized_tx**
+
+  Where *serialized_tx* is json serialized signed transaction structure
 
 - To post new block to the chain:
 
-  `localhost:4000/new_block/"block"`
+  `POST localhost:4000/new_block`
+
+  Body: **serialized_block**
+
+  Where *serialized_block* is a json serialized block structure
 
 - To get all transactions for an account
 
-  `localhost:4000/tx/"account_hash"`
+  `GET localhost:4000/tx/{account}`
+
+  Where *account* is a hex encoded public key
 
 - To get a block by hash
 
-  `localhost:4000/block/"block_hash"`
+  `GET localhost:4000/block/{block_hash}`
+
+  Where *block_hash* is the bech32 encoded block header hash
 
 - To get an account balance:
 
-  `localhost:4000/balance/"account_hash"`
+  `GET localhost:4000/balance/{account}`
+
+  Where *account* is a hex encoded public key
 
 - To get the transaction pool of an account:
 
-    `localhost:4000/tx_pool/"account_hash"`  
+  `GET localhost:4000/tx_pool/{account}`  
+
+  Where *account* is a hex encoded public key
 
 ### Running the tests
 
