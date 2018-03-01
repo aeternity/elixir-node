@@ -163,8 +163,11 @@ defmodule Aecore.Structures.VotingOnChain do
   end
 
   defp multi_choice_formula(state, voter_address, voter, data) do
-    if MapSet.has_key?(state.voters, voter_address) do
+    if Map.has_key?(state.voters, voter_address) do
       throw {:error, "Account already voted"}
+    end
+    if data.choices != Enum.uniq(data.choices) do
+      throw {:error, "Can't vote multiple times on one choice"}
     end
     new_voters = Map.put(state.voters, voter_address, true)
     new_results = Enum.reduce(data.choices,
