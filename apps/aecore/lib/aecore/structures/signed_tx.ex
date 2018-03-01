@@ -32,7 +32,7 @@ defmodule Aecore.Structures.SignedTx do
   @spec validate(SignedTx.t()) :: boolean()
   def validate(tx) do
     case tx.data do
-      %SpendTx{} -> SpendTx.validate(tx)
+      %SpendTx{} -> SpendTx.validate(tx.data) && Keys.verify_tx(tx)
     end
   end
 

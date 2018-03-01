@@ -4,7 +4,6 @@ defmodule Aecore.Structures.SpendTx do
   """
 
   alias Aecore.Structures.SpendTx
-  alias Aecore.Keys.Worker, as: Keys
 
   @type t :: %SpendTx{
     from_acc: binary(),
@@ -38,7 +37,7 @@ defmodule Aecore.Structures.SpendTx do
   end
 
   @spec validate(SpendTx.t()) :: boolean()
-  def validate(tx) do
-    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+  def validate(data) do
+    data.value >= 0 && data.fee >= 0
   end
 end
