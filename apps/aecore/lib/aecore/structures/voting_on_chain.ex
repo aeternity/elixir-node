@@ -41,9 +41,13 @@ defmodule Aecore.Structures.VotingOnChain do
                    state: initial_state}
   end
 
-  @spec create_from_tx!(TxData.t(), Header.t()) :: VotingOnChain.t()
-  def create_from_tx!(tx, header) do
-    if tx.data.start_height < header.height do
+  @spec create_from_tx!(TxData.t(), Header.t() | integer()) :: VotingOnChain.t()
+  def create_from_tx!(tx, header = %Header{}) do
+    create_from_tx!(tx, header.height)
+  end
+  
+  def create_from_tx!(tx, height) do
+    if tx.data.start_height < height do
       throw {:error, "start_height smaller then current height"}
     end
     if tx.data.end_height <= tx.data.start_height do
@@ -53,10 +57,20 @@ defmodule Aecore.Structures.VotingOnChain do
     if tx.value != 0 do
       throw {:error, "Question tx shouldn't contain tokens"}
     end
-    create(tx.from_acc, tx.data.comment, tx.data.start_height, tx.data.end_height, tx.data.formula, tx.data.initial_state)
+    create_from_tx_no_validation(tx)
   end
 
-  def create_question_tx(comment, start_height, end_height, formula, initial_state, nocheck \\ false) do
+  def create_from_tx_no_validation(tx) do
+    create(tx.from_acc,
+           tx.data.comment, 
+           tx.data.start_height, 
+           tx.data.end_height, 
+           tx.data.formula, 
+           tx.data.initial_state)
+  end
+
+
+  def create_question_tx(comment, start_height, end_height, formula, initial_state, fee \\ 25, nocheck \\ false) do
     {:ok, pubkey} = Keys.pubkey()
     data = %{comment: comment,
              start_height: start_height,
@@ -67,11 +81,11 @@ defmodule Aecore.Structures.VotingOnChain do
                               ChainState.addr_voting_on_chain_create,
                               0,
                               Chain.chain_state[pubkey].nonce + 1,
-                              25,
+                              fee,
                               0,
                               data)
     if !nocheck do
-      create_from_tx!(tx, Chain.top_height() + 1) #We check if voting can be created in next block
+      create_from_tx!(tx, Chain.top_height() + 1) #We check validity of input
     end
     tx
   end
@@ -92,7 +106,13 @@ defmodule Aecore.Structures.VotingOnChain do
     %VotingOnChain{voting | state: new_state}
   end
 
-  def get_hash(voting) do
+  @spec get_hash(TxData.t() | VotingOnChain.t()) :: binary()
+  def get_hash(voting = %TxData{}) do
+    voting
+    |> create_from_tx_no_validation
+    |> get_hash
+  end
+  def get_hash(voting = %VotingOnChain{}) do
     constant_fields = %{requester: voting.requester,
                         comment: voting.comment,
                         start_height: voting.start_height,
