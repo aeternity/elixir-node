@@ -41,7 +41,7 @@ defmodule PersistenceTest do
       Persistence.get_all_blocks()[Aecore.Chain.Worker.top_block_hash]
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 20_000
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
     ## For specific account
