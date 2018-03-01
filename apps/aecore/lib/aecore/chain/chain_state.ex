@@ -33,7 +33,7 @@ defmodule Aecore.Chain.ChainState do
         |> apply_transaction_addition!(block_height, transaction)
 
       transaction.data.from_acc != nil ->
-        if !SignedTx.is_valid?(transaction), do: throw {:error, "Invalid transaction"}
+        if !SignedTx.validate(transaction), do: throw {:error, "Invalid transaction"}
 
         chain_state
         |> apply_transaction_nonce!(transaction)

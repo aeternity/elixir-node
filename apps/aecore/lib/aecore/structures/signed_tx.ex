@@ -29,9 +29,11 @@ defmodule Aecore.Structures.SignedTx do
     tx.data.from_acc == nil && tx.signature == nil
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(tx) do
-    tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+  @spec validate(SignedTx.t()) :: boolean()
+  def validate(tx) do
+    case tx.data do
+      %SpendTx{} -> SpendTx.validate(tx)
+    end
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
