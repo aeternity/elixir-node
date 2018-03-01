@@ -5,6 +5,7 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Account
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
@@ -44,9 +45,6 @@ defmodule Aecore.Chain.ChainState do
         address ->
           case Map.get(chain_state, address, Account.empty()) do
             account = %Account{} -> 
-              if !Keys.is_pubkey?(address) do
-                throw {:error, "Non-pubkey address"}
-              end
               Map.put(chain_state, 
                       address, 
                       Account.tx_in!(account, transaction.data, block_height))
@@ -116,8 +114,6 @@ defmodule Aecore.Chain.ChainState do
   @spec bech32_encode(binary()) :: String.t()
   def bech32_encode(bin) do
     Bits.bech32_encode("cs", bin)
-  end
-
   end
 
   defp apply_fun_on_map(map, key, function) do
