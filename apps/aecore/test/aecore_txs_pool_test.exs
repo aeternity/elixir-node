@@ -23,6 +23,9 @@ defmodule AecoreTxsPoolTest do
   @tag timeout: 20_000
   @tag :txs_pool
   test "add transaction, remove it and get pool", ctx do
+    # Empty the pool from the other tests
+    Pool.get_and_empty_pool()
+
     from_acc = Wallet.get_public_key()
 
     {:ok, tx1} = SpendTx.create(from_acc, ctx.to_acc, 5,
@@ -45,8 +48,8 @@ defmodule AecoreTxsPoolTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     assert length(Chain.longest_blocks_chain()) > 1
-    assert Enum.count(Chain.top_block().txs) == 1
-    assert !Enum.empty?(Pool.get_pool())
+    assert Enum.count(Chain.top_block().txs) == 2
+    assert Enum.empty?(Pool.get_pool())
   end
 
   test "add negative transaction fail", ctx do

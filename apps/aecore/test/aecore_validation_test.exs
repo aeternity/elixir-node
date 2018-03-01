@@ -26,10 +26,10 @@ defmodule AecoreValidationTest do
   end
 
   @tag :validation
-  test "validate block header height" do
-    new_block = get_new_block()
+  test "validate block header height", ctx do
+    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
     prev_block = get_prev_block()
-    
+
     blocks_for_difficulty_calculation = [new_block, prev_block]
     _ = BlockValidation.calculate_and_validate_block!(new_block, prev_block, get_chain_state(), blocks_for_difficulty_calculation)
     wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
@@ -38,8 +38,8 @@ defmodule AecoreValidationTest do
   end
 
   @tag :validation
-  test "validate block header timestamp" do
-    new_block = get_new_block()
+  test "validate block header timestamp", ctx do
+    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -67,20 +67,26 @@ defmodule AecoreValidationTest do
                  |> Enum.all? == true
   end
 
-  def get_new_block() do
-    from_pubkey = elem(Aecore.Keys.Worker.pubkey(), 1)
-    to_account = <<4, 94, 96, 161, 182, 76, 153, 22, 179, 136, 60, 87, 225, 135, 253, 179, 80, 40, 80, 149, 21, 26, 253, 48, 139, 155, 200, 45, 150, 183, 61, 46, 151, 42, 245, 199, 168, 60, 121, 39, 180, 82, 162, 173, 86, 194, 180, 54, 116, 190, 199, 155, 97, 222, 85, 83, 147, 172, 10, 85, 112, 29, 54, 0, 78>>
-    {:ok, tx1} = Aecore.Keys.Worker.sign_tx(to_account, 100, Map.get(Aecore.Chain.Worker.chain_state, from_pubkey, %{nonce: 0}).nonce + 1, 10)
-    Aecore.Txs.Pool.Worker.add_transaction(tx1)
-    {:ok,new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate)
+  def get_new_block(to_acc, lock_time_block) do
+    from_acc = Wallet.get_public_key()
+
+    {:ok, tx} = SpendTx.create(from_acc, to_acc, 100,
+                              Map.get(Chain.chain_state,
+                                to_acc, %{nonce: 0}).nonce + 1, 10, lock_time_block)
+
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
+
+    Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
+    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate)
     new_block
   end
 
   def get_prev_block() do
-    Aecore.Chain.Worker.top_block()
+    Chain.top_block()
   end
 
   def get_chain_state() do
-    Aecore.Chain.Worker.chain_state()
+    Chain.chain_state()
   end
 end
