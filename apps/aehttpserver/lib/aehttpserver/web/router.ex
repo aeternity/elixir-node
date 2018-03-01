@@ -18,6 +18,7 @@ defmodule Aehttpserver.Web.Router do
     post "/new_tx", NewTxController, :new_tx
     get "/peers", PeersController, :info
     resources "/tx", TxController, param: "account", only: [:show]
+    resources "/sign", SignController, param: "contract_hash", only: [:show]
     post "/new_block", BlockController, :new_block
     get "/blocks", BlockController, :get_blocks
     get "/raw_blocks", BlockController, :get_raw_blocks

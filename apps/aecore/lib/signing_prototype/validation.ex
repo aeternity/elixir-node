@@ -22,12 +22,12 @@ defmodule Aecore.SigningPrototype.Validation do
   def validate(%ContractSignTx{} = data_sign) do
     case Map.get(Chain.contracts_chainstate(), data_sign.contract_hash) do
 
-      chainstate_data ->
-        is_participant?(data_sign,chainstate_data) &&
-        is_alive?(data_sign,chainstate_data) &&
-        is_signed?(data_sign,chainstate_data)
-
       nil -> false
+
+      chainstate_data ->
+          is_participant?(data_sign,chainstate_data) &&
+            is_alive?(data_sign,chainstate_data) &&
+            is_signed?(data_sign,chainstate_data)
 
     end
   end
