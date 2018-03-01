@@ -12,6 +12,16 @@ These instructions will get you a copy of the project up and running on your loc
 
 To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html), [Rust](https://www.rust-lang.org/install.html) (for RocksDB persistence) and the source code by cloning or downloading the repository.
 
+
+### Required packages
+
+Make sure you have installed the following packages to make sure that the Wallet will work properly:
+```bash
+sudo apt-get install autoconf autogen
+sudo apt-get install libtool
+sudo apt-get install libgmp3-dev
+```
+
 ## Usage
 #### **Starting the application**
 Start the application in interactive Elixir mode

@@ -12,12 +12,12 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
@@ -224,7 +224,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
-      {_, pubkey} = Keys.pubkey()
+      pubkey = Wallet.get_public_key()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [get_coinbase_transaction(pubkey, total_fees,
