@@ -50,26 +50,26 @@ defmodule Aeutil.Serialization do
 
       :voting_tx ->
         case tx.data do
-          %Aecore.Structures.VotingTx{data: %Aecore.Structures.VotingQuestionTx{}} ->
-            new_data = %{tx.data.data | from_acc: hex_binary(tx.data.data.from_acc, direction)}
+          %VotingTx{voting_payload: %VotingQuestionTx{}} ->
+            new_data = %{tx.data.voting_payload | from_acc: hex_binary(tx.data.voting_payload.from_acc, direction)}
             new_signature = hex_binary(tx.signature, direction)
 
             %SignedTx{
-              data: %VotingTx{data: VotingQuestionTx.new(new_data)},
+              data: %VotingTx{voting_payload: VotingQuestionTx.new(new_data)},
               signature: new_signature
             }
 
-          %Aecore.Structures.VotingTx{data: %Aecore.Structures.VotingAnswerTx{}} ->
+          %VotingTx{voting_payload: %VotingAnswerTx{}} ->
             new_data = %{
-              tx.data.data
-              | from_acc: hex_binary(tx.data.data.from_acc, direction),
-                hash_question: hex_binary(tx.data.data.hash_question, direction)
+              tx.data.voting_payload
+              | from_acc: hex_binary(tx.data.voting_payload.from_acc, direction),
+                hash_question: hex_binary(tx.data.voting_payload.hash_question, direction)
             }
 
             new_signature = hex_binary(tx.signature, direction)
 
             %SignedTx{
-              data: %VotingTx{data: VotingAnswerTx.new(new_data)},
+              data: %VotingTx{voting_payload: VotingAnswerTx.new(new_data)},
               signature: new_signature
             }
         end
@@ -96,7 +96,7 @@ defmodule Aeutil.Serialization do
     case map do
       %{
         data: %{
-          data: %{
+          voting_payload: %{
             question: _,
             possible_answer_count: _,
             answers: _,
@@ -109,22 +109,22 @@ defmodule Aeutil.Serialization do
         },
         signature: _
       } ->
-        new_map = %{map.data.data | from_acc: hex_binary(map.data.data.from_acc, direction)}
+        new_map = %{map.data.voting_payload | from_acc: hex_binary(map.data.voting_payload.from_acc, direction)}
         new_signature = hex_binary(map.signature, direction)
-        %SignedTx{data: %VotingTx{data: VotingQuestionTx.new(new_map)}, signature: new_signature}
+        %SignedTx{data: %VotingTx{voting_payload: VotingQuestionTx.new(new_map)}, signature: new_signature}
 
       %{
-        data: %{data: %{hash_question: _, answer: _, from_acc: _, fee: _, nonce: _}},
+        data: %{voting_payload: %{hash_question: _, answer: _, from_acc: _, fee: _, nonce: _}},
         signature: _
       } ->
         new_map = %{
-          map.data.data
-          | from_acc: hex_binary(map.data.data.from_acc, direction),
-            hash_question: hex_binary(map.data.data.hash_question, direction)
+          map.data.voting_payload
+          | from_acc: hex_binary(map.data.voting_payload.from_acc, direction),
+            hash_question: hex_binary(map.data.voting_payload.hash_question, direction)
         }
 
         new_signature = hex_binary(map.signature, direction)
-        %SignedTx{data: %VotingTx{data: VotingAnswerTx.new(new_map)}, signature: new_signature}
+        %SignedTx{data: %VotingTx{voting_payload: VotingAnswerTx.new(new_map)}, signature: new_signature}
 
       %{
         data: %{from_acc: _, to_acc: _, value: _, nonce: _, fee: _, lock_time_block: _},
@@ -236,7 +236,7 @@ defmodule Aeutil.Serialization do
       %SignedTx{} ->
         Map.from_struct(%{term | data: Map.from_struct(term.data)})
       %VotingTx{} ->
-        Map.put(Map.from_struct(term), :data, Map.from_struct(term.data))
+        Map.put(Map.from_struct(term), :voting_payload, Map.from_struct(term.voting_payload))
       %{__struct__: _} ->
         Map.from_struct(term)
       _ ->

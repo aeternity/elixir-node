@@ -69,7 +69,7 @@ defmodule Aecore.Txs.Pool.Worker do
           tx.data.fee >= Float.floor(tx_size_bytes /
           Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
         %SignedTx{data: %VotingTx{}} ->
-          tx.data.data.fee >= Float.floor(tx_size_bytes /
+          tx.data.voting_payload.fee >= Float.floor(tx_size_bytes /
           Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
       end
 
@@ -145,11 +145,12 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   defp tx_validation_sequence(SpendTx, tx) do
-    seq = [&SignedTx.is_valid?/1, &BlockValidation.is_minimum_fee_met/1]
+    seq = [&SignedTx.is_valid?/1, &is_minimum_fee_met/1]
     Enum.all?(seq, fn(f) -> f.(tx) end)
   end
+
   defp tx_validation_sequence(VotingTx, tx) do
-    seq = [&VotingValidation.validate/1, &BlockValidation.is_minimum_fee_met/1]
+    seq = [&VotingValidation.validate/1, &is_minimum_fee_met/1]
     Enum.all?(seq, fn(f) -> f.(tx.data) end)
   end
 
@@ -190,6 +191,20 @@ defmodule Aecore.Txs.Pool.Worker do
 
   defp check_address_tx([], _address, user_txs) do
     user_txs
+  end
+
+  defp is_minimum_fee_met(tx) do
+    tx_size_bits  = tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+    tx_size_bytes = tx_size_bits / 8
+    is_minimum_fee_met =
+      case tx do
+        %VotingTx{} ->
+          tx.voting_payload.fee >= Float.floor(tx_size_bytes /
+          Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+        %SignedTx{data: %SpendTx{}} ->
+          tx.data.fee >= Float.floor(tx_size_bytes /
+          Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token])
+      end
   end
 
   ## TODO move it from here

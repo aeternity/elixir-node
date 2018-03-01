@@ -66,7 +66,7 @@ defmodule Aecore.Keys.Worker do
       %SignedTx{data: %SpendTx{}} ->
         verify(tx.data, tx.signature, tx.data.from_acc)
       %SignedTx{data: %VotingTx{}} ->
-        verify(tx.data, tx.signature, tx.data.data.from_acc)
+        verify(tx.data, tx.signature, tx.data.voting_payload.from_acc)
     end
   end
 

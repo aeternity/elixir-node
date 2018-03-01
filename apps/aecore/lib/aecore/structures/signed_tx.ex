@@ -37,7 +37,7 @@ defmodule Aecore.Structures.SignedTx do
       %SignedTx{data: %SpendTx{}} ->
         tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
       %SignedTx{data: %VotingTx{}} ->
-        tx.data.data.fee >= 0 && Keys.verify_tx(tx)
+        tx.data.voting_payload.fee >= 0 && Keys.verify_tx(tx)
     end
   end
 

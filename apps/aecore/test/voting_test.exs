@@ -63,7 +63,7 @@ defmodule VotingTest do
           fee: 10,
           nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
-    voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
+    voting_tx = %VotingTx{voting_payload: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
     hash = SignedTx.hash_tx(sign_tx)
@@ -81,7 +81,7 @@ defmodule VotingTest do
           fee: 10,
           nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
-    voting_tx = %VotingTx{data: struct!(VotingQuestionTx, q)}
+    voting_tx = %VotingTx{voting_payload: struct!(VotingQuestionTx, q)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
     hash = SignedTx.hash_tx(sign_tx)
@@ -96,7 +96,7 @@ defmodule VotingTest do
           fee: 10,
           nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
-    voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
+    voting_tx = %VotingTx{voting_payload: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
     hash = SignedTx.hash_tx(sign_tx)
@@ -111,7 +111,7 @@ defmodule VotingTest do
           fee: 10,
           nonce: Map.get(Aecore.Chain.Worker.chain_state, pubkey, %{nonce: 0}).nonce + 1}
 
-    voting_tx = %VotingTx{data: struct!(VotingAnswerTx, a)}
+    voting_tx = %VotingTx{voting_payload: struct!(VotingAnswerTx, a)}
     {:ok, signature} = Keys.sign(voting_tx)
     sign_tx = %SignedTx{data: voting_tx, signature: signature}
     hash = SignedTx.hash_tx(sign_tx)

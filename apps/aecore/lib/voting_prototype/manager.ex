@@ -38,7 +38,7 @@ defmodule Aecore.VotingPrototype.Manager do
 
   def build_struct(structure, data) do
     try do
-      {:ok, %VotingTx{data: struct!(structure, data)}}
+      {:ok, %VotingTx{voting_payload: struct!(structure, data)}}
     rescue
       error ->
         Logger.error(error)

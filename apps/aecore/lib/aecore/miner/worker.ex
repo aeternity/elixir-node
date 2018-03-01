@@ -241,7 +241,7 @@ defmodule Aecore.Miner.Worker do
           %SignedTx{data: %SpendTx{}} = tx, {acc_tx_data, acc_other} ->
             {acc_tx_data ++ [tx], acc_other}
 
-          %SignedTx{data: %VotingTx{data: %VotingQuestionTx{start_block_height: start_height}}} =
+          %SignedTx{data: %VotingTx{voting_payload: %VotingQuestionTx{start_block_height: start_height}}} =
               tx,
           {acc_tx_data, acc_other} ->
             ## If the start block height is too heigher then
@@ -253,7 +253,7 @@ defmodule Aecore.Miner.Worker do
               {acc_tx_data, acc_other ++ [tx]}
             end
 
-          %SignedTx{data: %VotingTx{data: %VotingAnswerTx{hash_question: hash_question}}} = tx,
+          %SignedTx{data: %VotingTx{voting_payload: %VotingAnswerTx{hash_question: hash_question}}} = tx,
           {acc_tx_data, acc_other} ->
             ## If the close block height is expired
             ## we do not want to register that answer.
@@ -276,14 +276,14 @@ defmodule Aecore.Miner.Worker do
         Enum.sort(txs_list, fn tx1, tx2 ->
           case tx1 do
             %SignedTx{data: %VotingTx{}} ->
-              tx1.data.data.nonce
+              tx1.data.voting_payload.nonce
 
             _ ->
               tx1.data.nonce
           end <
             case tx2 do
               %SignedTx{data: %VotingTx{}} ->
-                tx2.data.data.nonce
+                tx2.data.voting_payload.nonce
 
               _ ->
                 tx2.data.nonce
@@ -348,7 +348,7 @@ defmodule Aecore.Miner.Worker do
   def calculate_total_fees(txs) do
     List.foldl(txs, 0, fn
       %SignedTx{data: %VotingTx{} = tx}, acc ->
-        acc + tx.data.fee
+        acc + tx.voting_payload.fee
 
       tx, acc ->
         acc + tx.data.fee
@@ -382,7 +382,7 @@ defmodule Aecore.Miner.Worker do
           tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
 
         %SignedTx{data: %VotingTx{}} ->
-          tx.data.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+          tx.data.voting_payload.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
       end
     end)
   end

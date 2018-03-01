@@ -385,12 +385,12 @@ defmodule Aecore.Chain.Worker do
       Enum.reduce(txs, voting_state,
         fn(tx, voting_state_acc) ->
           case tx.data do
-            %VotingTx{data: %VotingQuestionTx{} = question_tx} ->
+            %VotingTx{voting_payload: %VotingQuestionTx{} = question_tx} ->
               voting_state |>
                 Map.put(SignedTx.hash_tx(tx),
                   %{data: question_tx, answers: [], result: %{}})
 
-            %VotingTx{data: %VotingAnswerTx{hash_question: hash, answer: answer} = answer_tx} ->
+            %VotingTx{voting_payload: %VotingAnswerTx{hash_question: hash, answer: answer} = answer_tx} ->
               Map.put(voting_state_acc, hash,
                 %{voting_state_acc[hash] |
                   answers: voting_state_acc[hash].answers ++ [answer_tx]})

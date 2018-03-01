@@ -5,6 +5,7 @@ defmodule Aehttpserver.Web.VotingController do
   alias Aecore.VotingPrototype.Manager
   alias Aeutil.Serialization
   alias Aecore.Chain.Worker
+  alias Aecore.Structures.VotingQuestionTx
   alias Aeutil.ValidateVotingJsonSchema, as: Schema
 
   ## API
@@ -40,7 +41,7 @@ defmodule Aehttpserver.Web.VotingController do
       Enum.reduce(questions, %{}, fn {question_hash, value_map}, acc ->
         Map.put(acc, Base.encode16(question_hash), %{
           answers: value_map.answers,
-          data: %Aecore.Structures.VotingQuestionTx{
+          data: %VotingQuestionTx{
             answers: value_map.data.answers,
             close_block_height: value_map.data.close_block_height,
             fee: value_map.data.fee,

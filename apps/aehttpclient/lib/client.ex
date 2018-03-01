@@ -7,6 +7,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.VotingTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
@@ -58,9 +59,9 @@ defmodule Aehttpclient.Client do
   def send_tx(tx, peers) do
     data =
       case tx do
-        %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+        %SignedTx{data: %VotingTx{}} ->
           Serialization.tx(tx, :voting_tx, :serialize)
-        %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
+        %SignedTx{data: %SpendTx{}} ->
           Serialization.tx(tx, :spend_tx, :serialize)
       end
 
@@ -135,9 +136,9 @@ defmodule Aehttpclient.Client do
       |> Poison.decode!(as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
       |> Enum.map(fn(tx) ->
         case tx do
-          %Aecore.Structures.SignedTx{data: %Aecore.Structures.VotingTx{}} ->
+          %SignedTx{data: %VotingTx{}} ->
             Serialization.tx(tx, :voting_tx, :deserialize)
-          %Aecore.Structures.SignedTx{data: %Aecore.Structures.SpendTx{}} ->
+          %SignedTx{data: %SpendTx{}} ->
             Serialization.tx(tx, :spend_tx, :deserialize)
         end end)
 

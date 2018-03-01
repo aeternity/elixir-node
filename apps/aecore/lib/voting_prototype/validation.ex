@@ -8,7 +8,7 @@ defmodule Aecore.VotingPrototype.Validation do
   require Logger
 
   @spec validate(VotingTx.t()) :: boolean()
-  def validate(%VotingTx{data: data}) do
+  def validate(%VotingTx{voting_payload: data}) do
     process(data)
   end
 

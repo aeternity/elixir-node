@@ -36,7 +36,7 @@ defmodule Aecore.Chain.ChainState do
         block_height
       ) do
     cond do
-      transaction.data.data.from_acc != nil ->
+      transaction.data.voting_payload.from_acc != nil ->
         if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
 
         chain_state
@@ -189,16 +189,16 @@ defmodule Aecore.Chain.ChainState do
 
       %SignedTx{data: %VotingTx{}} ->
         account_state =
-          Map.get(chain_state, transaction.data.data.from_acc, %{balance: 0, nonce: 0, locked: []})
+          Map.get(chain_state, transaction.data.voting_payload.from_acc, %{balance: 0, nonce: 0, locked: []})
 
-        if account_state.nonce >= transaction.data.data.nonce do
+        if account_state.nonce >= transaction.data.voting_payload.nonce do
           throw({:error, "Nonce too small"})
         end
 
         chain_state
-        |> Map.put(transaction.data.data.from_acc, %{
+        |> Map.put(transaction.data.voting_payload.from_acc, %{
           account_state
-          | nonce: transaction.data.data.nonce
+          | nonce: transaction.data.voting_payload.nonce
         })
     end
   end
@@ -220,8 +220,8 @@ defmodule Aecore.Chain.ChainState do
         chain_state
         |> apply_to_state!(
           block_height,
-          transaction.data.data.from_acc,
-          -transaction.data.data.fee,
+          transaction.data.voting_payload.from_acc,
+          -transaction.data.voting_payload.fee,
           -1
         )
     end
