@@ -159,7 +159,7 @@ defmodule Aecore.Wallet.Worker do
 
   ## Inner functions
 
-  @spec derive_key(String.t(), String.t()) :: map()
+  @spec derive_ley(String.t(), String.t()) :: map()
   defp derive_key(derivation_path, password) do
     password
     |> get_seed()
