@@ -11,10 +11,6 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Serialization
 
-  #Address for provable buring of tokens and for storing data on chain
-  @burn_addr "Burn"
-  def burn_addr do @burn_addr end
-
   @type account_chainstate() :: %{binary() => map()}
 
   @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) :: account_chainstate()
@@ -46,8 +42,6 @@ defmodule Aecore.Chain.ChainState do
                                                        block_height) 
                                      end)
       case transaction.data.to_acc do
-        @burn_addr ->
-          chain_state #Burn tx doesn't do anything apart from removing tokens from from_acc
         address ->
           case Map.get(chain_state, address, Account.empty()) do
             account = %Account{} -> 
