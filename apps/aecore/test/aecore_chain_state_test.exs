@@ -25,12 +25,13 @@ defmodule AecoreChainStateTest do
     tx2 = %TxData{from_acc: cp, to_acc: ap, value: 2, nonce: 2, 
       fee: 0, lock_time_block: 0, data: %{}}
     {:ok, sig_tx2} = Keys.sign(tx2, cs)
-    signed_tx2 = %SignedTx{data: tx2, signature: sig_tx2}  
+    signed_tx2 = %SignedTx{data: tx2, signature: sig_tx2}
+    header = Header.create(0, <<0>>, <<0>>, <<0>>, 1, 0, Block.current_block_version())  
     chain_state =
       ChainState.calculate_and_validate_chain_state!([signed_tx1, signed_tx2],
         %{ap => %Account{balance: 3, nonce: 100, locked: [%{amount: 1, block: next_block_height}]},
           bp => %Account{balance: 5, nonce: 1, locked: [%{amount: 1, block: next_block_height + 1}]},
-          cp => %Account{balance: 4, nonce: 1, locked: [%{amount: 1, block: next_block_height}]}}, 1)
+          cp => %Account{balance: 4, nonce: 1, locked: [%{amount: 1, block: next_block_height}]}}, header)
     assert %{ap => %Account{balance: 6, nonce: 100,
                              locked: [%{amount: 1, block: next_block_height}]},
              bp => %Account{balance: 4, nonce: 2,
@@ -38,9 +39,10 @@ defmodule AecoreChainStateTest do
              cp => %Account{balance: 2, nonce: 2,
                locked: [%{amount: 1, block: next_block_height}]}}
       == chain_state
-
+    
+    header_next = Header.create(next_block_height, <<0>>, <<0>>, <<0>>, 1, 0, Block.current_block_version())  
     new_chain_state_locked_amounts =
-      ChainState.update_chain_state_locked(chain_state, next_block_height)
+      ChainState.update_chain_state_locked(chain_state, header_next)
     assert %{ap => %Account{balance: 7, nonce: 100, locked: []},
              bp => %Account{balance: 4, nonce: 2, locked: [%{amount: 1, block: next_block_height + 1}]},
              cp => %Account{balance: 3, nonce: 2, locked: []}} 
