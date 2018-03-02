@@ -500,6 +500,15 @@ defmodule ASTNode do
     {account_txs, scope}
   end
 
+  def evaluate({:func_call, {_, 'send_tokens'}, {to_account, amount}}, {_prev_val, scope}) do
+    {extracted_to_account, _} = evaluate(to_account, {nil, scope})
+    {extracted_amount, _} = evaluate(amount, {nil, scope})
+
+    tx_data = %{"to_account" => extracted_to_account, amount: extracted_amount}
+
+    {tx_data, scope}
+  end
+
   ## List functions
 
   def evaluate({:func_call, {_, 'List'}, {_, 'at'}, {list, index}}, {_prev_val, scope}) do
@@ -560,6 +569,7 @@ defmodule ASTNode do
 
     {result, scope}
   end
+
   ## Tuple functions
 
   def evaluate({:func_call, {_, 'Tuple'}, {_, 'elem'}, {tuple, index}}, {_prev_val, scope}) do
