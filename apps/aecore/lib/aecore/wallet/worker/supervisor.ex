@@ -1,4 +1,4 @@
-defmodule Aecore.Keys.Worker.Supervisor do
+defmodule Aecore.Wallet.Worker.Supervisor do
   use Supervisor
 
   def start_link(_args) do
@@ -7,7 +7,7 @@ defmodule Aecore.Keys.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      Aecore.Keys.Worker
+      Aecore.Wallet.Worker
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
