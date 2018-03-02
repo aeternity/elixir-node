@@ -1,5 +1,5 @@
 defmodule Aecore.Wallet.Worker do
-  @defmodule """
+  @moduledoc """
   Module for handling the creation of a Wallet file
   """
 
@@ -125,22 +125,37 @@ defmodule Aecore.Wallet.Worker do
         _from,
         %{pubkey: nil} = state
       ) do
-    {:ok, pub_key} =
-      get_aewallet_dir()
-      |> get_file_name()
-      |> Wallet.get_public_key(password, network: network)
+    pub_key =
+      if derivation_path == "" do
+        {:ok, pub_key} =
+          get_aewallet_dir()
+          |> get_file_name()
+          |> Wallet.get_public_key(password, network: network)
 
-    {:reply, pub_key, %{state | pubkey: pub_key}}
+        pub_key
+      else
+        key = derive_key(derivation_path, password)
+        KeyPair.compress(key.key)
+      end
+
+    pub_key_state =
+      if derivation_path == "" do
+        pub_key
+      else
+        nil
+      end
+
+    {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
   def handle_call(
         {:get_pub_key, {derivation_path, password, network}},
         _from,
-        %{pubkey: key} = state
+        %{pubkey: pub_key} = state
       ) do
     pub_key =
       if derivation_path == "" do
-        key
+        pub_key
       else
         key = derive_key(derivation_path, password)
         KeyPair.compress(key.key)

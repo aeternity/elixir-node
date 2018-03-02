@@ -69,7 +69,6 @@ defmodule Aecore.Txs.Pool.Worker do
 
     cond do
       !SignedTx.is_valid?(tx) ->
-        IO.inspect(tx)
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
 
