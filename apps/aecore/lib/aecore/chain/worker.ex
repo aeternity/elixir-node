@@ -6,7 +6,7 @@ defmodule Aecore.Chain.Worker do
   use GenServer
 
   alias Aecore.Structures.Block
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.ContractProposalTxData
   alias Aecore.Structures.ContractCallTxData
@@ -19,6 +19,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   require Logger
 
@@ -63,10 +64,10 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_hex_hash(String.t()) :: Block.t()
-  def get_block_by_hex_hash(hash) do
-    {:ok, decoded_hash} = Base.decode16(hash)
-    get_block(decoded_hash)
+  @spec get_block_by_bech32_hash(String.t()) :: Block.t()
+  def get_block_by_bech32_hash(hash) do
+    decoded_hash = Bits.bech32_decode(hash)
+    GenServer.call(__MODULE__, {:get_block_from_memory_unsafe, decoded_hash})
   end
 
   @spec get_block(binary()) :: Block.t()
@@ -211,7 +212,7 @@ defmodule Aecore.Chain.Worker do
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
+      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
     state_update1 = %{state | blocks_map: hundred_blocks_map,

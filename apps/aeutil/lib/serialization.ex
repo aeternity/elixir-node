@@ -3,19 +3,24 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
+  alias __MODULE__
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.ContractProposalTxData
   alias Aecore.Structures.ContractCallTxData
+  alias Aecore.Chain.ChainState
+  alias Aeutil.Bits
+
+  @type hash_types :: :chainstate | :header | :txs
 
   @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
   def block(block, direction) do
     new_header = %{block.header |
-      chain_state_hash: hex_binary(block.header.chain_state_hash, direction),
-      prev_hash: hex_binary(block.header.prev_hash, direction),
-      txs_hash: hex_binary(block.header.txs_hash, direction)}
+      chain_state_hash: bech32_binary(block.header.chain_state_hash, :chainstate, direction),
+      prev_hash: bech32_binary(block.header.prev_hash, :header, direction),
+      txs_hash: bech32_binary(block.header.txs_hash, :txs, direction)}
     new_txs = Enum.map(block.txs, fn(tx) -> tx(tx, direction) end)
     Block.new(%{block | header: Header.new(new_header), txs: new_txs})
   end
@@ -40,11 +45,11 @@ defmodule Aeutil.Serialization do
           ContractCallTxData.new(new_data)
       end
 
-    new_signature = hex_binary(tx.signature, direction)
-    %SignedTx{data: new_tx_data, signature: new_signature}
+      new_signature = base64_binary(tx.signature, direction)
+      %SignedTx{data: SpendTx.new(new_tx_data), signature: new_signature}
   end
 
-  @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
+  @spec hex_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def hex_binary(data, direction) do
     if data != nil do
       case(direction) do
@@ -52,6 +57,38 @@ defmodule Aeutil.Serialization do
           Base.encode16(data)
         :deserialize ->
           Base.decode16!(data)
+      end
+    else
+      nil
+    end
+  end
+
+  @spec bech32_binary(binary() | String.t, Serialization.hash_types(),
+                      :serialize | :deserialize) :: String.t() | binary()
+  def bech32_binary(data, hash_type, direction) do
+    case direction do
+      :serialize ->
+        case hash_type do
+          :header ->
+            Header.bech32_encode(data)
+          :txs ->
+            SignedTx.bech32_encode_root(data)
+          :chainstate ->
+            ChainState.bech32_encode(data)
+        end
+      :deserialize ->
+        Bits.bech32_decode(data)
+    end
+  end
+
+  @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
+  def base64_binary(data, direction) do
+    if data != nil do
+      case(direction) do
+        :serialize ->
+          Base.encode64(data)
+        :deserialize ->
+          Base.decode64!(data)
       end
     else
       nil

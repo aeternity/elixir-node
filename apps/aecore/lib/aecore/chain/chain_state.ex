@@ -6,6 +6,7 @@ defmodule Aecore.Chain.ChainState do
 
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   require Logger
 
@@ -124,8 +125,12 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec apply_to_state!(account_chainstate(), integer(), binary(), integer(), integer()) ::
-          account_chainstate()
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("cs", bin)
+  end
+
+  @spec apply_to_state!(account_chainstate(), integer(), binary(), integer(), integer()) :: account_chainstate()
   defp apply_to_state!(chain_state, block_height, account, value, lock_time_block) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
 

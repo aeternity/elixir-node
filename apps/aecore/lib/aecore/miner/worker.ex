@@ -17,9 +17,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aeutil.Bits
   alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Serialization
 
   require Logger
 
