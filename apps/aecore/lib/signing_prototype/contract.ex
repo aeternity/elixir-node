@@ -8,6 +8,7 @@ defmodule Aecore.SigningPrototype.Contract do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   def add_proposal(name, contract_hash, participants, from_acc, ttl, fee, nonce) do
     {:ok, data} =
@@ -38,6 +39,10 @@ defmodule Aecore.SigningPrototype.Contract do
       time_left: time_left(contract),
       is_accepted: is_accepted(contract)}
     end
+  end
+
+  def bech32_encode(bin) do
+    Bits.bech32_encode("sg", bin)
   end
 
   defp is_accepted(contract) do

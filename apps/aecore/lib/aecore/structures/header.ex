@@ -4,6 +4,7 @@ defmodule Aecore.Structures.Header do
   """
 
   alias Aecore.Structures.Header
+  alias Aeutil.Bits
 
   @type t :: %Header{
     height: non_neg_integer(),
@@ -42,5 +43,9 @@ defmodule Aecore.Structures.Header do
       version: version,
       difficulty_target: difficulty
     }
+  end
+
+  def bech32_encode(bin) do
+    Bits.bech32_encode("bl", bin)
   end
 end

@@ -33,9 +33,9 @@ timestamp = "#{year}-#{month}-#{day}_"
 
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
+                     nil -> "apps/aecore/priv/rox_db"
+                     env -> env
+                   end
 
 config :aecore, :persistence,
   path: Path.absname(persistence_path)

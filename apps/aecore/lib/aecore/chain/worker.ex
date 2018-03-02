@@ -18,6 +18,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   use GenServer
 
@@ -57,6 +58,12 @@ defmodule Aecore.Chain.Worker do
   @spec top_block_hash() :: binary()
   def top_block_hash() do
     GenServer.call(__MODULE__, :top_block_hash)
+  end
+
+  @spec get_block_by_bech32_hash(String.t()) :: Block.t()
+  def get_block_by_bech32_hash(hash) do
+    decoded_hash = Bits.bech32_decode(hash)
+    GenServer.call(__MODULE__, {:get_block_from_memory_unsafe, decoded_hash})
   end
 
   @spec top_height() :: integer()
@@ -216,6 +223,21 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+
+  def handle_call(
+    {:get_block_from_memory_unsafe, block_hash},
+    _from,
+    %{blocks_map: blocks_map} = state
+  ) do
+    block = blocks_map[block_hash]
+
+    if block != nil do
+      {:reply, block, state}
+    else
+      {:reply, {:error, "Block not found"}, state}
+    end
   end
 
   defp calculate_block_acc_txs_info(block) do

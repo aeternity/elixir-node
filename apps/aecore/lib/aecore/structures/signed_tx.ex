@@ -8,6 +8,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.ContractProposalTx
   alias Aecore.Structures.ContractSignTx
+  alias Aeutil.Bits
 
   @type t :: %SignedTx{
     data: TxData.t() | ContractProposalTx.t() | ContractSignTx.t() ,
@@ -61,6 +62,16 @@ defmodule Aecore.Structures.SignedTx do
     Map.has_key?(tx, "signature") && Map.has_key?(tx, "pub_key") &&
     Map.has_key?(tx, "contract_hash") && Map.has_key?(tx, "fee") &&
     Map.has_key?(tx, "nonce")
+  end
+
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("tx", bin)
+  end
+
+  @spec bech32_encode_root(binary()) :: String.t()
+  def bech32_encode_root(bin) do
+    Bits.bech32_encode("tr", bin)
   end
 
 end

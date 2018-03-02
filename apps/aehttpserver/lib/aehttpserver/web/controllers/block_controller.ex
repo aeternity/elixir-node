@@ -5,14 +5,17 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Peers.Sync
+  alias Aeutil.Bits
 
   def show(conn, params) do
-    block = Chain.get_block_by_hex_hash(params["hash"])
+    block = Chain.get_block_by_bech32_hash(params["hash"])
+    IO.inspect block
     case (block) do
       %Block{} ->
-        block_hex_values = Serialization.block(block, :serialize)
-        json(conn, block_hex_values)
+        serialized_block = Serialization.block(block, :serialize)
+        json(conn, serialized_block)
       {:error, message} ->
         json(%{conn | status: 404}, %{error: message})
     end
@@ -20,20 +23,20 @@ defmodule Aehttpserver.Web.BlockController do
 
   def get_blocks(conn, params) do
     from_block_hash = case Map.get(params, "from_block") do
-      nil ->
-        Chain.top_block_hash()
-      hash ->
-        {_, hash_bin} = Base.decode16(hash)
-        hash_bin
-    end
+                        nil ->
+                          Chain.top_block_hash()
+                        hash ->
+                          hash_bin = Bits.bech32_decode(hash)
+                          hash_bin
+                      end
 
     count = case Map.get(params, "count") do
-      nil ->
-        100
-      count_string ->
-        {number, _} = Integer.parse(count_string)
-        number
-    end
+              nil ->
+                100
+              count_string ->
+                {number, _} = Integer.parse(count_string)
+                number
+            end
 
     blocks = Chain.get_blocks(from_block_hash, count)
     blocks_json = Enum.map(
@@ -41,7 +44,7 @@ defmodule Aehttpserver.Web.BlockController do
       fn (block) ->
         hash = BlockValidation.block_header_hash(block.header)
         %{
-          "hash" => Base.encode16(hash),
+          "hash" => Header.bech32_encode(hash),
           "header" => Serialization.block(block, :serialize).header,
           "tx_count" => Enum.count(block.txs)
         }
@@ -52,28 +55,28 @@ defmodule Aehttpserver.Web.BlockController do
 
   def get_raw_blocks(conn, params) do
     from_block_hash = case Map.get(params, "from_block") do
-      nil ->
-        Chain.top_block_hash()
-      hash ->
-        {_, hash_bin} = Base.decode16(hash)
-        hash_bin
-    end
+                        nil ->
+                          Chain.top_block_hash()
+                        hash ->
+                          hash_bin = Bits.bech32_decode(hash)
+                          hash_bin
+                      end
 
     to_block_hash = case Map.get(params, "to_block") do
-      nil ->
-        BlockValidation.block_header_hash(Block.genesis_block().header)
-      hash ->
-        {_, hash_bin} = Base.decode16(hash)
-        hash_bin
-    end
+                      nil ->
+                        BlockValidation.block_header_hash(Block.genesis_block().header)
+                      hash ->
+                        hash_bin = Bits.bech32_decode(hash)
+                        hash_bin
+                    end
 
     count = case Map.get(params, "count") do
-      nil ->
-        1000
-      count_string ->
-        {number, _} = Integer.parse(count_string)
-        number
-    end
+              nil ->
+                1000
+              count_string ->
+                {number, _} = Integer.parse(count_string)
+                number
+            end
 
     blocks = Chain.get_blocks(from_block_hash, to_block_hash, count)
     blocks_json = Enum.map(
@@ -87,13 +90,10 @@ defmodule Aehttpserver.Web.BlockController do
   end
 
   def new_block(conn, _params) do
-    ## Becouse we 'conn.body_params' contains decoded json as map with
-    ## keys as strings instead of atoms we are doing this workaround
-    map = Poison.decode!(Poison.encode!(conn.body_params), [keys: :atoms])
-    block = Aeutil.Serialization.block(map, :deserialize)
+    block = Aeutil.Serialization.block(conn.body_params, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
-    Sync.add_valid_peer_blocks_to_chain()
+    Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
     json conn, %{ok: "new block received"}
   end
 end

@@ -48,6 +48,7 @@ defmodule EpochElixir.Mixfile do
      {:uuid, "~> 1.1"},
      {:distillery, "~> 1.5", runtime: false},
      {:ex_json_schema, "~> 0.5.4"},
-     {:msgpax, "~> 2.0"}]
+     {:msgpax, "~> 2.1.1"},
+     {:bip0173, "~> 0.1.2"}]
   end
 end

@@ -1,4 +1,5 @@
-%{"bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [], [], "hexpm"},
+%{"bip0173": {:hex, :bip0173, "0.1.2", "b771e275692ed3353ecfecb38330693cbba90d2ac4a2e8fd1908a86ec7e6318f", [], [], "hexpm"},
+  "bunt": {:hex, :bunt, "0.2.0", "951c6e801e8b1d2cbe58ebbd3e616a869061ddadcc4863d0a2182541acae9a38", [], [], "hexpm"},
   "certifi": {:hex, :certifi, "2.0.0", "a0c0e475107135f76b8c1d5bc7efb33cd3815cb3cf3dea7aefdd174dabead064", [], [], "hexpm"},
   "cors_plug": {:hex, :cors_plug, "1.4.0", "c1c4fb68adf2fd1b4caccee978663edd58f62881627ab65b52ff56146945687f", [:mix], [{:plug, "> 0.14.0", [hex: :plug, repo: "hexpm", optional: false]}], "hexpm"},
   "cowboy": {:hex, :cowboy, "1.1.2", "61ac29ea970389a88eca5a65601460162d370a70018afe6f949a29dca91f3bb0", [], [{:cowlib, "~> 1.0.2", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, "~> 1.3.2", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm"},

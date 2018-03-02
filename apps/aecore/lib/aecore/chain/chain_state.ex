@@ -9,6 +9,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.TxData
   alias Aecore.Structures.ContractProposalTx
   alias Aecore.Structures.ContractSignTx
+  alias Aeutil.Bits
 
   @spec calculate_and_validate_chain_state!(list(), map(), integer()) :: map()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
@@ -140,6 +141,10 @@ defmodule Aecore.Chain.ChainState do
 
         Map.put(acc, account, %{balance: balance + unlocked_amount, nonce: nonce, locked: updated_locked})
       end)
+  end
+
+  def bech32_encode(bin) do
+    Bits.bech32_encode("cs", bin)
   end
 
   @spec transaction_in!(map(), integer(), binary(), integer(), integer()) :: map()

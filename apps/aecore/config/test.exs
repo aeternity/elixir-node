@@ -29,9 +29,9 @@ use Mix.Config
 #
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
+                     nil -> "apps/aecore/priv/rox_db"
+                     env -> env
+                   end
 
 config :aecore, :persistence,
   path: Path.absname(persistence_path)
@@ -76,4 +76,4 @@ config :aecore, :miner,
 config :aecore, :tx_data,
   lock_time_coinbase: 0,
   miner_fee_bytes_per_token: 100,
-  pool_fee_bytes_per_token: 100
+    pool_fee_bytes_per_token: 100
