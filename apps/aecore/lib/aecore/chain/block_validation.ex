@@ -1,4 +1,5 @@
 defmodule Aecore.Chain.BlockValidation do
+  require Logger
 
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
@@ -6,8 +7,12 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
+
+  @timestamp_validation_blocks_count 10
+  @timestamp_validation_future_limit_ms 3_600_000
 
   @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
   def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
@@ -32,7 +37,6 @@ defmodule Aecore.Chain.BlockValidation do
     end
 
     difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
-
     cond do
       # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
@@ -41,6 +45,9 @@ defmodule Aecore.Chain.BlockValidation do
       # do not check previous block height for genesis block, there is none
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
+
+      !valid_header_timestamp?(new_block) -> 
+        throw({:error, "Invalid header timestamp"})
 
       !is_difficulty_target_met ->
         throw({:error, "Header hash doesnt meet the difficulty target"})
@@ -61,6 +68,7 @@ defmodule Aecore.Chain.BlockValidation do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
     block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
+
     cond do
       block.header.txs_hash != calculate_root_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
@@ -102,10 +110,11 @@ defmodule Aecore.Chain.BlockValidation do
       txs_list,
       {[], chain_state},
       fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {valid_chain_state, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
-        if valid_chain_state do
+        {{is_valid, reason}, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
+        if is_valid do
           {valid_txs_list ++ [tx], updated_chain_state}
         else
+          Logger.warn("Filtering out invalid tx. Reason: #{reason}")
           {valid_txs_list, chain_state_acc}
         end
       end
@@ -114,12 +123,12 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {boolean(), map()}
+  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {true, map()} | {{false, binary()}, map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
-      {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}
+      {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
     catch
-      {:error, _} -> {false, chain_state}
+      {:error, reason} -> {{false, reason}, chain_state}
     end
   end
 
@@ -176,4 +185,23 @@ defmodule Aecore.Chain.BlockValidation do
   defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
+
+  @spec valid_header_timestamp?(Block.t()) :: boolean()
+  defp valid_header_timestamp?(%Block{header: new_block_header}) do
+    case new_block_header.timestamp <= System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
+      true ->
+        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
+
+        last_blocks_timestamps =
+          for block <- last_blocks, do: block.header.timestamp
+
+        avg = Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)
+
+        new_block_header.timestamp >= avg
+
+      false ->
+        false
+    end
+  end
+
 end

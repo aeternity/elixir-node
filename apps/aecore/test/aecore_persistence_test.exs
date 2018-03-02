@@ -3,7 +3,7 @@ defmodule PersistenceTest do
   doctest Aecore.Persistence.Worker
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
@@ -20,7 +20,7 @@ defmodule PersistenceTest do
       :ok
     end
 
-    {:ok, account1} = Keys.pubkey()
+    account1 = Wallet.get_public_key()
     account2 = <<198, 218, 48, 178, 127, 24, 201, 115, 3, 29, 188, 220, 222, 189, 132, 139,
       168, 1, 64, 134, 103, 38, 151, 213, 195, 5, 219, 138, 29, 137, 119, 229>>
     [account1: account1,
