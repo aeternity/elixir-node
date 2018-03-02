@@ -101,6 +101,7 @@ defmodule Aecore.Wallet.Worker do
   def encode(pub_key, :ae) do
     Encoding.encode(pub_key, :ae)
   end
+
   def encode(pub_key, :btc) do
     Encoding.encode(pub_key, :btc)
   end
@@ -119,7 +120,11 @@ defmodule Aecore.Wallet.Worker do
 
   ## Server Callbacks
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, network}},
+        _from,
+        %{pubkey: nil} = state
+      ) do
     {:ok, pub_key} =
       get_aewallet_dir()
       |> get_file_name()
@@ -128,31 +133,35 @@ defmodule Aecore.Wallet.Worker do
     {:reply, pub_key, %{state | pubkey: pub_key}}
   end
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: key} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, network}},
+        _from,
+        %{pubkey: key} = state
+      ) do
     pub_key =
-    if derivation_path == "" do
-      key
-    else
-      key = derive_key(derivation_path, password)
-      KeyPair.compress(key.key)
-    end
+      if derivation_path == "" do
+        key
+      else
+        key = derive_key(derivation_path, password)
+        KeyPair.compress(key.key)
+      end
 
     {:reply, pub_key, state}
   end
 
   def handle_call({:get_priv_key, {derivation_path, password, network}}, _from, state) do
     priv_key =
-    if derivation_path == "" do
-      {:ok, priv_key} =
-        get_aewallet_dir()
-        |> get_file_name()
-        |> Wallet.get_private_key(password, network: network)
+      if derivation_path == "" do
+        {:ok, priv_key} =
+          get_aewallet_dir()
+          |> get_file_name()
+          |> Wallet.get_private_key(password, network: network)
 
-      priv_key
-    else
-      key = derive_key(derivation_path, password)
-      key.key
-    end
+        priv_key
+      else
+        key = derive_key(derivation_path, password)
+        key.key
+      end
 
     {:reply, priv_key, state}
   end
@@ -173,6 +182,7 @@ defmodule Aecore.Wallet.Worker do
       get_aewallet_dir()
       |> get_file_name()
       |> Wallet.get_seed(password)
+
     seed
   end
 
@@ -182,18 +192,18 @@ defmodule Aecore.Wallet.Worker do
   @spec has_wallet(tuple(), String.t()) :: :ok
   defp has_wallet({:error, :eexist}, path) do
     case get_file_name(path) do
-      []  -> create_wallet(path)
+      [] -> create_wallet(path)
       [_] -> :ok
     end
   end
+
   defp has_wallet({:error, reason}, _path) do
     throw("Failed due to #{reason} error..")
   end
 
   @spec create_wallet(String.t()) :: :ok
   defp create_wallet(path) do
-    {:ok, _mnemonic, _path, _wallet_type} =
-      Wallet.create_wallet(get_aewallet_pass(), path)
+    {:ok, _mnemonic, _path, _wallet_type} = Wallet.create_wallet(get_aewallet_pass(), path)
     :ok
   end
 
@@ -201,6 +211,6 @@ defmodule Aecore.Wallet.Worker do
   defp get_file_name(path) do
     path
     |> Path.join("*/")
-    |> Path.wildcard
+    |> Path.wildcard()
   end
 end

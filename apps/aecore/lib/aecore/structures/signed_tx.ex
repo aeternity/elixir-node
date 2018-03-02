@@ -11,9 +11,9 @@ defmodule Aecore.Structures.SignedTx do
 
   @typedoc "Structure of the SignedTx module"
   @type t :: %SignedTx{
-    data: SpendTx.t(),
-    signature: binary()
-  }
+          data: SpendTx.t(),
+          signature: binary()
+        }
 
   @doc """
   Definition of Aecore SignedTx structure
@@ -51,6 +51,7 @@ defmodule Aecore.Structures.SignedTx do
     signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
+
   def sign_tx(tx, _priv_key) do
     {:error, "Wrong Transaction data structure"}
   end
