@@ -54,7 +54,7 @@ defmodule PersistenceTest do
 
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 20_000
   @tag :persistence
   test "Get latest two blocks from rocksdb" do
     assert 2 == Kernel.map_size(Persistence.get_blocks(2))
