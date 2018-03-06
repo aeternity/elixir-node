@@ -5,6 +5,7 @@ defmodule  Aecore.Structures.DataTx do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Serialization
+  alias Aeutil.Parser
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -29,7 +30,7 @@ defmodule  Aecore.Structures.DataTx do
   - nonce: A random integer generated on initialisation of a transaction.Must be unique
 
   """
-  defstruct [:type, :payload, :from_acc , :fee, :nonce]
+  defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
 
   @spec init(atom(), map(), binary(), integer(), integer()) :: {:ok, DataTx.t()}
@@ -64,11 +65,22 @@ defmodule  Aecore.Structures.DataTx do
       Map.put(chainstate, :accounts, new_accounts_state)
   end
 
-  def serialize(%__MODULE__{} = tx, direction) do
-    init(tx.type,
-      tx.type.serialize(tx.payload, direction),
-      Serialization.hex_binary(tx.from_acc, direction),
-      tx.fee,
-      tx.nonce)
+  def serialize(%__MODULE__{} = tx, :serialize) do
+    tx
+    |> Map.from_struct()
+    |> Enum.reduce(%{}, fn({key, value}, new_tx) ->
+      Map.put(new_tx, Parser.to_string!(key), Serialization.serialize_value(value))
+    end)
   end
+
+  def serialize(%{} = tx, :deserialize) do
+    data_tx = Serialization.deserialize_value(tx)
+
+    init(data_tx.type,
+      data_tx.payload,
+      data_tx.from_acc,
+      data_tx.fee,
+      data_tx.nonce)
+  end
+
 end

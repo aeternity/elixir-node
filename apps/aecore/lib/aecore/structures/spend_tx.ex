@@ -6,6 +6,7 @@ defmodule Aecore.Structures.SpendTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aeutil.Serialization
+  alias Aeutil.Parser
 
   @typedoc "Arbitrary structure data of a transaction"
   @type payload :: %__MODULE__{} | map()
@@ -107,18 +108,6 @@ defmodule Aecore.Structures.SpendTx do
   def deduct_fee(account_state, fee, nonce) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
-  end
-
-  def serialize(%{}=tx, :serialize) do
-    Map.put(tx, :to_acc, Serialization.hex_binary(tx.to_acc, :serialize))
-  end
-
-  def serialize(%{} = tx, :deserialize) do
-    new_tx=
-      Enum.reduce(tx, %{}, fn({key, value}, new_tx) ->
-        Map.put(new_tx, String.to_atom(key), value)
-      end)
-    Map.put(new_tx, :to_acc, Serialization.hex_binary(new_tx.to_acc, :deserialize))
   end
 
   # Inner functions

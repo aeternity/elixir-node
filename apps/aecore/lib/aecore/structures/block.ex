@@ -33,4 +33,5 @@ defmodule Aecore.Structures.Block do
     h = genesis_header()
     %Block{header: h, txs: []}
   end
+
 end

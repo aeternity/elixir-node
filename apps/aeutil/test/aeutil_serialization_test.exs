@@ -12,16 +12,15 @@ defmodule AeutilSerializationTest do
 
     serialized_block = Serialization.block(block, :serialize)
 
-    assert check_header_values(serialized_block)
-    assert check_transactions(serialized_block)
+    #assert check_header_values(serialized_block)
+    #assert check_transactions(serialized_block)
 
-    block_map = get_block_map()
-
-    assert Serialization.block(block_map, :deserialize) == block
+    assert serialized_block == get_block_map()
+    assert Serialization.block(serialized_block, :deserialize) == block
   end
 
   def check_header_values(block) do
-    [_head | values] = Map.values(block.header)
+    [_head | values] = Map.values(block["header"])
     for value <- values do
       if is_binary(value) do
       case(Base.decode16(value)) do
@@ -37,7 +36,7 @@ defmodule AeutilSerializationTest do
   end
 
   def check_transactions(block) do
-    for tx <- block.txs do
+    for tx <- block["txs"] do
       %{data: %{payload: %{to_acc: to_acc}, from_acc: from_acc}, signature: signature} = tx
       for value <- [from_acc, to_acc, signature] do
         if is_binary(value) do
@@ -68,15 +67,17 @@ defmodule AeutilSerializationTest do
     txs_hash: <<1, 101, 93, 209, 124, 22, 197, 172, 222, 246, 210, 28, 228, 244,
     155, 248, 3, 179, 250, 105, 208, 85, 217, 215, 244, 150, 87, 214, 225, 71,
     160, 240>>, version: 1},
-    txs:
-    [%SignedTx{data: %DataTx{type: SpendTx,
-                             payload: %{to_acc: to_acc,
-                                        value: 100,
-                                        lock_time_block: []},
-                             from_acc: nil,
-                             nonce: 743_183_534_114,
-                             fee: nil},
-               signature: nil}]}
+    txs: [%SignedTx{data: %DataTx{type: SpendTx,
+                                  payload: %SpendTx{to_acc: to_acc,
+                                                    value: 100,
+                                                    lock_time_block: [%{amount: 5,
+                                                                        block: 10},
+                                                                      %{amount: 6,
+                                                                        block: 10}]},
+                                  from_acc: <<1, 2, 3>>,
+                                  nonce: 743_183_534_114,
+                                  fee: 40},
+                    signature: <<1, 2, 3>>}]}
   end
 
   def get_block_map() do
@@ -88,18 +89,21 @@ defmodule AeutilSerializationTest do
                     "nonce" => 707,
                     "pow_evidence" => nil,
                     "prev_hash" => "007AA00E493DAC7CF1E9B65B35EEE9D08A1A3BD357F59547A954795FB39608CB",
-                    "timestamp" => 1508834903252,
+                    "timestamp" => 1_508_834_903_252,
                     "txs_hash" => "01655DD17C16C5ACDEF6D21CE4F49BF803B3FA69D055D9D7F49657D6E147A0F0",
                     "version" => 1},
-      "txs" => [%{"data" => %{"type" => SpendTx,
+      "txs" => [%{"data" => %{"type" => "Elixir.Aecore.Structures.SpendTx",
                               "payload" => %{"to_acc" => to_acc,
                                              "value" => 100,
-                                             "lock_time_block" => nil
+                                             "lock_time_block" => [%{"amount" => 5,
+                                                                     "block" => 10},
+                                                                   %{"amount" => 6,
+                                                                     "block" => 10}]
                                             },
-                              "from_acc" => nil,
-                              "fee" => nil,
-                              "nonce" => 743183534114},
-                  "signature" => nil}]
+                              "from_acc" => "010203",
+                              "fee" => 40,
+                              "nonce" => 743_183_534_114},
+                  "signature" => "010203"}]
     }
   end
 end
