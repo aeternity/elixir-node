@@ -504,7 +504,7 @@ defmodule ASTNode do
     {extracted_to_account, _} = evaluate(to_account, {nil, scope})
     {extracted_amount, _} = evaluate(amount, {nil, scope})
 
-    tx_data = %{"to_account" => extracted_to_account, amount: extracted_amount}
+    tx_data = %{"to_account" => extracted_to_account, "value" => extracted_amount}
 
     {tx_data, scope}
   end

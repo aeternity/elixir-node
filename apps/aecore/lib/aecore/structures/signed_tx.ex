@@ -54,12 +54,6 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%{data: data, signature: signature}) do
-    data.value >= 0 && data.fee >= 0 &&
-      Signing.verify(Serialization.pack_binary(data), signature, data.from_acc)
-  end
-
   @doc """
   Takes the transaction that needs to be signed
   and the private key of the sender.

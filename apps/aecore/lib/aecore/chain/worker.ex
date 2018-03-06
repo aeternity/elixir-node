@@ -16,7 +16,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -224,13 +224,16 @@ defmodule Aecore.Chain.Worker do
           top_height: top_height
         } = state
       ) do
-    process_contract_calls(new_block.txs, proposed_contracts)
+    ##check this
+    new_chain_state = process_contract_calls(new_block.txs, proposed_contracts, new_chain_state, new_block.header.height)
 
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
     new_block_proposed_contracts = generate_proposed_contracts_map(new_block)
+    IO.inspect(new_block_proposed_contracts)
     new_proposed_contracts = Map.merge(new_block_proposed_contracts, proposed_contracts)
+    IO.inspect(new_proposed_contracts)
 
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
@@ -239,11 +242,14 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_map = discard_blocks_from_memory(updated_blocks_map)
 
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
-
+    IO.inspect("UPDATED CHAINSTATE")
+    IO.inspect(updated_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
+      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{
+        inspect(total_tokens)
+      }"
     end)
 
     state_update1 = %{
@@ -411,7 +417,7 @@ defmodule Aecore.Chain.Worker do
 
   defp generate_proposed_contracts_map(block) do
     Enum.reduce(block.txs, %{}, fn tx, acc ->
-      if(match?(%ContractProposalTxData{}, tx.data)) do
+      if match?(%ContractProposalTxData{}, tx.data) do
         Map.put(acc, SignedTx.hash_tx(tx), tx)
       else
         acc
@@ -420,20 +426,30 @@ defmodule Aecore.Chain.Worker do
   end
 
   # TODO: move this function to another place (another module?)
-  def process_contract_calls(txs, proposed_contracts) do
-    txs
-    |> Enum.reduce(block.txs, [], fn tx, txs_list ->
-      if(match?(%ContractCallTxData{}, tx.data)) do
+  def process_contract_calls(txs, proposed_contracts, chain_state, block_height) do
+    Enum.reduce(txs, chain_state, fn tx, chain_state_acc ->
+      if match?(%ContractCallTxData{}, tx.data) do
+        IO.inspect("ContractCallTx matches !!!")
         contract_proposal_tx = Map.get(proposed_contracts, tx.data.contract_proposal_tx_hash)
         complete_code = contract_proposal_tx.data.contract <> tx.data.contract_params
         contract_tx = Aernold.parse_string(complete_code)
 
-        # Keys.
+        next_creator_nonce = chain_state[contract_proposal_tx.creator].nonce + 1
 
-        [contract_tx | txs_list]
+        spend_tx =
+          SpendTx.new(%{
+            from_acc: tx.caller,
+            to_acc: contract_tx["to_account"],
+            value: contract_tx["value"],
+            nonce: next_creator_nonce,
+            fee: 0,
+            lock_time_block: 0,
+            data: %{}
+          })
+        signed_tx = SignedTx.new(%{data: spend_tx, signature: nil})
+        ChainState.calculate_and_validate_chain_state!([signed_tx], chain_state_acc, block_height)
       end
     end)
-    |> Enum.reverse()
   end
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do

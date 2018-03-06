@@ -233,7 +233,7 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
 
-      contract_txs = Chain.process_contract_calls(txs_list, Chain.proposed_contracts())
+      contract_txs = Chain.process_contract_calls(txs_list, Chain.proposed_contracts(), chain_state, top_block.header.height + 1)
 
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
