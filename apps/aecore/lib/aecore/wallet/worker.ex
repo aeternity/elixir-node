@@ -120,49 +120,53 @@ defmodule Aecore.Wallet.Worker do
   ## Server Callbacks
 
   def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
-    pub_key = if derivation_path == "" do
-      {:ok, pub_key} =
-        get_aewallet_dir()
-        |> get_file_name()
-        |> Wallet.get_public_key(password, network: network)
-      pub_key
-    else
-      key = derive_key(derivation_path, password)
-      KeyPair.compress(key.key)
-    end
+    pub_key =
+      if derivation_path == "" do
+        {:ok, pub_key} =
+          get_aewallet_dir()
+          |> get_file_name()
+          |> Wallet.get_public_key(password, network: network)
+        pub_key
+      else
+        key = derive_key(derivation_path, password)
+        KeyPair.compress(key.key)
+      end
 
-    pub_key_state = if derivation_path == "" do
-      pub_key
-    else
-      nil
+    pub_key_state =
+      if derivation_path == "" do
+        pub_key
+      else
+        nil
     end
 
     {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
   def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: pub_key} = state) do
-    pub_key = if derivation_path == "" do
-      pub_key
-    else
-      key = derive_key(derivation_path, password)
-      KeyPair.compress(key.key)
-    end
+    pub_key =
+      if derivation_path == "" do
+        pub_key
+      else
+        key = derive_key(derivation_path, password)
+        KeyPair.compress(key.key)
+      end
 
     {:reply, pub_key, state}
   end
 
   def handle_call({:get_priv_key, {derivation_path, password, network}}, _from, state) do
-    priv_key = if derivation_path == "" do
-      {:ok, priv_key} =
-        get_aewallet_dir()
-        |> get_file_name()
-        |> Wallet.get_private_key(password, network: network)
+    priv_key =
+      if derivation_path == "" do
+        {:ok, priv_key} =
+          get_aewallet_dir()
+          |> get_file_name()
+          |> Wallet.get_private_key(password, network: network)
 
-      priv_key
-    else
-      key = derive_key(derivation_path, password)
-      key.key
-    end
+        priv_key
+      else
+        key = derive_key(derivation_path, password)
+        key.key
+      end
 
     {:reply, priv_key, state}
   end
