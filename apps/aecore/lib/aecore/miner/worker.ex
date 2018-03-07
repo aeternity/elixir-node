@@ -77,6 +77,7 @@ defmodule Aecore.Miner.Worker do
   def mine_sync_block_to_chain() do
     cblock = candidate()
     case mine_sync_block(cblock) do
+
       {:ok, new_block} -> Chain.add_block(new_block)
       {:error, _} = error -> error
     end

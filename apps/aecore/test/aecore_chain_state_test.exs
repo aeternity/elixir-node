@@ -47,16 +47,18 @@ defmodule AecoreChainStateTest do
                                              block: next_block_height}]}}},
       1)
 
-    assert %{:accounts => %{"a" => %{balance: 7,
+    assert %{:accounts => %{"a" => %{balance: 6,
                                      nonce: 100,
-                                     locked: []},
+                                     locked: [%{amount: 1,
+                                                block: next_block_height}]},
                             "b" => %{balance: 4,
                                      nonce: 2,
                                      locked: [%{amount: 1,
                                                 block: next_block_height + 1}]},
-                            "c" => %{balance: 3,
+                            "c" => %{balance: 2,
                                      nonce: 2,
-                                     locked: []}}} == chain_state
+                                     locked: [%{amount: 1,
+                                                block: next_block_height}]}}} == chain_state
 
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(chain_state, next_block_height)

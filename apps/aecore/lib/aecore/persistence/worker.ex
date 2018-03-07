@@ -144,10 +144,15 @@ defmodule Aecore.Persistence.Worker do
 
   def handle_call({:get_account_chain_state, account}, _from,
     %{chain_state_family: chain_state_family} = state) do
-    accounts = Rox.get(chain_state_family, "chain_state")
-    {:reply, Rox.get(accounts, account), state}
+    {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
+    reply =
+      case Map.get(chainstate.accounts, account) do
+        nil -> :not_found
+        value -> {:ok, value}
+      end
+    {:reply, reply, state}
   end
-
+  
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
     chain_state =

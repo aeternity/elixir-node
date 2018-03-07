@@ -171,32 +171,32 @@ defmodule Aecore.Chain.Worker do
 
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
-
+    
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Base.encode16(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
-
+    
     state_update1 = %{state | blocks_map: updated_blocks_map,
-                              chain_states: updated_chain_states,
-                              txs_index: new_txs_index}
+                      chain_states: updated_chain_states,
+                      txs_index: new_txs_index}
     if top_height < new_block.header.height do
       Persistence.batch_write(%{:chain_state => %{:chain_state => new_chain_state},
                                 :block => %{new_block_hash => new_block},
                                 :latest_block_info => %{:top_hash => new_block_hash,
                                                         :top_height => new_block.header.height}})
-
-
+      
+      
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
       {:reply, :ok, %{state_update1 | top_hash: new_block_hash,
-                                      top_height: new_block.header.height}}
+                      top_height: new_block.header.height}}
     else
         Persistence.batch_write(%{:chain_state => new_chain_state,
                                   :block => %{new_block_hash => new_block}})
-      {:reply, :ok, state_update1}
+        {:reply, :ok, state_update1}
     end
   end
 
