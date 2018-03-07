@@ -52,6 +52,7 @@ defmodule AecoreValidationTest do
   end
 
   @tag :validation
+  @timeout 10_000_000
   test "validate block header timestamp", ctx do
     new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
     prev_block = get_prev_block()
@@ -79,6 +80,7 @@ defmodule AecoreValidationTest do
              )
   end
 
+  @timeout 10_000_000
   test "validate transactions in a block", ctx do
     from_acc = Wallet.get_public_key()
 

@@ -17,7 +17,7 @@ defmodule Aecore.Chain.ChainState do
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn(transaction, chain_state) ->
-      apply_tx!(transaction, chain_state, block_height) 
+      apply_tx!(transaction, chain_state, block_height)
     end)
     |> update_chain_state_locked(block_height)
   end
@@ -32,26 +32,27 @@ defmodule Aecore.Chain.ChainState do
                                         block_height)
                        end)
     else
-      if !SignedTx.is_valid?(transaction) do
+      if !SignedTx.validate(transaction) do
         throw {:error, "Invalid transaction"}
       end
       chain_state = apply_fun_on_map(chain_state, transaction.data.from_acc,
-                                     fn a -> 
-                                       Account.tx_out!(a, 
-                                                       transaction.data, 
-                                                       block_height) 
+                                     fn a ->
+                                       Account.tx_out!(a,
+                                                       transaction.data,
+                                                       block_height)
                                      end)
       case transaction.data.to_acc do
         address ->
           case Map.get(chain_state, address, Account.empty()) do
-            account = %Account{} -> 
-              Map.put(chain_state, 
-                      address, 
+            account = %Account{} ->
+              Map.put(chain_state,
+                      address,
                       Account.tx_in!(account, transaction.data, block_height))
             _ ->
               throw {:error, "Invalid contract type on chainstate"}
           end
       end
+
     end
   end
 
@@ -98,7 +99,7 @@ defmodule Aecore.Chain.ChainState do
       end
     end)
   end
-  
+
   @spec update_chain_state_locked(account_chainstate(), Header.t()) :: map()
   def update_chain_state_locked(chain_state, header) do
     Enum.reduce(chain_state, %{}, fn({address, object}, acc) ->

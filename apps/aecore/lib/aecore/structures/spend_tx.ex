@@ -37,4 +37,9 @@ defmodule Aecore.Structures.SpendTx do
                   lock_time_block: lock_time_block,
                   data: data}}
   end
+
+  @spec validate(SpendTx.t()) :: boolean()
+  def validate(data) do
+    data.value >= 0 && data.fee >= 0
+  end
 end

@@ -58,6 +58,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
+    assert SignedTx.validate(signed_tx)
     signature = signed_tx.signature
     message = Serialization.pack_binary(signed_tx.data)
     assert :true = Signing.verify(message, signature, from_acc)
@@ -71,7 +72,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert false == SignedTx.is_valid?(signed_tx)
+    assert false == SignedTx.validate(signed_tx)
   end
 
   test "coinbase tx invalid", wallet do

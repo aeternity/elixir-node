@@ -30,10 +30,13 @@ defmodule Aecore.Structures.SignedTx do
     key == nil && signature == nil
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%{data: data, signature: signature}) do
-    data.value >= 0 && data.fee >= 0 &&
-      Signing.verify(Serialization.pack_binary(data), signature, data.from_acc)
+  @spec validate(SignedTx.t()) :: boolean()
+  def validate(%{data: data, signature: signature}) do
+    case data do
+      %SpendTx{} ->
+        SpendTx.validate(data) &&
+          Signing.verify(Serialization.pack_binary(data), signature, data.from_acc)
+    end
   end
 
   @doc """

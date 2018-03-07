@@ -46,7 +46,7 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
-      !valid_header_timestamp?(new_block) -> 
+      !valid_header_timestamp?(new_block) ->
         throw({:error, "Invalid header timestamp"})
 
       !is_difficulty_target_met ->
@@ -100,7 +100,7 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
+      SignedTx.is_coinbase?(tx) ||  SignedTx.validate(tx)
     end)
   end
 

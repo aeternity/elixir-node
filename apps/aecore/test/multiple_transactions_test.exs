@@ -509,6 +509,7 @@ defmodule MultipleTransactionsTest do
              miner_balance_before_mining + Miner.coinbase_transaction_value() + 20
   end
 
+  @tag timeout: 10_000_000
   test "locked amount", wallet do
     from_acc = Wallet.get_public_key()
     account1 = get_account_locked_amount()
