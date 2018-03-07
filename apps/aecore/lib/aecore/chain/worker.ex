@@ -231,9 +231,7 @@ defmodule Aecore.Chain.Worker do
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
     new_block_proposed_contracts = generate_proposed_contracts_map(new_block)
-    IO.inspect(new_block_proposed_contracts)
     new_proposed_contracts = Map.merge(new_block_proposed_contracts, proposed_contracts)
-    IO.inspect(new_proposed_contracts)
 
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
@@ -242,8 +240,6 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_map = discard_blocks_from_memory(updated_blocks_map)
 
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
-    IO.inspect("UPDATED CHAINSTATE")
-    IO.inspect(updated_chain_states)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
@@ -429,7 +425,6 @@ defmodule Aecore.Chain.Worker do
   def process_contract_calls(txs, proposed_contracts, chain_state, block_height) do
     Enum.reduce(txs, chain_state, fn tx, chain_state_acc ->
       if match?(%ContractCallTxData{}, tx.data) do
-        IO.inspect("ContractCallTx matches !!!")
         contract_proposal_tx = Map.get(proposed_contracts, tx.data.contract_proposal_tx_hash)
         complete_code = contract_proposal_tx.data.contract <> tx.data.contract_params
         contract_tx = Aernold.parse_string(complete_code)
@@ -448,6 +443,8 @@ defmodule Aecore.Chain.Worker do
           })
         signed_tx = SignedTx.new(%{data: spend_tx, signature: nil})
         ChainState.calculate_and_validate_chain_state!([signed_tx], chain_state_acc, block_height)
+      else
+        chain_state
       end
     end)
   end
