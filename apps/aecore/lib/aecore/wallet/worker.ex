@@ -1,5 +1,5 @@
 defmodule Aecore.Wallet.Worker do
-  @defmodule """
+  @moduledoc """
   Module for handling the creation of a Wallet file
   """
 
@@ -101,6 +101,7 @@ defmodule Aecore.Wallet.Worker do
   def encode(pub_key, :ae) do
     Encoding.encode(pub_key, :ae)
   end
+
   def encode(pub_key, :btc) do
     Encoding.encode(pub_key, :btc)
   end
@@ -187,6 +188,7 @@ defmodule Aecore.Wallet.Worker do
       get_aewallet_dir()
       |> get_file_name()
       |> Wallet.get_seed(password)
+
     seed
   end
 
@@ -196,18 +198,18 @@ defmodule Aecore.Wallet.Worker do
   @spec has_wallet(tuple(), String.t()) :: :ok
   defp has_wallet({:error, :eexist}, path) do
     case get_file_name(path) do
-      []  -> create_wallet(path)
+      [] -> create_wallet(path)
       [_] -> :ok
     end
   end
+
   defp has_wallet({:error, reason}, _path) do
     throw("Failed due to #{reason} error..")
   end
 
   @spec create_wallet(String.t()) :: :ok
   defp create_wallet(path) do
-    {:ok, _mnemonic, _path, _wallet_type} =
-      Wallet.create_wallet(get_aewallet_pass(), path)
+    {:ok, _mnemonic, _path, _wallet_type} = Wallet.create_wallet(get_aewallet_pass(), path)
     :ok
   end
 
@@ -215,6 +217,6 @@ defmodule Aecore.Wallet.Worker do
   defp get_file_name(path) do
     path
     |> Path.join("*/")
-    |> Path.wildcard
+    |> Path.wildcard()
   end
 end

@@ -7,93 +7,106 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Peers.Sync
+  alias Aeutil.Serialization
   alias Aeutil.Bits
 
   def show(conn, params) do
     block = Chain.get_block_by_bech32_hash(params["hash"])
-    case (block) do
+
+    case block do
       %Block{} ->
         serialized_block = Serialization.block(block, :serialize)
         json(conn, serialized_block)
+
       {:error, message} ->
         json(%{conn | status: 404}, %{error: message})
     end
   end
 
   def get_blocks(conn, params) do
-    from_block_hash = case Map.get(params, "from_block") do
-      nil ->
-        Chain.top_block_hash()
-      hash ->
-        hash_bin = Bits.bech32_decode(hash)
-        hash_bin
-    end
+    from_block_hash =
+      case Map.get(params, "from_block") do
+        nil ->
+          Chain.top_block_hash()
 
-    count = case Map.get(params, "count") do
-      nil ->
-        100
-      count_string ->
-        {number, _} = Integer.parse(count_string)
-        number
-    end
+        hash ->
+          hash_bin = Bits.bech32_decode(hash)
+          hash_bin
+      end
+
+    count =
+      case Map.get(params, "count") do
+        nil ->
+          100
+
+        count_string ->
+          {number, _} = Integer.parse(count_string)
+          number
+      end
 
     blocks = Chain.get_blocks(from_block_hash, count)
-    blocks_json = Enum.map(
-      blocks,
-      fn (block) ->
+
+    blocks_json =
+      Enum.map(blocks, fn block ->
         hash = BlockValidation.block_header_hash(block.header)
+
         %{
           "hash" => Header.bech32_encode(hash),
           "header" => Serialization.block(block, :serialize).header,
           "tx_count" => Enum.count(block.txs)
         }
-      end
-    )
-    json conn, blocks_json
+      end)
+
+    json(conn, blocks_json)
   end
 
   def get_raw_blocks(conn, params) do
-    from_block_hash = case Map.get(params, "from_block") do
-      nil ->
-        Chain.top_block_hash()
-      hash ->
-        hash_bin = Bits.bech32_decode(hash)
-        hash_bin
-    end
+    from_block_hash =
+      case Map.get(params, "from_block") do
+        nil ->
+          Chain.top_block_hash()
 
-    to_block_hash = case Map.get(params, "to_block") do
-      nil ->
-        BlockValidation.block_header_hash(Block.genesis_block().header)
-      hash ->
-        hash_bin = Bits.bech32_decode(hash)
-        hash_bin
-    end
+        hash ->
+          hash_bin = Bits.bech32_decode(hash)
+          hash_bin
+      end
 
-    count = case Map.get(params, "count") do
-      nil ->
-        1000
-      count_string ->
-        {number, _} = Integer.parse(count_string)
-        number
-    end
+    to_block_hash =
+      case Map.get(params, "to_block") do
+        nil ->
+          BlockValidation.block_header_hash(Block.genesis_block().header)
+
+        hash ->
+          hash_bin = Bits.bech32_decode(hash)
+          hash_bin
+      end
+
+    count =
+      case Map.get(params, "count") do
+        nil ->
+          1000
+
+        count_string ->
+          {number, _} = Integer.parse(count_string)
+          number
+      end
 
     blocks = Chain.get_blocks(from_block_hash, to_block_hash, count)
-    blocks_json = Enum.map(
-      blocks,
-      fn(block) ->
-        Serialization.block(block, :serialize)
-      end
-    )
 
-    json conn, blocks_json
+    blocks_json =
+      Enum.map(blocks, fn block ->
+        Serialization.block(block, :serialize)
+      end)
+
+    json(conn, blocks_json)
   end
 
   def new_block(conn, _params) do
-    map = Poison.decode!(Poison.encode!(conn.body_params), [keys: :atoms])
+    map = Poison.decode!(Poison.encode!(conn.body_params), keys: :atoms)
     block = Aeutil.Serialization.block(map, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
     Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-    json conn, %{ok: "new block received"}
+    json(conn, %{ok: "new block received"})
   end
 end
