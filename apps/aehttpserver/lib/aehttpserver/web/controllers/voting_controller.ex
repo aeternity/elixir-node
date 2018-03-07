@@ -39,19 +39,7 @@ defmodule Aehttpserver.Web.VotingController do
 
     questions =
       Enum.reduce(questions, %{}, fn {question_hash, value_map}, acc ->
-        Map.put(acc, Base.encode16(question_hash), %{
-          answers: value_map.answers,
-          data: %VotingQuestionTx{
-            answers: value_map.data.answers,
-            close_block_height: value_map.data.close_block_height,
-            fee: value_map.data.fee,
-            from_acc: Base.encode16(value_map.data.from_acc),
-            possible_answer_count: value_map.data.possible_answer_count,
-            question: value_map.data.question,
-            start_block_height: value_map.data.start_block_height
-          },
-          result: value_map.result
-        })
+        Map.put(acc, Base.encode16(question_hash), value_map)
       end)
 
     json(conn, build_json_response("show_registered questions", "ok", questions))

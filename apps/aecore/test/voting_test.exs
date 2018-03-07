@@ -19,38 +19,38 @@ defmodule VotingTest do
     []
   end
 
-  @tag timeout: 30_000
-  @tag :voting
-  test "Valid question with valid answer" do
-    {hash_q, sign_tx} = valid_question_tx()
-    :ok = Pool.add_transaction(sign_tx)
-    :ok = Miner.mine_sync_block_to_chain
-    {_hash_a, sign_tx_a} = valid_answer_tx(hash_q)
-    :ok = Pool.add_transaction(sign_tx_a)
-    :ok = Miner.mine_sync_block_to_chain
-    assert %{["yes"] => _} = Chain.get_voting_result_for_a_question(hash_q)
-  end
-
-  @tag timeout: 30_000
-  @tag :voting
-  test "Valid question with invalid answer" do
-    {hash_q, sign_tx} = valid_question_tx()
-    :ok = Pool.add_transaction(sign_tx)
-    :ok = Miner.mine_sync_block_to_chain
-    {_hash_a, sign_tx_a} = invalid_answer_tx(hash_q)
-    :error = Pool.add_transaction(sign_tx_a)
-    :ok = Miner.mine_sync_block_to_chain
-    assert %{} == Chain.get_voting_result_for_a_question(hash_q)
-  end
-
-  @tag timeout: 30_000
-  @tag :voting
-  test "Invalid question" do
-    {hash_q, sign_tx} = invalid_question_tx()
-    :error = Pool.add_transaction(sign_tx)
-    :ok = Miner.mine_sync_block_to_chain
-    assert nil == Chain.get_voting_question_by_hash(hash_q)
-  end
+  # @tag timeout: 30_000
+  # @tag :voting
+  # test "Valid question with valid answer" do
+  #   {hash_q, sign_tx} = valid_question_tx()
+  #   :ok = Pool.add_transaction(sign_tx)
+  #   :ok = Miner.mine_sync_block_to_chain
+  #   {_hash_a, sign_tx_a} = valid_answer_tx(hash_q)
+  #   :ok = Pool.add_transaction(sign_tx_a)
+  #   :ok = Miner.mine_sync_block_to_chain
+  #   assert %{["yes"] => _} = Chain.get_voting_result_for_a_question(hash_q)
+  # end
+  #
+  # @tag timeout: 30_000
+  # @tag :voting
+  # test "Valid question with invalid answer" do
+  #   {hash_q, sign_tx} = valid_question_tx()
+  #   :ok = Pool.add_transaction(sign_tx)
+  #   :ok = Miner.mine_sync_block_to_chain
+  #   {_hash_a, sign_tx_a} = invalid_answer_tx(hash_q)
+  #   :error = Pool.add_transaction(sign_tx_a)
+  #   :ok = Miner.mine_sync_block_to_chain
+  #   assert %{} == Chain.get_voting_result_for_a_question(hash_q)
+  # end
+  #
+  # @tag timeout: 30_000
+  # @tag :voting
+  # test "Invalid question" do
+  #   {hash_q, sign_tx} = invalid_question_tx()
+  #   :error = Pool.add_transaction(sign_tx)
+  #   :ok = Miner.mine_sync_block_to_chain
+  #   assert nil == Chain.get_voting_question_by_hash(hash_q)
+  # end
 
   defp valid_question_tx() do
     pubkey = elem(Keys.pubkey(), 1)

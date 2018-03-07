@@ -1,5 +1,4 @@
 defmodule Aecore.VotingPrototype.Manager do
-
   require Logger
 
   alias Aecore.Keys.Worker, as: Keys
@@ -38,11 +37,17 @@ defmodule Aecore.VotingPrototype.Manager do
 
   def build_struct(structure, data) do
     try do
-      {:ok, %VotingTx{voting_payload: struct!(structure, data)}}
+      {:ok,
+       %VotingTx{
+         from_acc: data.from_acc,
+         fee: data.fee,
+         nonce: data.nonce,
+         voting_payload: struct!(structure, data.voting_payload)
+       }}
     rescue
       error ->
         Logger.error(error)
-      {:error, "bad map"}
+        {:error, "bad map"}
     end
   end
 
@@ -55,5 +60,4 @@ defmodule Aecore.VotingPrototype.Manager do
   def hash_question(tx) do
     :crypto.hash(:sha256, :erlang.term_to_binary(tx))
   end
-
 end

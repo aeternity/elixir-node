@@ -1,27 +1,20 @@
 defmodule Aecore.Structures.VotingAnswerTx do
   alias Aecore.Structures.VotingAnswerTx
-  alias Aecore.Chain.Worker, as: Chain
 
   @type t :: %VotingAnswerTx{
           hash_question: binary(),
-          answer: list(),
-          from_acc: binary(),
-          fee: non_neg_integer(),
-          nonce: non_neg_integer()
+          answer: list()
         }
 
-  defstruct [:hash_question, :answer, :from_acc, :fee, :nonce]
+  defstruct [:hash_question, :answer]
   use ExConstructor
 
-  @spec create(binary(), list(), binary(), non_neg_integer()) :: {:ok, VotingAnswerTx.t()}
-  def create(hash_question, answer, from_acc, fee) do
+  @spec create(binary(), list()) :: {:ok, VotingAnswerTx.t()}
+  def create(hash_question, answer) do
     {:ok,
      %VotingAnswerTx{
        hash_question: hash_question,
-       answer: answer,
-       from_acc: from_acc,
-       fee: fee,
-       nonce: Chain.lowest_valid_nonce()
+       answer: answer
      }}
   end
 

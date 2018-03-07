@@ -6,13 +6,13 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Structures.SpendTx
 
   @type t :: %SpendTx{
-    from_acc: binary(),
-    to_acc: binary(),
-    value: non_neg_integer(),
-    nonce: non_neg_integer(),
-    fee: non_neg_integer(),
-    lock_time_block: non_neg_integer()
-  }
+          from_acc: binary(),
+          to_acc: binary(),
+          value: non_neg_integer(),
+          nonce: non_neg_integer(),
+          fee: non_neg_integer(),
+          lock_time_block: non_neg_integer()
+        }
 
   @doc """
   Definition of Aecore SpendTx structure
@@ -26,13 +26,23 @@ defmodule Aecore.Structures.SpendTx do
   defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
   use ExConstructor
 
-  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, SpendTx.t()}
+  @spec create(
+          binary(),
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SpendTx.t()}
   def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
-    {:ok, %SpendTx{from_acc: from_acc,
-                  to_acc: to_acc,
-                  value: value,
-                  nonce: nonce,
-                  fee: fee,
-                  lock_time_block: lock_time_block}}
+    {:ok,
+     %SpendTx{
+       from_acc: from_acc,
+       to_acc: to_acc,
+       value: value,
+       nonce: nonce,
+       fee: fee,
+       lock_time_block: lock_time_block
+     }}
   end
 end

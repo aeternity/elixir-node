@@ -6,7 +6,6 @@ defmodule Aecore.Keys.Worker do
 
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.VotingTx
   alias Aeutil.Serialization
 
   @filename_pub "key.pub"
@@ -62,12 +61,7 @@ defmodule Aecore.Keys.Worker do
 
   @spec verify_tx(SignedTx.t()) :: boolean()
   def verify_tx(tx) do
-    case tx do
-      %SignedTx{data: %SpendTx{}} ->
-        verify(tx.data, tx.signature, tx.data.from_acc)
-      %SignedTx{data: %VotingTx{}} ->
-        verify(tx.data, tx.signature, tx.data.voting_payload.from_acc)
-    end
+    verify(tx.data, tx.signature, tx.data.from_acc)
   end
 
   @spec verify(binary(), binary(), binary()) :: boolean()
@@ -142,11 +136,12 @@ defmodule Aecore.Keys.Worker do
       true ->
         result =
           :crypto.verify(algo, digest, Serialization.pack_binary(term), signature, [
-                pub_key,
-                :crypto.ec_curve(curve)
-              ])
+            pub_key,
+            :crypto.ec_curve(curve)
+          ])
 
         {:reply, result, state}
+
       false ->
         {:reply, {:error, "Key length is not valid!"}, state}
     end
@@ -158,7 +153,10 @@ defmodule Aecore.Keys.Worker do
         %{priv: priv_key, algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [
+        priv_key,
+        :crypto.ec_curve(curve)
+      ])
 
     {:reply, {:ok, signature}, state}
   end
@@ -169,7 +167,10 @@ defmodule Aecore.Keys.Worker do
         %{algo: algo, digest: digest, curve: curve} = state
       ) do
     signature =
-      :crypto.sign(algo, digest, Serialization.pack_binary(term), [priv_key, :crypto.ec_curve(curve)])
+      :crypto.sign(algo, digest, Serialization.pack_binary(term), [
+        priv_key,
+        :crypto.ec_curve(curve)
+      ])
 
     {:reply, {:ok, signature}, state}
   end

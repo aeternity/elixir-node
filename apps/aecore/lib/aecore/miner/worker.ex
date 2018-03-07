@@ -241,8 +241,9 @@ defmodule Aecore.Miner.Worker do
           %SignedTx{data: %SpendTx{}} = tx, {acc_tx_data, acc_other} ->
             {acc_tx_data ++ [tx], acc_other}
 
-          %SignedTx{data: %VotingTx{voting_payload: %VotingQuestionTx{start_block_height: start_height}}} =
-              tx,
+          %SignedTx{
+            data: %VotingTx{voting_payload: %VotingQuestionTx{start_block_height: start_height}}
+          } = tx,
           {acc_tx_data, acc_other} ->
             ## If the start block height is too heigher then
             ## we do not want to register that question yet.
@@ -253,14 +254,16 @@ defmodule Aecore.Miner.Worker do
               {acc_tx_data, acc_other ++ [tx]}
             end
 
-          %SignedTx{data: %VotingTx{voting_payload: %VotingAnswerTx{hash_question: hash_question}}} = tx,
+          %SignedTx{
+            data: %VotingTx{voting_payload: %VotingAnswerTx{hash_question: hash_question}}
+          } = tx,
           {acc_tx_data, acc_other} ->
             ## If the close block height is expired
             ## we do not want to register that answer.
             ## The tx will stay in the pool.
             question = Chain.get_voting_question_by_hash(hash_question)
 
-            if Chain.top_height() + 1 > question.data.close_block_height do
+            if Chain.top_height() + 1 > question.data.voting_payload.close_block_height do
               {acc_tx_data, acc_other}
             else
               {acc_tx_data, acc_other ++ [tx]}
@@ -274,20 +277,7 @@ defmodule Aecore.Miner.Worker do
 
       ordered_txs_list =
         Enum.sort(txs_list, fn tx1, tx2 ->
-          case tx1 do
-            %SignedTx{data: %VotingTx{}} ->
-              tx1.data.voting_payload.nonce
-
-            _ ->
-              tx1.data.nonce
-          end <
-            case tx2 do
-              %SignedTx{data: %VotingTx{}} ->
-                tx2.data.voting_payload.nonce
-
-              _ ->
-                tx2.data.nonce
-            end
+          tx1.data.nonce < tx2.data.nonce
         end)
 
       valid_txs_by_chainstate =
@@ -346,12 +336,8 @@ defmodule Aecore.Miner.Worker do
   end
 
   def calculate_total_fees(txs) do
-    List.foldl(txs, 0, fn
-      %SignedTx{data: %VotingTx{} = tx}, acc ->
-        acc + tx.voting_payload.fee
-
-      tx, acc ->
-        acc + tx.data.fee
+    List.foldl(txs, 0, fn tx, acc ->
+      acc + tx.data.fee
     end)
   end
 
@@ -376,14 +362,7 @@ defmodule Aecore.Miner.Worker do
 
     Enum.filter(txs, fn tx ->
       tx_size_bytes = Pool.get_tx_size_bytes(tx)
-
-      case tx do
-        %SignedTx{data: %SpendTx{}} ->
-          tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
-
-        %SignedTx{data: %VotingTx{}} ->
-          tx.data.voting_payload.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
-      end
+      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
   end
 

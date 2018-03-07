@@ -49,27 +49,32 @@ defmodule Aeutil.Serialization do
         %SignedTx{data: SpendTx.new(new_data), signature: new_signature}
 
       :voting_tx ->
+        new_from_acc = hex_binary(tx.data.from_acc, direction)
+        new_signature = hex_binary(tx.signature, direction)
         case tx.data do
           %VotingTx{voting_payload: %VotingQuestionTx{}} ->
-            new_data = %{tx.data.voting_payload | from_acc: hex_binary(tx.data.voting_payload.from_acc, direction)}
-            new_signature = hex_binary(tx.signature, direction)
-
             %SignedTx{
-              data: %VotingTx{voting_payload: VotingQuestionTx.new(new_data)},
+              data: %VotingTx{from_acc: new_from_acc,
+                              fee: tx.data.fee,
+                              nonce: tx.data.nonce,
+                              voting_payload: VotingQuestionTx.new(tx.data.voting_payload)},
               signature: new_signature
             }
 
           %VotingTx{voting_payload: %VotingAnswerTx{}} ->
             new_data = %{
               tx.data.voting_payload
-              | from_acc: hex_binary(tx.data.voting_payload.from_acc, direction),
-                hash_question: hex_binary(tx.data.voting_payload.hash_question, direction)
+              | hash_question: hex_binary(tx.data.voting_payload.hash_question, direction)
             }
 
             new_signature = hex_binary(tx.signature, direction)
 
             %SignedTx{
-              data: %VotingTx{voting_payload: VotingAnswerTx.new(new_data)},
+              data: %VotingTx{
+                from_acc: new_from_acc,
+                fee: tx.data.fee,
+                nonce: tx.data.nonce,
+                voting_payload: VotingAnswerTx.new(new_data)},
               signature: new_signature
             }
         end
@@ -96,35 +101,42 @@ defmodule Aeutil.Serialization do
     case map do
       %{
         data: %{
-          voting_payload: %{
+            from_acc: _,
+            fee: _,
+            nonce: _,
+            voting_payload: %{
             question: _,
             possible_answer_count: _,
             answers: _,
-            from_acc: _,
             start_block_height: _,
-            close_block_height: _,
-            fee: _,
-            nonce: _
+            close_block_height: _
           }
         },
         signature: _
       } ->
-        new_map = %{map.data.voting_payload | from_acc: hex_binary(map.data.voting_payload.from_acc, direction)}
+        new_from_acc = hex_binary(map.data.from_acc, direction)
         new_signature = hex_binary(map.signature, direction)
-        %SignedTx{data: %VotingTx{voting_payload: VotingQuestionTx.new(new_map)}, signature: new_signature}
+        %SignedTx{data: %VotingTx{from_acc: new_from_acc,
+                                  fee: map.data.fee,
+                                  nonce: map.data.nonce,
+                                  voting_payload: VotingQuestionTx.new(map.data.voting_payload)},
+                                  signature: new_signature}
 
       %{
-        data: %{voting_payload: %{hash_question: _, answer: _, from_acc: _, fee: _, nonce: _}},
+        data: %{from_acc: _,
+                fee: _,
+                nonce: _,
+                voting_payload: voting_payload},
         signature: _
       } ->
-        new_map = %{
-          map.data.voting_payload
-          | from_acc: hex_binary(map.data.voting_payload.from_acc, direction),
-            hash_question: hex_binary(map.data.voting_payload.hash_question, direction)
-        }
-
+        new_from_acc = hex_binary(map.data.from_acc, direction)
+        new_hash_question = hex_binary(map.data.voting_payload.hash_question, direction)
         new_signature = hex_binary(map.signature, direction)
-        %SignedTx{data: %VotingTx{voting_payload: VotingAnswerTx.new(new_map)}, signature: new_signature}
+        new_voting_payload = %{voting_payload | hash_question: new_hash_question}
+        %SignedTx{data: %VotingTx{from_acc: new_from_acc,
+                                  fee: map.data.fee,
+                                  nonce: map.data.nonce,
+                                  voting_payload: VotingAnswerTx.new(new_voting_payload)}, signature: new_signature}
 
       %{
         data: %{from_acc: _, to_acc: _, value: _, nonce: _, fee: _, lock_time_block: _},

@@ -9,10 +9,10 @@ defmodule Aehttpserver.Web.Notify do
   def broadcast_new_transaction_in_the_pool(tx) do
     case tx do
       %SignedTx{data: %VotingTx{}} ->
-        if tx.data.voting_payload.from_acc != nil do
+        if tx.data.from_acc != nil do
           Endpoint.broadcast!(
             "room:notifications",
-            "new_voting_tx:" <> Base.encode16(tx.data.voting_payload.from_acc),
+            "new_voting_tx:" <> Base.encode16(tx.data.from_acc),
             %{"body" => Serialization.tx(tx, :voting_tx, :serialize)}
           )
         end
@@ -58,10 +58,10 @@ defmodule Aehttpserver.Web.Notify do
             %{"body" => Serialization.tx(tx, :voting_tx, :serialize)}
           )
 
-          if tx.data.voting_payload.from_acc != nil do
+          if tx.data.from_acc != nil do
             Endpoint.broadcast!(
               "room:notifications",
-              "new_mined_voting_tx:" <> Base.encode16(tx.data.voting_payload.from_acc),
+              "new_mined_voting_tx:" <> Base.encode16(tx.data.from_acc),
               %{"body" => Serialization.tx(tx, :voting_tx, :serialize)}
             )
           end

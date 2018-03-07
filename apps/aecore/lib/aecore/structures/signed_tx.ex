@@ -11,10 +11,9 @@ defmodule Aecore.Structures.SignedTx do
   alias Aeutil.Bits
 
   @type t :: %SignedTx{
-    data: SpendTx.t() | VotingTx.t(),
-
-    signature: binary()
-  }
+          data: SpendTx.t() | VotingTx.t(),
+          signature: binary()
+        }
 
   @doc """
     Definition of Aecore SignedTx structure
@@ -36,8 +35,9 @@ defmodule Aecore.Structures.SignedTx do
     case tx do
       %SignedTx{data: %SpendTx{}} ->
         tx.data.value >= 0 && tx.data.fee >= 0 && Keys.verify_tx(tx)
+
       %SignedTx{data: %VotingTx{}} ->
-        tx.data.voting_payload.fee >= 0 && Keys.verify_tx(tx)
+        tx.data.fee >= 0 && Keys.verify_tx(tx)
     end
   end
 
