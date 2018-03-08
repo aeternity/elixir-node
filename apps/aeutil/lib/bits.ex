@@ -1,6 +1,15 @@
 # Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
 # License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
+  def bech32_encode(prefix, bin) do
+    SegwitAddr.encode(prefix, 0, :binary.bin_to_list(bin))
+  end
+
+  def bech32_decode(bech32) do
+    {:ok, {_, _, bin_list}} = SegwitAddr.decode(bech32)
+    :binary.list_to_bin(bin_list)
+  end
+
   # this is the public api which allows you to pass any binary representation
   def extract(str) when is_binary(str) do
     extract(str, [])

@@ -2,7 +2,7 @@ defmodule Aecore.Structures.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-  alias Aeutil.Serialization
+
   alias Aecore.Structures.SpendTx
 
   @type t :: %SpendTx{
@@ -11,7 +11,8 @@ defmodule Aecore.Structures.SpendTx do
     value: non_neg_integer(),
     nonce: non_neg_integer(),
     fee: non_neg_integer(),
-    lock_time_block: non_neg_integer()
+    lock_time_block: non_neg_integer(),
+    data: map()
   }
 
   @doc """
@@ -23,17 +24,22 @@ defmodule Aecore.Structures.SpendTx do
   - to_acc: To account is the public address of the account receiving the transaction
   - value: The amount of a transaction
   """
-  defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block]
+  defstruct [:from_acc, :to_acc, :value, :nonce, :fee, :lock_time_block, :data]
   use ExConstructor
 
-  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, SpendTx.t()}
-  def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
+  @spec create(binary(), binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), non_neg_integer(), map()) :: {:ok, TxData.t()}
+  def create(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0, data \\ %{}) do
     {:ok, %SpendTx{from_acc: from_acc,
                   to_acc: to_acc,
                   value: value,
                   nonce: nonce,
                   fee: fee,
-                  lock_time_block: lock_time_block}}
+                  lock_time_block: lock_time_block,
+                  data: data}}
   end
 
+  @spec validate(SpendTx.t()) :: boolean()
+  def validate(data) do
+    data.value >= 0 && data.fee >= 0
+  end
 end

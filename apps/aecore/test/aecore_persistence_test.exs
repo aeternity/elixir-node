@@ -3,7 +3,7 @@ defmodule PersistenceTest do
   doctest Aecore.Persistence.Worker
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
@@ -20,7 +20,7 @@ defmodule PersistenceTest do
       :ok
     end
 
-    {:ok, account1} = Keys.pubkey()
+    account1 = Wallet.get_public_key()
     account2 = <<198, 218, 48, 178, 127, 24, 201, 115, 3, 29, 188, 220, 222, 189, 132, 139,
       168, 1, 64, 134, 103, 38, 151, 213, 195, 5, 219, 138, 29, 137, 119, 229>>
     [account1: account1,
@@ -41,7 +41,7 @@ defmodule PersistenceTest do
       Persistence.get_all_blocks()[Aecore.Chain.Worker.top_block_hash]
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 20_000
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
     ## For specific account
@@ -54,6 +54,13 @@ defmodule PersistenceTest do
 
   end
 
+  @tag timeout: 20_000
+  @tag :persistence
+  test "Get latest two blocks from rocksdb" do
+    assert 2 == Kernel.map_size(Persistence.get_blocks(2))
+  end
+
+  @tag timeout: 20_000
   @tag :persistence
   test "Failure cases", persistance_state do
     assert {:error, "bad block structure"} =
@@ -63,5 +70,7 @@ defmodule PersistenceTest do
       Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
 
     assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)
+
+    assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
   end
 end
