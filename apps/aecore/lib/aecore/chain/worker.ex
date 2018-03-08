@@ -33,7 +33,7 @@ defmodule Aecore.Chain.Worker do
     blocks_data_map = %{genesis_block_hash => 
       %{block: Block.genesis_block(),
         chain_state: genesis_chain_state,
-        refs: :array.new(0)}}
+        refs: []}}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
     {:ok, %{blocks_data_map: blocks_data_map, 
@@ -198,15 +198,14 @@ defmodule Aecore.Chain.Worker do
       Enum.reduce(0..@max_refs,
                   [new_block.header.prev_hash],
                   fn (i, [prev | _] = acc) ->
-                    if :array.size(blocks_data_map[prev].refs) > i do
-                      [:array.get(i, blocks_data_map[prev].refs) | acc]
-                    else
-                      acc
+                    case Enum.at(blocks_data_map[prev].refs, i) do
+                      nil ->
+                        acc
+                      hash ->
+                        [hash | acc]
                     end
                   end)
       |> Enum.reverse
-      |> :array.from_list
-      |> :array.fix
 
     updated_blocks_data_map  = Map.put(blocks_data_map, new_block_hash, 
                                   %{block: new_block,
@@ -357,22 +356,27 @@ defmodule Aecore.Chain.Worker do
     if n < 0 do
       {:error, "Height higher then chain_hash height"}
     else
-      blocks_data_map[get_nth_prev_hash(n, 0, begin_hash, blocks_data_map)]
+      blocks_data_map[get_nth_prev_hash(n, begin_hash, blocks_data_map)]
     end
   end
-  
-  defp get_nth_prev_hash(0, _i, hash, blocks_data_map) do
+
+  # get_nth_prev_hash - traverses block_data_map using the refs. Becouse refs contain hashes of 1,2,4,8,16,... prev blocks we can do it fast. Lets look at the height difference as a binary representation. Eg. Lets say we want to go 10110 blocks back in the tree. Instead of using prev_block 10110 times we can go back by 2 blocks then by 4 and by 16. We can go back by such numbers of blocks becouse we have the refs. This way we did 3 operations instead of 22. In general we do O(log n) operations to go back by n blocks.
+  defp get_nth_prev_hash(n, begin_hash, blocks_data_map) do
+    get_nth_prev_hash(n, 0, begin_hash, blocks_data_map)
+  end
+
+  defp get_nth_prev_hash(0, _exponent, hash, _blocks_data_map) do
     hash
   end
 
-  defp get_nth_prev_hash(n, i, hash, blocks_data_map) do
-    if (n &&& (1 <<< i)) != 0 do
-      get_nth_prev_hash(n - (1 <<< i),
-                        i + 1,
-                        :array.get(i, blocks_data_map[hash].refs),
+  defp get_nth_prev_hash(n, exponent, hash, blocks_data_map) do
+    if (n &&& (1 <<< exponent)) != 0 do
+      get_nth_prev_hash(n - (1 <<< exponent),
+                        exponent + 1,
+                        Enum.at(blocks_data_map[hash].refs, exponent),
                         blocks_data_map)
     else
-      get_nth_prev_hash(n, i + 1, hash, blocks_data_map) 
+      get_nth_prev_hash(n, exponent + 1, hash, blocks_data_map) 
     end
   end
 
