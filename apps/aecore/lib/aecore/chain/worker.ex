@@ -225,9 +225,8 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{:chain_state => new_chain_state,
                                 :block => %{new_block_hash => new_block},
                                 :latest_block_info => %{"top_hash" => new_block_hash,
-                                                        "top_height" => new_block.header.height}})
-
-
+                                  "top_height" => new_block.header.height},
+                                :block_info => %{new_block_hash => %{refs: new_refs}}})
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
       # Broadcasting notifications for new block added to chain and new mined transaction
@@ -236,7 +235,8 @@ defmodule Aecore.Chain.Worker do
                                       top_height: new_block.header.height}}
     else
       Persistence.batch_write(%{:chain_state => new_chain_state,
-                                :block => %{new_block_hash => new_block}})
+                                :block => %{new_block_hash => new_block},
+                                :block_info => %{new_block_hash => %{refs: new_refs}}})
       {:reply, :ok, state_update1}
     end
   end
@@ -262,23 +262,27 @@ defmodule Aecore.Chain.Worker do
         chain_states -> chain_states
       end
 
-    blocks_infos_map =
+    blocks_map =
       case Persistence.get_blocks(number_of_blocks_in_memory()) do
-        blocks_map when blocks_map == %{} -> state.blocks_map
-        blocks_map ->
-          blocks_map
-          |> Enum.reduce(%{}, fn({hash, block}, acc) ->
-            Map.put(acc, hash, %{block: block,
-                                 chain_state: nil,
-                                 refs: :array.new(0)})
+        blocks_map when blocks_map == %{} -> %{}
+        blocks_map -> blocks_map
+      end
+
+    blocks_data_map =
+      case Persistence.get_all_blocks_info() do
+        blocks_infos_map when blocks_infos_map == %{} -> state.blocks_map
+        blocks_infos_map ->
+          blocks_infos_map
+          |> Map.merge(blocks_map, fn(_hash, info, block) ->
+            Map.put(info, :block, block)
           end)
           |> Map.update!(top_hash, fn(info) ->
-            %{info | chain_state: top_chain_state}
+            Map.put(info, :chain_state, top_chain_state)
           end)
       end
 
     {:noreply, %{state |
-                 blocks_map: blocks_infos_map,
+                 blocks_map: blocks_data_map,
                  top_hash: top_hash,
                  top_height: top_height}}
   end

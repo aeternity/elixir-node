@@ -27,6 +27,16 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:batch_write, operations})
   end
 
+  def add_block_info(%{block: block, header: header} = info) do
+    hash = BlockValidation.block_header_hash(header)
+    GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
+    cleaned_info =
+      info
+      |> Map.delete("block")
+      |> Map.delete("chain_state")
+    GenServer.call(__MODULE__, {:add_block_info, {hash, cleaned_info}})
+  end
+
   @spec add_block_by_hash(Block.t()) :: :ok | {:error, reason :: term()}
   def add_block_by_hash(%{header: header} = block) do
     hash = BlockValidation.block_header_hash(header)
@@ -88,6 +98,12 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
 
+  @spec get_all_blocks_info() ::
+  {:ok, map()} | :not_found | {:error, reason :: term()}
+  def get_all_blocks_info() do
+    GenServer.call(__MODULE__, :get_all_blocks_info)
+  end
+
   ## Server side
 
   def init(_) do
@@ -96,20 +112,24 @@ defmodule Aecore.Persistence.Worker do
     ## https://github.com/facebook/rocksdb/wiki/Column-Families
     {:ok, db, %{"blocks_family"            => blocks_family,
                 "latest_block_info_family" => latest_block_info_family,
-                "chain_state_family"       => chain_state_family}} =
+                "chain_state_family"       => chain_state_family,
+                "blocks_info_family"       => blocks_info_family}} =
       Rox.open(persistence_path(),
         [create_if_missing: true, auto_create_column_families: true],
-        ["blocks_family", "latest_block_info_family", "chain_state_family"])
+        ["blocks_family", "latest_block_info_family", "chain_state_family",
+         "blocks_info_family"])
     {:ok, %{db: db,
             blocks_family: blocks_family,
             latest_block_info_family: latest_block_info_family,
-            chain_state_family: chain_state_family}}
+            chain_state_family: chain_state_family,
+            blocks_info_family: blocks_info_family}}
   end
 
   def handle_call({:batch_write, operations}, _from,
     %{db: db, blocks_family: blocks_family,
       chain_state_family: chain_state_family,
-      latest_block_info_family: latest_block_info_family} = state) do
+      latest_block_info_family: latest_block_info_family,
+      blocks_info_family: blocks_info_family} = state) do
 
     batch =
       Enum.reduce(operations, Batch.new(),
@@ -119,6 +139,7 @@ defmodule Aecore.Persistence.Worker do
               :chain_state -> chain_state_family
               :block -> blocks_family
               :latest_block_info -> latest_block_info_family
+              :block_info -> blocks_info_family
             end
           Enum.reduce(data, batch_acc,
             fn({key, val}, batch_acc_) ->
@@ -132,6 +153,11 @@ defmodule Aecore.Persistence.Worker do
   def handle_call({:add_block_by_hash, {hash, block}}, _from,
     %{blocks_family: blocks_family} = state) do
     {:reply, Rox.put(blocks_family, hash, block, write_options()), state}
+  end
+
+  def handle_call({:add_block_info, {hash, info}}, _from,
+    %{blocks_info_family: blocks_info_family} = state) do
+    {:reply, Rox.put(blocks_info_family, hash, info, write_options()), state}
   end
 
   def handle_call({:add_account_chain_state, {account, chain_state}}, _from,
@@ -185,6 +211,15 @@ defmodule Aecore.Persistence.Worker do
       |> Rox.stream()
       |> Enum.into(%{})
     {:reply, all_blocks, state}
+  end
+
+  def handle_call(:get_all_blocks_info, _from,
+    %{blocks_info_family: blocks_info_family} = state) do
+    all_blocks_info =
+      blocks_info_family
+      |> Rox.stream()
+      |> Enum.into(%{})
+    {:reply, all_blocks_info, state}
   end
 
   def handle_call(:get_latest_block_height_and_hash, _from,
