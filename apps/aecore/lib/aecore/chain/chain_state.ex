@@ -8,6 +8,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   require Logger
 
@@ -36,7 +37,6 @@ defmodule Aecore.Chain.ChainState do
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
-
     cond do
       SignedTx.is_coinbase?(tx) ->
         to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, %{balance: 0, nonce: 0, locked: []})
@@ -147,4 +147,8 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("cs", bin)
+  end
 end

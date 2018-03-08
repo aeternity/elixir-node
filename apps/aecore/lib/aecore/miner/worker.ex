@@ -12,20 +12,19 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aeutil.Bits
   alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Serialization
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
   @mersenne_prime 2147483647
   @coinbase_transaction_value 100
+  @new_candidate_nonce_count 500
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{miner_state: :idle,
@@ -160,7 +159,12 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: candidate()})
   end
   defp mining(%{miner_state: :running, block_candidate: cblock} = state) do
-    cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
+    nonce = next_nonce(cblock.header.nonce)
+    cblock = case rem(nonce, @new_candidate_nonce_count) do
+      0 -> candidate()
+      _ -> cblock
+    end
+    cheader = %{cblock.header | nonce: nonce}
     cblock  = %{cblock | header: cheader}
     work = fn() -> Cuckoo.generate(cheader) end
     start_worker(work, %{state | block_candidate: cblock})
@@ -213,6 +217,9 @@ defmodule Aecore.Miner.Worker do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
+    IO.inspect chain_state
+    IO.inspect Wallet.get_public_key
+
     try do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
@@ -222,7 +229,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs_by_chainstate = ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
-      {_, pubkey} = Keys.pubkey()
+      pubkey = Wallet.get_public_key()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
       valid_txs = [create_coinbase_tx(pubkey, total_fees,

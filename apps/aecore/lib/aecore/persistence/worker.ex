@@ -41,6 +41,17 @@ defmodule Aecore.Persistence.Worker do
   end
   def get_block_by_hash(_hash), do: {:error, "bad hash value"}
 
+  @doc """
+  Retrieving last 'num' blocks from db. If have less than 'num' blocks,
+  then we will retrieve all blocks. The 'num' must be integer and greater
+  than one
+  """
+  @spec get_blocks(integer()) ::
+  {:ok, map()} | :not_found | {:error, reason :: term()}
+  def get_blocks(num) do
+    GenServer.call(__MODULE__, {:get_blocks, num})
+  end
+
   @spec get_all_blocks() ::
   {:ok, map()} | :not_found | {:error, reason :: term()}
   def get_all_blocks() do
@@ -133,6 +144,35 @@ defmodule Aecore.Persistence.Worker do
     {:reply, Rox.get(blocks_family, hash), state}
   end
 
+  def handle_call({:get_blocks, blocks_num}, _from, state) when blocks_num < 1 do
+    {:reply, "Blocks number must be greater than one", state}
+  end
+
+  def handle_call({:get_blocks, blocks_num}, _from,
+    %{blocks_family: blocks_family} = state) do
+
+    max_blocks_height = Rox.count(blocks_family)
+    threshold = max_blocks_height - blocks_num
+
+    last_blocks =
+    if threshold < 0 do
+      blocks_family
+      |> Rox.stream()
+      |> Enum.into([])
+    else
+        Enum.reduce(Rox.stream(blocks_family), [],
+          fn({hash, %{header: %{height: height}} = block} = record, acc) ->
+            if threshold < height do
+              [record | acc]
+            else
+              acc
+            end
+          end)
+    end
+
+    {:reply, Enum.into(last_blocks, %{}), state}
+  end
+
   def handle_call(:get_all_blocks, _from,
     %{blocks_family: blocks_family} = state) do
     all_blocks =
@@ -152,14 +192,16 @@ defmodule Aecore.Persistence.Worker do
       end
     {:reply, reply, state}
   end
-  
+
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
-    chain_state =
+    # {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
+
+    chainstate =
       chain_state_family
       |> Rox.stream()
       |> Enum.into(%{})
-    {:reply, chain_state, state}
+    {:reply, chainstate, state}
   end
 
   def handle_call(:get_latest_block_height_and_hash, _from,

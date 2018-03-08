@@ -4,8 +4,9 @@ defmodule Aehttpclient.Client do
   """
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
@@ -23,7 +24,7 @@ defmodule Aehttpclient.Client do
 
   @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
   def get_block({uri, hash}) do
-    hash = Base.encode16(hash)
+    hash = Header.bech32_encode(hash)
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
@@ -35,8 +36,8 @@ defmodule Aehttpclient.Client do
 
   @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    from_block_hash = Base.encode16(from_block_hash)
-    to_block_hash = Base.encode16(to_block_hash)
+    from_block_hash = Header.bech32_encode(from_block_hash)
+    to_block_hash = Header.bech32_encode(to_block_hash)
     uri = uri <> "/raw_blocks?" <>
             "from_block=" <> from_block_hash <>
             "&to_block=" <> to_block_hash
@@ -118,7 +119,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:acc_txs, body, _headers) do
-    response = Poison.decode!(body, as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
+    response = Poison.decode!(body, as: [%SignedTx{data: %DataTx{}}], keys: :atoms!)
     {:ok, response}
   end
 

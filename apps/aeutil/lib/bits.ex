@@ -25,6 +25,5 @@ defmodule Aeutil.Bits do
   # this is the terminal condition when we don't have anything more to extract
   defp extract(<<>>, acc), do: acc |> Enum.reverse()
 
-
-
 end
+

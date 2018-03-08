@@ -23,10 +23,10 @@ defmodule AeutilSerializationTest do
     [_head | values] = Map.values(block["header"])
     for value <- values do
       if is_binary(value) do
-      case(Base.decode16(value)) do
+        case(SegwitAddr.decode(value)) do
           {:ok, _} ->
             true
-          :error ->
+          {:error, _} ->
             false
         end
       else
@@ -68,7 +68,7 @@ defmodule AeutilSerializationTest do
     155, 248, 3, 179, 250, 105, 208, 85, 217, 215, 244, 150, 87, 214, 225, 71,
     160, 240>>, version: 1},
     txs: [%SignedTx{data: %DataTx{type: SpendTx,
-                                  payload: %SpendTx{to_acc: to_acc,
+                                  payload: %SpendTx{to_acc: Aewallet.KeyPair.compress(to_acc),
                                                     value: 100,
                                                     lock_time_block: [%{amount: 5,
                                                                         block: 10},

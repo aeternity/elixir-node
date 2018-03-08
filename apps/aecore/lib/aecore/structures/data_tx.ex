@@ -62,7 +62,7 @@ defmodule  Aecore.Structures.DataTx do
       |> tx.type.init()
       |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
                                 account_state, subdomain_chainstate)
-      Map.put(chainstate, :accounts, new_accounts_state)
+      Map.put(chainstate, :accounts, new_accounts_state) ## TODO return the subdomain_chainstate as well
   end
 
   def serialize(%__MODULE__{} = tx, :serialize) do

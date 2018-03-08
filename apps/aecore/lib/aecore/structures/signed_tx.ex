@@ -2,14 +2,12 @@ defmodule Aecore.Structures.SignedTx do
   @moduledoc """
   """
 
-  defstruct [:data, :signature]
-  use ExConstructor
-
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aewallet.Signing
   alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   @typedoc "Structure that holds the account info"
   @type account_chainstate :: map()
@@ -19,19 +17,48 @@ defmodule Aecore.Structures.SignedTx do
     signature: binary()
   }
 
+  @doc """
+  Definition of Aecore SignedTx structure
+
+  ## Parameters
+     - data: Aecore %SpendTx{} structure
+     - signature: Signed %SpendTx{} with the private key of the sender
+  """
+  defstruct [:data, :signature]
+  use ExConstructor
+
   @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(tx) do
-    tx.data.from_acc == nil && tx.signature == nil
+  def is_coinbase?(%{data: %{from_acc: key}, signature: signature}) do
+    key == nil && signature == nil
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    if Keys.verify_tx(tx) do
+    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
       case DataTx.is_valid(data) do
         :ok -> true
         {:error, _reason} -> false
       end
     end
+  end
+
+  @doc """
+  Takes the transaction that needs to be signed
+  and the private key of the sender.
+  Returns a signed tx
+
+  ## Parameters
+     - tx: The transaction data that it's going to be signed
+     - priv_key: The priv key to sign with
+
+  """
+  @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
+  def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
+    signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
+    {:ok, %SignedTx{data: tx, signature: signature}}
+  end
+  def sign_tx(tx, _priv_key) do
+    {:error, "Wrong Transaction data structure"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -44,4 +71,13 @@ defmodule Aecore.Structures.SignedTx do
     type.reward(payload, block_height, account_state)
   end
 
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("tx", bin)
+  end
+
+  @spec bech32_encode_root(binary()) :: String.t()
+  def bech32_encode_root(bin) do
+    Bits.bech32_encode("tr", bin)
+  end
 end

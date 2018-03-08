@@ -72,6 +72,10 @@ defmodule Aecore.Structures.SpendTx do
   def process_chainstate!(%__MODULE__{} = tx, from_acc, fee, nonce, block_height,
                           accounts, %{}) do
 
+    IO.inspect "---------------------------------------"
+    h = Aecore.Wallet.Worker.get_public_key("M/0")
+    IO.inspect h
+    IO.inspect "---------------------------------------"
     case preprocess_check(tx, accounts[from_acc], fee, nonce, block_height, %{}) do
       :ok ->
         new_from_account_state =
@@ -80,8 +84,9 @@ defmodule Aecore.Structures.SpendTx do
           |> transaction_out(block_height, tx.value * -1, nonce, -1)
         new_accounts = Map.put(accounts, from_acc, new_from_account_state)
 
+        to_acc = Map.get(accounts, tx.to_acc, %{balance: 0, nonce: 0, locked: []})
         new_to_account_state =
-          transaction_in(accounts[tx.to_acc], block_height, tx.value, tx.lock_time_block)
+          transaction_in(to_acc, block_height, tx.value, tx.lock_time_block)
         Map.put(new_accounts, tx.to_acc, new_to_account_state)
 
       {:error, reason} = err ->
@@ -97,7 +102,7 @@ defmodule Aecore.Structures.SpendTx do
       account_state.nonce >= nonce ->
        {:error, "Nonce too small"}
 
-      block_height <= tx.lock_time_block && account_state.value < 0 ->
+      block_height <= tx.lock_time_block && tx.value < 0 ->
        {:error, "Can't lock a negative transaction"}
 
       true ->
@@ -129,5 +134,4 @@ defmodule Aecore.Structures.SpendTx do
     |> Map.put(:nonce, nonce)
     |> transaction_in(block_height, value, lock_time_block)
   end
-
 end
