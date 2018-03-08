@@ -30,13 +30,13 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_chain_state = ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
-    blocks_map = %{genesis_block_hash => 
+    blocks_data_map = %{genesis_block_hash => 
       %{block: Block.genesis_block(),
         chain_state: genesis_chain_state,
         refs: :array.new(0)}}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
 
-    {:ok, %{blocks_map: blocks_map, 
+    {:ok, %{blocks_data_map: blocks_data_map, 
             txs_index: txs_index,
             top_hash: genesis_block_hash, 
             top_height: 0}}
@@ -163,8 +163,8 @@ defmodule Aecore.Chain.Worker do
     {:reply, state, state}
   end
 
-  def handle_call(:top_block_info, _from, %{blocks_map: blocks_map, top_hash: top_hash} = state) do
-    {:reply, blocks_map[top_hash], state}
+  def handle_call(:top_block_info, _from, %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state) do
+    {:reply, blocks_data_map[top_hash], state}
   end
 
   def handle_call(:top_block_hash,  _from, %{top_hash: top_hash} = state) do
@@ -175,8 +175,8 @@ defmodule Aecore.Chain.Worker do
     {:reply, top_height, state}
   end
 
-  def handle_call({:get_block_info_from_memory_unsafe, block_hash}, _from, %{blocks_map: blocks_map} = state) do
-    block_info = blocks_map[block_hash]
+  def handle_call({:get_block_info_from_memory_unsafe, block_hash}, _from, %{blocks_data_map: blocks_data_map} = state) do
+    block_info = blocks_data_map[block_hash]
 
     if block_info != nil do
       {:reply, block_info, state}
@@ -187,7 +187,7 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call({:add_validated_block, %Block{} = new_block, new_chain_state},
                   _from,
-                  %{blocks_map: blocks_map, txs_index: txs_index, 
+                  %{blocks_data_map: blocks_data_map, txs_index: txs_index, 
                     top_height: top_height} = state) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
@@ -198,8 +198,8 @@ defmodule Aecore.Chain.Worker do
       Enum.reduce(0..@max_refs,
                   [new_block.header.prev_hash],
                   fn (i, [prev | _] = acc) ->
-                    if :array.size(blocks_map[prev].refs) > i do
-                      [:array.get(i, blocks_map[prev].refs) | acc]
+                    if :array.size(blocks_data_map[prev].refs) > i do
+                      [:array.get(i, blocks_data_map[prev].refs) | acc]
                     else
                       acc
                     end
@@ -208,18 +208,18 @@ defmodule Aecore.Chain.Worker do
       |> :array.from_list
       |> :array.fix
 
-    updated_blocks_map  = Map.put(blocks_map, new_block_hash, 
+    updated_blocks_data_map  = Map.put(blocks_data_map, new_block_hash, 
                                   %{block: new_block,
                                     chain_state: new_chain_state,
                                     refs: new_refs})
-    hundred_blocks_map  = discard_blocks_from_memory(updated_blocks_map)
+    hundred_blocks_data_map  = discard_blocks_from_memory(updated_blocks_data_map)
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{inspect(total_tokens)}"
     end)
 
-    state_update1 = %{state | blocks_map: hundred_blocks_map,
+    state_update1 = %{state | blocks_data_map: hundred_blocks_data_map,
                               txs_index: new_txs_index}
     if top_height < new_block.header.height do
       Persistence.batch_write(%{:chain_state => new_chain_state,
@@ -245,8 +245,8 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def handle_call(:blocks_map, _from, %{blocks_map: blocks_map} = state) do
-    {:reply, blocks_map, state}
+  def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
+    {:reply, blocks_data_map, state}
   end
 
   def handle_info(:timeout, state) do
@@ -258,7 +258,7 @@ defmodule Aecore.Chain.Worker do
 
     top_chain_state =
       case Persistence.get_all_accounts_chain_states() do
-        chain_states when chain_states == %{} -> state.blocks_map[top_hash].chain_state
+        chain_states when chain_states == %{} -> state.blocks_data_map[top_hash].chain_state
         chain_states -> chain_states
       end
 
@@ -270,9 +270,9 @@ defmodule Aecore.Chain.Worker do
 
     blocks_data_map =
       case Persistence.get_all_blocks_info() do
-        blocks_infos_map when blocks_infos_map == %{} -> state.blocks_map
-        blocks_infos_map ->
-          blocks_infos_map
+        blocks_info_map when blocks_info_map == %{} -> state.blocks_data_map
+        blocks_info_map ->
+          blocks_info_map
           |> Map.merge(blocks_map, fn(_hash, info, block) ->
             Map.put(info, :block, block)
           end)
@@ -282,7 +282,7 @@ defmodule Aecore.Chain.Worker do
       end
 
     {:noreply, %{state |
-                 blocks_map: blocks_data_map,
+                 blocks_data_map: blocks_data_map,
                  top_hash: top_hash,
                  top_height: top_height}}
   end
@@ -352,27 +352,27 @@ defmodule Aecore.Chain.Worker do
 
   defp get_block_info_by_height(height, chain_hash \\ nil) do
     begin_hash = if chain_hash == nil do top_block_hash() else chain_hash end
-    blocks_map = GenServer.call(__MODULE__, :blocks_map)
-    n = blocks_map[begin_hash].block.header.height - height
+    blocks_data_map = GenServer.call(__MODULE__, :blocks_data_map)
+    n = blocks_data_map[begin_hash].block.header.height - height
     if n < 0 do
       {:error, "Height higher then chain_hash height"}
     else
-      blocks_map[get_nth_prev_hash(n, 0, begin_hash, blocks_map)]
+      blocks_data_map[get_nth_prev_hash(n, 0, begin_hash, blocks_data_map)]
     end
   end
   
-  defp get_nth_prev_hash(0, _i, hash, blocks_map) do
+  defp get_nth_prev_hash(0, _i, hash, blocks_data_map) do
     hash
   end
 
-  defp get_nth_prev_hash(n, i, hash, blocks_map) do
+  defp get_nth_prev_hash(n, i, hash, blocks_data_map) do
     if (n &&& (1 <<< i)) != 0 do
       get_nth_prev_hash(n - (1 <<< i),
                         i + 1,
-                        :array.get(i, blocks_map[hash].refs),
-                        blocks_map)
+                        :array.get(i, blocks_data_map[hash].refs),
+                        blocks_data_map)
     else
-      get_nth_prev_hash(n, i + 1, hash, blocks_map) 
+      get_nth_prev_hash(n, i + 1, hash, blocks_data_map) 
     end
   end
 
