@@ -258,8 +258,6 @@ defmodule Aecore.Chain.Worker do
           top_height: top_height
         } = state
       ) do
-    handle_oracle_queries(new_block)
-
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
 
@@ -449,7 +447,7 @@ defmodule Aecore.Chain.Worker do
   defp generate_registered_oracles_map(block) do
     Enum.reduce(block.txs, %{}, fn tx, acc ->
       if match?(%OracleRegistrationTxData{}, tx.data) do
-        Map.put(acc, SignedTx.hash_tx(tx), tx)
+        Map.put(acc, tx.data.operator, tx)
       else
         acc
       end
@@ -459,31 +457,15 @@ defmodule Aecore.Chain.Worker do
   defp generate_oracle_response_map(block) do
     Enum.reduce(block.txs, %{}, fn tx, acc ->
       if match?(%OracleResponseTxData{}, tx.data) do
-        if acc[tx.data.oracle_hash] != nil do
-          Map.put(acc, tx.data.oracle_hash, acc[tx.data.oracle_hash] ++ [tx])
+        if acc[tx.data.oracle_address] != nil do
+          Map.put(acc, tx.data.oracle_address, acc[tx.data.oracle_address] ++ [tx])
         else
-          Map.put(acc, tx.data.oracle_hash, [tx])
+          Map.put(acc, tx.data.oracle_address, [tx])
         end
       else
         acc
       end
     end)
-  end
-
-  # Goes through every block transaction and checks if it's a query
-  # tranasction, if the node has an oracle registered and it is referenced in
-  # one of the queries, the transaction is posted to the oracle server mapped
-  # to the oracle hash.
-  defp handle_oracle_queries(block) do
-    if Application.get_env(:aecore, :operator)[:is_node_operator] do
-      oracles = Application.get_env(:aecore, :operator)[:oracles]
-
-      Enum.each(block.txs, fn tx ->
-        if match?(%OracleQueryTxData{}, tx.data) && Map.has_key?(oracles, tx.data.oracle_hash) do
-          Client.post_query_to_oracle(tx, oracles[tx.data.oracle_hash])
-        end
-      end)
-    end
   end
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do

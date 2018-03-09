@@ -11,9 +11,9 @@ defmodule Aehttpserver.Web.OracleController do
 
   def oracle_response(conn, _params) do
     body = conn.body_params
-    binary_oracle_hash = Bits.bech32_decode(body["oracle_hash"])
+    binary_oracle_address = Bits.bech32_decode(body["oracle_address"])
 
-    case Oracle.respond(binary_oracle_hash, body["response"], body["fee"]) do
+    case Oracle.respond(binary_oracle_address, body["response"], body["fee"]) do
       :ok ->
         json(conn, %{:status => :ok})
 
@@ -43,10 +43,10 @@ defmodule Aehttpserver.Web.OracleController do
 
   def oracle_query(conn, _params) do
     body = conn.body_params
-    binary_oracle_hash = Bits.bech32_decode(body["hash"])
+    binary_oracle_address = Bits.bech32_decode(body["hash"])
     parsed_query = Poison.decode!(~s(#{body["query"]}))
 
-    case Oracle.query(binary_oracle_hash, parsed_query, body["fee"], body["query_fee"]) do
+    case Oracle.query(binary_oracle_address, parsed_query, body["fee"], body["query_fee"]) do
       :ok ->
         json(conn, %{:status => :ok})
 

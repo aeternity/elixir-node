@@ -15,8 +15,8 @@ defmodule Aecore.Oracle.Oracle do
   registered oracles, whenever a query references one of the node's registered
   oracles, the transaction is posted to the uri.
   """
-  @spec register(map(), map(), binary(), integer(), String.t()) :: :ok | :error
-  def register(query_format, response_format, description, fee, oracle_uri) do
+  @spec register(map(), map(), binary(), integer()) :: :ok | :error
+  def register(query_format, response_format, description, fee) do
     case OracleRegistrationTxData.create(query_format, response_format, description, fee) do
       :error ->
         :error
@@ -24,23 +24,8 @@ defmodule Aecore.Oracle.Oracle do
       tx_data ->
         signed_tx = sign_tx(tx_data)
         signed_tx_hash = SignedTx.hash_tx(signed_tx)
-        oracles_list = Application.get_env(:aecore, :operator)[:oracles]
-        updated_oracles_map = Map.put(oracles_list, signed_tx_hash, oracle_uri)
 
-        case Pool.add_transaction(signed_tx) do
-          :ok ->
-            Application.put_env(
-              :aecore,
-              :operator,
-              is_node_operator: true,
-              oracles: updated_oracles_map
-            )
-
-            :ok
-
-          :error ->
-            :error
-        end
+        Pool.add_transaction(signed_tx)
     end
   end
 
@@ -50,8 +35,8 @@ defmodule Aecore.Oracle.Oracle do
   other transaction.
   """
   @spec query(binary(), any(), integer(), integer()) :: :ok | :error
-  def query(oracle_hash, query_data, query_fee, response_fee) do
-    case OracleQueryTxData.create(oracle_hash, query_data, query_fee, response_fee) do
+  def query(oracle_address, query_data, query_fee, response_fee) do
+    case OracleQueryTxData.create(oracle_address, query_data, query_fee, response_fee) do
       :error ->
         :error
 
@@ -65,8 +50,8 @@ defmodule Aecore.Oracle.Oracle do
   transaction hash and the data of the response.
   """
   @spec respond(binary(), any(), integer()) :: :ok | :error
-  def respond(oracle_hash, response, fee) do
-    case OracleResponseTxData.create(oracle_hash, response, fee) do
+  def respond(oracle_address, response, fee) do
+    case OracleResponseTxData.create(oracle_address, response, fee) do
       :error ->
         :error
 

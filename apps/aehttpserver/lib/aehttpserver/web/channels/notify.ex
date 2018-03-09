@@ -59,7 +59,7 @@ defmodule Aehttpserver.Web.Notify do
     case tx.data do
       %OracleRegistrationTxData{} ->
         Endpoint.broadcast!("room:notifications", "new_oracle_registration", %{
-          "oracle_hash" =>
+          "oracle_address" =>
             tx
             |> SignedTx.hash_tx()
             |> OracleRegistrationTxData.bech32_encode(),

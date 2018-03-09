@@ -29,8 +29,7 @@ defmodule AecoreOracleTest do
       query_format,
       response_format,
       "Gives the rates for a currency with EUR as base",
-      10,
-      "localhost:4001"
+      10
     )
 
     Miner.mine_sync_block_to_chain()
@@ -38,14 +37,14 @@ defmodule AecoreOracleTest do
   end
 
   def query_oracle() do
-    oracle_hash = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
-    Oracle.query(oracle_hash, %{"currency" => "USD"}, 5, 10)
+    oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+    Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10)
     Miner.mine_sync_block_to_chain()
   end
 
   def oracle_respond() do
-    oracle_hash = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
-    Oracle.respond(oracle_hash, %{"value" => 1}, 5)
+    oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+    Oracle.respond(oracle_address, %{"value" => 1}, 5)
     Miner.mine_sync_block_to_chain()
   end
 end

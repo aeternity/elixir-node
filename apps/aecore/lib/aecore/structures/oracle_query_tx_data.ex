@@ -8,27 +8,27 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   @type t :: %OracleQueryTxData{
           sender: binary(),
-          oracle_hash: binary(),
+          oracle_address: binary(),
           query_data: map(),
           query_fee: non_neg_integer(),
           fee: non_neg_integer(),
           nonce: non_neg_integer()
         }
 
-  defstruct [:sender, :oracle_hash, :query_data, :query_fee, :fee, :nonce]
+  defstruct [:sender, :oracle_address, :query_data, :query_fee, :fee, :nonce]
   use ExConstructor
 
   @spec create(binary(), map(), integer(), integer()) :: OracleQueryTxData.t()
-  def create(oracle_hash, query_data, query_fee, fee) do
+  def create(oracle_address, query_data, query_fee, fee) do
     registered_oracles = Chain.registered_oracles()
 
     cond do
-      !Map.has_key?(registered_oracles, oracle_hash) ->
-        Logger.error("No oracle registered with that hash")
+      !Map.has_key?(registered_oracles, oracle_address) ->
+        Logger.error("No oracle registered with that address")
         :error
 
       !Oracle.data_valid?(
-        registered_oracles[oracle_hash].data.query_format,
+        registered_oracles[oracle_address].data.query_format,
         query_data
       ) ->
         :error
@@ -38,7 +38,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
         %OracleQueryTxData{
           sender: pubkey,
-          oracle_hash: oracle_hash,
+          oracle_address: oracle_address,
           query_data: query_data,
           query_fee: query_fee,
           fee: fee,

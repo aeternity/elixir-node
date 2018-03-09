@@ -206,7 +206,7 @@ Registering an oracle:
   To list all registered oracles -  `Aecore.Chain.Worker.registered_oracles()`
 
 Querying an oracle:
-  `Aecore.Oracle.Oracle.query(oracle_hash, query_data, query_fee, response_fee)`
+  `Aecore.Oracle.Oracle.query(oracle_address, query_data, query_fee, response_fee)`
   The oracle hash is the hash of the oracle registration transaction.This transaction
   includes two fees - a query fee which is processed as a normal fee which is given
   to the miner and a response fee which is given to the oracle as a way to cover
@@ -235,7 +235,7 @@ Oracle responses:
   post(
     "localhost:4000/oracle_response",
     {
-      "oracle_hash":
+      "oracle_address":
         "or1qpfvztl3ll7zxga0tafywl8p7vt0p4klevusu58jr6ujjy65ry77qj6atae",
       "response":{
         "value":10

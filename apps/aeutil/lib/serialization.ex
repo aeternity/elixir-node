@@ -92,11 +92,11 @@ defmodule Aeutil.Serialization do
         %{tx_data | operator: hex_binary(tx_data.operator, direction)}
       %OracleResponseTxData{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction),
-                    oracle_hash: bech32_binary(tx_data.oracle_hash,
+                    oracle_address: bech32_binary(tx_data.oracle_address,
                                                :oracle_reg_tx, direction)}
       %OracleQueryTxData{} ->
         %{tx_data | sender: hex_binary(tx_data.sender, direction),
-                    oracle_hash: bech32_binary(tx_data.oracle_hash,
+                    oracle_address: bech32_binary(tx_data.oracle_address,
                                                :oracle_reg_tx, direction)}
     end
   end
