@@ -1,19 +1,26 @@
-[![Travis Build](https://travis-ci.org/aeternity/elixir-research.svg?branch=master)](https://travis-ci.org/aeternity/elixir-research)
+[![Travis Build](https://travis-ci.org/aeternity/elixir-node.svg?branch=master)](https://travis-ci.org/aeternity/elixir-node)
 
-# **Elixir blockchain research**
+# **Aeternity Elixir Full Node**
 
-This is an elixir implementation of a basic blockchain. We aim to keep the blockchain as simple as possible and to research and experiment with different technologies
+This is an elixir full node implementation of the aeternity specification.
 
-## Getting Started
+
+## Docker Container
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory, prebuilt images are not yet published.
+
+ - Build container `docker build . -t elixir-node`
+ - Run node in container `docker run --name elixir-node -it -p 4000:4000 elixir-node`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
+
+## Getting started on your local machine
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Required packages
 
 To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html), [Rust](https://www.rust-lang.org/install.html) (for RocksDB persistence) and the source code by cloning or downloading the repository.
-
-
-### Required packages
 
 Make sure you have installed the following packages to make sure that the Wallet will work properly:
 ```bash
@@ -23,6 +30,10 @@ sudo apt-get install libgmp3-dev
 ```
 
 ## Usage
+
+#### **Fetching dependencies**
+`mix deps.get`
+
 #### **Starting the application**
 Start the application in interactive Elixir mode
 
@@ -195,12 +206,3 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
-
-### Docker
-
-A `Dockerfile` and `docker-compose.yml` are found in the base directory
-
- - Build container `docker build . -t elixir-research`
- - Run node in container `docker run --name elixir-research -it -p 4000:4000 elixir-research`
-
- - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
