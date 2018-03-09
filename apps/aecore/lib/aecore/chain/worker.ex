@@ -42,6 +42,8 @@ defmodule Aecore.Chain.Worker do
             top_height: 0}, 0}
   end
 
+  def clear_state(), do: GenServer.call(__MODULE__, :clear_state)
+
   @spec top_block() :: Block.t()
   def top_block() do
     GenServer.call(__MODULE__, :top_block)
@@ -146,6 +148,11 @@ defmodule Aecore.Chain.Worker do
   end
 
   ## Server side
+
+  def handle_call(:clear_state, _from, state) do
+    {:ok, new_state, _} = init("")
+    {:reply, :ok, new_state}
+  end
 
   def handle_call(:current_state, _from, state) do
     {:reply, state, state}

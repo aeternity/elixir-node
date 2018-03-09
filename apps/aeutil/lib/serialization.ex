@@ -138,26 +138,28 @@ defmodule Aeutil.Serialization do
 
   @spec pack_binary(term()) :: map()
   def pack_binary(term) do
-    IO.inspect "pack_bonery"
-    IO.inspect term
-    case term do
-      %Block{} ->
-        Map.from_struct(%{term | header: Map.from_struct(term.header)})
-
-      %SignedTx{} ->
-        Map.from_struct(%{term | data: Map.from_struct(term.data)})
-
-      %DataTx{} ->
-        Map.from_struct(%{term | payload: Map.from_struct(term.payload)})
-
-      %{__struct__: _} ->
-        Map.from_struct(term)
-
-      _ ->
-        term
-    end
-    |> Msgpax.pack!(iodata: false)
+    pb = pack_binary(term, "")
+    Msgpax.pack!(pb, iodata: false)
   end
+
+  def pack_binary(term) when is_list(term) do
+    for elem <- term, do: pack_binary(term, "")
+  end
+
+  def pack_binary(term, _) when is_map(term) do
+    if Map.has_key?(term, :__struct__) do
+      term
+      |> Map.from_struct()
+      |> Enum.reduce(%{},
+      fn({key, value}, term_acc) ->
+        Map.put(term_acc, key, pack_binary(value, ""))
+      end)
+    else
+      term
+    end
+  end
+
+  def pack_binary(term, _), do: term
 
   def serialize_value(value), do: serialize_value(value, "")
 

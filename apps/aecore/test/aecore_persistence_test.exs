@@ -11,7 +11,7 @@ defmodule PersistenceTest do
   setup persistance_state do
     Persistence.start_link([])
     Miner.start_link([])
-    Miner.mine_sync_block_to_chain
+
     path = Application.get_env(:aecore, :persistence)[:path]
     on_exit fn ->
       if File.exists?(path) do
@@ -41,7 +41,7 @@ defmodule PersistenceTest do
       Persistence.get_all_blocks()[Aecore.Chain.Worker.top_block_hash]
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 30_000
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
     ## For specific account
@@ -54,9 +54,19 @@ defmodule PersistenceTest do
 
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 20_000
   @tag :persistence
-  test "Get latest two blocks from rocksdb" do
+  test "Get latest two blocks from rocksdb", persistance_state do
+    path = Application.get_env(:aecore, :persistence)[:path]
+    if File.exists?(path) do
+      File.rm_rf(path)
+    else
+      # IO.inspect("ne6to")
+    end
+
+    Miner.mine_sync_block_to_chain
+    Miner.mine_sync_block_to_chain
+    Miner.mine_sync_block_to_chain
     assert 2 == Kernel.map_size(Persistence.get_blocks(2))
   end
 

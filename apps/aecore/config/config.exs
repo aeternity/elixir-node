@@ -32,7 +32,7 @@ path = Path.absname("apps/aecore")
 timestamp = "#{year}-#{month}-#{day}_"
 
 persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
+  nil -> "apps/aecore/priv/rox_db/"
   env -> env
 end
 
@@ -53,7 +53,7 @@ config :aecore, :aewallet,
   path: Path.absname(aewallet_path)
 
 config :aecore, :persistence,
-  path: Path.absname(persistence_path),
+  path: persistence_path |> Path.absname() |> Path.join("//"),
   number_of_blocks_in_memory: 100
 
 config :logger,

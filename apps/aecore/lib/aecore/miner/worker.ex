@@ -217,9 +217,6 @@ defmodule Aecore.Miner.Worker do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
-    IO.inspect chain_state
-    IO.inspect Wallet.get_public_key
-
     try do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)

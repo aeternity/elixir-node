@@ -71,11 +71,6 @@ defmodule Aecore.Structures.SpendTx do
   {account_state(), subdomain_chainstate()}
   def process_chainstate!(%__MODULE__{} = tx, from_acc, fee, nonce, block_height,
                           accounts, %{}) do
-
-    IO.inspect "---------------------------------------"
-    h = Aecore.Wallet.Worker.get_public_key("M/0")
-    IO.inspect h
-    IO.inspect "---------------------------------------"
     case preprocess_check(tx, accounts[from_acc], fee, nonce, block_height, %{}) do
       :ok ->
         new_from_account_state =
