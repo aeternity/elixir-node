@@ -10,7 +10,9 @@ defmodule AecoreOracleTest do
     query_oracle()
     oracle_respond()
 
-    assert false == Enum.empty?(Chain.oracle_responses())
+    interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
+
+    assert nil != interaction_object.response
   end
 
   def register_oracle() do
@@ -43,8 +45,8 @@ defmodule AecoreOracleTest do
   end
 
   def oracle_respond() do
-    oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
-    Oracle.respond(oracle_address, %{"value" => 1}, 5)
+    query_hash = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
+    Oracle.respond(query_hash, %{"value" => 1}, 5)
     Miner.mine_sync_block_to_chain()
   end
 end

@@ -23,8 +23,6 @@ defmodule Aecore.Oracle.Oracle do
 
       tx_data ->
         signed_tx = sign_tx(tx_data)
-        signed_tx_hash = SignedTx.hash_tx(signed_tx)
-
         Pool.add_transaction(signed_tx)
     end
   end
@@ -50,8 +48,8 @@ defmodule Aecore.Oracle.Oracle do
   transaction hash and the data of the response.
   """
   @spec respond(binary(), any(), integer()) :: :ok | :error
-  def respond(oracle_address, response, fee) do
-    case OracleResponseTxData.create(oracle_address, response, fee) do
+  def respond(query_hash, response, fee) do
+    case OracleResponseTxData.create(query_hash, response, fee) do
       :error ->
         :error
 

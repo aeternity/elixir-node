@@ -92,8 +92,8 @@ defmodule Aeutil.Serialization do
         %{tx_data | operator: hex_binary(tx_data.operator, direction)}
       %OracleResponseTxData{} ->
         %{tx_data | operator: hex_binary(tx_data.operator, direction),
-                    oracle_address: bech32_binary(tx_data.oracle_address,
-                                               :oracle_reg_tx, direction)}
+                    query_hash: bech32_binary(tx_data.query_hash,
+                                               :oracle_query_tx, direction)}
       %OracleQueryTxData{} ->
         %{tx_data | sender: hex_binary(tx_data.sender, direction),
                     oracle_address: bech32_binary(tx_data.oracle_address,
@@ -123,6 +123,8 @@ defmodule Aeutil.Serialization do
         case hash_type do
           :header ->
             Header.bech32_encode(data)
+          :oracle_query_tx ->
+            OracleQueryTxData.bech32_encode(data)
           :oracle_reg_tx ->
             OracleRegistrationTxData.bech32_encode(data)
           :txs ->

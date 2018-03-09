@@ -7,26 +7,26 @@ defmodule Aecore.Structures.OracleResponseTxData do
 
   @type t :: %OracleResponseTxData{
     operator: binary(),
-    oracle_address: binary(),
+    query_hash: binary(),
     response: map(),
     fee: non_neg_integer(),
     nonce: non_neg_integer()
   }
 
   defstruct [:operator,
-             :oracle_address,
+             :query_hash,
              :response,
              :fee,
              :nonce]
   use ExConstructor
 
   @spec create(binary(), any(), integer()) :: OracleResponseTxData.t()
-  def create(oracle_address, response, fee) do
+  def create(query_hash, response, fee) do
+    {:ok, pubkey} = Keys.pubkey()
     registered_oracles = Chain.registered_oracles()
-    response_format = registered_oracles[oracle_address].data.response_format
+    response_format = registered_oracles[pubkey].data.response_format
     if(Oracle.data_valid?(response_format, response)) do
-      {:ok, pubkey} = Keys.pubkey()
-      %OracleResponseTxData{operator: pubkey, oracle_address: oracle_address,
+      %OracleResponseTxData{operator: pubkey, query_hash: query_hash,
                             response: response, fee: fee,
                             nonce: Chain.lowest_valid_nonce()}
     else

@@ -20,7 +20,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
-  alias Aehttpclient.Client
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
@@ -42,7 +41,7 @@ defmodule Aecore.Chain.Worker do
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
     registered_oracles = generate_registered_oracles_map(Block.genesis_block())
-    oracle_responses = generate_oracle_response_map(Block.genesis_block())
+    oracle_interaction_objects = generate_oracle_interaction_objects_map(Block.genesis_block(), %{})
 
     {:ok,
      %{
@@ -50,7 +49,7 @@ defmodule Aecore.Chain.Worker do
        chain_states: chain_states,
        txs_index: txs_index,
        registered_oracles: registered_oracles,
-       oracle_responses: oracle_responses,
+       oracle_interaction_objects: oracle_interaction_objects,
        top_hash: genesis_block_hash,
        top_height: 0
      }}
@@ -174,9 +173,9 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
-  @spec oracle_responses() :: map()
-  def oracle_responses() do
-    GenServer.call(__MODULE__, :oracle_responses)
+  @spec oracle_interaction_objects() :: map()
+  def oracle_interaction_objects() do
+    GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
   def chain_state() do
@@ -254,19 +253,16 @@ defmodule Aecore.Chain.Worker do
           chain_states: chain_states,
           txs_index: txs_index,
           registered_oracles: registered_oracles,
-          oracle_responses: oracle_responses,
+          oracle_interaction_objects: oracle_interaction_objects,
           top_height: top_height
         } = state
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
-    new_txs_index = update_txs_index_or_oracle_responses(txs_index, new_block_txs_index)
+    new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
     new_block_registered_oracles = generate_registered_oracles_map(new_block)
     new_registered_oracles = Map.merge(new_block_registered_oracles, registered_oracles)
-    new_block_oracle_responses = generate_oracle_response_map(new_block)
-
-    new_oracle_responses =
-      update_txs_index_or_oracle_responses(oracle_responses, new_block_oracle_responses)
+    new_oracle_interaction_objects = generate_oracle_interaction_objects_map(new_block, oracle_interaction_objects)
 
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
 
@@ -289,7 +285,7 @@ defmodule Aecore.Chain.Worker do
         chain_states: updated_chain_states,
         txs_index: new_txs_index,
         registered_oracles: new_registered_oracles,
-        oracle_responses: new_oracle_responses
+        oracle_interaction_objects: new_oracle_interaction_objects
     }
 
     if top_height < new_block.header.height do
@@ -331,8 +327,8 @@ defmodule Aecore.Chain.Worker do
     {:reply, registered_oracles, state}
   end
 
-  def handle_call(:oracle_responses, _from, %{oracle_responses: oracle_responses} = state) do
-    {:reply, oracle_responses, state}
+  def handle_call(:oracle_interaction_objects, _from, %{oracle_interaction_objects: oracle_interaction_objects} = state) do
+    {:reply, oracle_interaction_objects, state}
   end
 
   def handle_info(:timeout, state) do
@@ -438,9 +434,9 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_txs_index_or_oracle_responses(prev_block_data, new_block_data) do
-    Map.merge(prev_block_data, new_block_data, fn _, current_list, new_block_list ->
-      current_list ++ new_block_list
+  defp update_txs_index(prev_txs_index, new_txs_index) do
+    Map.merge(prev_txs_index, new_txs_index, fn _, current_txs_index, new_txs_index ->
+      current_txs_index ++ new_txs_index
     end)
   end
 
@@ -454,16 +450,27 @@ defmodule Aecore.Chain.Worker do
     end)
   end
 
-  defp generate_oracle_response_map(block) do
-    Enum.reduce(block.txs, %{}, fn tx, acc ->
-      if match?(%OracleResponseTxData{}, tx.data) do
-        if acc[tx.data.oracle_address] != nil do
-          Map.put(acc, tx.data.oracle_address, acc[tx.data.oracle_address] ++ [tx])
-        else
-          Map.put(acc, tx.data.oracle_address, [tx])
-        end
-      else
-        acc
+  defp generate_oracle_interaction_objects_map(block, current_oracle_interaction_objects_map) do
+    Enum.reduce(block.txs, current_oracle_interaction_objects_map, fn tx, acc ->
+      case tx.data do
+        %OracleQueryTxData{} ->
+          query_tx_hash = SignedTx.hash_tx(tx)
+          Map.put(acc, query_tx_hash, %{query: tx, response: nil})
+
+        %OracleResponseTxData{} ->
+          if Map.has_key?(acc, tx.data.query_hash) do
+            interaction_object = Map.get(acc, tx.data.query_hash)
+            if interaction_object.response == nil do
+              Map.put(acc, tx.data.query_hash, %{interaction_object | response: tx})
+            else
+              acc
+            end
+          else
+            acc
+          end
+
+        _ ->
+          acc
       end
     end)
   end

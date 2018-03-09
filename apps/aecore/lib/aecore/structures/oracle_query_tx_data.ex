@@ -3,6 +3,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
+  alias Aeutil.Bits
 
   require Logger
 
@@ -45,5 +46,10 @@ defmodule Aecore.Structures.OracleQueryTxData do
           nonce: Chain.lowest_valid_nonce()
         }
     end
+  end
+
+  @spec bech32_encode(binary()) :: String.t()
+  def bech32_encode(bin) do
+    Bits.bech32_encode("qy", bin)
   end
 end

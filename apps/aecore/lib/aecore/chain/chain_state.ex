@@ -106,7 +106,7 @@ defmodule Aecore.Chain.ChainState do
       ) do
     if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
 
-    operator_address = Chain.registered_oracles()[transaction.data.oracle_address].data.operator
+    operator_address = transaction.data.oracle_address
     operator_state = Map.get(chain_state, operator_address, %{balance: 0, nonce: 0, locked: []})
 
     sender_updated_state =
