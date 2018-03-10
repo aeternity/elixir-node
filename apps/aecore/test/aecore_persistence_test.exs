@@ -12,11 +12,14 @@ defmodule PersistenceTest do
     Persistence.start_link([])
     Miner.start_link([])
 
-    path = Application.get_env(:aecore, :persistence)[:path]
+    Chain.clear_state()
+
+    Miner.mine_sync_block_to_chain
+    Miner.mine_sync_block_to_chain
+    Miner.mine_sync_block_to_chain
+
     on_exit fn ->
-      if File.exists?(path) do
-        File.rm_rf(path)
-      end
+      Persistence.delete_all_blocks()
       :ok
     end
 
@@ -57,17 +60,15 @@ defmodule PersistenceTest do
   @tag timeout: 20_000
   @tag :persistence
   test "Get latest two blocks from rocksdb", persistance_state do
-    path = Application.get_env(:aecore, :persistence)[:path]
-    if File.exists?(path) do
-      File.rm_rf(path)
-    else
-      # IO.inspect("ne6to")
-    end
+    top_height = Chain.top_height
 
-    Miner.mine_sync_block_to_chain
-    Miner.mine_sync_block_to_chain
-    Miner.mine_sync_block_to_chain
-    assert 2 == Kernel.map_size(Persistence.get_blocks(2))
+    Map.values(Persistence.get_blocks(2))
+    [block1, block2] =
+      Enum.sort(Map.values(Persistence.get_blocks(2)),
+        fn (b1, b2) -> b1.header.height < b2.header.height end)
+
+    assert block1.header.height == top_height - 1
+    assert block2.header.height == top_height
   end
 
   @tag timeout: 20_000

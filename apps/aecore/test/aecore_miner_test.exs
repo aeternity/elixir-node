@@ -1,13 +1,21 @@
 defmodule MinerTest do
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 
+  setup do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
+  end
+
   @tag timeout: 20_000
   @tag :miner
-  test "mine_next_block" do
+  test "mine_next_block", setup do
     Miner.mine_sync_block_to_chain
     assert Chain.top_height() >= 1
     assert Chain.top_block().header.height >= 1

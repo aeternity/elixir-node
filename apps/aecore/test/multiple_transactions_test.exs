@@ -4,6 +4,7 @@ defmodule MultipleTransactionsTest do
   """
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -14,6 +15,10 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Wallet.Worker, as: Wallet
 
   setup do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
     Pool.start_link([])
     [
       account: {Wallet.get_public_key(), Wallet.get_private_key()},
@@ -26,7 +31,6 @@ defmodule MultipleTransactionsTest do
   @tag timeout: 10_000_000
   @tag :multiple_transaction
   test "in one block", setup do
-    init_test()
     Chain.clear_state()
 
     account = setup.account
@@ -108,7 +112,6 @@ defmodule MultipleTransactionsTest do
   @tag timeout: 10_000_000
   @tag :multiple_transaction
   test "in one block, miner collects all the fees from the transactions", setup do
-    init_test()
     Chain.clear_state()
 
     account = setup.account
@@ -163,13 +166,6 @@ defmodule MultipleTransactionsTest do
 
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, from_acc_priv_key)
     signed_tx
-  end
-
-  def init_test() do
-    path = Application.get_env(:aecore, :persistence)[:path]
-    if File.exists?(path) do
-      File.rm_rf(path)
-    end
   end
 
 end

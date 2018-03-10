@@ -6,6 +6,7 @@ defmodule AecoreValidationTest do
   use ExUnit.Case, async: false, seed: 0
   doctest Aecore.Chain.BlockValidation
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -17,6 +18,11 @@ defmodule AecoreValidationTest do
   alias Aecore.Wallet.Worker, as: Wallet
 
   setup ctx do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
+
     [
       to_acc: Wallet.get_public_key("M/0"),
       lock_time_block: Chain.top_block().header.height +

@@ -2,6 +2,7 @@ defmodule AecoreCuckooTest do
   require Logger
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Pow.Cuckoo
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -12,16 +13,24 @@ defmodule AecoreCuckooTest do
   @moduledoc """
   Unit tests for the cuckoo module
   """
-   @tag timeout: 10_000
+
+  setup do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
+  end
+
+  @tag timeout: 10_000
    @tag :cuckoo
-   test "Generate solution with a winning nonce and high target threshold" do
+   test "Generate solution with a winning nonce and high target threshold", setup do
      %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
      assert found_solution == wining_solution()
    end
 
    @tag timeout: 10_000
    @tag :cuckoo
-   test "Verify solution with a high target threshold" do
+   test "Verify solution with a high target threshold", setup do
      header = Cuckoo.generate(block_candidate().header)
      assert true = Cuckoo.verify(header)
    end

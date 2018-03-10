@@ -4,6 +4,7 @@ defmodule AecoreTxsPoolTest do
   """
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -13,6 +14,11 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Wallet.Worker, as: Wallet
 
   setup wallet do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
+
     [
       a_pub_key: Wallet.get_public_key(),
       priv_key: Wallet.get_private_key(),
@@ -26,7 +32,7 @@ defmodule AecoreTxsPoolTest do
     # Empty the pool from the other tests
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1 
+    nonce1 = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
     payload1 = %{to_acc: wallet.b_pub_key,
                  value: 5,
                  lock_time_block: 0}
@@ -56,7 +62,7 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", wallet do
-    nonce = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1 
+    nonce = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
     payload = %{to_acc: wallet.b_pub_key,
                 value: -5,
                 lock_time_block: 0}

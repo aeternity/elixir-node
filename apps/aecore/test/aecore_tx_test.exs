@@ -5,6 +5,7 @@ defmodule AecoreTxTest do
 
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
@@ -14,6 +15,10 @@ defmodule AecoreTxTest do
   alias Aeutil.Serialization
 
   setup tx do
+    on_exit fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end
     to_account = Wallet.get_public_key("M/0")
     [
       nonce: Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1,

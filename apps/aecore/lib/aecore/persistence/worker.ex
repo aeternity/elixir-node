@@ -88,6 +88,10 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
 
+  def delete_all_blocks() do
+    GenServer.call(__MODULE__, :delete_all_blocks)
+  end
+
   ## Server side
 
   def init(_) do
@@ -182,6 +186,12 @@ defmodule Aecore.Persistence.Worker do
     {:reply, all_blocks, state}
   end
 
+  def handle_call(:delete_all_blocks, _from,
+    %{blocks_family: blocks_family} = state) do
+    for {key, _} <- Rox.stream(blocks_family), do: Rox.delete(blocks_family, key)
+    {:reply, :ok, state}
+  end
+
   def handle_call({:get_account_chain_state, account}, _from,
     %{chain_state_family: chain_state_family} = state) do
     {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
@@ -195,8 +205,6 @@ defmodule Aecore.Persistence.Worker do
 
   def handle_call(:get_all_accounts_chain_states, _from,
     %{chain_state_family: chain_state_family} = state) do
-    # {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
-
     chainstate =
       chain_state_family
       |> Rox.stream()
