@@ -52,53 +52,6 @@ defmodule Aeutil.Serialization do
     %SignedTx{data: data, signature: signature}
   end
 
-
-
-
-
-  #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  # @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
-  # def block(block, direction) do
-  #   new_header = %{block.header |
-  #     chain_state_hash: bech32_binary(block.header.chain_state_hash, :chainstate, direction),
-  #     prev_hash: bech32_binary(block.header.prev_hash, :header, direction),
-  #     txs_hash: bech32_binary(block.header.txs_hash, :txs, direction)}
-  #   new_txs = Enum.map(block.txs, fn(tx) -> tx(tx, direction) end)
-  #   Block.new(%{block | header: Header.new(new_header), txs: new_txs})
-  # end
-
-  # @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
-  # def tx(tx, direction) do
-  #   new_data = %{tx.data |
-  #                from_acc: hex_binary(tx.data.from_acc, direction),
-  #                to_acc: hex_binary(tx.data.to_acc, direction)}
-  #   new_signature = base64_binary(tx.signature, direction)
-  #   %SignedTx{data: SpendTx.new(new_data), signature: new_signature}
-  # end
-  #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  # @spec bech32_binary(binary() | String.t, Serialization.hash_types(),
-  #                     :serialize | :deserialize) :: String.t() | binary()
-  # def bech32_binary(data, hash_type, direction) do
-  #   case direction do
-  #     :serialize ->
-  #       case hash_type do
-  #         :header ->
-  #           Header.bech32_encode(data)
-
-  #         :txs ->
-  #           SignedTx.bech32_encode_root(data)
-
-  #         :chainstate ->
-  #           ChainState.bech32_encode(data)
-  #       end
-
-  #     :deserialize ->
-  #       Bits.bech32_decode(data)
-  #   end
-  # end
-
-
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)
@@ -179,7 +132,7 @@ defmodule Aeutil.Serialization do
       end
 
     Enum.reduce(value, %{}, fn({key, val}, new_val)->
-      Map.put(new_val, key, serialize_value(val, key))
+      Map.put(new_val, serialize_value(key), serialize_value(val, key))
     end)
   end
 
@@ -213,14 +166,14 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value) when is_map(value) do
     Enum.reduce(value, %{}, fn({key, val}, new_value) ->
-        Map.put(new_value, deserialize_value(key), deserialize_value(val))
+        Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
       end)
   end
 
   def deserialize_value(value) when is_binary(value) do
-    case Base.decode16(value, case: :upper) do
-      {:ok, _} -> Bits.bech32_decode(value)
-      _-> Parser.to_atom!(value)
+    case Bits.bech32_decode(value) do
+      {:error, _reason} -> Parser.to_atom!(value)
+      value -> value
     end
   end
 
