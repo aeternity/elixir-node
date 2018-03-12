@@ -8,7 +8,7 @@ use Mix.Config
 # with brunch.io to recompile .js and .css sources.
 
 port =  case System.get_env("PORT") do
-  nil -> 4000
+  nil -> 10_000
   env -> env
 end
 

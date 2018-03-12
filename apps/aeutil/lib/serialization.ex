@@ -56,22 +56,12 @@ defmodule Aeutil.Serialization do
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)
-  def hex_binary(data, _),  do: nil
+  def hex_binary(_, _),  do: nil
 
   @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
-  def base64_binary(data, direction) do
-    if data != nil do
-      case direction do
-        :serialize ->
-          Base.encode64(data)
-
-        :deserialize ->
-          Base.decode64!(data)
-      end
-    else
-      nil
-    end
-  end
+  def base64_binary(data, :serialize) when data != nil, do: Base.encode64(data)
+  def base64_binary(data, :deserialize) when data != nil, do: Base.decode64!(data)
+  def base64_binary(_, _), do: nil
 
   def merkle_proof(proof, acc) when is_tuple(proof) do
     proof
