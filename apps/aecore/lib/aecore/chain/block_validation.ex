@@ -1,4 +1,5 @@
 defmodule Aecore.Chain.BlockValidation do
+  require Logger
 
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
@@ -46,7 +47,7 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
-      !valid_header_timestamp?(new_block) -> 
+      !valid_header_timestamp?(new_block) ->
         throw({:error, "Invalid header timestamp"})
 
       !is_difficulty_target_met ->
@@ -103,6 +104,34 @@ defmodule Aecore.Chain.BlockValidation do
       SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
     end)
   end
+
+  # @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
+  # def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
+  #   {valid_txs_list, _} = List.foldl(
+  #     txs_list,
+  #     {[], chain_state},
+  #     fn (tx, {valid_txs_list, chain_state_acc}) ->
+  #       {{is_valid, reason}, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
+  #       if is_valid do
+  #         {valid_txs_list ++ [tx], updated_chain_state}
+  #       else
+  #         Logger.warn("Filtering out invalid tx. Reason: #{reason}")
+  #         {valid_txs_list, chain_state_acc}
+  #       end
+  #     end
+  #   )
+
+  #   valid_txs_list
+  # end
+
+  # @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {true, map()} | {{false, binary()}, map()}
+  # defp validate_transaction_chainstate(tx, chain_state, block_height) do
+  #   try do
+  #     {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
+  #   catch
+  #     {:error, reason} -> {{false, reason}, chain_state}
+  #   end
+  # end
 
   @spec calculate_root_hash(list(SignedTx.t())) :: binary()
   def calculate_root_hash(txs) when txs == [] do

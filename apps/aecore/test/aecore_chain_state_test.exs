@@ -8,7 +8,8 @@ defmodule AecoreChainStateTest do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState, as: ChainState
+  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -44,46 +45,46 @@ defmodule AecoreChainStateTest do
     chain_state =
       ChainState.calculate_and_validate_chain_state!(
         [signed_tx1, signed_tx2],
-        %{:accounts => %{wallet.a_pub_key => %{balance: 3,
-                                  nonce: 100,
-                                  locked: [%{amount: 1,
-                                             block: next_block_height}]},
-                         wallet.b_pub_key => %{balance: 5,
-                                  nonce: 1,
-                                  locked: [%{amount: 1,
-                                             block: next_block_height + 1}]},
-                         wallet.c_pub_key => %{balance: 4,
-                                  nonce: 1,
-                                  locked: [%{amount: 1,
-                                             block: next_block_height}]}}},
-      1)
+        %{:accounts => %{wallet.a_pub_key => %Account{balance: 3,
+                                                      nonce: 100,
+                                                      locked: [%{amount: 1,
+                                                                 block: next_block_height}]},
+                         wallet.b_pub_key => %Account{balance: 5,
+                                                      nonce: 1,
+                                                      locked: [%{amount: 1,
+                                                                 block: next_block_height + 1}]},
+                         wallet.c_pub_key => %Account{balance: 4,
+                                                      nonce: 1,
+                                                      locked: [%{amount: 1,
+                                                                 block: next_block_height}]}}},
+        1)
 
-      assert %{:accounts => %{wallet.a_pub_key => %{balance: 6,
-                                                    nonce: 100,
-                                                    locked: [%{amount: 1,
-                                                               block: next_block_height}]},
-                              wallet.b_pub_key => %{balance: 4,
-                                                    nonce: 2,
-                                                    locked: [%{amount: 1,
-                                                               block: next_block_height + 1}]},
-                              wallet.c_pub_key => %{balance: 2,
-                                                    nonce: 2,
-                                                    locked: [%{amount: 1,
-                                                               block: next_block_height}]}}} == chain_state
+    assert %{:accounts => %{wallet.a_pub_key => %Account{balance: 6,
+                                                         nonce: 100,
+                                                         locked: [%{amount: 1,
+                                                                    block: next_block_height}]},
+                            wallet.b_pub_key => %Account{balance: 4,
+                                                         nonce: 2,
+                                                         locked: [%{amount: 1,
+                                                                    block: next_block_height + 1}]},
+                            wallet.c_pub_key => %Account{balance: 2,
+                                                         nonce: 2,
+                                                         locked: [%{amount: 1,
+                                                                    block: next_block_height}]}}} == chain_state
 
     new_chain_state_locked_amounts =
       ChainState.update_chain_state_locked(chain_state, next_block_height)
 
-    assert %{:accounts => %{wallet.a_pub_key => %{balance: 7,
-                                     nonce: 100,
-                                     locked: []},
-                            wallet.b_pub_key => %{balance: 4,
-                                     nonce: 2,
-                                     locked: [%{amount: 1,
-                                                block: next_block_height + 1}]},
-                            wallet.c_pub_key => %{balance: 3,
-                                                  nonce: 2,
-                                                  locked: []}}} == new_chain_state_locked_amounts
+    assert %{:accounts => %{wallet.a_pub_key => %Account{balance: 7,
+                                                         nonce: 100,
+                                                         locked: []},
+                            wallet.b_pub_key => %Account{balance: 4,
+                                                         nonce: 2,
+                                                         locked: [%{amount: 1,
+                                                                    block: next_block_height + 1}]},
+                            wallet.c_pub_key => %Account{balance: 3,
+                                                         nonce: 2,
+                                                         locked: []}}} == new_chain_state_locked_amounts
   end
 
 end

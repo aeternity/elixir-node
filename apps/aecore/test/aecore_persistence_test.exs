@@ -30,14 +30,14 @@ defmodule PersistenceTest do
      account2: account2]
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 30_000
   @tag :persistence
   test "Get last mined block by his hash from the rocksdb" do
     hash = BlockValidation.block_header_hash(Chain.top_block.header)
     assert {:ok, %{header: _header}} = Persistence.get_block_by_hash(hash)
   end
 
-  @tag timeout: 20_000
+  @tag timeout: 30_000
   @tag :persistence
   test "Get all blocks from the rocksdb" do
     assert Aecore.Chain.Worker.top_block ==

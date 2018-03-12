@@ -20,15 +20,14 @@ defmodule  Aecore.Structures.DataTx do
   }
 
   @doc """
-  Definition of Aecore DataT structure
+  Definition of Aecore DataTx structure
 
   ## Parameters
-  - type: To account is the public address of the account receiving the transaction
-  - payload:
-  - from_acc: From account is the public address of one account originating the transaction
-  - fee: The amount of a transaction
-  - nonce: A random integer generated on initialisation of a transaction.Must be unique
-
+  - type: The type of transaction that may be added to the blockchain
+  - payload: The strcuture of the specified transaction type
+  - from_acc: The public address of the account originating the transaction
+  - fee: The amount of tokens given to the miner
+  - nonce: A random integer generated on initialisation of a transaction (must be unique!)
   """
   defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
@@ -53,6 +52,7 @@ defmodule  Aecore.Structures.DataTx do
     end
   end
 
+  @spec process_chainstate(DataTx.t(), non_neg_integer(), map()) :: map()
   def process_chainstate(%__MODULE__{} = tx, block_height, chainstate) do
     account_state = chainstate.accounts
     subdomain_chainstate = Map.get(chainstate, tx.type, %{})
@@ -65,7 +65,8 @@ defmodule  Aecore.Structures.DataTx do
       Map.put(chainstate, :accounts, new_accounts_state) ## TODO return the subdomain_chainstate as well
   end
 
-  def serialize(%__MODULE__{} = tx, :serialize) do
+  @spec serialize(DataTx.t()) :: map()
+  def serialize(%__MODULE__{} = tx) do
     tx
     |> Map.from_struct()
     |> Enum.reduce(%{}, fn({key, value}, new_tx) ->
@@ -73,7 +74,8 @@ defmodule  Aecore.Structures.DataTx do
     end)
   end
 
-  def serialize(%{} = tx, :deserialize) do
+  @spec deserialize(map()) :: DataTx.t()
+  def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 
     init(data_tx.type,

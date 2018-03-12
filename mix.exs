@@ -2,7 +2,7 @@ defmodule EpochElixir.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :elixir_research,
+    [app: :elixir_node,
      apps_path: "apps",
      version: "0.1.0",
      elixir: "~> 1.6",

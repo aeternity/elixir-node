@@ -14,6 +14,13 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Wallet.Worker, as: Wallet
 
   setup wallet do
+    path = Application.get_env(:aecore, :persistence)[:path]
+    if File.exists?(path) do
+      File.rm_rf(path)
+    end
+
+    Chain.clear_state()
+
     on_exit fn ->
       Persistence.delete_all_blocks()
       :ok
@@ -44,7 +51,6 @@ defmodule AecoreTxsPoolTest do
                  lock_time_block: 0}
     tx2 = DataTx.init(SpendTx, payload2, wallet.a_pub_key, 10, nonce2)
 
-    priv_key = Wallet.get_private_key
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, wallet.priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, wallet.priv_key)
 
@@ -71,5 +77,4 @@ defmodule AecoreTxsPoolTest do
     {:ok, signed_tx} = SignedTx.sign_tx(tx1, wallet.priv_key)
     assert :error = Pool.add_transaction(signed_tx)
   end
-
 end

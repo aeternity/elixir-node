@@ -7,6 +7,7 @@ defmodule Aecore.Structures.SpendTx do
 
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   @typedoc "Arbitrary structure data of a transaction"
   @type payload :: %__MODULE__{} | map()
@@ -21,9 +22,7 @@ defmodule Aecore.Structures.SpendTx do
   @type subdomain_chainstate() :: map()
 
   @typedoc "Structure that holds the account info"
-  @type account_state :: %{pub_key() => %{balance: integer(),
-                                         locked: [%{amount: integer(), block: integer()}],
-                                         nonce: integer()}}
+  @type account_state :: %{pub_key() => Account.t()}
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %__MODULE__{
@@ -37,8 +36,8 @@ defmodule Aecore.Structures.SpendTx do
 
   ## Parameters
   - to_acc: To account is the public address of the account receiving the transaction
-  - value: The amount of a transaction
-  - lock_time_block: To which block the funds will become available
+  - value: The amount of tokens send through the transaction
+  - lock_time_block: In which block the tokens will become available
   """
   defstruct [:to_acc, :value, :lock_time_block]
   use ExConstructor
@@ -79,7 +78,7 @@ defmodule Aecore.Structures.SpendTx do
           |> transaction_out(block_height, tx.value * -1, nonce, -1)
         new_accounts = Map.put(accounts, from_acc, new_from_account_state)
 
-        to_acc = Map.get(accounts, tx.to_acc, %{balance: 0, nonce: 0, locked: []})
+        to_acc = Map.get(accounts, tx.to_acc, Account.empty())
         new_to_account_state =
           transaction_in(to_acc, block_height, tx.value, tx.lock_time_block)
         Map.put(new_accounts, tx.to_acc, new_to_account_state)

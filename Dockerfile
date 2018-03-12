@@ -25,9 +25,9 @@ ENV PATH=/home/elixir/.cargo/env:/home/elixir/.cargo/bin:$PATH
 
 # copy source
 USER root
-WORKDIR /elixir_research
-COPY . /elixir_research
-RUN chown -R elixir:elixir /elixir_research
+WORKDIR /elixir_node
+COPY . /elixir_node
+RUN chown -R elixir:elixir /elixir_node
 USER elixir
 
 # set environment

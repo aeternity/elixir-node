@@ -1,6 +1,7 @@
 defmodule Aecore.Structures.Transaction do
 
   alias Aecore.Structures.DataTx
+  alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
 
   @typedoc "Arbitrary structure data of a transaction"
@@ -16,9 +17,7 @@ defmodule Aecore.Structures.Transaction do
   @type pub_key :: binary()
 
   @typedoc "Structure that holds the account info"
-  @type account_state :: %{pub_key() => %{balance: integer(),
-                                         locked: [%{amount: integer(), block: integer()}],
-                                         nonce: integer()}}
+  @type account_state :: %{pub_key() => Account.t()}
 
   @typedoc "Structure that holds specific transaction info in the chainstate"
   @type subdomain_chainstate() :: map()

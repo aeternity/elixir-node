@@ -12,6 +12,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aeutil.Bits
+  alias Aewallet.Encoding
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -40,14 +41,14 @@ defmodule Aeutil.Serialization do
 
   @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
   def tx(tx, :serialize) do
-    data = DataTx.serialize(tx.data, :serialize)
+    data = DataTx.serialize(tx.data)
     signature = base64_binary(tx.signature, :serialize)
     %{"data" => data, "signature" => signature}
   end
 
   def tx(tx, :deserialize) do
     tx_data = tx["data"]
-    data = DataTx.serialize(tx_data, :deserialize)
+    data = DataTx.deserialize(tx_data)
     signature = base64_binary(tx["signature"], :deserialize)
     %SignedTx{data: data, signature: signature}
   end
@@ -60,7 +61,7 @@ defmodule Aeutil.Serialization do
   @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def base64_binary(data, direction) do
     if data != nil do
-      case(direction) do
+      case direction do
         :serialize ->
           Base.encode64(data)
 
@@ -84,7 +85,7 @@ defmodule Aeutil.Serialization do
     if is_tuple(head) do
       merkle_proof(Tuple.to_list(head), acc)
     else
-      acc = [hex_binary(head, :serialize)| acc]
+      acc = [serialize_value(head, :account) | acc]
       merkle_proof(tail, acc)
     end
   end
