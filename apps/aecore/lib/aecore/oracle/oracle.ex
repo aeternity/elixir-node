@@ -10,14 +10,11 @@ defmodule Aecore.Oracle.Oracle do
 
   @doc """
   Registers an oracle with the given requirements for queries and responses,
-  also has a description field that gives string information about the oracle,
-  an oracle uri is passed as the last argument which is mapped to the node's
-  registered oracles, whenever a query references one of the node's registered
-  oracles, the transaction is posted to the uri.
+  a fee that should be paid by queries and a TTL.
   """
-  @spec register(map(), map(), binary(), integer()) :: :ok | :error
-  def register(query_format, response_format, description, fee) do
-    case OracleRegistrationTxData.create(query_format, response_format, description, fee) do
+  @spec register(map(), map(), integer(), integer()) :: :ok | :error
+  def register(query_format, response_format, query_fee, ttl) do
+    case OracleRegistrationTxData.create(query_format, response_format, query_fee, ttl) do
       :error ->
         :error
 
@@ -28,13 +25,17 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @doc """
-  Creates a query transaction with the given registered oracle hash, data query
-  and a fee that is given to the oracle. It also has a fee field like every
-  other transaction.
+  Creates a query transaction with the given oracle address, data query
+  and a TTL of the query and response.
   """
   @spec query(binary(), any(), integer(), integer()) :: :ok | :error
-  def query(oracle_address, query_data, query_fee, response_fee) do
-    case OracleQueryTxData.create(oracle_address, query_data, query_fee, response_fee) do
+  def query(oracle_address, query_data, query_ttl, response_ttl) do
+    case OracleQueryTxData.create(
+           oracle_address,
+           query_data,
+           query_ttl,
+           response_ttl
+         ) do
       :error ->
         :error
 
@@ -44,7 +45,7 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @doc """
-  Creates an oracle response transaction with the oracle referenced by its
+  Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
   @spec respond(binary(), any(), integer()) :: :ok | :error

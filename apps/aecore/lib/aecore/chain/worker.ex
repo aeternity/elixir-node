@@ -41,7 +41,9 @@ defmodule Aecore.Chain.Worker do
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
     registered_oracles = generate_registered_oracles_map(Block.genesis_block())
-    oracle_interaction_objects = generate_oracle_interaction_objects_map(Block.genesis_block(), %{})
+
+    oracle_interaction_objects =
+      generate_oracle_interaction_objects_map(Block.genesis_block(), %{})
 
     {:ok,
      %{
@@ -260,9 +262,14 @@ defmodule Aecore.Chain.Worker do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
+    updated_oracles = remove_expired_oracles(registered_oracles, new_block.header.height)
+    IO.inspect(updated_oracles)
+
     new_block_registered_oracles = generate_registered_oracles_map(new_block)
-    new_registered_oracles = Map.merge(new_block_registered_oracles, registered_oracles)
-    new_oracle_interaction_objects = generate_oracle_interaction_objects_map(new_block, oracle_interaction_objects)
+    new_registered_oracles = Map.merge(new_block_registered_oracles, updated_oracles)
+
+    new_oracle_interaction_objects =
+      generate_oracle_interaction_objects_map(new_block, oracle_interaction_objects)
 
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
 
@@ -327,7 +334,11 @@ defmodule Aecore.Chain.Worker do
     {:reply, registered_oracles, state}
   end
 
-  def handle_call(:oracle_interaction_objects, _from, %{oracle_interaction_objects: oracle_interaction_objects} = state) do
+  def handle_call(
+        :oracle_interaction_objects,
+        _from,
+        %{oracle_interaction_objects: oracle_interaction_objects} = state
+      ) do
     {:reply, oracle_interaction_objects, state}
   end
 
@@ -450,6 +461,16 @@ defmodule Aecore.Chain.Worker do
     end)
   end
 
+  defp remove_expired_oracles(oracles, block_height) do
+    Enum.reduce(oracles, oracles, fn {address, tx}, acc ->
+      if tx.data.ttl == block_height do
+        Map.delete(acc, address)
+      else
+        acc
+      end
+    end)
+  end
+
   defp generate_oracle_interaction_objects_map(block, current_oracle_interaction_objects_map) do
     Enum.reduce(block.txs, current_oracle_interaction_objects_map, fn tx, acc ->
       case tx.data do
@@ -460,6 +481,7 @@ defmodule Aecore.Chain.Worker do
         %OracleResponseTxData{} ->
           if Map.has_key?(acc, tx.data.query_hash) do
             interaction_object = Map.get(acc, tx.data.query_hash)
+
             if interaction_object.response == nil do
               Map.put(acc, tx.data.query_hash, %{interaction_object | response: tx})
             else

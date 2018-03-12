@@ -13,14 +13,26 @@ defmodule Aecore.Structures.OracleQueryTxData do
           query_data: map(),
           query_fee: non_neg_integer(),
           fee: non_neg_integer(),
+          query_ttl: non_neg_integer(),
+          response_ttl: non_neg_integer(),
           nonce: non_neg_integer()
         }
 
-  defstruct [:sender, :oracle_address, :query_data, :query_fee, :fee, :nonce]
+  defstruct [
+    :sender,
+    :oracle_address,
+    :query_data,
+    :query_fee,
+    :fee,
+    :query_ttl,
+    :response_ttl,
+    :nonce
+  ]
+
   use ExConstructor
 
-  @spec create(binary(), map(), integer(), integer()) :: OracleQueryTxData.t()
-  def create(oracle_address, query_data, query_fee, fee) do
+  @spec create(binary(), any(), integer(), integer()) :: OracleQueryTxData.t()
+  def create(oracle_address, query_data, query_ttl, response_ttl) do
     registered_oracles = Chain.registered_oracles()
 
     cond do
@@ -41,11 +53,25 @@ defmodule Aecore.Structures.OracleQueryTxData do
           sender: pubkey,
           oracle_address: oracle_address,
           query_data: query_data,
-          query_fee: query_fee,
-          fee: fee,
+          query_fee: get_oracle_query_fee(oracle_address),
+          fee: calculate_minimum_fee(query_ttl),
+          query_ttl: query_ttl,
+          response_ttl: response_ttl,
           nonce: Chain.lowest_valid_nonce()
         }
     end
+  end
+
+  @spec get_oracle_query_fee(binary()) :: integer()
+  def get_oracle_query_fee(oracle_address) do
+    Chain.registered_oracles()[oracle_address].data.query_fee
+  end
+
+  @spec calculate_minimum_fee(integer()) :: integer()
+  def calculate_minimum_fee(ttl) do
+    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
+    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
+    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec bech32_encode(binary()) :: String.t()
