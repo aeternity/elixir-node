@@ -9,6 +9,12 @@ defmodule Aecore.Wallet.Worker do
   alias Aewallet.KeyPair
   alias Aewallet.Encoding
 
+  @typedoc "Public key representing an account"
+  @type pubkey() :: binary()
+
+  @typedoc "Private key of the account"
+  @type privkey() :: binary()
+
   @typedoc "Wallet type"
   @type wallet_type :: :ae | :btc
 

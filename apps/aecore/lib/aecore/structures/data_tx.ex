@@ -3,17 +3,28 @@ defmodule  Aecore.Structures.DataTx do
   Aecore structure of a transaction data.
   """
 
+  alias Aecore.Structures.DataTx
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+
+  require Logger
+
+  @typedoc "Name of the specified transaction module"
+  @type txType :: SpendTx | atom()
+
+  @typedoc "Structure of a transaction that may be added to be blockchain"
+  @type payload :: SpendTx.t() | map()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
   @typedoc "Structure of the main transaction wrapper"
-  @type t :: %__MODULE__{
-    type: atom(),
-    payload: any(),
+  @type t :: %DataTx{
+    type: txType(),
+    payload: payload(),
     from_acc: binary(),
     fee: non_neg_integer(),
     nonce: non_neg_integer()
@@ -32,41 +43,57 @@ defmodule  Aecore.Structures.DataTx do
   defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
 
-  @spec init(atom(), map(), binary(), integer(), integer()) :: {:ok, DataTx.t()}
+  @spec init(txType(), payload(), binary(), integer(), integer()) :: DataTx.t()
   def init(type, payload, from_acc, fee, nonce) do
-    %__MODULE__{type: type,
+    %DataTx{type: type,
                 payload: type.init(payload),
                 from_acc: from_acc,
                 fee: fee,
                 nonce: nonce}
   end
 
-  @spec is_valid(DataTx.t()) :: :ok | {:error, reason()}
-  def is_valid(%__MODULE__{type: type, payload: payload, fee: fee}) do
+  @spec is_valid?(DataTx.t()) :: boolean()
+  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
     if fee >= 0 do
       payload
       |> type.init()
-      |> type.is_valid()
+      |> type.is_valid?()
     else
-      {:error, "Fee not enough"}
+      Logger.error("Fee not enough")
+      false
     end
   end
 
-  @spec process_chainstate(DataTx.t(), non_neg_integer(), map()) :: map()
-  def process_chainstate(%__MODULE__{} = tx, block_height, chainstate) do
-    account_state = chainstate.accounts
-    subdomain_chainstate = Map.get(chainstate, tx.type, %{})
+  @spec process_chainstate(DataTx.t(), non_neg_integer(),
+    ChainState.chainstate()) :: ChainState.chainstate()
+  def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
+    try do
+      account_state = chainstate.accounts
+      subdomain_cs = Map.get(chainstate, tx.type, %{})
 
-    new_accounts_state =
-      tx.payload
-      |> tx.type.init()
-      |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
-                                account_state, subdomain_chainstate)
-      Map.put(chainstate, :accounts, new_accounts_state) ## TODO return the subdomain_chainstate as well
+      {new_accounts_state, new_subdomain_cs} =
+        tx.payload
+        |> tx.type.init()
+        |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
+           account_state, subdomain_cs)
+
+        new_chainstate =
+        if Map.has_key?(chainstate, tx.type) do
+          Map.put(chainstate, tx.type, new_subdomain_cs)
+        else
+          chainstate
+        end
+
+        Map.put(new_chainstate, :accounts, new_accounts_state)
+    catch
+      {:error, reason} ->
+        Logger.error(reason)
+      chainstate
+    end
   end
 
   @spec serialize(DataTx.t()) :: map()
-  def serialize(%__MODULE__{} = tx) do
+  def serialize(%DataTx{} = tx) do
     tx
     |> Map.from_struct()
     |> Enum.reduce(%{}, fn({key, value}, new_tx) ->
@@ -74,7 +101,7 @@ defmodule  Aecore.Structures.DataTx do
     end)
   end
 
-  @spec deserialize(map()) :: DataTx.t()
+  @spec deserialize(payload()) :: DataTx.t()
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 

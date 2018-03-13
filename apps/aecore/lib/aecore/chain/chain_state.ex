@@ -8,24 +8,17 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
   require Logger
 
-  @typedoc "Public key representing an account"
-  @type pubkey() :: binary()
-
-  @typedoc "State of an account"
-  @type acc_state() :: %{balance: integer(),
-                         locked: [%{amount: integer(), block: integer()}],
-                         nonce: integer()}
-
   @typedoc "Structure of the accounts"
-  @type accounts() :: %{pubkey() => acc_state()}
+  @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
   @typedoc "Structure of the chainstate"
-  @type chainstate() :: map()
+  @type chainstate() :: %{:accounts => accounts()}
 
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
@@ -61,8 +54,8 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state_hash(chainstate()) :: binary()
   def calculate_chain_state_hash(chainstate) do
     merkle_tree_data =
-    for {accounts, data} <- chainstate.accounts do
-      {accounts, Serialization.pack_binary(data)}
+    for {account, data} <- chainstate.accounts do
+      {account, Serialization.pack_binary(data)}
     end
 
     if Enum.empty?(merkle_tree_data) do
@@ -76,22 +69,22 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def filter_invalid_txs(txs_list, chain_state, block_height) do
+  def filter_invalid_txs(txs_list, chainstate, block_height) do
     {valid_txs_list, _} = List.foldl(
       txs_list,
-      {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {valid_chain_state, updated_chain_state} = validate_tx(tx, chain_state_acc, block_height)
-        if valid_chain_state do
-          {valid_txs_list ++ [tx], updated_chain_state}
+      {[], chainstate},
+      fn (tx, {valid_txs_list, chainstate_acc}) ->
+        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+        if valid_chainstate do
+          {valid_txs_list ++ [tx], updated_chainstate}
         else
-          {valid_txs_list, chain_state_acc}
+          {valid_txs_list, chainstate_acc}
         end
       end)
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), map()}
+  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
   defp validate_tx(tx, chainstate, block_height) do
     try do
       {true, apply_transaction_on_state!(tx, chainstate, block_height)}
@@ -115,7 +108,7 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec update_chain_state_locked(chainstate(), Header.t()) :: map()
+  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
   def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
     updated_accounts =
       Enum.reduce(accounts, %{}, fn({address, state}, acc) ->

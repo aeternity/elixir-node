@@ -56,4 +56,22 @@ defmodule Aecore.Structures.Account do
                        locked: updated_locked}
   end
 
+  @spec transaction_in(ChainState.account(), integer(), integer(), integer()) :: ChainState.account()
+  def transaction_in(account_state, block_height, value, lock_time_block) do
+    if block_height <= lock_time_block do
+      new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
+      Map.put(account_state, :locked, new_locked)
+    else
+      new_balance = account_state.balance + value
+      Map.put(account_state, :balance, new_balance)
+    end
+  end
+
+  @spec transaction_out(ChainState.account(), integer(), integer(),
+    integer(), integer()) :: ChainState.account()
+  def transaction_out(account_state, block_height, value, nonce, lock_time_block) do
+    account_state
+    |> Map.put(:nonce, nonce)
+    |> transaction_in(block_height, value, lock_time_block)
+  end
 end

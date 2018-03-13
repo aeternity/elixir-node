@@ -31,7 +31,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{accounts: %{}}, 0)
+      ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, build_chain_state(), 0)
 
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
@@ -150,7 +150,7 @@ defmodule Aecore.Chain.Worker do
   ## Server side
 
   def handle_call(:clear_state, _from, state) do
-    {:ok, new_state, _} = init("")
+    {:ok, new_state, _} = init(:empty)
     {:reply, :ok, new_state}
   end
 
@@ -333,4 +333,6 @@ end
   defp number_of_blocks_in_memory() do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
+
+  defp build_chain_state(), do: %{accounts: %{}}
 end
