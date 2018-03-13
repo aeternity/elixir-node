@@ -30,13 +30,11 @@ defmodule AecoreChainStateTest do
     next_block_height = Chain.top_block().header.height + 1
 
     payload1 = %{to_acc: wallet.a_pub_key,
-                value: 1,
-                lock_time_block: 0}
+                value: 1}
     tx1 = DataTx.init(SpendTx, payload1, wallet.b_pub_key, 0, 2)
 
     payload2 = %{to_acc: wallet.a_pub_key,
-                value: 2,
-                lock_time_block: 0}
+                value: 2}
     tx2 = DataTx.init(SpendTx, payload2, wallet.c_pub_key, 0, 2)
 
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, wallet.b_priv_key)

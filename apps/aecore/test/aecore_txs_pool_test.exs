@@ -41,14 +41,12 @@ defmodule AecoreTxsPoolTest do
 
     nonce1 = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
     payload1 = %{to_acc: wallet.b_pub_key,
-                 value: 5,
-                 lock_time_block: 0}
+                 value: 5}
     tx1 = DataTx.init(SpendTx, payload1, wallet.a_pub_key, 10, nonce1)
 
     nonce2 = nonce1 + 1
     payload2 = %{to_acc: wallet.b_pub_key,
-                 value: 5,
-                 lock_time_block: 0}
+                 value: 5}
     tx2 = DataTx.init(SpendTx, payload2, wallet.a_pub_key, 10, nonce2)
 
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, wallet.priv_key)
@@ -70,8 +68,7 @@ defmodule AecoreTxsPoolTest do
   test "add negative transaction fail", wallet do
     nonce = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
     payload = %{to_acc: wallet.b_pub_key,
-                value: -5,
-                lock_time_block: 0}
+                value: -5}
     tx1 = DataTx.init(SpendTx, payload, wallet.a_pub_key, 0, nonce)
 
     {:ok, signed_tx} = SignedTx.sign_tx(tx1, wallet.priv_key)

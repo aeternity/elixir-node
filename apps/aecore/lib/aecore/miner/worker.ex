@@ -229,9 +229,7 @@ defmodule Aecore.Miner.Worker do
       pubkey = Wallet.get_public_key()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
-      valid_txs = [create_coinbase_tx(pubkey, total_fees,
-                      top_block.header.height + 1 +
-                      Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
+      valid_txs = [create_coinbase_tx(pubkey, total_fees) |
                    valid_txs_by_fee]
 
       new_block = create_block(top_block, chain_state, difficulty, [])
@@ -243,9 +241,7 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_block_size)
       valid_txs =
         List.replace_at(valid_txs_by_block_size, 0,
-          create_coinbase_tx(pubkey, total_fees,
-                      top_block.header.height + 1 +
-                      Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
+          create_coinbase_tx(pubkey, total_fees))
 
       create_block(top_block, chain_state, difficulty, valid_txs)
     catch
@@ -261,10 +257,9 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def create_coinbase_tx(to_acc, total_fees, lock_time_block) do
+  def create_coinbase_tx(to_acc, total_fees) do
     payload =  %{to_acc: to_acc,
-                 value: @coinbase_transaction_value + total_fees,
-                 lock_time_block: lock_time_block}
+                 value: @coinbase_transaction_value + total_fees}
 
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
 

@@ -27,8 +27,7 @@ defmodule Aecore.Structures.SpendTx do
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %__MODULE__{
     to_acc: binary(),
-    value: non_neg_integer(),
-    lock_time_block: non_neg_integer()
+    value: non_neg_integer()
   }
 
   @doc """
@@ -37,18 +36,16 @@ defmodule Aecore.Structures.SpendTx do
   ## Parameters
   - to_acc: To account is the public address of the account receiving the transaction
   - value: The amount of tokens send through the transaction
-  - lock_time_block: In which block the tokens will become available
   """
-  defstruct [:to_acc, :value, :lock_time_block]
+  defstruct [:to_acc, :value]
   use ExConstructor
 
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{to_acc: to_acc, value: value, lock_time_block: lock} = payload) do
+  def init(%{to_acc: to_acc, value: value} = payload) do
     %__MODULE__{to_acc: to_acc,
-                value: value,
-                lock_time_block: lock}
+                value: value}
   end
 
   @spec is_valid(SpendTx.t()) :: :ok | {:error, reason()}
@@ -62,7 +59,7 @@ defmodule Aecore.Structures.SpendTx do
 
   @spec reward(SpendTx.t(), integer(), account_state()) :: account_state()
   def reward(%__MODULE__{} = tx, block_height, account_state) do
-    transaction_in(account_state, block_height, tx.value, tx.lock_time_block)
+    transaction_in(account_state, tx.value)
   end
 
   @spec process_chainstate!(SpendTx.t(), binary(), non_neg_integer(), non_neg_integer(),
@@ -75,12 +72,12 @@ defmodule Aecore.Structures.SpendTx do
         new_from_account_state =
           accounts[from_acc]
           |> deduct_fee(fee, nonce)
-          |> transaction_out(block_height, tx.value * -1, nonce, -1)
+          |> transaction_out(tx.value * -1, nonce)
         new_accounts = Map.put(accounts, from_acc, new_from_account_state)
 
         to_acc = Map.get(accounts, tx.to_acc, Account.empty())
         new_to_account_state =
-          transaction_in(to_acc, block_height, tx.value, tx.lock_time_block)
+          transaction_in(to_acc, tx.value)
         Map.put(new_accounts, tx.to_acc, new_to_account_state)
 
       {:error, reason} = err ->
@@ -96,9 +93,6 @@ defmodule Aecore.Structures.SpendTx do
       account_state.nonce >= nonce ->
        {:error, "Nonce too small"}
 
-      block_height <= tx.lock_time_block && tx.value < 0 ->
-       {:error, "Can't lock a negative transaction"}
-
       true ->
         :ok
     end
@@ -111,21 +105,16 @@ defmodule Aecore.Structures.SpendTx do
 
   # Inner functions
 
-  @spec transaction_in(account_state(), integer(), integer(), integer()) :: account_state()
-  defp transaction_in(account_state, block_height, value, lock_time_block) do
-    if block_height <= lock_time_block do
-      new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
-      Map.put(account_state, :locked, new_locked)
-    else
+  @spec transaction_in(account_state(), integer()) :: account_state()
+  defp transaction_in(account_state, value) do
       new_balance = account_state.balance + value
       Map.put(account_state, :balance, new_balance)
-    end
   end
 
-  @spec transaction_out(account_state(), integer(), integer(), integer(), integer()) :: account_state()
-  defp transaction_out(account_state, block_height, value, nonce, lock_time_block) do
+  @spec transaction_out(account_state(), integer(), integer()) :: account_state()
+  defp transaction_out(account_state, value, nonce) do
     account_state
     |> Map.put(:nonce, nonce)
-    |> transaction_in(block_height, value, lock_time_block)
+    |> transaction_in(value)
   end
 end
