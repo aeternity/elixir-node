@@ -52,7 +52,7 @@ defmodule Aehttpserver.Web.InfoController do
       current_block_height: top_block.header.height,
       current_block_hash: top_block_header,
       genesis_block_hash: genesis_block_hash,
-      difficulty_target: top_block.header.difficulty_target,
+      target: top_block.header.target,
       public_key: pubkey_hex,
       peer_nonce: own_nonce
     })

@@ -33,14 +33,14 @@ defmodule AecoreChainTest do
 
     chain_state = Chain.chain_state(top_block_hash)
     new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
-    new_chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    new_root_hash = ChainState.calculate_txs_hash(new_chain_state)
 
     block_unmined = %Block{header: %Header{height: top_block.header.height + 1,
                                    prev_hash: top_block_hash,
                                    txs_hash: <<0::256>>,
-                                   chain_state_hash: new_chain_state_hash,
-                                   difficulty_target: 1, nonce: 0,
-                                   timestamp: System.system_time(:milliseconds),
+                                   root_hash: new_root_hash,
+                                   target: 1, nonce: 0,
+                                   time: System.system_time(:milliseconds),
                                    version: 1}, txs: []}
 
     {:ok, block_mined} = Miner.mine_sync_block(block_unmined)

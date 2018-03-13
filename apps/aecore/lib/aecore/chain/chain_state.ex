@@ -58,8 +58,8 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_txs_hash(chainstate()) :: binary()
+  def calculate_txs_hash(chainstate) do
     merkle_tree_data =
     for {accounts, data} <- chainstate.accounts do
       {accounts, Serialization.pack_binary(data)}

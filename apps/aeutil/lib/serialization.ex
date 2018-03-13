@@ -135,7 +135,7 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.bech32_encode_root(value)
 
-      :chain_state_hash ->
+      :root_hash ->
         ChainState.bech32_encode(value)
 
       _ ->

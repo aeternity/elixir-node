@@ -202,7 +202,7 @@ defmodule Aecore.Miner.Worker do
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
     Logger.info(
       fn ->
-        "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
+        "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
         cblock.header.nonce
         }" end
     )
@@ -219,7 +219,7 @@ defmodule Aecore.Miner.Worker do
 
     try do
       blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
-      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+      difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
@@ -330,19 +330,19 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
-    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    root_hash = ChainState.calculate_txs_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
       Header.create(
         top_block.header.height + 1,
         top_block_hash,
+        txs_hash,
         root_hash,
-        chain_state_hash,
         difficulty,
         0,
         #start from nonce 0, will be incremented in mining
