@@ -13,8 +13,8 @@ defmodule Aecore.Structures.OracleQueryTxData do
           query_data: map(),
           query_fee: non_neg_integer(),
           fee: non_neg_integer(),
-          query_ttl: non_neg_integer(),
-          response_ttl: non_neg_integer(),
+          query_ttl: Oracle.ttl(),
+          response_ttl: Oracle.ttl(),
           nonce: non_neg_integer()
         }
 
@@ -31,8 +31,8 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   use ExConstructor
 
-  @spec create(binary(), any(), integer(), integer()) :: OracleQueryTxData.t()
-  def create(oracle_address, query_data, query_ttl, response_ttl) do
+  @spec create(binary(), any(), integer(), Oracle.ttl(), Oracle.ttl()) :: OracleQueryTxData.t()
+  def create(oracle_address, query_data, fee, query_ttl, response_ttl) do
     registered_oracles = Chain.registered_oracles()
 
     cond do
@@ -54,7 +54,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
           oracle_address: oracle_address,
           query_data: query_data,
           query_fee: get_oracle_query_fee(oracle_address),
-          fee: calculate_minimum_fee(query_ttl),
+          fee: fee,
           query_ttl: query_ttl,
           response_ttl: response_ttl,
           nonce: Chain.lowest_valid_nonce()

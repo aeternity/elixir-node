@@ -8,19 +8,20 @@ defmodule Aecore.Oracle.Oracle do
 
   require Logger
 
+  @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
+
   @doc """
   Registers an oracle with the given requirements for queries and responses,
   a fee that should be paid by queries and a TTL.
   """
-  @spec register(map(), map(), integer(), integer()) :: :ok | :error
-  def register(query_format, response_format, query_fee, ttl) do
-    case OracleRegistrationTxData.create(query_format, response_format, query_fee, ttl) do
+  @spec register(map(), map(), integer(), integer(), ttl()) :: :ok | :error
+  def register(query_format, response_format, query_fee, fee, ttl) do
+    case OracleRegistrationTxData.create(query_format, response_format, query_fee, fee, ttl) do
       :error ->
         :error
 
       tx_data ->
-        signed_tx = sign_tx(tx_data)
-        Pool.add_transaction(signed_tx)
+        Pool.add_transaction(sign_tx(tx_data))
     end
   end
 
@@ -28,11 +29,12 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(binary(), any(), integer(), integer()) :: :ok | :error
-  def query(oracle_address, query_data, query_ttl, response_ttl) do
+  @spec query(binary(), any(), integer(), ttl(), ttl()) :: :ok | :error
+  def query(oracle_address, query_data, fee, query_ttl, response_ttl) do
     case OracleQueryTxData.create(
            oracle_address,
            query_data,
+           fee,
            query_ttl,
            response_ttl
          ) do
@@ -70,6 +72,17 @@ defmodule Aecore.Oracle.Oracle do
       {:error, message} ->
         Logger.error(message)
         false
+    end
+  end
+
+  @spec calculate_absolute_ttl(ttl(), integer()) :: integer()
+  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height) do
+    case type do
+      :absolute ->
+        ttl
+
+      :relative ->
+        ttl + block_height
     end
   end
 

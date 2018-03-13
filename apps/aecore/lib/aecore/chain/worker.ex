@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Header
+  alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -20,7 +21,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aecore.Keys.Worker, as: Keys
   alias Aehttpserver.Web.Notify
-  alias Aeutil.Serialization
   alias Aeutil.Bits
 
   require Logger
@@ -39,8 +39,10 @@ defmodule Aecore.Chain.Worker do
       ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
 
     chain_states = %{genesis_block_hash => genesis_chain_state}
+
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
-    registered_oracles = generate_registered_oracles_map(Block.genesis_block())
+
+    registered_oracles = generate_registered_oracles_map(Block.genesis_block(), %{})
 
     oracle_interaction_objects =
       generate_oracle_interaction_objects_map(Block.genesis_block(), %{})
@@ -262,20 +264,32 @@ defmodule Aecore.Chain.Worker do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
 
-    updated_oracles = remove_expired_oracles(registered_oracles, new_block.header.height)
-    IO.inspect(updated_oracles)
-
-    new_block_registered_oracles = generate_registered_oracles_map(new_block)
-    new_registered_oracles = Map.merge(new_block_registered_oracles, updated_oracles)
-
-    new_oracle_interaction_objects =
-      generate_oracle_interaction_objects_map(new_block, oracle_interaction_objects)
-
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
 
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
     updated_blocks_map = Map.put(blocks_map, new_block_hash, new_block)
     hundred_blocks_map = discard_blocks_from_memory(updated_blocks_map)
+
+    updated_oracles =
+      remove_expired_oracles(
+        registered_oracles,
+        new_block.header.height,
+        new_txs_index,
+        hundred_blocks_map
+      )
+
+    updated_oracle_interaction_objects =
+      remove_expired_interaction_objects(
+        oracle_interaction_objects,
+        new_block.header.height,
+        new_txs_index,
+        hundred_blocks_map
+      )
+
+    new_registered_oracles = generate_registered_oracles_map(new_block, updated_oracles)
+
+    new_oracle_interaction_objects =
+      generate_oracle_interaction_objects_map(new_block, updated_oracle_interaction_objects)
 
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
@@ -432,8 +446,7 @@ defmodule Aecore.Chain.Worker do
 
       tx_hashes =
         Enum.map(acc_txs, fn tx ->
-          tx_bin = Serialization.pack_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
+          SignedTx.hash_tx(tx)
         end)
 
       tx_tuples =
@@ -445,25 +458,49 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
+  defp get_tx_block_height_included(tx, txs_index, blocks_map) do
+    address =
+      case tx.data do
+        %OracleRegistrationTxData{} ->
+          tx.data.operator
+
+        %OracleResponseTxData{} ->
+          tx.data.operator
+
+        %OracleQueryTxData{} ->
+          tx.data.sender
+      end
+
+    {block_hash, _tx_hash} =
+      Enum.find(txs_index[address], fn {_block_hash, tx_hash} ->
+        SignedTx.hash_tx(tx) == tx_hash
+      end)
+
+    block = Map.get(blocks_map, block_hash, Persistence.get_block_by_hash(block_hash))
+    block.header.height
+  end
+
   defp update_txs_index(prev_txs_index, new_txs_index) do
     Map.merge(prev_txs_index, new_txs_index, fn _, current_txs_index, new_txs_index ->
       current_txs_index ++ new_txs_index
     end)
   end
 
-  defp generate_registered_oracles_map(block) do
-    Enum.reduce(block.txs, %{}, fn tx, acc ->
+  defp generate_registered_oracles_map(block, current_registered_oracles_map) do
+    Enum.reduce(block.txs, current_registered_oracles_map, fn tx, acc ->
       if match?(%OracleRegistrationTxData{}, tx.data) do
-        Map.put(acc, tx.data.operator, tx)
+        Map.put_new(acc, tx.data.operator, tx)
       else
         acc
       end
     end)
   end
 
-  defp remove_expired_oracles(oracles, block_height) do
+  defp remove_expired_oracles(oracles, block_height, txs_index, blocks_map) do
     Enum.reduce(oracles, oracles, fn {address, tx}, acc ->
-      if tx.data.ttl == block_height do
+      tx_block_height_included = get_tx_block_height_included(tx, txs_index, blocks_map)
+
+      if Oracle.calculate_absolute_ttl(tx.data.ttl, tx_block_height_included) == block_height do
         Map.delete(acc, address)
       else
         acc
@@ -493,6 +530,34 @@ defmodule Aecore.Chain.Worker do
 
         _ ->
           acc
+      end
+    end)
+  end
+
+  defp remove_expired_interaction_objects(
+         oracle_interaction_objects,
+         block_height,
+         txs_index,
+         blocks_map
+       ) do
+    Enum.reduce(oracle_interaction_objects, oracle_interaction_objects, fn {query_tx_hash,
+                                                                            %{
+                                                                              query: query,
+                                                                              response: response
+                                                                            }},
+                                                                           acc ->
+      tx_block_height_included = get_tx_block_height_included(query, txs_index, blocks_map)
+
+      interaction_object_has_expired =
+        (Oracle.calculate_absolute_ttl(query.data.query_ttl, tx_block_height_included) ==
+           block_height && response == nil) ||
+          Oracle.calculate_absolute_ttl(query.data.response_ttl, tx_block_height_included) ==
+            block_height
+
+      if interaction_object_has_expired do
+        Map.delete(acc, query_tx_hash)
+      else
+        acc
       end
     end)
   end

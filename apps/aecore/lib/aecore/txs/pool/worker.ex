@@ -147,11 +147,23 @@ defmodule Aecore.Txs.Pool.Worker do
         tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
 
       %OracleRegistrationTxData{} ->
-        tx.data.fee >= OracleRegistrationTxData.calculate_minimum_fee(tx.data.ttl)
+        case tx.data.ttl do
+          %{ttl: ttl, type: :relative} ->
+            tx.data.fee >= OracleRegistrationTxData.calculate_minimum_fee(ttl)
+
+          %{type: :absolute} ->
+            true
+        end
 
       %OracleQueryTxData{} ->
-        tx.data.fee >= OracleQueryTxData.calculate_minimum_fee(tx.data.query_ttl) &&
-          tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].query_fee
+        case tx.data.query_ttl do
+          %{ttl: ttl, type: :relative} ->
+            tx.data.fee >= OracleQueryTxData.calculate_minimum_fee(ttl) &&
+              tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].query_fee
+
+          %{type: :absolute} ->
+            true
+        end
 
       %OracleResponseTxData{} ->
         true

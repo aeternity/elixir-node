@@ -2,6 +2,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   alias __MODULE__
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Oracle.Oracle
   alias Aeutil.Bits
 
   require Logger
@@ -12,15 +13,15 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
           response_format: map(),
           query_fee: non_neg_integer(),
           fee: non_neg_integer(),
-          ttl: non_neg_integer(),
+          ttl: Oracle.ttl(),
           nonce: non_neg_integer()
         }
 
   defstruct [:operator, :query_format, :response_format, :query_fee, :fee, :ttl, :nonce]
   use ExConstructor
 
-  @spec create(map(), map(), integer(), integer()) :: OracleRegistrationTxData.t()
-  def create(query_format, response_format, query_fee, ttl) do
+  @spec create(map(), map(), integer(), integer(), Oracle.ttl()) :: OracleRegistrationTxData.t()
+  def create(query_format, response_format, query_fee, fee, ttl) do
     try do
       ExJsonSchema.Schema.resolve(query_format)
       ExJsonSchema.Schema.resolve(response_format)
@@ -37,7 +38,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      fee: calculate_minimum_fee(ttl),
+      fee: fee,
       ttl: ttl,
       nonce: Chain.lowest_valid_nonce()
     }
