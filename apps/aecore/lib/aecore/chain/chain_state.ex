@@ -5,7 +5,6 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
   alias Aeutil.Serialization
@@ -18,7 +17,6 @@ defmodule Aecore.Chain.ChainState do
 
   @typedoc "State of an account"
   @type acc_state() :: %{balance: integer(),
-                         locked: [%{amount: integer(), block: integer()}],
                          nonce: integer()}
 
   @typedoc "Structure of the accounts"
@@ -33,7 +31,6 @@ defmodule Aecore.Chain.ChainState do
     |> Enum.reduce(chainstate, fn(tx, chainstate) ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
-    |> update_chain_state_locked(block_height)
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
@@ -102,27 +99,9 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
   def calculate_total_tokens(%{accounts: accounts} = chainstate) do
-    Enum.reduce(accounts, {0, 0, 0}, fn({account, state}, acc) ->
-      {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
-      locked_tokens =
-        Enum.reduce(state.locked, 0, fn(%{amount: amount}, locked_sum) ->
-          locked_sum + amount
-        end)
-      new_total_tokens = total_tokens + state.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + state.balance
-      new_total_locked_tokens = total_locked_tokens + locked_tokens
-      {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
+    Enum.reduce(accounts, 0, fn({account, state}, acc) ->
+      acc + state.balance
     end)
-  end
-
-  @spec update_chain_state_locked(chainstate(), Header.t()) :: map()
-  def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
-    updated_accounts =
-      Enum.reduce(accounts, %{}, fn({address, state}, acc) ->
-        Map.put(acc, address, Account.update_locked(state, header))
-      end)
-
-    Map.put(chainstate, :accounts, updated_accounts)
   end
 
   @spec bech32_encode(binary()) :: String.t()
