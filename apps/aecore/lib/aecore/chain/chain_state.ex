@@ -54,34 +54,6 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  # @spec update_chain_state_locked(chainstate(), integer()) :: chainstate()
-  # def update_chain_state_locked(%{accounts: accounts} = chainstate, new_block_height) do
-  #   accounts =
-  #     Enum.reduce(accounts, %{}, fn({pubkey, account_state}, acc) ->
-  #       {unlocked_amount, updated_locked} =
-  #         Enum.reduce(account_state.locked, {0, []}, fn(locked, {amount_update_value, updated_locked}) ->
-  #           cond do
-  #             locked.block > new_block_height ->
-  #               {amount_update_value, updated_locked ++ [%{amount: locked.amount, block: locked.block}]}
-
-  #             locked.block == new_block_height ->
-  #               {amount_update_value + locked.amount, updated_locked}
-
-  #             true ->
-  #               Logger.error(fn ->
-  #                 "Update chain state locked:
-  #                 new block height (#{new_block_height}) greater than lock time block (#{locked.block})"
-  #               end)
-  #               {amount_update_value, updated_locked}
-  #           end
-  #         end)
-  #       Map.put(acc, pubkey, %{balance: account_state.balance + unlocked_amount,
-  #                              nonce: account_state.nonce,
-  #                              locked: updated_locked})
-  #     end)
-  #     Map.put(chainstate, :accounts, accounts)
-  # end
-
   @doc """
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
@@ -103,22 +75,6 @@ defmodule Aecore.Chain.ChainState do
       :gb_merkle_trees.root_hash(merkle_tree)
     end
   end
-
-  # @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
-  # def calculate_total_tokens(%{accounts: accounts}) do
-  #   Enum.reduce(accounts, {0, 0, 0}, fn({_pubkey, acc_state}, acc) ->
-  #     {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
-  #     locked_tokens =
-  #       Enum.reduce(acc_state.locked, 0, fn(%{amount: amount}, locked_sum) ->
-  #         locked_sum + amount
-  #        end)
-  #     new_total_tokens = total_tokens + acc_state.balance + locked_tokens
-  #     new_total_unlocked_tokens = total_unlocked_tokens + acc_state.balance
-  #     new_total_locked_tokens = total_locked_tokens + locked_tokens
-
-  #     {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
-  #   end)
-  # end
 
   def filter_invalid_txs(txs_list, chain_state, block_height) do
     {valid_txs_list, _} = List.foldl(
@@ -174,7 +130,4 @@ defmodule Aecore.Chain.ChainState do
     Bits.bech32_encode("cs", bin)
   end
 
-  # defp apply_fun_on_map(map, key, function) do
-  #   Map.put(map, key, function.(Map.get(map, key)))
-  # end
 end
