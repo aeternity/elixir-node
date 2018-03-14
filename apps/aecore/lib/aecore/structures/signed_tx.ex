@@ -55,7 +55,7 @@ defmodule Aecore.Structures.SignedTx do
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
-  def sign_tx(tx, _priv_key) do
+  def sign_tx(_tx, _priv_key) do
     {:error, "Wrong Transaction data structure"}
   end
 

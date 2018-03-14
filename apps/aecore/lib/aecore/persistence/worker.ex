@@ -8,7 +8,6 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Keys.Worker, as: Keys
 
   require Logger
 
@@ -166,7 +165,7 @@ defmodule Aecore.Persistence.Worker do
       |> Enum.into([])
     else
         Enum.reduce(Rox.stream(blocks_family), [],
-          fn({hash, %{header: %{height: height}} = block} = record, acc) ->
+          fn({_hash, %{header: %{height: height}} = _block} = record, acc) ->
             if threshold < height do
               [record | acc]
             else
