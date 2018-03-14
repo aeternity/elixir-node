@@ -1,7 +1,7 @@
 defmodule Aecore.Structures.SignedTx do
   @moduledoc """
   """
-
+  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
@@ -9,13 +9,10 @@ defmodule Aecore.Structures.SignedTx do
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
-  @typedoc "Structure that holds the account info"
-  @type account_chainstate :: map()
-
-  @type t :: %__MODULE__{
-    data: DataTx.t(),
-    signature: binary()
-  }
+  @type t :: %SignedTx{
+          data: DataTx.t(),
+          signature: binary()
+        }
 
   @doc """
   Definition of Aecore SignedTx structure
@@ -35,10 +32,7 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
-      case DataTx.is_valid(data) do
-        :ok -> true
-        {:error, _reason} -> false
-      end
+      DataTx.is_valid?(data)
     end
   end
 
@@ -67,7 +61,7 @@ defmodule Aecore.Structures.SignedTx do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
-  @spec reward(DataTx.t(), integer(), account_chainstate()) :: account_chainstate()
+  @spec reward(DataTx.t(), integer(), Account.t()) :: Account.t()
   def reward(%DataTx{type: type, payload: payload}, block_height, account_state) do
     type.reward(payload, block_height, account_state)
   end

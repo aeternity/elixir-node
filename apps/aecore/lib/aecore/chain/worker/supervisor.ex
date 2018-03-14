@@ -7,7 +7,7 @@ defmodule Aecore.Chain.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-     Aecore.Chain.Worker
+      Aecore.Chain.Worker
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

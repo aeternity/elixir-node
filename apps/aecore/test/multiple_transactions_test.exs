@@ -13,6 +13,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup do
     on_exit fn ->

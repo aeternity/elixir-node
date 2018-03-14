@@ -12,6 +12,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup wallet do
     path = Application.get_env(:aecore, :persistence)[:path]
