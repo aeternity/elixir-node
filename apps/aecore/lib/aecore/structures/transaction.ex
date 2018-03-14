@@ -11,27 +11,32 @@ defmodule Aecore.Structures.Transaction do
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_struct :: SpendTx.t()
+  @type tx_types :: SpendTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
   @typedoc "Structure that holds specific transaction info in the chainstate"
-  @type subdomain_cs() :: map()
+  @type tx_type_state() :: map()
 
   # Callbacks
 
-  @callback init(payload()) :: tx_struct()
+  @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_struct()) :: boolean()
+  @callback is_valid?(tx_types()) :: boolean()
 
-  @callback process_chainstate!(tx_struct(),
+  @doc """
+  Default function for executing a given transaction type.
+  Make necessary changes to the account_state and tx_type_state of
+  the transaction (Transaction type-specific chainstate)
+  """
+  @callback process_chainstate!(tx_types(),
                                 Wallet.pubkey(),
                                 fee :: non_neg_integer(),
                                 nonce :: non_neg_integer(),
                                 block_height :: non_neg_integer(),
                                 Account.t(),
-                                subdomain_cs()) :: {Account.t(), subdomain_cs()}
+                                tx_type_state()) :: {Account.t(), tx_type_state()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -39,7 +44,7 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(account_state, fee, nonce, block_height, %{} = subdomain_cs) do
+      def preprocess_check(account_state, fee, nonce, block_height, %{} = tx_type_state) do
         cond do
           account_state.balance - fee < 0 ->
            {:error, "Negative balance"}
@@ -63,7 +68,7 @@ defmodule Aecore.Structures.Transaction do
                              fee :: non_neg_integer(),
                              nonce :: non_neg_integer(),
                              block_height :: non_neg_integer(),
-                             subdomain_cs :: map()) :: :ok | {:error, reason}
+                             tx_type_state :: map()) :: :ok | {:error, reason}
 
   @callback deduct_fee(ChainState.account(),
                        fee :: non_neg_integer(),

@@ -25,7 +25,7 @@ defmodule Aecore.Structures.SpendTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
-  @type subdomain_cs() :: %{}
+  @type tx_type_state() :: %{}
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
@@ -54,6 +54,9 @@ defmodule Aecore.Structures.SpendTx do
                 lock_time_block: lock}
   end
 
+  @doc """
+  Checks wether the value that is send is not a negative number
+  """
   @spec is_valid?(SpendTx.t()) :: boolean()
   def is_valid?(%SpendTx{value: value}) do
     if value >= 0 do
@@ -64,14 +67,20 @@ defmodule Aecore.Structures.SpendTx do
     end
   end
 
+  @doc """
+  Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
+  """
   @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
   def reward(%SpendTx{} = tx, block_height, account_state) do
     Account.transaction_in(account_state, block_height, tx.value, tx.lock_time_block)
   end
 
+  @doc """
+  Changes the account state (balance) of the sender and receiver.
+  """
   @spec process_chainstate!(SpendTx.t(), binary(), non_neg_integer(), non_neg_integer(),
-    non_neg_integer(), ChainState.account(), subdomain_cs()) ::
-  {ChainState.accounts(), subdomain_cs()}
+    non_neg_integer(), ChainState.account(), tx_type_state()) ::
+  {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, block_height,
                           accounts, %{}) do
     case preprocess_check(tx, accounts[from_acc], fee, nonce, block_height, %{}) do
@@ -93,8 +102,12 @@ defmodule Aecore.Structures.SpendTx do
     end
   end
 
+  @doc """
+  Checks whether all the data is valid according to the SpendTx requirements,
+  before the transaction is executed.
+  """
   @spec preprocess_check(SpendTx.t(), ChainState.account(), non_neg_integer(),
-    non_neg_integer(), non_neg_integer(), subdomain_cs()) :: :ok | {:error, String.t()}
+    non_neg_integer(), non_neg_integer(), tx_type_state()) :: :ok | {:error, String.t()}
   def preprocess_check(tx, account_state, fee, nonce, block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.value) < 0 ->

@@ -29,18 +29,8 @@ defmodule AecoreChainStateTest do
   test "chain state", wallet do
     next_block_height = Chain.top_block().header.height + 1
 
-    payload1 = %{to_acc: wallet.a_pub_key,
-                value: 1,
-                lock_time_block: 0}
-    tx1 = DataTx.init(SpendTx, payload1, wallet.b_pub_key, 0, 2)
-
-    payload2 = %{to_acc: wallet.a_pub_key,
-                value: 2,
-                lock_time_block: 0}
-    tx2 = DataTx.init(SpendTx, payload2, wallet.c_pub_key, 0, 2)
-
-    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, wallet.b_priv_key)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, wallet.c_priv_key)
+    {:ok, signed_tx1} = Account.spend(wallet.b_pub_key, wallet.b_priv_key, wallet.a_pub_key, 1, 1, 2)
+    {:ok, signed_tx2} = Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2)
 
     chain_state =
       ChainState.calculate_and_validate_chain_state!(
@@ -63,11 +53,11 @@ defmodule AecoreChainStateTest do
                                                          nonce: 100,
                                                          locked: [%{amount: 1,
                                                                     block: next_block_height}]},
-                            wallet.b_pub_key => %Account{balance: 4,
+                            wallet.b_pub_key => %Account{balance: 3,
                                                          nonce: 2,
                                                          locked: [%{amount: 1,
                                                                     block: next_block_height + 1}]},
-                            wallet.c_pub_key => %Account{balance: 2,
+                            wallet.c_pub_key => %Account{balance: 1,
                                                          nonce: 2,
                                                          locked: [%{amount: 1,
                                                                     block: next_block_height}]}}} == chain_state
@@ -78,11 +68,11 @@ defmodule AecoreChainStateTest do
     assert %{:accounts => %{wallet.a_pub_key => %Account{balance: 7,
                                                          nonce: 100,
                                                          locked: []},
-                            wallet.b_pub_key => %Account{balance: 4,
+                            wallet.b_pub_key => %Account{balance: 3,
                                                          nonce: 2,
                                                          locked: [%{amount: 1,
                                                                     block: next_block_height + 1}]},
-                            wallet.c_pub_key => %Account{balance: 3,
+                            wallet.c_pub_key => %Account{balance: 2,
                                                          nonce: 2,
                                                          locked: []}}} == new_chain_state_locked_amounts
   end

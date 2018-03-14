@@ -13,17 +13,17 @@ defmodule  Aecore.Structures.DataTx do
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type txType :: SpendTx | atom()
+  @type tx_type :: SpendTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t() | map()
+  @type payload :: SpendTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
   @typedoc "Structure of the main transaction wrapper"
   @type t :: %DataTx{
-    type: txType(),
+    type: tx_type(),
     payload: payload(),
     from_acc: binary(),
     fee: non_neg_integer(),
@@ -43,7 +43,7 @@ defmodule  Aecore.Structures.DataTx do
   defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
 
-  @spec init(txType(), payload(), binary(), integer(), integer()) :: DataTx.t()
+  @spec init(tx_type(), payload(), binary(), integer(), integer()) :: DataTx.t()
   def init(type, payload, from_acc, fee, nonce) do
     %DataTx{type: type,
                 payload: type.init(payload),
@@ -52,9 +52,13 @@ defmodule  Aecore.Structures.DataTx do
                 nonce: nonce}
   end
 
+  @doc """
+  Checks whether the fee is above 0. If it is, it runs the transaction type
+  validation checks. Otherwise we return error.
+  """
   @spec is_valid?(DataTx.t()) :: boolean()
   def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee >= 0 do
+    if fee > 0 do
       payload
       |> type.init()
       |> type.is_valid?()
@@ -64,22 +68,26 @@ defmodule  Aecore.Structures.DataTx do
     end
   end
 
+  @doc """
+  Changes the chainstate (account state and tx_type_state) according
+  to the given transaction requirements
+  """
   @spec process_chainstate(DataTx.t(), non_neg_integer(),
     ChainState.chainstate()) :: ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
     try do
       account_state = chainstate.accounts
-      subdomain_cs = Map.get(chainstate, tx.type, %{})
+      tx_type_state = Map.get(chainstate, tx.type, %{})
 
-      {new_accounts_state, new_subdomain_cs} =
+      {new_accounts_state, new_tx_type_state} =
         tx.payload
         |> tx.type.init()
         |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
-           account_state, subdomain_cs)
+           account_state, tx_type_state)
 
         new_chainstate =
         if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type, new_subdomain_cs)
+          Map.put(chainstate, tx.type, new_tx_type_state)
         else
           chainstate
         end

@@ -4,8 +4,13 @@ defmodule Aecore.Structures.Account do
   """
 
   require Logger
+
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
 
   @type locked() :: list(%{amount: non_neg_integer(),
                            block: non_neg_integer()})
@@ -56,6 +61,32 @@ defmodule Aecore.Structures.Account do
                        locked: updated_locked}
   end
 
+  @doc """
+  Builds a SpendTx where the miners public key is used as a sender (from_acc)
+  """
+  @spec spend(Wallet.pubkey(), non_neg_integer(),
+              non_neg_integer()) :: {:ok, SignedTx.t()}
+  def spend(to_acc, amount, fee) do
+    from_acc = Wallet.get_public_key()
+    from_acc_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state.accounts, from_acc, %{nonce: 0}).nonce + 1
+    spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce)
+  end
+
+  @doc """
+  Build a SpendTx from the given sender keys to the receivers account
+  """
+  @spec spend(Wallet.pubkey(), Wallet.privkey(), Wallet.pubkey(),
+              non_neg_integer(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce) do
+    payload = %{to_acc: to_acc, value: amount, lock_time_block: 0}
+    spend_tx = DataTx.init(SpendTx, payload, from_acc, fee, nonce)
+    SignedTx.sign_tx(spend_tx, from_acc_priv_key)
+  end
+
+  @doc """
+  Adds balance to a given address (public key)
+  """
   @spec transaction_in(ChainState.account(), integer(), integer(), integer()) :: ChainState.account()
   def transaction_in(account_state, block_height, value, lock_time_block) do
     if block_height <= lock_time_block do
@@ -67,6 +98,9 @@ defmodule Aecore.Structures.Account do
     end
   end
 
+  @doc """
+  Deducts balance from a given address (public key)
+  """
   @spec transaction_out(ChainState.account(), integer(), integer(),
     integer(), integer()) :: ChainState.account()
   def transaction_out(account_state, block_height, value, nonce, lock_time_block) do
