@@ -16,6 +16,7 @@ defmodule AehttpclientTest do
   test "Client functions" do
     account = Wallet.get_public_key()
     hex_acc = Encoding.encode(account, :ae)
+    bech32_encoded_top_block_hash = Bits.bech32_encode("bl", Chain.top_block_hash)
 
     AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
@@ -24,7 +25,7 @@ defmodule AehttpclientTest do
              Client.get_block(
                {"localhost:4000",
                 Bits.bech32_decode(
-                  "bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp"
+                  bech32_encoded_top_block_hash
                 )}
              )
 
