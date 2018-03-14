@@ -1,5 +1,6 @@
 defmodule Aecore.Structures.OracleQueryTxData do
   alias __MODULE__
+  alias Aecore.Structures.SignedTx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
@@ -72,6 +73,30 @@ defmodule Aecore.Structures.OracleQueryTxData do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t(), integer()) :: boolean()
+  def is_minimum_fee_met?(tx, block_height) do
+    tx_query_fee_is_met =
+      tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].data.query_fee
+
+    tx_fee_is_met =
+      case tx.data.query_ttl do
+        %{ttl: ttl, type: :relative} ->
+          tx.data.fee >= calculate_minimum_fee(ttl)
+
+        %{ttl: ttl, type: :absolute} ->
+          if block_height != nil do
+            tx.data.fee >=
+              ttl
+              |> Oracle.calculate_relative_ttl(block_height)
+              |> calculate_minimum_fee()
+          else
+            true
+          end
+      end
+
+    tx_fee_is_met && tx_query_fee_is_met
   end
 
   @spec bech32_encode(binary()) :: String.t()

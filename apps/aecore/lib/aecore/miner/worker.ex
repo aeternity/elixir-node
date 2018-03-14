@@ -225,6 +225,8 @@ defmodule Aecore.Miner.Worker do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
+    candidate_height = top_block.header.height + 1
+
     try do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
@@ -238,10 +240,10 @@ defmodule Aecore.Miner.Worker do
         BlockValidation.filter_invalid_transactions_chainstate(
           ordered_txs_list,
           chain_state,
-          top_block.header.height + 1
+          candidate_height
         )
 
-      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
+      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate, candidate_height)
 
       {_, pubkey} = Keys.pubkey()
 
@@ -251,8 +253,7 @@ defmodule Aecore.Miner.Worker do
         get_coinbase_transaction(
           pubkey,
           total_fees,
-          top_block.header.height + 1 +
-            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
+          candidate_height + Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
         )
         | valid_txs_by_fee
       ]
@@ -276,8 +277,7 @@ defmodule Aecore.Miner.Worker do
           get_coinbase_transaction(
             pubkey,
             total_fees,
-            top_block.header.height + 1 +
-              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
+            candidate_height + Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
           )
         )
 
@@ -310,9 +310,9 @@ defmodule Aecore.Miner.Worker do
 
   ## Internal
 
-  defp filter_transactions_by_fee(txs) do
+  defp filter_transactions_by_fee(txs, block_height) do
     Enum.filter(txs, fn tx ->
-      Pool.is_minimum_fee_met(tx, :miner)
+      Pool.is_minimum_fee_met?(tx, :miner, block_height)
     end)
   end
 

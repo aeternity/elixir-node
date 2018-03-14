@@ -5,6 +5,8 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
@@ -111,7 +113,31 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || SignedTx.is_valid?(tx)
+      is_minimum_fee_met =
+        case tx.data do
+          %OracleRegistrationTxData{} ->
+            OracleRegistrationTxData.is_minimum_fee_met?(tx, block.header.height)
+
+          %OracleQueryTxData{} ->
+            OracleQueryTxData.is_minimum_fee_met?(tx, block.header.height)
+
+          _ ->
+            true
+        end
+
+      cond do
+        SignedTx.is_coinbase?(tx) ->
+          true
+
+        !is_minimum_fee_met ->
+          false
+
+        !SignedTx.is_valid?(tx) ->
+          false
+
+        true ->
+          true
+      end
     end)
   end
 

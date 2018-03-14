@@ -546,18 +546,35 @@ defmodule Aecore.Chain.Worker do
                                                                               response: response
                                                                             }},
                                                                            acc ->
-      tx_block_height_included = get_tx_block_height_included(query, txs_index, blocks_map)
+      query_tx_block_height_included = get_tx_block_height_included(query, txs_index, blocks_map)
 
-      interaction_object_has_expired =
-        (Oracle.calculate_absolute_ttl(query.data.query_ttl, tx_block_height_included) ==
-           block_height && response == nil) ||
-          Oracle.calculate_absolute_ttl(query.data.response_ttl, tx_block_height_included) ==
-            block_height
+      query_absolute_ttl =
+        Oracle.calculate_absolute_ttl(query.data.query_ttl, query_tx_block_height_included)
 
-      if interaction_object_has_expired do
-        Map.delete(acc, query_tx_hash)
-      else
-        acc
+      query_has_expired = query_absolute_ttl == block_height && response == nil
+
+      response_has_expired =
+        if response != nil do
+          response_tx_block_height_included =
+            get_tx_block_height_included(response, txs_index, blocks_map)
+
+          response_absolute_ttl =
+            Oracle.calculate_absolute_ttl(query.data.query_ttl, response_tx_block_height_included)
+
+          response_absolute_ttl == block_height
+        else
+          false
+        end
+
+      cond do
+        query_has_expired ->
+          Map.delete(acc, query_tx_hash)
+
+        response_has_expired ->
+          Map.delete(acc, query_tx_hash)
+
+        true ->
+          acc
       end
     end)
   end

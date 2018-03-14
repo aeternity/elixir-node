@@ -76,13 +76,29 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @spec calculate_absolute_ttl(ttl(), integer()) :: integer()
-  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height) do
+  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
     case type do
       :absolute ->
         ttl
 
       :relative ->
-        ttl + block_height
+        ttl + block_height_tx_included
+    end
+  end
+
+  @spec calculate_relative_ttl(%{ttl: integer(), type: :absolute}, integer()) :: integer()
+  def calculate_relative_ttl(%{ttl: ttl, type: :absolute}, block_height) do
+    ttl - block_height
+  end
+
+  @spec ttl_is_valid?(ttl(), integer()) :: boolean()
+  def ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
+    case type do
+      :absolute ->
+        ttl - block_height > 0
+
+      :relative ->
+        ttl > 0
     end
   end
 

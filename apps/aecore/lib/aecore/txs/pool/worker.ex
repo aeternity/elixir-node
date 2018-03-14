@@ -65,7 +65,7 @@ defmodule Aecore.Txs.Pool.Worker do
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
 
-      !is_minimum_fee_met(tx, :pool) ->
+      !is_minimum_fee_met?(tx, :pool) ->
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
 
@@ -129,41 +129,17 @@ defmodule Aecore.Txs.Pool.Worker do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
-  @spec is_minimum_fee_met(SignedTx.t(), :miner | :pool) :: boolean()
-  def is_minimum_fee_met(tx, identifier) do
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool, integer()) :: boolean()
+  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data do
       %SpendTx{} ->
-        tx_size_bytes = get_tx_size_bytes(tx)
-
-        bytes_per_token =
-          case identifier do
-            :pool ->
-              Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
-
-            :miner ->
-              Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-          end
-
-        tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
+        SpendTx.is_minimum_fee_met?(tx, identifier)
 
       %OracleRegistrationTxData{} ->
-        case tx.data.ttl do
-          %{ttl: ttl, type: :relative} ->
-            tx.data.fee >= OracleRegistrationTxData.calculate_minimum_fee(ttl)
-
-          %{type: :absolute} ->
-            true
-        end
+        OracleRegistrationTxData.is_minimum_fee_met?(tx, block_height)
 
       %OracleQueryTxData{} ->
-        case tx.data.query_ttl do
-          %{ttl: ttl, type: :relative} ->
-            tx.data.fee >= OracleQueryTxData.calculate_minimum_fee(ttl) &&
-              tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].query_fee
-
-          %{type: :absolute} ->
-            true
-        end
+        OracleQueryTxData.is_minimum_fee_met?(tx, block_height)
 
       %OracleResponseTxData{} ->
         true

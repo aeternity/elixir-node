@@ -27,14 +27,15 @@ defmodule Aecore.Structures.OracleResponseTxData do
 
     valid_query_hash =
       if interaction_object != nil do
-        interaction_object.response == nil
+        interaction_object.response == nil &&
+          interaction_object.query.data.oracle_address == pubkey
       else
         false
       end
 
     cond do
       !valid_query_hash ->
-        Logger.error("Invalid query hash")
+        Logger.error("Invalid query referenced")
         :error
 
       !Oracle.data_valid?(response_format, response) ->
