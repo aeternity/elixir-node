@@ -15,7 +15,7 @@ defmodule AecoreCuckooTest do
   """
 
   setup do
-    on_exit fn ->
+     on_exit  fn ->
       Persistence.delete_all_blocks()
       :ok
     end
@@ -32,21 +32,21 @@ defmodule AecoreCuckooTest do
    @tag :cuckoo
    test "Verify solution with a high target threshold", setup do
      header = Cuckoo.generate(block_candidate().header)
-     assert true = Cuckoo.verify(header)
+     assert true == Cuckoo.verify(header)
    end
 
   defp wining_solution do
-    [346438, 356235, 643639, 663435, 31303130, 31303835, 31386664,
-    31616537, 31626561, 31656262, 32343834, 32356330, 32363338, 32386462,
-    33303638, 33353733, 33376562, 33633335, 33643437, 34353864, 34363363,
-    34393031, 34623364, 34636530, 35333936, 35346366, 35363263, 35363637,
-    35376463, 35376561, 35386230, 35613265, 35626139, 35633935, 36316166,
-    36366633, 36383230, 36616232, 36626232, 37393839, 37633732, 37646539]
+    [6536, 323237, 323631, 373133, 386166, 393131, 31303937, 31316633, 31323232,
+     31373338, 31623435, 31643438, 31653235, 31666134, 32313166, 32346635, 32346638,
+     32353636, 32373034, 32373036, 32643530, 32653461, 32666131, 33316235, 34316238,
+     34333134, 34336661, 34353835, 34653439, 34663932, 35386561, 35616330, 35633361,
+     36326431, 36356538, 36626630, 36636131, 36636566, 36663136, 36666366, 37353233,
+     37643632]
    end
 
   defp block_candidate do
 
-    chain_state_hash = <<230, 129, 113, 45, 47, 180, 171, 8, 15, 55, 74,
+    root_hash = <<230, 129, 113, 45, 47, 180, 171, 8, 15, 55, 74,
       106, 150, 170, 190, 220, 32, 87, 30, 102, 106, 67, 131, 247, 17, 56,
       115, 147, 17, 115, 143, 196>>
 
@@ -64,13 +64,13 @@ defmodule AecoreCuckooTest do
       30, 223, 11, 32, 118, 9, 122, 57, 7, 143, 127, 1, 103, 242, 116, 234,
       47>>
 
-    %Block{header: %Header{chain_state_hash: chain_state_hash,
-                           difficulty_target: 1,
+    %Block{header: %Header{root_hash: root_hash,
+                           target: 1,
                            height: 1,
-                           nonce: 31,
+                           nonce: 72,
                            pow_evidence: nil,
                            prev_hash: prev_hash,
-                           timestamp: 1518427070317,
+                           time: 1518427070317,
                            txs_hash: txs_hash,
                            version: 1},
            txs: [%SignedTx{data: %DataTx{type: SpendTx,

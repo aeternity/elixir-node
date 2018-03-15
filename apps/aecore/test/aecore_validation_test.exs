@@ -58,7 +58,7 @@ defmodule AecoreValidationTest do
 
   @tag :validation
   @timeout 10_000_000
-  test "validate block header timestamp", ctx do
+  test "validate block header time", ctx do
     Miner.mine_sync_block_to_chain()
     new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
     prev_block = get_prev_block()
@@ -73,12 +73,12 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_timestamp_block = %Block{new_block | header: %Header{new_block.header | timestamp: 10}}
+    wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
 
-    assert {:error, "Invalid header timestamp"} ==
+    assert {:error, "Invalid header time"} ==
              catch_throw(
                BlockValidation.calculate_and_validate_block!(
-                 wrong_timestamp_block,
+                 wrong_time_block,
                  prev_block,
                  get_chain_state(),
                  blocks_for_difficulty_calculation
