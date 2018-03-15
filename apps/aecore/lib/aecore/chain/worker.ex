@@ -149,7 +149,7 @@ defmodule Aecore.Chain.Worker do
 
   ## Server side
 
-  def handle_call(:clear_state, _from, state) do
+  def handle_call(:clear_state, _from, _state) do
     {:ok, new_state, _} = init(:empty)
     {:reply, :ok, new_state}
   end

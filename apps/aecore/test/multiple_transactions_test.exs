@@ -37,10 +37,10 @@ defmodule MultipleTransactionsTest do
     account2 = setup.account2
     account3 = setup.account3
     account4 = setup.account4
-    {account_pub_key, account_priv_key} = account
-    {account2_pub_key, account2_priv_key} = account2
-    {account3_pub_key, account3_priv_key} = account3
-    {account4_pub_key, account4_priv_key} = account4
+    {account_pub_key, _account_priv_key} = account
+    {account2_pub_key, _account2_priv_key} = account2
+    {account3_pub_key, _account3_priv_key} = account3
+    {account4_pub_key, _account4_priv_key} = account4
 
     :ok = Miner.mine_sync_block_to_chain
     Pool.get_and_empty_pool()
@@ -118,10 +118,8 @@ defmodule MultipleTransactionsTest do
     account2 = setup.account2
     account3 = setup.account3
     account4 = setup.account4
-    {account_pub_key, account_priv_key} = account
-    {account2_pub_key, account2_priv_key} = account2
-    {account3_pub_key, account3_priv_key} = account3
-    {account4_pub_key, account4_priv_key} = account4
+    {account_pub_key, _account_priv_key} = account
+    {account2_pub_key, _account2_priv_key} = account2
 
     :ok = Miner.mine_sync_block_to_chain
     :ok = Miner.mine_sync_block_to_chain

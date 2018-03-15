@@ -5,9 +5,6 @@ defmodule AecoreChainStateTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain

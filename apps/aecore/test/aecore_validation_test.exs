@@ -86,7 +86,7 @@ defmodule AecoreValidationTest do
              )
   end
 
-  @timeout 30_000
+  @timeout 10_000
   test "validate transactions in a block", ctx do
     from_acc = Wallet.get_public_key()
     value = 5

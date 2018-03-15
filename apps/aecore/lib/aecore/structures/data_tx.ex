@@ -4,7 +4,6 @@ defmodule  Aecore.Structures.DataTx do
   """
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization

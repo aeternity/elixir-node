@@ -1,6 +1,5 @@
 defmodule Aecore.Structures.Transaction do
 
-  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -44,9 +43,9 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(account_state, fee, nonce, block_height, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, block_height, %{} = tx_type_state) do
         cond do
-          account_state.balance - fee < 0 ->
+          account_state.balance - (tx.value + fee) < 0 ->
            {:error, "Negative balance"}
 
           account_state.nonce >= nonce ->
@@ -64,14 +63,14 @@ defmodule Aecore.Structures.Transaction do
            :ok
       end
   """
-  @callback preprocess_check(ChainState.account(),
+  @callback preprocess_check(tx_types(),
+                             ChainState.account(),
                              fee :: non_neg_integer(),
                              nonce :: non_neg_integer(),
                              block_height :: non_neg_integer(),
                              tx_type_state :: map()) :: :ok | {:error, reason}
 
   @callback deduct_fee(ChainState.account(),
-                       fee :: non_neg_integer(),
-                       nonce :: non_neg_integer()) :: ChainState.account()
+                       fee :: non_neg_integer()) :: ChainState.account()
 
 end

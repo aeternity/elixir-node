@@ -2,7 +2,6 @@ defmodule Aecore.Structures.SignedTx do
   @moduledoc """
   """
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aewallet.Signing

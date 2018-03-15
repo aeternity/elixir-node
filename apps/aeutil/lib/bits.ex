@@ -2,7 +2,6 @@
 # License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
 
-  alias Aeutil.Parser
 
   def bech32_encode(prefix, bin) do
     SegwitAddr.encode(prefix, 0, :binary.bin_to_list(bin))

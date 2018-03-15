@@ -3,7 +3,6 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias __MODULE__
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
@@ -12,7 +11,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aeutil.Bits
-  alias Aewallet.Encoding
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -117,7 +115,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def serialize_value(value, type) when is_map(value) do
+  def serialize_value(value, _type) when is_map(value) do
     value
     |> remove_struct()
     |> Enum.reduce(%{}, fn({key, val}, new_val)->

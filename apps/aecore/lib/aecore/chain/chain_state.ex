@@ -5,7 +5,6 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
@@ -94,8 +93,8 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
-  def calculate_total_tokens(%{accounts: accounts} = chainstate) do
-    Enum.reduce(accounts, {0, 0, 0}, fn({account, state}, acc) ->
+  def calculate_total_tokens(%{accounts: accounts}) do
+    Enum.reduce(accounts, {0, 0, 0}, fn({_account, state}, acc) ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
       locked_tokens =
         Enum.reduce(state.locked, 0, fn(%{amount: amount}, locked_sum) ->
