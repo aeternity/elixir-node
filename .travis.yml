@@ -12,9 +12,10 @@ before_install:
   - source $HOME/.cargo/env
 
 script:
-  - mix coveralls -u
+  - mix compile --warnings-as-errors
   - mix credo list --ignore readability,design,refactor
   - mix format --check-formatted
+  - mix coveralls -u
 
 cache:
   directories:
