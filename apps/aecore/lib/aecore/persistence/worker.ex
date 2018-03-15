@@ -165,7 +165,7 @@ defmodule Aecore.Persistence.Worker do
       |> Enum.into([])
     else
         Enum.reduce(Rox.stream(blocks_family), [],
-          fn({_hash, %{header: %{height: height}} = _block} = record, acc) ->
+          fn({_hash, %{header: %{height: height}}} = record, acc) ->
             if threshold < height do
               [record | acc]
             else
