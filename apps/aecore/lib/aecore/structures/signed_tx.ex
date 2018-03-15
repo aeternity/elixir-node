@@ -63,7 +63,7 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{tx}"}
+    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
