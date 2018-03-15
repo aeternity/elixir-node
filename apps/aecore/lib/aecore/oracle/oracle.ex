@@ -51,8 +51,8 @@ defmodule Aecore.Oracle.Oracle do
   transaction hash and the data of the response.
   """
   @spec respond(binary(), any(), integer()) :: :ok | :error
-  def respond(query_hash, response, fee) do
-    case OracleResponseTxData.create(query_hash, response, fee) do
+  def respond(query_id, response, fee) do
+    case OracleResponseTxData.create(query_id, response, fee) do
       :error ->
         :error
 
@@ -91,8 +91,33 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec ttl_is_valid?(ttl(), integer()) :: boolean()
-  def ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
+  @spec is_tx_ttl_valid?(SignedTx.t(), integer()) :: boolean
+  def is_tx_ttl_valid?(tx, block_height) do
+    case tx.data do
+      %OracleRegistrationTxData{} ->
+        ttl_is_valid?(tx.data.ttl, block_height)
+
+      %OracleQueryTxData{} ->
+        response_ttl_is_valid =
+          case tx.data.response_ttl do
+            %{ttl: _, type: :absolute} ->
+              Logger.error("Response TTL has to be relative")
+              false
+
+            %{ttl: _, type: :relative} ->
+              ttl_is_valid?(tx.data.response_ttl, block_height)
+          end
+
+        query_ttl_is_valid = ttl_is_valid?(tx.data.query_ttl, block_height)
+
+        response_ttl_is_valid && query_ttl_is_valid
+
+      _ ->
+        true
+    end
+  end
+
+  defp ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
     case type do
       :absolute ->
         ttl - block_height > 0

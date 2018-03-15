@@ -13,6 +13,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Oracle.Oracle
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
@@ -243,7 +244,8 @@ defmodule Aecore.Miner.Worker do
           candidate_height
         )
 
-      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate, candidate_height)
+      valid_txs_by_fee =
+        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
       {_, pubkey} = Keys.pubkey()
 
@@ -310,9 +312,10 @@ defmodule Aecore.Miner.Worker do
 
   ## Internal
 
-  defp filter_transactions_by_fee(txs, block_height) do
+  defp filter_transactions_by_fee_and_ttl(txs, block_height) do
     Enum.filter(txs, fn tx ->
-      Pool.is_minimum_fee_met?(tx, :miner, block_height)
+      Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
+        Oracle.is_tx_ttl_valid?(tx, block_height)
     end)
   end
 

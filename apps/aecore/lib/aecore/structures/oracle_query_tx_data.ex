@@ -19,6 +19,8 @@ defmodule Aecore.Structures.OracleQueryTxData do
           nonce: non_neg_integer()
         }
 
+  @nonce_size 256
+
   defstruct [
     :sender,
     :oracle_address,
@@ -42,7 +44,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
         :error
 
       !Oracle.data_valid?(
-        registered_oracles[oracle_address].data.query_format,
+        registered_oracles[oracle_address].tx.query_format,
         query_data
       ) ->
         :error
@@ -65,7 +67,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   @spec get_oracle_query_fee(binary()) :: integer()
   def get_oracle_query_fee(oracle_address) do
-    Chain.registered_oracles()[oracle_address].data.query_fee
+    Chain.registered_oracles()[oracle_address].tx.query_fee
   end
 
   @spec calculate_minimum_fee(integer()) :: integer()
@@ -78,7 +80,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
   @spec is_minimum_fee_met?(SignedTx.t(), integer()) :: boolean()
   def is_minimum_fee_met?(tx, block_height) do
     tx_query_fee_is_met =
-      tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].data.query_fee
+      tx.data.query_fee >= Chain.registered_oracles()[tx.data.oracle_address].tx.query_fee
 
     tx_fee_is_met =
       case tx.data.query_ttl do
@@ -97,6 +99,12 @@ defmodule Aecore.Structures.OracleQueryTxData do
       end
 
     tx_fee_is_met && tx_query_fee_is_met
+  end
+
+  @spec id(SignedTx.t()) :: binary()
+  def id(%SignedTx{data: %{sender: sender, oracle_address: oracle_address, nonce: nonce}}) do
+    bin = sender <> <<nonce::@nonce_size>> <> oracle_address
+    :crypto.hash(:sha256, bin)
   end
 
   @spec bech32_encode(binary()) :: String.t()

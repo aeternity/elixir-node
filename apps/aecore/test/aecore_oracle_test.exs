@@ -45,8 +45,8 @@ defmodule AecoreOracleTest do
   end
 
   def oracle_respond() do
-    query_hash = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
-    Oracle.respond(query_hash, %{"value" => 1}, 5)
+    query_id = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
+    Oracle.respond(query_id, %{"value" => 1}, 5)
     Miner.mine_sync_block_to_chain()
   end
 end

@@ -458,22 +458,10 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp get_tx_block_height_included(tx, txs_index, blocks_map) do
-    address =
-      case tx.data do
-        %OracleRegistrationTxData{} ->
-          tx.data.operator
-
-        %OracleResponseTxData{} ->
-          tx.data.operator
-
-        %OracleQueryTxData{} ->
-          tx.data.sender
-      end
-
+  defp get_tx_block_height_included(address, initial_hash, txs_index, blocks_map) do
     {block_hash, _tx_hash} =
       Enum.find(txs_index[address], fn {_block_hash, tx_hash} ->
-        SignedTx.hash_tx(tx) == tx_hash
+        initial_hash == tx_hash
       end)
 
     block = Map.get(blocks_map, block_hash, Persistence.get_block_by_hash(block_hash))
@@ -489,7 +477,7 @@ defmodule Aecore.Chain.Worker do
   defp generate_registered_oracles_map(block, current_registered_oracles_map) do
     Enum.reduce(block.txs, current_registered_oracles_map, fn tx, acc ->
       if match?(%OracleRegistrationTxData{}, tx.data) do
-        Map.put_new(acc, tx.data.operator, tx)
+        Map.put_new(acc, tx.data.operator, %{tx: tx.data, initial_hash: SignedTx.hash_tx(tx)})
       else
         acc
       end
@@ -497,10 +485,11 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp remove_expired_oracles(oracles, block_height, txs_index, blocks_map) do
-    Enum.reduce(oracles, oracles, fn {address, tx}, acc ->
-      tx_block_height_included = get_tx_block_height_included(tx, txs_index, blocks_map)
+    Enum.reduce(oracles, oracles, fn {address, %{tx: tx, initial_hash: initial_hash}}, acc ->
+      tx_block_height_included =
+        get_tx_block_height_included(tx.operator, initial_hash, txs_index, blocks_map)
 
-      if Oracle.calculate_absolute_ttl(tx.data.ttl, tx_block_height_included) == block_height do
+      if Oracle.calculate_absolute_ttl(tx.ttl, tx_block_height_included) == block_height do
         Map.delete(acc, address)
       else
         acc
@@ -512,15 +501,25 @@ defmodule Aecore.Chain.Worker do
     Enum.reduce(block.txs, current_oracle_interaction_objects_map, fn tx, acc ->
       case tx.data do
         %OracleQueryTxData{} ->
-          query_tx_hash = SignedTx.hash_tx(tx)
-          Map.put(acc, query_tx_hash, %{query: tx, response: nil})
+          interaction_object_id = OracleQueryTxData.id(tx)
+
+          Map.put(acc, interaction_object_id, %{
+            query: tx.data,
+            response: nil,
+            query_initial_hash: SignedTx.hash_tx(tx),
+            response_initial_hash: nil
+          })
 
         %OracleResponseTxData{} ->
-          if Map.has_key?(acc, tx.data.query_hash) do
-            interaction_object = Map.get(acc, tx.data.query_hash)
+          if Map.has_key?(acc, tx.data.query_id) do
+            interaction_object = Map.get(acc, tx.data.query_id)
 
             if interaction_object.response == nil do
-              Map.put(acc, tx.data.query_hash, %{interaction_object | response: tx})
+              Map.put(acc, tx.data.query_id, %{
+                interaction_object
+                | response: tx.data,
+                  response_initial_hash: SignedTx.hash_tx(tx)
+              })
             else
               acc
             end
@@ -543,23 +542,33 @@ defmodule Aecore.Chain.Worker do
     Enum.reduce(oracle_interaction_objects, oracle_interaction_objects, fn {query_tx_hash,
                                                                             %{
                                                                               query: query,
-                                                                              response: response
+                                                                              response: response,
+                                                                              query_initial_hash:
+                                                                                query_initial_hash,
+                                                                              response_initial_hash:
+                                                                                response_initial_hash
                                                                             }},
                                                                            acc ->
-      query_tx_block_height_included = get_tx_block_height_included(query, txs_index, blocks_map)
+      query_tx_block_height_included =
+        get_tx_block_height_included(query.sender, query_initial_hash, txs_index, blocks_map)
 
       query_absolute_ttl =
-        Oracle.calculate_absolute_ttl(query.data.query_ttl, query_tx_block_height_included)
+        Oracle.calculate_absolute_ttl(query.query_ttl, query_tx_block_height_included)
 
       query_has_expired = query_absolute_ttl == block_height && response == nil
 
       response_has_expired =
         if response != nil do
           response_tx_block_height_included =
-            get_tx_block_height_included(response, txs_index, blocks_map)
+            get_tx_block_height_included(
+              response.operator,
+              response_initial_hash,
+              txs_index,
+              blocks_map
+            )
 
           response_absolute_ttl =
-            Oracle.calculate_absolute_ttl(query.data.query_ttl, response_tx_block_height_included)
+            Oracle.calculate_absolute_ttl(query.query_ttl, response_tx_block_height_included)
 
           response_absolute_ttl == block_height
         else
