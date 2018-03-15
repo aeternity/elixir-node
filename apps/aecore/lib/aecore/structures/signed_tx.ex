@@ -9,6 +9,8 @@ defmodule Aecore.Structures.SignedTx do
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
+  require Logger
+
   @type t :: %SignedTx{
     data: DataTx.t(),
     signature: binary()
