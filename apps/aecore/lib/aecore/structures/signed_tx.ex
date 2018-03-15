@@ -33,6 +33,9 @@ defmodule Aecore.Structures.SignedTx do
   def is_valid?(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
       DataTx.is_valid?(data)
+    else
+      Logger.error("Can't verify the signature with the following public key: #{data.from_acc}")
+      false
     end
   end
 
