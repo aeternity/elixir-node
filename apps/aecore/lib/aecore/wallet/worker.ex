@@ -121,7 +121,7 @@ defmodule Aecore.Wallet.Worker do
   """
   @spec decode(String.t()) :: binary()
   def decode(formatted_key) do
-    {:ok, pub_key} = Encoding.decode(formatted_key)
+    {:ok, _pub_key} = Encoding.decode(formatted_key)
   end
 
   ## Server Callbacks
@@ -149,7 +149,7 @@ defmodule Aecore.Wallet.Worker do
     {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: pub_key} = state) do
+  def handle_call({:get_pub_key, {derivation_path, password, _network}}, _from, %{pubkey: pub_key} = state) do
     pub_key =
       if derivation_path == "" do
         pub_key

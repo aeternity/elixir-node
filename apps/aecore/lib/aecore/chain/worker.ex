@@ -96,7 +96,7 @@ defmodule Aecore.Chain.Worker do
   def has_block?(hash) do
     case get_block(hash) do
       {:error, _} -> false
-      block -> true
+      _block -> true
     end
   end
 
