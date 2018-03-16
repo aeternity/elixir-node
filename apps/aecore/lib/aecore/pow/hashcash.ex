@@ -31,14 +31,17 @@ defmodule Aecore.Pow.Hashcash do
   @spec generate(Header.t(), integer()) :: {:ok, Header.t()} | {:error, term()}
   def generate(%Header{nonce: nonce} = block_header, start_nonce) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
+
     case verify(block_header_hash, block_header.difficulty_target) do
-      true -> {:ok, block_header}
+      true ->
+        {:ok, block_header}
+
       false ->
-      if nonce <= start_nonce do
-        generate(%{block_header | nonce: nonce + 1}, start_nonce)
-      else
-        {:error, "no solution found"}
-      end
+        if nonce <= start_nonce do
+          generate(%{block_header | nonce: nonce + 1}, start_nonce)
+        else
+          {:error, "no solution found"}
+        end
     end
   end
 
@@ -47,5 +50,4 @@ defmodule Aecore.Pow.Hashcash do
   def generate(:cuckoo, data, target) do
     verify(data, target)
   end
-
 end

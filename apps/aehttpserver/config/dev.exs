@@ -7,10 +7,11 @@ use Mix.Config
 # watchers to your application. For example, we use it
 # with brunch.io to recompile .js and .css sources.
 
-port =  case System.get_env("PORT") do
-  nil -> 10_000
-  env -> env
-end
+port =
+  case System.get_env("PORT") do
+    nil -> 10_000
+    env -> env
+  end
 
 config :aehttpserver, Aehttpserver.Web.Endpoint,
   http: [port: port],
