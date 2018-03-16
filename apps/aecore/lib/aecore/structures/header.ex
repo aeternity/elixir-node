@@ -45,7 +45,7 @@ defmodule Aecore.Structures.Header do
     }
   end
 
-  def bech32_encode(bin) do
-    Bits.bech32_encode("bl", bin)
+  def base58_encode(bin) do
+    Bits.encode58("bh$",bin)
   end
 end

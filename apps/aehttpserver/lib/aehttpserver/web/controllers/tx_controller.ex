@@ -4,11 +4,11 @@ defmodule Aehttpserver.Web.TxController do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
-  alias Aewallet.Encoding
+  alias Aecore.Structures.Account
   alias Aeutil.Bits
 
   def show(conn, params) do
-    account_bin = Bits.bech32_decode(params["account"])
+    account_bin = Bits.decode58(params["account"])
 
     user_txs = Pool.get_txs_for_address(account_bin)
 
@@ -26,10 +26,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(proof, fn tx ->
                 %{
                   tx
-                  | from_acc: Encoding.encode(tx.from_acc, :ae),
-                    to_acc: Encoding.encode(tx.to_acc, :ae),
-                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
-                    block_hash: Header.bech32_encode(tx.block_hash),
+                  | from_acc: Account.base58_encode(tx.from_acc),
+                    to_acc: Account.base58_encode(tx.to_acc),
+                    txs_hash: SignedTx.base58_encode_root(tx.txs_hash),
+                    block_hash: Header.base58_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature),
                     proof: Serialization.merkle_proof(tx.proof, [])
                 }
@@ -42,10 +42,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(user_txs, fn tx ->
                 %{
                   tx
-                  | from_acc: Encoding.encode(tx.from_acc, :ae),
-                    to_acc: Encoding.encode(tx.to_acc, :ae),
-                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
-                    block_hash: Header.bech32_encode(tx.block_hash),
+                  | from_acc: Account.base58_encode(tx.from_acc),
+                    to_acc: Account.base58_encode(tx.to_acc),
+                    txs_hash: SignedTx.base58_encode(tx.txs_hash),
+                    block_hash: Header.base58_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature)
                 }
               end)

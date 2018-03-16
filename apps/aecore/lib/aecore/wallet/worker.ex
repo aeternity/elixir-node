@@ -8,6 +8,8 @@ defmodule Aecore.Wallet.Worker do
   alias Aewallet.Wallet
   alias Aewallet.KeyPair
   alias Aewallet.Encoding
+  alias Aecore.Structures.Account
+  alias Aeutil.Bits
 
   @typedoc "Wallet type"
   @type wallet_type :: :ae | :btc
@@ -99,11 +101,11 @@ defmodule Aecore.Wallet.Worker do
   """
   @spec encode(binary(), wallet_type()) :: String.t()
   def encode(pub_key, :ae) do
-    Encoding.encode(pub_key, :ae)
+    Bits.encode58("ak$",pub_key)
   end
 
   def encode(pub_key, :btc) do
-    Encoding.encode(pub_key, :btc)
+    Bits.encode58("btc",pub_key)
   end
 
   @doc """

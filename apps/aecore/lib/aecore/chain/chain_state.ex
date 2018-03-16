@@ -125,9 +125,8 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58_encode(bin) do
+    Bits.encode58("cs$",bin)
   end
 
 end

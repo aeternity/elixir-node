@@ -7,7 +7,6 @@ defmodule AeutilSerializationTest do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aewallet.Encoding
   alias Aecore.Wallet.Worker, as: Wallet
 
   @tag :serialization
@@ -54,24 +53,24 @@ defmodule AeutilSerializationTest do
   end
 
   def get_block_map() do
-    %{"header" => %{"root_hash" => "cs1qrmdvyaex9q32ahj5kh9003z7gqykmhsuwxhuuugh5yux6v4r8c3qr0a5xn",
+    %{"header" => %{"root_hash" => "cs$35Shn6GNeKtv8eLkF7a2EYk8PMSYcgUdGsadrgANDd9s",
                     "target" => 11,
                     "height" => 105,
                     "nonce" => 707,
                     "pow_evidence" => nil,
-                    "prev_hash" => "bl1qqpa2qrjf8kk8eu0fkedntmhf6z9p5w7n2l6e23af23u4lvukpr9sx0k0su",
+                    "prev_hash" => "bh$12sT82WC2T7LnRnU5F7UpvSbNB9J97xWyC8L9wwctMer",
                     "time" => 1_508_834_903_252,
-                    "txs_hash" => "tr1qq9j4m5tuzmz6ehhk6gwwfaymlqpm87nf6p2an4l5jetadc285rcqc8xlyf",
+                    "txs_hash" => "tr$6T4HpdxapT9HExC4cEY3GiyRPexuPwQcdXWQQ3uCc3R",
                     "version" => 1},
       "txs" => [%{"data" => %{"type" => "Elixir.Aecore.Structures.SpendTx",
-                              "payload" => %{"to_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
+                              "payload" => %{"to_acc" => "ak$jdfLn2ioHn3adYpSjAfs9AHPXc9RkjA1Pdf6KicfN57b",
                                              "value" => 100,
                                              "lock_time_block" => [%{"amount" => 5,
                                                                      "block" => 10},
                                                                    %{"amount" => 6,
                                                                      "block" => 10}]
                                             },
-                              "from_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",
+                              "from_acc" =>"ak$jdfLn2ioHn3adYpSjAfs9AHPXc9RkjA1Pdf6KicfN57a",
                               "fee" => 40,
                               "nonce" => 743_183_534_114},
                   "signature" => "AQID"}]

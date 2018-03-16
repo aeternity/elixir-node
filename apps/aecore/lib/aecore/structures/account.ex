@@ -6,6 +6,7 @@ defmodule Aecore.Structures.Account do
   require Logger
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aeutil.Bits
 
   @type locked() :: list(%{amount: non_neg_integer(),
                            block: non_neg_integer()})
@@ -56,4 +57,7 @@ defmodule Aecore.Structures.Account do
                        locked: updated_locked}
   end
 
+  def base58_encode(bin) do
+    Bits.encode58("ak$",bin)
+  end
 end

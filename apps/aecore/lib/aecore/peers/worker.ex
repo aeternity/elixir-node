@@ -157,7 +157,7 @@ defmodule Aecore.Peers.Worker do
     filtered_peers = :maps.filter(fn(_, %{uri: uri}) ->
         case Client.get_info(uri) do
           {:ok, info} ->
-            binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+            binary_genesis_hash = Bits.decode58(info.genesis_block_hash)
             binary_genesis_hash == genesis_block_header_hash()
           _ ->
             false
@@ -257,7 +257,7 @@ defmodule Aecore.Peers.Worker do
   defp check_peer(uri, own_nonce) do
     case(Client.get_info(uri)) do
       {:ok, info} ->
-        binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+        binary_genesis_hash = Bits.decode58(info.genesis_block_hash)
         cond do
           own_nonce == info.peer_nonce ->
             {:error, "Equal peer nonces"}

@@ -11,7 +11,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    block = Chain.get_block_by_bech32_hash(params["hash"])
+    block = Chain.get_block_by_base58_hash(params["hash"])
 
     case block do
       %Block{} ->
@@ -30,8 +30,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Bits.decode58(hash)
       end
 
     count =
@@ -51,7 +50,7 @@ defmodule Aehttpserver.Web.BlockController do
         hash = BlockValidation.block_header_hash(block.header)
 
         %{
-          "hash" => Header.bech32_encode(hash),
+          "hash" => Header.base58_encode(hash),
           "header" => Serialization.block(block, :serialize).header,
           "tx_count" => Enum.count(block.txs)
         }
@@ -67,8 +66,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Bits.decode58(hash)
       end
 
     to_block_hash =
@@ -77,8 +75,7 @@ defmodule Aehttpserver.Web.BlockController do
           BlockValidation.block_header_hash(Block.genesis_block().header)
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Bits.decode58(hash)
       end
 
     count =

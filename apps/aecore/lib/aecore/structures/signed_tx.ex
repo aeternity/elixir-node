@@ -76,13 +76,11 @@ defmodule Aecore.Structures.SignedTx do
     type.reward(payload, block_height, account_state)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("tx", bin)
+  def base58_encode(bin) do
+    Bits.encode58("tx$",bin)
   end
 
-  @spec bech32_encode_root(binary()) :: String.t()
-  def bech32_encode_root(bin) do
-    Bits.bech32_encode("tr", bin)
+  def base58_encode_root(bin) do
+    Bits.encode58("tr$",bin)
   end
 end

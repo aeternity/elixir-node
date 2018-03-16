@@ -12,7 +12,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aeutil.Bits
-  alias Aewallet.Encoding
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -130,16 +129,14 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, type) when is_binary(value) do
     case type do
       :prev_hash ->
-        Header.bech32_encode(value)
+        Header.base58_encode(value)
 
       :txs_hash ->
-        SignedTx.bech32_encode_root(value)
-
+        SignedTx.base58_encode_root(value)
       :root_hash ->
-        ChainState.bech32_encode(value)
-
+        ChainState.base58_encode(value)
       _ ->
-        Aewallet.Encoding.encode(value, :ae)
+        Bits.encode58("ak$",Kernel.to_string(value))
     end
   end
 
@@ -162,7 +159,7 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value) when is_binary(value) do
-    case Bits.bech32_decode(value) do
+    case Bits.decode58(value) do
       {:error, _reason} -> Parser.to_atom!(value)
       value -> value
     end

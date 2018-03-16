@@ -4,14 +4,20 @@ defmodule Aeutil.Bits do
 
   alias Aeutil.Parser
 
-  def bech32_encode(prefix, bin) do
-    SegwitAddr.encode(prefix, 0, :binary.bin_to_list(bin))
+@prefix_list ["ak$","bh$","bs$","tx$","bx$","ok$","cs$","tr$"]
+
+
+  def encode58(prefix, data)  when is_binary(data) do
+    prefix <> Kernel.to_string(:base58.binary_to_base58(data))
   end
 
-  def bech32_decode(bech32) do
-    case SegwitAddr.decode(bech32) do
-      {:ok, {_, _, bin_list}} -> :binary.list_to_bin(bin_list)
-      {:error, _} = error -> error
+  def decode58(data) when is_binary(data) do
+    {prefix, bin} = String.split_at(data, 3)
+    if Enum.member?(@prefix_list, prefix) do
+       decoded_data = :base58.base58_to_binary(String.to_charlist(bin))
+       Kernel.to_string(decoded_data)
+    else
+      {:error, "Invalid data"}
     end
   end
 

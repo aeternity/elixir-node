@@ -2,10 +2,10 @@ defmodule Aehttpserver.Web.BalanceController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aewallet.Encoding
+  alias Aeutil.Bits
 
   def show(conn, params) do
-    case Encoding.decode(params["account"]) do
+    case Bits.decode58(params["account"]) do
       {:error, reason} ->
         reason
 
