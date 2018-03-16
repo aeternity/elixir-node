@@ -6,4 +6,3 @@ import_config "dev.exs"
 
 config :logger, :console,
        level: :info
-

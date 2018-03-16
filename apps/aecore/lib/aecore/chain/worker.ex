@@ -31,7 +31,10 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, build_chain_state(), 0)
+      ChainState.calculate_and_validate_chain_state!(
+        Block.genesis_block().txs,
+        build_chain_state(),
+        0)
 
     chain_states = %{genesis_block_hash => genesis_chain_state}
     txs_index = calculate_block_acc_txs_info(Block.genesis_block())
@@ -42,25 +45,25 @@ defmodule Aecore.Chain.Worker do
             top_height: 0}, 0}
   end
 
-  def clear_state(), do: GenServer.call(__MODULE__, :clear_state)
+  def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()
-  def top_block() do
+  def top_block do
     GenServer.call(__MODULE__, :top_block)
   end
 
   @spec top_block_chain_state() :: tuple()
-  def top_block_chain_state() do
+  def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_chain_state)
   end
 
   @spec top_block_hash() :: binary()
-  def top_block_hash() do
+  def top_block_hash do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
   @spec top_height() :: integer()
-  def top_height() do
+  def top_height do
     GenServer.call(__MODULE__, :top_height)
   end
 
@@ -83,7 +86,6 @@ defmodule Aecore.Chain.Worker do
       block ->
         block
     end
-
 
     if block != nil do
       block
@@ -112,10 +114,12 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    prev_block = get_block(block.header.prev_hash) #TODO: catch error
+    prev_block = get_block(block.header.prev_hash)
     prev_block_chain_state = chain_state(block.header.prev_hash)
 
-    blocks_for_difficulty_calculation = get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
+    blocks_for_difficulty_calculation =
+      get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
+
     new_chain_state = BlockValidation.calculate_and_validate_block!(
       block, prev_block, prev_block_chain_state, blocks_for_difficulty_calculation)
 
@@ -133,17 +137,17 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec txs_index() :: txs_index()
-  def txs_index() do
+  def txs_index do
     GenServer.call(__MODULE__, :txs_index)
   end
 
   @spec chain_state() :: ChainState.account_chainstate()
-  def chain_state() do
+  def chain_state do
     top_block_chain_state()
   end
 
   @spec longest_blocks_chain() :: list(Block.t())
-  def longest_blocks_chain() do
+  def longest_blocks_chain do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
@@ -260,7 +264,6 @@ defmodule Aecore.Chain.Worker do
                  top_height: top_height}}
   end
 
-
   defp discard_blocks_from_memory(block_map) do
     if map_size(block_map) > number_of_blocks_in_memory() do
       [genesis_block, {_, b} | sorted_blocks] =
@@ -282,6 +285,7 @@ defmodule Aecore.Chain.Worker do
       case tx.data do
         %SpendTx{} ->
           [tx.data.from_acc, tx.data.to_acc]
+
         %DataTx{} ->
           tx.data.from_acc
       end
@@ -292,6 +296,7 @@ defmodule Aecore.Chain.Worker do
         case tx.data do
           %SpendTx{} ->
             tx.data.from_acc == account || tx.data.to_acc == account
+
           %DataTx{} ->
             tx.data.from_acc == account
         end
@@ -330,9 +335,9 @@ end
     end
   end
 
-  defp number_of_blocks_in_memory() do
+  defp number_of_blocks_in_memory do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
-  defp build_chain_state(), do: %{accounts: %{}}
+  defp build_chain_state, do: %{accounts: %{}}
 end

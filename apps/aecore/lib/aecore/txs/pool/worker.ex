@@ -35,12 +35,12 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   @spec get_pool() :: map()
-  def get_pool() do
+  def get_pool do
     GenServer.call(__MODULE__, :get_pool)
   end
 
   @spec get_and_empty_pool() :: map()
-  def get_and_empty_pool() do
+  def get_and_empty_pool do
     GenServer.call(__MODULE__, :get_and_empty_pool)
   end
 
@@ -161,7 +161,8 @@ defmodule Aecore.Txs.Pool.Worker do
     user_txs =
       if tx.data.from_acc == address or tx.data.to_acc == address do
         [
-          Map.from_struct(tx.data)
+          tx.data
+          |> Map.from_struct()
           |> Map.put_new(:signature, tx.signature)
           | user_txs
         ]

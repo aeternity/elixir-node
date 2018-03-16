@@ -79,7 +79,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp command_options(:verify), do: default_command_options() ++ [{:stdin, true}]
   defp command_options(:generate), do: default_command_options()
 
-  defp default_command_options() do
+  defp default_command_options do
     [{:stdout, self()},
      {:stderr, self()},
      {:kill_timeout, 0},
@@ -112,11 +112,12 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  defp export_ld_lib_path() do
-    ldpathvar = case :os.type() do
-                  {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
-                  {:unix, _}       -> "LD_LIBRARY_PATH"
-                end
+  defp export_ld_lib_path do
+    ldpathvar =
+      case :os.type() do
+        {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
+        {:unix, _}       -> "LD_LIBRARY_PATH"
+      end
     ["export ", ldpathvar, "=../lib:$", ldpathvar, "; "]
   end
 
@@ -179,15 +180,14 @@ defmodule Aecore.Pow.Cuckoo do
     nodesize = get_node_size()
     bin  = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     hash = :crypto.hash(:sha256, bin)
-    Hashcash.generate(:cuckoo, hash, target)
+    Hashcash.verify(hash, target)
   end
-
 
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
   @spec get_node_size() :: integer()
-  defp get_node_size() do
+  defp get_node_size do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8
       {_, _, size} when size > 0 -> 4

@@ -25,7 +25,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   @spec get_peer_blocks() :: map()
-  def get_peer_blocks() do
+  def get_peer_blocks do
     GenServer.call(__MODULE__, :get_peer_blocks)
   end
 
@@ -40,13 +40,13 @@ defmodule Aecore.Peers.Sync do
   end
 
   @spec get_running_tasks() :: map()
-  def get_running_tasks() do
+  def get_running_tasks do
     GenServer.call(__MODULE__, :get_running_tasks)
   end
 
-  @spec get_chain_sync_status() :: boolean()
-  def get_chain_sync_status() do
-    GenServer.call(__MODULE__, :get_chain_sync_status)
+  @spec chain_sync_running?() :: boolean()
+  def chain_sync_running? do
+    GenServer.call(__MODULE__, :chain_sync_running)
   end
 
   @spec set_chain_sync_status(boolean()) :: :ok
@@ -76,7 +76,9 @@ defmodule Aecore.Peers.Sync do
 
   @spec add_peer_blocks_to_sync_state(String.t(), binary()) :: :ok
   def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
-    if !Chain.has_block?(from_block_hash) do
+    if Chain.has_block?(from_block_hash) do
+      remove_running_task(peer_uri)
+    else
       add_running_task(peer_uri)
       case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
         {:ok, blocks} ->
@@ -100,14 +102,12 @@ defmodule Aecore.Peers.Sync do
           Logger.error(fn -> message end)
           remove_running_task(peer_uri)
       end
-    else
-      remove_running_task(peer_uri)
     end
   end
 
   @spec add_valid_peer_blocks_to_chain(map()) :: :ok
   def add_valid_peer_blocks_to_chain(state) do
-    if !get_chain_sync_status() do
+    unless chain_sync_running?() do
       set_chain_sync_status(true)
       Enum.each(state, fn{_, block} ->
           built_chain = build_chain(state, block, [])
@@ -126,6 +126,7 @@ defmodule Aecore.Peers.Sync do
           Enum.each(deserialized_pool_txs, fn(tx) ->
             Pool.add_transaction(tx)
           end)
+
         :error ->
           Logger.error("Couldn't get pool from peer")
       end
@@ -155,7 +156,7 @@ defmodule Aecore.Peers.Sync do
     {:reply, peer_block_tasks, state}
   end
 
-  def handle_call(:get_chain_sync_status, _from,
+  def handle_call(:chain_sync_running, _from,
                   %{chain_sync_running: chain_sync_running} = state) do
     {:reply, chain_sync_running, state}
   end
@@ -167,18 +168,17 @@ defmodule Aecore.Peers.Sync do
   def handle_call({:add_block_to_state, block_hash, block}, _from,
                    %{peer_blocks: peer_blocks} = state) do
     updated_peer_blocks =
-      case Chain.has_block?(block_hash) do
-        true ->
+      if Chain.has_block?(block_hash) do
+        peer_blocks
+      else
+        try do
+          BlockValidation.single_validate_block!(block)
+          Map.put(peer_blocks, block_hash, block)
+        catch
+          {:error, message} ->
+            Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
           peer_blocks
-        false ->
-          try do
-            BlockValidation.single_validate_block!(block)
-            Map.put(peer_blocks, block_hash, block)
-          catch
-            {:error, message} ->
-              Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-              peer_blocks
-          end
+        end
       end
     {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
   end
@@ -219,6 +219,7 @@ defmodule Aecore.Peers.Sync do
     cond do
       peers_count == 0 ->
         {:error, "No peers"}
+
       peers_count < @peers_target_count ->
         all_peers =
           Peers.all_peers()
@@ -232,6 +233,7 @@ defmodule Aecore.Peers.Sync do
           Logger.debug(fn -> "No new peers added when trying to refill peers" end)
           {:error, "No new peers added"}
         end
+
       true ->
         :ok
     end
@@ -248,7 +250,8 @@ defmodule Aecore.Peers.Sync do
       case (HttpClient.get_peers(peer)) do
         {:ok, list} ->
           Enum.concat(acc, Enum.map(Map.values(list),
-                                    fn(%{"uri" => uri}) -> uri end))
+                fn(%{"uri" => uri}) -> uri end))
+
         {:error, message} ->
           Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
           acc
@@ -263,11 +266,13 @@ defmodule Aecore.Peers.Sync do
     end)
     |> Enum.shuffle
     |> Enum.reduce(0, fn(peer, acc) ->
-      #if we have successfully added less then number_of_peers_to_add peers then try to add another one
+      # if we have successfully added less then number_of_peers_to_add peers
+      # try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
           :ok ->
             acc + 1
+
           _ ->
             acc
         end
@@ -284,17 +289,19 @@ defmodule Aecore.Peers.Sync do
     has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
     has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     block_header_hash = BlockValidation.block_header_hash(block.header)
-    if !Chain.has_block?(block_header_hash) do
+    if Chain.has_block?(block_header_hash) do
+      chain
+    else
       cond do
         has_parent_block_in_state ->
           build_chain(state, state[block.header.prev_hash], [block | chain])
+
         has_parent_in_chain ->
           [block | chain]
+
         true ->
           []
       end
-    else
-      chain
     end
   end
 
@@ -305,6 +312,7 @@ defmodule Aecore.Peers.Sync do
       case Chain.add_block(block) do
         :ok ->
           remove_block_from_state(BlockValidation.block_header_hash(block.header))
+
         :error ->
           Logger.info("Block couldn't be added to chain")
       end

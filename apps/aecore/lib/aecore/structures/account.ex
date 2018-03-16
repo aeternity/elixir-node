@@ -33,7 +33,7 @@ defmodule Aecore.Structures.Account do
   use ExConstructor
 
   @spec empty() :: Account.t()
-  def empty() do
+  def empty do
     %Account{balance: 0,
              nonce: 0,
              locked: []}
@@ -87,7 +87,8 @@ defmodule Aecore.Structures.Account do
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in(ChainState.account(), integer(), integer(), integer()) :: ChainState.account()
+  @spec transaction_in(ChainState.account(), integer(),
+                       integer(), integer()) :: ChainState.account()
   def transaction_in(account_state, block_height, value, lock_time_block) do
     if block_height <= lock_time_block do
       new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]

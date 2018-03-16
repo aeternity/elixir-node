@@ -8,6 +8,7 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
   alias Aewallet.Encoding
+  alias Plug.Conn
 
   require Logger
 
@@ -32,8 +33,8 @@ defmodule Aehttpserver.Web.InfoController do
     pubkey_hex = Encoding.encode(pubkey, :ae)
 
     # Add whoever's getting our info
-    peer_port_headers = Plug.Conn.get_req_header(conn, "peer_port")
-    peer_nonce_headers = Plug.Conn.get_req_header(conn, "nonce")
+    peer_port_headers = Conn.get_req_header(conn, "peer_port")
+    peer_nonce_headers = Conn.get_req_header(conn, "nonce")
 
     if !Enum.empty?(peer_port_headers) && !Enum.empty?(peer_nonce_headers) do
       peer_ip = conn.peer |> elem(0) |> Tuple.to_list() |> Enum.join(".")

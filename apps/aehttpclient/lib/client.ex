@@ -9,6 +9,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
+  alias Aehttpserver.Web.Endpoint
 
   require Logger
 
@@ -28,7 +29,7 @@ defmodule Aehttpclient.Client do
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
-        #TODO handle deserialization errors
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -157,10 +158,17 @@ defmodule Aehttpclient.Client do
     HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
   end
 
-  # TODO: what is this function even doing?
-  defp get_local_port() do
-    Aehttpserver.Web.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
-    |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
-    |> elem(1) |> Enum.at(0) |> elem(1)
+  defp get_local_port do
+    Endpoint
+    |> :sys.get_state()
+    |> elem(3)
+    |> Enum.at(2)
+    |> elem(3)
+    |> elem(2)
+    |> Enum.at(1)
+    |> List.keyfind(:http, 0)
+    |> elem(1)
+    |> Enum.at(0)
+    |> elem(1)
   end
 end

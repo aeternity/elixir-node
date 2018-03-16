@@ -14,14 +14,24 @@ defmodule Aecore.Chain.BlockValidation do
   @timestamp_validation_blocks_count 10
   @timestamp_validation_future_limit_ms 3_600_000
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
-  def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
+  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(),
+                                      list(Block.t())) :: {:error, term()} | :ok
+  def calculate_and_validate_block!(
+    new_block,
+    previous_block,
+    old_chain_state,
+    blocks_for_difficulty_calculation) do
 
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
     single_validate_block!(new_block)
 
-    new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
+    new_chain_state =
+      ChainState.calculate_and_validate_chain_state!(
+        new_block.txs,
+        old_chain_state,
+        new_block.header.height)
+
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     server = self()
@@ -76,7 +86,8 @@ defmodule Aecore.Chain.BlockValidation do
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
+        throw({:error, "Sum of coinbase transactions values exceeds
+        the maximum coinbase transactions value"})
 
       block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
@@ -159,15 +170,12 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_timestamp?(Block.t()) :: boolean()
   defp valid_header_timestamp?(%Block{header: new_block_header}) do
-    case new_block_header.timestamp <= System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
+    case new_block_header.timestamp <=
+      System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
       true ->
         last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
-
-        last_blocks_timestamps =
-          for block <- last_blocks, do: block.header.timestamp
-
+        last_blocks_timestamps = for block <- last_blocks, do: block.header.timestamp
         avg = Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)
-
         new_block_header.timestamp >= avg
 
       false ->

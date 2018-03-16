@@ -79,7 +79,7 @@ defmodule AecoreCuckooTest do
                                                     lock_time_block: 11},
                                          fee: 0,
                                          from_acc: nil,
-                                         nonce: 0,},
+                                         nonce: 0},
                            signature: nil}
          ]}
 

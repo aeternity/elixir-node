@@ -31,7 +31,6 @@ defmodule GetTxsForAddressTest do
       168, 61, 115, 74, 188, 140, 143, 160, 232, 230, 187, 220, 17, 24, 249, 202,
       222, 19, 20, 136, 175, 241, 203, 82, 23, 76, 218, 9, 72, 42, 11, 123, 127>>
 
-
   nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce + 1
     {:ok, tx1} = Keys.sign_tx(to_acc, 90, nonce, 5)
 

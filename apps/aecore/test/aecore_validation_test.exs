@@ -4,6 +4,7 @@ defmodule AecoreValidationTest do
   """
 
   use ExUnit.Case, async: false, seed: 0
+
   doctest Aecore.Chain.BlockValidation
 
   alias Aecore.Persistence.Worker, as: Persistence
@@ -18,7 +19,6 @@ defmodule AecoreValidationTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
-
   setup_all do
     path = Application.get_env(:aecore, :persistence)[:path]
     if File.exists?(path) do
@@ -30,7 +30,6 @@ defmodule AecoreValidationTest do
       Chain.clear_state()
       :ok
     end
-
 
   end
 
@@ -130,11 +129,11 @@ defmodule AecoreValidationTest do
     new_block
   end
 
-  def get_prev_block() do
+  def get_prev_block do
     Chain.top_block()
   end
 
-  def get_chain_state() do
+  def get_chain_state do
     Chain.chain_state()
   end
 end

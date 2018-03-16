@@ -53,13 +53,13 @@ defmodule Aecore.Persistence.Worker do
 
   @spec get_all_blocks() ::
   {:ok, map()} | :not_found | {:error, reason :: term()}
-  def get_all_blocks() do
+  def get_all_blocks do
     GenServer.call(__MODULE__, :get_all_blocks)
   end
 
   @spec get_latest_block_height_and_hash() ::
   {:ok, map()} | :not_found | {:error, reason :: term()}
-  def get_latest_block_height_and_hash() do
+  def get_latest_block_height_and_hash do
     GenServer.call(__MODULE__, :get_latest_block_height_and_hash)
   end
 
@@ -83,15 +83,15 @@ defmodule Aecore.Persistence.Worker do
 
   @spec get_all_accounts_chain_states() ::
   {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
-  def get_all_accounts_chain_states() do
+  def get_all_accounts_chain_states do
     GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
 
-  def delete_all_blocks() do
+  def delete_all_blocks do
     GenServer.call(__MODULE__, :delete_all_blocks)
   end
 
-  def delete_chainstate() do
+  def delete_chainstate do
     GenServer.call(__MODULE__, :delete_chainstate)
   end
 
@@ -244,8 +244,8 @@ defmodule Aecore.Persistence.Worker do
     {:reply, :ok, state}
   end
 
-  defp persistence_path(), do: Application.get_env(:aecore, :persistence)[:path]
+  defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
 
-  defp write_options(), do: Application.get_env(:aecore, :persistence)[:write_options]
+  defp write_options, do: Application.get_env(:aecore, :persistence)[:write_options]
 
 end

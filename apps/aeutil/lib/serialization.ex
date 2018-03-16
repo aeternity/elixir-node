@@ -9,6 +9,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
+  alias Aewallet.Encoding
   alias Aeutil.Parser
   alias Aeutil.Bits
 
@@ -135,16 +136,16 @@ defmodule Aeutil.Serialization do
         ChainState.bech32_encode(value)
 
       :from_acc ->
-        Aewallet.Encoding.encode(value, :ae)
+        Encoding.encode(value, :ae)
 
       :to_acc ->
-        Aewallet.Encoding.encode(value, :ae)
+        Encoding.encode(value, :ae)
 
       :signature ->
         base64_binary(value, :serialize)
 
       :proof ->
-        Aewallet.Encoding.encode(value, :ae)
+        Encoding.encode(value, :ae)
 
       _ ->
         value

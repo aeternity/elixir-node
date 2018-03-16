@@ -1,7 +1,8 @@
-# Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
-# License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
-
+  @moduledoc """
+  Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
+  License: CC BY-SA 3.0
+  """
 
   def bech32_encode(prefix, bin) do
     SegwitAddr.encode(prefix, 0, :binary.bin_to_list(bin))

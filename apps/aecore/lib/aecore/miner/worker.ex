@@ -55,10 +55,9 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  ## TODO check if is Synced with the chain !!
   @spec resume() :: :ok
-  def resume() do
-    if Peers.is_chain_synced? do
+  def resume do
+    if Peers.chain_synced? do
       GenServer.call(__MODULE__, {:mining, :start})
     else
       Logger.error("Can't start miner, chain not yet synced")
@@ -66,14 +65,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec suspend() :: :ok
-  def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
+  def suspend, do: GenServer.call(__MODULE__, {:mining, :stop})
 
   @spec get_state() :: :running | :idle
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
   @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
-  def mine_sync_block_to_chain() do
+  def mine_sync_block_to_chain do
     cblock = candidate()
     case mine_sync_block(cblock) do
 
@@ -160,14 +159,15 @@ defmodule Aecore.Miner.Worker do
   end
   defp mining(%{miner_state: :running, block_candidate: cblock} = state) do
     nonce = next_nonce(cblock.header.nonce)
-    cblock = case rem(nonce, @new_candidate_nonce_count) do
-      0 -> candidate()
-      _ -> cblock
-    end
+    cblock =
+      case rem(nonce, @new_candidate_nonce_count) do
+        0 -> candidate()
+        _ -> cblock
+      end
     cheader = %{cblock.header | nonce: nonce}
-    cblock  = %{cblock | header: cheader}
+    cblock_with_header  = %{cblock | header: cheader}
     work = fn() -> Cuckoo.generate(cheader) end
-    start_worker(work, %{state | block_candidate: cblock})
+    start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
   defp mining(%{miner_state: :idle, job: []} = state), do: state
@@ -212,18 +212,22 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
-  def candidate() do
+  def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
 
     try do
-      blocks_for_difficulty_calculation = Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+      blocks_for_difficulty_calculation =
+        Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
+      valid_txs_by_chainstate =
+        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
+
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       pubkey = Wallet.get_public_key()
@@ -333,7 +337,11 @@ defmodule Aecore.Miner.Worker do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
+      ChainState.calculate_and_validate_chain_state!(
+        valid_txs,
+        chain_state,
+        top_block.header.height + 1)
+
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 

@@ -31,12 +31,13 @@ defmodule AehttpclientTest do
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
     assert Enum.count(
-             Client.get_account_txs({"localhost:4000", hex_acc})
+             {"localhost:4000", hex_acc}
+             |> Client.get_account_txs()
              |> elem(1)
            ) == 2
   end
 
-  def add_txs_to_pool() do
+  def add_txs_to_pool do
     Miner.mine_sync_block_to_chain()
     to_acc = Wallet.get_public_key()
     from_acc = to_acc

@@ -6,7 +6,7 @@ defmodule Aecore.Chain.Difficulty do
   @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
   @target_distance 30_000
 
-  def get_number_of_blocks() do
+  def get_number_of_blocks do
     @number_of_blocks
   end
 
@@ -19,7 +19,10 @@ defmodule Aecore.Chain.Difficulty do
     else
       distance = calculate_distance(list)
 
-      next_difficulty = (latest_block.header.difficulty_target * (@target_distance / distance))
+      next_difficulty =
+        @target_distance
+        |> Kernel./(distance)
+        |> Kernel.*(latest_block.header.difficulty_target)
         |> Float.ceil()
         |> round()
 
