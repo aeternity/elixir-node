@@ -80,4 +80,12 @@ defmodule AecoreChainTest do
     length = length(Chain.longest_blocks_chain())
     assert length > 1
   end
+
+  test "get_block_by_height" do
+    Enum.each(0..9, fn _i -> Miner.mine_sync_block_to_chain() end)
+
+    Enum.each(1..10, fn i ->
+      assert Chain.get_block_by_height(i).header.height == i
+    end)
+  end
 end
