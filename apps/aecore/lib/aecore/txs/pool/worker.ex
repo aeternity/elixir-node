@@ -12,8 +12,6 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Bits
-  alias Aeutil.Serialization
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -68,7 +66,7 @@ defmodule Aecore.Txs.Pool.Worker do
         )
 
     cond do
-      !SignedTx.validate(tx) ->
+      !SignedTx.is_valid?(tx) ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
 

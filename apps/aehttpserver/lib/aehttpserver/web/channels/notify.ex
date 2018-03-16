@@ -1,4 +1,5 @@
 defmodule Aehttpserver.Web.Notify do
+
   alias Aeutil.Serialization
   alias Aewallet.Encoding
 
@@ -11,10 +12,10 @@ defmodule Aehttpserver.Web.Notify do
       )
     end
 
-    if tx.data.to_acc != nil do
+    if tx.data.payload.to_acc != nil do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.to_acc, :ae),
+        "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
@@ -38,10 +39,10 @@ defmodule Aehttpserver.Web.Notify do
         )
       end
 
-      if tx.data.to_acc != nil do
+      if tx.data.payload.to_acc != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.to_acc, :ae),
+          "new_mined_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end

@@ -22,7 +22,6 @@ defmodule Aecore.Chain.BlockValidation do
     single_validate_block!(new_block)
 
     new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
-
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
 
     server = self()
@@ -90,7 +89,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.t) :: binary()
+  @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = Serialization.pack_binary(header)
     :crypto.hash(:sha256, block_header_bin)
@@ -100,36 +99,8 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) ||  SignedTx.validate(tx)
+      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
     end)
-  end
-
-  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
-  def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
-    {valid_txs_list, _} = List.foldl(
-      txs_list,
-      {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {{is_valid, reason}, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
-        if is_valid do
-          {valid_txs_list ++ [tx], updated_chain_state}
-        else
-          Logger.warn("Filtering out invalid tx. Reason: #{reason}")
-          {valid_txs_list, chain_state_acc}
-        end
-      end
-    )
-
-    valid_txs_list
-  end
-
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {true, map()} | {{false, binary()}, map()}
-  defp validate_transaction_chainstate(tx, chain_state, block_height) do
-    try do
-      {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
-    catch
-      {:error, reason} -> {{false, reason}, chain_state}
-    end
   end
 
   @spec calculate_root_hash(list(SignedTx.t())) :: binary()
@@ -167,7 +138,7 @@ defmodule Aecore.Chain.BlockValidation do
     block.txs
     |> Enum.map(fn tx ->
       if SignedTx.is_coinbase?(tx) do
-        tx.data.value
+        tx.data.payload.value
       else
         0
       end

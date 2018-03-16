@@ -12,6 +12,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
@@ -75,6 +76,7 @@ defmodule Aecore.Miner.Worker do
   def mine_sync_block_to_chain() do
     cblock = candidate()
     case mine_sync_block(cblock) do
+
       {:ok, new_block} -> Chain.add_block(new_block)
       {:error, _} = error -> error
     end
@@ -221,13 +223,13 @@ defmodule Aecore.Miner.Worker do
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn (tx1, tx2) -> tx1.data.nonce < tx2.data.nonce end)
-      valid_txs_by_chainstate = BlockValidation.filter_invalid_transactions_chainstate(ordered_txs_list, chain_state, top_block.header.height + 1)
+      valid_txs_by_chainstate = ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
       pubkey = Wallet.get_public_key()
 
       total_fees = calculate_total_fees(valid_txs_by_fee)
-      valid_txs = [get_coinbase_transaction(pubkey, total_fees,
+      valid_txs = [create_coinbase_tx(pubkey, total_fees,
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]) |
                    valid_txs_by_fee]
@@ -241,7 +243,7 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_block_size)
       valid_txs =
         List.replace_at(valid_txs_by_block_size, 0,
-          get_coinbase_transaction(pubkey, total_fees,
+          create_coinbase_tx(pubkey, total_fees,
                       top_block.header.height + 1 +
                       Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]))
 
@@ -259,15 +261,13 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def get_coinbase_transaction(to_acc, total_fees, lock_time_block) do
-    tx_data = %SpendTx{
-      from_acc: nil,
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees,
-      nonce: 0,
-      fee: 0,
-      lock_time_block: lock_time_block
-    }
+  def create_coinbase_tx(to_acc, total_fees, lock_time_block) do
+    payload =  %{to_acc: to_acc,
+                 value: @coinbase_transaction_value + total_fees,
+                 lock_time_block: lock_time_block}
+
+    tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
+
     %SignedTx{data: tx_data, signature: nil}
   end
 
@@ -335,7 +335,6 @@ defmodule Aecore.Miner.Worker do
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(valid_txs, chain_state, top_block.header.height + 1)
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
-
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
