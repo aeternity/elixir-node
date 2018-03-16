@@ -93,10 +93,10 @@ defmodule Aecore.Chain.Worker do
     ## If there is no such block then we check into the db.
     block =
       case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
-        {:error, _} = error ->
+        {:error, _} ->
           nil
 
-        %{block: nil} = block_info ->
+        %{block: nil} ->
           case Persistence.get_block_by_hash(block_hash) do
             {:ok, block} -> block
             _ -> nil
@@ -446,7 +446,7 @@ defmodule Aecore.Chain.Worker do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
-  defp get_block_info_by_height(height, chain_hash \\ nil) do
+  defp get_block_info_by_height(height, chain_hash) do
     begin_hash =
       if chain_hash == nil do
         top_block_hash()
