@@ -46,19 +46,23 @@ defmodule Aecore.Structures.SpendTx do
      }}
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool) :: boolean()
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()
   def is_minimum_fee_met?(tx, identifier) do
-    tx_size_bytes = Pool.get_tx_size_bytes(tx)
+    if identifier == :validation do
+      true
+    else
+      tx_size_bytes = Pool.get_tx_size_bytes(tx)
 
-    bytes_per_token =
-      case identifier do
-        :pool ->
-          Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
+      bytes_per_token =
+        case identifier do
+          :pool ->
+            Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
 
-        :miner ->
-          Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-      end
+          :miner ->
+            Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
+        end
 
-    tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
+      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
+    end
   end
 end

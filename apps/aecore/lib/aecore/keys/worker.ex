@@ -8,6 +8,7 @@ defmodule Aecore.Keys.Worker do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleExtendTxData
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
 
@@ -46,7 +47,9 @@ defmodule Aecore.Keys.Worker do
   @spec sign_tx(binary(), integer(), integer(), integer(), integer()) :: {:ok, SignedTx.t()}
   def sign_tx(to_acc, value, nonce, fee, lock_time_block \\ 0) do
     {:ok, from_acc} = pubkey()
+
     {:ok, tx_data} = SpendTx.create(from_acc, to_acc, value, nonce, fee, lock_time_block)
+
     {:ok, signature} = sign(tx_data)
     signed_tx = %SignedTx{data: tx_data, signature: signature}
     {:ok, signed_tx}
@@ -76,6 +79,9 @@ defmodule Aecore.Keys.Worker do
 
       %SignedTx{data: %OracleResponseTxData{}} ->
         verify(tx.data, tx.signature, tx.data.operator)
+
+      %SignedTx{data: %OracleExtendTxData{}} ->
+        verify(tx.data, tx.signature, tx.data.oracle_address)
     end
   end
 
@@ -198,10 +204,15 @@ defmodule Aecore.Keys.Worker do
     {:reply, {:ok, pubkey}, state}
   end
 
-  def handle_call(:delete, _from, %{pub_file: pub_file, priv_file: priv_file} = state) do
+  def handle_call(
+        :delete,
+        _from,
+        %{pub_file: pub_file, priv_file: priv_file} = state
+      ) do
     try do
       :ok = :file.delete(pub_file)
       :ok = :file.delete(priv_file)
+
       {:reply, :ok, %{state | pub_file: nil, priv_file: nil, pub: nil, priv: nil}}
     catch
       _ ->
@@ -238,7 +249,11 @@ defmodule Aecore.Keys.Worker do
     end
   end
 
-  def handle_call({:open, password}, _from, %{pub_file: pub_file, priv_file: priv_file} = state) do
+  def handle_call(
+        {:open, password},
+        _from,
+        %{pub_file: pub_file, priv_file: priv_file} = state
+      ) do
     try do
       {:ok, pub} = from_local_dir(pub_file)
       {:ok, priv} = from_local_dir(priv_file)
@@ -271,8 +286,14 @@ defmodule Aecore.Keys.Worker do
 
   def handle_info(
         :timeout,
-        %{pub: nil, priv: nil, pass: password, type: key_type, curve: curve, keys_dir: keys_dir} =
-          state
+        %{
+          pub: nil,
+          priv: nil,
+          pass: password,
+          type: key_type,
+          curve: curve,
+          keys_dir: keys_dir
+        } = state
       ) do
     try do
       {pub_file, priv_file} = p_gen_filename(keys_dir)
@@ -289,7 +310,14 @@ defmodule Aecore.Keys.Worker do
             {pub0, priv0}
         end
 
-      {:noreply, %{state | pub: pub1, priv: priv1, priv_file: priv_file, pub_file: pub_file}}
+      {:noreply,
+       %{
+         state
+         | pub: pub1,
+           priv: priv1,
+           priv_file: priv_file,
+           pub_file: pub_file
+       }}
     catch
       _ ->
         {:noreply, state}
@@ -321,6 +349,7 @@ defmodule Aecore.Keys.Worker do
 
   defp decrypt_pubkey(password, bin) do
     <<pub::65-binary, _padding::binary>> = :crypto.block_decrypt(:aes_ecb, hash(password), bin)
+
     pub
   end
 
@@ -348,6 +377,7 @@ defmodule Aecore.Keys.Worker do
 
   defp p_gen_new(password, key_type, curve, pub_filename, priv_filename) do
     {new_pub_key, new_priv_key} = :crypto.generate_key(key_type, :crypto.ec_curve(curve))
+
     enc_pub = encrypt_pubkey(password, new_pub_key)
     enc_priv = encrypt_privkey(password, new_priv_key)
     :ok = to_local_dir(pub_filename, enc_pub)

@@ -141,6 +141,7 @@ defmodule Aecore.Miner.Worker do
 
   def handle_info(:timeout, state) do
     Logger.info("[Miner] Mining was resumed by default")
+
     {:noreply, mining(%{state | miner_state: :running, block_candidate: candidate()})}
   end
 
@@ -220,7 +221,10 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
-  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
+  @spec candidate() ::
+          {:block_found, integer}
+          | {:no_block_found, integer}
+          | {:error, binary}
   def candidate() do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
@@ -235,6 +239,7 @@ defmodule Aecore.Miner.Worker do
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
+
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
@@ -245,7 +250,10 @@ defmodule Aecore.Miner.Worker do
         )
 
       valid_txs_by_fee =
-        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
+        filter_transactions_by_fee_and_ttl(
+          valid_txs_by_chainstate,
+          candidate_height
+        )
 
       {_, pubkey} = Keys.pubkey()
 
@@ -261,6 +269,7 @@ defmodule Aecore.Miner.Worker do
       ]
 
       new_block = create_block(top_block, chain_state, difficulty, [])
+
       new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
 
       valid_txs_by_block_size =
@@ -286,7 +295,10 @@ defmodule Aecore.Miner.Worker do
       create_block(top_block, chain_state, difficulty, valid_txs)
     catch
       message ->
-        Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
+        Logger.error(fn ->
+          "Failed to mine block: #{Kernel.inspect(message)}"
+        end)
+
         {:error, message}
     end
   end
@@ -315,11 +327,15 @@ defmodule Aecore.Miner.Worker do
   defp filter_transactions_by_fee_and_ttl(txs, block_height) do
     Enum.filter(txs, fn tx ->
       Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
-        Oracle.is_tx_ttl_valid?(tx, block_height)
+        Oracle.tx_ttl_is_valid?(tx, block_height)
     end)
   end
 
-  defp filter_transactions_by_block_size(txs, current_block_size_bytes, max_block_size_bytes) do
+  defp filter_transactions_by_block_size(
+         txs,
+         current_block_size_bytes,
+         max_block_size_bytes
+       ) do
     first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
 
     filter_transactions_by_block_size(
@@ -370,6 +386,7 @@ defmodule Aecore.Miner.Worker do
     else
       next_tx = Enum.at(txs, next_tx_index)
       new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
+
       new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
 
       if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do

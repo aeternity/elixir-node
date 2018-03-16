@@ -2,6 +2,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleExtendTxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -16,7 +17,13 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec register(map(), map(), integer(), integer(), ttl()) :: :ok | :error
   def register(query_format, response_format, query_fee, fee, ttl) do
-    case OracleRegistrationTxData.create(query_format, response_format, query_fee, fee, ttl) do
+    case OracleRegistrationTxData.create(
+           query_format,
+           response_format,
+           query_fee,
+           fee,
+           ttl
+         ) do
       :error ->
         :error
 
@@ -61,6 +68,17 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
+  @spec extend(binary(), integer(), integer()) :: :ok | :error
+  def extend(oracle_address, ttl, fee) do
+    case OracleExtendTxData.create(oracle_address, ttl, fee) do
+      :error ->
+        :error
+
+      tx_data ->
+        Pool.add_transaction(sign_tx(tx_data))
+    end
+  end
+
   @spec data_valid?(map(), map()) :: true | false
   def data_valid?(format, data) do
     schema = ExJsonSchema.Schema.resolve(format)
@@ -69,8 +87,8 @@ defmodule Aecore.Oracle.Oracle do
       :ok ->
         true
 
-      {:error, message} ->
-        Logger.error(message)
+      {:error, [{message, _}]} ->
+        Logger.error(fn -> message end)
         false
     end
   end
@@ -91,8 +109,8 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec is_tx_ttl_valid?(SignedTx.t(), integer()) :: boolean
-  def is_tx_ttl_valid?(tx, block_height) do
+  @spec tx_ttl_is_valid?(SignedTx.t(), integer()) :: boolean
+  def tx_ttl_is_valid?(tx, block_height) do
     case tx.data do
       %OracleRegistrationTxData{} ->
         ttl_is_valid?(tx.data.ttl, block_height)
@@ -100,11 +118,11 @@ defmodule Aecore.Oracle.Oracle do
       %OracleQueryTxData{} ->
         response_ttl_is_valid =
           case tx.data.response_ttl do
-            %{ttl: _, type: :absolute} ->
+            %{type: :absolute} ->
               Logger.error("Response TTL has to be relative")
               false
 
-            %{ttl: _, type: :relative} ->
+            %{type: :relative} ->
               ttl_is_valid?(tx.data.response_ttl, block_height)
           end
 
@@ -112,8 +130,26 @@ defmodule Aecore.Oracle.Oracle do
 
         response_ttl_is_valid && query_ttl_is_valid
 
+      %OracleExtendTxData{} ->
+        tx.data.ttl > 0
+
       _ ->
         true
+    end
+  end
+
+  @spec ttl_is_valid?(ttl()) :: boolean()
+  def ttl_is_valid?(ttl) do
+    case ttl do
+      %{ttl: ttl, type: :absolute} ->
+        ttl > 0
+
+      %{ttl: ttl, type: :relative} ->
+        ttl > 0
+
+      _ ->
+        Logger.error("Invalid TTL definition")
+        false
     end
   end
 
@@ -127,7 +163,6 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  @spec sign_tx(map()) :: %SignedTx{}
   defp sign_tx(data) do
     {:ok, signature} = Keys.sign(data)
     %SignedTx{signature: signature, data: data}

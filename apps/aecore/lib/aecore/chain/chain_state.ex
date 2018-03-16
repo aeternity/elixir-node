@@ -9,6 +9,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleExtendTxData
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
@@ -22,8 +23,11 @@ defmodule Aecore.Chain.ChainState do
           }
         }
 
-  @spec calculate_and_validate_chain_state!(list(), account_chainstate(), integer()) ::
-          account_chainstate()
+  @spec calculate_and_validate_chain_state!(
+          list(),
+          account_chainstate(),
+          integer()
+        ) :: account_chainstate()
   def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
     txs
     |> Enum.reduce(chain_state, fn tx, chain_state ->
@@ -38,8 +42,11 @@ defmodule Aecore.Chain.ChainState do
     |> update_chain_state_locked(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), account_chainstate(), integer()) ::
-          account_chainstate()
+  @spec apply_transaction_on_state!(
+          SignedTx.t(),
+          account_chainstate(),
+          integer()
+        ) :: account_chainstate()
   def apply_transaction_on_state!(transaction, chain_state, block_height) do
     case transaction do
       %SignedTx{data: %SpendTx{}} ->
@@ -67,6 +74,9 @@ defmodule Aecore.Chain.ChainState do
         apply_oracle_transaction_on_state!(transaction, chain_state)
 
       %SignedTx{data: %OracleQueryTxData{}} ->
+        apply_oracle_transaction_on_state!(transaction, chain_state)
+
+      %SignedTx{data: %OracleExtendTxData{}} ->
         apply_oracle_transaction_on_state!(transaction, chain_state)
     end
   end
@@ -106,6 +116,7 @@ defmodule Aecore.Chain.ChainState do
     if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
 
     operator_address = transaction.data.oracle_address
+
     operator_state = Map.get(chain_state, operator_address, %{balance: 0, nonce: 0, locked: []})
 
     sender_updated_state =
@@ -122,6 +133,20 @@ defmodule Aecore.Chain.ChainState do
       sender_updated_state
       | operator_address => %{operator_state | balance: new_operator_balance}
     }
+  end
+
+  def apply_oracle_transaction_on_state!(
+        %SignedTx{data: %OracleExtendTxData{}} = transaction,
+        chain_state
+      ) do
+    if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
+
+    deduct_from_account_state!(
+      chain_state,
+      transaction.data.oracle_address,
+      -transaction.data.fee,
+      transaction.data.nonce
+    )
   end
 
   @doc """
@@ -168,10 +193,18 @@ defmodule Aecore.Chain.ChainState do
 
   @spec update_chain_state_locked(account_chainstate(), integer()) :: account_chainstate()
   def update_chain_state_locked(chain_state, new_block_height) do
-    Enum.reduce(chain_state, %{}, fn {account, %{balance: balance, nonce: nonce, locked: locked}},
+    Enum.reduce(chain_state, %{}, fn {account,
+                                      %{
+                                        balance: balance,
+                                        nonce: nonce,
+                                        locked: locked
+                                      }},
                                      acc ->
       {unlocked_amount, updated_locked} =
-        Enum.reduce(locked, {0, []}, fn %{amount: amount, block: lock_time_block},
+        Enum.reduce(locked, {0, []}, fn %{
+                                          amount: amount,
+                                          block: lock_time_block
+                                        },
                                         {amount_update_value, updated_locked} ->
           cond do
             lock_time_block > new_block_height ->
@@ -205,9 +238,20 @@ defmodule Aecore.Chain.ChainState do
     Bits.bech32_encode("cs", bin)
   end
 
-  @spec apply_to_state!(account_chainstate(), integer(), binary(), integer(), integer()) ::
-          account_chainstate()
-  defp apply_to_state!(chain_state, block_height, account, value, lock_time_block) do
+  @spec apply_to_state!(
+          account_chainstate(),
+          integer(),
+          binary(),
+          integer(),
+          integer()
+        ) :: account_chainstate()
+  defp apply_to_state!(
+         chain_state,
+         block_height,
+         account,
+         value,
+         lock_time_block
+       ) do
     account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
 
     if block_height <= lock_time_block do
@@ -216,6 +260,7 @@ defmodule Aecore.Chain.ChainState do
       end
 
       new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
+
       Map.put(chain_state, account, %{account_state | locked: new_locked})
     else
       new_balance = account_state.balance + value
@@ -231,18 +276,28 @@ defmodule Aecore.Chain.ChainState do
   @spec apply_transaction_nonce!(account_chainstate(), SignedTx.t()) :: account_chainstate()
   defp apply_transaction_nonce!(chain_state, transaction) do
     account_state =
-      Map.get(chain_state, transaction.data.from_acc, %{balance: 0, nonce: 0, locked: []})
+      Map.get(chain_state, transaction.data.from_acc, %{
+        balance: 0,
+        nonce: 0,
+        locked: []
+      })
 
     if account_state.nonce >= transaction.data.nonce do
       throw({:error, "Nonce too small"})
     end
 
     chain_state
-    |> Map.put(transaction.data.from_acc, %{account_state | nonce: transaction.data.nonce})
+    |> Map.put(transaction.data.from_acc, %{
+      account_state
+      | nonce: transaction.data.nonce
+    })
   end
 
-  @spec apply_transaction_deduction!(account_chainstate(), non_neg_integer(), SignedTx.t()) ::
-          account_chainstate()
+  @spec apply_transaction_deduction!(
+          account_chainstate(),
+          non_neg_integer(),
+          SignedTx.t()
+        ) :: account_chainstate()
   defp apply_transaction_deduction!(chain_state, block_height, transaction) do
     chain_state
     |> apply_to_state!(
@@ -253,8 +308,11 @@ defmodule Aecore.Chain.ChainState do
     )
   end
 
-  @spec apply_transaction_addition!(account_chainstate(), non_neg_integer(), SignedTx.t()) ::
-          account_chainstate()
+  @spec apply_transaction_addition!(
+          account_chainstate(),
+          non_neg_integer(),
+          SignedTx.t()
+        ) :: account_chainstate()
   defp apply_transaction_addition!(chain_state, block_height, transaction) do
     chain_state
     |> apply_to_state!(

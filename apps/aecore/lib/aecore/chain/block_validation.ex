@@ -5,9 +5,9 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Chain.ChainState
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
 
@@ -113,23 +113,14 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      is_minimum_fee_met =
-        case tx.data do
-          %OracleRegistrationTxData{} ->
-            OracleRegistrationTxData.is_minimum_fee_met?(tx, block.header.height)
-
-          %OracleQueryTxData{} ->
-            OracleQueryTxData.is_minimum_fee_met?(tx, block.header.height)
-
-          _ ->
-            true
-        end
-
       cond do
         SignedTx.is_coinbase?(tx) ->
           true
 
-        !is_minimum_fee_met ->
+        !Pool.is_minimum_fee_met?(tx, :validation, block.header.height) ->
+          false
+
+        !Oracle.tx_ttl_is_valid?(tx, block.header.height) ->
           false
 
         !SignedTx.is_valid?(tx) ->
@@ -146,7 +137,11 @@ defmodule Aecore.Chain.BlockValidation do
           ChainState.account_chainstate(),
           integer()
         ) :: list(SignedTx.t())
-  def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
+  def filter_invalid_transactions_chainstate(
+        txs_list,
+        chain_state,
+        block_height
+      ) do
     {valid_txs_list, _} =
       List.foldl(txs_list, {[], chain_state}, fn tx, {valid_txs_list, chain_state_acc} ->
         {valid_chain_state, updated_chain_state} =
@@ -162,8 +157,11 @@ defmodule Aecore.Chain.BlockValidation do
     valid_txs_list
   end
 
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) ::
-          {boolean(), map()}
+  @spec validate_transaction_chainstate(
+          SignedTx.t(),
+          ChainState.account_chainstate(),
+          integer()
+        ) :: {boolean(), map()}
   defp validate_transaction_chainstate(tx, chain_state, block_height) do
     try do
       {true, ChainState.apply_transaction_on_state!(tx, chain_state, block_height)}

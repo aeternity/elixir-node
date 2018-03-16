@@ -16,7 +16,10 @@ defmodule AecoreOracleTest do
   end
 
   def register_oracle() do
-    query_format = %{"type" => "object", "properties" => %{"currency" => %{"type" => "string"}}}
+    query_format = %{
+      "type" => "object",
+      "properties" => %{"currency" => %{"type" => "string"}}
+    }
 
     response_format = %{
       "type" => "object",

@@ -19,16 +19,17 @@ defmodule Aehttpserver.Web.Notify do
 
   def broadcast_new_block_added_to_chain_and_new_mined_tx(block) do
     Enum.each(block.txs, fn tx ->
-      Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
-        "body" => Serialization.tx(tx, :serialize)
-      })
+      # Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
+      #   "body" => Serialization.tx(tx, :serialize)
+      # })
 
       case tx.data do
         %SpendTx{} ->
           broadcast_spend_tx(tx)
 
         _oracle_tx ->
-          broadcast_oracle_tx(tx)
+          # broadcast_oracle_tx(tx)
+          :ok
       end
     end)
 

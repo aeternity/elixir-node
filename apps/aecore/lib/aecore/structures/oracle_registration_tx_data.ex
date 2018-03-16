@@ -18,43 +18,51 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
           nonce: non_neg_integer()
         }
 
-  defstruct [:operator, :query_format, :response_format, :query_fee, :fee, :ttl, :nonce]
+  defstruct [
+    :operator,
+    :query_format,
+    :response_format,
+    :query_fee,
+    :fee,
+    :ttl,
+    :nonce
+  ]
+
   use ExConstructor
 
   @spec create(map(), map(), integer(), integer(), Oracle.ttl()) :: OracleRegistrationTxData.t()
   def create(query_format, response_format, query_fee, fee, ttl) do
     {:ok, pubkey} = Keys.pubkey()
 
-    if Map.has_key?(Chain.registered_oracles(), pubkey) do
-      Logger.error("Account is already an oracle")
-      :error
-    else
-      try do
-        ExJsonSchema.Schema.resolve(query_format)
-        ExJsonSchema.Schema.resolve(response_format)
-      rescue
-        e ->
-          Logger.error("Invalid query or response format definition; " <> e.message)
-          :error
-      end
+    cond do
+      Map.has_key?(Chain.registered_oracles(), pubkey) ->
+        Logger.error("Account is already an oracle")
+        :error
 
-      %OracleRegistrationTxData{
-        operator: pubkey,
-        query_format: query_format,
-        response_format: response_format,
-        query_fee: query_fee,
-        fee: fee,
-        ttl: ttl,
-        nonce: Chain.lowest_valid_nonce()
-      }
+      !Oracle.ttl_is_valid?(ttl) ->
+        :error
+
+      true ->
+        try do
+          ExJsonSchema.Schema.resolve(query_format)
+          ExJsonSchema.Schema.resolve(response_format)
+        rescue
+          e ->
+            Logger.error("Invalid query or response format definition; " <> e.message)
+
+            :error
+        end
+
+        %OracleRegistrationTxData{
+          operator: pubkey,
+          query_format: query_format,
+          response_format: response_format,
+          query_fee: query_fee,
+          fee: fee,
+          ttl: ttl,
+          nonce: Chain.lowest_valid_nonce()
+        }
     end
-  end
-
-  @spec calculate_minimum_fee(integer()) :: integer()
-  def calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_reg_base_fee]
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t(), integer()) :: boolean()
@@ -78,5 +86,14 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   @spec bech32_encode(binary()) :: String.t()
   def bech32_encode(bin) do
     Bits.bech32_encode("or", bin)
+  end
+
+  @spec calculate_minimum_fee(integer()) :: integer()
+  defp calculate_minimum_fee(ttl) do
+    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
+
+    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_registration_base_fee]
+
+    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 end

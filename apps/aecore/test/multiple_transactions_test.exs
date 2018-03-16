@@ -97,11 +97,17 @@ defmodule MultipleTransactionsTest do
     # account A has 100 tokens, spends 30 (+10 fee) to B, and two times 20 (+10 fee) to C should succeed
 
     account1_initial_nonce = Map.get(Chain.chain_state(), account1_pub_key, %{nonce: 0}).nonce
+
     tx5 = create_signed_tx(account1, account2, 30, account1_initial_nonce + 1, 10)
+
     assert :ok = Pool.add_transaction(tx5)
+
     tx6 = create_signed_tx(account1, account3, 20, account1_initial_nonce + 2, 10)
+
     assert :ok = Pool.add_transaction(tx6)
+
     tx7 = create_signed_tx(account1, account3, 20, account1_initial_nonce + 3, 10)
+
     assert :ok = Pool.add_transaction(tx7)
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -129,10 +135,15 @@ defmodule MultipleTransactionsTest do
     Pool.get_and_empty_pool()
 
     tx9 = create_signed_tx(account1, account2, 40, account1_initial_nonce2 + 1, 10)
+
     assert :ok = Pool.add_transaction(tx9)
+
     tx10 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 2, 10)
+
     assert :ok = Pool.add_transaction(tx10)
+
     tx11 = create_signed_tx(account1, account3, 20, account1_initial_nonce2 + 3, 10)
+
     assert :ok = Pool.add_transaction(tx11)
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -630,12 +641,26 @@ defmodule MultipleTransactionsTest do
        238, 200, 99, 252, 175, 107, 11, 95, 114, 133, 149, 168>>}
   end
 
-  defp create_signed_tx(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
+  defp create_signed_tx(
+         from_acc,
+         to_acc,
+         value,
+         nonce,
+         fee,
+         lock_time_block \\ 0
+       ) do
     {from_acc_pub_key, from_acc_priv_key} = from_acc
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
 
     {:ok, tx_data} =
-      SpendTx.create(from_acc_pub_key, to_acc_pub_key, value, nonce, fee, lock_time_block)
+      SpendTx.create(
+        from_acc_pub_key,
+        to_acc_pub_key,
+        value,
+        nonce,
+        fee,
+        lock_time_block
+      )
 
     {:ok, signature} = Keys.sign(tx_data, from_acc_priv_key)
 

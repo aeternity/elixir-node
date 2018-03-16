@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleExtendTxData
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Header
   alias Aecore.Oracle.Oracle
@@ -33,10 +34,15 @@ defmodule Aecore.Chain.Worker do
 
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+
     genesis_block_map = %{genesis_block_hash => Block.genesis_block()}
 
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(Block.genesis_block().txs, %{}, 0)
+      ChainState.calculate_and_validate_chain_state!(
+        Block.genesis_block().txs,
+        %{},
+        0
+      )
 
     chain_states = %{genesis_block_hash => genesis_chain_state}
 
@@ -95,7 +101,10 @@ defmodule Aecore.Chain.Worker do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
     block =
-      case GenServer.call(__MODULE__, {:get_block_from_memory_unsafe, block_hash}) do
+      case GenServer.call(
+             __MODULE__,
+             {:get_block_from_memory_unsafe, block_hash}
+           ) do
         {:error, _} ->
           case Persistence.get_block_by_hash(block_hash) do
             {:ok, block} -> block
@@ -197,7 +206,11 @@ defmodule Aecore.Chain.Worker do
     {:reply, state, state}
   end
 
-  def handle_call(:top_block, _from, %{blocks_map: blocks_map, top_hash: top_hash} = state) do
+  def handle_call(
+        :top_block,
+        _from,
+        %{blocks_map: blocks_map, top_hash: top_hash} = state
+      ) do
     {:reply, blocks_map[top_hash], state}
   end
 
@@ -278,6 +291,8 @@ defmodule Aecore.Chain.Worker do
         hundred_blocks_map
       )
 
+    extended_oracles = handle_oracle_extend_transactions(new_block, updated_oracles)
+
     updated_oracle_interaction_objects =
       remove_expired_interaction_objects(
         oracle_interaction_objects,
@@ -286,12 +301,16 @@ defmodule Aecore.Chain.Worker do
         hundred_blocks_map
       )
 
-    new_registered_oracles = generate_registered_oracles_map(new_block, updated_oracles)
+    new_registered_oracles = generate_registered_oracles_map(new_block, extended_oracles)
 
     new_oracle_interaction_objects =
-      generate_oracle_interaction_objects_map(new_block, updated_oracle_interaction_objects)
+      generate_oracle_interaction_objects_map(
+        new_block,
+        updated_oracle_interaction_objects
+      )
 
     updated_chain_states = Map.put(chain_states, new_block_hash, new_chain_state)
+
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
@@ -321,11 +340,16 @@ defmodule Aecore.Chain.Worker do
 
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+
       # Broadcasting notifications for new block added to chain and new mined transaction
-      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
+      # Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
       {:reply, :ok,
-       %{state_update1 | top_hash: new_block_hash, top_height: new_block.header.height}}
+       %{
+         state_update1
+         | top_hash: new_block_hash,
+           top_height: new_block.header.height
+       }}
     else
       Persistence.batch_write(%{
         :chain_state => new_chain_state,
@@ -336,7 +360,11 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def handle_call({:chain_state, block_hash}, _from, %{chain_states: chain_states} = state) do
+  def handle_call(
+        {:chain_state, block_hash},
+        _from,
+        %{chain_states: chain_states} = state
+      ) do
     {:reply, chain_states[block_hash], state}
   end
 
@@ -344,7 +372,11 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def handle_call(:registered_oracles, _from, %{registered_oracles: registered_oracles} = state) do
+  def handle_call(
+        :registered_oracles,
+        _from,
+        %{registered_oracles: registered_oracles} = state
+      ) do
     {:reply, registered_oracles, state}
   end
 
@@ -421,6 +453,9 @@ defmodule Aecore.Chain.Worker do
 
           %OracleQueryTxData{} ->
             tx.data.sender
+
+          %OracleExtendTxData{} ->
+            tx.data.oracle_address
         end
       end
 
@@ -441,6 +476,9 @@ defmodule Aecore.Chain.Worker do
 
             %OracleQueryTxData{} ->
               tx.data.sender == account
+
+            %OracleExtendTxData{} ->
+              tx.data.oracle_address == account
           end
         end)
 
@@ -458,13 +496,19 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp get_tx_block_height_included(address, initial_hash, txs_index, blocks_map) do
+  defp get_tx_block_height_included(
+         address,
+         initial_hash,
+         txs_index,
+         blocks_map
+       ) do
     {block_hash, _tx_hash} =
       Enum.find(txs_index[address], fn {_block_hash, tx_hash} ->
         initial_hash == tx_hash
       end)
 
     block = Map.get(blocks_map, block_hash, Persistence.get_block_by_hash(block_hash))
+
     block.header.height
   end
 
@@ -477,7 +521,25 @@ defmodule Aecore.Chain.Worker do
   defp generate_registered_oracles_map(block, current_registered_oracles_map) do
     Enum.reduce(block.txs, current_registered_oracles_map, fn tx, acc ->
       if match?(%OracleRegistrationTxData{}, tx.data) do
-        Map.put_new(acc, tx.data.operator, %{tx: tx.data, initial_hash: SignedTx.hash_tx(tx)})
+        Map.put_new(acc, tx.data.operator, %{
+          tx: tx.data,
+          initial_hash: SignedTx.hash_tx(tx)
+        })
+      else
+        acc
+      end
+    end)
+  end
+
+  def handle_oracle_extend_transactions(block, registered_oracles_map) do
+    Enum.reduce(block.txs, registered_oracles_map, fn tx, acc ->
+      if match?(%OracleExtendTxData{}, tx.data) do
+        entry_ttl = get_in(acc, [tx.data.oracle_address, :tx, Access.key(:ttl)])
+
+        put_in(acc, [tx.data.oracle_address, :tx, Access.key(:ttl)], %{
+          entry_ttl
+          | ttl: entry_ttl.ttl + tx.data.ttl
+        })
       else
         acc
       end
@@ -487,7 +549,12 @@ defmodule Aecore.Chain.Worker do
   defp remove_expired_oracles(oracles, block_height, txs_index, blocks_map) do
     Enum.reduce(oracles, oracles, fn {address, %{tx: tx, initial_hash: initial_hash}}, acc ->
       tx_block_height_included =
-        get_tx_block_height_included(tx.operator, initial_hash, txs_index, blocks_map)
+        get_tx_block_height_included(
+          tx.operator,
+          initial_hash,
+          txs_index,
+          blocks_map
+        )
 
       if Oracle.calculate_absolute_ttl(tx.ttl, tx_block_height_included) == block_height do
         Map.delete(acc, address)
@@ -497,7 +564,10 @@ defmodule Aecore.Chain.Worker do
     end)
   end
 
-  defp generate_oracle_interaction_objects_map(block, current_oracle_interaction_objects_map) do
+  defp generate_oracle_interaction_objects_map(
+         block,
+         current_oracle_interaction_objects_map
+       ) do
     Enum.reduce(block.txs, current_oracle_interaction_objects_map, fn tx, acc ->
       case tx.data do
         %OracleQueryTxData{} ->
@@ -550,10 +620,18 @@ defmodule Aecore.Chain.Worker do
                                                                             }},
                                                                            acc ->
       query_tx_block_height_included =
-        get_tx_block_height_included(query.sender, query_initial_hash, txs_index, blocks_map)
+        get_tx_block_height_included(
+          query.sender,
+          query_initial_hash,
+          txs_index,
+          blocks_map
+        )
 
       query_absolute_ttl =
-        Oracle.calculate_absolute_ttl(query.query_ttl, query_tx_block_height_included)
+        Oracle.calculate_absolute_ttl(
+          query.query_ttl,
+          query_tx_block_height_included
+        )
 
       query_has_expired = query_absolute_ttl == block_height && response == nil
 
@@ -568,7 +646,10 @@ defmodule Aecore.Chain.Worker do
             )
 
           response_absolute_ttl =
-            Oracle.calculate_absolute_ttl(query.query_ttl, response_tx_block_height_included)
+            Oracle.calculate_absolute_ttl(
+              query.query_ttl,
+              response_tx_block_height_included
+            )
 
           response_absolute_ttl == block_height
         else
@@ -599,7 +680,12 @@ defmodule Aecore.Chain.Worker do
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
 
-          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+          get_blocks(
+            updated_blocks_acc,
+            prev_block_hash,
+            final_block_hash,
+            next_count
+          )
       end
     else
       blocks_acc

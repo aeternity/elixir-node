@@ -43,6 +43,10 @@ defmodule Aecore.Structures.OracleQueryTxData do
         Logger.error("No oracle registered with that address")
         :error
 
+      !(Oracle.ttl_is_valid?(query_ttl) && match?(%{type: :relative}, response_ttl) &&
+            Oracle.ttl_is_valid?(response_ttl)) ->
+        :error
+
       !Oracle.data_valid?(
         registered_oracles[oracle_address].tx.query_format,
         query_data
@@ -68,13 +72,6 @@ defmodule Aecore.Structures.OracleQueryTxData do
   @spec get_oracle_query_fee(binary()) :: integer()
   def get_oracle_query_fee(oracle_address) do
     Chain.registered_oracles()[oracle_address].tx.query_fee
-  end
-
-  @spec calculate_minimum_fee(integer()) :: integer()
-  def calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t(), integer()) :: boolean()
@@ -110,5 +107,13 @@ defmodule Aecore.Structures.OracleQueryTxData do
   @spec bech32_encode(binary()) :: String.t()
   def bech32_encode(bin) do
     Bits.bech32_encode("qy", bin)
+  end
+
+  @spec calculate_minimum_fee(integer()) :: integer()
+  defp calculate_minimum_fee(ttl) do
+    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
+
+    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
+    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 end

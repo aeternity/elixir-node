@@ -12,6 +12,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
+  alias Aecore.Structures.OracleExtendTxData
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
@@ -80,7 +81,7 @@ defmodule Aecore.Txs.Pool.Worker do
             Notify.broadcast_new_transaction_in_the_pool(tx)
           end
 
-          Peers.broadcast_tx(tx)
+          # Peers.broadcast_tx(tx)
         end
 
         {:reply, :ok, updated_pool}
@@ -129,7 +130,7 @@ defmodule Aecore.Txs.Pool.Worker do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool, integer()) :: boolean()
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, integer()) :: boolean()
   def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data do
       %SpendTx{} ->
@@ -142,7 +143,10 @@ defmodule Aecore.Txs.Pool.Worker do
         OracleQueryTxData.is_minimum_fee_met?(tx, block_height)
 
       %OracleResponseTxData{} ->
-        true
+        OracleResponseTxData.is_minimum_fee_met?(tx)
+
+      %OracleExtendTxData{} ->
+        tx.data.fee >= OracleExtendTxData.calculate_minimum_fee(tx.data.ttl)
     end
   end
 
@@ -159,7 +163,10 @@ defmodule Aecore.Txs.Pool.Worker do
         for block_user_txs <- user_txs do
           block_user_txs
           |> Map.put_new(:txs_hash, block.header.txs_hash)
-          |> Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
+          |> Map.put_new(
+            :block_hash,
+            BlockValidation.block_header_hash(block.header)
+          )
           |> Map.put_new(:block_height, block.header.height)
         end
 
