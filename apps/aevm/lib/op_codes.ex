@@ -20,7 +20,7 @@ defmodule OpCodes do
   defmacro _GT do quote do: 0x11 end
   defmacro _SLT do quote do: 0x12 end
   defmacro _SGT do quote do: 0x13 end
-  defmacro _SEQ do quote do: 0x14 end
+  defmacro _EQ do quote do: 0x14 end
   defmacro _ISZERO do quote do: 0x15 end
   defmacro _AND do quote do: 0x16 end
   defmacro _OR do quote do: 0x17 end
@@ -47,8 +47,8 @@ defmodule OpCodes do
   defmacro _GASPRICE do quote do: 0x3a end
   defmacro _EXTCODESIZE do quote do: 0x3b end
   defmacro _EXTCODECOPY do quote do: 0x3c end
-  #defmacro _RETURNDATASIZE do quote do: 0x3d end
-  #defmacro _RETURNDATACOPY do quote do: 0x3e end
+  defmacro _RETURNDATASIZE do quote do: 0x3d end
+  defmacro _RETURNDATACOPY do quote do: 0x3e end
 
   # 40s: Block Information
 
@@ -75,7 +75,7 @@ defmodule OpCodes do
   defmacro _JUMPDEST do quote do: 0x5b end
 
   # 60s & 70s: Push Operations_PUSH
-  
+
   defmacro _PUSH1 do quote do: 0x60 end
   defmacro _PUSH2 do quote do: 0x61 end
   defmacro _PUSH3 do quote do: 0x62 end
@@ -120,6 +120,13 @@ defmodule OpCodes do
   defmacro _DUP7 do quote do: 0x86 end
   defmacro _DUP8 do quote do: 0x87 end
   defmacro _DUP9 do quote do: 0x88 end
+  defmacro _DUP10 do quote do: 0x89 end
+  defmacro _DUP11 do quote do: 0x8a end
+  defmacro _DUP12 do quote do: 0x8b end
+  defmacro _DUP13 do quote do: 0x8c end
+  defmacro _DUP14 do quote do: 0x8d end
+  defmacro _DUP15 do quote do: 0x8e end
+  defmacro _DUP16 do quote do: 0x8f end
 
   # 90s: Exchange Operations
 
@@ -155,10 +162,10 @@ defmodule OpCodes do
   defmacro _CALLCODE do quote do: 0xf2 end
   defmacro _RETURN do quote do: 0xf3 end
   defmacro _DELEGATECALL do quote do: 0xf4 end
-  #defmacro _CALLBLACKBOX do quote do: 0xf5 end
-  #defmacro _STATICCALL do quote do: 0xfa end
-  #defmacro _REVERT do quote do: 0xfd end
-  #defmacro _INVALID do quote do: 0xfe end
+  defmacro _CALLBLACKBOX do quote do: 0xf5 end
+  defmacro _STATICCALL do quote do: 0xfa end
+  defmacro _REVERT do quote do: 0xfd end
+  defmacro _INVALID do quote do: 0xfe end
 
   #Halt Execution, Mark for deletion
 
