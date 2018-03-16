@@ -49,6 +49,21 @@ To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
 
+### **Building custom child Transaction**
+To build a custom transaction you need to follow few simple steps:
+- Make your own `transaction module`;
+- Create your `custom transaction structure`;
+- Override the `Transaction Behaviour` callbacks;
+- Write all your specific functions and checks inside your new `Transaction module`;
+
+All custom transactions are childs to the `DataTx` Transaction that wraps them inside.
+The DataTx strucure hold:
+- The name of your `transaction type` that should be you `Transaction Module name`;
+- The `payload` that will hold your `custom transaction structure`;
+- The `from_acc`;
+- The`nonce`;
+- The `fee`;
+
 ### **API calls**
 
 ##### Chain :
@@ -142,7 +157,7 @@ To suspend/stop the miner from mining:
 
 - To get all blocks from the current chain:
 
-  `GET localhost:4000/blocks`  
+  `GET localhost:4000/blocks`
 
 - To get all blocks with full information about the blocks:
 
@@ -188,7 +203,7 @@ To suspend/stop the miner from mining:
 
 - To get the transaction pool of an account:
 
-  `GET localhost:4000/tx_pool/{account}`  
+  `GET localhost:4000/tx_pool/{account}`
 
   Where *account* is a hex encoded public key
 

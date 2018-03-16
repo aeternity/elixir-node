@@ -87,6 +87,14 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
 
+  def delete_all_blocks() do
+    GenServer.call(__MODULE__, :delete_all_blocks)
+  end
+
+  def delete_chainstate() do
+    GenServer.call(__MODULE__, :delete_chainstate)
+  end
+
   ## Server side
 
   def init(_) do
@@ -121,7 +129,7 @@ defmodule Aecore.Persistence.Worker do
             end
           Enum.reduce(data, batch_acc,
             fn({key, val}, batch_acc_) ->
-              Batch.put(batch_acc_, family, key, val)
+              Batch.put(batch_acc_, family, to_string(key), val)
             end)
         end)
     Batch.write(batch, db)
@@ -141,11 +149,6 @@ defmodule Aecore.Persistence.Worker do
   def handle_call({:get_block_by_hash, hash}, _from,
     %{blocks_family: blocks_family} = state) do
     {:reply, Rox.get(blocks_family, hash), state}
-  end
-
-  def handle_call({:get_account_chain_state, account}, _from,
-    %{chain_state_family: chain_state_family} = state) do
-    {:reply, Rox.get(chain_state_family, account), state}
   end
 
   def handle_call({:get_blocks, blocks_num}, _from, state) when blocks_num < 1 do
@@ -186,6 +189,42 @@ defmodule Aecore.Persistence.Worker do
     {:reply, all_blocks, state}
   end
 
+  def handle_call(:delete_all_blocks, _from,
+    %{blocks_family: blocks_family} = state) do
+    blocks_family
+    |> Rox.stream()
+    |> Enum.each(fn({key, _}) -> Rox.delete(blocks_family, key) end)
+    {:reply, :ok, state}
+  end
+
+  def handle_call(:delete_chainstate, _from,
+    %{chain_state_family: chain_state_family} = state) do
+    chain_state_family
+    |> Rox.stream()
+    |> Enum.each(fn({key, _}) -> Rox.delete(chain_state_family, key) end)
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:get_account_chain_state, account}, _from,
+    %{chain_state_family: chain_state_family} = state) do
+    {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
+    reply =
+      case Map.get(chainstate.accounts, account) do
+        nil -> :not_found
+        value -> {:ok, value}
+      end
+    {:reply, reply, state}
+  end
+
+  def handle_call(:get_all_accounts_chain_states, _from,
+    %{chain_state_family: chain_state_family} = state) do
+    chainstate =
+      chain_state_family
+      |> Rox.stream()
+      |> Enum.into(%{})
+    {:reply, chainstate, state}
+  end
+
   def handle_call(:get_latest_block_height_and_hash, _from,
     %{latest_block_info_family: latest_block_info_family} = state) do
     hash   = Rox.get(latest_block_info_family, "top_hash")
@@ -203,15 +242,6 @@ defmodule Aecore.Persistence.Worker do
     :ok = Rox.put(latest_block_info_family, "top_hash", hash, write_options())
     :ok = Rox.put(latest_block_info_family, "top_height", height, write_options())
     {:reply, :ok, state}
-  end
-
-  def handle_call(:get_all_accounts_chain_states, _from,
-    %{chain_state_family: chain_state_family} = state) do
-    chain_state =
-      chain_state_family
-      |> Rox.stream()
-      |> Enum.into(%{})
-    {:reply, chain_state, state}
   end
 
   defp persistence_path(), do: Application.get_env(:aecore, :persistence)[:path]

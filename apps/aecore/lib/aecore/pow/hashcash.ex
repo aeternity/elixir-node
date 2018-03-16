@@ -28,7 +28,7 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Find a nonce
   """
-  @spec generate(map(), integer()) :: {:ok, Header.t} | {:error, term()}
+  @spec generate(Header.t(), integer()) :: {:ok, Header.t()} | {:error, term()}
   def generate(%Header{nonce: nonce} = block_header, start_nonce) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
     case verify(block_header_hash, block_header.difficulty_target) do
