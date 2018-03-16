@@ -2,48 +2,35 @@ defmodule AeutilSerializationTest do
   use ExUnit.Case
 
   alias Aeutil.Serialization
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.Block
+  alias Aecore.Structures.Header
   alias Aewallet.Encoding
   alias Aecore.Wallet.Worker, as: Wallet
 
   @tag :serialization
   test "serialize a block" do
     block = get_block()
+
     serialized_block = Serialization.block(block, :serialize)
-    assert check_header_values(serialized_block)
-    assert check_transactions(serialized_block)
+
+    assert serialized_block == get_block_map()
     assert Serialization.block(serialized_block, :deserialize) == block
   end
 
-  def check_header_values(block) do
-    [_head | values] = Map.values(block.header)
-
-    for value <- values do
-      if is_binary(value) do
-        case SegwitAddr.decode(value) do
-          {:ok, _} ->
-            true
-
-          {:error, _} ->
-            false
-        end
-      else
-        true
-      end
-    end
-    |> Enum.all?()
-  end
-
-  def check_transactions(block) do
-    for tx <- block.txs do
-      %{data: %{to_acc: to_acc}} = tx
-      match?({:ok, _}, Encoding.decode(to_acc))
-    end
-    |> Enum.all?()
-  end
-
   def get_block() do
-    %Aecore.Structures.Block{
-      header: %Aecore.Structures.Header{
+    to_acc =
+      <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
+        175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 214>>
+
+    from_acc =
+      <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
+        175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 213>>
+
+    %Block{
+      header: %Header{
         chain_state_hash:
           <<30, 218, 194, 119, 38, 40, 34, 174, 222, 84, 181, 202, 247, 196, 94, 64, 9, 109, 222,
             28, 113, 175, 206, 113, 23, 161, 56, 109, 50, 163, 62, 34>>,
@@ -60,14 +47,54 @@ defmodule AeutilSerializationTest do
         version: 1
       },
       txs: [
-        %Aecore.Structures.SignedTx{
-          data: %Aecore.Structures.SpendTx{
-            from_acc: nil,
+        %SignedTx{
+          data: %DataTx{
+            type: SpendTx,
+            payload: %SpendTx{
+              to_acc: to_acc,
+              value: 100,
+              lock_time_block: [%{amount: 5, block: 10}, %{amount: 6, block: 10}]
+            },
+            from_acc: from_acc,
             nonce: 743_183_534_114,
-            to_acc: Wallet.get_public_key(),
-            value: 100
+            fee: 40
           },
-          signature: nil
+          signature: <<1, 2, 3>>
+        }
+      ]
+    }
+  end
+
+  def get_block_map() do
+    %{
+      "header" => %{
+        "chain_state_hash" => "cs1qrmdvyaex9q32ahj5kh9003z7gqykmhsuwxhuuugh5yux6v4r8c3qr0a5xn",
+        "difficulty_target" => 11,
+        "height" => 105,
+        "nonce" => 707,
+        "pow_evidence" => nil,
+        "prev_hash" => "bl1qqpa2qrjf8kk8eu0fkedntmhf6z9p5w7n2l6e23af23u4lvukpr9sx0k0su",
+        "timestamp" => 1_508_834_903_252,
+        "txs_hash" => "tr1qq9j4m5tuzmz6ehhk6gwwfaymlqpm87nf6p2an4l5jetadc285rcqc8xlyf",
+        "version" => 1
+      },
+      "txs" => [
+        %{
+          "data" => %{
+            "type" => "Elixir.Aecore.Structures.SpendTx",
+            "payload" => %{
+              "to_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
+              "value" => 100,
+              "lock_time_block" => [
+                %{"amount" => 5, "block" => 10},
+                %{"amount" => 6, "block" => 10}
+              ]
+            },
+            "from_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",
+            "fee" => 40,
+            "nonce" => 743_183_534_114
+          },
+          "signature" => "AQID"
         }
       ]
     }

@@ -6,17 +6,37 @@ defmodule AecoreValidationTest do
   use ExUnit.Case, async: false, seed: 0
   doctest Aecore.Chain.BlockValidation
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
+  setup_all do
+    path = Application.get_env(:aecore, :persistence)[:path]
+
+    if File.exists?(path) do
+      File.rm_rf(path)
+    end
+
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      :ok
+    end)
+  end
+
   setup ctx do
+    Miner.mine_sync_block_to_chain()
+
     [
-      to_acc: Wallet.get_public_key(),
+      to_acc: Wallet.get_public_key("M/0"),
       lock_time_block:
         Chain.top_block().header.height +
           Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1
@@ -54,6 +74,7 @@ defmodule AecoreValidationTest do
   @tag :validation
   @timeout 10_000_000
   test "validate block header timestamp", ctx do
+    Miner.mine_sync_block_to_chain()
     new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
     prev_block = get_prev_block()
 
@@ -80,29 +101,18 @@ defmodule AecoreValidationTest do
              )
   end
 
-  @timeout 10_000_000
+  @timeout 10_000
   test "validate transactions in a block", ctx do
     from_acc = Wallet.get_public_key()
+    value = 5
+    fee = 1
+    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
 
-    {:ok, tx1} =
-      SpendTx.create(
-        from_acc,
-        ctx.to_acc,
-        5,
-        Map.get(Chain.chain_state(), ctx.to_acc, %{nonce: 0}).nonce + 1,
-        1,
-        ctx.lock_time_block
-      )
+    payload1 = %{to_acc: ctx.to_acc, value: value, lock_time_block: ctx.lock_time_block}
+    tx1 = DataTx.init(SpendTx, payload1, from_acc, fee, nonce + 1)
 
-    {:ok, tx2} =
-      SpendTx.create(
-        from_acc,
-        ctx.to_acc,
-        10,
-        Map.get(Chain.chain_state(), ctx.to_acc, %{nonce: 0}).nonce + 1,
-        1,
-        ctx.lock_time_block
-      )
+    payload2 = %{to_acc: ctx.to_acc, value: value + 5, lock_time_block: ctx.lock_time_block}
+    tx2 = DataTx.init(SpendTx, payload2, from_acc, fee, nonce + 2)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
@@ -116,19 +126,15 @@ defmodule AecoreValidationTest do
 
   def get_new_block(to_acc, lock_time_block) do
     from_acc = Wallet.get_public_key()
+    value = 100
+    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
+    fee = 10
 
-    {:ok, tx} =
-      SpendTx.create(
-        from_acc,
-        to_acc,
-        100,
-        Map.get(Chain.chain_state(), to_acc, %{nonce: 0}).nonce + 1,
-        10,
-        lock_time_block
-      )
+    payload = %{to_acc: to_acc, value: value, lock_time_block: lock_time_block}
+    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, 13_213_223)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())

@@ -5,10 +5,12 @@ defmodule Aehttpserver.Web.Endpoint do
 
   plug Plug.Logger, log: :debug
 
-  plug Plug.Parsers,
+  plug(
+    Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
     pass: ["*/*"],
     json_decoder: Poison
+  )
 
   plug Aehttpserver.Web.Router
 

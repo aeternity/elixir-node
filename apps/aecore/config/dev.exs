@@ -28,10 +28,11 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 
-persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
+persistence_path =
+  case System.get_env("PERSISTENCE_PATH") do
+    nil -> "apps/aecore/priv/rox_db/"
+    env -> env
+  end
 
 config :aecore, :persistence,
   path: Path.absname(persistence_path),
@@ -45,17 +46,53 @@ config :aecore, :pow,
     height: 0,
     prev_hash: <<0::256>>,
     txs_hash: <<0::256>>,
-    chain_state_hash: <<0 :: 256>>,
+    chain_state_hash: <<0::256>>,
     timestamp: 1_507_275_094_308,
     nonce: 304,
-    pow_evidence:
-      [383737, 616161, 623333, 653164, 663632, 31303565, 31333936,
-      31336163, 31366633, 31386437, 31613832, 31633235, 32326637, 32333235,
-      32336337, 32383039, 32633234, 33303136, 33363732, 33373436, 33396366,
-      34316464, 34376137, 34393162, 34653465, 34663031, 35303132, 35306366,
-      35346664, 36343336, 36393136, 36396538, 36613461, 36623066, 36633134,
-      36633766, 36663432, 36666664, 37363561, 37393762, 37633162, 37643561],
-
+    pow_evidence: [
+      383_737,
+      616_161,
+      623_333,
+      653_164,
+      663_632,
+      31_303_565,
+      31_333_936,
+      31_336_163,
+      31_366_633,
+      31_386_437,
+      31_613_832,
+      31_633_235,
+      32_326_637,
+      32_333_235,
+      32_336_337,
+      32_383_039,
+      32_633_234,
+      33_303_136,
+      33_363_732,
+      33_373_436,
+      33_396_366,
+      34_316_464,
+      34_376_137,
+      34_393_162,
+      34_653_465,
+      34_663_031,
+      35_303_132,
+      35_306_366,
+      35_346_664,
+      36_343_336,
+      36_393_136,
+      36_396_538,
+      36_613_461,
+      36_623_066,
+      36_633_134,
+      36_633_766,
+      36_663_432,
+      36_666_664,
+      37_363_561,
+      37_393_762,
+      37_633_162,
+      37_643_561
+    ],
     version: 1,
     difficulty_target: 1
   }
@@ -64,18 +101,17 @@ config :aecore, :peers,
   peers_target_count: 5,
   peers_max_count: 8
 
-config :aecore, :miner,
-  resumed_by_default: false
+config :aecore, :miner, resumed_by_default: false
 
-bytes_per_token =  case System.get_env("BYTES_PER_TOKEN") do
-  nil -> 100
-  env -> String.to_integer(env)
-end
+bytes_per_token =
+  case System.get_env("BYTES_PER_TOKEN") do
+    nil -> 100
+    env -> String.to_integer(env)
+  end
 
 config :aecore, :tx_data,
   lock_time_coinbase: 10,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100
 
-config :aecore, :block,
-  max_block_size_bytes: 500_000
+config :aecore, :block, max_block_size_bytes: 500_000

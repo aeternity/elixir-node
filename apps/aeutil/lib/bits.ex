@@ -6,8 +6,10 @@ defmodule Aeutil.Bits do
   end
 
   def bech32_decode(bech32) do
-    {:ok, {_, _, bin_list}} = SegwitAddr.decode(bech32)
-    :binary.list_to_bin(bin_list)
+    case SegwitAddr.decode(bech32) do
+      {:ok, {_, _, bin_list}} -> :binary.list_to_bin(bin_list)
+      {:error, _} = error -> error
+    end
   end
 
   # this is the public api which allows you to pass any binary representation

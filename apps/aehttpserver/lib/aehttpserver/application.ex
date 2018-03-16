@@ -11,7 +11,7 @@ defmodule Aehttpserver.Application do
     # Define workers and child supervisors to be supervised
     children = [
       # Start the endpoint when the application starts
-      supervisor(Aehttpserver.Web.Endpoint, []),
+      supervisor(Aehttpserver.Web.Endpoint, [])
       # Start your own worker by calling: Aehttpserver.Worker.start_link(arg1, arg2, arg3)
       # worker(Aehttpserver.Worker, [arg1, arg2, arg3]),
     ]
@@ -21,11 +21,13 @@ defmodule Aehttpserver.Application do
     opts = [strategy: :one_for_one, name: Aehttpserver.Supervisor]
 
     env_authorization = System.get_env("NODE_AUTHORIZATION")
-    case env_authorization  do
+
+    case env_authorization do
       nil ->
-        gen_authorization = UUID.uuid4
+        gen_authorization = UUID.uuid4()
         Application.put_env(:aecore, :authorization, gen_authorization)
         Logger.info(fn -> "Authorization header for /node routes: #{gen_authorization}" end)
+
       env ->
         Application.put_env(:aecore, :authorization, env)
     end

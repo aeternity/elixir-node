@@ -5,6 +5,7 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aehttpclient.Client
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
@@ -38,17 +39,19 @@ defmodule AehttpclientTest do
   def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain()
     to_acc = Wallet.get_public_key()
-
     from_acc = to_acc
+
     init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
-    {:ok, tx1} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 1, 10)
-    {:ok, tx2} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 2, 10)
+    payload1 = %{to_acc: from_acc, value: 5, lock_time_block: 0}
+
+    tx1 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 1)
+    tx2 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 2)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
 
-    Pool.add_transaction(signed_tx1)
-    Pool.add_transaction(signed_tx2)
+    assert :ok = Pool.add_transaction(signed_tx1)
+    assert :ok = Pool.add_transaction(signed_tx2)
   end
 end
