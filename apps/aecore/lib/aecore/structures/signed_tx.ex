@@ -1,6 +1,8 @@
 defmodule Aecore.Structures.SignedTx do
   @moduledoc """
+  Aecore structure of a signed transaction.
   """
+
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx

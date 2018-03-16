@@ -17,6 +17,7 @@ defmodule AecoreTxTest do
   setup tx do
     on_exit fn ->
       Persistence.delete_all_blocks()
+      Chain.clear_state()
       :ok
     end
     to_account = Wallet.get_public_key("M/0")

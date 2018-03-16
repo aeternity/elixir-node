@@ -75,14 +75,14 @@ defmodule  Aecore.Structures.DataTx do
     ChainState.chainstate()) :: ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
     try do
-      account_state = chainstate.accounts
+      accounts_state = chainstate.accounts
       tx_type_state = Map.get(chainstate, tx.type, %{})
 
       {new_accounts_state, new_tx_type_state} =
         tx.payload
         |> tx.type.init()
         |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
-           account_state, tx_type_state)
+           accounts_state, tx_type_state)
 
         new_chainstate =
         if Map.has_key?(chainstate, tx.type) do

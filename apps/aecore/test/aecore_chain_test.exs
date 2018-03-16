@@ -18,6 +18,7 @@ defmodule AecoreChainTest do
     Chain.start_link([])
     on_exit fn ->
       Persistence.delete_all_blocks()
+      Chain.clear_state()
       :ok
     end
     []

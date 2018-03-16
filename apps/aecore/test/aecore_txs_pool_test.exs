@@ -23,6 +23,7 @@ defmodule AecoreTxsPoolTest do
 
     on_exit fn ->
       Persistence.delete_all_blocks()
+      Chain.clear_state()
       :ok
     end
 

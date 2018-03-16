@@ -18,19 +18,24 @@ defmodule AecoreValidationTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
-  setup ctx do
+
+  setup_all do
     path = Application.get_env(:aecore, :persistence)[:path]
     if File.exists?(path) do
         File.rm_rf(path)
     end
 
-    Miner.mine_sync_block_to_chain()
-
     on_exit fn ->
-      :ok = Persistence.delete_all_blocks()
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
       :ok
     end
 
+
+  end
+
+  setup ctx do
+    Miner.mine_sync_block_to_chain()
     [
       to_acc: Wallet.get_public_key("M/0"),
       lock_time_block: Chain.top_block().header.height +

@@ -11,10 +11,10 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization
 
-
   setup do
     on_exit fn ->
       Persistence.delete_all_blocks()
+      Chain.clear_state()
       :ok
     end
     []
