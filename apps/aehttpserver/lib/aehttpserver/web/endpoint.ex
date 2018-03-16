@@ -1,9 +1,9 @@
 defmodule Aehttpserver.Web.Endpoint do
   use Phoenix.Endpoint, otp_app: :aehttpserver
 
-  socket "/socket", Aehttpserver.Web.UserSocket
+  socket("/socket", Aehttpserver.Web.UserSocket)
 
-  plug Plug.Logger, log: :debug
+  plug(Plug.Logger, log: :debug)
 
   plug(
     Plug.Parsers,
@@ -12,7 +12,7 @@ defmodule Aehttpserver.Web.Endpoint do
     json_decoder: Poison
   )
 
-  plug Aehttpserver.Web.Router
+  plug(Aehttpserver.Web.Router)
 
   @doc """
   Dynamically loads configuration from the system environment
