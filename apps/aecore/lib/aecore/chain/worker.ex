@@ -52,7 +52,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_info).block
   end
 
-  @spec top_block_chain_state() :: tuple()
+  @spec top_block_chain_state() :: ChainState.account_chainstate()
   def top_block_chain_state() do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -78,7 +78,9 @@ defmodule Aecore.Chain.Worker do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
     block = case (GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash})) do
-      {:error, _} ->
+      {:error, _} = error ->
+        nil
+      %{block: nil} = block_info ->
         case Persistence.get_block_by_hash(block_hash) do
           {:ok, block} -> block
           _ -> nil
@@ -86,7 +88,6 @@ defmodule Aecore.Chain.Worker do
       block_info ->
         block_info.block
     end
-
 
     if block != nil do
       block
@@ -96,7 +97,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   def get_block_by_height(height, chain_hash \\ nil) do
-    get_block_info_by_height(height, chain_hash).block 
+    get_block_info_by_height(height, chain_hash).block
   end 
   
   @spec has_block?(binary()) :: boolean()
@@ -118,7 +119,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   def get_chain_state_by_height(height, chain_hash \\ nil) do
-    get_block_info_by_height(height, chain_hash).chain_state
+    get_block_info_by_height(height, chain_hash)[:chain_state]
   end
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
@@ -138,12 +139,12 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate()
+  @spec chain_state(binary()) :: ChainState.account_chainstate() | nil
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       error = {:error, _} ->
         error
-      data -> data.chain_state
+      data -> data[:chain_state]
     end
   end
 
@@ -221,7 +222,7 @@ defmodule Aecore.Chain.Worker do
                                   %{block: new_block,
                                     chain_state: new_chain_state,
                                     refs: new_refs})
-    hundred_blocks_data_map  = discard_blocks_from_memory(updated_blocks_data_map)
+    hundred_blocks_data_map  = remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
     Logger.info(fn ->
@@ -298,51 +299,50 @@ defmodule Aecore.Chain.Worker do
   end
 
 
-  defp discard_blocks_from_memory(block_map) do
-    if map_size(block_map) > number_of_blocks_in_memory() do
-      [genesis_block, {_, b} | sorted_blocks] =
-        Enum.sort(block_map,
-          fn({_, b1}, {_, b2}) ->
-            b1.header.height < b2.header.height
-          end)
-      Logger.info("Block ##{b.header.height} has been removed from memory")
-      Enum.into([genesis_block | sorted_blocks], %{})
+  defp remove_old_block_data_from_map(block_map, top_hash) do
+    if block_map[top_hash].block.header.height > number_of_blocks_in_memory() do 
+      hash_to_remove = get_nth_prev_hash(number_of_blocks_in_memory(), top_hash, block_map)
+      Logger.info("Block ##{hash_to_remove} has been removed from memory")
+      
+      Map.update!(block_map, hash_to_remove, fn(info) -> 
+        %{info | block: nil, chain_state: nil}
+      end)
     else
       block_map
     end
   end
 
   defp calculate_block_acc_txs_info(block) do
-  block_hash = BlockValidation.block_header_hash(block.header)
-  accounts =
-    for tx <- block.txs do
-      case tx.data do
-        %SpendTx{} ->
-          [tx.data.from_acc, tx.data.to_acc]
-        %DataTx{} ->
-          tx.data.from_acc
-      end
-    end
-  accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
-  for account <- accounts_unique, into: %{} do
-    acc_txs = Enum.filter(block.txs, fn(tx) ->
+    block_hash = BlockValidation.block_header_hash(block.header)
+    accounts =
+      for tx <- block.txs do
         case tx.data do
           %SpendTx{} ->
-            tx.data.from_acc == account || tx.data.to_acc == account
+            [tx.data.from_acc, tx.data.to_acc]
           %DataTx{} ->
-            tx.data.from_acc == account
+            tx.data.from_acc
         end
-      end)
-    tx_hashes = Enum.map(acc_txs, fn(tx) ->
+      end
+    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    for account <- accounts_unique, into: %{} do
+      acc_txs = Enum.filter(block.txs, fn(tx) ->
+          case tx.data do
+            %SpendTx{} ->
+              tx.data.from_acc == account || tx.data.to_acc == account
+            %DataTx{} ->
+              tx.data.from_acc == account
+          end
+        end)
+      tx_hashes = Enum.map(acc_txs, fn(tx) ->
         tx_bin = Serialization.pack_binary(tx)
         :crypto.hash(:sha256, tx_bin)
       end)
-    tx_tuples = Enum.map(tx_hashes, fn(hash) ->
+      tx_tuples = Enum.map(tx_hashes, fn(hash) ->
         {block_hash, hash}
       end)
-    {account, tx_tuples}
+      {account, tx_tuples}
+    end
   end
-end
 
   defp update_txs_index(current_txs_index, new_block_txs_index) do
     Map.merge(current_txs_index, new_block_txs_index,
@@ -378,7 +378,16 @@ end
     if n < 0 do
       {:error, "Height higher then chain_hash height"}
     else
-      blocks_data_map[get_nth_prev_hash(n, begin_hash, blocks_data_map)]
+      block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
+      case blocks_data_map[block_hash] do
+        %{block: nil} = block_info ->
+          case Persistence.get_block_by_hash(block_hash) do
+            {:ok, block} -> %{block_info | block: block}
+            _ -> block_info
+          end
+        block_info ->
+          block_info
+      end
     end
   end
 
