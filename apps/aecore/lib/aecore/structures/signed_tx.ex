@@ -13,9 +13,9 @@ defmodule Aecore.Structures.SignedTx do
   require Logger
 
   @type t :: %SignedTx{
-    data: DataTx.t(),
-    signature: binary()
-  }
+          data: DataTx.t(),
+          signature: binary()
+        }
 
   @doc """
   Definition of Aecore SignedTx structure

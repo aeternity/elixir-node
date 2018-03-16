@@ -1,5 +1,4 @@
 defmodule Aecore.Structures.Transaction do
-
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -29,13 +28,15 @@ defmodule Aecore.Structures.Transaction do
   Make necessary changes to the account_state and tx_type_state of
   the transaction (Transaction type-specific chainstate)
   """
-  @callback process_chainstate!(tx_types(),
-                                Wallet.pubkey(),
-                                fee :: non_neg_integer(),
-                                nonce :: non_neg_integer(),
-                                block_height :: non_neg_integer(),
-                                Account.t(),
-                                tx_type_state()) :: {Account.t(), tx_type_state()}
+  @callback process_chainstate!(
+              tx_types(),
+              Wallet.pubkey(),
+              fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
+              Account.t(),
+              tx_type_state()
+            ) :: {Account.t(), tx_type_state()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -63,14 +64,14 @@ defmodule Aecore.Structures.Transaction do
            :ok
       end
   """
-  @callback preprocess_check(tx_types(),
-                             ChainState.account(),
-                             fee :: non_neg_integer(),
-                             nonce :: non_neg_integer(),
-                             block_height :: non_neg_integer(),
-                             tx_type_state :: map()) :: :ok | {:error, reason}
+  @callback preprocess_check(
+              tx_types(),
+              ChainState.account(),
+              fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
+              tx_type_state :: map()
+            ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.account(),
-                       fee :: non_neg_integer()) :: ChainState.account()
-
+  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
 end

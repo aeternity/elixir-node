@@ -22,7 +22,7 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs
-    |> Enum.reduce(chainstate, fn(tx, chainstate) ->
+    |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
     |> update_chain_state_locked(block_height)
@@ -41,7 +41,7 @@ defmodule Aecore.Chain.ChainState do
         if SignedTx.is_valid?(tx) do
           DataTx.process_chainstate(data, block_height, chainstate)
         else
-          throw {:error, "Invalid transaction"}
+          throw({:error, "Invalid transaction"})
         end
     end
   end
@@ -53,33 +53,34 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_chain_state_hash(chainstate()) :: binary()
   def calculate_chain_state_hash(chainstate) do
     merkle_tree_data =
-    for {account, data} <- chainstate.accounts do
-      {account, Serialization.pack_binary(data)}
-    end
+      for {account, data} <- chainstate.accounts do
+        {account, Serialization.pack_binary(data)}
+      end
 
     if Enum.empty?(merkle_tree_data) do
       <<0::256>>
     else
       merkle_tree =
-        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn(node, merkle_tree) ->
+        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn node, merkle_tree ->
           :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
         end)
+
       :gb_merkle_trees.root_hash(merkle_tree)
     end
   end
 
   def filter_invalid_txs(txs_list, chainstate, block_height) do
-    {valid_txs_list, _} = List.foldl(
-      txs_list,
-      {[], chainstate},
-      fn (tx, {valid_txs_list, chainstate_acc}) ->
+    {valid_txs_list, _} =
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
         {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+
         if valid_chainstate do
           {valid_txs_list ++ [tx], updated_chainstate}
         else
           {valid_txs_list, chainstate_acc}
         end
       end)
+
     valid_txs_list
   end
 
@@ -94,12 +95,14 @@ defmodule Aecore.Chain.ChainState do
 
   @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
   def calculate_total_tokens(%{accounts: accounts}) do
-    Enum.reduce(accounts, {0, 0, 0}, fn({_account, state}, acc) ->
+    Enum.reduce(accounts, {0, 0, 0}, fn {_account, state}, acc ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
+
       locked_tokens =
-        Enum.reduce(state.locked, 0, fn(%{amount: amount}, locked_sum) ->
+        Enum.reduce(state.locked, 0, fn %{amount: amount}, locked_sum ->
           locked_sum + amount
         end)
+
       new_total_tokens = total_tokens + state.balance + locked_tokens
       new_total_unlocked_tokens = total_unlocked_tokens + state.balance
       new_total_locked_tokens = total_locked_tokens + locked_tokens
@@ -110,7 +113,7 @@ defmodule Aecore.Chain.ChainState do
   @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
   def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
     updated_accounts =
-      Enum.reduce(accounts, %{}, fn({address, state}, acc) ->
+      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
         Map.put(acc, address, Account.update_locked(state, header))
       end)
 
@@ -121,5 +124,4 @@ defmodule Aecore.Chain.ChainState do
   def bech32_encode(bin) do
     Bits.bech32_encode("cs", bin)
   end
-
 end

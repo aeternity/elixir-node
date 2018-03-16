@@ -1,6 +1,6 @@
 language: elixir
 elixir:
-  - 1.6.1
+  - 1.6.2
 otp_release:
   - 20.2.2
 
@@ -14,6 +14,7 @@ before_install:
 script:
   - mix compile --warnings-as-errors
   - mix credo list --ignore readability,design,refactor
+  - mix format --check-formatted
   - mix coveralls -u
 
 cache:
