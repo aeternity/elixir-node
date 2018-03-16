@@ -56,7 +56,7 @@ defmodule Aecore.Chain.Worker do
        txs_index: txs_index,
        top_hash: genesis_block_hash,
        top_height: 0
-     }}
+     }, 0}
   end
 
   def clear_state(), do: GenServer.call(__MODULE__, :clear_state)
@@ -81,13 +81,13 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_bech32_hash(String.t()) :: Block.t() | nil
+  @spec get_block_by_bech32_hash(String.t()) :: Block.t() | {:error, binary()}
   def get_block_by_bech32_hash(hash) do
     decoded_hash = Bits.bech32_decode(hash)
     get_block(decoded_hash)
   end
 
-  @spec get_block(binary()) :: Block.t()
+  @spec get_block(binary()) :: Block.t() | {:error, binary()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
@@ -113,8 +113,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
+  @spec get_block_by_height(non_neg_integer(), binary() | nil) :: Block.t() | {:error, binary()}
   def get_block_by_height(height, chain_hash \\ nil) do
-    get_block_info_by_height(height, chain_hash).block
+    case get_block_info_by_height(height, chain_hash) do
+      {:error, _} = error -> error
+      info -> info.block
+    end
   end
 
   @spec has_block?(binary()) :: boolean()
@@ -135,8 +139,14 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
 
+  @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
+          ChainState.account_chainstate() | {:error, binary()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
-    get_block_info_by_height(height, chain_hash)[:chain_state]
+    case get_block_info_by_height(height, chain_hash) do
+      {:error, _} = error -> error
+      %{chain_state: chain_state} -> chain_state
+      _ -> {:error, "Chainstate was delated"}
+    end
   end
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
@@ -164,14 +174,17 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate() | nil
+  @spec chain_state(binary()) :: ChainState.account_chainstate() | {:error, binary()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       error = {:error, _} ->
         error
 
-      data ->
-        data[:chain_state]
+      %{chain_state: chain_state} ->
+        chain_state
+
+      _ ->
+        {:error, "Chainstate was deleted"}
     end
   end
 
@@ -193,7 +206,7 @@ defmodule Aecore.Chain.Worker do
   ## Server side
 
   def handle_call(:clear_state, _from, _state) do
-    {:ok, new_state} = init(:empty)
+    {:ok, new_state, _} = init(:empty)
     {:reply, :ok, new_state}
   end
 
