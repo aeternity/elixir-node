@@ -126,13 +126,18 @@ defmodule Aecore.Wallet.Worker do
 
   ## Server Callbacks
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, network}},
+        _from,
+        %{pubkey: nil} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         {:ok, pub_key} =
           get_aewallet_dir()
           |> get_file_name()
           |> Wallet.get_public_key(password, network: network)
+
         pub_key
       else
         key = derive_key(derivation_path, password)
@@ -144,12 +149,16 @@ defmodule Aecore.Wallet.Worker do
         pub_key
       else
         nil
-    end
+      end
 
     {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
-  def handle_call({:get_pub_key, {derivation_path, password, _network}}, _from, %{pubkey: pub_key} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, _network}},
+        _from,
+        %{pubkey: pub_key} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         pub_key

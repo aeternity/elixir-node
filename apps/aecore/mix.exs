@@ -2,20 +2,27 @@ defmodule Aecore.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :aecore,
-     version: "0.1.0",
-     build_path: "../../_build",
-     config_path: "../../config/config.exs",
-     deps_path: "../../deps",
-     lockfile: "../../mix.lock",
-     elixir: "~> 1.6",
-     compilers: [:app, :make, :elixir],
-     aliases: aliases(),
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     deps: deps(),
-     test_coverage: [tool: ExCoveralls],
-     preferred_cli_env: ["coveralls": :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test]]
+    [
+      app: :aecore,
+      version: "0.1.0",
+      build_path: "../../_build",
+      config_path: "../../config/config.exs",
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
+      elixir: "~> 1.6",
+      compilers: [:app, :make, :elixir],
+      aliases: aliases(),
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      deps: deps(),
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test
+      ]
+    ]
   end
 
   defp aliases do
@@ -65,7 +72,7 @@ defmodule Mix.Tasks.Compile.Make do
   def run(_) do
     File.cd(Path.absname("apps/aecore/src/cuckoo/"))
     {result, _error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
-    Mix.shell.info result
+    Mix.shell().info(result)
     :ok
   end
 end

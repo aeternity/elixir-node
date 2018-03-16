@@ -15,17 +15,18 @@ defmodule AecoreTxsPoolTest do
 
   setup wallet do
     path = Application.get_env(:aecore, :persistence)[:path]
+
     if File.exists?(path) do
       File.rm_rf(path)
     end
 
     Chain.clear_state()
 
-    on_exit fn ->
+    on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
       :ok
-    end
+    end)
 
     [
       a_pub_key: Wallet.get_public_key(),
@@ -40,16 +41,12 @@ defmodule AecoreTxsPoolTest do
     # Empty the pool from the other tests
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
-    payload1 = %{to_acc: wallet.b_pub_key,
-                 value: 5,
-                 lock_time_block: 0}
+    nonce1 = Map.get(Chain.chain_state().accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
+    payload1 = %{to_acc: wallet.b_pub_key, value: 5, lock_time_block: 0}
     tx1 = DataTx.init(SpendTx, payload1, wallet.a_pub_key, 10, nonce1)
 
     nonce2 = nonce1 + 1
-    payload2 = %{to_acc: wallet.b_pub_key,
-                 value: 5,
-                 lock_time_block: 0}
+    payload2 = %{to_acc: wallet.b_pub_key, value: 5, lock_time_block: 0}
     tx2 = DataTx.init(SpendTx, payload2, wallet.a_pub_key, 10, nonce2)
 
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, wallet.priv_key)
@@ -69,10 +66,8 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", wallet do
-    nonce = Map.get(Chain.chain_state.accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
-    payload = %{to_acc: wallet.b_pub_key,
-                value: -5,
-                lock_time_block: 0}
+    nonce = Map.get(Chain.chain_state().accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
+    payload = %{to_acc: wallet.b_pub_key, value: -5, lock_time_block: 0}
     tx1 = DataTx.init(SpendTx, payload, wallet.a_pub_key, 0, nonce)
 
     {:ok, signed_tx} = SignedTx.sign_tx(tx1, wallet.priv_key)

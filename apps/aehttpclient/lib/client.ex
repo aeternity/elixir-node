@@ -25,10 +25,12 @@ defmodule Aehttpclient.Client do
   @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
   def get_block({uri, hash}) do
     hash = Header.bech32_encode(hash)
+
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
-        #TODO handle deserialization errors
+
+      # TODO handle deserialization errors
       {:error, reason} ->
         {:error, reason}
     end
@@ -38,9 +40,10 @@ defmodule Aehttpclient.Client do
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
     from_block_hash = Header.bech32_encode(from_block_hash)
     to_block_hash = Header.bech32_encode(to_block_hash)
-    uri = uri <> "/raw_blocks?" <>
-            "from_block=" <> from_block_hash <>
-            "&to_block=" <> to_block_hash
+
+    uri =
+      uri <> "/raw_blocks?" <> "from_block=" <> from_block_hash <> "&to_block=" <> to_block_hash
+
     get(uri, :raw_blocks)
   end
 
@@ -62,7 +65,7 @@ defmodule Aehttpclient.Client do
 
   @spec post_to_peers(String.t(), binary(), list(String.t())) :: :ok
   defp post_to_peers(uri, data, peers) do
-    Enum.each(peers, fn(peer) ->
+    Enum.each(peers, fn peer ->
       post(peer, data, uri)
     end)
   end
@@ -79,7 +82,7 @@ defmodule Aehttpclient.Client do
   @spec get_and_add_peers(term()) :: :ok
   def get_and_add_peers(uri) do
     {:ok, peers} = get_peers(uri)
-    Enum.each(peers, fn{peer, _} -> Peers.add_peer(peer) end)
+    Enum.each(peers, fn {peer, _} -> Peers.add_peer(peer) end)
   end
 
   @spec get_account_balance({binary(), binary()}) :: {:ok, binary()} | :error
@@ -99,21 +102,23 @@ defmodule Aehttpclient.Client do
 
   defp handle_response(:raw_blocks, body, _headers) do
     response = Poison.decode!(body)
-    deserialized_blocks = Enum.map(
-      response,
-      fn(block) ->
+
+    deserialized_blocks =
+      Enum.map(response, fn block ->
         Serialization.block(block, :deserialize)
-      end
-    )
+      end)
 
     {:ok, deserialized_blocks}
   end
 
   defp handle_response(:info, body, headers) do
     response = Poison.decode!(body, keys: :atoms!)
-    {_, server} = Enum.find(headers, fn(header) ->
-      header == {"server", "aehttpserver"}
-    end)
+
+    {_, server} =
+      Enum.find(headers, fn header ->
+        header == {"server", "aehttpserver"}
+      end)
+
     response_with_server_header = Map.put(response, :server, server)
     {:ok, response_with_server_header}
   end
@@ -127,7 +132,8 @@ defmodule Aehttpclient.Client do
     response =
       body
       |> Poison.decode!()
-      |> Enum.map(fn(tx) -> Serialization.tx(tx, :deserialize) end)
+      |> Enum.map(fn tx -> Serialization.tx(tx, :deserialize) end)
+
     {:ok, response}
   end
 
@@ -138,15 +144,21 @@ defmodule Aehttpclient.Client do
 
   @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
-    case(HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])) do
+    case(
+      HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])
+    ) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         handle_response(identifier, body, headers)
+
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         {:error, "Response 404"}
+
       {:ok, %HTTPoison.Response{status_code: 400}} ->
         {:error, "Response 400"}
+
       {:error, %HTTPoison.Error{}} ->
         {:error, "HTTPPoison Error"}
+
       unexpected ->
         Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
         {:error, "Unexpected error"}
@@ -159,8 +171,16 @@ defmodule Aehttpclient.Client do
 
   # TODO: what is this function even doing?
   defp get_local_port() do
-    Aehttpserver.Web.Endpoint |> :sys.get_state() |> elem(3) |> Enum.at(2)
-    |> elem(3) |> elem(2) |> Enum.at(1) |> List.keyfind(:http, 0)
-    |> elem(1) |> Enum.at(0) |> elem(1)
+    Aehttpserver.Web.Endpoint
+    |> :sys.get_state()
+    |> elem(3)
+    |> Enum.at(2)
+    |> elem(3)
+    |> elem(2)
+    |> Enum.at(1)
+    |> List.keyfind(:http, 0)
+    |> elem(1)
+    |> Enum.at(0)
+    |> elem(1)
   end
 end

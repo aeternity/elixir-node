@@ -1,4 +1,4 @@
-defmodule  Aecore.Structures.DataTx do
+defmodule Aecore.Structures.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
@@ -22,12 +22,12 @@ defmodule  Aecore.Structures.DataTx do
 
   @typedoc "Structure of the main transaction wrapper"
   @type t :: %DataTx{
-    type: tx_types(),
-    payload: payload(),
-    from_acc: binary(),
-    fee: non_neg_integer(),
-    nonce: non_neg_integer()
-  }
+          type: tx_types(),
+          payload: payload(),
+          from_acc: binary(),
+          fee: non_neg_integer(),
+          nonce: non_neg_integer()
+        }
 
   @doc """
   Definition of Aecore DataTx structure
@@ -44,11 +44,7 @@ defmodule  Aecore.Structures.DataTx do
 
   @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
   def init(type, payload, from_acc, fee, nonce) do
-    %DataTx{type: type,
-                payload: type.init(payload),
-                from_acc: from_acc,
-                fee: fee,
-                nonce: nonce}
+    %DataTx{type: type, payload: type.init(payload), from_acc: from_acc, fee: fee, nonce: nonce}
   end
 
   @doc """
@@ -71,8 +67,8 @@ defmodule  Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), non_neg_integer(),
-    ChainState.chainstate()) :: ChainState.chainstate()
+  @spec process_chainstate(DataTx.t(), non_neg_integer(), ChainState.chainstate()) ::
+          ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
     try do
       accounts_state = chainstate.accounts
@@ -81,21 +77,27 @@ defmodule  Aecore.Structures.DataTx do
       {new_accounts_state, new_tx_type_state} =
         tx.payload
         |> tx.type.init()
-        |> tx.type.process_chainstate!(tx.from_acc, tx.fee, tx.nonce, block_height,
-           accounts_state, tx_type_state)
+        |> tx.type.process_chainstate!(
+          tx.from_acc,
+          tx.fee,
+          tx.nonce,
+          block_height,
+          accounts_state,
+          tx_type_state
+        )
 
-        new_chainstate =
+      new_chainstate =
         if Map.has_key?(chainstate, tx.type) do
           Map.put(chainstate, tx.type, new_tx_type_state)
         else
           chainstate
         end
 
-        Map.put(new_chainstate, :accounts, new_accounts_state)
+      Map.put(new_chainstate, :accounts, new_accounts_state)
     catch
       {:error, reason} ->
         Logger.error(reason)
-      chainstate
+        chainstate
     end
   end
 
@@ -103,7 +105,7 @@ defmodule  Aecore.Structures.DataTx do
   def serialize(%DataTx{} = tx) do
     tx
     |> Map.from_struct()
-    |> Enum.reduce(%{}, fn({key, value}, new_tx) ->
+    |> Enum.reduce(%{}, fn {key, value}, new_tx ->
       Map.put(new_tx, Parser.to_string!(key), Serialization.serialize_value(value))
     end)
   end
@@ -112,11 +114,6 @@ defmodule  Aecore.Structures.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 
-    init(data_tx.type,
-      data_tx.payload,
-      data_tx.from_acc,
-      data_tx.fee,
-      data_tx.nonce)
+    init(data_tx.type, data_tx.payload, data_tx.from_acc, data_tx.fee, data_tx.nonce)
   end
-
 end
