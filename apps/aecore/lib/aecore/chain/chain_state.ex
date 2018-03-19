@@ -38,7 +38,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.from_acc != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, block_height, chainstate)
+          DataTx.process_chainstate(data, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end

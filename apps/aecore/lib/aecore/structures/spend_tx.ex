@@ -44,7 +44,7 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{to_acc: to_acc, value: value} = payload) do
+  def init(%{to_acc: to_acc, value: value} = _payload) do
     %SpendTx{to_acc: to_acc, value: value}
   end
 
@@ -65,7 +65,7 @@ defmodule Aecore.Structures.SpendTx do
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
   @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, block_height, account_state) do
+  def reward(%SpendTx{} = tx, _block_height, account_state) do
     Account.transaction_in(account_state, tx.value)
   end
 
@@ -77,12 +77,11 @@ defmodule Aecore.Structures.SpendTx do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, block_height, accounts, %{}) do
-    case preprocess_check(tx, accounts[from_acc], fee, nonce, block_height, %{}) do
+  def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, accounts, %{}) do
+    case preprocess_check(tx, accounts[from_acc], fee, nonce, %{}) do
       :ok ->
         new_from_account_state =
           accounts[from_acc]
@@ -95,7 +94,7 @@ defmodule Aecore.Structures.SpendTx do
         new_to_account_state = Account.transaction_in(to_acc, tx.value)
         {Map.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
 
-      {:error, reason} = err ->
+      {:error, _reason} = err ->
         throw(err)
     end
   end
@@ -109,10 +108,9 @@ defmodule Aecore.Structures.SpendTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, account_state, fee, nonce, block_height, %{}) do
+  def preprocess_check(tx, account_state, fee, nonce, %{}) do
     cond do
       account_state.balance - (fee + tx.value) < 0 ->
         {:error, "Negative balance"}
