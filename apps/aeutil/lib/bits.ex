@@ -1,7 +1,7 @@
 # Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
 # License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
-  alias Aeutil.Parser
+
 
   @prefix_list ["ak$", "bh$", "bs$", "tx$", "bx$", "ok$", "cs$", "tr$"]
 

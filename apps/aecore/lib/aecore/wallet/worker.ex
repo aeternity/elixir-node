@@ -8,7 +8,6 @@ defmodule Aecore.Wallet.Worker do
   alias Aewallet.Wallet
   alias Aewallet.KeyPair
   alias Aewallet.Encoding
-  alias Aecore.Structures.Account
   alias Aeutil.Bits
 
   @typedoc "Public key representing an account"

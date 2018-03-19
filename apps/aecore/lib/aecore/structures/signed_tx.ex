@@ -58,7 +58,7 @@ defmodule Aecore.Structures.SignedTx do
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
-  def sign_tx(%DataTx{} = tx, priv_key) do
+  def sign_tx(%DataTx{} = _tx, priv_key) do
     {:error, "Wrong key size: #{priv_key}"}
   end
 
