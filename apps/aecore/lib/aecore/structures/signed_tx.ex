@@ -1,13 +1,16 @@
 defmodule Aecore.Structures.SignedTx do
   @moduledoc """
+  Aecore structure of a signed transaction.
   """
+
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
+
+  require Logger
 
   @type t :: %SignedTx{
           data: DataTx.t(),
@@ -33,6 +36,9 @@ defmodule Aecore.Structures.SignedTx do
   def is_valid?(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
       DataTx.is_valid?(data)
+    else
+      Logger.error("Can't verify the signature with the following public key: #{data.from_acc}")
+      false
     end
   end
 
@@ -52,7 +58,7 @@ defmodule Aecore.Structures.SignedTx do
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
-  def sign_tx(tx, _priv_key) do
+  def sign_tx(_tx, _priv_key) do
     {:error, "Wrong Transaction data structure"}
   end
 

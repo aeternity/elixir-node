@@ -6,7 +6,7 @@ defmodule Aeutil.Mixfile do
       app: :aeutil,
       version: "0.1.0",
       elixir: "~> 1.6",
-      start_permanent: Mix.env == :prod,
+      start_permanent: Mix.env() == :prod
     ]
   end
 
@@ -16,5 +16,4 @@ defmodule Aeutil.Mixfile do
       extra_applications: [:logger]
     ]
   end
-
 end

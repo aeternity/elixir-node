@@ -4,7 +4,6 @@ defmodule Aecore.Structures.DataTx do
   """
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
@@ -13,7 +12,7 @@ defmodule Aecore.Structures.DataTx do
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type tx_type :: SpendTx
+  @type tx_types :: SpendTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload :: SpendTx.t()
@@ -23,7 +22,7 @@ defmodule Aecore.Structures.DataTx do
 
   @typedoc "Structure of the main transaction wrapper"
   @type t :: %DataTx{
-          type: tx_type(),
+          type: tx_types(),
           payload: payload(),
           from_acc: binary(),
           fee: non_neg_integer(),
@@ -43,7 +42,7 @@ defmodule Aecore.Structures.DataTx do
   defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
 
-  @spec init(tx_type(), payload(), binary(), integer(), integer()) :: DataTx.t()
+  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
   def init(type, payload, from_acc, fee, nonce) do
     %DataTx{type: type, payload: type.init(payload), from_acc: from_acc, fee: fee, nonce: nonce}
   end
@@ -72,7 +71,7 @@ defmodule Aecore.Structures.DataTx do
           ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
     try do
-      account_state = chainstate.accounts
+      accounts_state = chainstate.accounts
       tx_type_state = Map.get(chainstate, tx.type, %{})
 
       {new_accounts_state, new_tx_type_state} =
@@ -83,7 +82,7 @@ defmodule Aecore.Structures.DataTx do
           tx.fee,
           tx.nonce,
           block_height,
-          account_state,
+          accounts_state,
           tx_type_state
         )
 

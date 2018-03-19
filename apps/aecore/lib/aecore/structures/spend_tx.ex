@@ -5,8 +5,6 @@ defmodule Aecore.Structures.SpendTx do
 
   @behaviour Aecore.Structures.Transaction
   alias Aecore.Structures.SpendTx
-  alias Aeutil.Serialization
-  alias Aeutil.Parser
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
@@ -88,14 +86,13 @@ defmodule Aecore.Structures.SpendTx do
       :ok ->
         new_from_account_state =
           accounts[from_acc]
-          |> deduct_fee(fee, nonce)
+          |> deduct_fee(fee)
           |> Account.transaction_out(tx.value * -1, nonce)
 
         new_accounts = Map.put(accounts, from_acc, new_from_account_state)
 
         to_acc = Map.get(accounts, tx.to_acc, Account.empty())
         new_to_account_state = Account.transaction_in(to_acc, tx.value)
-
         {Map.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
 
       {:error, reason} = err ->
@@ -128,9 +125,8 @@ defmodule Aecore.Structures.SpendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer(), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(account_state, fee, nonce) do
+  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
   end

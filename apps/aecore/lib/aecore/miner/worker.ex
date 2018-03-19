@@ -245,7 +245,10 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_fee)
 
       valid_txs = [
-        create_coinbase_tx(pubkey, total_fees)
+        create_coinbase_tx(
+          pubkey,
+          total_fees
+        )
         | valid_txs_by_fee
       ]
 
@@ -262,7 +265,14 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_block_size)
 
       valid_txs =
-        List.replace_at(valid_txs_by_block_size, 0, create_coinbase_tx(pubkey, total_fees))
+        List.replace_at(
+          valid_txs_by_block_size,
+          0,
+          create_coinbase_tx(
+            pubkey,
+            total_fees
+          )
+        )
 
       create_block(top_block, chain_state, difficulty, valid_txs)
     catch
@@ -279,7 +289,10 @@ defmodule Aecore.Miner.Worker do
   end
 
   def create_coinbase_tx(to_acc, total_fees) do
-    payload = %{to_acc: to_acc, value: @coinbase_transaction_value + total_fees}
+    payload = %{
+      to_acc: to_acc,
+      value: @coinbase_transaction_value + total_fees
+    }
 
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
 

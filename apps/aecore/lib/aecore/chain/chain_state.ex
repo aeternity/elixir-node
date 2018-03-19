@@ -92,11 +92,21 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
-  def calculate_total_tokens(%{accounts: accounts} = chainstate) do
-    Enum.reduce(accounts, 0, fn {account, state}, acc ->
+  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
+  def calculate_total_tokens(%{accounts: accounts}) do
+    Enum.reduce(accounts, 0, fn {_account, state}, acc ->
       acc + state.balance
     end)
+  end
+
+  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
+  def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
+    updated_accounts =
+      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
+        Map.put(acc, address, Account.update_locked(state, header))
+      end)
+
+    Map.put(chainstate, :accounts, updated_accounts)
   end
 
   @spec bech32_encode(binary()) :: String.t()

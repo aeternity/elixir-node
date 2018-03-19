@@ -6,8 +6,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty

@@ -12,7 +12,6 @@ defmodule Aecore.Structures.Block do
         }
 
   @current_block_version 1
-  @genesis_block_version @current_block_version
 
   defstruct [:header, :txs]
   use ExConstructor

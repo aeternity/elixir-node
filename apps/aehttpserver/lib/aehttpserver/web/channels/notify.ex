@@ -1,5 +1,4 @@
 defmodule Aehttpserver.Web.Notify do
-
   alias Aeutil.Serialization
   alias Aewallet.Encoding
 

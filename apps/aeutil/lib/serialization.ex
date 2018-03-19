@@ -3,7 +3,6 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias __MODULE__
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
@@ -12,39 +11,26 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aeutil.Bits
-  alias Aewallet.Encoding
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
 
-  @spec block(Block.t(), :serialize | :deserialize) :: Block.t()
-  def block(block, :serialize) do
-    header = header(block.header, :serialize)
-    txs = Enum.map(block.txs, fn(tx) -> tx(tx, :serialize) end)
-    %{"header" => header, "txs" => txs}
-  end
+  @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
+  def block(block, :serialize), do: serialize_value(block)
 
   def block(block, :deserialize) do
     built_header =
       block["header"]
-      |> header(:deserialize)
+      |> deserialize_value()
       |> Header.new()
 
-    txs = Enum.map(block["txs"], fn(tx) -> tx(tx, :deserialize) end)
+    txs = Enum.map(block["txs"], fn tx -> tx(tx, :deserialize) end)
     Block.new(header: built_header, txs: txs)
   end
 
-  @spec header(Header.t(), :serialize | :deserialize) :: Header.t()
-  def header(header, :serialize), do: serialize_value(header)
-  def header(header, :deserialize), do: deserialize_value(header)
-
-  @spec tx(SignedTx.t(), :serialize | :deserialize) :: SignedTx.t()
-  def tx(tx, :serialize) do
-    data = DataTx.serialize(tx.data)
-    signature = base64_binary(tx.signature, :serialize)
-    %{"data" => data, "signature" => signature}
-  end
+  @spec tx(map(), :deserialize) :: SpendTx.t()
+  def tx(tx, :serialize), do: serialize_value(tx)
 
   def tx(tx, :deserialize) do
     tx_data = tx["data"]
@@ -56,7 +42,7 @@ defmodule Aeutil.Serialization do
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)
-  def hex_binary(_, _),  do: nil
+  def hex_binary(_, _), do: nil
 
   @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def base64_binary(data, :serialize) when data != nil, do: Base.encode64(data)
@@ -82,31 +68,48 @@ defmodule Aeutil.Serialization do
 
   @spec pack_binary(term()) :: map()
   def pack_binary(term) do
-    pb = pack_binary(term, "")
-    Msgpax.pack!(pb, iodata: false)
+    term
+    |> remove_struct()
+    |> Msgpax.pack!(iodata: false)
   end
 
-  def pack_binary(term) when is_list(term) do
-    for elem <- term, do: pack_binary(term, "")
+  @doc """
+  Loops through a structure are simplifies it. Removes all the strucutured maps
+  """
+  @spec remove_struct(list()) :: list()
+  @spec remove_struct(map()) :: map()
+  def remove_struct(term) when is_list(term) do
+    for elem <- term, do: remove_struct(elem)
   end
 
-  def pack_binary(term, _) when is_map(term) do
+  def remove_struct(term) when is_map(term) do
     if Map.has_key?(term, :__struct__) do
       term
       |> Map.from_struct()
-      |> Enum.reduce(%{},
-      fn({key, value}, term_acc) ->
-        Map.put(term_acc, key, pack_binary(value, ""))
+      |> Enum.reduce(%{}, fn {key, value}, term_acc ->
+        Map.put(term_acc, key, remove_struct(value))
       end)
     else
       term
     end
   end
 
-  def pack_binary(term, _), do: term
+  def remove_struct(term), do: term
 
+  @doc """
+  Initializing function to the recursive functionality of serializing a strucure
+  """
+  @spec serialize_value(any()) :: any()
   def serialize_value(value), do: serialize_value(value, "")
 
+  @doc """
+  Loops recursively through a given structure. If it goes into a map
+  the keys are converted to string and each binary value
+  is encoded if necessary. (depends on the key)
+  """
+  @spec serialize_value(list(), atom()) :: list()
+  @spec serialize_value(map(), atom()) :: map()
+  @spec serialize_value(binary(), atom() | String.t()) :: binary()
   def serialize_value(nil, _), do: nil
 
   def serialize_value(value, type) when is_list(value) do
@@ -115,14 +118,10 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def serialize_value(value, type) when is_map(value) do
-    value =
-      case Map.has_key?(value, :__struct__) do
-        true -> Map.from_struct(value)
-        false -> value
-      end
-
-    Enum.reduce(value, %{}, fn({key, val}, new_val)->
+  def serialize_value(value, _type) when is_map(value) do
+    value
+    |> remove_struct()
+    |> Enum.reduce(%{}, fn {key, val}, new_val ->
       Map.put(new_val, serialize_value(key), serialize_value(val, key))
     end)
   end
@@ -138,8 +137,20 @@ defmodule Aeutil.Serialization do
       :chain_state_hash ->
         ChainState.bech32_encode(value)
 
-      _ ->
+      :from_acc ->
         Aewallet.Encoding.encode(value, :ae)
+
+      :to_acc ->
+        Aewallet.Encoding.encode(value, :ae)
+
+      :signature ->
+        base64_binary(value, :serialize)
+
+      :proof ->
+        Aewallet.Encoding.encode(value, :ae)
+
+      _ ->
+        value
     end
   end
 
@@ -149,6 +160,13 @@ defmodule Aeutil.Serialization do
 
   def serialize_value(value, _), do: value
 
+  @doc """
+  Loops recursively through a given serialized structure, converts the keys to atoms
+  and decodes the encoded binary values
+  """
+  @spec deserialize_value(list()) :: list()
+  @spec deserialize_value(map()) :: map()
+  @spec deserialize_value(binary()) :: binary() | atom()
   def deserialize_value(nil), do: nil
 
   def deserialize_value(value) when is_list(value) do
@@ -156,9 +174,9 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value) when is_map(value) do
-    Enum.reduce(value, %{}, fn({key, val}, new_value) ->
-        Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
-      end)
+    Enum.reduce(value, %{}, fn {key, val}, new_value ->
+      Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
+    end)
   end
 
   def deserialize_value(value) when is_binary(value) do
@@ -169,5 +187,4 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value), do: value
-
 end
