@@ -14,6 +14,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup do
     on_exit(fn ->
@@ -160,11 +161,11 @@ defmodule MultipleTransactionsTest do
              miner_balance_before_mining + Miner.coinbase_transaction_amount() + 20
   end
 
-  defp create_signed_tx(sender, receiver, amount, nonce, fee, lock_time_block \\ 0) do
+  defp create_signed_tx(sender, receiver, amount, nonce, fee) do
     {sender_pub_key, sender_priv_key} = sender
     {receiver_pub_key, _receiver_priv_key} = receiver
 
-    payload = %{receiver: receiver_pub_key, amount: amount, lock_time_block: lock_time_block}
+    payload = %{receiver: receiver_pub_key, amount: amount}
     tx_data = DataTx.init(SpendTx, payload, sender_pub_key, fee, nonce)
 
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender_priv_key)

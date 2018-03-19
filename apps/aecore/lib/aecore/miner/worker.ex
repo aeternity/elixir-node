@@ -247,9 +247,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs = [
         create_coinbase_tx(
           pubkey,
-          total_fees,
-          top_block.header.height + 1 +
-            Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
+          total_fees
         )
         | valid_txs_by_fee
       ]
@@ -272,9 +270,7 @@ defmodule Aecore.Miner.Worker do
           0,
           create_coinbase_tx(
             pubkey,
-            total_fees,
-            top_block.header.height + 1 +
-              Application.get_env(:aecore, :tx_data)[:lock_time_coinbase]
+            total_fees
           )
         )
 
@@ -292,13 +288,11 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def create_coinbase_tx(receiver, total_fees, lock_time_block) do
+  def create_coinbase_tx(receiver, total_fees) do
     payload = %{
       receiver: receiver,
-      amount: @coinbase_transaction_amount + total_fees,
-      lock_time_block: lock_time_block
+      amount: @coinbase_transaction_amount + total_fees
     }
-
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
 
     %SignedTx{data: tx_data, signature: nil}

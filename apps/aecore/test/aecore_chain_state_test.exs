@@ -44,21 +44,9 @@ defmodule AecoreChainStateTest do
         [signed_tx1, signed_tx2],
         %{
           :accounts => %{
-            wallet.a_pub_key => %Account{
-              balance: 3,
-              nonce: 100,
-              locked: [%{amount: 1, block: next_block_height}]
-            },
-            wallet.b_pub_key => %Account{
-              balance: 5,
-              nonce: 1,
-              locked: [%{amount: 1, block: next_block_height + 1}]
-            },
-            wallet.c_pub_key => %Account{
-              balance: 4,
-              nonce: 1,
-              locked: [%{amount: 1, block: next_block_height}]
-            }
+            wallet.a_pub_key => %Account{balance: 3, nonce: 100},
+            wallet.b_pub_key => %Account{balance: 5, nonce: 1},
+            wallet.c_pub_key => %Account{balance: 4, nonce: 1}
           }
         },
         1
@@ -66,38 +54,11 @@ defmodule AecoreChainStateTest do
 
     assert %{
              :accounts => %{
-               wallet.a_pub_key => %Account{
-                 balance: 6,
-                 nonce: 100,
-                 locked: [%{amount: 1, block: next_block_height}]
-               },
-               wallet.b_pub_key => %Account{
-                 balance: 3,
-                 nonce: 2,
-                 locked: [%{amount: 1, block: next_block_height + 1}]
-               },
-               wallet.c_pub_key => %Account{
-                 balance: 1,
-                 nonce: 2,
-                 locked: [%{amount: 1, block: next_block_height}]
-               }
+               wallet.a_pub_key => %Account{balance: 6, nonce: 100},
+               wallet.b_pub_key => %Account{balance: 3, nonce: 2},
+               wallet.c_pub_key => %Account{balance: 1, nonce: 2}
              }
            } == chain_state
-
-    new_chain_state_locked_amounts =
-      ChainState.update_chain_state_locked(chain_state, next_block_height)
-
-    assert %{
-             :accounts => %{
-               wallet.a_pub_key => %Account{balance: 7, nonce: 100, locked: []},
-               wallet.b_pub_key => %Account{
-                 balance: 3,
-                 nonce: 2,
-                 locked: [%{amount: 1, block: next_block_height + 1}]
-               },
-               wallet.c_pub_key => %Account{balance: 2, nonce: 2, locked: []}
-             }
-           } == new_chain_state_locked_amounts
   end
 
   def apply_txs_on_state!(txs, chainstate, block_height) do

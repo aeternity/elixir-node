@@ -8,6 +8,7 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -15,7 +16,6 @@ defmodule Aecore.Structures.SpendTx do
   @type payload :: %{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          lock_time_block: non_neg_integer(),
           version: non_neg_integer()
         }
 
@@ -30,7 +30,6 @@ defmodule Aecore.Structures.SpendTx do
   @type t :: %SpendTx{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          lock_time_block: non_neg_integer(),
           version: non_neg_integer()
         }
 
@@ -40,17 +39,16 @@ defmodule Aecore.Structures.SpendTx do
   ## Parameters
   - receiver: To account is the public address of the account receiving the transaction
   - amount: The amount of tokens send through the transaction
-  - lock_time_block: In which block the tokens will become available
   - version: States whats the version of the Spend Transaction
   """
-  defstruct [:receiver, :amount, :lock_time_block, :version]
+  defstruct [:receiver, :amount, :version]
   use ExConstructor
 
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount, lock_time_block: lock}) do
-    %SpendTx{receiver: receiver, amount: amount, lock_time_block: lock, version: get_tx_version()}
+  def init(%{receiver: receiver, amount: amount}) do
+    %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
   end
 
   @doc """
@@ -70,8 +68,8 @@ defmodule Aecore.Structures.SpendTx do
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
   @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, block_height, account_state) do
-    Account.transaction_in(account_state, block_height, tx.amount, tx.lock_time_block)
+  def reward(%SpendTx{} = tx, _block_height, account_state) do
+    Account.transaction_in(account_state, tx.amount)
   end
 
   @doc """
@@ -82,25 +80,22 @@ defmodule Aecore.Structures.SpendTx do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
-    case preprocess_check(tx, accounts[sender], fee, nonce, block_height, %{}) do
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
+    case preprocess_check(tx, accounts[sender], fee, nonce, %{}) do
       :ok ->
         new_sender_acc_state =
           accounts[sender]
           |> deduct_fee(fee)
-          |> Account.transaction_out(block_height, tx.amount * -1, nonce, -1)
+          |> Account.transaction_out(tx.amount * -1, nonce)
 
         new_accounts = Map.put(accounts, sender, new_sender_acc_state)
 
         receiver = Map.get(accounts, tx.receiver, Account.empty())
-
         new_receiver_acc_state =
-          Account.transaction_in(receiver, block_height, tx.amount, tx.lock_time_block)
-
+          Account.transaction_in(receiver, tx.amount)
         {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
 
       {:error, _reason} = err ->
@@ -117,19 +112,15 @@ defmodule Aecore.Structures.SpendTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, account_state, fee, nonce, block_height, %{}) do
+  def preprocess_check(tx, account_state, fee, nonce, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
         {:error, "Negative balance"}
 
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
-
-      block_height <= tx.lock_time_block && tx.amount < 0 ->
-        {:error, "Can't lock a negative transaction"}
 
       true ->
         :ok

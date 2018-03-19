@@ -17,6 +17,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup_all do
     path = Application.get_env(:aecore, :persistence)[:path]
@@ -36,16 +37,13 @@ defmodule AecoreValidationTest do
     Miner.mine_sync_block_to_chain()
 
     [
-      receiver: Wallet.get_public_key("M/0"),
-      lock_time_block:
-        Chain.top_block().header.height +
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1
+      receiver: Wallet.get_public_key("M/0")
     ]
   end
 
   @tag :validation
   test "validate block header height", ctx do
-    new_block = get_new_block(ctx.receiver, ctx.lock_time_block)
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -75,7 +73,8 @@ defmodule AecoreValidationTest do
   @timeout 10_000_000
   test "validate block header timestamp", ctx do
     Miner.mine_sync_block_to_chain()
-    new_block = get_new_block(ctx.receiver, ctx.lock_time_block)
+
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -108,10 +107,10 @@ defmodule AecoreValidationTest do
     fee = 1
     nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
 
-    payload1 = %{receiver: ctx.receiver, amount: amount, lock_time_block: ctx.lock_time_block}
+    payload1 = %{receiver: ctx.receiver, amount: amount}
     tx1 = DataTx.init(SpendTx, payload1, sender, fee, nonce + 1)
 
-    payload2 = %{receiver: ctx.receiver, amount: amount + 5, lock_time_block: ctx.lock_time_block}
+    payload2 = %{receiver: ctx.receiver, amount: amount + 5}
     tx2 = DataTx.init(SpendTx, payload2, sender, fee, nonce + 2)
 
     priv_key = Wallet.get_private_key()
@@ -124,15 +123,14 @@ defmodule AecoreValidationTest do
            |> Enum.all?() == true
   end
 
-  def get_new_block(receiver, lock_time_block) do
+  def get_new_block(receiver) do
     sender = Wallet.get_public_key()
     amount = 100
     nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
     fee = 10
 
-    payload = %{receiver: receiver, amount: amount, lock_time_block: lock_time_block}
+    payload = %{receiver: receiver, amount: amount}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, 13_213_223)
-
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 

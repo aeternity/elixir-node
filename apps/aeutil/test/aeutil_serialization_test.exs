@@ -53,7 +53,6 @@ defmodule AeutilSerializationTest do
             payload: %SpendTx{
               receiver: receiver,
               amount: 100,
-              lock_time_block: [%{amount: 5, block: 10}, %{amount: 6, block: 10}],
               version: 1
             },
             sender: sender,
@@ -86,10 +85,6 @@ defmodule AeutilSerializationTest do
             "payload" => %{
               "receiver" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
               "amount" => 100,
-              "lock_time_block" => [
-                %{"amount" => 5, "block" => 10},
-                %{"amount" => 6, "block" => 10}
-              ],
               "version" => 1
             },
             "sender" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",

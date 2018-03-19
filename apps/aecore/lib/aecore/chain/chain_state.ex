@@ -25,7 +25,6 @@ defmodule Aecore.Chain.ChainState do
     |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
-    |> update_chain_state_locked(block_height)
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
@@ -42,7 +41,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, block_height, chainstate)
+          DataTx.process_chainstate(data, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end
@@ -96,20 +95,10 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
+  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
   def calculate_total_tokens(%{accounts: accounts}) do
-    Enum.reduce(accounts, {0, 0, 0}, fn {_account, state}, acc ->
-      {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
-
-      locked_tokens =
-        Enum.reduce(state.locked, 0, fn %{amount: amount}, locked_sum ->
-          locked_sum + amount
-        end)
-
-      new_total_tokens = total_tokens + state.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + state.balance
-      new_total_locked_tokens = total_locked_tokens + locked_tokens
-      {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
+    Enum.reduce(accounts, 0, fn {_account, state}, acc ->
+      acc + state.balance
     end)
   end
 

@@ -42,7 +42,7 @@ defmodule AehttpclientTest do
     sender = receiver
 
     init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
-    payload1 = %{receiver: sender, amount: 5, lock_time_block: 0}
+    payload1 = %{receiver: sender, amount: 5}
 
     tx1 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 1)
     tx2 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 2)
