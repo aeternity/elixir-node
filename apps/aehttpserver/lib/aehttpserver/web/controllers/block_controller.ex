@@ -11,7 +11,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    block = Chain.get_block_by_base58_hash(params["hash"])
+    block = Chain.get_block_by_base58_hash(params["hash"]).block
 
     case block do
       %Block{} ->

@@ -13,23 +13,17 @@ defmodule AehttpclientTest do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
   alias Aewallet.Encoding
-  
 
   @tag :http_client
   test "Client functions" do
     account = Wallet.get_public_key()
     hex_acc = Account.base58_encode(account)
-    base58_encoded_top_block_hash = Bits.encode58("bh$", Chain.top_block_hash)
+    base58_encoded_top_block_hash = Bits.encode58("bh$", Chain.top_block_hash())
     AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
-             Client.get_block(
-               {"localhost:4000",
-                Bits.decode58(
-                  base58_encoded_top_block_hash
-                )}
-             )
+             Client.get_block({"localhost:4000", Bits.decode58(base58_encoded_top_block_hash)})
 
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
@@ -44,10 +38,8 @@ defmodule AehttpclientTest do
     to_acc = Wallet.get_public_key()
     from_acc = to_acc
 
-    init_nonce = Map.get(Chain.chain_state, from_acc, %{nonce: 0}).nonce
-    payload1 = %{to_acc: from_acc,
-                 value: 5,
-                 lock_time_block: 0}
+    init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
+    payload1 = %{to_acc: from_acc, value: 5, lock_time_block: 0}
 
     tx1 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 1)
     tx2 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 2)

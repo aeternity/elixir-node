@@ -10,5 +10,4 @@ defmodule Aehttpserver.Web.NotificationChannel do
   def join("room:" <> _private_subtopic, _message, _socket) do
     {:error, %{reason: "unauthorized"}}
   end
-
 end

@@ -6,8 +6,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
@@ -16,28 +14,45 @@ defmodule Aecore.Chain.BlockValidation do
   @time_validation_blocks_count 10
   @time_validation_future_limit_ms 3_600_000
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
-  def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_target_calculation) do
-
+  @spec calculate_and_validate_block!(
+          Block.t(),
+          Block.t(),
+          ChainState.account_chainstate(),
+          list(Block.t())
+        ) :: {:error, term()} | :ok
+  def calculate_and_validate_block!(
+        new_block,
+        previous_block,
+        old_chain_state,
+        blocks_for_target_calculation
+      ) do
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
     single_validate_block!(new_block)
 
-    new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
+    new_chain_state =
+      ChainState.calculate_and_validate_chain_state!(
+        new_block.txs,
+        old_chain_state,
+        new_block.header.height
+      )
+
     root_hash = ChainState.calculate_txs_hash(new_chain_state)
 
     server = self()
-    work   = fn() -> Cuckoo.verify(new_block.header) end
-    spawn(fn() ->
+    work = fn -> Cuckoo.verify(new_block.header) end
+
+    spawn(fn ->
       send(server, {:worker_reply, self(), work.()})
     end)
 
     is_target_met =
       receive do
-      {:worker_reply, _from, verified?} -> verified?
-    end
+        {:worker_reply, _from, verified?} -> verified?
+      end
 
     target = Difficulty.calculate_next_target(blocks_for_target_calculation)
+
     cond do
       # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
@@ -78,7 +93,10 @@ defmodule Aecore.Chain.BlockValidation do
         throw({:error, "One or more transactions not valid"})
 
       coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
+        throw(
+          {:error,
+           "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"}
+        )
 
       block.header.version != Block.current_block_version() ->
         throw({:error, "Invalid block version"})
@@ -101,7 +119,7 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) ||  SignedTx.is_valid?(tx)
+      SignedTx.is_coinbase?(tx) || SignedTx.is_valid?(tx)
     end)
   end
 
@@ -111,7 +129,7 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
-  def calculate_txs_hash(txs)  do
+  def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
@@ -123,10 +141,10 @@ defmodule Aecore.Chain.BlockValidation do
       <<0::256>>
     else
       merkle_tree =
-      for transaction <- txs do
-        transaction_data_bin = Serialization.pack_binary(transaction.data)
-        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-      end
+        for transaction <- txs do
+          transaction_data_bin = Serialization.pack_binary(transaction.data)
+          {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+        end
 
       merkle_tree
       |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
@@ -161,12 +179,12 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: new_block_header}) do
-    case new_block_header.time <= System.system_time(:milliseconds) + @time_validation_future_limit_ms do
+    case new_block_header.time <=
+           System.system_time(:milliseconds) + @time_validation_future_limit_ms do
       true ->
         last_blocks = Chain.get_blocks(Chain.top_block_hash(), @time_validation_blocks_count)
 
-        last_blocks_times =
-          for block <- last_blocks, do: block.header.time
+        last_blocks_times = for block <- last_blocks, do: block.header.time
 
         avg = Enum.sum(last_blocks_times) / Enum.count(last_blocks_times)
 
@@ -176,5 +194,4 @@ defmodule Aecore.Chain.BlockValidation do
         false
     end
   end
-
 end

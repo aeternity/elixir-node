@@ -11,6 +11,12 @@ defmodule Aecore.Wallet.Worker do
   alias Aecore.Structures.Account
   alias Aeutil.Bits
 
+  @typedoc "Public key representing an account"
+  @type pubkey() :: binary()
+
+  @typedoc "Private key of the account"
+  @type privkey() :: binary()
+
   @typedoc "Wallet type"
   @type wallet_type :: :ae | :btc
 
@@ -101,11 +107,11 @@ defmodule Aecore.Wallet.Worker do
   """
   @spec encode(binary(), wallet_type()) :: String.t()
   def encode(pub_key, :ae) do
-    Bits.encode58("ak$",pub_key)
+    Bits.encode58("ak$", pub_key)
   end
 
   def encode(pub_key, :btc) do
-    Bits.encode58("btc",pub_key)
+    Bits.encode58("btc", pub_key)
   end
 
   @doc """
@@ -117,18 +123,23 @@ defmodule Aecore.Wallet.Worker do
   """
   @spec decode(String.t()) :: binary()
   def decode(formatted_key) do
-    {:ok, pub_key} = Encoding.decode(formatted_key)
+    {:ok, _pub_key} = Encoding.decode(formatted_key)
   end
 
   ## Server Callbacks
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, network}},
+        _from,
+        %{pubkey: nil} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         {:ok, pub_key} =
           get_aewallet_dir()
           |> get_file_name()
           |> Wallet.get_public_key(password, network: network)
+
         pub_key
       else
         key = derive_key(derivation_path, password)
@@ -140,12 +151,16 @@ defmodule Aecore.Wallet.Worker do
         pub_key
       else
         nil
-    end
+      end
 
     {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: pub_key} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, _network}},
+        _from,
+        %{pubkey: pub_key} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         pub_key

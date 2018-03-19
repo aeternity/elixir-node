@@ -5,32 +5,24 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
   require Logger
 
-  @typedoc "Public key representing an account"
-  @type pubkey() :: binary()
-
-  @typedoc "State of an account"
-  @type acc_state() :: %{balance: integer(),
-                         locked: [%{amount: integer(), block: integer()}],
-                         nonce: integer()}
-
   @typedoc "Structure of the accounts"
-  @type accounts() :: %{pubkey() => acc_state()}
+  @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
   @typedoc "Structure of the chainstate"
-  @type chainstate() :: map()
+  @type chainstate() :: %{:accounts => accounts()}
 
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs
-    |> Enum.reduce(chainstate, fn(tx, chainstate) ->
+    |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
     |> update_chain_state_locked(block_height)
@@ -49,7 +41,7 @@ defmodule Aecore.Chain.ChainState do
         if SignedTx.is_valid?(tx) do
           DataTx.process_chainstate(data, block_height, chainstate)
         else
-          throw {:error, "Invalid transaction"}
+          throw({:error, "Invalid transaction"})
         end
     end
   end
@@ -61,37 +53,38 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_txs_hash(chainstate()) :: binary()
   def calculate_txs_hash(chainstate) do
     merkle_tree_data =
-    for {accounts, data} <- chainstate.accounts do
-      {accounts, Serialization.pack_binary(data)}
-    end
+      for {account, data} <- chainstate.accounts do
+        {account, Serialization.pack_binary(data)}
+      end
 
     if Enum.empty?(merkle_tree_data) do
       <<0::256>>
     else
       merkle_tree =
-        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn(node, merkle_tree) ->
+        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn node, merkle_tree ->
           :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
         end)
+
       :gb_merkle_trees.root_hash(merkle_tree)
     end
   end
 
-  def filter_invalid_txs(txs_list, chain_state, block_height) do
-    {valid_txs_list, _} = List.foldl(
-      txs_list,
-      {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {valid_chain_state, updated_chain_state} = validate_tx(tx, chain_state_acc, block_height)
-        if valid_chain_state do
-          {valid_txs_list ++ [tx], updated_chain_state}
+  def filter_invalid_txs(txs_list, chainstate, block_height) do
+    {valid_txs_list, _} =
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
+        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+
+        if valid_chainstate do
+          {valid_txs_list ++ [tx], updated_chainstate}
         else
-          {valid_txs_list, chain_state_acc}
+          {valid_txs_list, chainstate_acc}
         end
       end)
+
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), map()}
+  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
   defp validate_tx(tx, chainstate, block_height) do
     try do
       {true, apply_transaction_on_state!(tx, chainstate, block_height)}
@@ -101,13 +94,15 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
-  def calculate_total_tokens(%{accounts: accounts} = chainstate) do
-    Enum.reduce(accounts, {0, 0, 0}, fn({account, state}, acc) ->
+  def calculate_total_tokens(%{accounts: accounts}) do
+    Enum.reduce(accounts, {0, 0, 0}, fn {_account, state}, acc ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
+
       locked_tokens =
-        Enum.reduce(state.locked, 0, fn(%{amount: amount}, locked_sum) ->
+        Enum.reduce(state.locked, 0, fn %{amount: amount}, locked_sum ->
           locked_sum + amount
         end)
+
       new_total_tokens = total_tokens + state.balance + locked_tokens
       new_total_unlocked_tokens = total_unlocked_tokens + state.balance
       new_total_locked_tokens = total_locked_tokens + locked_tokens
@@ -115,10 +110,10 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec update_chain_state_locked(chainstate(), Header.t()) :: map()
+  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
   def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
     updated_accounts =
-      Enum.reduce(accounts, %{}, fn({address, state}, acc) ->
+      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
         Map.put(acc, address, Account.update_locked(state, header))
       end)
 
@@ -126,7 +121,6 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def base58_encode(bin) do
-    Bits.encode58("cs$",bin)
+    Bits.encode58("cs$", bin)
   end
-
 end

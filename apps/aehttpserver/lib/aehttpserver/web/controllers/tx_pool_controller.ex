@@ -12,7 +12,7 @@ defmodule Aehttpserver.Web.TxPoolController do
       {:error, reason} ->
         reason
 
-       acc ->
+      acc ->
         acc_txs = get_acc_txs(pool_txs, acc)
         json(conn, Enum.map(acc_txs, fn tx -> Serialization.tx(tx, :serialize) end))
     end

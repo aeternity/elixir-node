@@ -1,41 +1,42 @@
 defmodule Aecore.Structures.Transaction do
-
-  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
+  alias Aecore.Wallet.Worker, as: Wallet
 
-  @typedoc "Arbitrary structure data of a transaction"
+  @typedoc "Arbitrary map holding all the specific elements required
+  by the specified transaction type"
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_struct :: map()
+  @type tx_types :: SpendTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "The public key of the account"
-  @type pub_key :: binary()
-
-  @typedoc "Structure that holds the account info"
-  @type account_state :: %{pub_key() => Account.t()}
-
   @typedoc "Structure that holds specific transaction info in the chainstate"
-  @type subdomain_chainstate() :: map()
+  @type tx_type_state() :: map()
 
   # Callbacks
 
-  @callback init(payload()) :: tx_struct()
+  @callback init(payload()) :: tx_types()
 
-  @callback is_valid(tx_struct()) :: :ok | {:error, reason}
+  @callback is_valid?(tx_types()) :: boolean()
 
-  @callback process_chainstate!(tx_struct(),
-                                pub_key(),
-                                fee :: non_neg_integer(),
-                                nonce :: non_neg_integer(),
-                                block_height :: non_neg_integer(),
-                                account_state(),
-                                subdomain_chainstate()) :: account_state()
-
+  @doc """
+  Default function for executing a given transaction type.
+  Make necessary changes to the account_state and tx_type_state of
+  the transaction (Transaction type-specific chainstate)
+  """
+  @callback process_chainstate!(
+              tx_types(),
+              Wallet.pubkey(),
+              fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
+              Account.t(),
+              tx_type_state()
+            ) :: {Account.t(), tx_type_state()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -43,9 +44,9 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(account_state, fee, nonce, block_height, %{} = subdomain_chainstate) do
+      def preprocess_check(tx, account_state, fee, nonce, block_height, %{} = tx_type_state) do
         cond do
-          account_state.balance - fee < 0 ->
+          account_state.balance - (tx.value + fee) < 0 ->
            {:error, "Negative balance"}
 
           account_state.nonce >= nonce ->
@@ -63,14 +64,14 @@ defmodule Aecore.Structures.Transaction do
            :ok
       end
   """
-  @callback preprocess_check(account_state(),
-                             fee :: non_neg_integer(),
-                             nonce :: non_neg_integer(),
-                             block_height :: non_neg_integer(),
-                             additional_variables :: map()) :: :ok | {:error, reason}
+  @callback preprocess_check(
+              tx_types(),
+              ChainState.account(),
+              fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
+              tx_type_state :: map()
+            ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(account_state(),
-                       fee :: non_neg_integer(),
-                       nonce :: non_neg_integer()) :: account_state()
-
+  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
 end

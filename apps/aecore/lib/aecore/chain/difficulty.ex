@@ -1,5 +1,4 @@
 defmodule Aecore.Chain.Difficulty do
-
   alias Aecore.Structures.Block
 
   @number_of_blocks 10
@@ -19,7 +18,8 @@ defmodule Aecore.Chain.Difficulty do
     else
       distance = calculate_distance(list)
 
-      next_target = (latest_block.header.target * (@target_distance / distance))
+      next_target =
+        (latest_block.header.target * (@target_distance / distance))
         |> Float.ceil()
         |> round()
 

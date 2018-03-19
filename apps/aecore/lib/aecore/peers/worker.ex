@@ -51,7 +51,7 @@ defmodule Aecore.Peers.Worker do
   def all_uris() do
     all_peers()
     |> Map.values()
-    |> Enum.map(fn(%{uri: uri}) -> uri end)
+    |> Enum.map(fn %{uri: uri} -> uri end)
   end
 
   @spec all_peers() :: peers
@@ -78,11 +78,13 @@ defmodule Aecore.Peers.Worker do
       :undefined -> create_nonce_table()
       _ -> :table_created
     end
+
     case :ets.lookup(:nonce_table, :nonce) do
       [] ->
         nonce = :rand.uniform(@mersenne_prime)
         :ets.insert(:nonce_table, {:nonce, nonce})
         nonce
+
       _ ->
         :ets.lookup(:nonce_table, :nonce)[:nonce]
     end
@@ -93,6 +95,7 @@ defmodule Aecore.Peers.Worker do
     spawn(fn ->
       Client.send_block(block, all_uris())
     end)
+
     :ok
   end
 
@@ -101,6 +104,7 @@ defmodule Aecore.Peers.Worker do
     spawn(fn ->
       Client.send_tx(tx, all_uris())
     end)
+
     :ok
   end
 
@@ -112,23 +116,29 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:is_chain_synced, _from, %{peers: peers} = state) do
     local_latest_block_height = Chain.top_height()
-    peer_uris = peers
+
+    peer_uris =
+      peers
       |> Map.values()
-      |> Enum.map(fn(%{uri: uri}) -> uri end)
+      |> Enum.map(fn %{uri: uri} -> uri end)
+
     peer_latest_block_heights =
-      Enum.map(peer_uris, fn(uri) ->
-          case Client.get_info(uri) do
-            {:ok, info} ->
-              info.current_block_height
-            :error ->
-              0
-          end
-        end)
-    is_synced = if Enum.empty?(peer_uris) do
-      true
-    else
-      Enum.max(peer_latest_block_heights) <= local_latest_block_height
-    end
+      Enum.map(peer_uris, fn uri ->
+        case Client.get_info(uri) do
+          {:ok, info} ->
+            info.current_block_height
+
+          :error ->
+            0
+        end
+      end)
+
+    is_synced =
+      if Enum.empty?(peer_uris) do
+        true
+      else
+        Enum.max(peer_latest_block_heights) <= local_latest_block_height
+      end
 
     {:reply, is_synced, state}
   end
@@ -154,18 +164,25 @@ defmodule Aecore.Peers.Worker do
   is updated if the one in the latest GET /info request is different.
   """
   def handle_call(:check_peers, _from, %{peers: peers} = state) do
-    filtered_peers = :maps.filter(fn(_, %{uri: uri}) ->
-        case Client.get_info(uri) do
-          {:ok, info} ->
-            binary_genesis_hash = Bits.decode58(info.genesis_block_hash)
-            binary_genesis_hash == genesis_block_header_hash()
-          _ ->
-            false
-        end
-      end, peers)
+    filtered_peers =
+      :maps.filter(
+        fn _, %{uri: uri} ->
+          case Client.get_info(uri) do
+            {:ok, info} ->
+              binary_genesis_hash = Bits.decode58(info.genesis_block_hash)
+              binary_genesis_hash == genesis_block_header_hash()
+
+            _ ->
+              false
+          end
+        end,
+        peers
+      )
+
     updated_peers =
       for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(uri)
+
         if info.current_block_hash != latest_block do
           {nonce, %{uri: uri, latest_block: info.current_block_hash}}
         else
@@ -174,6 +191,7 @@ defmodule Aecore.Peers.Worker do
       end
 
     removed_peers_count = Enum.count(peers) - Enum.count(filtered_peers)
+
     if removed_peers_count > 0 do
       Logger.info(fn -> "#{removed_peers_count} peers were removed after the check" end)
     end
@@ -203,36 +221,52 @@ defmodule Aecore.Peers.Worker do
   ## Internal functions
   defp add_peer(uri, state) do
     %{peers: peers} = state
-    state_has_uri = peers
+
+    state_has_uri =
+      peers
       |> Map.values()
-      |> Enum.map(fn(%{uri: uri}) -> uri end)
+      |> Enum.map(fn %{uri: uri} -> uri end)
       |> Enum.member?(uri)
 
     if state_has_uri do
       Logger.debug(fn ->
-        "Skipped adding #{uri}, already known" end)
+        "Skipped adding #{uri}, already known"
+      end)
+
       {:reply, {:error, "Peer already known"}, state}
     else
       case check_peer(uri, get_peer_nonce()) do
-        {:ok, info} -> cond do
-          Map.has_key?(peers, info.peer_nonce) ->
-            Logger.debug(fn ->
-              "Skipped adding #{uri}, same nonce already present" end)
-            {:reply, {:error, "Peer already known"}, state}
-          should_a_peer_be_added?(map_size(peers)) ->
-            peers_update1 = trim_peers(peers)
-            updated_peers = Map.put(peers_update1, info.peer_nonce,
-                              %{uri: uri, latest_block: info.current_block_hash})
-            Logger.info(fn -> "Added #{uri} to the peer list" end)
-            Sync.ask_peers_for_unknown_blocks(updated_peers)
-            Sync.add_unknown_peer_pool_txs(updated_peers)
-            {:reply, :ok, %{state | peers: updated_peers}}
-          true ->
-            Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
+        {:ok, info} ->
+          cond do
+            Map.has_key?(peers, info.peer_nonce) ->
+              Logger.debug(fn ->
+                "Skipped adding #{uri}, same nonce already present"
+              end)
+
+              {:reply, {:error, "Peer already known"}, state}
+
+            should_a_peer_be_added?(map_size(peers)) ->
+              peers_update1 = trim_peers(peers)
+
+              updated_peers =
+                Map.put(peers_update1, info.peer_nonce, %{
+                  uri: uri,
+                  latest_block: info.current_block_hash
+                })
+
+              Logger.info(fn -> "Added #{uri} to the peer list" end)
+              Sync.ask_peers_for_unknown_blocks(updated_peers)
+              Sync.add_unknown_peer_pool_txs(updated_peers)
+              {:reply, :ok, %{state | peers: updated_peers}}
+
+            true ->
+              Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
               {:reply, :ok, state}
-        end
+          end
+
         {:error, "Equal peer nonces"} ->
           {:reply, :ok, state}
+
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
@@ -258,24 +292,27 @@ defmodule Aecore.Peers.Worker do
     case(Client.get_info(uri)) do
       {:ok, info} ->
         binary_genesis_hash = Bits.decode58(info.genesis_block_hash)
+
         cond do
           own_nonce == info.peer_nonce ->
             {:error, "Equal peer nonces"}
+
           binary_genesis_hash != genesis_block_header_hash() ->
             {:error, "Genesis header hash not valid"}
+
           !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
             {:error, "Peer is not an aehttpserver"}
+
           true ->
             {:ok, info}
         end
+
       _error ->
         {:error, "Request error"}
     end
   end
 
   defp should_a_peer_be_added?(peers_count) do
-    peers_count < @peers_max_count
-    || :rand.uniform() < @probability_of_peer_remove_when_max
+    peers_count < @peers_max_count || :rand.uniform() < @probability_of_peer_remove_when_max
   end
-
 end

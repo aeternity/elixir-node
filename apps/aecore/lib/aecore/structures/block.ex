@@ -7,12 +7,11 @@ defmodule Aecore.Structures.Block do
   alias Aecore.Structures.SignedTx
 
   @type t :: %Block{
-    header: Header.t(),
-    txs: list(SignedTx.t())
-  }
+          header: Header.t(),
+          txs: list(SignedTx.t())
+        }
 
   @current_block_version 1
-  @genesis_block_version @current_block_version
 
   defstruct [:header, :txs]
   use ExConstructor
@@ -33,5 +32,4 @@ defmodule Aecore.Structures.Block do
     h = genesis_header()
     %Block{header: h, txs: []}
   end
-
 end
