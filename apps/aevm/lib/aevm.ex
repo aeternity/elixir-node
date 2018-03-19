@@ -1,5 +1,7 @@
 defmodule Aevm do
 
+  use Bitwise
+
   require OpCodes
   require OpCodesUtil
 
@@ -16,8 +18,272 @@ defmodule Aevm do
         [code | acc]
       end)
       |> Enum.reverse()
-    # bytecode_to_opcodes(chunked_bytecode, "")
   end
+
+  def exec([OpCodes._STOP | op_codes], stack) do
+    stack
+  end
+
+  def exec([OpCodes._ADD | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 + op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._MUL | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 * op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SUB | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 - op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._DIV | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op2 == 0 do
+        0
+      else
+        op1 / op2
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SDIV | op_codes], stack) do
+    # TODO: check calculation
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op2 == 0 do
+        0
+      else
+        op1 / op2
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._MOD | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op2 == 0 do
+        0
+      else
+        rem(op1, op2)
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SMOD | op_codes], stack) do
+    # TODO: check calculation
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op2 == 0 do
+        0
+      else
+        rem(op1, op2)
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._ADDMOD | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+    {op3, stack} = AevmStack.pop(stack)
+
+    result =
+      if op3 == 0 do
+        0
+      else
+        rem(op1 + op2, op3)
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._MULMOD | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+    {op3, stack} = AevmStack.pop(stack)
+
+    result =
+      if op3 == 0 do
+        0
+      else
+        rem(op1 * op2, op3)
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._EXP | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = :math.pow(op1, op2)
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SIGNEXTEND | op_codes], stack) do
+    # TODO
+  end
+
+  def exec([OpCodes._LT | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 < op2 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._GT | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 > op2 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SLT | op_codes], stack) do
+    # TODO: check calculation
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 < op2 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._SGT | op_codes], stack) do
+    # TODO: check calculation
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 > op2 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._EQ | op_codes], stack) do
+    # TODO: check calculation
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 == op2 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._ISZERO | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+
+    result =
+      if op1 === 0 do
+        1
+      else
+        0
+      end
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._AND | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 &&& op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._OR | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 ||| op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._XOR | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+    {op2, stack} = AevmStack.pop(stack)
+
+    result = op1 ^^^ op2
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._NOT | op_codes], stack) do
+    {op1, stack} = AevmStack.pop(stack)
+
+    result = bnot(op1)
+
+    exec(op_codes, AevmStack.push(stack, result))
+  end
+
+  def exec([OpCodes._BYTE | op_codes], stack) do
+    # TODO
+  end
+
+  def exec([OpCodes._SHA3 | op_codes], stack) do
+    # TODO
+  end
+
+
+
+  # --------------------------------------------------
 
   def exec([OpCodes._PUSH1 = current_op | op_codes], stack) do
     {op_code, popped, _pushed} = OpCodesUtil.opcode(current_op)
@@ -27,39 +293,8 @@ defmodule Aevm do
     exec(rem_op_codes, AevmStack.push(stack, val))
   end
 
-  def exec([OpCodes._ADD | op_codes], stack) do
-    {op1, stack} = AevmStack.pop(stack)
-    {op2, stack} = AevmStack.pop(stack)
-
-    exec(op_codes, AevmStack.push(stack, op1 + op2))
-  end
-
   def exec([], stack) do
     stack
-  end
-
-  def bytecode_to_opcodes([current_op | op_codes], result) do
-    {op_code, popped, _pushed} = OpCodesUtil.opcode(current_op)
-
-    # if popped > 1 && is push -> take as a whole; else - iterate as each as another op code
-
-    op_code_param =
-      op_codes
-      |> Enum.slice(0, popped)
-      |> Enum.reduce("", fn(x, acc) ->
-        param_as_hex = x |> Integer.to_charlist(16) |> List.to_string() |> String.downcase()
-
-        acc <> param_as_hex
-      end)
-
-    result = result <> " " <> op_code <> " 0x" <> op_code_param
-    IO.inspect(result)
-
-    bytecode_to_opcodes(Enum.drop(op_codes, popped), result)
-  end
-
-  def bytecode_to_opcodes([], result) do
-    result
   end
 
 end
