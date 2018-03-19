@@ -293,6 +293,7 @@ defmodule Aecore.Miner.Worker do
       receiver: receiver,
       amount: @coinbase_transaction_amount + total_fees
     }
+
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
 
     %SignedTx{data: tx_data, signature: nil}

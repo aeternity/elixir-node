@@ -94,8 +94,7 @@ defmodule Aecore.Structures.SpendTx do
         new_accounts = Map.put(accounts, sender, new_sender_acc_state)
 
         receiver = Map.get(accounts, tx.receiver, Account.empty())
-        new_receiver_acc_state =
-          Account.transaction_in(receiver, tx.amount)
+        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
         {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
 
       {:error, _reason} = err ->
