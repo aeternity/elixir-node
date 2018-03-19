@@ -37,12 +37,6 @@ persistence_path =
     env -> env
   end
 
-spend_tx_version =
-  case System.get_env("SPEND_TX_VERSION") do
-    nil -> 1
-    env -> env
-  end
-
 aewallet_pass =
   case System.get_env("AEWALLET_PASS") do
     nil -> " "
@@ -55,7 +49,7 @@ aewallet_path =
     env -> env
   end
 
-config :aecore, :spend_tx, version: spend_tx_version
+config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pass: aewallet_pass
 
