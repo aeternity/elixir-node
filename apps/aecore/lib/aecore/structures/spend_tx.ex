@@ -15,7 +15,8 @@ defmodule Aecore.Structures.SpendTx do
   @type payload :: %{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          lock_time_block: non_neg_integer()
+          lock_time_block: non_neg_integer(),
+          version: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -29,7 +30,8 @@ defmodule Aecore.Structures.SpendTx do
   @type t :: %SpendTx{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          lock_time_block: non_neg_integer()
+          lock_time_block: non_neg_integer(),
+          version: non_neg_integer()
         }
 
   @doc """
@@ -39,15 +41,16 @@ defmodule Aecore.Structures.SpendTx do
   - receiver: To account is the public address of the account receiving the transaction
   - amount: The amount of tokens send through the transaction
   - lock_time_block: In which block the tokens will become available
+  - version: States whats the version of the Spend Transaction
   """
-  defstruct [:receiver, :amount, :lock_time_block]
+  defstruct [:receiver, :amount, :lock_time_block, :version]
   use ExConstructor
 
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount, lock_time_block: lock}) do
-    %SpendTx{receiver: receiver, amount: amount, lock_time_block: lock}
+    %SpendTx{receiver: receiver, amount: amount, lock_time_block: lock, version: get_tx_version()}
   end
 
   @doc """
@@ -138,4 +141,7 @@ defmodule Aecore.Structures.SpendTx do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
   end
+
+  def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
+
 end
