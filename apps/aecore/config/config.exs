@@ -49,6 +49,8 @@ aewallet_path =
     env -> env
   end
 
+config :aecore, :spend_tx, version: 1
+
 config :aecore, :aewallet, pass: aewallet_pass
 
 config :aecore, :aewallet, path: Path.absname(aewallet_path)
