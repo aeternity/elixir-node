@@ -25,9 +25,6 @@ defmodule AecoreTxTest do
 
     [
       nonce: Map.get(Chain.chain_state(), to_account, %{nonce: 0}).nonce + 1,
-      lock_time_block:
-        Chain.top_block().header.height +
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1,
       to_acc: Wallet.get_public_key("M/0")
     ]
   end
@@ -37,7 +34,7 @@ defmodule AecoreTxTest do
     value = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -54,7 +51,7 @@ defmodule AecoreTxTest do
     value = -5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -68,7 +65,7 @@ defmodule AecoreTxTest do
     value = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
