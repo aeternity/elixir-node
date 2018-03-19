@@ -42,21 +42,23 @@ defmodule AecoreChainStateTest do
     chain_state =
       apply_txs_on_state!(
         [signed_tx1, signed_tx2],
-        %{:accounts => %{wallet.a_pub_key => %Account{balance: 3,
-                                                      nonce: 100},
-                         wallet.b_pub_key => %Account{balance: 5,
-                                                      nonce: 1},
-                         wallet.c_pub_key => %Account{balance: 4,
-                                                      nonce: 1}}},
-        1)
+        %{
+          :accounts => %{
+            wallet.a_pub_key => %Account{balance: 3, nonce: 100},
+            wallet.b_pub_key => %Account{balance: 5, nonce: 1},
+            wallet.c_pub_key => %Account{balance: 4, nonce: 1}
+          }
+        },
+        1
+      )
 
-    assert %{:accounts => %{wallet.a_pub_key => %Account{balance: 6,
-                                                         nonce: 100},
-                            wallet.b_pub_key => %Account{balance: 3,
-                                                         nonce: 2},
-                            wallet.c_pub_key => %Account{balance: 1,
-                                                         nonce: 2}}} == chain_state
-
+    assert %{
+             :accounts => %{
+               wallet.a_pub_key => %Account{balance: 6, nonce: 100},
+               wallet.b_pub_key => %Account{balance: 3, nonce: 2},
+               wallet.c_pub_key => %Account{balance: 1, nonce: 2}
+             }
+           } == chain_state
   end
 
   def apply_txs_on_state!(txs, chainstate, block_height) do

@@ -24,7 +24,7 @@ defmodule AecoreTxTest do
     to_account = Wallet.get_public_key("M/0")
 
     [
-      nonce: Map.get(Chain.chain_state, to_account, %{nonce: 0}).nonce + 1,
+      nonce: Map.get(Chain.chain_state(), to_account, %{nonce: 0}).nonce + 1,
       to_acc: Wallet.get_public_key("M/0")
     ]
   end
