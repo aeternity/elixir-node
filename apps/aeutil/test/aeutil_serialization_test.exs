@@ -21,11 +21,11 @@ defmodule AeutilSerializationTest do
   end
 
   def get_block() do
-    to_acc =
+    receiver =
       <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
         175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 214>>
 
-    from_acc =
+    sender =
       <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
         175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 213>>
 
@@ -51,11 +51,11 @@ defmodule AeutilSerializationTest do
           data: %DataTx{
             type: SpendTx,
             payload: %SpendTx{
-              to_acc: to_acc,
-              value: 100,
+              receiver: receiver,
+              amount: 100,
               lock_time_block: [%{amount: 5, block: 10}, %{amount: 6, block: 10}]
             },
-            from_acc: from_acc,
+            sender: sender,
             nonce: 743_183_534_114,
             fee: 40
           },
@@ -83,14 +83,14 @@ defmodule AeutilSerializationTest do
           "data" => %{
             "type" => "Elixir.Aecore.Structures.SpendTx",
             "payload" => %{
-              "to_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
-              "value" => 100,
+              "receiver" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
+              "amount" => 100,
               "lock_time_block" => [
                 %{"amount" => 5, "block" => 10},
                 %{"amount" => 6, "block" => 10}
               ]
             },
-            "from_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",
+            "sender" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",
             "fee" => 40,
             "nonce" => 743_183_534_114
           },

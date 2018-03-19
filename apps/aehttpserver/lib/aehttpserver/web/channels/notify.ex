@@ -3,18 +3,18 @@ defmodule Aehttpserver.Web.Notify do
   alias Aewallet.Encoding
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if tx.data.from_acc != nil do
+    if tx.data.sender != nil do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+        "new_tx:" <> Encoding.encode(tx.data.sender, :ae),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
 
-    if tx.data.payload.to_acc != nil do
+    if tx.data.payload.receiver != nil do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
+        "new_tx:" <> Encoding.encode(tx.data.payload.receiver, :ae),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
@@ -30,18 +30,18 @@ defmodule Aehttpserver.Web.Notify do
         "body" => Serialization.tx(tx, :serialize)
       })
 
-      if tx.data.from_acc != nil do
+      if tx.data.sender != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+          "new_mined_tx:" <> Encoding.encode(tx.data.sender, :ae),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end
 
-      if tx.data.payload.to_acc != nil do
+      if tx.data.payload.receiver != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
+          "new_mined_tx:" <> Encoding.encode(tx.data.payload.receiver, :ae),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end

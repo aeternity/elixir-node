@@ -137,10 +137,10 @@ defmodule Aeutil.Serialization do
       :chain_state_hash ->
         ChainState.bech32_encode(value)
 
-      :from_acc ->
+      :sender ->
         Aewallet.Encoding.encode(value, :ae)
 
-      :to_acc ->
+      :receiver ->
         Aewallet.Encoding.encode(value, :ae)
 
       :signature ->

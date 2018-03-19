@@ -2,6 +2,7 @@ defmodule MultipleTransactionsTest do
   @moduledoc """
   Unit test for the pool worker module
   """
+
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
@@ -156,17 +157,17 @@ defmodule MultipleTransactionsTest do
     miner_balance_after_mining = Chain.chain_state().accounts[account_pub_key].balance
 
     assert miner_balance_after_mining ==
-             miner_balance_before_mining + Miner.coinbase_transaction_value() + 20
+             miner_balance_before_mining + Miner.coinbase_transaction_amount() + 20
   end
 
-  defp create_signed_tx(from_acc, to_acc, value, nonce, fee, lock_time_block \\ 0) do
-    {from_acc_pub_key, from_acc_priv_key} = from_acc
-    {to_acc_pub_key, _to_acc_priv_key} = to_acc
+  defp create_signed_tx(sender, receiver, amount, nonce, fee, lock_time_block \\ 0) do
+    {sender_pub_key, sender_priv_key} = sender
+    {receiver_pub_key, _receiver_priv_key} = receiver
 
-    payload = %{to_acc: to_acc_pub_key, value: value, lock_time_block: lock_time_block}
-    tx_data = DataTx.init(SpendTx, payload, from_acc_pub_key, fee, nonce)
+    payload = %{receiver: receiver_pub_key, amount: amount, lock_time_block: lock_time_block}
+    tx_data = DataTx.init(SpendTx, payload, sender_pub_key, fee, nonce)
 
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, from_acc_priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender_priv_key)
     signed_tx
   end
 end
