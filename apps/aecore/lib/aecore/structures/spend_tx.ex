@@ -143,5 +143,4 @@ defmodule Aecore.Structures.SpendTx do
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
-
 end
