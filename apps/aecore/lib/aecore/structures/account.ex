@@ -17,6 +17,8 @@ defmodule Aecore.Structures.Account do
           nonce: non_neg_integer()
         }
 
+  @type account_payload :: map()
+
   @doc """
   Definition of Account structure
 
@@ -30,6 +32,14 @@ defmodule Aecore.Structures.Account do
   @spec empty() :: Account.t()
   def empty() do
     %Account{balance: 0, nonce: 0}
+  end
+
+  @spec new(account_payload()) :: Account.t()
+  def new(%{} = acc_payload) do
+    %Account{
+      :balance => acc_payload["balance"],
+      :nonce => acc_payload["nonce"]
+    }
   end
 
   @doc """

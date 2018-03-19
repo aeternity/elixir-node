@@ -4,7 +4,7 @@ defmodule Aehttpserver.Web.MinerController do
   alias Aecore.Miner.Worker, as: Miner
 
   def show(conn, params) do
-    case(params["operation"]) do
+    case params["operation"] do
       "start" ->
         json(conn, Miner.resume())
 
