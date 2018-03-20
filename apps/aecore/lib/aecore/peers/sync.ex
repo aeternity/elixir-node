@@ -201,7 +201,7 @@ defmodule Aecore.Peers.Sync do
         catch
           {:error, message} ->
             Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-          peer_blocks
+            peer_blocks
 
           false ->
             try do
@@ -210,7 +210,7 @@ defmodule Aecore.Peers.Sync do
             catch
               {:error, message} ->
                 Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-              peer_blocks
+                peer_blocks
             end
         end
       end

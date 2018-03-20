@@ -74,8 +74,6 @@
         #
         {Credo.Check.Design.TagTODO, exit_status: 2},
         {Credo.Check.Design.TagFIXME},
-<<<<<<< HEAD
-
         {Credo.Check.Readability.FunctionNames, priority: :higher},
         {Credo.Check.Readability.LargeNumbers, priority: :normal},
         {Credo.Check.Readability.MaxLineLength, priority: :normal, max_length: 100},
@@ -93,7 +91,6 @@
         {Credo.Check.Readability.VariableNames, priority: :higher},
         {Credo.Check.Readability.Semicolons, priority: :higher},
         {Credo.Check.Readability.SpaceAfterCommas, priority: :higher},
-
         {Credo.Check.Refactor.DoubleBooleanNegation},
         {Credo.Check.Refactor.CondStatements, priority: :higher},
         {Credo.Check.Refactor.CyclomaticComplexity, priority: :normal},
@@ -105,7 +102,6 @@
         {Credo.Check.Refactor.Nesting, priority: :high, max_nesting: 3},
         {Credo.Check.Refactor.PipeChainStart, priority: :higher},
         {Credo.Check.Refactor.UnlessWithElse, priority: :higher},
-
         {Credo.Check.Warning.BoolOperationOnSameValues, priority: :higher},
         {Credo.Check.Warning.ExpensiveEmptyEnumCheck, priority: :higher},
         {Credo.Check.Warning.IExPry},

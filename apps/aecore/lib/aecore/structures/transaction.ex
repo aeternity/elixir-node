@@ -1,8 +1,8 @@
 defmodule Aecore.Structures.Transaction do
-@moduledoc """
-Behaviour that states all the necessary functions that every custom transaction,
-child tx of DataTx should implement to work correctly on the blockchain
-"""
+  @moduledoc """
+  Behaviour that states all the necessary functions that every custom transaction,
+  child tx of DataTx should implement to work correctly on the blockchain
+  """
 
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account

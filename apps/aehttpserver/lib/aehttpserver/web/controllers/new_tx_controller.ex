@@ -11,5 +11,4 @@ defmodule Aehttpserver.Web.NewTxController do
 
     json(conn, %{:status => :new_tx_added})
   end
-
 end

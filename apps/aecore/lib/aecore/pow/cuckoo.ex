@@ -115,8 +115,9 @@ defmodule Aecore.Pow.Cuckoo do
     ldpathvar =
       case :os.type() do
         {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
-        {:unix, _}       -> "LD_LIBRARY_PATH"
+        {:unix, _} -> "LD_LIBRARY_PATH"
       end
+
     ["export ", ldpathvar, "=../lib:$", ldpathvar, "; "]
   end
 

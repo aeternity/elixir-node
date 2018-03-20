@@ -36,7 +36,7 @@ defmodule Aehttpserver.Web.Notify do
       })
 
       if tx.data.from_acc != nil do
-       Endpoint.broadcast!(
+        Endpoint.broadcast!(
           "room:notifications",
           "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
           %{"body" => Serialization.tx(tx, :serialize)}

@@ -58,7 +58,7 @@ defmodule Aecore.Miner.Worker do
 
   @spec resume() :: :ok
   def resume do
-    if Peers.chain_synced? do
+    if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
       Logger.error("Can't start miner, chain not yet synced")
@@ -168,9 +168,10 @@ defmodule Aecore.Miner.Worker do
         0 -> candidate()
         _ -> cblock
       end
+
     cheader = %{cblock.header | nonce: nonce}
-    cblock_with_header  = %{cblock | header: cheader}
-    work = fn() -> Cuckoo.generate(cheader) end
+    cblock_with_header = %{cblock | header: cheader}
+    work = fn -> Cuckoo.generate(cheader) end
     start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
