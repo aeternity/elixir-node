@@ -17,5 +17,4 @@ defmodule Aehttpserver.Plugs.Authorization do
       conn |> send_resp(401, "Unauthorized") |> halt()
     end
   end
-
 end

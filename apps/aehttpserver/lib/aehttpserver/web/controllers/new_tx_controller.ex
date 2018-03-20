@@ -9,7 +9,7 @@ defmodule Aehttpserver.Web.NewTxController do
     |> Serialization.tx(:deserialize)
     |> Pool.add_transaction()
 
-    json conn, %{:status => :new_tx_added}
+    json(conn, %{:status => :new_tx_added})
   end
 
 end

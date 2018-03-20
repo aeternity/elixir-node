@@ -7,15 +7,15 @@ defmodule Aecore.Structures.Header do
   alias Aeutil.Bits
 
   @type t :: %Header{
-    height: non_neg_integer(),
-    prev_hash: binary(),
-    txs_hash: binary(),
-    chain_state_hash: binary(),
-    timestamp: integer(),
-    nonce: integer(),
-    version: non_neg_integer(),
-    difficulty_target: integer()
-  }
+          height: non_neg_integer(),
+          prev_hash: binary(),
+          txs_hash: binary(),
+          chain_state_hash: binary(),
+          timestamp: integer(),
+          nonce: integer(),
+          version: non_neg_integer(),
+          difficulty_target: integer()
+        }
 
   defstruct [
     :height,
@@ -31,8 +31,15 @@ defmodule Aecore.Structures.Header do
 
   use ExConstructor
 
-  @spec create(non_neg_integer(), binary(), binary(), binary(),
-               integer(), non_neg_integer(), integer()) :: Header
+  @spec create(
+          non_neg_integer(),
+          binary(),
+          binary(),
+          binary(),
+          integer(),
+          non_neg_integer(),
+          integer()
+        ) :: Header
   def create(height, prev_hash, txs_hash, chain_state_hash, difficulty, nonce, version) do
     %Header{
       height: height,

@@ -19,18 +19,20 @@ defmodule Aeutil.Serialization do
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize), do: serialize_value(block)
+
   def block(block, :deserialize) do
     built_header =
       block["header"]
       |> deserialize_value()
       |> Header.new()
 
-    txs = Enum.map(block["txs"], fn(tx) -> tx(tx, :deserialize) end)
+    txs = Enum.map(block["txs"], fn tx -> tx(tx, :deserialize) end)
     Block.new(header: built_header, txs: txs)
   end
 
   @spec tx(map(), :deserialize) :: SpendTx.t()
   def tx(tx, :serialize), do: serialize_value(tx)
+
   def tx(tx, :deserialize) do
     tx_data = tx["data"]
     data = DataTx.deserialize(tx_data)
@@ -41,7 +43,7 @@ defmodule Aeutil.Serialization do
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)
-  def hex_binary(_, _),  do: nil
+  def hex_binary(_, _), do: nil
 
   @spec base64_binary(binary(), :serialize | :deserialize) :: String.t() | binary()
   def base64_binary(data, :serialize) when data != nil, do: Base.encode64(data)
@@ -80,18 +82,19 @@ defmodule Aeutil.Serialization do
   def remove_struct(term) when is_list(term) do
     for elem <- term, do: remove_struct(elem)
   end
+
   def remove_struct(term) when is_map(term) do
     if Map.has_key?(term, :__struct__) do
       term
       |> Map.from_struct()
-      |> Enum.reduce(%{},
-      fn({key, value}, term_acc) ->
+      |> Enum.reduce(%{}, fn {key, value}, term_acc ->
         Map.put(term_acc, key, remove_struct(value))
       end)
     else
       term
     end
   end
+
   def remove_struct(term), do: term
 
   @doc """
@@ -119,7 +122,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, _type) when is_map(value) do
     value
     |> remove_struct()
-    |> Enum.reduce(%{}, fn({key, val}, new_val)->
+    |> Enum.reduce(%{}, fn {key, val}, new_val ->
       Map.put(new_val, serialize_value(key), serialize_value(val, key))
     end)
   end
@@ -151,9 +154,11 @@ defmodule Aeutil.Serialization do
         value
     end
   end
+
   def serialize_value(value, _) when is_atom(value) do
     Atom.to_string(value)
   end
+
   def serialize_value(value, _), do: value
 
   @doc """
@@ -170,9 +175,9 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value) when is_map(value) do
-    Enum.reduce(value, %{}, fn({key, val}, new_value) ->
-        Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
-      end)
+    Enum.reduce(value, %{}, fn {key, val}, new_value ->
+      Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
+    end)
   end
 
   def deserialize_value(value) when is_binary(value) do
@@ -181,6 +186,6 @@ defmodule Aeutil.Serialization do
       value -> value
     end
   end
-  def deserialize_value(value), do: value
 
+  def deserialize_value(value), do: value
 end

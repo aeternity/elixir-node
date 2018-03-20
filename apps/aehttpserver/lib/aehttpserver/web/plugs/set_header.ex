@@ -10,5 +10,4 @@ defmodule Aehttpserver.Plugs.SetHeader do
   def call(conn, _default) do
     put_resp_header(conn, "server", "aehttpserver")
   end
-
 end

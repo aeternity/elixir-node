@@ -5,6 +5,6 @@ defmodule Aehttpserver.Web.PeersController do
 
   def info(conn, _params) do
     peers = Peers.all_peers()
-    json conn, peers
+    json(conn, peers)
   end
 end

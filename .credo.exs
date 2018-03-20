@@ -20,7 +20,7 @@
         #
         # You can give explicit globs or simply directories.
         # In the latter case `**/*.{ex,exs}` will be used.
-      #
+        #
         included: ["lib/", "src/", "web/", "apps/"],
         excluded: [~r"/_build/", ~r"/deps/"]
       },
@@ -74,6 +74,7 @@
         #
         {Credo.Check.Design.TagTODO, exit_status: 2},
         {Credo.Check.Design.TagFIXME},
+<<<<<<< HEAD
 
         {Credo.Check.Readability.FunctionNames, priority: :higher},
         {Credo.Check.Readability.LargeNumbers, priority: :normal},
@@ -136,7 +137,7 @@
         {Credo.Check.Warning.NameRedeclarationByAssignment, false},
         {Credo.Check.Warning.NameRedeclarationByCase, false},
         {Credo.Check.Warning.NameRedeclarationByDef, false},
-        {Credo.Check.Warning.NameRedeclarationByFn, false},
+        {Credo.Check.Warning.NameRedeclarationByFn, false}
 
         # Custom checks can be created using `mix credo.gen.check`.
         #

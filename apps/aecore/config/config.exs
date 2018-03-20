@@ -31,26 +31,27 @@ path = Path.absname("apps/aecore")
 %{year: year, month: month, day: day} = DateTime.utc_now()
 timestamp = "#{year}-#{month}-#{day}_"
 
-persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db/"
-  env -> env
-end
+persistence_path =
+  case System.get_env("PERSISTENCE_PATH") do
+    nil -> "apps/aecore/priv/rox_db/"
+    env -> env
+  end
 
-aewallet_pass = case System.get_env("AEWALLET_PASS") do
-  nil -> " "
-  env -> env
-end
+aewallet_pass =
+  case System.get_env("AEWALLET_PASS") do
+    nil -> " "
+    env -> env
+  end
 
-aewallet_path = case System.get_env("AEWALLET_PATH") do
-  nil -> "apps/aecore/priv/aewallet"
-  env -> env
-end
+aewallet_path =
+  case System.get_env("AEWALLET_PATH") do
+    nil -> "apps/aecore/priv/aewallet"
+    env -> env
+  end
 
-config :aecore, :aewallet,
-  pass: aewallet_pass
+config :aecore, :aewallet, pass: aewallet_pass
 
-config :aecore, :aewallet,
-  path: Path.absname(aewallet_path)
+config :aecore, :aewallet, path: Path.absname(aewallet_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
@@ -58,12 +59,9 @@ config :aecore, :persistence,
 
 config :logger,
   compile_time_purge_level: :info,
-  backends: [:console,
-             {LoggerFileBackend, :info},
-             {LoggerFileBackend, :error}]
+  backends: [:console, {LoggerFileBackend, :info}, {LoggerFileBackend, :error}]
 
-config :logger, :console,
-  level: :error
+config :logger, :console, level: :error
 
 config :logger, :info,
   path: path <> "/logs/#{timestamp}info.log",
@@ -73,4 +71,4 @@ config :logger, :error,
   path: path <> "/logs/#{timestamp}error.log",
   level: :error
 
-import_config "#{Mix.env}.exs"
+import_config "#{Mix.env()}.exs"
