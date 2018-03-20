@@ -8,7 +8,7 @@ defmodule Aehttpserver.Web.Notify do
   alias Aecore.Structures.Account
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if tx.data.sender != nil do
+    if Map.has_key?(tx.data, :sender) && tx.data.sender != nil do
       Endpoint.broadcast!(
         "room:notifications",
         "new_tx:" <> Account.base58c_encode(tx.data.sender),
@@ -16,7 +16,7 @@ defmodule Aehttpserver.Web.Notify do
       )
     end
 
-    if tx.data.payload.receiver != nil do
+    if Map.has_key?(tx.data.payload, :receiver) && tx.data.payload.receiver != nil do
       Endpoint.broadcast!(
         "room:notifications",
         "new_tx:" <> Account.base58c_encode(tx.data.payload.receiver),
@@ -35,7 +35,7 @@ defmodule Aehttpserver.Web.Notify do
         "body" => Serialization.tx(tx, :serialize)
       })
 
-      if tx.data.sender != nil do
+      if Map.has_key?(tx.data, :sender) && tx.data.sender != nil do
         Endpoint.broadcast!(
           "room:notifications",
           "new_mined_tx:" <> Account.base58c_encode(tx.data.sender),
@@ -43,7 +43,7 @@ defmodule Aehttpserver.Web.Notify do
         )
       end
 
-      if tx.data.payload.receiver != nil do
+      if Map.has_key?(tx.data.payload, :receiver) && tx.data.payload.receiver != nil do
         Endpoint.broadcast!(
           "room:notifications",
           "new_mined_tx:" <> Account.base58c_encode(tx.data.payload.receiver),

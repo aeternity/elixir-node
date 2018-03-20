@@ -72,6 +72,9 @@ defmodule Aecore.Structures.SpendTx do
     Account.transaction_in(account_state, tx.amount)
   end
 
+  @spec get_chain_state_name() :: Account.chain_state_name()
+  def get_chain_state_name(), do: :accounts
+
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
@@ -80,13 +83,14 @@ defmodule Aecore.Structures.SpendTx do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
+          block_height :: non_neg_integer(),
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
     sender_account_state = Map.get(accounts, sender, Account.empty())
 
-    case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
+    case preprocess_check(tx, sender_account_state, fee, nonce, block_height, %{}) do
       :ok ->
         new_sender_account_state =
           sender_account_state
@@ -113,9 +117,10 @@ defmodule Aecore.Structures.SpendTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
+          block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, account_state, fee, nonce, %{}) do
+  def preprocess_check(tx, account_state, fee, nonce, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
         {:error, "Negative balance"}

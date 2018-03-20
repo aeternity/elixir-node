@@ -2,7 +2,7 @@ defmodule Aecore.Structures.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-
+  alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
@@ -12,10 +12,10 @@ defmodule Aecore.Structures.DataTx do
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type tx_types :: SpendTx
+  @type tx_types :: SpendTx | PreClaimTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t()
+  @type payload :: SpendTx.t() | PreClaimTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -67,10 +67,17 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate!(%DataTx{} = tx, chainstate) do
+  @spec process_chainstate!(DataTx.t(), non_neg_integer(), ChainState.chainstate()) ::
+          ChainState.chainstate()
+  def process_chainstate!(%DataTx{} = tx, block_height, chainstate) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, tx.type, %{})
+
+    tx_type_state =
+      if(tx.type.get_chain_state_name() == SpendTx.get_chain_state_name()) do
+        %{}
+      else
+        Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+      end
 
     {new_accounts_state, new_tx_type_state} =
       tx.payload
@@ -79,15 +86,16 @@ defmodule Aecore.Structures.DataTx do
         tx.sender,
         tx.fee,
         tx.nonce,
+        block_height,
         accounts_state,
         tx_type_state
       )
 
     new_chainstate =
-      if Map.has_key?(chainstate, tx.type) do
-        Map.put(chainstate, tx.type, new_tx_type_state)
-      else
+      if tx.type.get_chain_state_name() == SpendTx.get_chain_state_name() do
         chainstate
+      else
+        Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
       end
 
     Map.put(new_chainstate, :accounts, new_accounts_state)

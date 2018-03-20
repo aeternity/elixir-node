@@ -5,6 +5,7 @@ defmodule Aecore.Structures.Transaction do
   """
 
   alias Aecore.Structures.SpendTx
+  alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet.Worker, as: Wallet
@@ -14,7 +15,7 @@ defmodule Aecore.Structures.Transaction do
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t()
+  @type tx_types :: SpendTx.t() | PreClaimTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -28,6 +29,9 @@ defmodule Aecore.Structures.Transaction do
 
   @callback is_valid?(tx_types()) :: boolean()
 
+  @doc "The name for state chain entry to be passed for processing"
+  @callback get_chain_state_name() :: Chainstate.chain_state_types()
+
   @doc """
   Default function for executing a given transaction type.
   Make necessary changes to the account_state and tx_type_state of
@@ -38,6 +42,7 @@ defmodule Aecore.Structures.Transaction do
               Wallet.pubkey(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
               Account.t(),
               tx_type_state()
             ) :: {Account.t(), tx_type_state()}
@@ -73,6 +78,7 @@ defmodule Aecore.Structures.Transaction do
               ChainState.account(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 

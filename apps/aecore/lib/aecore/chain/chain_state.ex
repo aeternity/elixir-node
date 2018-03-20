@@ -7,6 +7,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
+  alias Aecore.Naming.Naming
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -16,8 +17,12 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
+  @type naming() :: %{Wallet.pubkey() => Naming.t()}
+
+  @type chain_state_types() :: Account.chain_state_name() | Naming.chain_state_name()
+
   @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
+  @type chainstate() :: %{:accounts => accounts(), :naming => naming()}
 
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
@@ -41,7 +46,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
+          DataTx.process_chainstate!(data, block_height, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end
