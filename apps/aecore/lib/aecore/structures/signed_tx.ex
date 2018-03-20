@@ -77,10 +77,10 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def base58_encode(bin) do
-    Bits.encode58("tx$", bin)
+    Bits.encode58c(:transaction, bin)
   end
 
   def base58_encode_root(bin) do
-    Bits.encode58("tr$", bin)
+    Bits.encode58c(:root_hash, bin)
   end
 end

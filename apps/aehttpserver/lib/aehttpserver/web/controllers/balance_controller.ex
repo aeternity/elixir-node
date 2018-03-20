@@ -5,11 +5,11 @@ defmodule Aehttpserver.Web.BalanceController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    case Bits.decode58(params["account"]) do
+    case Bits.decode58c(params["account"]) do
       {:error, reason} ->
         reason
 
-      {:ok, acc} ->
+      {prefix, acc} ->
         case Chain.chain_state()[acc] do
           nil ->
             json(conn, %{"balance" => 0, "account" => "unknown"})

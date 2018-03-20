@@ -121,6 +121,6 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def base58_encode(bin) do
-    Bits.encode58("cs$", bin)
+    Bits.encode58c(:chain_state, bin)
   end
 end

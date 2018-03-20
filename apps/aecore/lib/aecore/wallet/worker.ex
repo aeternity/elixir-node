@@ -105,12 +105,8 @@ defmodule Aecore.Wallet.Worker do
       "btc1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc963alrmy"
   """
   @spec encode(binary(), wallet_type()) :: String.t()
-  def encode(pub_key, :ae) do
-    Bits.encode58("ak$", pub_key)
-  end
-
-  def encode(pub_key, :btc) do
-    Bits.encode58("btc", pub_key)
+  def encode(pub_key, :account_pubkey) do
+    Bits.encode58c(:account_pubkey, pub_key)
   end
 
   @doc """
@@ -122,7 +118,7 @@ defmodule Aecore.Wallet.Worker do
   """
   @spec decode(String.t()) :: binary()
   def decode(formatted_key) do
-    {:ok, _pub_key} = Encoding.decode(formatted_key)
+    {:ok, _pub_key} = Bits.decode58c(formatted_key)
   end
 
   ## Server Callbacks

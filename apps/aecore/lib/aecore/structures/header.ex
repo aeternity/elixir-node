@@ -54,6 +54,6 @@ defmodule Aecore.Structures.Header do
   end
 
   def base58_encode(bin) do
-    Bits.encode58("bh$", bin)
+    Bits.encode58c(:block_hash, bin)
   end
 end

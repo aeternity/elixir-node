@@ -52,7 +52,6 @@ defmodule AeutilSerializationTest do
             payload: %SpendTx{
               to_acc: to_acc,
               value: 100,
-              lock_time_block: [%{amount: 5, block: 10}, %{amount: 6, block: 10}]
             },
             from_acc: from_acc,
             nonce: 743_183_534_114,
@@ -67,14 +66,14 @@ defmodule AeutilSerializationTest do
   def get_block_map() do
     %{
       "header" => %{
-        "root_hash" => "cs$35Shn6GNeKtv8eLkF7a2EYk8PMSYcgUdGsadrgANDd9s",
+        "root_hash" => "cs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
         "target" => 11,
         "height" => 105,
         "nonce" => 707,
         "pow_evidence" => nil,
-        "prev_hash" => "bh$12sT82WC2T7LnRnU5F7UpvSbNB9J97xWyC8L9wwctMer",
+        "prev_hash" => "bh$1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
         "time" => 1_508_834_903_252,
-        "txs_hash" => "tr$6T4HpdxapT9HExC4cEY3GiyRPexuPwQcdXWQQ3uCc3R",
+        "txs_hash" => "tr$cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
         "version" => 1
       },
       "txs" => [
@@ -82,14 +81,10 @@ defmodule AeutilSerializationTest do
           "data" => %{
             "type" => "Elixir.Aecore.Structures.SpendTx",
             "payload" => %{
-              "to_acc" => "ak$jdfLn2ioHn3adYpSjAfs9AHPXc9RkjA1Pdf6KicfN57b",
+              "to_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
               "value" => 100,
-              "lock_time_block" => [
-                %{"amount" => 5, "block" => 10},
-                %{"amount" => 6, "block" => 10}
-              ]
             },
-            "from_acc" => "ak$jdfLn2ioHn3adYpSjAfs9AHPXc9RkjA1Pdf6KicfN57a",
+            "from_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
             "fee" => 40,
             "nonce" => 743_183_534_114
           },

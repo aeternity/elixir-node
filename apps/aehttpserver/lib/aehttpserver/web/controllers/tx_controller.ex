@@ -8,7 +8,7 @@ defmodule Aehttpserver.Web.TxController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    account_bin = Bits.decode58(params["account"])
+    account_bin = Bits.decode58c(params["account"])
 
     user_txs = Pool.get_txs_for_address(account_bin)
 

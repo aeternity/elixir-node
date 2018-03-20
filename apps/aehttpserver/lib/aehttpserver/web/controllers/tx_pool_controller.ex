@@ -8,11 +8,11 @@ defmodule Aehttpserver.Web.TxPoolController do
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool())
 
-    case Bits.decode58(params["account"]) do
+    case Bits.decode58c(params["account"]) do
       {:error, reason} ->
         reason
 
-      acc ->
+     {prefix,acc} ->
         acc_txs = get_acc_txs(pool_txs, acc)
         json(conn, Enum.map(acc_txs, fn tx -> Serialization.tx(tx, :serialize) end))
     end

@@ -30,7 +30,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          Bits.decode58(hash)
+          Bits.decode58c(hash)
       end
 
     count =
@@ -66,7 +66,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          Bits.decode58(hash)
+          Bits.decode58c(hash)
       end
 
     to_block_hash =
@@ -75,7 +75,7 @@ defmodule Aehttpserver.Web.BlockController do
           BlockValidation.block_header_hash(Block.genesis_block().header)
 
         hash ->
-          Bits.decode58(hash)
+          Bits.decode58c(hash)
       end
 
     count =

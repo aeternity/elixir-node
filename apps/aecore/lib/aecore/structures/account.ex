@@ -60,7 +60,7 @@ defmodule Aecore.Structures.Account do
   end
 
   def base58_encode(bin) do
-    Bits.encode58("ak$", bin)
+    Bits.encode58c(:account_pubkey, bin)
   end
 
   @doc """

@@ -18,12 +18,15 @@ defmodule AehttpclientTest do
   test "Client functions" do
     account = Wallet.get_public_key()
     hex_acc = Account.base58_encode(account)
-    base58_encoded_top_block_hash = Bits.encode58("bh$", Chain.top_block_hash())
+    base58_encoded_top_block_hash = Bits.encode58c(:block_hash, Chain.top_block_hash())
+    IO.puts "VBOASDFDFGDBGSDBSDLSDJFSDGJSDGVSDKVGBKSDVK"
+    IO.inspect base58_encoded_top_block_hash
+    IO.puts "VBOASDFDFGDBGSDBSDLSDJFSDGJSDGVSDKVGBKSDVK"
     AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
-             Client.get_block({"localhost:4000", Bits.decode58(base58_encoded_top_block_hash)})
+             Client.get_block({"localhost:4000", Kernel.elem(Bits.decode58c(base58_encoded_top_block_hash),1)})
 
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
