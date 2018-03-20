@@ -1,4 +1,8 @@
 defmodule Aehttpserver.Application do
+  @moduledoc """
+  Contains the Aehttpserver application initialization settings
+  """
+
   use Application
 
   require Logger

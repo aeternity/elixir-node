@@ -1,4 +1,8 @@
 defmodule Aecore.Chain.BlockValidation do
+  @moduledoc """
+  Contains functions used to validate data inside of the block structure
+  """
+
   require Logger
 
   alias Aecore.Pow.Cuckoo

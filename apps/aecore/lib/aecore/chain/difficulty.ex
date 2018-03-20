@@ -1,4 +1,7 @@
 defmodule Aecore.Chain.Difficulty do
+  @moduledoc """
+  Contains functions used to calculate the PoW difficulty.
+  """
 
   alias Aecore.Structures.Block
 

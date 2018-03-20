@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Sync do
+  @moduledoc """
+  Contains peer sync functionality
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker, as: Peers

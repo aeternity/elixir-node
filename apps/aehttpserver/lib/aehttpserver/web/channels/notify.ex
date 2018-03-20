@@ -1,4 +1,7 @@
 defmodule Aehttpserver.Web.Notify do
+  @moduledoc """
+  Contains websocket communication functionality
+  """
 
   alias Aeutil.Serialization
   alias Aewallet.Encoding

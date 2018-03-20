@@ -1,4 +1,8 @@
 defmodule Aehttpserver.Plugs.SetHeader do
+  @moduledoc """
+  A plug that adds a header which confirms that the server is an aehttpserver to every response
+  """
+
   import Plug.Conn
 
   def init(default), do: default

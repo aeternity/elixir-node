@@ -1,4 +1,8 @@
 defmodule Aehttpserver.Web.NotificationChannel do
+  @moduledoc """
+  Contains websocket topic validation
+  """
+
   use Phoenix.Channel
 
   require Logger

@@ -1,5 +1,10 @@
 defmodule Aecore do
+  @moduledoc """
+  Supervisor responsible for all of the worker modules in his folder
+  """
+
   use Application
+
   import Supervisor.Spec
 
   def start(_type, _args) do

@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Scheduler do
+  @moduledoc """
+  Performs peer related operations every @check_time milliseconds.
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker, as: Peers
