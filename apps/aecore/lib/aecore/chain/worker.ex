@@ -193,7 +193,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec txs_index() :: txs_index()
-  def txs_index() do
+  def txs_index do
     GenServer.call(__MODULE__, :txs_index)
   end
 
@@ -253,9 +253,12 @@ defmodule Aecore.Chain.Worker do
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
-    # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two. So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A]. This allows for log n findning of block with given height.
+    # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
+    # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
+    # This allows for log n findning of block with given height.
     new_refs =
-      Enum.reduce(0..@max_refs, [new_block.header.prev_hash], fn i, [prev | _] = acc ->
+      0..@max_refs
+      |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
         case Enum.at(blocks_data_map[prev].refs, i) do
           nil ->
             acc
@@ -503,5 +506,5 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state(), do: %{accounts: %{}}
+  defp build_chain_state, do: %{accounts: %{}}
 end

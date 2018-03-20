@@ -20,7 +20,7 @@ defmodule AeutilSerializationTest do
     assert Serialization.block(serialized_block, :deserialize) == block
   end
 
-  def get_block() do
+  def get_block do
     to_acc =
       <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
         175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 214>>
@@ -64,7 +64,7 @@ defmodule AeutilSerializationTest do
     }
   end
 
-  def get_block_map() do
+  def get_block_map do
     %{
       "header" => %{
         "chain_state_hash" => "cs1qrmdvyaex9q32ahj5kh9003z7gqykmhsuwxhuuugh5yux6v4r8c3qr0a5xn",

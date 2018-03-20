@@ -76,7 +76,7 @@
         {Credo.Check.Design.TagFIXME},
         {Credo.Check.Readability.FunctionNames, priority: :higher},
         {Credo.Check.Readability.LargeNumbers, priority: :normal},
-        {Credo.Check.Readability.MaxLineLength, priority: :normal, max_length: 100},
+        {Credo.Check.Readability.MaxLineLength, priority: :higher, max_length: 100},
         {Credo.Check.Readability.ModuleAttributeNames, priority: :higher},
         {Credo.Check.Readability.ModuleDoc, priority: :higher},
         {Credo.Check.Readability.ModuleNames, priority: :higher},

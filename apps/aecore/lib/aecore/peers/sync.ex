@@ -308,7 +308,8 @@ defmodule Aecore.Peers.Sync do
     end)
     |> Enum.shuffle()
     |> Enum.reduce(0, fn peer, acc ->
-      # if we have successfully added less then number_of_peers_to_add peers then try to add another one
+      # if we have successfully added less then number_of_peers_to_add peers
+      # then try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
           :ok ->
