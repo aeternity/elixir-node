@@ -18,7 +18,6 @@ defmodule Aecore.Persistence.Worker do
   @doc """
   Every key that it takes is a task type and
   every value is the data that we want to persist
-
   The purpose of this function is to write many tasks to disk once
   """
   @spec batch_write(map()) :: atom()

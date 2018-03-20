@@ -7,7 +7,6 @@ defmodule AeutilSerializationTest do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Wallet.Worker, as: Wallet
 
   @tag :serialization
   test "serialize a block" do
@@ -51,7 +50,7 @@ defmodule AeutilSerializationTest do
             type: SpendTx,
             payload: %SpendTx{
               to_acc: to_acc,
-              value: 100,
+              value: 100
             },
             from_acc: from_acc,
             nonce: 743_183_534_114,
@@ -82,7 +81,7 @@ defmodule AeutilSerializationTest do
             "type" => "Elixir.Aecore.Structures.SpendTx",
             "payload" => %{
               "to_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
-              "value" => 100,
+              "value" => 100
             },
             "from_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
             "fee" => 40,

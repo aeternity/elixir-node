@@ -183,7 +183,7 @@ defmodule Aeutil.Serialization do
   def deserialize_value(value) when is_binary(value) do
     case Bits.decode58c(value) do
       {:error, _reason} -> Parser.to_atom!(value)
-      {prefix,value} -> value
+      {prefix, value} -> value
     end
   end
 

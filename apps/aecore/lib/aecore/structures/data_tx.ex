@@ -67,9 +67,8 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), non_neg_integer(), ChainState.chainstate()) ::
-          ChainState.chainstate()
-  def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
+  @spec process_chainstate(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
+  def process_chainstate(%DataTx{} = tx, chainstate) do
     try do
       accounts_state = chainstate.accounts
       tx_type_state = Map.get(chainstate, tx.type, %{})
@@ -81,7 +80,6 @@ defmodule Aecore.Structures.DataTx do
           tx.from_acc,
           tx.fee,
           tx.nonce,
-          block_height,
           accounts_state,
           tx_type_state
         )

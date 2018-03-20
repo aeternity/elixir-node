@@ -33,7 +33,6 @@ defmodule Aecore.Structures.Transaction do
               Wallet.pubkey(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
-              block_height :: non_neg_integer(),
               Account.t(),
               tx_type_state()
             ) :: {Account.t(), tx_type_state()}
@@ -44,7 +43,7 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(tx, account_state, fee, nonce, block_height, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.value + fee) < 0 ->
            {:error, "Negative balance"}
@@ -69,7 +68,6 @@ defmodule Aecore.Structures.Transaction do
               ChainState.account(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
-              block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 

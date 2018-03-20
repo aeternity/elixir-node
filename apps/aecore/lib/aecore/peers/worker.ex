@@ -289,7 +289,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   defp check_peer(uri, own_nonce) do
-    case(Client.get_info(uri)) do
+    case Client.get_info(uri) do
       {:ok, info} ->
         binary_genesis_hash = Bits.decode58c(info.genesis_block_hash)
 
