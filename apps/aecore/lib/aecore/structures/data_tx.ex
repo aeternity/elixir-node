@@ -70,17 +70,17 @@ defmodule Aecore.Structures.DataTx do
   @spec process_chainstate(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, chainstate) do
     try do
-      accounts_state = chainstate.accounts
+      accounts_state_tree = chainstate.accounts
       tx_type_state = Map.get(chainstate, tx.type, %{})
 
-      {new_accounts_state, new_tx_type_state} =
+      {new_accounts_state_tree, new_tx_type_state} =
         tx.payload
         |> tx.type.init()
         |> tx.type.process_chainstate!(
           tx.from_acc,
           tx.fee,
           tx.nonce,
-          accounts_state,
+          accounts_state_tree,
           tx_type_state
         )
 
@@ -91,7 +91,7 @@ defmodule Aecore.Structures.DataTx do
           chainstate
         end
 
-      Map.put(new_chainstate, :accounts, new_accounts_state)
+      Map.put(new_chainstate, :accounts, new_accounts_state_tree)
     catch
       {:error, reason} ->
         Logger.error(reason)
@@ -111,7 +111,6 @@ defmodule Aecore.Structures.DataTx do
   @spec deserialize(payload()) :: DataTx.t()
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
-
     init(data_tx.type, data_tx.payload, data_tx.from_acc, data_tx.fee, data_tx.nonce)
   end
 end

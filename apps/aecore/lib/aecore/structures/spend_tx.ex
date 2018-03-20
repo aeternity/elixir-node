@@ -9,6 +9,8 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountHandler
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -64,8 +66,8 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, _block_height, account_state) do
+  @spec reward(SpendTx.t(), Accoun.t()) :: Account.t()
+  def reward(%SpendTx{} = tx, account_state) do
     Account.transaction_in(account_state, tx.value)
   end
 
@@ -79,20 +81,22 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           ChainState.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {ChainState.accounts(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, accounts, %{}) do
-    case preprocess_check(tx, accounts[from_acc], fee, nonce, %{}) do
+    from_account_state = AccountHandler.get_account_state(accounts, from_acc)
+
+    case preprocess_check(tx, from_account_state, fee, nonce, %{}) do
       :ok ->
         new_from_account_state =
-          accounts[from_acc]
+          from_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out(tx.value * -1, nonce)
 
-        new_accounts = Map.put(accounts, from_acc, new_from_account_state)
+        new_accounts = AccountStateTree.put(accounts, from_acc, new_from_account_state)
+        to_acc_state = AccountHandler.get_account_state(accounts, tx.to_acc)
+        new_to_account_state = Account.transaction_in(to_acc_state, tx.value)
 
-        to_acc = Map.get(accounts, tx.to_acc, Account.empty())
-        new_to_account_state = Account.transaction_in(to_acc, tx.value)
-        {Map.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
+        {AccountStateTree.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
 
       {:error, _reason} = err ->
         throw(err)
@@ -105,7 +109,7 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec preprocess_check(
           SpendTx.t(),
-          ChainState.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()

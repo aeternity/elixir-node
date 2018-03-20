@@ -14,6 +14,8 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountHandler
+  alias Aecore.Structures.AccountStateTree
 
   setup do
     on_exit(fn ->
@@ -52,7 +54,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state().accounts, account_pub_key, %{nonce: 0}).nonce + 1
+    nonce1 = AccountHandler.nonce(Chain.chain_state().accounts, account_pub_key) + 1
 
     signed_tx1 = create_signed_tx(account, account2, 100, nonce1, 10)
 
@@ -60,8 +62,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
     Pool.get_and_empty_pool()
-
-    nonce2 = Map.get(Chain.chain_state().accounts, account2_pub_key, %{nonce: 0}).nonce + 1
+    nonce2 = AccountHandler.nonce(Chain.chain_state().accounts, account2_pub_key) + 1
     signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)
 
     assert :ok = Pool.add_transaction(signed_tx2)
@@ -74,8 +75,7 @@ defmodule MultipleTransactionsTest do
     # account2 => 0; account3 => 90
 
     # account3 has 90 tokens, spends 90 (+10 fee) to account2 should be invalid
-
-    nonce3 = Map.get(Chain.chain_state().accounts, account3_pub_key, %{nonce: 0}).nonce + 1
+    nonce3 = AccountHandler.nonce(Chain.chain_state().accounts, account3_pub_key) + 1
     signed_tx3 = create_signed_tx(account3, account2, 90, nonce3, 10)
     assert :ok = Pool.add_transaction(signed_tx3)
     :ok = Miner.mine_sync_block_to_chain()
@@ -131,8 +131,8 @@ defmodule MultipleTransactionsTest do
 
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state().accounts, account_pub_key, %{nonce: 0}).nonce
-    nonce2 = Map.get(Chain.chain_state().accounts, account2_pub_key, %{nonce: 0}).nonce
+    nonce1 = AccountHandler.nonce(Chain.chain_state().accounts, account_pub_key) + 1
+    nonce2 = AccountHandler.nonce(Chain.chain_state().accounts, account2_pub_key) + 1
 
     signed_tx1 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
     assert :ok = Pool.add_transaction(signed_tx1)

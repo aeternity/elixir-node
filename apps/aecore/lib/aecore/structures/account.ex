@@ -11,6 +11,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Structures.Account
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.AccountHandler
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -49,7 +50,8 @@ defmodule Aecore.Structures.Account do
   def spend(to_acc, amount, fee) do
     from_acc = Wallet.get_public_key()
     from_acc_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
+
+    nonce = AccountHandler.nonce(Chain.chain_state().accounts, from_acc) + 1
     spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce)
   end
 
@@ -73,7 +75,7 @@ defmodule Aecore.Structures.Account do
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
+  @spec transaction_in(Account.t(), integer()) :: Account.t()
   def transaction_in(account_state, value) do
     new_balance = account_state.balance + value
     Map.put(account_state, :balance, new_balance)
@@ -82,7 +84,7 @@ defmodule Aecore.Structures.Account do
   @doc """
   Deducts balance from a given address (public key)
   """
-  @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
+  @spec transaction_out(Account.t(), integer(), integer()) :: Account.t()
   def transaction_out(account_state, value, nonce) do
     account_state
     |> Map.put(:nonce, nonce)

@@ -22,7 +22,6 @@ defmodule Aecore.Structures.AccountStateTree do
 
   @spec get(tree(), Wallet.pubkey()) :: Account.t()
   def get(tree, key) do
-    ## TODO: In case of missing value for the given key
     decode(:gb_merkle_trees.lookup(key, tree))
   end
 
@@ -54,18 +53,14 @@ defmodule Aecore.Structures.AccountStateTree do
   end
 
   @spec decode(encoded_account_state()) :: Account.t()
+  defp decode(:none), do: :none
+
   defp decode(encoded_account_state) do
     {:ok, account_state} =
       encoded_account_state
       |> Msgpax.unpack()
-      |> print("after unpack")
       |> Serialization.deserialize_value()
 
-    Account.new(account_state)
-  end
-
-  defp print(term, title) do
-    IO.inspect("#{title}: #{inspect(term)}")
-    term
+    {:ok, Account.new(account_state)}
   end
 end
