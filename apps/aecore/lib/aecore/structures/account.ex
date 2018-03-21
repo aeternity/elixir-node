@@ -13,6 +13,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Naming.Structures.PreClaimTx
+  alias Aecore.Naming.Structures.ClaimTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -87,6 +88,35 @@ defmodule Aecore.Structures.Account do
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{commitment: PreClaimTx.create_commitment_hash(name, name_salt)}
     spend_tx = DataTx.init(PreClaimTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
+  end
+
+  @doc """
+  Builds a ClaimTx where the miners public key is used as a sender
+  """
+  @spec claim(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def claim(name, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    name_salt = <<1, 2, 3>>
+    claim(sender, sender_priv_key, name, name_salt, fee, nonce)
+  end
+
+  @doc """
+  Build a ClaimTx from the given sender keys
+  """
+  @spec claim(
+          Wallet.pubkey(),
+          Wallet.privkey(),
+          String.t(),
+          binary(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()}
+  def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
+    payload = %{name: name, name_salt: name_salt}
+    spend_tx = DataTx.init(ClaimTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 

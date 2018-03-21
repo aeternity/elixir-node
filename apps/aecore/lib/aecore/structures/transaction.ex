@@ -76,6 +76,7 @@ defmodule Aecore.Structures.Transaction do
   @callback preprocess_check(
               tx_types(),
               ChainState.account(),
+              Wallet.pubkey(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),

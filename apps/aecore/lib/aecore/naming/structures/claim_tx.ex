@@ -1,61 +1,57 @@
-defmodule Aecore.Naming.Structures.PreClaimTx do
+defmodule Aecore.Naming.Structures.ClaimTx do
   @moduledoc """
-  Aecore structure of naming pre claim data.
+  Aecore structure of naming claim.
   """
 
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
+  alias Aecore.Naming.Structures.ClaimTx
   alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Naming.Structures.Naming
-  alias Aecore.Naming.Util
-  alias Aeutil.Hash
 
   require Logger
 
-  @type commitment_hash :: binary()
-
-  @typedoc "Expected structure for the Pre Claim Transaction"
+  @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
-          commitment: commitment_hash()
+          name: String.t(),
+          name_salt: Naming.salt()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of PreClaimTx we don't have a subdomain chainstate."
+  In the case of ClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
   @typedoc "Structure of the Spend Transaction type"
-  @type t :: %PreClaimTx{
-          commitment: commitment_hash()
+  @type t :: %ClaimTx{
+          name: String.t(),
+          name_salt: Naming.salt()
         }
 
   @doc """
-  Definition of Aecore PreClaimTx structure
+  Definition of Aecore ClaimTx structure
 
   ## Parameters
-  - commitment: hash of the commitment for name claiming
+  - name: name to be claimed
+  - name_salt: salt that the name was pre-claimed with
   """
-  defstruct [:commitment]
+  defstruct [:name, :name_salt]
   use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: PreClaimTx.t()
-  def init(%{commitment: commitment} = _payload) do
-    %PreClaimTx{commitment: commitment}
+  @spec init(payload()) :: ClaimTx.t()
+  def init(%{name: name, name_salt: name_salt} = _payload) do
+    %ClaimTx{name: name, name_salt: name_salt}
   end
 
   @doc """
-  Checks nothing, pre claim transactions can't be validated
+  Checks name format
   """
-  @spec is_valid?(PreClaimTx.t()) :: boolean()
-  def is_valid?(%PreClaimTx{commitment: _commitment}) do
+  @spec is_valid?(ClaimTx.t()) :: boolean()
+  def is_valid?(%ClaimTx{name: _name, name_salt: _name_salt}) do
+    # TODO check name format
     true
-  end
-
-  @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
-  def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
-    Hash.hash(Util.namehash(name) <> name_salt)
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -65,7 +61,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          PreClaimTx.t(),
+          ClaimTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -74,7 +70,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %PreClaimTx{} = tx,
+        %ClaimTx{} = tx,
         sender,
         fee,
         nonce,
@@ -91,14 +87,21 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
         account_naming = Map.get(naming, sender, Naming.empty())
 
-        updated_naming_pre_claims = [
-          Naming.create_pre_claim(block_height, tx.commitment) | account_naming.pre_claims
+        updated_naming_claims = [
+          Naming.create_claim(block_height, tx.name) | account_naming.claims
         ]
 
-        updated_naming_chainstate =
-          Map.put(naming, sender, %{account_naming | pre_claims: updated_naming_pre_claims})
+        updated_naming_pre_claims =
+          Enum.filter(account_naming.pre_claims, fn pre_claim ->
+            pre_claim.commitment != PreClaimTx.create_commitment_hash(tx.name, tx.name_salt)
+          end)
 
-        # TODO remove pre_claims older 300 blocks
+        updated_naming_chainstate =
+          Map.put(naming, sender, %{
+            account_naming
+            | claims: updated_naming_claims,
+              pre_claims: updated_naming_pre_claims
+          })
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -108,11 +111,11 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the PreClaimTx requirements,
+  Checks whether all the data is valid according to the ClaimTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          PreClaimTx.t(),
+          ClaimTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -120,13 +123,23 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(_tx, account_state, _sender, fee, nonce, _block_height, _naming) do
+  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming) do
+    account_naming = Map.get(naming, sender, Naming.empty())
+
+    pre_claim =
+      Enum.find(account_naming.pre_claims, fn pre_claim ->
+        pre_claim.commitment == PreClaimTx.create_commitment_hash(tx.name, tx.name_salt)
+      end)
+
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}
 
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
+
+      pre_claim == nil ->
+        {:error, "Name has not been pre-claimed"}
 
       true ->
         :ok

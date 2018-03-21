@@ -3,6 +3,7 @@ defmodule Aecore.Structures.DataTx do
   Aecore structure of a transaction data.
   """
   alias Aecore.Naming.Structures.PreClaimTx
+  alias Aecore.Naming.Structures.ClaimTx
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
@@ -12,10 +13,10 @@ defmodule Aecore.Structures.DataTx do
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type tx_types :: SpendTx | PreClaimTx
+  @type tx_types :: SpendTx | PreClaimTx | ClaimTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t() | PreClaimTx.t()
+  @type payload :: SpendTx.t() | PreClaimTx.t() | ClaimTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
