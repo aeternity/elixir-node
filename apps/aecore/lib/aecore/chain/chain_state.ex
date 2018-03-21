@@ -29,7 +29,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
+  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, _block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
         to_acc_state = AccountHandler.get_account_state(chainstate.accounts, data.payload.to_acc)
