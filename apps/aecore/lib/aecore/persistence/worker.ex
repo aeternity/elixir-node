@@ -8,6 +8,7 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -269,9 +270,9 @@ defmodule Aecore.Persistence.Worker do
     {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
 
     reply =
-      case Map.get(chainstate.accounts, account) do
-        nil -> :not_found
-        value -> {:ok, value}
+      case AccountStateTree.get(chainstate.accounts, account) do
+        :none -> :not_found
+        value -> value
       end
 
     {:reply, reply, state}
