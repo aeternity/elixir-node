@@ -88,5 +88,4 @@ defmodule PersistenceTest do
 
     assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
   end
-
 end
