@@ -81,7 +81,7 @@ defmodule Aecore.Structures.Account do
   end
 
   def base58c_encode(bin) do
-    Bits.encode58c(:account_pubkey, bin)
+    Bits.encode58c("ak", bin)
   end
 
   def base58c_decode(<<"ak$", payload::binary>>) do

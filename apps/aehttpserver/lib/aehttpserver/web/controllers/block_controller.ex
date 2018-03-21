@@ -10,7 +10,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
 
   def show(conn, params) do
-    block = Chain.get_block_by_base58_hash(params["hash"]).block
+    block = Chain.get_block_by_base58_hash(params["hash"])
 
     case block do
       %Block{} ->

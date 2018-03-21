@@ -1,17 +1,7 @@
 # Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
 # License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
-  def encode58c(type, payload) when is_binary(payload) do
-    prefix =
-      case type do
-        :root_hash -> "bs"
-        :prev_hash -> "bh"
-        :txs_hash -> "bx"
-        :transaction -> "tx"
-        :account_pubkey -> "ak"
-        :oracle_pubkey -> "ok"
-      end
-
+  def encode58c(prefix, payload) when is_binary(payload) do
     prefix <> "$" <> encode58(payload)
   end
 

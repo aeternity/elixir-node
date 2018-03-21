@@ -110,7 +110,7 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def base58c_encode(bin) do
-    Bits.encode58c(:root_hash, bin)
+    Bits.encode58c("bs", bin)
   end
 
   def base58c_decode(<<"bs$", payload::binary>>) do

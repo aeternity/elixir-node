@@ -54,7 +54,7 @@ defmodule Aecore.Structures.Header do
   end
 
   def base58c_encode(bin) do
-    Bits.encode58c(:prev_hash, bin)
+    Bits.encode58c("bh", bin)
   end
 
   def base58c_decode(<<"bh$", payload::binary>>) do

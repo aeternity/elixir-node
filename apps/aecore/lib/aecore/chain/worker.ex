@@ -83,7 +83,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
-    GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, decoded_hash})
+    get_block(decoded_hash)
   end
 
   @spec get_block(binary()) :: Block.t() | {:error, binary()}

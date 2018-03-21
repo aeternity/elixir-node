@@ -66,8 +66,7 @@ defmodule AecoreChainTest do
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
-    assert top_block_from_chain ==
-             Chain.get_block_by_base58_hash(top_block_hash_next_base58).block
+    assert top_block_from_chain == Chain.get_block_by_base58_hash(top_block_hash_next_base58)
 
     assert previous_block.header.height + 1 == top_block_from_chain.header.height
 
