@@ -18,7 +18,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
-  alias Aeutil.Bits
 
   require Logger
 

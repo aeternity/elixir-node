@@ -10,7 +10,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
-  alias Aeutil.Bits
   alias Aecore.Structures.Account
 
   @type transaction_types :: SpendTx.t() | DataTx.t()

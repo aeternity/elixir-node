@@ -5,7 +5,6 @@ defmodule Aehttpserver.Web.TxController do
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
   alias Aecore.Structures.Account
-  alias Aeutil.Bits
 
   def show(conn, params) do
     account_bin = Account.base58c_decode(params["account"])

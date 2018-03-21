@@ -8,7 +8,6 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Structures.Header
   alias Aecore.Peers.Sync
   alias Aeutil.Serialization
-  alias Aeutil.Bits
 
   def show(conn, params) do
     block = Chain.get_block_by_base58_hash(params["hash"]).block

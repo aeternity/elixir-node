@@ -3,7 +3,6 @@ defmodule Aehttpserver.Web.TxPoolController do
 
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization
-  alias Aeutil.Bits
   alias Aecore.Structures.Account
 
   def show(conn, params) do

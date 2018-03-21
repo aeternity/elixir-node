@@ -7,8 +7,6 @@ defmodule Aecore.Wallet.Worker do
 
   alias Aewallet.Wallet
   alias Aewallet.KeyPair
-  alias Aewallet.Encoding
-  alias Aeutil.Bits
 
   @typedoc "Public key representing an account"
   @type pubkey() :: binary()

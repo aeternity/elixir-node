@@ -11,7 +11,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Bits
 
   require Logger
 
