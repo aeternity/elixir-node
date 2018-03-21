@@ -30,7 +30,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          Bits.decode58c(hash)
+          Header.base58c_decode(hash)
       end
 
     count =
@@ -50,7 +50,7 @@ defmodule Aehttpserver.Web.BlockController do
         hash = BlockValidation.block_header_hash(block.header)
 
         %{
-          "hash" => Header.base58_encode(hash),
+          "hash" => Header.base58c_encode(hash),
           "header" => Serialization.block(block, :serialize).header,
           "tx_count" => Enum.count(block.txs)
         }
@@ -66,7 +66,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          Bits.decode58c(hash)
+          Header.base58c_decode(hash)
       end
 
     to_block_hash =
@@ -75,7 +75,7 @@ defmodule Aehttpserver.Web.BlockController do
           BlockValidation.block_header_hash(Block.genesis_block().header)
 
         hash ->
-          Bits.decode58c(hash)
+          Header.base58c_decode(hash)
       end
 
     count =

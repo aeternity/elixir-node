@@ -62,7 +62,7 @@ defmodule AecoreChainTest do
     blocks_for_difficulty_calculation =
       Chain.get_blocks(top_block_hash_next, Difficulty.get_number_of_blocks())
 
-    top_block_hash_next_base58 = top_block_hash_next |> Header.base58_encode()
+    top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 

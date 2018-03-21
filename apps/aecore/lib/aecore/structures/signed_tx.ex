@@ -63,7 +63,7 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{tx}"}
+    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -76,11 +76,27 @@ defmodule Aecore.Structures.SignedTx do
     type.reward(payload, block_height, account_state)
   end
 
-  def base58_encode(bin) do
+  def base58c_encode(bin) do
     Bits.encode58c(:transaction, bin)
   end
 
-  def base58_encode_root(bin) do
-    Bits.encode58c(:root_hash, bin)
+  def base58c_decode(<<"tx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
+  end
+
+  def base58c_encode_root(bin) do
+    Bits.encode58c(:txs_hash, bin)
+  end
+
+  def base58c_decode_root(<<"bx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_root(_) do
+    {:error, "Wrong data"}
   end
 end

@@ -8,7 +8,7 @@ defmodule Aehttpserver.Web.TxController do
   alias Aeutil.Bits
 
   def show(conn, params) do
-    account_bin = Bits.decode58c(params["account"])
+    account_bin = Account.base58c_decode(params["account"])
 
     user_txs = Pool.get_txs_for_address(account_bin)
 
@@ -26,10 +26,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(proof, fn tx ->
                 %{
                   tx
-                  | from_acc: Account.base58_encode(tx.from_acc),
-                    to_acc: Account.base58_encode(tx.to_acc),
-                    txs_hash: SignedTx.base58_encode_root(tx.txs_hash),
-                    block_hash: Header.base58_encode(tx.block_hash),
+                  | from_acc: Account.base58c_encode(tx.from_acc),
+                    to_acc: Account.base58c_encode(tx.to_acc),
+                    txs_hash: SignedTx.base58c_encode_root(tx.txs_hash),
+                    block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature),
                     proof: Serialization.merkle_proof(tx.proof, [])
                 }
@@ -42,10 +42,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(user_txs, fn tx ->
                 %{
                   tx
-                  | from_acc: Account.base58_encode(tx.from_acc),
-                    to_acc: Account.base58_encode(tx.to_acc),
-                    txs_hash: SignedTx.base58_encode(tx.txs_hash),
-                    block_hash: Header.base58_encode(tx.block_hash),
+                  | from_acc: Account.base58c_encode(tx.from_acc),
+                    to_acc: Account.base58c_encode(tx.to_acc),
+                    txs_hash: SignedTx.base58c_encode(tx.txs_hash),
+                    block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature)
                 }
               end)

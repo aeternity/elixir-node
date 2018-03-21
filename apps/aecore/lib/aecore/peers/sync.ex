@@ -68,7 +68,7 @@ defmodule Aecore.Peers.Sync do
   @spec ask_peers_for_unknown_blocks(Peers.peers()) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     Enum.each(peers, fn {_, %{uri: uri, latest_block: top_block_hash}} ->
-      top_hash_decoded = Bits.decode58c(top_block_hash)
+      top_hash_decoded = Header.base58c_decode(top_block_hash)
 
       if !Map.has_key?(get_running_tasks(), uri) do
         PeerBlocksTask.start_link([uri, top_hash_decoded])

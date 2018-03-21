@@ -24,7 +24,7 @@ defmodule Aehttpclient.Client do
 
   @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
   def get_block({uri, hash}) do
-    hash = Header.base58_encode(hash)
+    hash = Header.base58c_encode(hash)
 
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->

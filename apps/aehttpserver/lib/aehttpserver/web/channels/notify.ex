@@ -6,7 +6,7 @@ defmodule Aehttpserver.Web.Notify do
     if tx.data.from_acc != nil do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Account.base58_encode(tx.data.from_acc),
+        "new_tx:" <> Account.base58c_encode(tx.data.from_acc),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
@@ -14,7 +14,7 @@ defmodule Aehttpserver.Web.Notify do
     if tx.data.payload.to_acc != nil do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Account.base58_encode(tx.data.payload.to_acc),
+        "new_tx:" <> Account.base58c_encode(tx.data.payload.to_acc),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
@@ -33,7 +33,7 @@ defmodule Aehttpserver.Web.Notify do
       if tx.data.from_acc != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Account.base58_encode(tx.data.from_acc),
+          "new_mined_tx:" <> Account.base58c_encode(tx.data.from_acc),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end
@@ -41,7 +41,7 @@ defmodule Aehttpserver.Web.Notify do
       if tx.data.payload.to_acc != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Account.base58_encode(tx.data.payload.to_acc),
+          "new_mined_tx:" <> Account.base58c_encode(tx.data.payload.to_acc),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end

@@ -33,10 +33,6 @@ defmodule Aecore.Structures.Account do
     %Account{balance: 0, nonce: 0}
   end
 
-  def base58_encode(bin) do
-    Bits.encode58c(:account_pubkey, bin)
-  end
-
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (from_acc)
   """
@@ -82,5 +78,17 @@ defmodule Aecore.Structures.Account do
     account_state
     |> Map.put(:nonce, nonce)
     |> transaction_in(value)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c(:account_pubkey, bin)
+  end
+
+  def base58c_decode(<<"ak$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

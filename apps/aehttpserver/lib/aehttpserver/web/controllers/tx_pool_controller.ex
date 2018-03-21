@@ -4,18 +4,14 @@ defmodule Aehttpserver.Web.TxPoolController do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization
   alias Aeutil.Bits
+  alias Aecore.Structures.Account
 
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool())
+    acc = Account.base58c_decode(params["account"])
 
-    case Bits.decode58c(params["account"]) do
-      {:error, reason} ->
-        reason
-
-      {prefix, acc} ->
-        acc_txs = get_acc_txs(pool_txs, acc)
-        json(conn, Enum.map(acc_txs, fn tx -> Serialization.tx(tx, :serialize) end))
-    end
+    acc_txs = get_acc_txs(pool_txs, acc)
+    json(conn, Enum.map(acc_txs, fn tx -> Serialization.tx(tx, :serialize) end))
   end
 
   def get_pool_txs(conn, _params) do

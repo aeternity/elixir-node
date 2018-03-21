@@ -109,7 +109,15 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  def base58_encode(bin) do
-    Bits.encode58c(:chain_state, bin)
+  def base58c_encode(bin) do
+    Bits.encode58c(:root_hash, bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

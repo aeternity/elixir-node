@@ -16,19 +16,19 @@ defmodule Aehttpserver.Web.InfoController do
     top_block_header =
       top_block.header
       |> BlockValidation.block_header_hash()
-      |> Header.base58_encode()
+      |> Header.base58c_encode()
 
     genesis_block_header = Block.genesis_block().header
 
     genesis_block_hash =
       genesis_block_header
       |> BlockValidation.block_header_hash()
-      |> Header.base58_encode()
+      |> Header.base58c_encode()
 
     own_nonce = Peers.get_peer_nonce()
 
     pubkey = Wallet.get_public_key()
-    pubkey_hex = Account.base58_encode(pubkey)
+    pubkey_hex = Account.base58c_encode(pubkey)
 
     # Add whoever's getting our info
     peer_port_headers = Plug.Conn.get_req_header(conn, "peer_port")
