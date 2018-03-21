@@ -73,12 +73,6 @@ defmodule AecoreChainStateTest do
                AccountHandler.balance(chain_state.accounts, wallet.c_pub_key),
                AccountHandler.nonce(chain_state.accounts, wallet.c_pub_key)
              }
-
-    # assert %{
-    #            wallet.a_pub_key => %Account{balance: 6, nonce: 100},
-    #            wallet.b_pub_key => %Account{balance: 3, nonce: 2},
-    #            wallet.c_pub_key => %Account{balance: 1, nonce: 2}
-    #        } == chain_state
   end
 
   def apply_txs_on_state!(txs, chainstate, block_height) do

@@ -19,7 +19,6 @@ defmodule Aecore.Chain.Worker do
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Bits
-  alias Aecore.Structures.Account
   alias Aecore.Structures.AccountStateTree
   require Logger
 

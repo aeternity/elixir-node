@@ -8,7 +8,6 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Serialization
   alias Aeutil.Bits
   alias Aecore.Structures.AccountStateTree
   alias Aecore.Structures.AccountHandler
