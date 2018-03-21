@@ -145,7 +145,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :serialize)
 
       :proof ->
-        Account.base58c_encode(value)
+        base64_binary(value, :serialize)
 
       _ ->
         value
@@ -204,7 +204,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :deserialize)
 
       :proof ->
-        Account.base58c_decode(value)
+        base64_binary(value, :deserialize)
 
       _ ->
         Parser.to_atom!(value)
