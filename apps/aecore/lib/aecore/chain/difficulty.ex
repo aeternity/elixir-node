@@ -21,11 +21,10 @@ defmodule Aecore.Chain.Difficulty do
       latest_block.header.difficulty_target
     else
       distance = calculate_distance(list)
+      difficulty = latest_block.header.difficulty_target * (@target_distance / distance)
 
       next_difficulty =
-        @target_distance
-        |> Kernel./(distance)
-        |> Kernel.*(latest_block.header.difficulty_target)
+        difficulty
         |> Float.ceil()
         |> round()
 
