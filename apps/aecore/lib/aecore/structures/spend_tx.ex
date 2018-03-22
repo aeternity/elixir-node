@@ -84,14 +84,16 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
-    case preprocess_check(tx, accounts[sender], fee, nonce, %{}) do
+    sender_account_state = Map.get(accounts, sender, Account.empty())
+
+    case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
       :ok ->
-        new_sender_acc_state =
-          accounts[sender]
+        new_sender_account_state =
+          sender_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out(tx.amount * -1, nonce)
 
-        new_accounts = Map.put(accounts, sender, new_sender_acc_state)
+        new_accounts = Map.put(accounts, sender, new_sender_account_state)
 
         receiver = Map.get(accounts, tx.receiver, Account.empty())
         new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)

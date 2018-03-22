@@ -279,7 +279,7 @@ defmodule Aecore.Chain.Worker do
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Header.base58_encode(new_block_hash)}, total tokens: #{
+      "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{
         inspect(total_tokens)
       }"
     end)
