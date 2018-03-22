@@ -24,7 +24,7 @@ defmodule Aehttpclient.Client do
 
   @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
   def get_block({uri, hash}) do
-    hash = Header.bech32_encode(hash)
+    hash = Header.base58c_encode(hash)
 
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
@@ -38,8 +38,8 @@ defmodule Aehttpclient.Client do
 
   @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    from_block_hash = Header.bech32_encode(from_block_hash)
-    to_block_hash = Header.bech32_encode(to_block_hash)
+    from_block_hash = Header.base58c_encode(from_block_hash)
+    to_block_hash = Header.base58c_encode(to_block_hash)
 
     uri =
       uri <> "/raw_blocks?" <> "from_block=" <> from_block_hash <> "&to_block=" <> to_block_hash

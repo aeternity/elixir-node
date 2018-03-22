@@ -9,6 +9,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aeutil.Bits
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
 
@@ -77,5 +78,17 @@ defmodule Aecore.Structures.Account do
     account_state
     |> Map.put(:nonce, nonce)
     |> transaction_in(value)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("ak", bin)
+  end
+
+  def base58c_decode(<<"ak$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end
