@@ -52,8 +52,8 @@ defmodule Aecore.Chain.ChainState do
   @doc """
   Create the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_root_hash(chainstate()) :: binary()
+  def calculate_root_hash(chainstate) do
     AccountStateTree.root_hash(chainstate.accounts)
   end
 
@@ -88,8 +88,15 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("bs", bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end
