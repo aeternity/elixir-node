@@ -82,8 +82,8 @@ defmodule AecoreTxTest do
 
   test "invalid spend transaction", tx do
     from_acc = Wallet.get_public_key()
-    value = 500
-    fee = 300
+    value = 200
+    fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -103,5 +103,16 @@ defmodule AecoreTxTest do
     # We should have only made two coinbase transactions
     assert Enum.count(Chain.chain_state().accounts) == 1
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
+
+    :ok = Miner.mine_sync_block_to_chain()
+    # At this poing the from_acc should have 300 tokens,
+    # enough to mine the transaction in the pool
+
+    # This block should add the transaction
+    :ok = Miner.mine_sync_block_to_chain()
+
+    assert Enum.count(Chain.chain_state().accounts) == 2
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
+    assert Chain.chain_state().accounts[tx.to_acc].balance == 200
   end
 end
