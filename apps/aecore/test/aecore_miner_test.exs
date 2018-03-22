@@ -5,7 +5,6 @@ defmodule MinerTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Structures.Account
 
   setup do
     on_exit(fn ->
