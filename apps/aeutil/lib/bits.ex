@@ -11,7 +11,7 @@ defmodule Aeutil.Bits do
     payload
     |> Kernel.<>(checksum)
     |> :base58.binary_to_base58()
-    |> Kernel.to_string()
+    |> to_string()
   end
 
   defp generate_checksum(payload) do
@@ -27,7 +27,7 @@ defmodule Aeutil.Bits do
       |> String.to_charlist()
       |> :base58.base58_to_binary()
 
-    bsize = Kernel.byte_size(decoded_payload) - 4
+    bsize = byte_size(decoded_payload) - 4
     <<data::binary-size(bsize), _checksum::binary-size(4)>> = decoded_payload
     data
   end
