@@ -5,27 +5,26 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aehttpclient.Client
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
-  alias Aewallet.Encoding
 
   @tag :http_client
   test "Client functions" do
     account = Wallet.get_public_key()
-    hex_acc = Encoding.encode(account, :ae)
+    hex_acc = Account.base58c_encode(account)
+    base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
 
     AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
              Client.get_block(
-               {"localhost:4000",
-                Bits.bech32_decode(
-                  "bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp"
-                )}
+               {"localhost:4000", Header.base58c_decode(base58_encoded_top_block_hash)}
              )
 
     assert {:ok, _} = Client.get_peers("localhost:4000")

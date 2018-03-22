@@ -2,42 +2,42 @@ defmodule Aecore.Chain.Difficulty do
   alias Aecore.Structures.Block
 
   @number_of_blocks 10
-  @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
+  @max_target_change Application.get_env(:aecore, :pow)[:max_target_change]
   @target_distance 30_000
 
   def get_number_of_blocks() do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(list(Block.t())) :: integer()
-  def calculate_next_difficulty(list) do
+  @spec calculate_next_target(list(Block.t())) :: integer()
+  def calculate_next_target(list) do
     [latest_block | _] = list
 
     if length(list) == 1 do
-      latest_block.header.difficulty_target
+      latest_block.header.target
     else
       distance = calculate_distance(list)
 
-      next_difficulty =
-        (latest_block.header.difficulty_target * (@target_distance / distance))
+      next_target =
+        (latest_block.header.target * (@target_distance / distance))
         |> Float.ceil()
         |> round()
 
-      limit_max_difficulty_change(next_difficulty, latest_block.header.difficulty_target)
+      limit_max_target_change(next_target, latest_block.header.target)
     end
   end
 
-  @spec limit_max_difficulty_change(integer(), integer()) :: integer()
-  def limit_max_difficulty_change(calculated_next_difficulty, last_difficult) do
+  @spec limit_max_target_change(integer(), integer()) :: integer()
+  def limit_max_target_change(calculated_next_target, last_target) do
     cond do
-      calculated_next_difficulty - last_difficult > @max_difficulty_change ->
-        last_difficult + @max_difficulty_change
+      calculated_next_target - last_target > @max_target_change ->
+        last_target + @max_target_change
 
-      last_difficult - calculated_next_difficulty > @max_difficulty_change ->
-        last_difficult - @max_difficulty_change
+      last_target - calculated_next_target > @max_target_change ->
+        last_target - @max_target_change
 
       true ->
-        calculated_next_difficulty
+        calculated_next_target
     end
   end
 
@@ -47,7 +47,7 @@ defmodule Aecore.Chain.Difficulty do
 
     distances =
       List.foldl(tail, {head, []}, fn cur, {head, acc} ->
-        time_diff = head.header.timestamp - cur.header.timestamp
+        time_diff = head.header.time - cur.header.time
         {cur, acc ++ [time_diff]}
       end)
 

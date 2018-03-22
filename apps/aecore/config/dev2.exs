@@ -1,7 +1,7 @@
 use Mix.Config
 
 %{year: year, month: month, day: day} = DateTime.utc_now()
-timestamp = "#{year}-#{month}-#{day}_"
+time = "#{year}-#{month}-#{day}_"
 
 config :aecore, :persistence, path: Path.absname("_build/dev2/priv/rox_db")
 
@@ -10,11 +10,11 @@ config :logger,
   backends: [:console, {LoggerFileBackend, :info}, {LoggerFileBackend, :error}]
 
 config :logger, :info,
-  path: Path.absname("_build/dev2/logs/#{timestamp}info.log"),
+  path: Path.absname("_build/dev2/logs/#{time}info.log"),
   level: :info
 
 config :logger, :error,
-  path: Path.absname("_build/dev2/logs/#{timestamp}error.log"),
+  path: Path.absname("_build/dev2/logs/#{time}error.log"),
   level: :error
 
 config :aecore, :peers,
@@ -24,13 +24,13 @@ config :aecore, :peers,
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
-  max_difficulty_change: 1,
+  max_target_change: 1,
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,
     txs_hash: <<0::256>>,
-    chain_state_hash: <<0::256>>,
-    timestamp: 1_507_275_094_308,
+    root_hash: <<0::256>>,
+    time: 1_507_275_094_308,
     nonce: 304,
     pow_evidence: [
       383_737,
@@ -77,7 +77,7 @@ config :aecore, :pow,
       37_643_561
     ],
     version: 1,
-    difficulty_target: 1
+    target: 1
   }
 
 config :aecore, :peers,

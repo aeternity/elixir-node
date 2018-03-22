@@ -52,8 +52,8 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_root_hash(chainstate()) :: binary()
+  def calculate_root_hash(chainstate) do
     merkle_tree_data =
       for {account, data} <- chainstate.accounts do
         {account, Serialization.pack_binary(data)}
@@ -112,8 +112,15 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("bs", bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

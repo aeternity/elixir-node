@@ -5,11 +5,10 @@ defmodule Aehttpserver.Web.TxController do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
-  alias Aewallet.Encoding
-  alias Aeutil.Bits
+  alias Aecore.Structures.Account
 
   def show(conn, params) do
-    account_bin = Bits.bech32_decode(params["account"])
+    account_bin = Account.base58c_decode(params["account"])
 
     user_txs = Pool.get_txs_for_address(account_bin)
 
@@ -27,10 +26,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(proof, fn tx ->
                 %{
                   tx
-                  | sender: Encoding.encode(tx.sender, :ae),
-                    receiver: Encoding.encode(tx.receiver, :ae),
-                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
-                    block_hash: Header.bech32_encode(tx.block_hash),
+                  | sender: Account.base58c_encode(tx.sender),
+                    receiver: Account.base58c_encode(tx.receiver),
+                    txs_hash: SignedTx.base58c_encode_root(tx.txs_hash),
+                    block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature),
                     proof: Serialization.merkle_proof(tx.proof, [])
                 }
@@ -43,10 +42,10 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(user_txs, fn tx ->
                 %{
                   tx
-                  | sender: Encoding.encode(tx.sender, :ae),
-                    receiver: Encoding.encode(tx.receiver, :ae),
-                    txs_hash: SignedTx.bech32_encode_root(tx.txs_hash),
-                    block_hash: Header.bech32_encode(tx.block_hash),
+                  | sender: Account.base58c_encode(tx.sender),
+                    receiver: Account.base58c_encode(tx.receiver),
+                    txs_hash: SignedTx.base58c_encode(tx.txs_hash),
+                    block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature)
                 }
               end)

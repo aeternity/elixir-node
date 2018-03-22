@@ -29,7 +29,7 @@ use Mix.Config
 #
 path = Path.absname("apps/aecore")
 %{year: year, month: month, day: day} = DateTime.utc_now()
-timestamp = "#{year}-#{month}-#{day}_"
+time = "#{year}-#{month}-#{day}_"
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
@@ -66,11 +66,11 @@ config :logger,
 config :logger, :console, level: :error
 
 config :logger, :info,
-  path: path <> "/logs/#{timestamp}info.log",
+  path: path <> "/logs/#{time}info.log",
   level: :info
 
 config :logger, :error,
-  path: path <> "/logs/#{timestamp}error.log",
+  path: path <> "/logs/#{time}error.log",
   level: :error
 
 import_config "#{Mix.env()}.exs"
