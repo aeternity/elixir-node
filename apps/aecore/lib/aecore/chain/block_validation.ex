@@ -20,6 +20,7 @@ defmodule Aecore.Chain.BlockValidation do
           ChainState.account_chainstate(),
           list(Block.t())
         ) :: {:error, term()} | :ok
+
   def calculate_and_validate_block!(
         new_block,
         previous_block,
@@ -33,8 +34,7 @@ defmodule Aecore.Chain.BlockValidation do
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
         new_block.txs,
-        old_chain_state,
-        new_block.header.height
+        old_chain_state
       )
 
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)

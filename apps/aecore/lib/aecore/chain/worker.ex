@@ -36,8 +36,7 @@ defmodule Aecore.Chain.Worker do
     genesis_chain_state =
       ChainState.calculate_and_validate_chain_state!(
         Block.genesis_block().txs,
-        build_chain_state(),
-        0
+        build_chain_state()
       )
 
     blocks_data_map = %{

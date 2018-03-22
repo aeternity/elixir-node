@@ -20,16 +20,16 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the chainstate"
   @type chainstate() :: %{:accounts => accounts()}
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
-  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+  @spec calculate_and_validate_chain_state!(list(), chainstate()) :: chainstate()
+  def calculate_and_validate_chain_state!(txs, chainstate) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate, block_height)
+      apply_transaction_on_state!(tx, chainstate)
     end)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, _block_height) do
+  @spec apply_transaction_on_state!(SignedTx.t(), chainstate()) :: chainstate()
+  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
     cond do
       SignedTx.is_coinbase?(tx) ->
         to_acc_state = AccountHandler.get_account_state(chainstate.accounts, data.payload.to_acc)
@@ -57,10 +57,10 @@ defmodule Aecore.Chain.ChainState do
     AccountStateTree.root_hash(chainstate.accounts)
   end
 
-  def filter_invalid_txs(txs_list, chainstate, block_height) do
+  def filter_invalid_txs(txs_list, chainstate) do
     {valid_txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc)
 
         if valid_chainstate do
           {valid_txs_list ++ [tx], updated_chainstate}
@@ -72,10 +72,10 @@ defmodule Aecore.Chain.ChainState do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate, block_height) do
+  @spec validate_tx(SignedTx.t(), chainstate()) :: {boolean(), chainstate()}
+  defp validate_tx(tx, chainstate) do
     try do
-      {true, apply_transaction_on_state!(tx, chainstate, block_height)}
+      {true, apply_transaction_on_state!(tx, chainstate)}
     catch
       {:error, _} -> {false, chainstate}
     end

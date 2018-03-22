@@ -1,4 +1,7 @@
 defmodule Aecore.Structures.AccountStateTree do
+  @moduledoc """
+  Top level account state tree.
+  """
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization

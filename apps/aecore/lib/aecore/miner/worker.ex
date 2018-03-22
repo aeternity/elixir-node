@@ -235,8 +235,7 @@ defmodule Aecore.Miner.Worker do
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
-      valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
+      valid_txs_by_chainstate = ChainState.filter_invalid_txs(ordered_txs_list, chain_state)
 
       valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
 
@@ -386,8 +385,7 @@ defmodule Aecore.Miner.Worker do
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
         valid_txs,
-        chain_state,
-        top_block.header.height + 1
+        chain_state
       )
 
     chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
