@@ -14,6 +14,7 @@ defmodule AecoreTxTest do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   setup tx do
     Persistence.start_link([])
@@ -95,7 +96,9 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    Aecore.Miner.Worker.mine_sync_block_to_chain()
+    :ok = Pool.add_transaction(signed_tx)
+
+    :ok = Aecore.Miner.Worker.mine_sync_block_to_chain()
 
     # We should have only made two coinbase transactions
     assert Enum.count(Chain.chain_state().accounts) == 1
