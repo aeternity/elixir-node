@@ -5,158 +5,95 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.Account
   alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
-  alias Aecore.Structures.OracleExtendTxData
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
 
   require Logger
 
-  @type account_chainstate() :: %{
+  @typedoc "Structure of the accounts"
+  @type accounts() :: %{Wallet.pubkey() => Account.t()}
+
+  @type oracles :: %{
+          registered_oracles: registered_oracles(),
+          interaction_objects: interaction_objects()
+        }
+
+  @type registered_oracles :: %{
+          Wallet.pubkey() => %{tx: OracleRegistrationTxData.t(), initial_hash: binary()}
+        }
+
+  @type interaction_objects :: %{
           binary() => %{
-            balance: integer(),
-            locked: [%{amount: integer(), block: integer()}],
-            nonce: integer()
+            query: OracleQueryTxData.t(),
+            response: OracleResponseTxData.t(),
+            query_initial_hash: binary(),
+            response_initial_hash: binary()
           }
         }
 
-  @spec calculate_and_validate_chain_state!(
-          list(),
-          account_chainstate(),
-          integer()
-        ) :: account_chainstate()
-  def calculate_and_validate_chain_state!(txs, chain_state, block_height) do
-    txs
-    |> Enum.reduce(chain_state, fn tx, chain_state ->
-      try do
-        apply_transaction_on_state!(tx, chain_state, block_height)
-      catch
-        {:error, message} ->
-          Logger.error(fn -> message end)
-          chain_state
-      end
-    end)
-    |> update_chain_state_locked(block_height)
-  end
+  @typedoc "Structure of the chainstate"
+  @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
 
-  @spec apply_transaction_on_state!(
-          SignedTx.t(),
-          account_chainstate(),
-          integer()
-        ) :: account_chainstate()
-  def apply_transaction_on_state!(transaction, chain_state, block_height) do
-    case transaction do
-      %SignedTx{data: %SpendTx{}} ->
-        cond do
-          SignedTx.is_coinbase?(transaction) ->
-            chain_state
-            |> apply_transaction_addition!(block_height, transaction)
+  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
+  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+    updated_chain_state =
+      txs
+      |> Enum.reduce(chainstate, fn tx, chainstate ->
+        apply_transaction_on_state!(tx, chainstate, block_height)
+      end)
+      |> update_chain_state_locked(block_height)
 
-          transaction.data.from_acc != nil ->
-            if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
-
-            chain_state
-            |> apply_transaction_nonce!(transaction)
-            |> apply_transaction_deduction!(block_height, transaction)
-            |> apply_transaction_addition!(block_height, transaction)
-
-          true ->
-            throw({:error, "Noncoinbase transaction with from_acc=nil"})
-        end
-
-      %SignedTx{data: %OracleRegistrationTxData{}} ->
-        apply_oracle_transaction_on_state!(transaction, chain_state)
-
-      %SignedTx{data: %OracleResponseTxData{}} ->
-        apply_oracle_transaction_on_state!(transaction, chain_state)
-
-      %SignedTx{data: %OracleQueryTxData{}} ->
-        apply_oracle_transaction_on_state!(transaction, chain_state)
-
-      %SignedTx{data: %OracleExtendTxData{}} ->
-        apply_oracle_transaction_on_state!(transaction, chain_state)
-    end
-  end
-
-  def apply_oracle_transaction_on_state!(
-        %SignedTx{data: %OracleRegistrationTxData{}} = transaction,
-        chain_state
-      ) do
-    if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
-
-    deduct_from_account_state!(
-      chain_state,
-      transaction.data.operator,
-      -transaction.data.fee,
-      transaction.data.nonce
-    )
-  end
-
-  def apply_oracle_transaction_on_state!(
-        %SignedTx{data: %OracleResponseTxData{}} = transaction,
-        chain_state
-      ) do
-    if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
-
-    deduct_from_account_state!(
-      chain_state,
-      transaction.data.operator,
-      -transaction.data.fee,
-      transaction.data.nonce
-    )
-  end
-
-  def apply_oracle_transaction_on_state!(
-        %SignedTx{data: %OracleQueryTxData{}} = transaction,
-        chain_state
-      ) do
-    if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
-
-    operator_address = transaction.data.oracle_address
-
-    operator_state = Map.get(chain_state, operator_address, %{balance: 0, nonce: 0, locked: []})
-
-    sender_updated_state =
-      deduct_from_account_state!(
-        chain_state,
-        transaction.data.sender,
-        -(transaction.data.query_fee + transaction.data.fee),
-        transaction.data.nonce
+    updated_chain_state
+    |> put_in(
+      [:oracles, :registered_oracles],
+      Oracle.remove_expired_oracles(
+        updated_chain_state.oracles.registered_oracles,
+        block_height
       )
-
-    new_operator_balance = operator_state.balance + transaction.data.query_fee
-
-    %{
-      sender_updated_state
-      | operator_address => %{operator_state | balance: new_operator_balance}
-    }
+    )
+    |> put_in(
+      [:oracles, :interaction_objects],
+      Oracle.remove_expired_interaction_objects(
+        updated_chain_state.oracles.interaction_objects,
+        block_height,
+        updated_chain_state.accounts
+      )
+    )
   end
 
-  def apply_oracle_transaction_on_state!(
-        %SignedTx{data: %OracleExtendTxData{}} = transaction,
-        chain_state
-      ) do
-    if !SignedTx.is_valid?(transaction), do: throw({:error, "Invalid transaction"})
+  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
+    cond do
+      SignedTx.is_coinbase?(tx) ->
+        to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, Account.empty())
+        new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
+        new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
+        Map.put(chainstate, :accounts, new_accounts_state)
 
-    deduct_from_account_state!(
-      chain_state,
-      transaction.data.oracle_address,
-      -transaction.data.fee,
-      transaction.data.nonce
-    )
+      data.from_acc != nil ->
+        if SignedTx.is_valid?(tx) do
+          DataTx.process_chainstate(data, block_height, chainstate)
+        else
+          throw({:error, "Invalid transaction"})
+        end
+    end
   end
 
   @doc """
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(account_chainstate()) :: binary()
-  def calculate_chain_state_hash(chain_state) do
+  @spec calculate_chain_state_hash(chainstate()) :: binary()
+  def calculate_chain_state_hash(chainstate) do
     merkle_tree_data =
-      for {account, data} <- chain_state do
+      for {account, data} <- chainstate.accounts do
         {account, Serialization.pack_binary(data)}
       end
 
@@ -164,8 +101,7 @@ defmodule Aecore.Chain.ChainState do
       <<0::256>>
     else
       merkle_tree =
-        merkle_tree_data
-        |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
+        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn node, merkle_tree ->
           :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
         end)
 
@@ -173,169 +109,59 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(account_chainstate()) :: integer()
-  def calculate_total_tokens(chain_state) do
-    Enum.reduce(chain_state, {0, 0, 0}, fn {_account, data}, acc ->
+  def filter_invalid_txs(txs_list, chainstate, block_height) do
+    {valid_txs_list, _} =
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
+        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+
+        if valid_chainstate do
+          {valid_txs_list ++ [tx], updated_chainstate}
+        else
+          {valid_txs_list, chainstate_acc}
+        end
+      end)
+
+    valid_txs_list
+  end
+
+  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
+  defp validate_tx(tx, chainstate, block_height) do
+    try do
+      {true, apply_transaction_on_state!(tx, chainstate, block_height)}
+    catch
+      {:error, _} -> {false, chainstate}
+    end
+  end
+
+  @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
+  def calculate_total_tokens(%{accounts: accounts}) do
+    Enum.reduce(accounts, {0, 0, 0}, fn {_account, state}, acc ->
       {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
 
       locked_tokens =
-        Enum.reduce(data.locked, 0, fn %{amount: amount}, locked_sum ->
+        Enum.reduce(state.locked, 0, fn %{amount: amount}, locked_sum ->
           locked_sum + amount
         end)
 
-      new_total_tokens = total_tokens + data.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + data.balance
+      new_total_tokens = total_tokens + state.balance + locked_tokens
+      new_total_unlocked_tokens = total_unlocked_tokens + state.balance
       new_total_locked_tokens = total_locked_tokens + locked_tokens
-
       {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
     end)
   end
 
-  @spec update_chain_state_locked(account_chainstate(), integer()) :: account_chainstate()
-  def update_chain_state_locked(chain_state, new_block_height) do
-    Enum.reduce(chain_state, %{}, fn {account,
-                                      %{
-                                        balance: balance,
-                                        nonce: nonce,
-                                        locked: locked
-                                      }},
-                                     acc ->
-      {unlocked_amount, updated_locked} =
-        Enum.reduce(locked, {0, []}, fn %{
-                                          amount: amount,
-                                          block: lock_time_block
-                                        },
-                                        {amount_update_value, updated_locked} ->
-          cond do
-            lock_time_block > new_block_height ->
-              {amount_update_value, updated_locked ++ [%{amount: amount, block: lock_time_block}]}
+  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
+  def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
+    updated_accounts =
+      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
+        Map.put(acc, address, Account.update_locked(state, header))
+      end)
 
-            lock_time_block == new_block_height ->
-              {amount_update_value + amount, updated_locked}
-
-            true ->
-              Logger.error(fn ->
-                "Update chain state locked:
-                   new block height (#{new_block_height}) greater than lock time block (#{
-                  lock_time_block
-                })"
-              end)
-
-              {amount_update_value, updated_locked}
-          end
-        end)
-
-      Map.put(acc, account, %{
-        balance: balance + unlocked_amount,
-        nonce: nonce,
-        locked: updated_locked
-      })
-    end)
+    Map.put(chainstate, :accounts, updated_accounts)
   end
 
   @spec bech32_encode(binary()) :: String.t()
   def bech32_encode(bin) do
     Bits.bech32_encode("cs", bin)
-  end
-
-  @spec apply_to_state!(
-          account_chainstate(),
-          integer(),
-          binary(),
-          integer(),
-          integer()
-        ) :: account_chainstate()
-  defp apply_to_state!(
-         chain_state,
-         block_height,
-         account,
-         value,
-         lock_time_block
-       ) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-
-    if block_height <= lock_time_block do
-      if value < 0 do
-        throw({:error, "Can't lock a negative transaction"})
-      end
-
-      new_locked = account_state.locked ++ [%{amount: value, block: lock_time_block}]
-
-      Map.put(chain_state, account, %{account_state | locked: new_locked})
-    else
-      new_balance = account_state.balance + value
-
-      if new_balance < 0 do
-        throw({:error, "Negative balance"})
-      end
-
-      Map.put(chain_state, account, %{account_state | balance: new_balance})
-    end
-  end
-
-  @spec apply_transaction_nonce!(account_chainstate(), SignedTx.t()) :: account_chainstate()
-  defp apply_transaction_nonce!(chain_state, transaction) do
-    account_state =
-      Map.get(chain_state, transaction.data.from_acc, %{
-        balance: 0,
-        nonce: 0,
-        locked: []
-      })
-
-    if account_state.nonce >= transaction.data.nonce do
-      throw({:error, "Nonce too small"})
-    end
-
-    chain_state
-    |> Map.put(transaction.data.from_acc, %{
-      account_state
-      | nonce: transaction.data.nonce
-    })
-  end
-
-  @spec apply_transaction_deduction!(
-          account_chainstate(),
-          non_neg_integer(),
-          SignedTx.t()
-        ) :: account_chainstate()
-  defp apply_transaction_deduction!(chain_state, block_height, transaction) do
-    chain_state
-    |> apply_to_state!(
-      block_height,
-      transaction.data.from_acc,
-      -(transaction.data.value + transaction.data.fee),
-      -1
-    )
-  end
-
-  @spec apply_transaction_addition!(
-          account_chainstate(),
-          non_neg_integer(),
-          SignedTx.t()
-        ) :: account_chainstate()
-  defp apply_transaction_addition!(chain_state, block_height, transaction) do
-    chain_state
-    |> apply_to_state!(
-      block_height,
-      transaction.data.to_acc,
-      transaction.data.value,
-      transaction.data.lock_time_block
-    )
-  end
-
-  defp deduct_from_account_state!(chain_state, account, value, nonce) do
-    account_state = Map.get(chain_state, account, %{balance: 0, nonce: 0, locked: []})
-
-    cond do
-      account_state.balance + value < 0 ->
-        throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
-
-      true ->
-        new_balance = account_state.balance + value
-        Map.put(chain_state, account, %{account_state | balance: new_balance})
-    end
   end
 end

@@ -2,53 +2,146 @@ defmodule Aecore.Structures.OracleResponseTxData do
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Account
 
   require Logger
 
-  @type t :: %OracleResponseTxData{
-          operator: binary(),
+  @type tx_type_state :: ChainState.oracles()
+
+  @type payload :: %{
           query_id: binary(),
-          response: map(),
-          fee: non_neg_integer(),
-          nonce: non_neg_integer()
+          response: map()
         }
 
-  defstruct [:operator, :query_id, :response, :fee, :nonce]
+  @type t :: %OracleResponseTxData{
+          query_id: binary(),
+          response: map()
+        }
+
+  defstruct [:query_id, :response]
   use ExConstructor
 
-  @spec create(binary(), any(), integer()) :: OracleResponseTxData.t()
-  def create(query_id, response, fee) do
-    {:ok, pubkey} = Keys.pubkey()
-    registered_oracles = Chain.registered_oracles()
-    response_format = registered_oracles[pubkey].tx.response_format
+  @spec get_chain_state_name() :: :oracles
+  def get_chain_state_name(), do: :oracles
 
-    interaction_object = Chain.oracle_interaction_objects()[query_id]
+  @spec init(payload()) :: OracleResponseTxData.t()
+  def init(%{
+        query_id: query_id,
+        response: response
+      }) do
+    %OracleResponseTxData{
+      query_id: query_id,
+      response: response
+    }
+  end
 
-    valid_query_id =
-      if interaction_object != nil do
-        interaction_object.response == nil && interaction_object.query.oracle_address == pubkey
-      else
-        false
-      end
+  @spec is_valid?(OracleResponseTxData.t()) :: boolean()
+  def is_valid?(%OracleResponseTxData{}) do
+    true
+  end
 
+  @spec process_chainstate!(
+          OracleResponseTxData.t(),
+          Wallet.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          ChainState.account(),
+          tx_type_state()
+        ) :: {ChainState.accounts(), tx_type_state()}
+  def process_chainstate!(
+        %OracleResponseTxData{} = tx,
+        from_acc,
+        fee,
+        nonce,
+        block_height,
+        accounts,
+        %{interaction_objects: interaction_objects} = oracle_state
+      ) do
+    case preprocess_check(
+           tx,
+           from_acc,
+           Map.get(accounts, from_acc, Account.empty()),
+           fee,
+           nonce,
+           block_height,
+           oracle_state
+         ) do
+      :ok ->
+        interaction_object = interaction_objects[tx.query_id]
+        query_fee = interaction_object[tx.query_id].query.query_fee
+
+        new_from_account_state =
+          Map.get(accounts, from_acc, Account.empty())
+          |> deduct_fee(fee - query_fee)
+
+        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
+
+        updated_interaction_objects =
+          Map.put(interaction_objects, tx.query_id, %{
+            interaction_object
+            | response: tx,
+              response_height_included: block_height
+          })
+
+        updated_oracle_state = %{
+          oracle_state
+          | interaction_objects: updated_interaction_objects
+        }
+
+        {updated_accounts_chainstate, updated_oracle_state}
+
+      {:error, _reason} = err ->
+        throw(err)
+    end
+  end
+
+  @spec preprocess_check(
+          OracleResponseTxData.t(),
+          Wallet.pubkey(),
+          ChainState.account(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          tx_type_state()
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(tx, from_acc, account_state, fee, nonce, _block_height, %{
+        registered_oracles: registered_oracles,
+        interaction_objects: interaction_objects
+      }) do
     cond do
-      !valid_query_id ->
-        Logger.error("Invalid query referenced")
-        :error
+      account_state.balance - fee < 0 ->
+        {:error, "Negative balance"}
 
-      !Oracle.data_valid?(response_format, response) ->
-        :error
+      account_state.nonce >= nonce ->
+        {:error, "Nonce too small"}
+
+      !Oracle.data_valid?(
+        registered_oracles[from_acc].tx.response_format,
+        tx.response
+      ) ->
+        {:error, "Invalid query data"}
+
+      !Map.has_key?(interaction_objects, tx.query_id) ->
+        {:error, "No query with that ID"}
+
+      interaction_objects[tx.query_id].response != nil ->
+        {:error, "Query already answered"}
+
+      interaction_objects[tx.query_id].query.oracle_address != from_acc ->
+        {:error, "Query references a different oracle"}
 
       true ->
-        %OracleResponseTxData{
-          operator: pubkey,
-          query_id: query_id,
-          response: response,
-          fee: fee,
-          nonce: Chain.lowest_valid_nonce()
-        }
+        :ok
     end
+  end
+
+  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(account_state, fee) do
+    new_balance = account_state.balance - fee
+    Map.put(account_state, :balance, new_balance)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

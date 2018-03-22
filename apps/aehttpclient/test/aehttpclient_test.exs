@@ -3,15 +3,21 @@ defmodule AehttpclientTest do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
   alias Aehttpclient.Client
+  alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
+  alias Aewallet.Encoding
 
   @tag :http_client
   test "Client functions" do
-    account = Keys.pubkey() |> elem(1) |> Base.encode16()
-    add_txs_to_pool()
+    account = Wallet.get_public_key()
+    hex_acc = Encoding.encode(account, :ae)
+
+    AehttpclientTest.add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
@@ -25,20 +31,27 @@ defmodule AehttpclientTest do
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
     assert Enum.count(
-             Client.get_account_txs({"localhost:4000", account})
+             Client.get_account_txs({"localhost:4000", hex_acc})
              |> elem(1)
            ) == 2
   end
 
   def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain()
-    {:ok, to_account} = Keys.pubkey()
+    to_acc = Wallet.get_public_key()
+    from_acc = to_acc
 
-    init_nonce = Map.get(Chain.chain_state(), to_account, %{nonce: 0}).nonce
-    {:ok, tx1} = Keys.sign_tx(to_account, 5, init_nonce + 1, 10)
-    {:ok, tx2} = Keys.sign_tx(to_account, 5, init_nonce + 2, 10)
+    init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
+    payload1 = %{to_acc: from_acc, value: 5, lock_time_block: 0}
 
-    Pool.add_transaction(tx1)
-    Pool.add_transaction(tx2)
+    tx1 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 1)
+    tx2 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 2)
+
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
+
+    assert :ok = Pool.add_transaction(signed_tx1)
+    assert :ok = Pool.add_transaction(signed_tx2)
   end
 end

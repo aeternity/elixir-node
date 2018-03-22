@@ -171,11 +171,7 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, %{state | peer_block_tasks: updated_tasks}}
   end
 
-  def handle_call(
-        :get_running_tasks,
-        _from,
-        %{peer_block_tasks: peer_block_tasks} = state
-      ) do
+  def handle_call(:get_running_tasks, _from, %{peer_block_tasks: peer_block_tasks} = state) do
     {:reply, peer_block_tasks, state}
   end
 
@@ -296,10 +292,7 @@ defmodule Aecore.Peers.Sync do
     |> Enum.reduce([], fn peer, acc ->
       case HttpClient.get_peers(peer) do
         {:ok, list} ->
-          Enum.concat(
-            acc,
-            Enum.map(Map.values(list), fn %{"uri" => uri} -> uri end)
-          )
+          Enum.concat(acc, Enum.map(Map.values(list), fn %{"uri" => uri} -> uri end))
 
         {:error, message} ->
           Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)

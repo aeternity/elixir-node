@@ -132,7 +132,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
   @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, integer()) :: boolean()
   def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
-    case tx.data do
+    case tx.data.payload do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx, identifier)
 
@@ -146,7 +146,7 @@ defmodule Aecore.Txs.Pool.Worker do
         OracleResponseTxData.is_minimum_fee_met?(tx)
 
       %OracleExtendTxData{} ->
-        tx.data.fee >= OracleExtendTxData.calculate_minimum_fee(tx.data.ttl)
+        tx.data.fee >= OracleExtendTxData.calculate_minimum_fee(tx.data.payload.ttl)
     end
   end
 
@@ -163,10 +163,7 @@ defmodule Aecore.Txs.Pool.Worker do
         for block_user_txs <- user_txs do
           block_user_txs
           |> Map.put_new(:txs_hash, block.header.txs_hash)
-          |> Map.put_new(
-            :block_hash,
-            BlockValidation.block_header_hash(block.header)
-          )
+          |> Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
           |> Map.put_new(:block_height, block.header.height)
         end
 

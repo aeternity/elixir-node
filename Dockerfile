@@ -5,7 +5,7 @@ FROM ubuntu:16.04
 RUN adduser --disabled-password --gecos "" elixir
 
 RUN apt-get update
-RUN apt-get install -y curl locales git build-essential
+RUN apt-get install -y curl locales git build-essential autoconf autogen libtool libgmp3-dev
 
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
@@ -25,9 +25,9 @@ ENV PATH=/home/elixir/.cargo/env:/home/elixir/.cargo/bin:$PATH
 
 # copy source
 USER root
-WORKDIR /elixir_research
-COPY . /elixir_research
-RUN chown -R elixir:elixir /elixir_research
+WORKDIR /elixir_node
+COPY . /elixir_node
+RUN chown -R elixir:elixir /elixir_node
 USER elixir
 
 # set environment

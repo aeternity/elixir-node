@@ -5,6 +5,7 @@ defmodule AecoreChainTest do
 
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -15,12 +16,19 @@ defmodule AecoreChainTest do
 
   setup do
     Chain.start_link([])
+
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      :ok
+    end)
+
     []
   end
 
   @tag timeout: 20_000
   @tag :chain
-  test "add block" do
+  test "add block", setup do
     Miner.mine_sync_block_to_chain()
 
     top_block = Chain.top_block()
@@ -77,5 +85,13 @@ defmodule AecoreChainTest do
 
     length = length(Chain.longest_blocks_chain())
     assert length > 1
+  end
+
+  test "get_block_by_height" do
+    Enum.each(0..9, fn _i -> Miner.mine_sync_block_to_chain() end)
+
+    Enum.each(1..10, fn i ->
+      assert Chain.get_block_by_height(i).header.height == i
+    end)
   end
 end

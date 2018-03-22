@@ -39,16 +39,8 @@ defmodule Aecore.Structures.Header do
           integer(),
           non_neg_integer(),
           integer()
-        ) :: Header.t()
-  def create(
-        height,
-        prev_hash,
-        txs_hash,
-        chain_state_hash,
-        difficulty,
-        nonce,
-        version
-      ) do
+        ) :: Header
+  def create(height, prev_hash, txs_hash, chain_state_hash, difficulty, nonce, version) do
     %Header{
       height: height,
       prev_hash: prev_hash,

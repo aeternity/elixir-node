@@ -33,12 +33,28 @@ timestamp = "#{year}-#{month}-#{day}_"
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db"
+    nil -> "apps/aecore/priv/rox_db/"
     env -> env
   end
 
+aewallet_pass =
+  case System.get_env("AEWALLET_PASS") do
+    nil -> " "
+    env -> env
+  end
+
+aewallet_path =
+  case System.get_env("AEWALLET_PATH") do
+    nil -> "apps/aecore/priv/aewallet"
+    env -> env
+  end
+
+config :aecore, :aewallet, pass: aewallet_pass
+
+config :aecore, :aewallet, path: Path.absname(aewallet_path)
+
 config :aecore, :persistence,
-  path: Path.absname(persistence_path),
+  path: persistence_path |> Path.absname() |> Path.join("//"),
   number_of_blocks_in_memory: 100
 
 config :logger,
@@ -54,9 +70,5 @@ config :logger, :info,
 config :logger, :error,
   path: path <> "/logs/#{timestamp}error.log",
   level: :error
-
-config :aecore, :keys,
-  password: "secret",
-  dir: "/tmp/keys"
 
 import_config "#{Mix.env()}.exs"

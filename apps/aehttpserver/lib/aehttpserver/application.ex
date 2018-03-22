@@ -26,10 +26,7 @@ defmodule Aehttpserver.Application do
       nil ->
         gen_authorization = UUID.uuid4()
         Application.put_env(:aecore, :authorization, gen_authorization)
-
-        Logger.info(fn ->
-          "Authorization header for /node routes: #{gen_authorization}"
-        end)
+        Logger.info(fn -> "Authorization header for /node routes: #{gen_authorization}" end)
 
       env ->
         Application.put_env(:aecore, :authorization, env)

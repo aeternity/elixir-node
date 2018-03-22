@@ -6,7 +6,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
 
@@ -138,8 +138,7 @@ defmodule Aehttpclient.Client do
   end
 
   defp handle_response(:acc_txs, body, _headers) do
-    response = Poison.decode!(body, as: [%SignedTx{data: %SpendTx{}}], keys: :atoms!)
-
+    response = Poison.decode!(body, as: [%SignedTx{data: %DataTx{}}], keys: :atoms!)
     {:ok, response}
   end
 
@@ -159,10 +158,9 @@ defmodule Aehttpclient.Client do
 
   @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
-    case HTTPoison.get(uri, [
-           {"peer_port", get_local_port()},
-           {"nonce", Peers.get_peer_nonce()}
-         ]) do
+    case(
+      HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])
+    ) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         handle_response(identifier, body, headers)
 

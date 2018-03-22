@@ -1,18 +1,39 @@
-[![Travis Build](https://travis-ci.org/aeternity/elixir-research.svg?branch=master)](https://travis-ci.org/aeternity/elixir-research)
+[![Travis Build](https://travis-ci.org/aeternity/elixir-node.svg?branch=master)](https://travis-ci.org/aeternity/elixir-node)
 
-# **Elixir blockchain research**
+# **Aeternity Elixir Full Node**
 
-This is an elixir implementation of a basic blockchain. We aim to keep the blockchain as simple as possible and to research and experiment with different technologies
+This is an elixir full node implementation of the aeternity specification.
 
-## Getting Started
+
+## Docker Container
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory, prebuilt images are not yet published.
+
+ - Build container `docker build . -t elixir-node`
+ - Run node in container `docker run --name elixir-node -it -p 4000:4000 elixir-node`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
+
+## Getting started on your local machine
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Required packages
 
 To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html), [Rust](https://www.rust-lang.org/install.html) (for RocksDB persistence) and the source code by cloning or downloading the repository.
 
+Make sure you have installed the following packages to make sure that the Wallet will work properly:
+```bash
+sudo apt-get install autoconf autogen
+sudo apt-get install libtool
+sudo apt-get install libgmp3-dev
+```
+
 ## Usage
+
+#### **Fetching dependencies**
+`mix deps.get`
+
 #### **Starting the application**
 Start the application in interactive Elixir mode
 
@@ -28,7 +49,22 @@ To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
 
-#### **API calls**
+### **Building custom child Transaction**
+To build a custom transaction you need to follow few simple steps:
+- Make your own `transaction module`;
+- Create your `custom transaction structure`;
+- Override the `Transaction Behaviour` callbacks;
+- Write all your specific functions and checks inside your new `Transaction module`;
+
+All custom transactions are childs to the `DataTx` Transaction that wraps them inside.
+The DataTx strucure hold:
+- The name of your `transaction type` that should be you `Transaction Module name`;
+- The `payload` that will hold your `custom transaction structure`;
+- The `from_acc`;
+- The`nonce`;
+- The `fee`;
+
+### **API calls**
 
 ##### Chain :
 
@@ -109,51 +145,67 @@ To suspend/stop the miner from mining:
 
 ### HTTP-API
 
-- The node will run an http API at `localhost:4000`
+- The node will run an http API at: `localhost:4000`
 
 - To get the current info of the node:
 
-  `localhost:4000/info`
+  `GET localhost:4000/info`
 
 - To get the peers your node is connected to:
 
-  `localhost:4000/peers`
+  `GET localhost:4000/peers`
 
 - To get all blocks from the current chain:
 
-  `localhost:4000/blocks`  
+  `GET localhost:4000/blocks`
 
 - To get all blocks with full information about the blocks:
 
-  `localhost:4000/raw_blocks`
+  `GET localhost:4000/raw_blocks`
 
 - To get the transactions in the Transaction Pool:
 
-  `localhost:4000/pool_txs`
+  `GET localhost:4000/pool_txs`
 
 - To post new transaction to the Transaction Pool:
 
-  `localhost:4000/new_tx/"serialized_tx"`
+  `POST localhost:4000/new_tx`
+
+  Body: **serialized_tx**
+
+  Where *serialized_tx* is json serialized signed transaction structure
 
 - To post new block to the chain:
 
-  `localhost:4000/new_block/"block"`
+  `POST localhost:4000/new_block`
+
+  Body: **serialized_block**
+
+  Where *serialized_block* is a json serialized block structure
 
 - To get all transactions for an account
 
-  `localhost:4000/tx/"account_hash"`
+  `GET localhost:4000/tx/{account}`
+
+  Where *account* is a hex encoded public key
 
 - To get a block by hash
 
-  `localhost:4000/block/"block_hash"`
+  `GET localhost:4000/block/{block_hash}`
+
+  Where *block_hash* is the bech32 encoded block header hash
 
 - To get an account balance:
 
-  `localhost:4000/balance/"account_hash"`
+  `GET localhost:4000/balance/{account}`
+
+  Where *account* is a hex encoded public key
 
 - To get the transaction pool of an account:
 
-    `localhost:4000/tx_pool/"account_hash"`  
+  `GET localhost:4000/tx_pool/{account}`
+
+  Where *account* is a hex encoded public key
 
 ### Running the tests
 

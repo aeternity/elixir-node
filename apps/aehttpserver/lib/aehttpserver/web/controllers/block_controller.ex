@@ -7,6 +7,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Peers.Sync
+  alias Aeutil.Serialization
   alias Aeutil.Bits
 
   def show(conn, params) do

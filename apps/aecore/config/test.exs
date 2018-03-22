@@ -30,11 +30,11 @@ use Mix.Config
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db"
+    nil -> "apps/aecore/priv/rox_db/"
     env -> env
   end
 
-config :aecore, :persistence, path: Path.absname(persistence_path)
+config :aecore, :persistence, path: persistence_path |> Path.absname() |> Path.join("//")
 
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),

@@ -63,12 +63,4 @@ defmodule DifficultyTest do
 
     assert 6 == Difficulty.calculate_next_difficulty(blocks)
   end
-
-  # @tag :difficulty
-  # test "max difficulty change" do
-  #   assert 4 == Difficulty.limit_max_difficulty_change(10, 2)
-  #   assert 10 == Difficulty.limit_max_difficulty_change(10, 9)
-  #   assert 8 == Difficulty.limit_max_difficulty_change(8, 9)
-  #   assert 10 == Difficulty.limit_max_difficulty_change(8, 12)
-  # end
 end

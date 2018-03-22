@@ -2,42 +2,42 @@ version: '3'
 services:
 
 
-  elixir-research-4000:
+  elixir-node-4000:
     build: .
-    image: elixir-research
-    hostname: elixir-research-4000
+    image: elixir-node
+    hostname: elixir-node-4000
     environment:
       PORT: 4000
-      PERSISTENCE_PATH: /elixir_research/aecore/priv/rox_db_4000
+      PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4000
     volumes:
-      - elixir-research-4000-db:/elixir_research/apps/aecore/priv/rox_db_4000
+      - elixir-node-4000-db:/elixir_node/apps/aecore/priv/rox_db_4000
     command: -e "Aecore.Miner.Worker.resume()"
 
 
-  elixir-research-4001:
+  elixir-node-4001:
       build: .
-      image: elixir-research
-      hostname: elixir-research-4001
+      image: elixir-node
+      hostname: elixir-node-4001
       environment:
         PORT: 4001
-        PERSISTENCE_PATH: /elixir_research/aecore/priv/rox_db_4001
+        PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4001
       volumes:
-        - elixir-research-4001-db:/elixir_research/apps/aecore/priv/rox_db_4001
+        - elixir-node-4001-db:/elixir_node/apps/aecore/priv/rox_db_4001
       stdin_open: true
       tty: true
-      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-research-4000:4000\")" -e "Aecore.Miner.Worker.resume()"
+      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")" -e "Aecore.Miner.Worker.resume()"
 
 
-  elixir-research-4002:
+  elixir-node-4002:
       build: .
-      image: elixir-research
-      hostname: elixir-research-4002
+      image: elixir-node
+      hostname: elixir-node-4002
       environment:
         PORT: 4002
-        PERSISTENCE_PATH: /elixir_research/aecore/priv/rox_db_4002
+        PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4002
       volumes:
-        - elixir-research-4002-db:/elixir_research/apps/aecore/priv/rox_db_4002
-      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-research-4000:4000\")"
+        - elixir-node-4002-db:/elixir_node/apps/aecore/priv/rox_db_4002
+      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
 
 
   proxy:
@@ -53,6 +53,6 @@ services:
 
 
 volumes:
-  elixir-research-4000-db:
-  elixir-research-4001-db:
-  elixir-research-4002-db:
+  elixir-node-4000-db:
+  elixir-node-4001-db:
+  elixir-node-4002-db:

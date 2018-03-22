@@ -1,81 +1,86 @@
 defmodule Aehttpserver.Web.Notify do
-  alias Aeutil.Serialization
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTxData
   alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
-  alias Aehttpserver.Web.Endpoint
+  alias Aeutil.Serialization
+  alias Aewallet.Encoding
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if match?(%SpendTx{}, tx.data) do
-      broadcast_spend_tx(tx)
+    if tx.data.from_acc != nil do
+      Aehttpserver.Web.Endpoint.broadcast!(
+        "room:notifications",
+        "new_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+        %{"body" => Serialization.tx(tx, :serialize)}
+      )
     end
 
-    Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
+    case tx.data.payload do
+      %SpendTx{} ->
+        if tx.data.payload.to_acc != nil do
+          Aehttpserver.Web.Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+        end
+
+      %OracleQueryTxData{} ->
+        if tx.data.payload.to_acc != nil do
+          Aehttpserver.Web.Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Encoding.encode(tx.data.payload.oracle_address, :ae),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+        end
+
+      _ ->
+        :ok
+    end
+
+    Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
       "body" => Serialization.tx(tx, :serialize)
     })
   end
 
   def broadcast_new_block_added_to_chain_and_new_mined_tx(block) do
     Enum.each(block.txs, fn tx ->
-      # Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
-      #   "body" => Serialization.tx(tx, :serialize)
-      # })
+      Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
+        "body" => Serialization.tx(tx, :serialize)
+      })
 
-      case tx.data do
+      if tx.data.from_acc != nil do
+        Aehttpserver.Web.Endpoint.broadcast!(
+          "room:notifications",
+          "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+          %{"body" => Serialization.tx(tx, :serialize)}
+        )
+      end
+
+      case tx.data.payload do
         %SpendTx{} ->
-          broadcast_spend_tx(tx)
+          if tx.data.payload.to_acc != nil do
+            Aehttpserver.Web.Endpoint.broadcast!(
+              "room:notifications",
+              "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
+              %{"body" => Serialization.tx(tx, :serialize)}
+            )
+          end
 
-        _oracle_tx ->
-          # broadcast_oracle_tx(tx)
+        %OracleQueryTxData{} ->
+          if tx.data.payload.to_acc != nil do
+            Aehttpserver.Web.Endpoint.broadcast!(
+              "room:notifications",
+              "new_tx:" <> Encoding.encode(tx.data.payload.oracle_address, :ae),
+              %{"body" => Serialization.tx(tx, :serialize)}
+            )
+          end
+
+        _ ->
           :ok
       end
     end)
 
-    Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
+    Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
       "body" => Serialization.block(block, :serialize)
     })
-  end
-
-  def broadcast_spend_tx(tx) do
-    if tx.data.from_acc != nil do
-      Endpoint.broadcast!(
-        "room:notifications",
-        "new_mined_tx:" <> Base.encode16(tx.data.from_acc),
-        %{"body" => Serialization.tx(tx, :serialize)}
-      )
-    end
-
-    if tx.data.to_acc != nil do
-      Endpoint.broadcast!(
-        "room:notifications",
-        "new_mined_tx:" <> Base.encode16(tx.data.to_acc),
-        %{"body" => Serialization.tx(tx, :serialize)}
-      )
-    end
-  end
-
-  def broadcast_oracle_tx(tx) do
-    case tx.data do
-      %OracleRegistrationTxData{} ->
-        Endpoint.broadcast!("room:notifications", "new_oracle_registration", %{
-          "oracle_address" =>
-            tx
-            |> SignedTx.hash_tx()
-            |> OracleRegistrationTxData.bech32_encode(),
-          "tx" => Serialization.tx(tx, :serialize)
-        })
-
-      %OracleQueryTxData{} ->
-        Endpoint.broadcast!("room:notifications", "new_oracle_query", %{
-          "body" => Serialization.tx(tx, :serialize)
-        })
-
-      %OracleResponseTxData{} ->
-        Endpoint.broadcast!("room:notifications", "new_oracle_response", %{
-          "body" => Serialization.tx(tx, :serialize)
-        })
-    end
   end
 end

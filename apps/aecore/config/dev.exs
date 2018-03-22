@@ -30,7 +30,7 @@ use Mix.Config
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db"
+    nil -> "apps/aecore/priv/rox_db/"
     env -> env
   end
 
@@ -98,8 +98,8 @@ config :aecore, :pow,
   }
 
 config :aecore, :peers,
-  peers_target_count: 3,
-  peers_max_count: 4
+  peers_target_count: 5,
+  peers_max_count: 8
 
 config :aecore, :miner, resumed_by_default: false
 

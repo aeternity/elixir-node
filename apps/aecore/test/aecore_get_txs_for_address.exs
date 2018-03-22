@@ -1,16 +1,27 @@
 defmodule GetTxsForAddressTest do
   use ExUnit.Case
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx, as: SpendTx
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.BlockValidation, as: BlockValidation
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization
 
+  setup do
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      :ok
+    end)
+
+    []
+  end
+
   @tag timeout: 20_000
-  test "get txs for given address test" do
+  test "get txs for given address test", setup do
     :ok = Miner.mine_sync_block_to_chain()
 
     {:ok, from_acc} = Keys.pubkey()
@@ -33,7 +44,7 @@ defmodule GetTxsForAddressTest do
   end
 
   @tag timeout: 20_000
-  test "get txs for given address with proof test" do
+  test "get txs for given address with proof test", setup do
     :ok = Miner.mine_sync_block_to_chain()
     {:ok, address} = Keys.pubkey()
     user_txs = Pool.get_txs_for_address(address)

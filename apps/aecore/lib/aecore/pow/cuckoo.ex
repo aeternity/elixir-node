@@ -152,9 +152,7 @@ defmodule Aecore.Pow.Cuckoo do
     case String.split(msg, "\nSolution ") do
       [_, solution] ->
         [solution, _more | _] = String.split(solution, "\n")
-
         solution = for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
-
         {:ok, {:generated, solution}}
 
       _ ->
