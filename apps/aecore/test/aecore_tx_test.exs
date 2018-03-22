@@ -85,7 +85,7 @@ defmodule AecoreTxTest do
     value = 500
     fee = 300
 
-    :ok = Worker.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
     assert Enum.count(Chain.chain_state().accounts) == 1
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
@@ -98,7 +98,7 @@ defmodule AecoreTxTest do
 
     :ok = Pool.add_transaction(signed_tx)
 
-    :ok = Worker.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
     # We should have only made two coinbase transactions
     assert Enum.count(Chain.chain_state().accounts) == 1
