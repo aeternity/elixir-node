@@ -41,7 +41,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, chainstate)
+          DataTx.process_chainstate!(data, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end

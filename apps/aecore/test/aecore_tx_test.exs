@@ -7,6 +7,7 @@ defmodule AecoreTxTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
@@ -15,6 +16,10 @@ defmodule AecoreTxTest do
   alias Aeutil.Serialization
 
   setup tx do
+    Persistence.start_link([])
+    Miner.start_link([])
+    Chain.clear_state()
+
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
@@ -72,5 +77,28 @@ defmodule AecoreTxTest do
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert !SignedTx.is_coinbase?(signed_tx)
+  end
+
+  test "invalid spend transaction", tx do
+    sender = Wallet.get_public_key()
+    amount = 500
+    fee = 300
+
+    Aecore.Miner.Worker.mine_sync_block_to_chain()
+
+    assert Enum.count(Chain.chain_state().accounts) == 1
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
+
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
+
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    Aecore.Miner.Worker.mine_sync_block_to_chain()
+
+    # We should have only made two coinbase transactions
+    assert Enum.count(Chain.chain_state().accounts) == 1
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
   end
 end
