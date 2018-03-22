@@ -17,11 +17,14 @@ defmodule Aeutil.Serialization do
   @type hash_types :: :chainstate | :header | :txs
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
-  def block(block, :serialize), do: serialize_value(block)
+  def block(block, :serialize) do
+    serialized_value = serialize_value(block)
+    Map.put(serialized_value["header"], "txs", serialized_value["txs"])
+  end
 
   def block(block, :deserialize) do
     built_header =
-      block["header"]
+      Map.delete(block, "txs")
       |> deserialize_value()
       |> Header.new()
 

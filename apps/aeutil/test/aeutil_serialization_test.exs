@@ -64,32 +64,30 @@ defmodule AeutilSerializationTest do
 
   def get_block_map() do
     %{
-      "header" => %{
-        "root_hash" => "bs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
-        "target" => 11,
-        "height" => 105,
-        "nonce" => 707,
-        "pow_evidence" => nil,
-        "prev_hash" => "bh$1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
-        "time" => 1_508_834_903_252,
-        "txs_hash" => "bx$cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
-        "version" => 1
-      },
       "txs" => [
         %{
           "data" => %{
-            "type" => "Elixir.Aecore.Structures.SpendTx",
+            "fee" => 40,
+            "from_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
+            "nonce" => 743_183_534_114,
             "payload" => %{
               "to_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
               "value" => 100
             },
-            "from_acc" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
-            "fee" => 40,
-            "nonce" => 743_183_534_114
+            "type" => "Elixir.Aecore.Structures.SpendTx"
           },
           "signature" => "AQID"
         }
-      ]
+      ],
+      "height" => 105,
+      "nonce" => 707,
+      "pow_evidence" => nil,
+      "prev_hash" => "bh$1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
+      "root_hash" => "bs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
+      "target" => 11,
+      "time" => 1_508_834_903_252,
+      "txs_hash" => "bx$cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
+      "version" => 1
     }
   end
 end
