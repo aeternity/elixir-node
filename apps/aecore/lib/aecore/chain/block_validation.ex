@@ -86,7 +86,7 @@ defmodule Aecore.Chain.BlockValidation do
     block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
 
     cond do
-      block.header.txs_hash != calculate_root_hash(block.txs) ->
+      block.header.txs_hash != calculate_txs_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
@@ -123,13 +123,13 @@ defmodule Aecore.Chain.BlockValidation do
     end)
   end
 
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs) when txs == [] do
+  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  def calculate_txs_hash(txs) when txs == [] do
     <<0::256>>
   end
 
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs) do
+  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()

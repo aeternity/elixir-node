@@ -381,7 +381,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
-    txs_hash = BlockValidation.calculate_root_hash(valid_txs)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
