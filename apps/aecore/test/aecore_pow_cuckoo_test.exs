@@ -95,7 +95,7 @@ defmodule AecoreCuckooTest do
       <<170, 58, 122, 219, 147, 41, 59, 140, 28, 127, 153, 68, 245, 18, 205, 22, 147, 124, 157,
         182, 123, 24, 41, 71, 132, 6, 162, 20, 227, 255, 25, 25>>
 
-    to_acc =
+    receiver =
       <<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93, 202, 223, 118, 74, 222,
         92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52, 96, 19, 203, 81, 87, 85, 42, 30, 111, 104,
         8, 98, 177, 233, 236, 157, 118, 30, 223, 11, 32, 118, 9, 122, 57, 7, 143, 127, 1, 103,
@@ -117,9 +117,9 @@ defmodule AecoreCuckooTest do
         %SignedTx{
           data: %DataTx{
             type: SpendTx,
-            payload: %{to_acc: to_acc, value: 100, lock_time_block: 11},
+            payload: %{receiver: receiver, amount: 100, lock_time_block: 11},
             fee: 0,
-            from_acc: nil,
+            sender: nil,
             nonce: 0
           },
           signature: nil
