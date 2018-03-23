@@ -1,24 +1,30 @@
-defmodule AevmStack do
+defmodule Stack do
   def new() do
     []
   end
 
-  def push(stack, arg) do
+  def push(state, arg) do
+    stack = State.stack(state)
+
     if length(stack) < 1024 do
-      [arg | stack]
+      State.set_stack(state, [arg | stack])
     else
       throw({"out_of_stack", stack})
     end
   end
 
-  def pop(stack) do
+  def pop(state) do
+    stack = State.stack(state)
+
     case stack do
-      [arg | stack] -> {arg, stack}
+      [arg | stack] -> {arg, State.set_stack(state, stack)}
       [] -> throw({"emtpy_stack", stack})
     end
   end
 
-  def peek(stack, index) when index >= 0 do
+  def peek(state, index) when index >= 0 do
+    stack = State.stack(state)
+
     if Enum.empty?(stack) do
       throw({"empty stack", stack})
     else
@@ -29,7 +35,9 @@ defmodule AevmStack do
     end
   end
 
-  def dup(stack, index) do
+  def dup(state, index) do
+    stack = State.stack(state)
+
     if Enum.empty?(stack) do
       throw({"empty stack", stack})
     else
@@ -44,7 +52,9 @@ defmodule AevmStack do
     end
   end
 
-  def swap(stack, index) do
+  def swap(state, index) do
+    stack = State.stack(state)
+
     if Enum.empty?(stack) do
       throw({"empty stack", stack})
     else
@@ -56,8 +66,12 @@ defmodule AevmStack do
 
         false ->
           index_elem = Enum.at(rest, index)
-          stack = [index_elem, set_val(index, top, rest)]
-          List.flatten(stack)
+
+          stack =
+            [index_elem, set_val(index, top, rest)]
+            |> List.flatten()
+
+          State.set_stack(state, stack)
       end
     end
   end
