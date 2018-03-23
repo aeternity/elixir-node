@@ -1,55 +1,22 @@
 defmodule Memory do
+  use Bitwise
 
   def write(address, value, size, memory) do
-    bit_list = to_sized_bit_list(value, size)
-    memory_size = Enum.count(memory)
+    memory_index = trunc(Float.floor(address / 32) * 32)
+    next = rem(address, 32) * 8
+    prev = 256 - next
 
-    memory1 =
-      if address > memory_size do
-        extend(memory, address - memory_size)
-        memory ++ bit_list
-      else
-        left = Enum.slice(memory, 0, address)
-        right = Enum.drop(memory, address + size)
-        left ++ bit_list ++ right
-      end
+    prev_saved_value = Map.get(memory, memory_index, 0)
+    next_saved_value = Map.get(memory, memory_index + 32, 0)
+
+    <<prev_bits::size(prev), next_bits::binary>> = <<value::256>>
+    <<prev_saved_bits::size(next), _::binary>> = <<prev_saved_value::256>>
+    <<_::size(next), next_saved_bits::binary>> = <<next_saved_value::256>>
+
+    <<prev_value::size(256)>> = <<prev_saved_bits::size(next)>> <> <<prev_bits::size(prev)>>
+    <<next_value::size(256)>> = next_bits <> next_saved_bits
+
+    memory1 = Map.put(memory, memory_index, prev_value)
+    Map.put(memory1, memory_index + 32, next_value)
   end
-
-  def extend(memory, size) do
-    fill = Enum.map(1..size, fn _ -> 0 end)
-    memory ++ fill
-  end
-
-  def to_sized_bit_list(number, size) do
-    bit_list = to_bit_list(number)
-    bit_list_count = Enum.count(bit_list)
-    cond do
-        bit_list_count < size ->
-          fill_count = size - bit_list_count
-          fill_with = Enum.map(1..fill_count, fn _ -> 0 end)
-          fill_with ++ bit_list
-
-        bit_list_count > size ->
-          remove_count = bit_list_count - size
-          Enum.drop(bit_list, remove_count)
-
-        true ->
-          bit_list
-      end
-  end
-
-  def to_bit_list(number) do
-    number
-    |> Integer.to_string(2)
-    |> String.split("")
-    |> List.delete_at(0)
-    |> List.delete_at(-1)
-    |> Enum.reduce([], fn(x, acc) ->
-          {x_int, _} = Integer.parse(x)
-
-          [x_int | acc]
-       end)
-    |> Enum.reverse()
-  end
-
 end
