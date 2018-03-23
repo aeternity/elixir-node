@@ -38,7 +38,6 @@ defmodule Aehttpclient.Client do
 
   @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    IO.inspect({from_block_hash, to_block_hash})
     from_block_hash = Header.base58c_encode(from_block_hash)
     to_block_hash = Header.base58c_encode(to_block_hash)
 
@@ -61,7 +60,6 @@ defmodule Aehttpclient.Client do
   @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
-    IO.inspect(data)
     post_to_peers("new_tx", data, peers)
   end
 
@@ -190,6 +188,6 @@ defmodule Aehttpclient.Client do
 
   # TODO: what is this function even doing?
   defp get_local_port() do
-    Aehttpserver.Web.Endpoint.url |> String.split(":") |> Enum.at(-1)
+    Aehttpserver.Web.Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

@@ -21,7 +21,7 @@ defmodule Aeutil.Serialization do
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
     serialized_header = serialize_value(block.header)
-    serialized_transactions = Enum.map(block.txs, fn(tx) -> tx(tx, :serialize) end)
+    serialized_transactions = Enum.map(block.txs, fn tx -> tx(tx, :serialize) end)
     %{"header" => serialized_header, "transactions" => serialized_transactions}
   end
 
