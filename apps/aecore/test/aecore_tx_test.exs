@@ -31,6 +31,7 @@ defmodule AecoreTxTest do
 
   setup tx do
     sender_acc = Wallet.get_public_key()
+
     [
       nonce: Map.get(Chain.chain_state(), sender_acc, %{nonce: 0}).nonce + 1,
       receiver: Wallet.get_public_key("M/0")
