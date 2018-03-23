@@ -67,36 +67,30 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate(%DataTx{} = tx, chainstate) do
-    try do
-      accounts_state = chainstate.accounts
-      tx_type_state = Map.get(chainstate, tx.type, %{})
+  @spec process_chainstate!(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
+  def process_chainstate!(%DataTx{} = tx, chainstate) do
+    accounts_state = chainstate.accounts
+    tx_type_state = Map.get(chainstate, tx.type, %{})
 
-      {new_accounts_state, new_tx_type_state} =
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.sender,
-          tx.fee,
-          tx.nonce,
-          accounts_state,
-          tx_type_state
-        )
+    {new_accounts_state, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.sender,
+        tx.fee,
+        tx.nonce,
+        accounts_state,
+        tx_type_state
+      )
 
-      new_chainstate =
-        if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type, new_tx_type_state)
-        else
-          chainstate
-        end
-
-      Map.put(new_chainstate, :accounts, new_accounts_state)
-    catch
-      {:error, reason} ->
-        Logger.error(reason)
+    new_chainstate =
+      if Map.has_key?(chainstate, tx.type) do
+        Map.put(chainstate, tx.type, new_tx_type_state)
+      else
         chainstate
-    end
+      end
+
+    Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
   @spec serialize(DataTx.t()) :: map()
