@@ -24,6 +24,11 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the chainstate"
   @type chainstate() :: %{:accounts => accounts(), :naming => naming()}
 
+  @spec empty() :: %{:accounts => accounts(), :naming => naming()}
+  def empty() do
+    %{:accounts => %{}, :naming => %{}}
+  end
+
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs

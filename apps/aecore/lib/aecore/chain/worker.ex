@@ -505,5 +505,5 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state, do: %{accounts: %{}}
+  defp build_chain_state, do: ChainState.empty()
 end
