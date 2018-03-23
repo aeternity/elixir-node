@@ -13,6 +13,7 @@ defmodule AecoreOracleTest do
     interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
 
     assert nil != interaction_object.response
+    Chain.clear_state()
   end
 
   def register_oracle() do
@@ -33,8 +34,9 @@ defmodule AecoreOracleTest do
     Oracle.register(
       query_format,
       response_format,
-      "Gives the rates for a currency with EUR as base",
-      10
+      5,
+      5,
+      get_ttl()
     )
 
     Miner.mine_sync_block_to_chain()
@@ -42,8 +44,9 @@ defmodule AecoreOracleTest do
   end
 
   def query_oracle() do
+    ttl = get_ttl()
     oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
-    Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10)
+    Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
     Miner.mine_sync_block_to_chain()
   end
 
@@ -51,5 +54,9 @@ defmodule AecoreOracleTest do
     query_id = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
     Oracle.respond(query_id, %{"value" => 1}, 5)
     Miner.mine_sync_block_to_chain()
+  end
+
+  def get_ttl do
+    %{ttl: 5, type: :relative}
   end
 end

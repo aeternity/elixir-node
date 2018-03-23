@@ -36,16 +36,13 @@ defmodule AecoreValidationTest do
     Miner.mine_sync_block_to_chain()
 
     [
-      to_acc: Wallet.get_public_key("M/0"),
-      lock_time_block:
-        Chain.top_block().header.height +
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1
+      to_acc: Wallet.get_public_key("M/0")
     ]
   end
 
   @tag :validation
   test "validate block header height", ctx do
-    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
+    new_block = get_new_block(ctx.to_acc)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -73,9 +70,9 @@ defmodule AecoreValidationTest do
 
   @tag :validation
   @timeout 10_000_000
-  test "validate block header timestamp", ctx do
+  test "validate block header time", ctx do
     Miner.mine_sync_block_to_chain()
-    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
+    new_block = get_new_block(ctx.to_acc)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -88,12 +85,12 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_timestamp_block = %Block{new_block | header: %Header{new_block.header | timestamp: 10}}
+    wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
 
-    assert {:error, "Invalid header timestamp"} ==
+    assert {:error, "Invalid header time"} ==
              catch_throw(
                BlockValidation.calculate_and_validate_block!(
-                 wrong_timestamp_block,
+                 wrong_time_block,
                  prev_block,
                  get_chain_state(),
                  blocks_for_difficulty_calculation
@@ -108,10 +105,10 @@ defmodule AecoreValidationTest do
     fee = 1
     nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
 
-    payload1 = %{to_acc: ctx.to_acc, value: value, lock_time_block: ctx.lock_time_block}
+    payload1 = %{to_acc: ctx.to_acc, value: value}
     tx1 = DataTx.init(SpendTx, payload1, from_acc, fee, nonce + 1)
 
-    payload2 = %{to_acc: ctx.to_acc, value: value + 5, lock_time_block: ctx.lock_time_block}
+    payload2 = %{to_acc: ctx.to_acc, value: value + 5}
     tx2 = DataTx.init(SpendTx, payload2, from_acc, fee, nonce + 2)
 
     priv_key = Wallet.get_private_key()
@@ -125,15 +122,13 @@ defmodule AecoreValidationTest do
            |> Enum.all?() == true
   end
 
-  def get_new_block(to_acc, lock_time_block) do
+  def get_new_block(to_acc) do
     from_acc = Wallet.get_public_key()
     value = 100
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
     fee = 10
 
-    payload = %{to_acc: to_acc, value: value, lock_time_block: lock_time_block}
+    payload = %{to_acc: to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, 13_213_223)
-
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 

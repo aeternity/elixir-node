@@ -18,7 +18,6 @@ defmodule Aecore.Persistence.Worker do
   @doc """
   Every key that it takes is a task type and
   every value is the data that we want to persist
-
   The purpose of this function is to write many tasks to disk once
   """
   @spec batch_write(map()) :: atom()
@@ -59,7 +58,7 @@ defmodule Aecore.Persistence.Worker do
   then we will retrieve all blocks. The 'num' must be integer and greater
   than one
   """
-  @spec get_blocks(integer()) :: {:ok, map()} | :not_found | {:error, reason :: term()}
+  @spec get_blocks(non_neg_integer()) :: {:ok, map()} | :not_found | {:error, reason :: term()}
   def get_blocks(num) do
     GenServer.call(__MODULE__, {:get_blocks, num})
   end
@@ -75,7 +74,7 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_latest_block_height_and_hash)
   end
 
-  @spec update_latest_block_height_and_hash(binary(), integer()) ::
+  @spec update_latest_block_height_and_hash(binary(), non_neg_integer()) ::
           {:ok, map()} | :not_found | {:error, reason :: term()}
   def update_latest_block_height_and_hash(hash, height) do
     GenServer.call(

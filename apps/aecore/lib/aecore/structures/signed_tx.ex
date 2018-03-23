@@ -58,8 +58,12 @@ defmodule Aecore.Structures.SignedTx do
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
-  def sign_tx(_tx, _priv_key) do
-    {:error, "Wrong Transaction data structure"}
+  def sign_tx(%DataTx{} = _tx, priv_key) do
+    {:error, "Wrong key size: #{priv_key}"}
+  end
+
+  def sign_tx(tx, _priv_key) do
+    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -67,18 +71,32 @@ defmodule Aecore.Structures.SignedTx do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
-  @spec reward(DataTx.t(), integer(), Account.t()) :: Account.t()
+  @spec reward(DataTx.t(), non_neg_integer(), Account.t()) :: Account.t()
   def reward(%DataTx{type: type, payload: payload}, block_height, account_state) do
     type.reward(payload, block_height, account_state)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("tx", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("tx", bin)
   end
 
-  @spec bech32_encode_root(binary()) :: String.t()
-  def bech32_encode_root(bin) do
-    Bits.bech32_encode("tr", bin)
+  def base58c_decode(<<"tx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
+  end
+
+  def base58c_encode_root(bin) do
+    Bits.encode58c("bx", bin)
+  end
+
+  def base58c_decode_root(<<"bx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_root(_) do
+    {:error, "Wrong data"}
   end
 end

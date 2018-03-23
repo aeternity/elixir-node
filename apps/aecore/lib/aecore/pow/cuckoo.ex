@@ -18,8 +18,8 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{difficulty_target: difficulty, pow_evidence: soln} = header) do
-    if test_target(soln, difficulty) do
+  def verify(%Header{target: target, pow_evidence: soln} = header) do
+    if test_target(soln, target) do
       process(:verify, header)
     else
       false
@@ -170,7 +170,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{header: header, response: {:generated, soln}} = builder) do
-    if test_target(soln, header.difficulty_target) do
+    if test_target(soln, header.target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
     else
       {:error, %{builder | error: :no_solution}}
@@ -180,7 +180,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
   ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
   ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  @spec test_target(list(), integer()) :: boolean()
+  @spec test_target(list(), non_neg_integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
@@ -191,7 +191,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
-  @spec get_node_size() :: integer()
+  @spec get_node_size() :: non_neg_integer()
   defp get_node_size() do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8

@@ -7,6 +7,8 @@ defmodule AecoreTxTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
@@ -15,19 +17,22 @@ defmodule AecoreTxTest do
   alias Aeutil.Serialization
 
   setup tx do
+    Persistence.start_link([])
+    Miner.start_link([])
+    Chain.clear_state()
+    Pool.get_and_empty_pool()
+
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
 
-    to_account = Wallet.get_public_key("M/0")
+    from_acc = Wallet.get_public_key()
 
     [
-      nonce: Map.get(Chain.chain_state(), to_account, %{nonce: 0}).nonce + 1,
-      lock_time_block:
-        Chain.top_block().header.height +
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1,
+      nonce: Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce + 1,
       to_acc: Wallet.get_public_key("M/0")
     ]
   end
@@ -37,7 +42,7 @@ defmodule AecoreTxTest do
     value = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -54,7 +59,7 @@ defmodule AecoreTxTest do
     value = -5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -68,12 +73,48 @@ defmodule AecoreTxTest do
     value = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value, lock_time_block: tx.lock_time_block}
+    payload = %{to_acc: tx.to_acc, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert !SignedTx.is_coinbase?(signed_tx)
+  end
+
+  test "invalid spend transaction", tx do
+    from_acc = Wallet.get_public_key()
+    value = 200
+    fee = 50
+
+    :ok = Miner.mine_sync_block_to_chain()
+
+    assert Enum.count(Chain.chain_state().accounts) == 1
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
+
+    payload = %{to_acc: tx.to_acc, value: value}
+    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+
+    :ok = Miner.mine_sync_block_to_chain()
+
+    # We should have only made two coinbase transactions
+    assert Enum.count(Chain.chain_state().accounts) == 1
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
+
+    :ok = Miner.mine_sync_block_to_chain()
+    # At this poing the from_acc should have 300 tokens,
+    # enough to mine the transaction in the pool
+
+    # This block should add the transaction
+    :ok = Miner.mine_sync_block_to_chain()
+
+    assert Enum.count(Chain.chain_state().accounts) == 2
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
+    assert Chain.chain_state().accounts[tx.to_acc].balance == 200
   end
 end

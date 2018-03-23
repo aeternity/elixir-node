@@ -81,7 +81,7 @@ defmodule Aecore.Txs.Pool.Worker do
             Notify.broadcast_new_transaction_in_the_pool(tx)
           end
 
-          # Peers.broadcast_tx(tx)
+          Peers.broadcast_tx(tx)
         end
 
         {:reply, :ok, updated_pool}
@@ -125,25 +125,32 @@ defmodule Aecore.Txs.Pool.Worker do
     end
   end
 
-  @spec get_tx_size_bytes(SignedTx.t()) :: integer()
+  @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
   def get_tx_size_bytes(tx) do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, integer()) :: boolean()
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer()) ::
+          boolean()
   def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data.payload do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx, identifier)
 
       %OracleRegistrationTxData{} ->
-        OracleRegistrationTxData.is_minimum_fee_met?(tx, block_height)
+        OracleRegistrationTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
 
       %OracleQueryTxData{} ->
-        OracleQueryTxData.is_minimum_fee_met?(tx, block_height)
+        OracleQueryTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
 
       %OracleResponseTxData{} ->
-        OracleResponseTxData.is_minimum_fee_met?(tx)
+        case identifier do
+          :pool ->
+            true
+
+          :miner ->
+            OracleResponseTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+        end
 
       %OracleExtendTxData{} ->
         tx.data.fee >= OracleExtendTxData.calculate_minimum_fee(tx.data.payload.ttl)

@@ -2,39 +2,12 @@ defmodule Aehttpserver.Web.Notify do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.OracleQueryTxData
   alias Aeutil.Serialization
-  alias Aewallet.Encoding
+  alias Aecore.Structures.Account
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if tx.data.from_acc != nil do
-      Aehttpserver.Web.Endpoint.broadcast!(
-        "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
-        %{"body" => Serialization.tx(tx, :serialize)}
-      )
-    end
+    broadcast_tx(tx, true)
 
-    case tx.data.payload do
-      %SpendTx{} ->
-        if tx.data.payload.to_acc != nil do
-          Aehttpserver.Web.Endpoint.broadcast!(
-            "room:notifications",
-            "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
-            %{"body" => Serialization.tx(tx, :serialize)}
-          )
-        end
-
-      %OracleQueryTxData{} ->
-        if tx.data.payload.to_acc != nil do
-          Aehttpserver.Web.Endpoint.broadcast!(
-            "room:notifications",
-            "new_tx:" <> Encoding.encode(tx.data.payload.oracle_address, :ae),
-            %{"body" => Serialization.tx(tx, :serialize)}
-          )
-        end
-
-      _ ->
-        :ok
-    end
+    broadcast_tx(tx, false)
 
     Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
       "body" => Serialization.tx(tx, :serialize)
@@ -47,40 +20,42 @@ defmodule Aehttpserver.Web.Notify do
         "body" => Serialization.tx(tx, :serialize)
       })
 
-      if tx.data.from_acc != nil do
-        Aehttpserver.Web.Endpoint.broadcast!(
-          "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
-          %{"body" => Serialization.tx(tx, :serialize)}
-        )
-      end
-
-      case tx.data.payload do
-        %SpendTx{} ->
-          if tx.data.payload.to_acc != nil do
-            Aehttpserver.Web.Endpoint.broadcast!(
-              "room:notifications",
-              "new_tx:" <> Encoding.encode(tx.data.payload.to_acc, :ae),
-              %{"body" => Serialization.tx(tx, :serialize)}
-            )
-          end
-
-        %OracleQueryTxData{} ->
-          if tx.data.payload.to_acc != nil do
-            Aehttpserver.Web.Endpoint.broadcast!(
-              "room:notifications",
-              "new_tx:" <> Encoding.encode(tx.data.payload.oracle_address, :ae),
-              %{"body" => Serialization.tx(tx, :serialize)}
-            )
-          end
-
-        _ ->
-          :ok
-      end
+      broadcast_tx(tx, true)
     end)
 
     Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
       "body" => Serialization.block(block, :serialize)
     })
+  end
+
+  def broadcast_tx(tx, is_to_from_acc) do
+    if is_to_from_acc do
+      if tx.data.from_acc != nil do
+        Aehttpserver.Web.Endpoint.broadcast!(
+          "room:notifications",
+          "new_tx:" <> Account.base58c_encode(tx.data.from_acc),
+          %{"body" => Serialization.tx(tx, :serialize)}
+        )
+      end
+    else
+      case tx.data.payload do
+        %SpendTx{} ->
+          Aehttpserver.Web.Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.to_acc),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+
+        %OracleQueryTxData{} ->
+          Aehttpserver.Web.Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+
+        _ ->
+          :ok
+      end
+    end
   end
 end

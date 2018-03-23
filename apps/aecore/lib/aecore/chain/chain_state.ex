@@ -41,34 +41,17 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the chainstate"
   @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
+  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+          chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    updated_chain_state =
-      txs
-      |> Enum.reduce(chainstate, fn tx, chainstate ->
-        apply_transaction_on_state!(tx, chainstate, block_height)
-      end)
-      |> update_chain_state_locked(block_height)
-
-    updated_chain_state
-    |> put_in(
-      [:oracles, :registered_oracles],
-      Oracle.remove_expired_oracles(
-        updated_chain_state.oracles.registered_oracles,
-        block_height
-      )
-    )
-    |> put_in(
-      [:oracles, :interaction_objects],
-      Oracle.remove_expired_interaction_objects(
-        updated_chain_state.oracles.interaction_objects,
-        block_height,
-        updated_chain_state.accounts
-      )
-    )
+    Enum.reduce(txs, chainstate, fn tx, chainstate ->
+      apply_transaction_on_state!(tx, chainstate, block_height)
+    end)
+    |> Oracle.remove_expired_oracles(block_height)
+    |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), non_neg_integer()) :: chainstate()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
@@ -79,7 +62,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.from_acc != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, block_height, chainstate)
+          DataTx.process_chainstate!(data, chainstate, block_height)
         else
           throw({:error, "Invalid transaction"})
         end
@@ -90,8 +73,8 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_root_hash(chainstate()) :: binary()
+  def calculate_root_hash(chainstate) do
     merkle_tree_data =
       for {account, data} <- chainstate.accounts do
         {account, Serialization.pack_binary(data)}
@@ -124,7 +107,7 @@ defmodule Aecore.Chain.ChainState do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
+  @spec validate_tx(SignedTx.t(), chainstate(), non_neg_integer()) :: {boolean(), chainstate()}
   defp validate_tx(tx, chainstate, block_height) do
     try do
       {true, apply_transaction_on_state!(tx, chainstate, block_height)}
@@ -133,20 +116,10 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  @spec calculate_total_tokens(chainstate()) :: {integer(), integer(), integer()}
+  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
   def calculate_total_tokens(%{accounts: accounts}) do
-    Enum.reduce(accounts, {0, 0, 0}, fn {_account, state}, acc ->
-      {total_tokens, total_unlocked_tokens, total_locked_tokens} = acc
-
-      locked_tokens =
-        Enum.reduce(state.locked, 0, fn %{amount: amount}, locked_sum ->
-          locked_sum + amount
-        end)
-
-      new_total_tokens = total_tokens + state.balance + locked_tokens
-      new_total_unlocked_tokens = total_unlocked_tokens + state.balance
-      new_total_locked_tokens = total_locked_tokens + locked_tokens
-      {new_total_tokens, new_total_unlocked_tokens, new_total_locked_tokens}
+    Enum.reduce(accounts, 0, fn {_account, state}, acc ->
+      acc + state.balance
     end)
   end
 
@@ -160,8 +133,15 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("bs", bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

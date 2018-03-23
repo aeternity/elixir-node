@@ -10,8 +10,8 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Bits
 
   require Logger
 
@@ -19,7 +19,7 @@ defmodule Aecore.Peers.Worker do
   @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
   @probability_of_peer_remove_when_max 0.5
 
-  @type peers :: %{integer() => %{latest_block: String.t(), uri: String.t()}}
+  @type peers :: %{non_neg_integer() => %{latest_block: String.t(), uri: String.t()}}
 
   def start_link(_args) do
     GenServer.start_link(
@@ -68,7 +68,7 @@ defmodule Aecore.Peers.Worker do
     BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
-  @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}
+  @spec schedule_add_peer(String.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def schedule_add_peer(uri, nonce) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end
@@ -76,7 +76,7 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Gets a random peer nonce
   """
-  @spec get_peer_nonce() :: integer()
+  @spec get_peer_nonce() :: non_neg_integer()
   def get_peer_nonce() do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
@@ -97,7 +97,7 @@ defmodule Aecore.Peers.Worker do
   @spec broadcast_block(Block.t()) :: :ok
   def broadcast_block(block) do
     spawn(fn ->
-      # Client.send_block(block, all_uris())
+      Client.send_block(block, all_uris())
       :ok
     end)
 
@@ -174,7 +174,7 @@ defmodule Aecore.Peers.Worker do
         fn _, %{uri: uri} ->
           case Client.get_info(uri) do
             {:ok, info} ->
-              binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+              binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
               binary_genesis_hash == genesis_block_header_hash()
 
             _ ->
@@ -298,7 +298,7 @@ defmodule Aecore.Peers.Worker do
   defp check_peer(uri, own_nonce) do
     case Client.get_info(uri) do
       {:ok, info} ->
-        binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+        binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
 
         cond do
           own_nonce == info.peer_nonce ->

@@ -8,12 +8,10 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aeutil.Serialization
 
-  @timestamp_validation_blocks_count 10
-  @timestamp_validation_future_limit_ms 3_600_000
+  @time_validation_blocks_count 10
+  @time_validation_future_limit_ms 3_600_000
 
   @spec calculate_and_validate_block!(
           Block.t(),
@@ -25,7 +23,7 @@ defmodule Aecore.Chain.BlockValidation do
         new_block,
         previous_block,
         old_chain_state,
-        blocks_for_difficulty_calculation
+        blocks_for_target_calculation
       ) do
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
@@ -38,7 +36,7 @@ defmodule Aecore.Chain.BlockValidation do
         new_block.header.height
       )
 
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    root_hash = ChainState.calculate_root_hash(new_chain_state)
 
     server = self()
     work = fn -> Cuckoo.verify(new_block.header) end
@@ -47,12 +45,12 @@ defmodule Aecore.Chain.BlockValidation do
       send(server, {:worker_reply, self(), work.()})
     end)
 
-    is_difficulty_target_met =
+    is_target_met =
       receive do
         {:worker_reply, _from, verified?} -> verified?
       end
 
-    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+    target = Difficulty.calculate_next_target(blocks_for_target_calculation)
 
     cond do
       # do not check previous block hash for genesis block, there is none
@@ -63,17 +61,17 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
-      !valid_header_timestamp?(new_block) ->
-        throw({:error, "Invalid header timestamp"})
+      !valid_header_time?(new_block) ->
+        throw({:error, "Invalid header time"})
 
-      !is_difficulty_target_met ->
-        throw({:error, "Header hash doesnt meet the difficulty target"})
+      !is_target_met ->
+        throw({:error, "Header hash doesnt meet the target"})
 
-      new_block.header.chain_state_hash != chain_state_hash ->
-        throw({:error, "Chain state hash not matching"})
+      new_block.header.root_hash != root_hash ->
+        throw({:error, "Root hash not matching"})
 
-      difficulty != new_block.header.difficulty_target ->
-        throw({:error, "Invalid block difficulty"})
+      target != new_block.header.target ->
+        throw({:error, "Invalid block target"})
 
       true ->
         new_chain_state
@@ -87,7 +85,7 @@ defmodule Aecore.Chain.BlockValidation do
     block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
 
     cond do
-      block.header.txs_hash != calculate_root_hash(block.txs) ->
+      block.header.txs_hash != calculate_txs_hash(block.txs) ->
         throw({:error, "Root hash of transactions does not match the one in header"})
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
@@ -124,13 +122,13 @@ defmodule Aecore.Chain.BlockValidation do
     end)
   end
 
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs) when txs == [] do
+  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  def calculate_txs_hash(txs) when txs == [] do
     <<0::256>>
   end
 
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs) do
+  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
@@ -154,7 +152,7 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec sum_coinbase_transactions(Block.t()) :: integer()
+  @spec sum_coinbase_transactions(Block.t()) :: non_neg_integer()
   defp sum_coinbase_transactions(block) do
     txs_list_without_oracle_txs =
       Enum.filter(block.txs, fn tx ->
@@ -183,18 +181,18 @@ defmodule Aecore.Chain.BlockValidation do
     previous_block.header.height + 1 == new_block.header.height
   end
 
-  @spec valid_header_timestamp?(Block.t()) :: boolean()
-  defp valid_header_timestamp?(%Block{header: new_block_header}) do
-    case new_block_header.timestamp <=
-           System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
+  @spec valid_header_time?(Block.t()) :: boolean()
+  defp valid_header_time?(%Block{header: new_block_header}) do
+    case new_block_header.time <=
+           System.system_time(:milliseconds) + @time_validation_future_limit_ms do
       true ->
-        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
+        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @time_validation_blocks_count)
 
-        last_blocks_timestamps = for block <- last_blocks, do: block.header.timestamp
+        last_blocks_times = for block <- last_blocks, do: block.header.time
 
-        avg = Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)
+        avg = Enum.sum(last_blocks_times) / Enum.count(last_blocks_times)
 
-        new_block_header.timestamp >= avg
+        new_block_header.time >= avg
 
       false ->
         false

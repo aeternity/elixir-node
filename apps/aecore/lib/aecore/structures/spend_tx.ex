@@ -8,14 +8,15 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
+  alias Aecore.Structures.Account
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
           to_acc: Wallet.pubkey(),
-          value: non_neg_integer(),
-          lock_time_block: non_neg_integer()
+          value: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -28,8 +29,7 @@ defmodule Aecore.Structures.SpendTx do
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
           to_acc: Wallet.pubkey(),
-          value: non_neg_integer(),
-          lock_time_block: non_neg_integer()
+          value: non_neg_integer()
         }
 
   @doc """
@@ -38,9 +38,8 @@ defmodule Aecore.Structures.SpendTx do
   ## Parameters
   - to_acc: To account is the public address of the account receiving the transaction
   - value: The amount of tokens send through the transaction
-  - lock_time_block: In which block the tokens will become available
   """
-  defstruct [:to_acc, :value, :lock_time_block]
+  defstruct [:to_acc, :value]
   use ExConstructor
 
   @spec get_chain_state_name() :: Account.chain_state_name()
@@ -49,8 +48,8 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{to_acc: to_acc, value: value, lock_time_block: lock}) do
-    %SpendTx{to_acc: to_acc, value: value, lock_time_block: lock}
+  def init(%{to_acc: to_acc, value: value} = _payload) do
+    %SpendTx{to_acc: to_acc, value: value}
   end
 
   @doc """
@@ -69,9 +68,9 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, block_height, account_state) do
-    Account.transaction_in(account_state, block_height, tx.value, tx.lock_time_block)
+  @spec reward(SpendTx.t(), non_neg_integer(), ChainState.account()) :: ChainState.accounts()
+  def reward(%SpendTx{} = tx, _block_height, account_state) do
+    Account.transaction_in(account_state, tx.value)
   end
 
   @doc """
@@ -87,28 +86,19 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, block_height, accounts, %{}) do
-    case preprocess_check(
-           tx,
-           from_acc,
-           Map.get(accounts, from_acc, Account.empty()),
-           fee,
-           nonce,
-           block_height,
-           %{}
-         ) do
+    from_account_state = Map.get(accounts, from_acc, Account.empty())
+
+    case preprocess_check(tx, from_acc, from_account_state, fee, nonce, block_height, %{}) do
       :ok ->
         new_from_account_state =
-          Map.get(accounts, from_acc, Account.empty())
+          from_account_state
           |> deduct_fee(fee)
-          |> Account.transaction_out(block_height, tx.value * -1, nonce, -1)
+          |> Account.transaction_out(tx.value * -1, nonce)
 
         new_accounts = Map.put(accounts, from_acc, new_from_account_state)
 
         to_acc = Map.get(accounts, tx.to_acc, Account.empty())
-
-        new_to_account_state =
-          Account.transaction_in(to_acc, block_height, tx.value, tx.lock_time_block)
-
+        new_to_account_state = Account.transaction_in(to_acc, tx.value)
         {Map.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
 
       {:error, _reason} = err ->
@@ -129,16 +119,13 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _from_acc, account_state, fee, nonce, block_height, %{}) do
+  def preprocess_check(tx, _from_acc, account_state, fee, nonce, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.value) < 0 ->
         {:error, "Negative balance"}
 
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
-
-      block_height <= tx.lock_time_block && tx.value < 0 ->
-        {:error, "Can't lock a negative transaction"}
 
       true ->
         :ok

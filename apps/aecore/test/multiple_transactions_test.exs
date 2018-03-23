@@ -159,18 +159,11 @@ defmodule MultipleTransactionsTest do
              miner_balance_before_mining + Miner.coinbase_transaction_value() + 20
   end
 
-  defp create_signed_tx(
-         from_acc,
-         to_acc,
-         value,
-         nonce,
-         fee,
-         lock_time_block \\ 0
-       ) do
+  defp create_signed_tx(from_acc, to_acc, value, nonce, fee) do
     {from_acc_pub_key, from_acc_priv_key} = from_acc
     {to_acc_pub_key, _to_acc_priv_key} = to_acc
 
-    payload = %{to_acc: to_acc_pub_key, value: value, lock_time_block: lock_time_block}
+    payload = %{to_acc: to_acc_pub_key, value: value}
     tx_data = DataTx.init(SpendTx, payload, from_acc_pub_key, fee, nonce)
 
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, from_acc_priv_key)

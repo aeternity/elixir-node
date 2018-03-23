@@ -7,7 +7,6 @@ defmodule Aecore.Wallet.Worker do
 
   alias Aewallet.Wallet
   alias Aewallet.KeyPair
-  alias Aewallet.Encoding
 
   @typedoc "Public key representing an account"
   @type pubkey() :: binary()
@@ -90,38 +89,6 @@ defmodule Aecore.Wallet.Worker do
   @spec get_private_key(String.t(), String.t(), opts()) :: binary()
   def get_private_key(derivation_path, password, network) do
     GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
-  end
-
-  @doc """
-  Encodes compressed public key to a human readable format.
-  Using the Bech32 formatting based on BIP-0173
-
-  ## Examples
-      iex> Aecore.Wallet.Worker.encode(pub_key, :ae)
-      "ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u"
-
-      iex> Aecode.Wallet.Worker.decode(pub_key, :btc)
-      "btc1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc963alrmy"
-  """
-  @spec encode(binary(), wallet_type()) :: String.t()
-  def encode(pub_key, :ae) do
-    Encoding.encode(pub_key, :ae)
-  end
-
-  def encode(pub_key, :btc) do
-    Encoding.encode(pub_key, :btc)
-  end
-
-  @doc """
-  Decodes an encoded/formatted public key to its compressed version
-
-  ## Examples
-      iex> Aewallet.Encoding.decode("ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u")
-      {:ok, compressed_pubkey}
-  """
-  @spec decode(String.t()) :: binary()
-  def decode(formatted_key) do
-    {:ok, _pub_key} = Encoding.decode(formatted_key)
   end
 
   ## Server Callbacks

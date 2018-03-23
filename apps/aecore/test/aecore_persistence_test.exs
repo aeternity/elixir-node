@@ -51,8 +51,7 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
     ## For specific account
-    assert {:ok, %{balance: _, locked: _}} =
-             Persistence.get_account_chain_state(persistance_state.account1)
+    assert {:ok, %{balance: _}} = Persistence.get_account_chain_state(persistance_state.account1)
 
     ## For all accounts
     all_accounts = Persistence.get_all_accounts_chain_states()

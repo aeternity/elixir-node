@@ -17,7 +17,7 @@ defmodule Aecore.Oracle.Oracle do
   Registers an oracle with the given requirements for queries and responses,
   a fee that should be paid by queries and a TTL.
   """
-  @spec register(map(), map(), integer(), integer(), ttl()) :: :ok | :error
+  @spec register(map(), map(), non_neg_integer(), non_neg_integer(), ttl()) :: :ok | :error
   def register(query_format, response_format, query_fee, fee, ttl) do
     payload = %{
       query_format: query_format,
@@ -43,47 +43,70 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(binary(), any(), integer(), ttl(), ttl()) :: :ok | :error
-  def query(oracle_address, query_data, fee, query_ttl, response_ttl) do
-    case OracleQueryTxData.create(
-           oracle_address,
-           query_data,
-           fee,
-           query_ttl,
-           response_ttl
-         ) do
-      :error ->
-        :error
+  @spec query(binary(), any(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) :: :ok | :error
+  def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
+    payload = %{
+      oracle_address: oracle_address,
+      query_data: query_data,
+      query_fee: query_fee,
+      query_ttl: query_ttl,
+      response_ttl: response_ttl
+    }
 
-      tx_data ->
-        Pool.add_transaction(sign_tx(tx_data))
-    end
+    tx_data =
+      DataTx.init(
+        OracleQueryTxData,
+        payload,
+        Wallet.get_public_key(),
+        fee,
+        Chain.lowest_valid_nonce()
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    Pool.add_transaction(tx)
   end
 
   @doc """
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
-  @spec respond(binary(), any(), integer()) :: :ok | :error
+  @spec respond(binary(), any(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee) do
-    case OracleResponseTxData.create(query_id, response, fee) do
-      :error ->
-        :error
+    payload = %{
+      query_id: query_id,
+      response: response
+    }
 
-      tx_data ->
-        Pool.add_transaction(sign_tx(tx_data))
-    end
+    tx_data =
+      DataTx.init(
+        OracleResponseTxData,
+        payload,
+        Wallet.get_public_key(),
+        fee,
+        Chain.lowest_valid_nonce()
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    Pool.add_transaction(tx)
   end
 
-  @spec extend(binary(), integer(), integer()) :: :ok | :error
-  def extend(oracle_address, ttl, fee) do
-    case OracleExtendTxData.create(oracle_address, ttl, fee) do
-      :error ->
-        :error
+  @spec extend(non_neg_integer(), non_neg_integer()) :: :ok | :error
+  def extend(ttl, fee) do
+    payload = %{
+      ttl: ttl
+    }
 
-      tx_data ->
-        Pool.add_transaction(sign_tx(tx_data))
-    end
+    tx_data =
+      DataTx.init(
+        OracleExtendTxData,
+        payload,
+        Wallet.get_public_key(),
+        fee,
+        Chain.lowest_valid_nonce()
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    Pool.add_transaction(tx)
   end
 
   @spec data_valid?(map(), map()) :: true | false
@@ -100,7 +123,7 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  @spec calculate_absolute_ttl(ttl(), integer()) :: integer()
+  @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
   def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
     case type do
       :absolute ->
@@ -111,12 +134,13 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  @spec calculate_relative_ttl(%{ttl: integer(), type: :absolute}, integer()) :: integer()
+  @spec calculate_relative_ttl(%{ttl: non_neg_integer(), type: :absolute}, non_neg_integer()) ::
+          non_neg_integer()
   def calculate_relative_ttl(%{ttl: ttl, type: :absolute}, block_height) do
     ttl - block_height
   end
 
-  @spec tx_ttl_is_valid?(SignedTx.t(), integer()) :: boolean
+  @spec tx_ttl_is_valid?(SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
       %OracleRegistrationTxData{} ->
@@ -160,11 +184,18 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def remove_expired_oracles(oracles, block_height) do
-    Enum.reduce(oracles, oracles, fn {address, %{tx: tx, height_included: height_included}},
-                                     acc ->
-      if calculate_absolute_ttl(tx.ttl, height_included) == block_height do
-        Map.delete(acc, address)
+  def remove_expired_oracles(chain_state, block_height) do
+    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
+                                                                         %{
+                                                                           tx: tx,
+                                                                           height_included:
+                                                                             height_included
+                                                                         }},
+                                                                        acc ->
+      if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
+        acc
+        |> pop_in([:oracles, :registered_oracles, address])
+        |> elem(1)
       else
         acc
       end
@@ -172,29 +203,28 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_interaction_objects(
-        oracle_interaction_objects,
-        block_height,
-        accounts
+        chain_state,
+        block_height
       ) do
-    Enum.reduce(oracle_interaction_objects, oracle_interaction_objects, fn {query_tx_hash,
-                                                                            %{
-                                                                              query: query,
-                                                                              query_sender:
-                                                                                query_sender,
-                                                                              response: response,
-                                                                              query_height_included:
-                                                                                query_height_included,
-                                                                              response_height_included:
-                                                                                response_height_included
-                                                                            }},
-                                                                           acc ->
+    Enum.reduce(chain_state.oracles.interaction_objects, chain_state, fn {query_id,
+                                                                          %{
+                                                                            query: query,
+                                                                            query_sender:
+                                                                              query_sender,
+                                                                            response: response,
+                                                                            query_height_included:
+                                                                              query_height_included,
+                                                                            response_height_included:
+                                                                              response_height_included
+                                                                          }},
+                                                                         acc ->
       query_absolute_ttl =
         calculate_absolute_ttl(
           query.query_ttl,
           query_height_included
         )
 
-      query_has_expired = query_absolute_ttl == block_height && response == nil
+      query_has_expired = query_absolute_ttl <= block_height && response == nil
 
       response_has_expired =
         if response != nil do
@@ -211,17 +241,21 @@ defmodule Aecore.Oracle.Oracle do
 
       cond do
         query_has_expired ->
-          {put_in(
-             accounts,
-             [query_sender, :balance],
-             get_in(accounts, [query_sender, :balance]) + query.query_fee
-           ), Map.delete(acc, query_tx_hash)}
+          acc
+          |> update_in(
+            [:accounts, query_sender, :balance],
+            &(&1 + query.query_fee)
+          )
+          |> pop_in([:oracles, :interaction_objects, query_id])
+          |> elem(1)
 
         response_has_expired ->
-          {accounts, Map.delete(acc, query_tx_hash)}
+          acc
+          |> pop_in([:oracles, :interaction_objects, query_id])
+          |> elem(1)
 
         true ->
-          {accounts, acc}
+          acc
       end
     end)
   end
@@ -234,10 +268,5 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl > 0
     end
-  end
-
-  defp sign_tx(data) do
-    {:ok, signature} = Keys.sign(data)
-    %SignedTx{signature: signature, data: data}
   end
 end

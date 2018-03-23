@@ -1,11 +1,9 @@
 defmodule Aecore.Structures.OracleRegistrationTxData do
   alias __MODULE__
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
-  alias Aeutil.Bits
 
   require Logger
 
@@ -148,6 +146,9 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
       Map.has_key?(registered_oracles, from_acc) ->
         {:error, "Account is already an oracle"}
 
+      !is_minimum_fee_met?(tx, fee, block_height) ->
+        {:error, "Fee too low"}
+
       true ->
         :ok
     end
@@ -159,15 +160,16 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), integer()) :: boolean()
-  def is_minimum_fee_met?(tx, block_height) do
-    case tx.data.payload.ttl do
+  @spec is_minimum_fee_met?(OracleRegistrationTxData.t(), non_neg_integer(), non_neg_integer()) ::
+          boolean()
+  def is_minimum_fee_met?(tx, fee, block_height) do
+    case tx.ttl do
       %{ttl: ttl, type: :relative} ->
-        tx.data.fee >= calculate_minimum_fee(ttl)
+        fee >= calculate_minimum_fee(ttl)
 
       %{ttl: ttl, type: :absolute} ->
         if block_height != nil do
-          tx.data.fee >=
+          fee >=
             ttl
             |> Oracle.calculate_relative_ttl(block_height)
             |> calculate_minimum_fee()
@@ -177,12 +179,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
     end
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("or", bin)
-  end
-
-  @spec calculate_minimum_fee(integer()) :: integer()
+  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
   defp calculate_minimum_fee(ttl) do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
 

@@ -14,7 +14,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleExtendTxData
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Header
-  alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -23,7 +22,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
-  alias Aeutil.Bits
   alias Aeutil.Serialization
 
   require Logger
@@ -82,19 +80,19 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
-  @spec top_height() :: integer()
+  @spec top_height() :: non_neg_integer()
   def top_height() do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec lowest_valid_nonce() :: integer()
+  @spec lowest_valid_nonce() :: non_neg_integer()
   def lowest_valid_nonce() do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_bech32_hash(String.t()) :: Block.t() | {:error, binary()}
-  def get_block_by_bech32_hash(hash) do
-    decoded_hash = Bits.bech32_decode(hash)
+  @spec get_block_by_base58_hash(String.t()) :: Block.t()
+  def get_block_by_base58_hash(hash) do
+    decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
   end
 
@@ -140,12 +138,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, final_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
@@ -322,7 +320,7 @@ defmodule Aecore.Chain.Worker do
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{
+      "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{
         inspect(total_tokens)
       }"
     end)

@@ -2,7 +2,7 @@ defmodule Aehttpserver.Web.OracleController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.OracleRegistrationTxData
+  alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -11,7 +11,7 @@ defmodule Aehttpserver.Web.OracleController do
 
   def oracle_response(conn, _params) do
     body = conn.body_params
-    binary_query_id = Bits.bech32_decode(body["query_id"])
+    binary_query_id = Bits.decode58(body["query_id"])
 
     case Oracle.respond(binary_query_id, body["response"], body["fee"]) do
       :ok ->
@@ -29,10 +29,10 @@ defmodule Aehttpserver.Web.OracleController do
       if Enum.empty?(registered_oracles) do
         %{}
       else
-        Enum.reduce(Chain.registered_oracles(), %{}, fn {hash, %{tx: tx}}, acc ->
+        Enum.reduce(Chain.registered_oracles(), %{}, fn {address, %{tx: tx}}, acc ->
           Map.put(
             acc,
-            OracleRegistrationTxData.bech32_encode(hash),
+            Account.base58c_encode(address),
             Serialization.tx(tx, :serialize)
           )
         end)
@@ -43,12 +43,13 @@ defmodule Aehttpserver.Web.OracleController do
 
   def oracle_query(conn, _params) do
     body = conn.body_params
-    binary_oracle_address = Bits.bech32_decode(body["address"])
+    binary_oracle_address = Bits.decode58(body["address"])
     parsed_query = Poison.decode!(~s(#{body["query"]}))
 
     case Oracle.query(
            binary_oracle_address,
            parsed_query,
+           body["query_fee"],
            body["fee"],
            body["query_ttl"],
            body["response_ttl"]

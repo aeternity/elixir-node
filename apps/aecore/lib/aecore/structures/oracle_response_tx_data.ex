@@ -71,7 +71,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
          ) do
       :ok ->
         interaction_object = interaction_objects[tx.query_id]
-        query_fee = interaction_object[tx.query_id].query.query_fee
+        query_fee = interaction_object.query.query_fee
 
         new_from_account_state =
           Map.get(accounts, from_acc, Account.empty())
@@ -133,6 +133,9 @@ defmodule Aecore.Structures.OracleResponseTxData do
       interaction_objects[tx.query_id].query.oracle_address != from_acc ->
         {:error, "Query references a different oracle"}
 
+      !is_minimum_fee_met?(tx, fee) ->
+        {:error, "Fee too low"}
+
       true ->
         :ok
     end
@@ -144,15 +147,15 @@ defmodule Aecore.Structures.OracleResponseTxData do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
+  @spec is_minimum_fee_met?(OracleResponseTxData.t(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(tx, fee) do
     referenced_query_response_ttl =
-      Chain.oracle_interaction_objects()[tx.data.query_id].query.response_ttl
+      Chain.oracle_interaction_objects()[tx.query_id].query.response_ttl.ttl
 
-    tx.data.fee >= calculate_minimum_fee(referenced_query_response_ttl)
+    fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end
 
-  @spec calculate_minimum_fee(integer()) :: integer()
+  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
   defp calculate_minimum_fee(ttl) do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_response_base_fee]

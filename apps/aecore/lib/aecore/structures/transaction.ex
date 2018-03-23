@@ -44,7 +44,7 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(tx, account_state, fee, nonce, block_height, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.value + fee) < 0 ->
            {:error, "Negative balance"}

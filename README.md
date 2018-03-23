@@ -49,7 +49,7 @@ To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
 
-### **Building custom child Transaction**
+#### **Building custom child Transaction**
 To build a custom transaction you need to follow few simple steps:
 - Make your own `transaction module`;
 - Create your `custom transaction structure`;
@@ -223,15 +223,17 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
 
 #### **Oracle usage**
-Start the node as oracle operator -  `IS_OPERATOR=true iex -S mix phx.server`
+**TTL (time to live):**
+  Determines the lifetime of an object measured in blocks, it can be either absolute
+  or relative (absolute - the object is removed when a block with a height equal to the TTL is mined;
+  relative - the object is removed when a block with height equal to the TTL + block height in which the transaction was included is mined). A TTL is defined like so - %{ttl: value, type: :relative | :absolute}
 
-Registering an oracle:
-  `Aecore.Oracle.Oracle.register(query_format, response_format, description, fee, oracle_uri)`
+**Registering an oracle:**
+  `Aecore.Oracle.Oracle.register(query_format, response_format, query_fee, fee, ttl)`
   The query and response formats are treated as json schemas with which the queries and responses
-  are validated. The passed oracle uri isn't part of the transaction that gets created when
-  registering an oracle, but it is stored as an environment variable mapped to the corresponding
-  oracle (transaction) hash. If a node wants to serve as an oracle operator, an oracle server
-  should be set up to handle queries. One node can run multiple oracles.
+  are validated. The query fee is the minimum fee that will be required for queries made to the
+  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
+  for the response fee he had to pay.
 
   example format schema -
     ```
@@ -257,46 +259,32 @@ Registering an oracle:
 
   To list all registered oracles -  `Aecore.Chain.Worker.registered_oracles()`
 
-Querying an oracle:
-  `Aecore.Oracle.Oracle.query(oracle_address, query_data, query_fee, response_fee)`
-  The oracle hash is the hash of the oracle registration transaction.This transaction
-  includes two fees - a query fee which is processed as a normal fee which is given
-  to the miner and a response fee which is given to the oracle as a way to cover
-  his response transaction fee.
+**Querying an oracle:**
+  `Aecore.Oracle.Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
+  The query TTL determines the time in which the oracle is able to respond, if he doesn't respond in time, the account making the query will get the query_fee back. The response TTL determines for how long the response will remain in the state after it is added, this TTL can only be relative.
 
   example query -
   ```
-  Aecore.OraclePrototype.Oracle.query(
-    "or1qpfvztl3ll7zxga0tafywl8p7vt0p4klevusu58jr6ujjy65ry77qj6ata",
+  Aecore.Oracle.Oracle.query(
+    "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
     %{
       "currency" =>
         "USD"
      },
      5,
-     10
+     10,
+     %{ttl: 10, type: :absolute},
+     %{ttl: 5, type: :relative}
   )
   ```
 
-Oracle responses:
-  Whenever a new block is mined and a query transaction that references one of our
-  oracles is present, the query is posted to the corresponding oracle server.
-  That server must post a response back to the node's `/oracle_response` endpoint.
-  Example:
-  assuming node is running locally on port 4000
-  ```
-  post(
-    "localhost:4000/oracle_response",
-    {
-      "oracle_address":
-        "or1qpfvztl3ll7zxga0tafywl8p7vt0p4klevusu58jr6ujjy65ry77qj6atae",
-      "response":{
-        "value":10
-      },
-      "fee":
-        5
-    }
-  )
-  ```
+**Respond to a query:**
+  `Aecore.Oracle.Oracle.respond(query_id, response, fee)`
+  Responds to a query which is referenced by ID, if the response is added successfully, the oracle receives the query_fee contained in the query.
+
+**Extend a registered oracle:**
+  `Aecore.Oracle.Oracle.extend(ttl, fee)`
+  Extends the TTL of an oracle with the address that matches the address of the node.
 
 All transactions have to be mined in order to take effect.
 

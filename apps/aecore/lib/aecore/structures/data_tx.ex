@@ -42,7 +42,7 @@ defmodule Aecore.Structures.DataTx do
   defstruct [:type, :payload, :from_acc, :fee, :nonce]
   use ExConstructor
 
-  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
+  @spec init(tx_types(), payload(), binary(), non_neg_integer(), non_neg_integer()) :: DataTx.t()
   def init(type, payload, from_acc, fee, nonce) do
     %DataTx{type: type, payload: type.init(payload), from_acc: from_acc, fee: fee, nonce: nonce}
   end
@@ -67,44 +67,32 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), non_neg_integer(), ChainState.chainstate()) ::
+  @spec process_chainstate!(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
           ChainState.chainstate()
-  def process_chainstate(%DataTx{} = tx, block_height, chainstate) do
-    try do
-      accounts_state = chainstate.accounts
+  def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
+    accounts_state = chainstate.accounts
+    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-      tx_type_state =
-        if(tx.type.get_chain_state_name() == SpendTx.get_chain_state_name()) do
-          %{}
-        else
-          Map.get(chainstate, tx.type.get_chain_state_name(), %{})
-        end
+    {new_accounts_state, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.from_acc,
+        tx.fee,
+        tx.nonce,
+        block_height,
+        accounts_state,
+        tx_type_state
+      )
 
-      {new_accounts_state, new_tx_type_state} =
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.from_acc,
-          tx.fee,
-          tx.nonce,
-          block_height,
-          accounts_state,
-          tx_type_state
-        )
-
-      new_chainstate =
-        if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
-        else
-          chainstate
-        end
-
-      Map.put(new_chainstate, :accounts, new_accounts_state)
-    catch
-      {:error, reason} ->
-        Logger.error(reason)
+    new_chainstate =
+      if Map.has_key?(chainstate, tx.type.get_chain_state_name()) do
+        Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
+      else
         chainstate
-    end
+      end
+
+    Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
   @spec serialize(DataTx.t()) :: map()

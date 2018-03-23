@@ -48,7 +48,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
         nonce,
         block_height,
         accounts,
-        %{registered_oracles: registered_oracles}
+        %{registered_oracles: registered_oracles} = oracle_state
       ) do
     case preprocess_check(
            tx,
@@ -66,15 +66,14 @@ defmodule Aecore.Structures.OracleExtendTxData do
 
         updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
 
-        oracle_ttl = get_in(registered_oracles, [from_acc, :tx, Access.key(:ttl)])
+        updated_oracle_state =
+          update_in(
+            oracle_state,
+            [:registered_oracles, from_acc, :tx, Access.key(:ttl), :ttl],
+            &(&1 + tx.ttl)
+          )
 
-        updated_registered_oracles =
-          put_in(registered_oracles, [from_acc, :tx, Access.key(:ttl)], %{
-            oracle_ttl
-            | ttl: oracle_ttl.ttl + tx.ttl
-          })
-
-        {updated_accounts_chainstate, updated_registered_oracles}
+        {updated_accounts_chainstate, updated_oracle_state}
 
       {:error, _reason} = err ->
         throw(err)
@@ -115,7 +114,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec calculate_minimum_fee(integer()) :: integer()
+  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
   def calculate_minimum_fee(ttl) do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
