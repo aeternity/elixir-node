@@ -64,7 +64,7 @@ defmodule AeutilSerializationTest do
 
   def get_block_map() do
     %{
-      "txs" => [
+      "transactions" => [
         %{
           "data" => %{
             "fee" => 40,
@@ -81,9 +81,9 @@ defmodule AeutilSerializationTest do
       ],
       "height" => 105,
       "nonce" => 707,
-      "pow_evidence" => nil,
+      "pow" => nil,
       "prev_hash" => "bh$1DEfLSYrZUviQKtzfJvRv1pAJuwn62nk9q9cBUaPjPubMxcBk",
-      "root_hash" => "bs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
+      "state_hash" => "bs$Eb8yjCFDCzG8oJJKQC3GTHpj3gwuqdjsddSiHrgvvKRbMsWFy",
       "target" => 11,
       "time" => 1_508_834_903_252,
       "txs_hash" => "bx$cfAVxohyXoDtv7euNiQXxCJH6ULcZjw5gUzaDLi1rwa43ee6",
