@@ -3,7 +3,7 @@ defmodule AecoreValidationTest do
   Unit tests for the BlockValidation module
   """
 
-  use ExUnit.Case, async: false, seed: 0
+  use ExUnit.Case
   doctest Aecore.Chain.BlockValidation
 
   alias Aecore.Persistence.Worker, as: Persistence
