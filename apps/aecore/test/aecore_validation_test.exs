@@ -21,6 +21,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Structures.AccountHandler
 
   setup_all do
+    Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -105,7 +106,7 @@ defmodule AecoreValidationTest do
     from_acc = Wallet.get_public_key()
     value = 5
     fee = 1
-    nonce = AccountHandler.nonce(get_accounts_chainstate(), from_acc) + 1
+    nonce = AccountHandler.nonce(TestUtils.get_accounts_chainstate(), from_acc) + 1
 
     payload1 = %{to_acc: ctx.to_acc, value: value}
     tx1 = DataTx.init(SpendTx, payload1, from_acc, fee, nonce + 1)
@@ -126,7 +127,7 @@ defmodule AecoreValidationTest do
   def get_new_block(to_acc) do
     from_acc = Wallet.get_public_key()
     value = 100
-    nonce = AccountHandler.nonce(get_accounts_chainstate(), from_acc) + 1
+    nonce = AccountHandler.nonce(TestUtils.get_accounts_chainstate(), from_acc) + 1
     fee = 10
 
     payload = %{to_acc: to_acc, value: value}
@@ -145,9 +146,5 @@ defmodule AecoreValidationTest do
 
   def get_chain_state() do
     Chain.chain_state()
-  end
-
-  defp get_accounts_chainstate() do
-    Chain.chain_state().accounts
   end
 end

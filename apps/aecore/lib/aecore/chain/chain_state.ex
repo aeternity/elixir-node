@@ -82,9 +82,9 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts}) do
-    AccountStateTree.reduce(accounts, 0, fn {k, _v}, acc ->
-      acc + AccountHandler.balance(accounts, k)
+  def calculate_total_tokens(%{accounts: accounts_tree}) do
+    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
+      acc + AccountHandler.balance(accounts_tree, pub_key)
     end)
   end
 

@@ -66,7 +66,7 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), Accoun.t()) :: Account.t()
+  @spec reward(SpendTx.t(), Account.t()) :: Account.t()
   def reward(%SpendTx{} = tx, account_state) do
     Account.transaction_in(account_state, tx.value)
   end

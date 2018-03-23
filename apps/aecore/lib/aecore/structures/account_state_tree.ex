@@ -5,27 +5,28 @@ defmodule Aecore.Structures.AccountStateTree do
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
-
   @type encoded_account_state :: binary()
 
-  # abstract datatype
+  # abstract datatype representing a merkle tree
   @type tree :: tuple()
 
   @type hash :: binary()
 
-  @spec init_empty() :: tuple()
+  @spec init_empty() :: tree()
   def init_empty() do
     :gb_merkle_trees.empty()
   end
 
   @spec put(tree(), Wallet.pubkey(), Account.t()) :: tree()
   def put(tree, key, value) do
-    :gb_merkle_trees.enter(key, encode(value), tree)
+    serialized_account_state = Serialization.account_state(value, :serialize)
+    :gb_merkle_trees.enter(key, serialized_account_state, tree)
   end
 
   @spec get(tree(), Wallet.pubkey()) :: Account.t()
   def get(tree, key) do
-    decode(:gb_merkle_trees.lookup(key, tree))
+    account_state = :gb_merkle_trees.lookup(key, tree)
+    Serialization.account_state(account_state, :deserialize)
   end
 
   @spec delete(tree(), Wallet.pubkey()) :: tree()
@@ -46,24 +47,5 @@ defmodule Aecore.Structures.AccountStateTree do
   @spec reduce(tree(), any(), fun()) :: any()
   def reduce(tree, acc, fun) do
     :gb_merkle_trees.foldr(fun, acc, tree)
-  end
-
-  @spec encode(Account.t()) :: binary()
-  defp encode(%Account{} = account) do
-    account
-    |> Serialization.serialize_value()
-    |> Msgpax.pack!()
-  end
-
-  @spec decode(encoded_account_state()) :: Account.t()
-  defp decode(:none), do: :none
-
-  defp decode(encoded_account_state) do
-    {:ok, account_state} =
-      encoded_account_state
-      |> Msgpax.unpack()
-      |> Serialization.deserialize_value()
-
-    {:ok, Account.new(account_state)}
   end
 end

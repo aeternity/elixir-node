@@ -19,7 +19,7 @@ defmodule Aecore.Structures.Account do
           nonce: non_neg_integer()
         }
 
-  @type account_payload :: map()
+  @type account_payload :: %{balance: non_neg_integer(), nonce: non_neg_integer()}
 
   @doc """
   Definition of Account structure
@@ -37,10 +37,10 @@ defmodule Aecore.Structures.Account do
   end
 
   @spec new(account_payload()) :: Account.t()
-  def new(%{} = acc_payload) do
+  def new(%{balance: balance, nonce: nonce}) do
     %Account{
-      :balance => acc_payload["balance"],
-      :nonce => acc_payload["nonce"]
+      balance: balance,
+      nonce: nonce
     }
   end
 
