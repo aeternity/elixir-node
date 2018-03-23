@@ -1,7 +1,7 @@
 defmodule Memory do
   use Bitwise
 
-  def write(address, value, size, memory) do
+  def store(address, value, memory) do
     memory_index = trunc(Float.floor(address / 32) * 32)
     next = rem(address, 32) * 8
     prev = 256 - next
@@ -18,5 +18,21 @@ defmodule Memory do
 
     memory1 = Map.put(memory, memory_index, prev_value)
     Map.put(memory1, memory_index + 32, next_value)
+  end
+
+  def store8(address, value, memory) do
+    memory_index = trunc(Float.floor(address / 32) * 32)
+    position = rem(address, 32)
+    prev_bits = position * 8
+    size_bits = 8
+
+    saved_value = Map.get(memory, memory_index, 0)
+
+    <<prev::size(prev_bits), _::size(size_bits), next::binary>> = <<saved_value::256>>
+    value_binary = <<value::size(size_bits)>>
+    new_value_binary = <<prev::size(prev_bits)>> <> value_binary <> next
+    <<new_value::256>> = new_value_binary
+
+    Map.put(memory, memory_index, new_value)
   end
 end
