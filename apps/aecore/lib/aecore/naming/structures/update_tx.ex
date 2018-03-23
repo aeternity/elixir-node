@@ -9,6 +9,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
   alias Aecore.Naming.Structures.UpdateTx
   alias Aecore.Naming.Structures.Naming
   alias Aecore.Naming.Util
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -87,25 +88,26 @@ defmodule Aecore.Naming.Structures.UpdateTx do
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
         %UpdateTx{} = tx,
-        from_acc,
+        sender,
         fee,
         nonce,
         block_height,
         accounts,
         naming
       ) do
-    case preprocess_check(tx, accounts[from_acc], from_acc, fee, nonce, block_height, naming) do
+    case preprocess_check(tx, accounts[sender], sender, fee, nonce, block_height, naming) do
       :ok ->
-        new_from_account_state =
-          accounts[from_acc]
+        new_senderount_state =
+          accounts[sender]
           |> deduct_fee(fee)
+          |> Account.transaction_out_nonce_update(nonce)
 
-        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
-        account_naming = Map.get(naming, from_acc, Naming.empty())
+        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+        account_naming = Map.get(naming, sender, Naming.empty())
 
         # TODO update claim with data
 
-        updated_naming_chainstate = Map.put(naming, from_acc, account_naming)
+        updated_naming_chainstate = Map.put(naming, sender, account_naming)
         {updated_accounts_chainstate, updated_naming_chainstate}
 
       {:error, _reason} = err ->
@@ -126,8 +128,8 @@ defmodule Aecore.Naming.Structures.UpdateTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, from_acc, fee, nonce, _block_height, naming) do
-    account_naming = Map.get(naming, from_acc, Naming.empty())
+  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming) do
+    account_naming = Map.get(naming, sender, Naming.empty())
 
     claimed =
       Enum.find(account_naming.claims, fn claim ->

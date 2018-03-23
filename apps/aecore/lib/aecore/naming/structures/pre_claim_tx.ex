@@ -10,6 +10,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   alias Aecore.Naming.Structures.Naming
   alias Aecore.Naming.Util
   alias Aeutil.Hash
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -87,6 +88,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
         new_senderount_state =
           accounts[sender]
           |> deduct_fee(fee)
+          |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
         account_naming = Map.get(naming, sender, Naming.empty())

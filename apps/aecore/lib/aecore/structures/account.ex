@@ -135,8 +135,14 @@ defmodule Aecore.Structures.Account do
   @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
   def transaction_out(account_state, amount, nonce) do
     account_state
-    |> Map.put(:nonce, nonce)
+    |> transaction_out_nonce_update(nonce)
     |> transaction_in(amount)
+  end
+
+  @spec transaction_out_nonce_update(ChainState.account(), integer()) :: ChainState.account()
+  def transaction_out_nonce_update(account_state, nonce) do
+    account_state
+    |> Map.put(:nonce, nonce)
   end
 
   def base58c_encode(bin) do
