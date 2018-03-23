@@ -22,7 +22,7 @@ defmodule Aecore.Pow.Hashcash do
     block_header_hash
     |> Bits.extract()
     |> Enum.take_while(fn bit -> bit == 0 end)
-    |> Enum.count() >= difficulty
+    |> Enum.count() <= difficulty
   end
 
   @doc """

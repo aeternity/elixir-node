@@ -230,7 +230,10 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+      timestamp = System.system_time(:milliseconds)
+
+      difficulty =
+        Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
@@ -252,7 +255,7 @@ defmodule Aecore.Miner.Worker do
         | valid_txs_by_fee
       ]
 
-      new_block = create_block(top_block, chain_state, difficulty, [])
+      new_block = create_block(top_block, chain_state, difficulty, [], timestamp)
       new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
 
       valid_txs_by_block_size =
@@ -274,7 +277,7 @@ defmodule Aecore.Miner.Worker do
           )
         )
 
-      create_block(top_block, chain_state, difficulty, valid_txs)
+      create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
@@ -380,7 +383,7 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  defp create_block(top_block, chain_state, difficulty, valid_txs) do
+  defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp) do
     root_hash = BlockValidation.calculate_root_hash(valid_txs)
 
     new_chain_state =
@@ -402,7 +405,8 @@ defmodule Aecore.Miner.Worker do
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
-        Block.current_block_version()
+        Block.current_block_version(),
+        timestamp
       )
 
     %Block{header: unmined_header, txs: valid_txs}
