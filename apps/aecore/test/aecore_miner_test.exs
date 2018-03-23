@@ -23,8 +23,8 @@ defmodule MinerTest do
     top_block = Chain.top_block()
     top_block_coinbase_tx = Enum.at(top_block.txs, 0)
     assert top_block_coinbase_tx.signature == nil
-    assert top_block_coinbase_tx.data.from_acc == nil
-    assert top_block_coinbase_tx.data.payload.value <= Miner.coinbase_transaction_value()
+    assert top_block_coinbase_tx.data.sender == nil
+    assert top_block_coinbase_tx.data.payload.amount <= Miner.coinbase_transaction_amount()
     assert SignedTx.is_coinbase?(top_block_coinbase_tx)
   end
 end

@@ -81,7 +81,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleQueryTxData{} = tx,
-        from_acc,
+        sender,
         fee,
         nonce,
         block_height,
@@ -91,27 +91,27 @@ defmodule Aecore.Structures.OracleQueryTxData do
       ) do
     case preprocess_check(
            tx,
-           from_acc,
-           Map.get(accounts, from_acc, Account.empty()),
+           sender,
+           Map.get(accounts, sender, Account.empty()),
            fee,
            nonce,
            block_height,
            registered_oracles
          ) do
       :ok ->
-        new_from_account_state =
-          Map.get(accounts, from_acc, Account.empty())
+        new_senderount_state =
+          Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee + tx.query_fee)
 
-        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
-        interaction_object_id = OracleQueryTxData.id(from_acc, nonce, tx.oracle_address)
+        interaction_object_id = OracleQueryTxData.id(sender, nonce, tx.oracle_address)
 
         updated_interaction_objects =
           Map.put(interaction_objects, interaction_object_id, %{
             query: tx,
             query_height_included: block_height,
-            query_sender: from_acc,
+            query_sender: sender,
             response: nil,
             response_height_included: nil
           })
@@ -137,7 +137,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _from_acc, account_state, fee, nonce, block_height, registered_oracles) do
+  def preprocess_check(tx, _sender, account_state, fee, nonce, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}

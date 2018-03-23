@@ -19,15 +19,20 @@ defmodule Aeutil.Serialization do
   @type hash_types :: :chainstate | :header | :txs
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
-  def block(block, :serialize), do: serialize_value(block)
+  def block(block, :serialize) do
+    serialized_header = serialize_value(block.header)
+    serialized_transactions = Enum.map(block.txs, fn(tx) -> tx(tx, :serialize) end)
+    %{"header" => serialized_header, "transactions" => serialized_transactions}
+  end
 
   def block(block, :deserialize) do
+    txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
+
     built_header =
       block["header"]
       |> deserialize_value()
       |> Header.new()
 
-    txs = Enum.map(block["txs"], fn tx -> tx(tx, :deserialize) end)
     Block.new(header: built_header, txs: txs)
   end
 
@@ -66,7 +71,6 @@ defmodule Aeutil.Serialization do
           data
       end
 
-    IO.inspect(updated_data)
     signature = base64_binary(tx["signature"], :deserialize)
     %SignedTx{data: updated_data, signature: signature}
   end
@@ -167,10 +171,10 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_encode_root(value)
 
-      :from_acc ->
+      :sender ->
         Account.base58c_encode(value)
 
-      :to_acc ->
+      :receiver ->
         Account.base58c_encode(value)
 
       :signature ->
@@ -185,7 +189,11 @@ defmodule Aeutil.Serialization do
   end
 
   def serialize_value(value, _) when is_atom(value) do
-    Atom.to_string(value)
+    case value do
+      :pow_evidence -> "pow"
+      :root_hash -> "state_hash"
+      _ -> Atom.to_string(value)
+    end
   end
 
   def serialize_value(value, _), do: value
@@ -211,7 +219,16 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value, _) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, new_value ->
-      Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+      case key do
+        "pow" ->
+          Map.put(new_value, :pow_evidence, deserialize_value(val, :pow_evidence))
+
+        "state_hash" ->
+          Map.put(new_value, :root_hash, deserialize_value(val, :root_hash))
+
+        _ ->
+          Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+      end
     end)
   end
 
@@ -226,10 +243,10 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_decode_root(value)
 
-      :from_acc ->
+      :sender ->
         Account.base58c_decode(value)
 
-      :to_acc ->
+      :receiver ->
         Account.base58c_decode(value)
 
       :signature ->

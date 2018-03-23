@@ -141,7 +141,7 @@ defmodule Aecore.Txs.Pool.Worker do
         OracleRegistrationTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
 
       %OracleQueryTxData{} ->
-        OracleQueryTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
+        true
 
       %OracleResponseTxData{} ->
         case identifier do
@@ -185,7 +185,7 @@ defmodule Aecore.Txs.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if tx.data.from_acc == address or tx.data.to_acc == address do
+      if tx.data.sender == address or tx.data.receiver == address do
         [
           Map.from_struct(tx.data)
           |> Map.put_new(:signature, tx.signature)

@@ -82,7 +82,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleRegistrationTxData{} = tx,
-        from_acc,
+        sender,
         fee,
         nonce,
         block_height,
@@ -91,22 +91,22 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
       ) do
     case preprocess_check(
            tx,
-           from_acc,
-           Map.get(accounts, from_acc, Account.empty()),
+           sender,
+           Map.get(accounts, sender, Account.empty()),
            fee,
            nonce,
            block_height,
            registered_oracles
          ) do
       :ok ->
-        new_from_account_state =
-          Map.get(accounts, from_acc, Account.empty())
+        new_senderount_state =
+          Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee)
 
-        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
         updated_registered_oracles =
-          Map.put_new(registered_oracles, from_acc, %{
+          Map.put_new(registered_oracles, sender, %{
             tx: tx,
             height_included: block_height
           })
@@ -132,7 +132,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, from_acc, account_state, fee, nonce, block_height, registered_oracles) do
+  def preprocess_check(tx, sender, account_state, fee, nonce, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}
@@ -143,7 +143,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "Invalid transaction TTL"}
 
-      Map.has_key?(registered_oracles, from_acc) ->
+      Map.has_key?(registered_oracles, sender) ->
         {:error, "Account is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->

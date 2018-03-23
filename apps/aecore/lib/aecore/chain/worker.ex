@@ -445,7 +445,7 @@ defmodule Aecore.Chain.Worker do
       for tx <- block.txs do
         case tx.data do
           %SpendTx{} ->
-            [tx.data.from_acc, tx.data.to_acc]
+            [tx.data.sender, tx.data.receiver]
 
           %OracleRegistrationTxData{} ->
             tx.data.operator
@@ -460,7 +460,7 @@ defmodule Aecore.Chain.Worker do
             tx.data.oracle_address
 
           %DataTx{} ->
-            tx.data.from_acc
+            tx.data.sender
         end
       end
 
@@ -471,19 +471,19 @@ defmodule Aecore.Chain.Worker do
         Enum.filter(block.txs, fn tx ->
           case tx.data.payload do
             %SpendTx{} ->
-              tx.data.from_acc == account || tx.data.payload.to_acc == account
+              tx.data.sender == account || tx.data.payload.receiver == account
 
             %OracleRegistrationTxData{} ->
-              tx.data.from_acc == account
+              tx.data.sender == account
 
             %OracleResponseTxData{} ->
-              tx.data.from_acc == account
+              tx.data.sender == account
 
             %OracleQueryTxData{} ->
-              tx.data.from_acc == account || tx.data.payload.oracle_address == account
+              tx.data.sender == account || tx.data.payload.oracle_address == account
 
             %OracleExtendTxData{} ->
-              tx.data.from_acc == account
+              tx.data.sender == account
           end
         end)
 

@@ -28,12 +28,12 @@ defmodule Aehttpserver.Web.Notify do
     })
   end
 
-  def broadcast_tx(tx, is_to_from_acc) do
-    if is_to_from_acc do
-      if tx.data.from_acc != nil do
+  def broadcast_tx(tx, is_to_sender) do
+    if is_to_sender do
+      if tx.data.sender != nil do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_tx:" <> Account.base58c_encode(tx.data.from_acc),
+          "new_tx:" <> Account.base58c_encode(tx.data.sender),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end
@@ -42,7 +42,7 @@ defmodule Aehttpserver.Web.Notify do
         %SpendTx{} ->
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
-            "new_tx:" <> Account.base58c_encode(tx.data.payload.to_acc),
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.receiver),
             %{"body" => Serialization.tx(tx, :serialize)}
           )
 

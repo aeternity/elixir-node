@@ -43,7 +43,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
         ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
         %OracleExtendTxData{} = tx,
-        from_acc,
+        sender,
         fee,
         nonce,
         block_height,
@@ -52,24 +52,24 @@ defmodule Aecore.Structures.OracleExtendTxData do
       ) do
     case preprocess_check(
            tx,
-           from_acc,
-           Map.get(accounts, from_acc, Account.empty()),
+           sender,
+           Map.get(accounts, sender, Account.empty()),
            fee,
            nonce,
            block_height,
            registered_oracles
          ) do
       :ok ->
-        new_from_account_state =
-          Map.get(accounts, from_acc, Account.empty())
+        new_senderount_state =
+          Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee)
 
-        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
         updated_oracle_state =
           update_in(
             oracle_state,
-            [:registered_oracles, from_acc, :tx, Access.key(:ttl), :ttl],
+            [:registered_oracles, sender, :tx, Access.key(:ttl), :ttl],
             &(&1 + tx.ttl)
           )
 
@@ -89,7 +89,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
           non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, from_acc, account_state, fee, nonce, _block_height, registered_oracles) do
+  def preprocess_check(tx, sender, account_state, fee, nonce, _block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}
@@ -97,7 +97,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      !Map.has_key?(registered_oracles, from_acc) ->
+      !Map.has_key?(registered_oracles, sender) ->
         {:error, "Account isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->

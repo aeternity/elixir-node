@@ -91,10 +91,10 @@ defmodule Aecore.Chain.BlockValidation do
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         throw({:error, "One or more transactions not valid"})
 
-      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
+      coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
         throw(
           {:error,
-           "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"}
+           "Sum of coinbase transactions amounts exceeds the maximum coinbase transactions amount"}
         )
 
       block.header.version != Block.current_block_version() ->
@@ -162,7 +162,7 @@ defmodule Aecore.Chain.BlockValidation do
     txs_list_without_oracle_txs
     |> Enum.map(fn tx ->
       if SignedTx.is_coinbase?(tx) do
-        tx.data.payload.value
+        tx.data.payload.amount
       else
         0
       end

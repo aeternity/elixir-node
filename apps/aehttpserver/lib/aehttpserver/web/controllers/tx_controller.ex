@@ -1,5 +1,6 @@
 defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
+
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
@@ -25,8 +26,8 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(proof, fn tx ->
                 %{
                   tx
-                  | from_acc: Account.base58c_encode(tx.from_acc),
-                    to_acc: Account.base58c_encode(tx.to_acc),
+                  | sender: Account.base58c_encode(tx.sender),
+                    receiver: Account.base58c_encode(tx.receiver),
                     txs_hash: SignedTx.base58c_encode_root(tx.txs_hash),
                     block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature),
@@ -41,8 +42,8 @@ defmodule Aehttpserver.Web.TxController do
               Enum.map(user_txs, fn tx ->
                 %{
                   tx
-                  | from_acc: Account.base58c_encode(tx.from_acc),
-                    to_acc: Account.base58c_encode(tx.to_acc),
+                  | sender: Account.base58c_encode(tx.sender),
+                    receiver: Account.base58c_encode(tx.receiver),
                     txs_hash: SignedTx.base58c_encode(tx.txs_hash),
                     block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature)

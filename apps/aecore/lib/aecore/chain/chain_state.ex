@@ -55,12 +55,15 @@ defmodule Aecore.Chain.ChainState do
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
-        to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, Account.empty())
-        new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
-        new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
+        receiver_state = Map.get(chainstate.accounts, data.payload.receiver, Account.empty())
+        new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+
+        new_accounts_state =
+          Map.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+
         Map.put(chainstate, :accounts, new_accounts_state)
 
-      data.from_acc != nil ->
+      data.sender != nil ->
         if SignedTx.is_valid?(tx) do
           DataTx.process_chainstate!(data, chainstate, block_height)
         else

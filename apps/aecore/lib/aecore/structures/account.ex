@@ -22,8 +22,8 @@ defmodule Aecore.Structures.Account do
   Definition of Account structure
 
   ## Parameters
-  - nonce: Out transaction count
   - balance: The acccount balance
+  - nonce: Out transaction count
   """
   defstruct [:balance, :nonce]
   use ExConstructor
@@ -34,14 +34,14 @@ defmodule Aecore.Structures.Account do
   end
 
   @doc """
-  Builds a SpendTx where the miners public key is used as a sender (from_acc)
+  Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def spend(to_acc, amount, fee) do
-    from_acc = Wallet.get_public_key()
-    from_acc_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
-    spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce)
+  def spend(receiver, amount, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
   @doc """
@@ -55,30 +55,29 @@ defmodule Aecore.Structures.Account do
           non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
-  def spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce) do
-    payload = %{to_acc: to_acc, value: amount}
-    spend_tx = DataTx.init(SpendTx, payload, from_acc, fee, nonce)
-    SignedTx.sign_tx(spend_tx, from_acc_priv_key)
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
+    payload = %{receiver: receiver, amount: amount, lock_time_block: 0}
+    spend_tx = DataTx.init(SpendTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def transaction_in(account_state, value) do
-    new_balance = account_state.balance + value
+  @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
+  def transaction_in(account_state, amount) do
+    new_balance = account_state.balance + amount
     Map.put(account_state, :balance, new_balance)
   end
 
   @doc """
   Deducts balance from a given address (public key)
   """
-  @spec transaction_out(ChainState.account(), non_neg_integer(), non_neg_integer()) ::
-          ChainState.account()
-  def transaction_out(account_state, value, nonce) do
+  @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
+  def transaction_out(account_state, amount, nonce) do
     account_state
     |> Map.put(:nonce, nonce)
-    |> transaction_in(value)
+    |> transaction_in(amount)
   end
 
   def base58c_encode(bin) do

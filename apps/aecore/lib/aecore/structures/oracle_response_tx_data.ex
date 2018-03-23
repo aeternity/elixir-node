@@ -53,7 +53,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleResponseTxData{} = tx,
-        from_acc,
+        sender,
         fee,
         nonce,
         block_height,
@@ -62,8 +62,8 @@ defmodule Aecore.Structures.OracleResponseTxData do
       ) do
     case preprocess_check(
            tx,
-           from_acc,
-           Map.get(accounts, from_acc, Account.empty()),
+           sender,
+           Map.get(accounts, sender, Account.empty()),
            fee,
            nonce,
            block_height,
@@ -73,11 +73,11 @@ defmodule Aecore.Structures.OracleResponseTxData do
         interaction_object = interaction_objects[tx.query_id]
         query_fee = interaction_object.query.query_fee
 
-        new_from_account_state =
-          Map.get(accounts, from_acc, Account.empty())
+        new_senderount_state =
+          Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee - query_fee)
 
-        updated_accounts_chainstate = Map.put(accounts, from_acc, new_from_account_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
         updated_interaction_objects =
           Map.put(interaction_objects, tx.query_id, %{
@@ -107,7 +107,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, from_acc, account_state, fee, nonce, _block_height, %{
+  def preprocess_check(tx, sender, account_state, fee, nonce, _block_height, %{
         registered_oracles: registered_oracles,
         interaction_objects: interaction_objects
       }) do
@@ -119,7 +119,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
         {:error, "Nonce too small"}
 
       !Oracle.data_valid?(
-        registered_oracles[from_acc].tx.response_format,
+        registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
         {:error, "Invalid query data"}
@@ -130,7 +130,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
       interaction_objects[tx.query_id].response != nil ->
         {:error, "Query already answered"}
 
-      interaction_objects[tx.query_id].query.oracle_address != from_acc ->
+      interaction_objects[tx.query_id].query.oracle_address != sender ->
         {:error, "Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->

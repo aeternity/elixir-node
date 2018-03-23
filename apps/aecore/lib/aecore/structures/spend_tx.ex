@@ -15,8 +15,9 @@ defmodule Aecore.Structures.SpendTx do
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          to_acc: Wallet.pubkey(),
-          value: non_neg_integer()
+          receiver: Wallet.pubkey(),
+          amount: non_neg_integer(),
+          version: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -28,18 +29,20 @@ defmodule Aecore.Structures.SpendTx do
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
-          to_acc: Wallet.pubkey(),
-          value: non_neg_integer()
+          receiver: Wallet.pubkey(),
+          amount: non_neg_integer(),
+          version: non_neg_integer()
         }
 
   @doc """
   Definition of Aecore SpendTx structure
 
   ## Parameters
-  - to_acc: To account is the public address of the account receiving the transaction
-  - value: The amount of tokens send through the transaction
+  - receiver: To account is the public address of the account receiving the transaction
+  - amount: The amount of tokens send through the transaction
+  - version: States whats the version of the Spend Transaction
   """
-  defstruct [:to_acc, :value]
+  defstruct [:receiver, :amount, :version]
   use ExConstructor
 
   @spec get_chain_state_name() :: Account.chain_state_name()
@@ -48,19 +51,19 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{to_acc: to_acc, value: value} = _payload) do
-    %SpendTx{to_acc: to_acc, value: value}
+  def init(%{receiver: receiver, amount: amount}) do
+    %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
   end
 
   @doc """
-  Checks wether the value that is send is not a negative number
+  Checks wether the amount that is send is not a negative number
   """
   @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{value: value}) do
-    if value >= 0 do
+  def is_valid?(%SpendTx{amount: amount}) do
+    if amount >= 0 do
       true
     else
-      Logger.error("Value cannot be a negative number")
+      Logger.error("The amount cannot be a negative number")
       false
     end
   end
@@ -70,7 +73,7 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec reward(SpendTx.t(), non_neg_integer(), ChainState.account()) :: ChainState.accounts()
   def reward(%SpendTx{} = tx, _block_height, account_state) do
-    Account.transaction_in(account_state, tx.value)
+    Account.transaction_in(account_state, tx.amount)
   end
 
   @doc """
@@ -85,21 +88,21 @@ defmodule Aecore.Structures.SpendTx do
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(%SpendTx{} = tx, from_acc, fee, nonce, block_height, accounts, %{}) do
-    from_account_state = Map.get(accounts, from_acc, Account.empty())
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
+    sender_account_state = Map.get(accounts, sender, Account.empty())
 
-    case preprocess_check(tx, from_acc, from_account_state, fee, nonce, block_height, %{}) do
+    case preprocess_check(tx, sender, sender_account_state, fee, nonce, block_height, %{}) do
       :ok ->
-        new_from_account_state =
-          from_account_state
+        new_sender_account_state =
+          sender_account_state
           |> deduct_fee(fee)
-          |> Account.transaction_out(tx.value * -1, nonce)
+          |> Account.transaction_out(tx.amount * -1, nonce)
 
-        new_accounts = Map.put(accounts, from_acc, new_from_account_state)
+        new_accounts = Map.put(accounts, sender, new_sender_account_state)
 
-        to_acc = Map.get(accounts, tx.to_acc, Account.empty())
-        new_to_account_state = Account.transaction_in(to_acc, tx.value)
-        {Map.put(new_accounts, tx.to_acc, new_to_account_state), %{}}
+        receiver = Map.get(accounts, tx.receiver, Account.empty())
+        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
+        {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
 
       {:error, _reason} = err ->
         throw(err)
@@ -119,9 +122,9 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _from_acc, account_state, fee, nonce, _block_height, %{}) do
+  def preprocess_check(tx, _sender, account_state, fee, nonce, _block_height, %{}) do
     cond do
-      account_state.balance - (fee + tx.value) < 0 ->
+      account_state.balance - (fee + tx.amount) < 0 ->
         {:error, "Negative balance"}
 
       account_state.nonce >= nonce ->
@@ -157,4 +160,6 @@ defmodule Aecore.Structures.SpendTx do
       tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
     end
   end
+
+  def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 end

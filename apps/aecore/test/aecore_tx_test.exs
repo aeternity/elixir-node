@@ -16,7 +16,7 @@ defmodule AecoreTxTest do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
-  setup tx do
+  setup do
     Persistence.start_link([])
     Miner.start_link([])
     Chain.clear_state()
@@ -28,22 +28,24 @@ defmodule AecoreTxTest do
       Pool.get_and_empty_pool()
       :ok
     end)
+  end
 
-    from_acc = Wallet.get_public_key()
+  setup tx do
+    sender_acc = Wallet.get_public_key()
 
     [
-      nonce: Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce + 1,
-      to_acc: Wallet.get_public_key("M/0")
+      nonce: Map.get(Chain.chain_state(), sender_acc, %{nonce: 0}).nonce + 1,
+      receiver: Wallet.get_public_key("M/0")
     ]
   end
 
   test "positive tx valid", tx do
-    from_acc = Wallet.get_public_key()
-    value = 5
+    sender = Wallet.get_public_key()
+    amount = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
@@ -51,16 +53,16 @@ defmodule AecoreTxTest do
     assert SignedTx.is_valid?(signed_tx)
     signature = signed_tx.signature
     message = Serialization.pack_binary(signed_tx.data)
-    assert true = Signing.verify(message, signature, from_acc)
+    assert true = Signing.verify(message, signature, sender)
   end
 
   test "negative tx invalid", tx do
-    from_acc = Wallet.get_public_key()
-    value = -5
+    sender = Wallet.get_public_key()
+    amount = -5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
@@ -69,12 +71,12 @@ defmodule AecoreTxTest do
   end
 
   test "coinbase tx invalid", tx do
-    from_acc = Wallet.get_public_key()
-    value = 5
+    sender = Wallet.get_public_key()
+    amount = 5
     fee = 1
 
-    payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
@@ -83,8 +85,8 @@ defmodule AecoreTxTest do
   end
 
   test "invalid spend transaction", tx do
-    from_acc = Wallet.get_public_key()
-    value = 200
+    sender = Wallet.get_public_key()
+    amount = 200
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
@@ -92,8 +94,8 @@ defmodule AecoreTxTest do
     assert Enum.count(Chain.chain_state().accounts) == 1
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
 
-    payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
@@ -107,14 +109,17 @@ defmodule AecoreTxTest do
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
 
     :ok = Miner.mine_sync_block_to_chain()
-    # At this poing the from_acc should have 300 tokens,
+    # At this poing the sender should have 300 tokens,
     # enough to mine the transaction in the pool
+
+    assert Enum.count(Chain.chain_state().accounts) == 1
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 300
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
     assert Enum.count(Chain.chain_state().accounts) == 2
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
-    assert Chain.chain_state().accounts[tx.to_acc].balance == 200
+    assert Chain.chain_state().accounts[tx.receiver].balance == 200
   end
 end
