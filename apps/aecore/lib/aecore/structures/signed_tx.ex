@@ -28,16 +28,16 @@ defmodule Aecore.Structures.SignedTx do
   use ExConstructor
 
   @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(%{data: %{from_acc: key}, signature: signature}) do
+  def is_coinbase?(%{data: %{sender: key}, signature: signature}) do
     key == nil && signature == nil
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
+    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
       DataTx.is_valid?(data)
     else
-      Logger.error("Can't verify the signature with the following public key: #{data.from_acc}")
+      Logger.error("Can't verify the signature with the following public key: #{data.sender}")
       false
     end
   end

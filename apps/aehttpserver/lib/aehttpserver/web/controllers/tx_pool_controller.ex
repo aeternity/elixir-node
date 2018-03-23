@@ -24,7 +24,7 @@ defmodule Aehttpserver.Web.TxPoolController do
 
   def get_acc_txs(pool_txs, acc) do
     Enum.filter(pool_txs, fn tx ->
-      tx.data.from_acc == acc || tx.data.to_acc == acc
+      tx.data.sender == acc || tx.data.receiver == acc
     end)
   end
 end

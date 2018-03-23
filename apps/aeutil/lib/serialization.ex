@@ -139,10 +139,10 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_encode_root(value)
 
-      :from_acc ->
+      :sender ->
         Account.base58c_encode(value)
 
-      :to_acc ->
+      :receiver ->
         Account.base58c_encode(value)
 
       :signature ->
@@ -211,10 +211,10 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_decode_root(value)
 
-      :from_acc ->
+      :sender ->
         Account.base58c_decode(value)
 
-      :to_acc ->
+      :receiver ->
         Account.base58c_decode(value)
 
       :signature ->
