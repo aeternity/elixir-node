@@ -98,8 +98,6 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
         updated_naming_chainstate =
           Map.put(naming, sender, %{account_naming | pre_claims: updated_naming_pre_claims})
 
-        # TODO remove pre_claims older 300 blocks
-
         {updated_accounts_chainstate, updated_naming_chainstate}
 
       {:error, _reason} = err ->

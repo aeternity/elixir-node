@@ -7,7 +7,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.Structures.Naming
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -35,6 +35,7 @@ defmodule Aecore.Chain.ChainState do
     |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
+    |> apply_block_height_on_state!(block_height)
   end
 
   @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
@@ -59,6 +60,11 @@ defmodule Aecore.Chain.ChainState do
       true ->
         throw({:error, "Invalid transaction"})
     end
+  end
+
+  @spec apply_block_height_on_state!(chainstate(), integer()) :: chainstate()
+  def apply_block_height_on_state!(chainstate, block_height) do
+    chainstate |> Naming.apply_block_height_on_state!(block_height)
   end
 
   @doc """
