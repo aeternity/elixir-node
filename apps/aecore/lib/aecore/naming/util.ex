@@ -21,6 +21,14 @@ defmodule Aecore.Naming.Util do
     {label, Enum.join(remainder, @split_name_symbol)}
   end
 
+  @spec normalized_hash!(String.t()) :: binary()
+  def normalized_hash!(name) do
+    case normalize_and_validate_name(name) do
+      {:ok, normalized_name} -> Hash.hash(normalized_name)
+      {:error, error} -> throw(error)
+    end
+  end
+
   @spec normalize_and_validate_name(String.t()) :: {:ok, String.t()} | {:error, String.t()}
   def normalize_and_validate_name(name) do
     normalized_name = normalize_name(name)

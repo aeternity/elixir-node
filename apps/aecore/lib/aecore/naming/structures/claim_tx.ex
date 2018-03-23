@@ -141,6 +141,10 @@ defmodule Aecore.Naming.Structures.ClaimTx do
       pre_claim == nil ->
         {:error, "Name has not been pre-claimed"}
 
+      # TODO validate expiration
+
+      # TODO validate not claimed yet
+
       true ->
         :ok
     end
