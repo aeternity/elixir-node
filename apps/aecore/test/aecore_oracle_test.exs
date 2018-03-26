@@ -47,6 +47,7 @@ defmodule AecoreOracleTest do
            |> Map.values()
            |> Enum.map(fn object -> object.response end)
            |> Enum.all?(fn response -> response == nil end)
+
     Chain.clear_state()
   end
 

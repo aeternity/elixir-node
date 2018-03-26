@@ -205,7 +205,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
-  @spec chain_state() ::%{:accounts => Chainstate.accounts(), :oracles => ChainState.oracles()}
+  @spec chain_state() :: %{:accounts => Chainstate.accounts(), :oracles => ChainState.oracles()}
   def chain_state() do
     top_block_chain_state()
   end

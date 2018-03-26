@@ -220,7 +220,8 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
-  @spec candidate() :: {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
+  @spec candidate() ::
+          {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
   def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
