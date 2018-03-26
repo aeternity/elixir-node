@@ -201,16 +201,6 @@ defmodule Aecore.Peers.Sync do
           {:error, message} ->
             Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
             peer_blocks
-
-          false ->
-            try do
-              BlockValidation.single_validate_block!(block)
-              Map.put(peer_blocks, block_hash, block)
-            catch
-              {:error, message} ->
-                Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-                peer_blocks
-            end
         end
       end
 
