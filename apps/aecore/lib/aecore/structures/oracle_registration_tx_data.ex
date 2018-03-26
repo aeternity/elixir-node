@@ -10,8 +10,8 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   @type tx_type_state :: ChainState.oracles()
 
   @type payload :: %{
-          query_format: map(),
-          response_format: map(),
+          query_format: Oracle.json_schema(),
+          response_format: Oracle.json_schema(),
           query_fee: non_neg_integer(),
           ttl: Oracle.ttl()
         }
@@ -63,7 +63,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
         true
       rescue
         e ->
-          Logger.error("Invalid query or response format definition; " <> e)
+          Logger.error("Invalid query or response format definition; " <> inspect(e))
 
           false
       end

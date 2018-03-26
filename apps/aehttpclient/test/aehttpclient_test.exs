@@ -17,8 +17,8 @@ defmodule AehttpclientTest do
     account = Wallet.get_public_key()
     hex_acc = Account.base58c_encode(account)
     base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
-
-    AehttpclientTest.add_txs_to_pool()
+    Pool.get_and_empty_pool()
+    add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =

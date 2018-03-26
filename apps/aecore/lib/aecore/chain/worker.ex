@@ -12,7 +12,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleQueryTxData
   alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Structures.OracleExtendTxData
-  alias Aecore.Structures.DataTx
   alias Aecore.Structures.Header
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -178,7 +177,7 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), map()) :: :ok
+  @spec add_validated_block(Block.t(), ChainState.chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
@@ -197,12 +196,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec registered_oracles() :: map()
+  @spec registered_oracles() :: Oracle.registered_oracles()
   def registered_oracles() do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
-  @spec oracle_interaction_objects() :: map()
+  @spec oracle_interaction_objects() :: Oracle.interaction_objects()
   def oracle_interaction_objects() do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
@@ -443,23 +442,20 @@ defmodule Aecore.Chain.Worker do
 
     accounts =
       for tx <- block.txs do
-        case tx.data do
+        case tx.data.payload do
           %SpendTx{} ->
-            [tx.data.sender, tx.data.receiver]
+            [tx.data.sender, tx.data.payload.receiver]
 
           %OracleRegistrationTxData{} ->
-            tx.data.operator
-
-          %OracleResponseTxData{} ->
-            tx.data.operator
-
-          %OracleQueryTxData{} ->
             tx.data.sender
 
-          %OracleExtendTxData{} ->
-            tx.data.oracle_address
+          %OracleResponseTxData{} ->
+            tx.data.sender
 
-          %DataTx{} ->
+          %OracleQueryTxData{} ->
+            [tx.data.sender, tx.data.payload.oracle_address]
+
+          %OracleExtendTxData{} ->
             tx.data.sender
         end
       end

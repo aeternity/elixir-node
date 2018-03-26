@@ -7,9 +7,6 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
@@ -21,21 +18,8 @@ defmodule Aecore.Chain.ChainState do
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
   @type oracles :: %{
-          registered_oracles: registered_oracles(),
-          interaction_objects: interaction_objects()
-        }
-
-  @type registered_oracles :: %{
-          Wallet.pubkey() => %{tx: OracleRegistrationTxData.t(), initial_hash: binary()}
-        }
-
-  @type interaction_objects :: %{
-          binary() => %{
-            query: OracleQueryTxData.t(),
-            response: OracleResponseTxData.t(),
-            query_initial_hash: binary(),
-            response_initial_hash: binary()
-          }
+          registered_oracles: Oracle.registered_oracles(),
+          interaction_objects: Oracle.interaction_objects()
         }
 
   @typedoc "Structure of the chainstate"

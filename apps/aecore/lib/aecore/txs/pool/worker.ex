@@ -77,9 +77,7 @@ defmodule Aecore.Txs.Pool.Worker do
           Logger.info("Transaction is already in pool")
         else
           # Broadcasting notifications for new transaction in a pool(per account and every)
-          if match?(%SpendTx{}, tx.data) do
-            Notify.broadcast_new_transaction_in_the_pool(tx)
-          end
+          Notify.broadcast_new_transaction_in_the_pool(tx)
 
           Peers.broadcast_tx(tx)
         end

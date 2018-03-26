@@ -154,12 +154,12 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec sum_coinbase_transactions(Block.t()) :: non_neg_integer()
   defp sum_coinbase_transactions(block) do
-    txs_list_without_oracle_txs =
+    txs_list_only_spend_txs =
       Enum.filter(block.txs, fn tx ->
         match?(%SpendTx{}, tx.data)
       end)
 
-    txs_list_without_oracle_txs
+    txs_list_only_spend_txs
     |> Enum.map(fn tx ->
       if SignedTx.is_coinbase?(tx) do
         tx.data.payload.amount

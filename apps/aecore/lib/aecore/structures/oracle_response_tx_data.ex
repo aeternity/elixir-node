@@ -118,11 +118,14 @@ defmodule Aecore.Structures.OracleResponseTxData do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
+      !Map.has_key?(registered_oracles, sender) ->
+        {:error, "Sender isn't a registered operator"}
+
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        {:error, "Invalid query data"}
+        {:error, "Invalid response data"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
         {:error, "No query with that ID"}

@@ -13,6 +13,8 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   @type tx_type_state :: ChainState.oracles()
 
+  @type id :: binary()
+
   @type payload :: %{
           oracle_address: Wallet.pubkey(),
           query_data: any(),

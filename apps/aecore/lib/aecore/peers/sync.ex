@@ -55,7 +55,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:set_chain_sync_status, status})
   end
 
-  @spec add_block_to_state(binary, Block.t()) :: :ok
+  @spec add_block_to_state(binary(), Block.t()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end

@@ -8,8 +8,27 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Structures.Account
 
   require Logger
+
+  @type json_schema :: map()
+
+  @type registered_oracles :: %{
+          Wallet.pubkey() => %{
+            tx: OracleRegistrationTxData.t(),
+            height_included: non_neg_integer()
+          }
+        }
+
+  @type interaction_objects :: %{
+          OracleQueryTxData.id() => %{
+            query: OracleQueryTxData.t(),
+            response: OracleResponseTxData.t(),
+            query_height_included: non_neg_integer(),
+            response_height_included: non_neg_integer()
+          }
+        }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
@@ -17,7 +36,8 @@ defmodule Aecore.Oracle.Oracle do
   Registers an oracle with the given requirements for queries and responses,
   a fee that should be paid by queries and a TTL.
   """
-  @spec register(map(), map(), non_neg_integer(), non_neg_integer(), ttl()) :: :ok | :error
+  @spec register(json_schema(), json_schema(), non_neg_integer(), non_neg_integer(), ttl()) ::
+          :ok | :error
   def register(query_format, response_format, query_fee, fee, ttl) do
     payload = %{
       query_format: query_format,
@@ -43,7 +63,8 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(binary(), any(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) :: :ok | :error
+  @spec query(Account.pubkey(), any(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
+          :ok | :error
   def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
     payload = %{
       oracle_address: oracle_address,
