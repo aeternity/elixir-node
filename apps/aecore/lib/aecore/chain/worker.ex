@@ -18,7 +18,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
-  alias Aeutil.Bits
 
   require Logger
 
@@ -81,9 +80,9 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_bech32_hash(String.t()) :: Block.t() | {:error, binary()}
-  def get_block_by_bech32_hash(hash) do
-    decoded_hash = Bits.bech32_decode(hash)
+  @spec get_block_by_base58_hash(String.t()) :: Block.t()
+  def get_block_by_base58_hash(hash) do
+    decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
   end
 
@@ -282,7 +281,7 @@ defmodule Aecore.Chain.Worker do
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Header.bech32_encode(new_block_hash)}, total tokens: #{
+      "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{
         inspect(total_tokens)
       }"
     end)
@@ -384,10 +383,10 @@ defmodule Aecore.Chain.Worker do
       for tx <- block.txs do
         case tx.data do
           %SpendTx{} ->
-            [tx.data.from_acc, tx.data.to_acc]
+            [tx.data.sender, tx.data.receiver]
 
           %DataTx{} ->
-            tx.data.from_acc
+            tx.data.sender
         end
       end
 
@@ -398,10 +397,10 @@ defmodule Aecore.Chain.Worker do
         Enum.filter(block.txs, fn tx ->
           case tx.data do
             %SpendTx{} ->
-              tx.data.from_acc == account || tx.data.to_acc == account
+              tx.data.sender == account || tx.data.receiver == account
 
             %DataTx{} ->
-              tx.data.from_acc == account
+              tx.data.sender == account
           end
         end)
 

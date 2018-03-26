@@ -7,8 +7,7 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
-  alias Aewallet.Encoding
-  alias Plug.Conn
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -18,19 +17,19 @@ defmodule Aehttpserver.Web.InfoController do
     top_block_header =
       top_block.header
       |> BlockValidation.block_header_hash()
-      |> Header.bech32_encode()
+      |> Header.base58c_encode()
 
     genesis_block_header = Block.genesis_block().header
 
     genesis_block_hash =
       genesis_block_header
       |> BlockValidation.block_header_hash()
-      |> Header.bech32_encode()
+      |> Header.base58c_encode()
 
     own_nonce = Peers.get_peer_nonce()
 
     pubkey = Wallet.get_public_key()
-    pubkey_hex = Encoding.encode(pubkey, :ae)
+    pubkey_hex = Account.base58c_encode(pubkey)
 
     # Add whoever's getting our info
     peer_port_headers = Conn.get_req_header(conn, "peer_port")
@@ -53,7 +52,7 @@ defmodule Aehttpserver.Web.InfoController do
       current_block_height: top_block.header.height,
       current_block_hash: top_block_header,
       genesis_block_hash: genesis_block_hash,
-      difficulty_target: top_block.header.difficulty_target,
+      target: top_block.header.target,
       public_key: pubkey_hex,
       peer_nonce: own_nonce
     })

@@ -13,9 +13,9 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Difficulty
-  alias Aecore.Structures.Account
 
   setup do
+    # Persistence.delete_all_blocks()
     Chain.start_link([])
 
     on_exit(fn ->
@@ -37,17 +37,17 @@ defmodule AecoreChainTest do
 
     chain_state = Chain.chain_state(top_block_hash)
     new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
-    new_chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    new_root_hash = ChainState.calculate_root_hash(new_chain_state)
 
     block_unmined = %Block{
       header: %Header{
         height: top_block.header.height + 1,
         prev_hash: top_block_hash,
         txs_hash: <<0::256>>,
-        chain_state_hash: new_chain_state_hash,
-        difficulty_target: 1,
+        root_hash: new_root_hash,
+        target: 1,
         nonce: 0,
-        timestamp: System.system_time(:milliseconds),
+        time: System.system_time(:milliseconds),
         version: 1
       },
       txs: []
@@ -61,11 +61,12 @@ defmodule AecoreChainTest do
     blocks_for_difficulty_calculation =
       Chain.get_blocks(top_block_hash_next, Difficulty.get_number_of_blocks())
 
-    top_block_hash_next_bech32 = top_block_hash_next |> Header.bech32_encode()
+    top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
-    assert top_block_from_chain == Chain.get_block_by_bech32_hash(top_block_hash_next_bech32)
+    assert top_block_from_chain == Chain.get_block_by_base58_hash(top_block_hash_next_base58)
+
     assert previous_block.header.height + 1 == top_block_from_chain.header.height
 
     assert BlockValidation.calculate_and_validate_block!(

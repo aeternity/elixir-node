@@ -23,7 +23,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @mersenne_prime 2_147_483_647
-  @coinbase_transaction_value 100
+  @coinbase_transaction_amount 100
   @new_candidate_nonce_count 500
 
   def start_link(_args) do
@@ -209,7 +209,7 @@ defmodule Aecore.Miner.Worker do
 
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
     Logger.info(fn ->
-      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
+      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
         cblock.header.nonce
       }"
     end)
@@ -229,7 +229,7 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+      difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
@@ -287,10 +287,10 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def create_coinbase_tx(to_acc, total_fees) do
+  def create_coinbase_tx(receiver, total_fees) do
     payload = %{
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees
+      receiver: receiver,
+      amount: @coinbase_transaction_amount + total_fees
     }
 
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
@@ -380,7 +380,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
-    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
@@ -389,15 +389,15 @@ defmodule Aecore.Miner.Worker do
         top_block.header.height + 1
       )
 
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    root_hash = ChainState.calculate_root_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
       Header.create(
         top_block.header.height + 1,
         top_block_hash,
+        txs_hash,
         root_hash,
-        chain_state_hash,
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
@@ -407,7 +407,7 @@ defmodule Aecore.Miner.Worker do
     %Block{header: unmined_header, txs: valid_txs}
   end
 
-  def coinbase_transaction_value, do: @coinbase_transaction_value
+  def coinbase_transaction_amount, do: @coinbase_transaction_amount
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1

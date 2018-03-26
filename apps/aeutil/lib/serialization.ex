@@ -11,22 +11,26 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aewallet.Encoding
   alias Aeutil.Parser
-  alias Aeutil.Bits
+  alias Aecore.Structures.Account
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
-  def block(block, :serialize), do: serialize_value(block)
+  def block(block, :serialize) do
+    serialized_block = serialize_value(block)
+    Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
+  end
 
   def block(block, :deserialize) do
+    txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
+
     built_header =
-      block["header"]
+      Map.delete(block, "transactions")
       |> deserialize_value()
       |> Header.new()
 
-    txs = Enum.map(block["txs"], fn tx -> tx(tx, :deserialize) end)
     Block.new(header: built_header, txs: txs)
   end
 
@@ -62,7 +66,7 @@ defmodule Aeutil.Serialization do
     if is_tuple(head) do
       merkle_proof(Tuple.to_list(head), acc)
     else
-      acc = [serialize_value(head, :account) | acc]
+      acc = [serialize_value(head, :proof) | acc]
       merkle_proof(tail, acc)
     end
   end
@@ -114,9 +118,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(nil, _), do: nil
 
   def serialize_value(value, type) when is_list(value) do
-    for elem <- value do
-      serialize_value(elem, type)
-    end
+    for elem <- value, do: serialize_value(elem, type)
   end
 
   def serialize_value(value, _type) when is_map(value) do
@@ -129,26 +131,26 @@ defmodule Aeutil.Serialization do
 
   def serialize_value(value, type) when is_binary(value) do
     case type do
+      :root_hash ->
+        ChainState.base58c_encode(value)
+
       :prev_hash ->
-        Header.bech32_encode(value)
+        Header.base58c_encode(value)
 
       :txs_hash ->
-        SignedTx.bech32_encode_root(value)
+        SignedTx.base58c_encode_root(value)
 
-      :chain_state_hash ->
-        ChainState.bech32_encode(value)
+      :sender ->
+        Account.base58c_encode(value)
 
-      :from_acc ->
-        Encoding.encode(value, :ae)
-
-      :to_acc ->
-        Encoding.encode(value, :ae)
+      :receiver ->
+        Account.base58c_encode(value)
 
       :signature ->
         base64_binary(value, :serialize)
 
       :proof ->
-        Encoding.encode(value, :ae)
+        base64_binary(value, :serialize)
 
       _ ->
         value
@@ -156,10 +158,20 @@ defmodule Aeutil.Serialization do
   end
 
   def serialize_value(value, _) when is_atom(value) do
-    Atom.to_string(value)
+    case value do
+      :pow_evidence -> "pow"
+      :root_hash -> "state_hash"
+      _ -> Atom.to_string(value)
+    end
   end
 
   def serialize_value(value, _), do: value
+
+  @doc """
+  Initializing function to the recursive functionality of deserializing a strucure
+  """
+  @spec deserialize_value(any()) :: any()
+  def deserialize_value(value), do: deserialize_value(value, "")
 
   @doc """
   Loops recursively through a given serialized structure, converts the keys to atoms
@@ -168,24 +180,54 @@ defmodule Aeutil.Serialization do
   @spec deserialize_value(list()) :: list()
   @spec deserialize_value(map()) :: map()
   @spec deserialize_value(binary()) :: binary() | atom()
-  def deserialize_value(nil), do: nil
+  def deserialize_value(nil, _), do: nil
 
-  def deserialize_value(value) when is_list(value) do
-    for elem <- value, do: deserialize_value(elem)
+  def deserialize_value(value, type) when is_list(value) do
+    for elem <- value, do: deserialize_value(elem, type)
   end
 
-  def deserialize_value(value) when is_map(value) do
+  def deserialize_value(value, _) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, new_value ->
-      Map.put(new_value, Parser.to_atom!(key), deserialize_value(val))
+      case key do
+        "pow" ->
+          Map.put(new_value, :pow_evidence, deserialize_value(val, :pow_evidence))
+
+        "state_hash" ->
+          Map.put(new_value, :root_hash, deserialize_value(val, :root_hash))
+
+        _ ->
+          Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+      end
     end)
   end
 
-  def deserialize_value(value) when is_binary(value) do
-    case Bits.bech32_decode(value) do
-      {:error, _reason} -> Parser.to_atom!(value)
-      value -> value
+  def deserialize_value(value, type) when is_binary(value) do
+    case type do
+      :root_hash ->
+        ChainState.base58c_decode(value)
+
+      :prev_hash ->
+        Header.base58c_decode(value)
+
+      :txs_hash ->
+        SignedTx.base58c_decode_root(value)
+
+      :sender ->
+        Account.base58c_decode(value)
+
+      :receiver ->
+        Account.base58c_decode(value)
+
+      :signature ->
+        base64_binary(value, :deserialize)
+
+      :proof ->
+        base64_binary(value, :deserialize)
+
+      _ ->
+        Parser.to_atom!(value)
     end
   end
 
-  def deserialize_value(value), do: value
+  def deserialize_value(value, _), do: value
 end

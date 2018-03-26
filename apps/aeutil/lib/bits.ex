@@ -4,15 +4,35 @@ defmodule Aeutil.Bits do
   License: CC BY-SA 3.0
   """
 
-  def bech32_encode(prefix, bin) do
-    SegwitAddr.encode(prefix, 0, :binary.bin_to_list(bin))
+  def encode58c(prefix, payload) when is_binary(payload) do
+    prefix <> "$" <> encode58(payload)
   end
 
-  def bech32_decode(bech32) do
-    case SegwitAddr.decode(bech32) do
-      {:ok, {_, _, bin_list}} -> :binary.list_to_bin(bin_list)
-      {:error, _} = error -> error
-    end
+  defp encode58(payload) do
+    checksum = generate_checksum(payload)
+
+    payload
+    |> Kernel.<>(checksum)
+    |> :base58.binary_to_base58()
+    |> to_string()
+  end
+
+  defp generate_checksum(payload) do
+    <<checksum::binary-size(4), _::binary>> =
+      :crypto.hash(:sha256, :crypto.hash(:sha256, payload))
+
+    checksum
+  end
+
+  def decode58(payload) do
+    decoded_payload =
+      payload
+      |> String.to_charlist()
+      |> :base58.base58_to_binary()
+
+    bsize = byte_size(decoded_payload) - 4
+    <<data::binary-size(bsize), _checksum::binary-size(4)>> = decoded_payload
+    data
   end
 
   # this is the public api which allows you to pass any binary representation

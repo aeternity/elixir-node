@@ -19,8 +19,8 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{difficulty_target: difficulty, pow_evidence: soln} = header) do
-    if test_target(soln, difficulty) do
+  def verify(%Header{target: target, pow_evidence: soln} = header) do
+    if test_target(soln, target) do
       process(:verify, header)
     else
       false
@@ -170,7 +170,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{header: header, response: {:generated, soln}} = builder) do
-    if test_target(soln, header.difficulty_target) do
+    if test_target(soln, header.target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
     else
       {:error, %{builder | error: :no_solution}}
