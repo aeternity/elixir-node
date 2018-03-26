@@ -24,7 +24,7 @@ defmodule Aecore.Structures.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          from_acc: binary(),
+          sender: binary(),
           fee: non_neg_integer(),
           nonce: non_neg_integer()
         }
@@ -35,16 +35,16 @@ defmodule Aecore.Structures.DataTx do
   ## Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
-  - from_acc: The public address of the account originating the transaction
+  - sender: The public address of the account originating the transaction
   - fee: The amount of tokens given to the miner
   - nonce: A random integer generated on initialisation of a transaction (must be unique!)
   """
-  defstruct [:type, :payload, :from_acc, :fee, :nonce]
+  defstruct [:type, :payload, :sender, :fee, :nonce]
   use ExConstructor
 
   @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, from_acc, fee, nonce) do
-    %DataTx{type: type, payload: type.init(payload), from_acc: from_acc, fee: fee, nonce: nonce}
+  def init(type, payload, sender, fee, nonce) do
+    %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
   end
 
   @doc """
@@ -67,36 +67,30 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate(%DataTx{} = tx, chainstate) do
-    try do
-      accounts_state_tree = chainstate.accounts
-      tx_type_state = Map.get(chainstate, tx.type, %{})
+  @spec process_chainstate!(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
+  def process_chainstate!(%DataTx{} = tx, chainstate) do
+    accounts_state_tree = chainstate.accounts
+    tx_type_state = Map.get(chainstate, tx.type, %{})
 
-      {new_accounts_state_tree, new_tx_type_state} =
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.from_acc,
-          tx.fee,
-          tx.nonce,
-          accounts_state_tree,
-          tx_type_state
-        )
+    {new_accounts_state_tree, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.sender,
+        tx.fee,
+        tx.nonce,
+        accounts_state_tree,
+        tx_type_state
+      )
 
-      new_chainstate =
-        if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type, new_tx_type_state)
-        else
-          chainstate
-        end
-
-      Map.put(new_chainstate, :accounts, new_accounts_state_tree)
-    catch
-      {:error, reason} ->
-        Logger.error(reason)
+    new_chainstate =
+      if Map.has_key?(chainstate, tx.type) do
+        Map.put(chainstate, tx.type, new_tx_type_state)
+      else
         chainstate
-    end
+      end
+
+    Map.put(new_chainstate, :accounts, new_accounts_state_tree)
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -111,6 +105,6 @@ defmodule Aecore.Structures.DataTx do
   @spec deserialize(payload()) :: DataTx.t()
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
-    init(data_tx.type, data_tx.payload, data_tx.from_acc, data_tx.fee, data_tx.nonce)
+    init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
   end
 end

@@ -13,7 +13,6 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Difficulty
-  alias Aecore.Structures.Account
 
   setup do
     # Persistence.delete_all_blocks()

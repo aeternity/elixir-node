@@ -48,4 +48,9 @@ defmodule Aecore.Structures.AccountStateTree do
   def reduce(tree, acc, fun) do
     :gb_merkle_trees.foldr(fun, acc, tree)
   end
+
+  @spec size(tree()) :: non_neg_integer()
+  def size(tree) do
+    :gb_merkle_trees.size(tree)
+  end
 end

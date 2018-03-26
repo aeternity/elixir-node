@@ -23,7 +23,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @mersenne_prime 2_147_483_647
-  @coinbase_transaction_value 100
+  @coinbase_transaction_amount 100
   @new_candidate_nonce_count 500
 
   def start_link(_args) do
@@ -287,10 +287,10 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def create_coinbase_tx(to_acc, total_fees) do
+  def create_coinbase_tx(receiver, total_fees) do
     payload = %{
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees
+      receiver: receiver,
+      amount: @coinbase_transaction_amount + total_fees
     }
 
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
@@ -406,7 +406,7 @@ defmodule Aecore.Miner.Worker do
     %Block{header: unmined_header, txs: valid_txs}
   end
 
-  def coinbase_transaction_value, do: @coinbase_transaction_value
+  def coinbase_transaction_amount, do: @coinbase_transaction_amount
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1

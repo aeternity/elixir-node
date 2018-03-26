@@ -33,7 +33,6 @@ defmodule AecoreChainStateTest do
 
   @tag :chain_state
   test "chain state", wallet do
-    next_block_height = Chain.top_block().header.height + 1
     init_accounts_state = Chain.chain_state().accounts
 
     {:ok, signed_tx1} =

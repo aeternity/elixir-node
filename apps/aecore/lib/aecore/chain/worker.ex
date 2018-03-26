@@ -381,10 +381,10 @@ defmodule Aecore.Chain.Worker do
       for tx <- block.txs do
         case tx.data do
           %SpendTx{} ->
-            [tx.data.from_acc, tx.data.to_acc]
+            [tx.data.sender, tx.data.receiver]
 
           %DataTx{} ->
-            tx.data.from_acc
+            tx.data.sender
         end
       end
 
@@ -395,10 +395,10 @@ defmodule Aecore.Chain.Worker do
         Enum.filter(block.txs, fn tx ->
           case tx.data do
             %SpendTx{} ->
-              tx.data.from_acc == account || tx.data.to_acc == account
+              tx.data.sender == account || tx.data.receiver == account
 
             %DataTx{} ->
-              tx.data.from_acc == account
+              tx.data.sender == account
           end
         end)
 

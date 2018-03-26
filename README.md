@@ -60,8 +60,8 @@ All custom transactions are childs to the `DataTx` Transaction that wraps them i
 The DataTx strucure hold:
 - The name of your `transaction type` that should be you `Transaction Module name`;
 - The `payload` that will hold your `custom transaction structure`;
-- The `from_acc`;
-- The`nonce`;
+- The `sender`;
+- The `nonce`;
 - The `fee`;
 
 ### **API calls**

@@ -32,17 +32,19 @@ defmodule Aecore.Chain.ChainState do
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
     cond do
       SignedTx.is_coinbase?(tx) ->
-        to_acc_state = AccountHandler.get_account_state(chainstate.accounts, data.payload.to_acc)
-        new_to_acc_state = SignedTx.reward(data, to_acc_state)
+        receiver_state =
+          AccountHandler.get_account_state(chainstate.accounts, data.payload.receiver)
+
+        new_receiver_state = SignedTx.reward(data, receiver_state)
 
         new_accounts_state =
-          AccountStateTree.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
+          AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
 
         Map.put(chainstate, :accounts, new_accounts_state)
 
-      data.from_acc != nil ->
+      data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, chainstate)
+          DataTx.process_chainstate!(data, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end

@@ -37,14 +37,14 @@ defmodule AehttpclientTest do
 
   def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain()
-    to_acc = Wallet.get_public_key()
-    from_acc = to_acc
+    receiver = Wallet.get_public_key()
+    sender = receiver
 
-    init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
-    payload1 = %{to_acc: from_acc, value: 5}
+    init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
+    payload1 = %{receiver: sender, amount: 5}
 
-    tx1 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 1)
-    tx2 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 2)
+    tx1 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 1)
+    tx2 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 2)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
