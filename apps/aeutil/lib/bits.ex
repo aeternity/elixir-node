@@ -1,6 +1,9 @@
-# Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
-# License: CC BY-SA 3.0
 defmodule Aeutil.Bits do
+  @moduledoc """
+  Taken from http://minhajuddin.com/2016/11/01/how-to-extract-bits-from-a-binary-in-elixir/
+  License: CC BY-SA 3.0
+  """
+
   def encode58c(prefix, payload) when is_binary(payload) do
     prefix <> "$" <> encode58(payload)
   end

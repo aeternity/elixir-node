@@ -39,7 +39,7 @@ defmodule Aecore.Wallet.Worker do
   Gets the default dir for storing the wallet
   """
   @spec get_aewallet_dir() :: String.t()
-  def get_aewallet_dir() do
+  def get_aewallet_dir do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
@@ -47,12 +47,12 @@ defmodule Aecore.Wallet.Worker do
   Gets the default password for the dafault wallet
   """
   @spec get_aewallet_pass() :: String.t()
-  def get_aewallet_pass() do
+  def get_aewallet_pass do
     Application.get_env(:aecore, :aewallet)[:pass]
   end
 
   @spec get_public_key() :: binary()
-  def get_public_key() do
+  def get_public_key do
     get_public_key("")
   end
 
@@ -72,7 +72,7 @@ defmodule Aecore.Wallet.Worker do
   end
 
   @spec get_private_key() :: binary()
-  def get_private_key() do
+  def get_private_key do
     get_private_key("")
   end
 

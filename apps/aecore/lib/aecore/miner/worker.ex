@@ -56,10 +56,9 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  ## TODO check if is Synced with the chain !!
   @spec resume() :: :ok
-  def resume() do
-    if Peers.is_chain_synced?() do
+  def resume do
+    if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
       Logger.error("Can't start miner, chain not yet synced")
@@ -67,14 +66,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec suspend() :: :ok
-  def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
+  def suspend, do: GenServer.call(__MODULE__, {:mining, :stop})
 
   @spec get_state() :: :running | :idle
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
   @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
-  def mine_sync_block_to_chain() do
+  def mine_sync_block_to_chain do
     cblock = candidate()
 
     case mine_sync_block(cblock) do
@@ -171,9 +170,9 @@ defmodule Aecore.Miner.Worker do
       end
 
     cheader = %{cblock.header | nonce: nonce}
-    cblock = %{cblock | header: cheader}
+    cblock_with_header = %{cblock | header: cheader}
     work = fn -> Cuckoo.generate(cheader) end
-    start_worker(work, %{state | block_candidate: cblock})
+    start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
   defp mining(%{miner_state: :idle, job: []} = state), do: state
@@ -221,7 +220,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
-  def candidate() do
+  def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
