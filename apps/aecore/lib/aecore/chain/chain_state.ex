@@ -53,6 +53,9 @@ defmodule Aecore.Chain.ChainState do
         else
           throw({:error, "Invalid transaction"})
         end
+
+      true ->
+        throw({:error, "Invalid transaction"})
     end
   end
 

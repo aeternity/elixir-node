@@ -28,10 +28,7 @@ defmodule Aecore.Structures.Account do
   defstruct [:balance, :nonce]
   use ExConstructor
 
-  @spec empty() :: Account.t()
-  def empty() do
-    %Account{balance: 0, nonce: 0}
-  end
+  def empty, do: %Account{balance: 0, nonce: 0}
 
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)

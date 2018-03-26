@@ -12,6 +12,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Structures.Header
 
   require Logger
 
@@ -31,8 +32,8 @@ defmodule Aecore.Peers.Worker do
 
   ## Client side
 
-  @spec is_chain_synced?() :: boolean()
-  def is_chain_synced?() do
+  @spec chain_synced?() :: boolean()
+  def chain_synced? do
     GenServer.call(__MODULE__, :is_chain_synced)
   end
 
@@ -47,24 +48,24 @@ defmodule Aecore.Peers.Worker do
   end
 
   @spec check_peers() :: :ok
-  def check_peers() do
+  def check_peers do
     GenServer.call(__MODULE__, :check_peers)
   end
 
   @spec all_uris() :: list(binary())
-  def all_uris() do
+  def all_uris do
     all_peers()
     |> Map.values()
     |> Enum.map(fn %{uri: uri} -> uri end)
   end
 
   @spec all_peers() :: peers
-  def all_peers() do
+  def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
   @spec genesis_block_header_hash() :: term()
-  def genesis_block_header_hash() do
+  def genesis_block_header_hash do
     BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
@@ -291,7 +292,7 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  defp create_nonce_table() do
+  defp create_nonce_table do
     :ets.new(:nonce_table, [:named_table])
   end
 

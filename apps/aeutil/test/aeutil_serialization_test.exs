@@ -18,7 +18,7 @@ defmodule AeutilSerializationTest do
     assert Serialization.block(serialized_block, :deserialize) == block
   end
 
-  def get_block() do
+  def get_block do
     receiver =
       <<2, 121, 111, 28, 192, 67, 96, 59, 129, 233, 58, 160, 23, 170, 149, 224, 16, 95, 203, 138,
         175, 20, 173, 236, 11, 119, 247, 239, 229, 214, 249, 62, 214>>
@@ -63,7 +63,7 @@ defmodule AeutilSerializationTest do
     }
   end
 
-  def get_block_map() do
+  def get_block_map do
     %{
       "transactions" => [
         %{

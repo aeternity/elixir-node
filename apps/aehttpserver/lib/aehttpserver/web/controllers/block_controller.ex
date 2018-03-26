@@ -98,7 +98,7 @@ defmodule Aehttpserver.Web.BlockController do
   end
 
   def new_block(conn, _params) do
-    block = Aeutil.Serialization.block(conn.body_params, :deserialize)
+    block = Serialization.block(conn.body_params, :deserialize)
     block_hash = BlockValidation.block_header_hash(block.header)
     Sync.add_block_to_state(block_hash, block)
     Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())

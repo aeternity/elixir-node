@@ -8,6 +8,7 @@ defmodule Aecore.Pow.Cuckoo do
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow_cuckoo.erl
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow.erl
   """
+
   require Logger
 
   alias Aecore.Chain.BlockValidation
@@ -77,7 +78,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   defp command_options(:generate), do: default_command_options()
 
-  defp default_command_options() do
+  defp default_command_options do
     [
       {:stdout, self()},
       {:stderr, self()},
@@ -111,7 +112,7 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  defp export_ld_lib_path() do
+  defp export_ld_lib_path do
     ldpathvar =
       case :os.type() do
         {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
@@ -185,7 +186,7 @@ defmodule Aecore.Pow.Cuckoo do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     hash = :crypto.hash(:sha256, bin)
-    Hashcash.generate(:cuckoo, hash, target)
+    Hashcash.verify(hash, target)
   end
 
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is

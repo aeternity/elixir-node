@@ -139,11 +139,11 @@ defmodule AecoreValidationTest do
     new_block
   end
 
-  def get_prev_block() do
+  def get_prev_block do
     Chain.top_block()
   end
 
-  def get_chain_state() do
+  def get_chain_state do
     Chain.chain_state()
   end
 end
