@@ -21,7 +21,7 @@ defmodule Aecore.Chain.Difficulty do
       latest_block.header.target
     else
       distance = calculate_distance(list)
-      target = (latest_block.header.target * (@target_distance / distance))
+      target = latest_block.header.target * (@target_distance / distance)
 
       next_target =
         target

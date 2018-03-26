@@ -194,7 +194,6 @@ defmodule Aecore.Chain.BlockValidation do
 
         new_block_header.time >= avg
 
-
       false ->
         false
     end

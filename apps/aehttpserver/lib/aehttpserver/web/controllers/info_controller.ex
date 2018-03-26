@@ -8,6 +8,7 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Structures.Account
+  alias Plug.Conn
 
   require Logger
 
