@@ -7,7 +7,7 @@ defmodule Stack do
     stack = State.stack(state)
 
     if length(stack) < 1024 do
-      State.set_stack(state, [arg | stack])
+      State.set_stack([arg | stack], state)
     else
       throw({"out_of_stack", stack})
     end
@@ -17,7 +17,7 @@ defmodule Stack do
     stack = State.stack(state)
 
     case stack do
-      [arg | stack] -> {arg, State.set_stack(state, stack)}
+      [arg | stack] -> {arg, State.set_stack(stack, state)}
       [] -> throw({"emtpy_stack", stack})
     end
   end
@@ -47,7 +47,7 @@ defmodule Stack do
 
         false ->
           value = Enum.at(stack, index)
-          push(stack, value)
+          push(value, state)
       end
     end
   end
@@ -71,7 +71,7 @@ defmodule Stack do
             [index_elem, set_val(index, top, rest)]
             |> List.flatten()
 
-          State.set_stack(state, stack)
+          State.set_stack(stack, state)
       end
     end
   end

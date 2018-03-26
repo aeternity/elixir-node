@@ -189,12 +189,14 @@ defmodule Aevm do
   end
 
   def exec([OpCodes._SLT() | op_codes], state) do
-    # TODO: check calculation
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
+    sop1 = signed(op1)
+    sop2 = signed(op2)
+
     result =
-      if op1 < op2 do
+      if sop1 < sop2 do
         1
       else
         0
@@ -204,12 +206,14 @@ defmodule Aevm do
   end
 
   def exec([OpCodes._SGT() | op_codes], state) do
-    # TODO: check calculation
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
+    sop1 = signed(op1)
+    sop2 = signed(op2)
+
     result =
-      if op1 > op2 do
+      if sop1 > sop2 do
         1
       else
         0
@@ -219,12 +223,14 @@ defmodule Aevm do
   end
 
   def exec([OpCodes._EQ() | op_codes], state) do
-    # TODO: check calculation
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
+    sop1 = signed(op1)
+    sop2 = signed(op2)
+
     result =
-      if op1 == op2 do
+      if sop1 == sop2 do
         1
       else
         0
@@ -282,7 +288,12 @@ defmodule Aevm do
   end
 
   def exec([OpCodes._BYTE() | op_codes], state) do
-    # TODO
+    {op1, state} = pop(state)
+    {op2, state} = pop(state)
+
+    result = byte(op1, op2)
+
+    exec(op_codes, push(state, result))
   end
 
   # 20s: SHA3
@@ -306,7 +317,7 @@ defmodule Aevm do
     {address, state} = pop(state)
 
     result = Memory.load(address, state)
-    state1 = push(result)
+    state1 = push(result, state)
 
     exec(op_codes, state1)
   end
@@ -715,6 +726,17 @@ defmodule Aevm do
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
     result = rem(rem(svalue1, svalue2 + svalue2), svalue2)
     Bitwise.band(result, AevmConst.mask256())
+  end
+
+  defp signed(value) do
+    <<svalue::integer-signed-256>> = <<value::integer-unsigned-256>>
+    svalue
+  end
+
+  defp byte(byte, value) when byte < 32 do
+    byte_pos = 256 - 8 * (byte + 1)
+    mask = 255
+    Bitwise.band(Bitwise.bsr(value, byte_pos), mask)
   end
 
   # defp signextend(value1, value2) do
