@@ -10,8 +10,9 @@ defmodule State do
     Map.put(state, :stack, value)
   end
 
-  def set_memory(state, adress, value) do
-    Map.put(state, :memory, %{})
+  def set_memory(state, address, value) do
+    memory = Memory.store(address, value, state)
+    Map.put(state, :memory, memory)
   end
 
   def stack(state) do

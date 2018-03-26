@@ -19,6 +19,8 @@ defmodule Aevm do
       |> Enum.reverse()
   end
 
+  # 0s: Stop and Arithmetic Operations
+
   def exec([OpCodes._STOP() | op_codes], state) do
     state
   end
@@ -147,13 +149,16 @@ defmodule Aevm do
 
   # not working correctly
   def exec([OpCodes._SIGNEXTEND() | op_codes], state) do
-    {op1, state} = pop(state)
-    {op2, state} = pop(state)
-
-    result = signextend(op2, op1)
-
-    exec(op_codes, push(state, result))
+    # TODO
+    # {op1, state} = pop(state)
+    # {op2, state} = pop(state)
+    #
+    # result = signextend(op2, op1)
+    #
+    # exec(op_codes, push(state, result))
   end
+
+  # 10s: Comparison & Bitwise Logic Operations
 
   def exec([OpCodes._LT() | op_codes], state) do
     {op1, state} = pop(state)
@@ -280,19 +285,410 @@ defmodule Aevm do
     # TODO
   end
 
+  # 20s: SHA3
+
   def exec([OpCodes._SHA3() | op_codes], state) do
     # TODO
   end
 
-  # --------------------------------------------------
+  ## TODO: Add exec() for #30s and 40s
+  # ---------------------------------------------------
+
+  # 50s: Stack, Memory, Storage and Flow Operations
+
+  def exec([OpCodes._POP() | op_codes], state) do
+    {_, state} = pop(state)
+
+    exec(op_codes, state)
+  end
+
+  def exec([OpCodes._MLOAD() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._MSTORE() | op_codes], state) do
+    # TODO: use storage maybe
+    {address, state} = pop(state)
+    {value, state} = pop(state)
+
+    state1 = State.set_memory(state, address, value)
+
+    exec(op_codes, state1)
+  end
+
+  def exec([OpCodes._MSTORE8() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SLOAD() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SSTORE() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._JUMP() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._JUMPI() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PC() | op_codes], state) do
+  end
+
+  def exec([OpCodes._MSIZE() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._GAS() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._JUMPDEST() | op_codes], state) do
+    # TODO
+  end
+
+  # 60s & 70s: Push Operations
 
   def exec([OpCodes._PUSH1() = current_op | op_codes], state) do
-    IO.inspect(state.stack)
     {op_code, popped, _pushed} = OpCodesUtil.opcode(current_op)
 
     [val | rem_op_codes] = op_codes
 
     exec(rem_op_codes, push(state, val))
+  end
+
+  def exec([OpCodes._PUSH2() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH3() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH4() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH5() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH6() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH7() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH8() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH9() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH10() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH11() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH12() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH13() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH14() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH15() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH16() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH17() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH18() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH19() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH20() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH21() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH22() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH23() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH24() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH25() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH26() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH27() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH28() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH29() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH30() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH31() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._PUSH32() | op_codes], state) do
+    # TODO
+  end
+
+  # 80s: Duplication Operations
+
+  def exec([OpCodes._DUP1() = current_op | op_codes], state) do
+    # TODO:
+    # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
+
+    # hardcoded for now, testing purposes
+    # exec(op_codes, dup(state, 1))
+  end
+
+  def exec([OpCodes._DUP2() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP3() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP4() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP5() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP6() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP7() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP8() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP9() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP10() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP11() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP12() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP13() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP14() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP15() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DUP16() | op_codes], state) do
+    # TODO
+  end
+
+  # 90s: Exchange Operations
+
+  def exec([OpCodes._SWAP1() = current_op | op_codes], state) do
+    # TODO:
+    # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
+
+    # hardcoded for now, testing purposes
+    # exec(op_codes, swap(state, 1))
+  end
+
+  def exec([OpCodes._SWAP2() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP3() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP4() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP5() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP6() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP7() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP8() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP9() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP10() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP11() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP12() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP13() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP14() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP15() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._SWAP16() | op_codes], state) do
+    # TODO
+  end
+
+  # a0s: Logging Operations
+
+  def exec([OpCodes._LOG0() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._LOG1() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._LOG2() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._LOG3() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._LOG4() | op_codes], state) do
+    # TODO
+  end
+
+  # f0s: System operations
+
+  def exec([OpCodes._CREATE() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._CALL() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._CALLCODE() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._RETURN() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._DELEGATECALL() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._CALLBLACKBOX() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._STATICCALL() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._REVERT() | op_codes], state) do
+    # TODO
+  end
+
+  def exec([OpCodes._INVALID() | op_codes], state) do
+    # TODO
+  end
+
+  # Halt Execution, Mark for deletion
+
+  def exec([OpCodes._SUICIDE() | op_codes], state) do
+    # TODO
   end
 
   def exec([], state) do

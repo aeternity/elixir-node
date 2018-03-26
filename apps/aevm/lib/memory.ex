@@ -1,7 +1,8 @@
 defmodule Memory do
   use Bitwise
 
-  def store(address, value, memory) do
+  def store(address, value, state) do
+    memory = State.memory(state)
     memory_index = trunc(Float.floor(address / 32) * 32)
     next = rem(address, 32) * 8
     prev = 256 - next
@@ -20,7 +21,8 @@ defmodule Memory do
     Map.put(memory1, memory_index + 32, next_value)
   end
 
-  def store8(address, value, memory) do
+  def store8(address, value, state) do
+    memory = State.memory(state)
     memory_index = trunc(Float.floor(address / 32) * 32)
     position = rem(address, 32)
     prev_bits = position * 8
