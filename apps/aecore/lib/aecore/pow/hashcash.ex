@@ -1,4 +1,6 @@
 defmodule Aecore.Pow.Hashcash do
+  alias Aeutil.Scientific
+  use Bitwise
   @moduledoc """
   Hashcash proof of work
   """
@@ -19,10 +21,43 @@ defmodule Aecore.Pow.Hashcash do
 
   @spec verify(binary(), integer()) :: boolean()
   def verify(block_header_hash, difficulty) do
-    block_header_hash
-    |> Bits.extract()
-    |> Enum.take_while(fn bit -> bit == 0 end)
-    |> Enum.count() <= difficulty
+    {exp, significand} = Scientific.break_scientific(difficulty)
+    length = byte_size(block_header_hash)
+    zeros = 8*max(0, length - exp)
+    case exp do
+      _e when _e >= 3 and _e < 3 ->
+        Aeutil.Scientific.compare_bin_to_significand(
+          block_header_hash,
+          bsr(significand, 8*(3 - exp)),
+          zeros,
+          8*exp)
+      _ when exp > length and exp < length + 3 ->
+        skip = 8*(exp - length)
+        compare = 24 - skip
+        case bsr(significand, compare) do
+          0 ->
+            Scientific.compare_bin_to_significand(
+              block_header_hash,
+              bsl(significand, skip),
+              0,
+              24)
+          _ ->
+            :error
+        end
+      _e when _e >= 0 ->
+        Scientific.compare_bin_to_significand(block_header_hash,
+          significand,
+          zeros,
+          24)
+      _e when _e <0 ->
+        bits = 8*length
+        block_header_hash == <<0 :: size(bits)>>
+    end
+
+    # block_header_hash
+    # |> Bits.extract()
+    # |> Enum.take_while(fn bit -> bit == 0 end)
+    # |> Enum.count() <= difficulty
   end
 
   @doc """

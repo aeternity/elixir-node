@@ -38,6 +38,17 @@ defmodule Aeutil.Scientific do
     band(nonce + 1, @max_nonce)
   end
 
+  def compare_bin_to_significand(binary, significand, zeros, number_of_bits) do
+    case binary do
+      <<0 :: size(zeros), integer :: size(number_of_bits), _>> ->
+        integer < significand
+      <<0 :: size(zeros), _>> ->
+        :error
+      _ ->
+        false
+    end
+  end
+
   defp int_to_sci(integer, exp) when integer > 0x7FFFFF do
     int_to_sci(bsr(integer, 8), exp + 1)
   end
@@ -50,7 +61,7 @@ defmodule Aeutil.Scientific do
     {exp, integer}
   end
 
-  defp break_scientific(scientific) do
+  def break_scientific(scientific) do
     significand_mask = bsl(1, 24) - 1
 
     exp =
