@@ -1,11 +1,15 @@
 defmodule Aecore.Chain.Difficulty do
+  @moduledoc """
+  Contains functions used to calculate the PoW difficulty.
+  """
+
   alias Aecore.Structures.Block
 
   @number_of_blocks 10
   @max_target_change Application.get_env(:aecore, :pow)[:max_target_change]
   @target_distance 30_000
 
-  def get_number_of_blocks() do
+  def get_number_of_blocks do
     @number_of_blocks
   end
 
@@ -17,9 +21,10 @@ defmodule Aecore.Chain.Difficulty do
       latest_block.header.target
     else
       distance = calculate_distance(list)
+      target = latest_block.header.target * (@target_distance / distance)
 
       next_target =
-        (latest_block.header.target * (@target_distance / distance))
+        target
         |> Float.ceil()
         |> round()
 

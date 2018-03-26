@@ -58,25 +58,25 @@ defmodule Aecore.Chain.Worker do
      }, 0}
   end
 
-  def clear_state(), do: GenServer.call(__MODULE__, :clear_state)
+  def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()
-  def top_block() do
+  def top_block do
     GenServer.call(__MODULE__, :top_block_info).block
   end
 
   @spec top_block_chain_state() :: ChainState.account_chainstate()
-  def top_block_chain_state() do
+  def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
 
   @spec top_block_hash() :: binary()
-  def top_block_hash() do
+  def top_block_hash do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
   @spec top_height() :: integer()
-  def top_height() do
+  def top_height do
     GenServer.call(__MODULE__, :top_height)
   end
 
@@ -150,7 +150,6 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    # TODO: catch error
     prev_block = get_block(block.header.prev_hash)
     prev_block_chain_state = chain_state(block.header.prev_hash)
 
@@ -188,17 +187,17 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec chain_state() :: ChainState.account_chainstate()
-  def chain_state() do
+  def chain_state do
     top_block_chain_state()
   end
 
   @spec txs_index() :: txs_index()
-  def txs_index() do
+  def txs_index do
     GenServer.call(__MODULE__, :txs_index)
   end
 
   @spec longest_blocks_chain() :: list(Block.t())
-  def longest_blocks_chain() do
+  def longest_blocks_chain do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
@@ -253,9 +252,12 @@ defmodule Aecore.Chain.Worker do
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
-    # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two. So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A]. This allows for log n findning of block with given height.
+    # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
+    # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
+    # This allows for log n findning of block with given height.
     new_refs =
-      Enum.reduce(0..@max_refs, [new_block.header.prev_hash], fn i, [prev | _] = acc ->
+      0..@max_refs
+      |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
         case Enum.at(blocks_data_map[prev].refs, i) do
           nil ->
             acc
@@ -441,7 +443,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp number_of_blocks_in_memory() do
+  defp number_of_blocks_in_memory do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
@@ -474,7 +476,14 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  # get_nth_prev_hash - traverses block_data_map using the refs. Becouse refs contain hashes of 1,2,4,8,16,... prev blocks we can do it fast. Lets look at the height difference as a binary representation. Eg. Lets say we want to go 10110 blocks back in the tree. Instead of using prev_block 10110 times we can go back by 2 blocks then by 4 and by 16. We can go back by such numbers of blocks becouse we have the refs. This way we did 3 operations instead of 22. In general we do O(log n) operations to go back by n blocks.
+  # get_nth_prev_hash - traverses block_data_map using the refs.
+  # Becouse refs contain hashes of 1,2,4,8,16,... prev blocks we can do it fast.
+  # Lets look at the height difference as a binary representation.
+  # Eg. Lets say we want to go 10110 blocks back in the tree.
+  # Instead of using prev_block 10110 times we can go back by 2 blocks then by 4 and by 16.
+  # We can go back by such numbers of blocks becouse we have the refs.
+  # This way we did 3 operations instead of 22. In general we do O(log n) operations
+  # to go back by n blocks.
   defp get_nth_prev_hash(n, begin_hash, blocks_data_map) do
     get_nth_prev_hash(n, 0, begin_hash, blocks_data_map)
   end

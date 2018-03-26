@@ -1,5 +1,10 @@
 defmodule AecoreCuckooTest do
+  @moduledoc """
+  Unit tests for the cuckoo module
+  """
+
   require Logger
+
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
@@ -9,10 +14,6 @@ defmodule AecoreCuckooTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
-
-  @moduledoc """
-  Unit tests for the cuckoo module
-  """
 
   setup do
     on_exit(fn ->

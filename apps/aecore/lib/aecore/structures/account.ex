@@ -31,10 +31,7 @@ defmodule Aecore.Structures.Account do
   defstruct [:balance, :nonce]
   use ExConstructor
 
-  @spec empty() :: Account.t()
-  def empty() do
-    %Account{balance: 0, nonce: 0}
-  end
+  def empty, do: %Account{balance: 0, nonce: 0}
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce}) do

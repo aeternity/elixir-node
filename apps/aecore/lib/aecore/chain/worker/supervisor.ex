@@ -1,4 +1,8 @@
 defmodule Aecore.Chain.Worker.Supervisor do
+  @moduledoc """
+  Supervisor responsible for all of the worker modules in his folder
+  """
+
   use Supervisor
 
   def start_link(_args) do

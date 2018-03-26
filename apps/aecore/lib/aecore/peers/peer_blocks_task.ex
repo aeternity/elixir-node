@@ -1,4 +1,9 @@
 defmodule Aecore.Peers.PeerBlocksTask do
+  @moduledoc """
+  A task which gets unknown blocks from a given peer URI and starting block hash and adds
+  those blocks to the chain if a sync isn't in progress.
+  """
+
   use Task
 
   alias Aecore.Peers.Sync
