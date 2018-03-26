@@ -1,40 +1,75 @@
 defmodule Memory do
   use Bitwise
 
-  def store(address, value, state) do
+  def load(address, state) do
     memory = State.memory(state)
-    memory_index = trunc(Float.floor(address / 32) * 32)
-    next = rem(address, 32) * 8
-    prev = 256 - next
+    {memory_index, bit_position} = get_index_in_memory(address)
+    remaining_bits = 256 - bit_position
 
     prev_saved_value = Map.get(memory, memory_index, 0)
     next_saved_value = Map.get(memory, memory_index + 32, 0)
 
-    <<prev_bits::size(prev), next_bits::binary>> = <<value::256>>
-    <<prev_saved_bits::size(next), _::binary>> = <<prev_saved_value::256>>
-    <<_::size(next), next_saved_bits::binary>> = <<next_saved_value::256>>
+    <<_::size(bit_position), prev::binary>> = <<prev_saved_value::256>>
+    <<next::size(bit_position), _::binary>> = <<next_saved_value::256>>
 
-    <<prev_value::size(256)>> = <<prev_saved_bits::size(next)>> <> <<prev_bits::size(prev)>>
-    <<next_value::size(256)>> = next_bits <> next_saved_bits
+    value_binary = prev <> <<next::size(bit_position)>>
+    binary_word_to_integer(value_binary)
+  end
 
-    memory1 = Map.put(memory, memory_index, prev_value)
-    Map.put(memory1, memory_index + 32, next_value)
+  def store(address, value, state) do
+    memory = State.memory(state)
+    {memory_index, bit_position} = get_index_in_memory(address)
+    remaining_bits = 256 - bit_position
+
+    <<prev_bits::size(remaining_bits), next_bits::binary>> = <<value::256>>
+
+    prev_saved_value = Map.get(memory, memory_index, 0)
+    next_saved_value = Map.get(memory, memory_index + 32, 0)
+
+    new_prev_value =
+      write_part(
+        bit_position,
+        <<prev_bits::size(remaining_bits)>>,
+        remaining_bits,
+        <<prev_saved_value::256>>
+      )
+
+    new_next_value = write_part(0, next_bits, bit_position, <<next_saved_value::256>>)
+
+    memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_prev_value))
+    memory2 = Map.put(memory1, memory_index + 32, binary_word_to_integer(new_next_value))
+
+    State.set_memory(memory2, state)
   end
 
   def store8(address, value, state) do
     memory = State.memory(state)
-    memory_index = trunc(Float.floor(address / 32) * 32)
-    position = rem(address, 32)
-    prev_bits = position * 8
-    size_bits = 8
+    {memory_index, bit_position} = get_index_in_memory(address)
 
     saved_value = Map.get(memory, memory_index, 0)
 
-    <<prev::size(prev_bits), _::size(size_bits), next::binary>> = <<saved_value::256>>
-    value_binary = <<value::size(size_bits)>>
-    new_value_binary = <<prev::size(prev_bits)>> <> value_binary <> next
-    <<new_value::256>> = new_value_binary
+    new_value = write_part(bit_position, <<value::size(8)>>, 8, <<saved_value::256>>)
 
-    Map.put(memory, memory_index, new_value)
+    memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value))
+
+    State.set_memory(memory1, state)
+  end
+
+  defp get_index_in_memory(address) do
+    memory_index = trunc(Float.floor(address / 32) * 32)
+    bit_position = rem(address, 32) * 8
+
+    {memory_index, bit_position}
+  end
+
+  defp write_part(bit_position, value_binary, size_bits, chunk_binary) do
+    <<prev::size(bit_position), _::size(size_bits), next::binary>> = chunk_binary
+    <<prev::size(bit_position)>> <> value_binary <> next
+  end
+
+  defp binary_word_to_integer(word) do
+    <<word_integer::size(256)>> = word
+
+    word_integer
   end
 end

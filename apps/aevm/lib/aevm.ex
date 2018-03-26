@@ -31,7 +31,7 @@ defmodule Aevm do
 
     result = op1 + op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._MUL() | op_codes], state) do
@@ -40,7 +40,7 @@ defmodule Aevm do
 
     result = op1 * op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._SUB() | op_codes], state) do
@@ -49,7 +49,7 @@ defmodule Aevm do
 
     result = op1 - op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._DIV() | op_codes], state) do
@@ -63,7 +63,7 @@ defmodule Aevm do
         Integer.floor_div(op1, op2)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._SDIV() | op_codes], state) do
@@ -77,7 +77,7 @@ defmodule Aevm do
         sdiv(op1, op2)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._MOD() | op_codes], state) do
@@ -91,7 +91,7 @@ defmodule Aevm do
         rem(op1, op2)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._SMOD() | op_codes], state) do
@@ -105,7 +105,7 @@ defmodule Aevm do
         smod(op1, op2)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._ADDMOD() | op_codes], state) do
@@ -120,7 +120,7 @@ defmodule Aevm do
         rem(op1 + op2, op3)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._MULMOD() | op_codes], state) do
@@ -135,7 +135,7 @@ defmodule Aevm do
         rem(op1 * op2, op3)
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._EXP() | op_codes], state) do
@@ -144,7 +144,7 @@ defmodule Aevm do
 
     result = :math.pow(op1, op2)
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   # not working correctly
@@ -155,7 +155,7 @@ defmodule Aevm do
     #
     # result = signextend(op2, op1)
     #
-    # exec(op_codes, push(state, result))
+    # exec(op_codes, push(result, state))
   end
 
   # 10s: Comparison & Bitwise Logic Operations
@@ -171,7 +171,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._GT() | op_codes], state) do
@@ -185,7 +185,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._SLT() | op_codes], state) do
@@ -200,7 +200,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._SGT() | op_codes], state) do
@@ -215,7 +215,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._EQ() | op_codes], state) do
@@ -230,7 +230,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._ISZERO() | op_codes], state) do
@@ -243,7 +243,7 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._AND() | op_codes], state) do
@@ -252,7 +252,7 @@ defmodule Aevm do
 
     result = op1 &&& op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._OR() | op_codes], state) do
@@ -261,7 +261,7 @@ defmodule Aevm do
 
     result = op1 ||| op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._XOR() | op_codes], state) do
@@ -270,7 +270,7 @@ defmodule Aevm do
 
     result = op1 ^^^ op2
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._NOT() | op_codes], state) do
@@ -278,7 +278,7 @@ defmodule Aevm do
 
     result = bnot(op1)
 
-    exec(op_codes, push(state, result))
+    exec(op_codes, push(result, state))
   end
 
   def exec([OpCodes._BYTE() | op_codes], state) do
@@ -303,21 +303,30 @@ defmodule Aevm do
   end
 
   def exec([OpCodes._MLOAD() | op_codes], state) do
-    # TODO
+    {address, state} = pop(state)
+
+    result = Memory.load(address, state)
+    state1 = push(result)
+
+    exec(op_codes, state1)
   end
 
   def exec([OpCodes._MSTORE() | op_codes], state) do
-    # TODO: use storage maybe
     {address, state} = pop(state)
     {value, state} = pop(state)
 
-    state1 = State.set_memory(state, address, value)
+    state1 = Memory.store(address, value, state)
 
     exec(op_codes, state1)
   end
 
   def exec([OpCodes._MSTORE8() | op_codes], state) do
-    # TODO
+    {address, state} = pop(state)
+    {value, state} = pop(state)
+
+    state1 = Memory.store8(address, value, state)
+
+    exec(op_codes, state1)
   end
 
   def exec([OpCodes._SLOAD() | op_codes], state) do
@@ -356,9 +365,9 @@ defmodule Aevm do
   def exec([OpCodes._PUSH1() = current_op | op_codes], state) do
     {op_code, popped, _pushed} = OpCodesUtil.opcode(current_op)
 
-    [val | rem_op_codes] = op_codes
+    [result | rem_op_codes] = op_codes
 
-    exec(rem_op_codes, push(state, val))
+    exec(rem_op_codes, push(result, state))
   end
 
   def exec([OpCodes._PUSH2() | op_codes], state) do
@@ -722,19 +731,19 @@ defmodule Aevm do
   #   end
   # end
 
-  defp push(state, value) do
-    Stack.push(state, value)
+  defp push(value, state) do
+    Stack.push(value, state)
   end
 
   defp pop(state) do
     Stack.pop(state)
   end
 
-  defp dup(state, index) do
-    Stack.dup(state, index)
+  defp dup(index, state) do
+    Stack.dup(index, state)
   end
 
-  defp swap(state, index) do
-    Stack.swap(state, index)
+  defp swap(index, state) do
+    Stack.swap(index, state)
   end
 end

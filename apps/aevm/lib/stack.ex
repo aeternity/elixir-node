@@ -3,7 +3,7 @@ defmodule Stack do
     []
   end
 
-  def push(state, arg) do
+  def push(arg, state) do
     stack = State.stack(state)
 
     if length(stack) < 1024 do
@@ -22,7 +22,7 @@ defmodule Stack do
     end
   end
 
-  def peek(state, index) when index >= 0 do
+  def peek(index, state) when index >= 0 do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do
@@ -35,7 +35,7 @@ defmodule Stack do
     end
   end
 
-  def dup(state, index) do
+  def dup(index, state) do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do
@@ -52,7 +52,7 @@ defmodule Stack do
     end
   end
 
-  def swap(state, index) do
+  def swap(index, state) do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do

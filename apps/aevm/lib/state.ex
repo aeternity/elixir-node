@@ -6,12 +6,11 @@ defmodule State do
     }
   end
 
-  def set_stack(state, value) do
-    Map.put(state, :stack, value)
+  def set_stack(stack, state) do
+    Map.put(state, :stack, stack)
   end
 
-  def set_memory(state, address, value) do
-    memory = Memory.store(address, value, state)
+  def set_memory(memory, state) do
     Map.put(state, :memory, memory)
   end
 
