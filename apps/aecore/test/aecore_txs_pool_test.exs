@@ -13,7 +13,6 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Structures.DataTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountHandler
 
   setup wallet do
     Code.require_file("test_utils.ex", "./test")
@@ -44,7 +43,7 @@ defmodule AecoreTxsPoolTest do
     # Empty the pool from the other tests
     Pool.get_and_empty_pool()
 
-    nonce1 = AccountHandler.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
+    nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
     payload1 = %{receiver: wallet.b_pub_key, amount: 5}
     tx1 = DataTx.init(SpendTx, payload1, wallet.a_pub_key, 10, nonce1)
 
@@ -69,7 +68,7 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", wallet do
-    nonce = AccountHandler.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
     payload = %{receiver: wallet.b_pub_key, amount: -5}
     tx1 = DataTx.init(SpendTx, payload, wallet.a_pub_key, 0, nonce)
 

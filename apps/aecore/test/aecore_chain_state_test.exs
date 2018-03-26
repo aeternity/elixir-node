@@ -11,7 +11,6 @@ defmodule AecoreChainStateTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.AccountHandler
 
   setup do
     on_exit(fn ->
@@ -57,20 +56,20 @@ defmodule AecoreChainStateTest do
 
     assert {6, 100} ==
              {
-               AccountHandler.balance(chain_state.accounts, wallet.a_pub_key),
-               AccountHandler.nonce(chain_state.accounts, wallet.a_pub_key)
+               Account.balance(chain_state.accounts, wallet.a_pub_key),
+               Account.nonce(chain_state.accounts, wallet.a_pub_key)
              }
 
     assert {3, 2} ==
              {
-               AccountHandler.balance(chain_state.accounts, wallet.b_pub_key),
-               AccountHandler.nonce(chain_state.accounts, wallet.b_pub_key)
+               Account.balance(chain_state.accounts, wallet.b_pub_key),
+               Account.nonce(chain_state.accounts, wallet.b_pub_key)
              }
 
     assert {1, 2} ==
              {
-               AccountHandler.balance(chain_state.accounts, wallet.c_pub_key),
-               AccountHandler.nonce(chain_state.accounts, wallet.c_pub_key)
+               Account.balance(chain_state.accounts, wallet.c_pub_key),
+               Account.nonce(chain_state.accounts, wallet.c_pub_key)
              }
   end
 

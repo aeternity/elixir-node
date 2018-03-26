@@ -9,7 +9,6 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountHandler
   alias Aecore.Structures.AccountStateTree
 
   require Logger
@@ -86,7 +85,7 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
-    sender_account_state = AccountHandler.get_account_state(accounts, sender)
+    sender_account_state = Account.get_account_state(accounts, sender)
 
     case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
       :ok ->
@@ -96,7 +95,7 @@ defmodule Aecore.Structures.SpendTx do
           |> Account.transaction_out(tx.amount * -1, nonce)
 
         new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
-        receiver = AccountHandler.get_account_state(accounts, tx.receiver)
+        receiver = Account.get_account_state(accounts, tx.receiver)
         new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
 
         {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}

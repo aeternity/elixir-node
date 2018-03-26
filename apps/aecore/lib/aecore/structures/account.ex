@@ -12,7 +12,7 @@ defmodule Aecore.Structures.Account do
   alias Aeutil.Bits
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.AccountHandler
+  alias Aecore.Structures.AccountStateTree
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -48,7 +48,7 @@ defmodule Aecore.Structures.Account do
   def spend(receiver, amount, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = AccountHandler.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
@@ -86,6 +86,35 @@ defmodule Aecore.Structures.Account do
     account_state
     |> Map.put(:nonce, nonce)
     |> transaction_in(amount)
+  end
+
+  @spec get_account_state(AccountStateTree.tree(), Wallet.pubkey()) :: Account.t()
+  def get_account_state(tree, key) do
+    case AccountStateTree.get(tree, key) do
+      :none ->
+        tree
+        |> AccountStateTree.put(key, empty())
+        |> get_account_state(key)
+
+      {:ok, account_state} ->
+        account_state
+    end
+  end
+
+  @doc """
+  Return the balance for a given key.
+  """
+  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  def balance(tree, key) do
+    get_account_state(tree, key).balance
+  end
+
+  @doc """
+  Return the nonce for a given key.
+  """
+  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  def nonce(tree, key) do
+    get_account_state(tree, key).nonce
   end
 
   def base58c_encode(bin) do

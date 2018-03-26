@@ -10,7 +10,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
   alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.AccountHandler
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -32,8 +32,7 @@ defmodule Aecore.Chain.ChainState do
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
     cond do
       SignedTx.is_coinbase?(tx) ->
-        receiver_state =
-          AccountHandler.get_account_state(chainstate.accounts, data.payload.receiver)
+        receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
 
         new_receiver_state = SignedTx.reward(data, receiver_state)
 
@@ -89,7 +88,7 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
   def calculate_total_tokens(%{accounts: accounts_tree}) do
     AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + AccountHandler.balance(accounts_tree, pub_key)
+      acc + Account.balance(accounts_tree, pub_key)
     end)
   end
 
