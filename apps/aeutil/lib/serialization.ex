@@ -9,7 +9,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aewallet.Encoding
   alias Aeutil.Parser
   alias Aecore.Structures.Account
 
@@ -27,7 +26,8 @@ defmodule Aeutil.Serialization do
     txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
 
     built_header =
-      Map.delete(block, "transactions")
+      block
+      |> Map.delete("transactions")
       |> deserialize_value()
       |> Header.new()
 

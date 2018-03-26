@@ -4,7 +4,6 @@ defmodule Aehttpserver.Web.Notify do
   """
 
   alias Aeutil.Serialization
-  alias Aewallet.Encoding
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Structures.Account
 
