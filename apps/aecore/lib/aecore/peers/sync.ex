@@ -51,7 +51,7 @@ defmodule Aecore.Peers.Sync do
 
   @spec chain_sync_running?() :: boolean()
   def chain_sync_running? do
-    GenServer.call(__MODULE__, :chain_sync_running)
+    GenServer.call(__MODULE__, :get_chain_sync_status)
   end
 
   @spec set_chain_sync_status(boolean()) :: :ok
@@ -202,16 +202,6 @@ defmodule Aecore.Peers.Sync do
           {:error, message} ->
             Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
             peer_blocks
-
-          false ->
-            try do
-              BlockValidation.single_validate_block!(block)
-              Map.put(peer_blocks, block_hash, block)
-            catch
-              {:error, message} ->
-                Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-                peer_blocks
-            end
         end
       end
 
