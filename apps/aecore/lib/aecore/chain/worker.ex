@@ -18,6 +18,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.AccountStateTree
 
   require Logger
@@ -63,6 +64,10 @@ defmodule Aecore.Chain.Worker do
   @spec top_block() :: Block.t()
   def top_block do
     GenServer.call(__MODULE__, :top_block_info).block
+  end
+
+  def state() do
+    GenServer.call(__MODULE__, :current_state)
   end
 
   @spec top_block_chain_state() :: ChainState.account_chainstate()
@@ -172,7 +177,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate() | {:error, binary()}
+  @spec chain_state(binary()) :: Chainstate.t() | {:error, binary()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       error = {:error, _} ->
@@ -258,6 +263,8 @@ defmodule Aecore.Chain.Worker do
     new_refs =
       0..@max_refs
       |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
+        Aecore.print(blocks_data_map[prev], "------->block_data_map[priv]")
+
         case Enum.at(blocks_data_map[prev].refs, i) do
           nil ->
             acc
@@ -505,5 +512,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state(), do: %{accounts: AccountStateTree.init_empty()}
+  defp build_chain_state() do
+    Chainstate.init()
+  end
 end

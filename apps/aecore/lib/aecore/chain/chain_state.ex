@@ -11,53 +11,23 @@ defmodule Aecore.Chain.ChainState do
   alias Aeutil.Bits
   alias Aecore.Structures.AccountStateTree
   alias Aecore.Structures.Account
+  alias Aecore.Structures.Chainstate
 
   require Logger
 
-  @typedoc "Structure of the accounts"
-  @type accounts() :: %{Wallet.pubkey() => Account.t()}
-
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
-
-  @spec calculate_and_validate_chain_state!(list(), chainstate()) :: chainstate()
+  @spec calculate_and_validate_chain_state!(list(), Chainstate.t()) :: Chainstate.t()
   def calculate_and_validate_chain_state!(txs, chainstate) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate)
+    Enum.reduce(txs, chainstate, fn tx, new_chainstate ->
+      Chainstate.apply_transaction!(new_chainstate, tx)
     end)
-  end
-
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
-    cond do
-      SignedTx.is_coinbase?(tx) ->
-        receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
-
-        new_receiver_state = SignedTx.reward(data, receiver_state)
-
-        new_accounts_state =
-          AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
-
-        Map.put(chainstate, :accounts, new_accounts_state)
-
-      data.sender != nil ->
-        if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
-        else
-          throw({:error, "Invalid transaction"})
-        end
-
-      true ->
-        throw({:error, "Invalid transaction"})
-    end
   end
 
   @doc """
   Create the root hash of the tree.
   """
-  @spec calculate_root_hash(chainstate()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
+    # TODO: Shouldn't be the root_hash of the chainstate insted of root_hash of any of the types inside?
     AccountStateTree.root_hash(chainstate.accounts)
   end
 
@@ -76,17 +46,17 @@ defmodule Aecore.Chain.ChainState do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate()) :: {boolean(), chainstate()}
+  @spec validate_tx(SignedTx.t(), Chainstate.t()) :: {boolean(), Chainstate.t()}
   defp validate_tx(tx, chainstate) do
     try do
-      {true, apply_transaction_on_state!(tx, chainstate)}
+      {true, Chainstate.apply_transaction!(chainstate, tx)}
     catch
       {:error, _} -> {false, chainstate}
     end
   end
 
-  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
+  @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
+  def calculate_total_tokens(%Chainstate{accounts: accounts_tree}) do
     AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
       acc + Account.balance(accounts_tree, pub_key)
     end)
