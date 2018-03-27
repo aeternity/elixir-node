@@ -7,7 +7,6 @@ defmodule Aecore.Naming.Structures.ClaimTx do
 
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Structures.ClaimTx
-  alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Naming.Structures.Naming
   alias Aecore.Structures.Account
 
@@ -90,12 +89,12 @@ defmodule Aecore.Naming.Structures.ClaimTx do
         account_naming = Map.get(naming, sender, Naming.empty())
 
         updated_naming_claims = [
-          Naming.create_claim(block_height, tx.name) | account_naming.claims
+          Naming.create_claim(block_height, tx.name, tx.name_salt) | account_naming.claims
         ]
 
         updated_naming_pre_claims =
           Enum.filter(account_naming.pre_claims, fn pre_claim ->
-            pre_claim.commitment != PreClaimTx.create_commitment_hash(tx.name, tx.name_salt)
+            pre_claim.commitment != Naming.create_commitment_hash(tx.name, tx.name_salt)
           end)
 
         updated_naming_chainstate =
@@ -130,7 +129,7 @@ defmodule Aecore.Naming.Structures.ClaimTx do
 
     pre_claim =
       Enum.find(account_naming.pre_claims, fn pre_claim ->
-        pre_claim.commitment == PreClaimTx.create_commitment_hash(tx.name, tx.name_salt)
+        pre_claim.commitment == Naming.create_commitment_hash(tx.name, tx.name_salt)
       end)
 
     cond do

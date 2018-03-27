@@ -2,12 +2,25 @@ defmodule Aecore.Naming.Structures.Naming do
   alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Naming.Structures.Naming
   alias Aecore.Chain.ChainState
+  alias Aecore.Naming.Util
+  alias Aeutil.Hash
 
   @pre_claim_ttl 300
 
+  @client_ttl 86400
+
+  @claim_expire_by_relative_limit 50000
+
   @type pre_claim :: %{height: non_neg_integer(), commitment: PreClaimTx.commitment_hash()}
 
-  @type claim :: %{height: non_neg_integer(), name: String.t(), pointers: String.t()}
+  @type claim :: %{
+          height: non_neg_integer(),
+          name: String.t(),
+          pointers: String.t(),
+          name_salt: String.t(),
+          expires_by: non_neg_integer(),
+          client_ttl: non_neg_integer()
+        }
 
   @type chain_state_name :: :naming
 
@@ -35,8 +48,42 @@ defmodule Aecore.Naming.Structures.Naming do
   @spec create_pre_claim(non_neg_integer(), PreClaimTx.commitment_hash()) :: pre_claim()
   def create_pre_claim(height, commitment), do: %{:height => height, :commitment => commitment}
 
-  @spec create_claim(non_neg_integer(), String.t()) :: claim()
-  def create_claim(height, name), do: %{:height => height, :name => name, :pointers => ""}
+  @spec create_claim(
+          non_neg_integer(),
+          String.t(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          String.t()
+        ) :: claim()
+  def create_claim(height, name, name_salt, expire_by, client_ttl, pointers),
+    do: %{
+      :height => height,
+      :name => name,
+      :name_salt => name_salt,
+      :pointers => pointers,
+      :expires_by => expire_by,
+      :client_ttl => client_ttl
+    }
+
+  @spec create_claim(non_neg_integer(), String.t(), String.t()) :: claim()
+  def create_claim(height, name, name_salt),
+    do: %{
+      :height => height,
+      :name => name,
+      :name_salt => name_salt,
+      :pointers => "",
+      :expires_by => height + @claim_expire_by_relative_limit,
+      :client_ttl => @client_ttl
+    }
+
+  @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
+  def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
+    Hash.hash(Util.namehash(name) <> name_salt)
+  end
+
+  @spec get_claim_expire_by_relative_limit() :: non_neg_integer()
+  def get_claim_expire_by_relative_limit, do: @claim_expire_by_relative_limit
 
   @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
           ChainState.chainstate()

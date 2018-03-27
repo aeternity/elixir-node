@@ -8,8 +8,6 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Naming.Structures.Naming
-  alias Aecore.Naming.Util
-  alias Aeutil.Hash
   alias Aecore.Structures.Account
 
   require Logger
@@ -52,11 +50,6 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   @spec is_valid?(PreClaimTx.t()) :: boolean()
   def is_valid?(%PreClaimTx{commitment: _commitment}) do
     true
-  end
-
-  @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
-  def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
-    Hash.hash(Util.namehash(name) <> name_salt)
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()

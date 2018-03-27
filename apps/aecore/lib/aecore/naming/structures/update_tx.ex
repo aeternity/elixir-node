@@ -105,9 +105,31 @@ defmodule Aecore.Naming.Structures.UpdateTx do
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
         account_naming = Map.get(naming, sender, Naming.empty())
 
-        # TODO update claim with data
+        claim_to_update =
+          Enum.find(account_naming.claims, fn claim ->
+            tx.hash == Util.normalized_hash!(claim.name)
+          end)
 
-        updated_naming_chainstate = Map.put(naming, sender, account_naming)
+        filtered_claims =
+          Enum.filter(account_naming.claims, fn claim ->
+            claim.name != claim_to_update.name
+          end)
+
+        updated_naming_claims = [
+          Naming.create_claim(
+            block_height,
+            claim_to_update.name,
+            claim_to_update.name_salt,
+            tx.expire_by,
+            tx.client_ttl,
+            tx.pointers
+          )
+          | filtered_claims
+        ]
+
+        updated_naming_chainstate =
+          Map.put(naming, sender, %{account_naming | claims: updated_naming_claims})
+
         {updated_accounts_chainstate, updated_naming_chainstate}
 
       {:error, _reason} = err ->

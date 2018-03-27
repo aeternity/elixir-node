@@ -14,6 +14,9 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Structures.SignedTx
   alias Aecore.Naming.Structures.PreClaimTx
   alias Aecore.Naming.Structures.ClaimTx
+  alias Aecore.Naming.Structures.UpdateTx
+  alias Aecore.Naming.Structures.Naming
+  alias Aecore.Naming.Util
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -86,7 +89,7 @@ defmodule Aecore.Structures.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
-    payload = %{commitment: PreClaimTx.create_commitment_hash(name, name_salt)}
+    payload = %{commitment: Naming.create_commitment_hash(name, name_salt)}
     spend_tx = DataTx.init(PreClaimTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
@@ -117,6 +120,42 @@ defmodule Aecore.Structures.Account do
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{name: name, name_salt: name_salt}
     spend_tx = DataTx.init(ClaimTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
+  end
+
+  @doc """
+  Builds a ClaimTx where the miners public key is used as a sender
+  """
+  @spec name_update(String.t(), String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def name_update(name, pointers, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    name_salt = <<1, 2, 3>>
+    name_update(sender, sender_priv_key, name, name_salt, pointers, fee, nonce)
+  end
+
+  @doc """
+  Build a ClaimTx from the given sender keys
+  """
+  @spec name_update(
+          Wallet.pubkey(),
+          Wallet.privkey(),
+          String.t(),
+          binary(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()}
+  def name_update(sender, sender_priv_key, name, name_salt, pointers, fee, nonce) do
+    payload = %{
+      hash: Util.normalized_hash!(name),
+      expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
+      client_ttl: 86400,
+      pointers: pointers
+    }
+
+    spend_tx = DataTx.init(UpdateTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
