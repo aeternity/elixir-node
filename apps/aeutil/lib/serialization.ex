@@ -7,7 +7,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
