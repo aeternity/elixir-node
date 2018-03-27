@@ -6,19 +6,6 @@ defmodule Aevm do
   require AevmConst
   require Stack
 
-  def chunk_bytecode(bytecode) do
-    chunked_bytecode =
-      bytecode
-      |> String.to_charlist()
-      |> Enum.chunk_every(2)
-      |> Enum.reduce([], fn x, acc ->
-        {code, _} = x |> List.to_string() |> Integer.parse(16)
-
-        [code | acc]
-      end)
-      |> Enum.reverse()
-  end
-
   # 0s: Stop and Arithmetic Operations
 
   def exec([OpCodes._STOP() | op_codes], state) do
