@@ -7,8 +7,6 @@ defmodule Aecore.Chain.Worker do
   use Bitwise
 
   alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.DataTx
   alias Aecore.Structures.Header
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -22,6 +20,7 @@ defmodule Aecore.Chain.Worker do
   require Logger
 
   @type txs_index :: %{binary() => [{binary(), binary()}]}
+
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
@@ -379,39 +378,24 @@ defmodule Aecore.Chain.Worker do
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
 
-    accounts =
-      for tx <- block.txs do
-        case tx.data do
-          %SpendTx{} ->
-            [tx.data.sender, tx.data.receiver]
-
-          %DataTx{} ->
-            tx.data.sender
-        end
-      end
-
-    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+    accounts_unique =
+      block.txs
+      |> Enum.map(&([&1.data.sender, &1.data.payload.receiver]))
+      |> List.flatten()
+      |> Enum.uniq()
+      |> List.delete(nil)
 
     for account <- accounts_unique, into: %{} do
-      acc_txs =
-        Enum.filter(block.txs, fn tx ->
-          case tx.data do
-            %SpendTx{} ->
-              tx.data.sender == account || tx.data.receiver == account
-
-            %DataTx{} ->
-              tx.data.sender == account
-          end
-        end)
-
-      tx_hashes =
-        Enum.map(acc_txs, fn tx ->
-          tx_bin = Serialization.pack_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
-        end)
-
+      # txs associated with the given account
       tx_tuples =
-        Enum.map(tx_hashes, fn hash ->
+        block.txs
+        |> Enum.filter(fn tx ->
+        tx.data.sender == account ||
+          tx.data.payload.receiver == account
+        end)
+        |> Enum.map(fn filtered_tx ->
+          tx_bin = Serialization.pack_binary(filtered_tx)
+          hash = :crypto.hash(:sha256, tx_bin)
           {block_hash, hash}
         end)
 
