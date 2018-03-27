@@ -8,7 +8,7 @@ defmodule Aecore.Chain.Difficulty do
   @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
   @target_distance 30_000
   @highest_target_scientific 0x2100FFFF
-  @expected_mine_rate 300_000
+  @expected_mine_rate 30_000
 
   def get_number_of_blocks() do
     @number_of_blocks

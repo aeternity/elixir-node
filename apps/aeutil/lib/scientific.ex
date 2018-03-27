@@ -40,9 +40,9 @@ defmodule Aeutil.Scientific do
 
   def compare_bin_to_significand(binary, significand, zeros, number_of_bits) do
     case binary do
-      <<0 :: size(zeros), integer :: size(number_of_bits), _>> ->
+      <<0 :: size(zeros), integer :: size(number_of_bits), _rest :: binary()>> ->
         integer < significand
-      <<0 :: size(zeros), _>> ->
+      <<0 :: size(zeros), _rest :: binary()>> ->
         :error
       _ ->
         false
@@ -72,7 +72,7 @@ defmodule Aeutil.Scientific do
 
     case band(0x800000, significand) do
       0 -> {exp, significand}
-      _ -> {exp, significand - 0x800000}
+      _ -> {-exp, significand - 0x800000}
     end
   end
 end

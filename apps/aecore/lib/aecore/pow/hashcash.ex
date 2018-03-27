@@ -25,15 +25,17 @@ defmodule Aecore.Pow.Hashcash do
     length = byte_size(block_header_hash)
     zeros = 8*max(0, length - exp)
     case exp do
-      _e when _e >= 3 and _e < 3 ->
-        Aeutil.Scientific.compare_bin_to_significand(
+      _exp when _exp >= 0 and _exp < 3 ->
+        Scientific.compare_bin_to_significand(
           block_header_hash,
           bsr(significand, 8*(3 - exp)),
           zeros,
           8*exp)
+
       _ when exp > length and exp < length + 3 ->
         skip = 8*(exp - length)
         compare = 24 - skip
+
         case bsr(significand, compare) do
           0 ->
             Scientific.compare_bin_to_significand(
@@ -44,12 +46,14 @@ defmodule Aecore.Pow.Hashcash do
           _ ->
             :error
         end
-      _e when _e >= 0 ->
+
+      _exp when _exp >= 0 ->
         Scientific.compare_bin_to_significand(block_header_hash,
           significand,
           zeros,
           24)
-      _e when _e <0 ->
+
+      _exp when _exp <0 ->
         bits = 8*length
         block_header_hash == <<0 :: size(bits)>>
     end

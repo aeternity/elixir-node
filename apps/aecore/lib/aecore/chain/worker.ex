@@ -248,7 +248,11 @@ defmodule Aecore.Chain.Worker do
         {:add_validated_block, %Block{} = new_block, new_chain_state},
         _from,
         %{blocks_data_map: blocks_data_map, txs_index: txs_index, top_height: top_height} = state
-      ) do
+  ) do
+    IO.inspect "MINED NEW BLOCK, height: #{inspect(new_block.header.height)}"
+    IO.inspect "MINED NEW BLOCK, target: #{inspect(new_block.header.difficulty_target)}"
+    IO.inspect "MINED NEW BLOCK, time: #{inspect(Time.utc_now())}"
+    IO.inspect "____________________________________________________"
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
