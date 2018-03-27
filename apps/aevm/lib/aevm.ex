@@ -337,11 +337,18 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._SLOAD(), state) do
-    # TODO
+    {address, state} = pop(state)
+
+    result = Storage.sload(address, state)
+
+    push(result, state)
   end
 
   def exec(OpCodes._SSTORE(), state) do
-    # TODO
+    {key, state} = pop(state)
+    {value, state} = pop(state)
+
+    Storage.sstore(key, value, state)
   end
 
   def exec(OpCodes._JUMP(), state) do

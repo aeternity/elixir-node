@@ -5,6 +5,7 @@ defmodule State do
     state = %{
       :stack => [],
       :memory => %{},
+      :storage => %{},
       :code => code_bin,
       :cp => 0
     }
@@ -18,6 +19,10 @@ defmodule State do
     Map.put(state, :memory, memory)
   end
 
+  def set_storage(storage, state) do
+    Map.put(state, :storage, storage)
+  end
+
   def inc_cp(state) do
     cp = Map.get(state, :cp)
     Map.put(state, :cp, cp + 1)
@@ -29,6 +34,10 @@ defmodule State do
 
   def memory(state) do
     Map.get(state, :memory)
+  end
+
+  def storage(state) do
+    Map.get(state, :storage)
   end
 
   def code(state) do
