@@ -131,8 +131,7 @@ defmodule Aecore.Structures.Account do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
-    name_salt = <<1, 2, 3>>
-    name_update(sender, sender_priv_key, name, name_salt, pointers, fee, nonce)
+    name_update(sender, sender_priv_key, name, pointers, fee, nonce)
   end
 
   @doc """
@@ -142,12 +141,11 @@ defmodule Aecore.Structures.Account do
           Wallet.pubkey(),
           Wallet.privkey(),
           String.t(),
-          binary(),
           String.t(),
           non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
-  def name_update(sender, sender_priv_key, name, name_salt, pointers, fee, nonce) do
+  def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
     payload = %{
       hash: Util.normalized_hash!(name),
       expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),

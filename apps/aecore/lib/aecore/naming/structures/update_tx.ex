@@ -68,6 +68,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
         pointers: _pointers
       }) do
     # TODO check pointers format
+    # TODO check client ttl
     true
   end
 
