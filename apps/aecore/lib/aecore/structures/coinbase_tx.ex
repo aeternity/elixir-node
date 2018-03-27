@@ -1,10 +1,10 @@
-defmodule Aecore.Structures.SpendTx do
+defmodule Aecore.Structures.CoinbaseTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
   @behaviour Aecore.Structures.Transaction
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.CoinbaseTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
@@ -25,14 +25,14 @@ defmodule Aecore.Structures.SpendTx do
   In the case of SpendTx we don't have a subdomain chainstate."
   @type tx_type_state() :: %{}
 
-  @typedoc "Structure of the Spend Transaction type"
-  @type t :: %SpendTx{
+  @typedoc "Structure of the Coinbase Transaction type"
+  @type t :: %CoinbaseTx{
           to_acc: Wallet.pubkey(),
           value: non_neg_integer()
         }
 
   @doc """
-  Definition of Aecore SpendTx structure
+  Definition of Aecore CoinbaseTx structure
 
   ## Parameters
   - to_acc: To account is the public address of the account receiving the transaction
@@ -43,26 +43,34 @@ defmodule Aecore.Structures.SpendTx do
 
   # Callbacks
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: CoinbaseTx.t()
   def init(%{to_acc: to_acc, value: value} = _payload) do
-    %SpendTx{to_acc: to_acc, value: value}
+    %CoinbaseTx{to_acc: to_acc, value: value}
+  end
+
+  @doc """
+  Creates a rewarding CoinbaseTx for the miner that mined the block
+  """
+  @spec create(binary(), integer()) :: payload()
+  def create(to_acc, value) do
+    %CoinbaseTx{to_acc: to_acc, value: value}
   end
 
   @doc """
   Checks transactions internal contents validity
   """
-  @spec is_valid?(SpendTx.t(), list(binary), integer()) :: boolean()
-  def is_valid?(%SpendTx{value: value}, from_accs, fee) do
+  @spec is_valid?(CoinbaseTx.t(), list(binary()), non_neg_integer()) :: boolean()
+  def is_valid?(%CoinbaseTx{value: value}, from_accs, fee) do
     cond do
       value < 0 ->
         Logger.error("Value cannot be a negative number")
         false
 
-      fee <= 0 ->
-        Logger.error("Fee has to be > 0")
+      fee != 0 ->
+        Logger.error("Fee has to be 0")
         false
 
-      length(from_accs) != 1 ->
+      length(from_accs) != 0 ->
         Logger.error("Invalid from_accs size")
         false
 
@@ -72,66 +80,46 @@ defmodule Aecore.Structures.SpendTx do
   end
 
   @doc """
-  Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
-  """
-  @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, _block_height, account_state) do
-    Account.transaction_in(account_state, tx.value)
-  end
-
-  @doc """
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
           ChainState.chainstate(),
-          SpendTx.t(),
+          CoinbaseTx.t(),
           list(binary()),
           non_neg_integer()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(chainstate, %SpendTx{} = tx, [from_acc], _fee) do
-    new_from_account_state =
-      chainstate.accounts[from_acc]
-      |> Account.transaction_in(tx.value * -1)
-
+  def process_chainstate!(chainstate, %CoinbaseTx{} = tx, [], 0) do
     new_to_account_state =
       chainstate.accounts
       |> Map.get(tx.to_acc, Account.empty())
       |> Account.transaction_in(tx.value)
 
-    new_accounts =
+    new_chainstate_accounts =
       chainstate.accounts
-      |> Map.put(from_acc, new_from_account_state)
       |> Map.put(tx.to_acc, new_to_account_state)
 
-    %{chainstate | accounts: new_accounts}
+    %{chainstate | accounts: new_chainstate_accounts}
+  end
+
+  def process_chainstate!(_chainstate, _tx, _from_accs, _fee) do
+    throw({:error, "Invalid coinbase tx"})
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
+  Checks whether all the data is valid according to the CoinbaseTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          SpendTx.t(),
-          ChainState.account(),
+          CoinbaseTx.t(),
+          Chainstate.chainstate(),
           list(binary()),
           non_neg_integer()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, chainstate, [from_acc], fee) do
-    if chainstate.accounts[from_acc].balance - (fee + tx.value) < 0 do
-      {:error, "Negative balance"}
-    else
-      :ok
-    end
+  def preprocess_check(_tx, _chainstate, _from_accs, _fee) do
+    :ok
   end
 
-  @spec deduct_fee(ChainState.chainstate(), SpendTx.t(), list(binary()), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(chainstate, _tx, [from_acc], fee) do
-    new_accounts =
-      Map.update!(chainstate.accounts, from_acc, fn acc ->
-        Account.transaction_in(acc, fee * -1)
-      end)
-
-    %{chainstate | accounts: new_accounts}
+  def deduct_fee(chainstate, _tx, _from_acc, _fee) do
+    chainstate
   end
 end

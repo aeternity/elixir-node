@@ -11,6 +11,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Structures.Account
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -43,6 +44,13 @@ defmodule Aecore.Structures.Account do
     spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce)
   end
 
+  @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
+  def create_coinbase_tx(to_acc, value) do
+    payload = CoinbaseTx.create(to_acc, value)
+    data = DataTx.init(CoinbaseTx, payload, [], 0)
+    SignedTx.create(data)
+  end
+
   @doc """
   Build a SpendTx from the given sender keys to the receivers account
   """
@@ -56,8 +64,8 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce) do
     payload = %{to_acc: to_acc, value: amount}
-    spend_tx = DataTx.init(SpendTx, payload, from_acc, fee, nonce)
-    SignedTx.sign_tx(spend_tx, from_acc_priv_key)
+    spend_tx = DataTx.init(SpendTx, payload, [from_acc], fee)
+    SignedTx.sign_tx(spend_tx, nonce, from_acc_priv_key)
   end
 
   @doc """
@@ -66,16 +74,15 @@ defmodule Aecore.Structures.Account do
   @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
   def transaction_in(account_state, value) do
     new_balance = account_state.balance + value
-    Map.put(account_state, :balance, new_balance)
+    %Account{account_state | balance: new_balance}
   end
 
-  @doc """
-  Deducts balance from a given address (public key)
-  """
-  @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
-  def transaction_out(account_state, value, nonce) do
-    account_state
-    |> Map.put(:nonce, nonce)
-    |> transaction_in(value)
+  @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
+  def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
+    if current_nonce >= new_nonce do
+      throw({:error, "Invalid nonce"})
+    end
+
+    %Account{account_state | nonce: new_nonce}
   end
 end

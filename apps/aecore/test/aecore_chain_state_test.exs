@@ -40,17 +40,13 @@ defmodule AecoreChainStateTest do
       Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2)
 
     chain_state =
-      apply_txs_on_state!(
-        [signed_tx1, signed_tx2],
-        %{
-          :accounts => %{
-            wallet.a_pub_key => %Account{balance: 3, nonce: 100},
-            wallet.b_pub_key => %Account{balance: 5, nonce: 1},
-            wallet.c_pub_key => %Account{balance: 4, nonce: 1}
-          }
-        },
-        1
-      )
+      apply_txs_on_state!([signed_tx1, signed_tx2], %{
+        :accounts => %{
+          wallet.a_pub_key => %Account{balance: 3, nonce: 100},
+          wallet.b_pub_key => %Account{balance: 5, nonce: 1},
+          wallet.c_pub_key => %Account{balance: 4, nonce: 1}
+        }
+      })
 
     assert %{
              :accounts => %{
@@ -61,10 +57,10 @@ defmodule AecoreChainStateTest do
            } == chain_state
   end
 
-  def apply_txs_on_state!(txs, chainstate, block_height) do
+  def apply_txs_on_state!(txs, chainstate) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      ChainState.apply_transaction_on_state!(tx, chainstate, block_height)
+      ChainState.apply_transaction_on_state!(chainstate, tx)
     end)
   end
 end

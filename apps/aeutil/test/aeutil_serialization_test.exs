@@ -4,6 +4,7 @@ defmodule AeutilSerializationTest do
   alias Aeutil.Serialization
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SignedTx.Signature
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -54,11 +55,10 @@ defmodule AeutilSerializationTest do
               to_acc: to_acc,
               value: 100
             },
-            from_acc: from_acc,
-            nonce: 743_183_534_114,
+            from_accs: [from_acc],
             fee: 40
           },
-          signature: <<1, 2, 3>>
+          signatures: [%Signature{signature: <<1, 2, 3>>, nonce: 743_183_534_114}]
         }
       ]
     }
@@ -85,11 +85,10 @@ defmodule AeutilSerializationTest do
               "to_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyldv5nwq9g",
               "value" => 100
             },
-            "from_acc" => "ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el",
-            "fee" => 40,
-            "nonce" => 743_183_534_114
+            "from_accs" => ["ae1qqfuk78xqgdsrhq0f82sp0254uqg9lju24u22mmqtwlm7lewklyld2gud9el"],
+            "fee" => 40
           },
-          "signature" => "AQID"
+          "signatures" => [%{"signature" => "AQID", "nonce" => 743_183_534_114}]
         }
       ]
     }

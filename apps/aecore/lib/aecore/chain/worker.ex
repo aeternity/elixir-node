@@ -380,13 +380,7 @@ defmodule Aecore.Chain.Worker do
 
     accounts =
       for tx <- block.txs do
-        case tx.data do
-          %SpendTx{} ->
-            [tx.data.from_acc, tx.data.to_acc]
-
-          %DataTx{} ->
-            tx.data.from_acc
-        end
+        tx.data.from_accs
       end
 
     accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
@@ -395,11 +389,8 @@ defmodule Aecore.Chain.Worker do
       acc_txs =
         Enum.filter(block.txs, fn tx ->
           case tx.data do
-            %SpendTx{} ->
-              tx.data.from_acc == account || tx.data.to_acc == account
-
             %DataTx{} ->
-              tx.data.from_acc == account
+              tx.data.from_accs == [account]
           end
         end)
 

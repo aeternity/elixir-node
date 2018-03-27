@@ -12,9 +12,8 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
@@ -233,7 +232,11 @@ defmodule Aecore.Miner.Worker do
       difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
-      ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
+
+      ordered_txs_list =
+        Enum.sort(txs_list, fn tx1, tx2 ->
+          SignedTx.get_nonce(tx1) < SignedTx.get_nonce(tx2)
+        end)
 
       valid_txs_by_chainstate =
         ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
@@ -245,9 +248,9 @@ defmodule Aecore.Miner.Worker do
       total_fees = calculate_total_fees(valid_txs_by_fee)
 
       valid_txs = [
-        create_coinbase_tx(
+        Account.create_coinbase_tx(
           pubkey,
-          total_fees
+          @coinbase_transaction_value + total_fees
         )
         | valid_txs_by_fee
       ]
@@ -268,9 +271,9 @@ defmodule Aecore.Miner.Worker do
         List.replace_at(
           valid_txs_by_block_size,
           0,
-          create_coinbase_tx(
+          Account.create_coinbase_tx(
             pubkey,
-            total_fees
+            @coinbase_transaction_value + total_fees
           )
         )
 
@@ -286,17 +289,6 @@ defmodule Aecore.Miner.Worker do
     List.foldl(txs, 0, fn tx, acc ->
       acc + tx.data.fee
     end)
-  end
-
-  def create_coinbase_tx(to_acc, total_fees) do
-    payload = %{
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees
-    }
-
-    tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
-
-    %SignedTx{data: tx_data, signature: nil}
   end
 
   ## Internal

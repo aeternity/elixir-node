@@ -5,7 +5,6 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
@@ -20,29 +19,20 @@ defmodule Aecore.Chain.ChainState do
   @type chainstate() :: %{:accounts => accounts()}
 
   @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
-  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+  def calculate_and_validate_chain_state!(txs, chainstate, _block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate, block_height)
+      apply_transaction_on_state!(chainstate, tx)
     end)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
-    cond do
-      SignedTx.is_coinbase?(tx) ->
-        to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, Account.empty())
-        new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
-        new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
-        Map.put(chainstate, :accounts, new_accounts_state)
-
-      data.from_acc != nil ->
-        if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, chainstate)
-        else
-          throw({:error, "Invalid transaction"})
-        end
+  @spec apply_transaction_on_state!(chainstate(), SignedTx.t()) :: chainstate()
+  def apply_transaction_on_state!(chainstate, tx) do
+    if !SignedTx.is_valid?(tx) do
+      throw({:error, "Invalid transaction"})
     end
+
+    SignedTx.process_chainstate!(chainstate, tx)
   end
 
   @doc """
@@ -84,9 +74,9 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate, block_height) do
+  defp validate_tx(tx, chainstate, _block_height) do
     try do
-      {true, apply_transaction_on_state!(tx, chainstate, block_height)}
+      {true, apply_transaction_on_state!(chainstate, tx)}
     catch
       {:error, _} -> {false, chainstate}
     end

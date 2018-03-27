@@ -1,6 +1,6 @@
 defmodule Aecore.Structures.Transaction do
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  alias Aecore.Structures.CoinbaseTx
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -9,7 +9,7 @@ defmodule Aecore.Structures.Transaction do
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t()
+  @type tx_types :: SpendTx.t() | CoinbaseTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -21,7 +21,7 @@ defmodule Aecore.Structures.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types()) :: boolean()
+  @callback is_valid?(tx_types(), list(binary()), fee :: integer()) :: boolean()
 
   @doc """
   Default function for executing a given transaction type.
@@ -29,13 +29,11 @@ defmodule Aecore.Structures.Transaction do
   the transaction (Transaction type-specific chainstate)
   """
   @callback process_chainstate!(
+              ChainState.chainstate(),
               tx_types(),
-              Wallet.pubkey(),
-              fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
-              Account.t(),
-              tx_type_state()
-            ) :: {Account.t(), tx_type_state()}
+              list(Wallet.pubkey()),
+              fee :: non_neg_integer()
+            ) :: ChainState.chainstate()
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -65,11 +63,15 @@ defmodule Aecore.Structures.Transaction do
   """
   @callback preprocess_check(
               tx_types(),
-              ChainState.account(),
-              fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
-              tx_type_state :: map()
+              ChainState.chainstate(),
+              list(Wallet.pubkey()),
+              fee :: non_neg_integer()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(
+              ChainState.chainstate(),
+              tx_types(),
+              from_accs :: list(binary()),
+              fee :: non_neg_integer()
+            ) :: ChainState.account()
 end

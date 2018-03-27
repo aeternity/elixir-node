@@ -35,15 +35,21 @@ defmodule AecoreTxTest do
     fee = 1
 
     payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    tx_data = DataTx.init(SpendTx, payload, [from_acc], fee)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
 
     assert SignedTx.is_valid?(signed_tx)
-    signature = signed_tx.signature
-    message = Serialization.pack_binary(signed_tx.data)
-    assert true = Signing.verify(message, signature, from_acc)
+    signature = hd(signed_tx.signatures).signature
+
+    message =
+      signed_tx.data
+      |> DataTx.serialize()
+      |> Map.put(:nonce, tx.nonce)
+      |> Serialization.pack_binary()
+
+    assert true == Signing.verify(message, signature, from_acc)
   end
 
   test "negative tx invalid", tx do
@@ -52,10 +58,10 @@ defmodule AecoreTxTest do
     fee = 1
 
     payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    tx_data = DataTx.init(SpendTx, payload, [from_acc], fee)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
 
     assert false == SignedTx.is_valid?(signed_tx)
   end
@@ -66,10 +72,10 @@ defmodule AecoreTxTest do
     fee = 1
 
     payload = %{to_acc: tx.to_acc, value: value}
-    tx_data = DataTx.init(SpendTx, payload, from_acc, fee, tx.nonce)
+    tx_data = DataTx.init(SpendTx, payload, from_acc, fee)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
 
     assert !SignedTx.is_coinbase?(signed_tx)
   end

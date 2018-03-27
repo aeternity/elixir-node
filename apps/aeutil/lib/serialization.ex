@@ -8,6 +8,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SignedTx.Signature
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aeutil.Bits
@@ -35,8 +36,16 @@ defmodule Aeutil.Serialization do
   def tx(tx, :deserialize) do
     tx_data = tx["data"]
     data = DataTx.deserialize(tx_data)
-    signature = base64_binary(tx["signature"], :deserialize)
-    %SignedTx{data: data, signature: signature}
+    signatures = Enum.map(tx["signatures"], fn sig -> sig(sig, :deserialize) end)
+    %SignedTx{data: data, signatures: signatures}
+  end
+
+  def sig(sig, :serialize), do: serialize_value(sig)
+
+  def sig(sig, :deserialize) do
+    nonce = sig["nonce"]
+    signature = base64_binary(sig["signature"], :deserialize)
+    %Signature{nonce: nonce, signature: signature}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
@@ -137,7 +146,7 @@ defmodule Aeutil.Serialization do
       :chain_state_hash ->
         ChainState.bech32_encode(value)
 
-      :from_acc ->
+      :from_accs ->
         Aewallet.Encoding.encode(value, :ae)
 
       :to_acc ->

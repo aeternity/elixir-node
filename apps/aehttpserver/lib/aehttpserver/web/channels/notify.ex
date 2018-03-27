@@ -3,10 +3,10 @@ defmodule Aehttpserver.Web.Notify do
   alias Aewallet.Encoding
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if tx.data.from_acc != nil do
+    for acc <- tx.data.from_accs do
       Aehttpserver.Web.Endpoint.broadcast!(
         "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+        "new_tx:" <> Encoding.encode(acc, :ae),
         %{"body" => Serialization.tx(tx, :serialize)}
       )
     end
@@ -30,10 +30,10 @@ defmodule Aehttpserver.Web.Notify do
         "body" => Serialization.tx(tx, :serialize)
       })
 
-      if tx.data.from_acc != nil do
+      for acc <- tx.data.from_accs do
         Aehttpserver.Web.Endpoint.broadcast!(
           "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
+          "new_mined_tx:" <> Encoding.encode(acc, :ae),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end

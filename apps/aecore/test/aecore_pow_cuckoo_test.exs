@@ -117,12 +117,11 @@ defmodule AecoreCuckooTest do
         %SignedTx{
           data: %DataTx{
             type: SpendTx,
-            payload: %{to_acc: to_acc, value: 100, lock_time_block: 11},
+            payload: %{to_acc: to_acc, value: 100},
             fee: 0,
-            from_acc: nil,
-            nonce: 0
+            from_accs: []
           },
-          signature: nil
+          signatures: []
         }
       ]
     }

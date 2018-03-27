@@ -5,8 +5,7 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aehttpclient.Client
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
@@ -42,14 +41,11 @@ defmodule AehttpclientTest do
     from_acc = to_acc
 
     init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
-    payload1 = %{to_acc: from_acc, value: 5}
 
-    tx1 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 1)
-    tx2 = DataTx.init(SpendTx, payload1, to_acc, 10, init_nonce + 2)
-
+    # the order of to_acc and from_acc is reversed intentionally. priv_key is key for to_acc
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
+    {:ok, signed_tx1} = Account.spend(to_acc, priv_key, from_acc, 5, 10, init_nonce + 1)
+    {:ok, signed_tx2} = Account.spend(to_acc, priv_key, from_acc, 5, 10, init_nonce + 2)
 
     assert :ok = Pool.add_transaction(signed_tx1)
     assert :ok = Pool.add_transaction(signed_tx2)

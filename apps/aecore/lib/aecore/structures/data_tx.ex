@@ -6,6 +6,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.CoinbaseTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
 
@@ -24,9 +25,8 @@ defmodule Aecore.Structures.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          from_acc: binary(),
-          fee: non_neg_integer(),
-          nonce: non_neg_integer()
+          from_accs: list(binary()),
+          fee: non_neg_integer()
         }
 
   @doc """
@@ -39,12 +39,12 @@ defmodule Aecore.Structures.DataTx do
   - fee: The amount of tokens given to the miner
   - nonce: A random integer generated on initialisation of a transaction (must be unique!)
   """
-  defstruct [:type, :payload, :from_acc, :fee, :nonce]
+  defstruct [:type, :payload, :from_accs, :fee]
   use ExConstructor
 
-  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, from_acc, fee, nonce) do
-    %DataTx{type: type, payload: type.init(payload), from_acc: from_acc, fee: fee, nonce: nonce}
+  @spec init(tx_types(), payload(), list(binary()), integer()) :: DataTx.t()
+  def init(type, payload, from_accs, fee) do
+    %DataTx{type: type, payload: type.init(payload), from_accs: from_accs, fee: fee}
   end
 
   @doc """
@@ -52,14 +52,14 @@ defmodule Aecore.Structures.DataTx do
   validation checks. Otherwise we return error.
   """
   @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee > 0 do
+  def is_valid?(%DataTx{type: type, payload: payload, from_accs: from_accs, fee: fee}) do
+    if type != SpendTx && type != CoinbaseTx do
+      Logger.error("Invalid tx type=#{type}")
+      false
+    else
       payload
       |> type.init()
-      |> type.is_valid?()
-    else
-      Logger.error("Fee not enough")
-      false
+      |> type.is_valid?(from_accs, fee)
     end
   end
 
@@ -67,36 +67,22 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate(%DataTx{} = tx, chainstate) do
-    try do
-      accounts_state = chainstate.accounts
-      tx_type_state = Map.get(chainstate, tx.type, %{})
+  @spec process_chainstate!(ChainState.chainstate(), DataTx.t()) :: ChainState.chainstate()
+  def process_chainstate!(chainstate, %DataTx{} = tx) do
+    payload = tx.type.init(tx.payload)
 
-      {new_accounts_state, new_tx_type_state} =
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.from_acc,
-          tx.fee,
-          tx.nonce,
-          accounts_state,
-          tx_type_state
-        )
-
-      new_chainstate =
-        if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type, new_tx_type_state)
-        else
-          chainstate
-        end
-
-      Map.put(new_chainstate, :accounts, new_accounts_state)
-    catch
-      {:error, reason} ->
-        Logger.error(reason)
-        chainstate
+    if !tx.type.is_valid?(payload, tx.from_accs, tx.fee) do
+      throw({:error, "Invalid Tx"})
     end
+
+    case tx.type.preprocess_check(payload, chainstate, tx.from_accs, tx.fee) do
+      :ok -> :ok
+      {:error, _reason} = err -> throw(err)
+    end
+
+    chainstate
+    |> tx.type.deduct_fee(payload, tx.from_accs, tx.fee)
+    |> tx.type.process_chainstate!(payload, tx.from_accs, tx.fee)
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -112,6 +98,6 @@ defmodule Aecore.Structures.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 
-    init(data_tx.type, data_tx.payload, data_tx.from_acc, data_tx.fee, data_tx.nonce)
+    init(data_tx.type, data_tx.payload, data_tx.from_accs, data_tx.fee)
   end
 end
