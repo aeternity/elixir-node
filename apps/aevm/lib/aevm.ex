@@ -603,141 +603,165 @@ defmodule Aevm do
   # 80s: Duplication Operations
 
   def exec(OpCodes._DUP1() = current_op, state) do
-    # TODO:
-    # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
-
-    # hardcoded for now, testing purposes
-    # dup(state, 1))
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP2(), state) do
-    # TODO
+  def exec(OpCodes._DUP2() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP3(), state) do
-    # TODO
+  def exec(OpCodes._DUP3() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP4(), state) do
-    # TODO
+  def exec(OpCodes._DUP4() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP5(), state) do
-    # TODO
+  def exec(OpCodes._DUP5() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP6(), state) do
-    # TODO
+  def exec(OpCodes._DUP6() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP7(), state) do
-    # TODO
+  def exec(OpCodes._DUP7() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP8(), state) do
-    # TODO
+  def exec(OpCodes._DUP8() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP9(), state) do
-    # TODO
+  def exec(OpCodes._DUP9() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP10(), state) do
-    # TODO
+  def exec(OpCodes._DUP10() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP11(), state) do
-    # TODO
+  def exec(OpCodes._DUP11() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP12(), state) do
-    # TODO
+  def exec(OpCodes._DUP12() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP13(), state) do
-    # TODO
+  def exec(OpCodes._DUP13() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP14(), state) do
-    # TODO
+  def exec(OpCodes._DUP14() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP15(), state) do
-    # TODO
+  def exec(OpCodes._DUP15() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
-  def exec(OpCodes._DUP16(), state) do
-    # TODO
+  def exec(OpCodes._DUP16() = current_op, state) do
+    bytes = current_op - OpCodes._DUP1() + 1
+    dup(bytes, state)
   end
 
   # 90s: Exchange Operations
 
   def exec(OpCodes._SWAP1() = current_op, state) do
-    # TODO:
-    # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
-
-    # hardcoded for now, testing purposes
-    # swap(state, 1))
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP2(), state) do
-    # TODO
+  def exec(OpCodes._SWAP2() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP3(), state) do
-    # TODO
+  def exec(OpCodes._SWAP3() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP4(), state) do
-    # TODO
+  def exec(OpCodes._SWAP4() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP5(), state) do
-    # TODO
+  def exec(OpCodes._SWAP5() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP6(), state) do
-    # TODO
+  def exec(OpCodes._SWAP6() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP7(), state) do
-    # TODO
+  def exec(OpCodes._SWAP7() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP8(), state) do
-    # TODO
+  def exec(OpCodes._SWAP8() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP9(), state) do
-    # TODO
+  def exec(OpCodes._SWAP9() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP10(), state) do
-    # TODO
+  def exec(OpCodes._SWAP10() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP11(), state) do
-    # TODO
+  def exec(OpCodes._SWAP11() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP12(), state) do
-    # TODO
+  def exec(OpCodes._SWAP12() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP13(), state) do
-    # TODO
+  def exec(OpCodes._SWAP13() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP14(), state) do
-    # TODO
+  def exec(OpCodes._SWAP14() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP15(), state) do
-    # TODO
+  def exec(OpCodes._SWAP15() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
-  def exec(OpCodes._SWAP16(), state) do
-    # TODO
+  def exec(OpCodes._SWAP16() = current_op, state) do
+    bytes = current_op - OpCodes._SWAP1() + 1
+    swap(bytes, state)
   end
 
   # a0s: Logging Operations

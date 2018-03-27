@@ -46,7 +46,7 @@ defmodule Stack do
           throw({"stack_too_small_for_dup", stack})
 
         false ->
-          value = Enum.at(stack, index)
+          value = Enum.at(stack, index - 1)
           push(value, state)
       end
     end
@@ -65,7 +65,7 @@ defmodule Stack do
           throw({"stack_too_small_for_swap", stack})
 
         false ->
-          index_elem = Enum.at(rest, index)
+          index_elem = Enum.at(rest, index - 1)
 
           stack =
             [index_elem, set_val(index, top, rest)]
@@ -76,7 +76,7 @@ defmodule Stack do
     end
   end
 
-  def set_val(0, val, [_ | rest]) do
+  def set_val(1, val, [_ | rest]) do
     [val | rest]
   end
 
