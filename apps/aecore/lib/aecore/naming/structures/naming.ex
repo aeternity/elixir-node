@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Structures.Naming do
 
   @pre_claim_ttl 300
 
-  @client_ttl 86400
+  @client_ttl_limit 86400
 
   @claim_expire_by_relative_limit 50000
 
@@ -74,16 +74,19 @@ defmodule Aecore.Naming.Structures.Naming do
       :name_salt => name_salt,
       :pointers => "",
       :expires_by => height + @claim_expire_by_relative_limit,
-      :client_ttl => @client_ttl
+      :client_ttl => @client_ttl_limit
     }
 
   @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
-    Hash.hash(Util.namehash(name) <> name_salt)
+    Hash.hash(Util.normalized_namehash!(name) <> name_salt)
   end
 
   @spec get_claim_expire_by_relative_limit() :: non_neg_integer()
   def get_claim_expire_by_relative_limit, do: @claim_expire_by_relative_limit
+
+  @spec get_client_ttl_limit() :: non_neg_integer()
+  def get_client_ttl_limit, do: @client_ttl_limit
 
   @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
           ChainState.chainstate()
@@ -96,6 +99,8 @@ defmodule Aecore.Naming.Structures.Naming do
           end)
 
         updated_naming = %{naming | pre_claims: updated_naming_pre_claims}
+
+        # TODO remove expired claims
 
         # prune empty naming states
         if(!Enum.empty?(updated_naming.pre_claims) || !Enum.empty?(updated_naming.claims)) do

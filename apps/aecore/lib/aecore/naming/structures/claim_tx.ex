@@ -9,6 +9,7 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   alias Aecore.Naming.Structures.ClaimTx
   alias Aecore.Naming.Structures.Naming
   alias Aecore.Structures.Account
+  alias Aecore.Naming.Util
 
   require Logger
 
@@ -49,9 +50,11 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   Checks name format
   """
   @spec is_valid?(ClaimTx.t()) :: boolean()
-  def is_valid?(%ClaimTx{name: _name, name_salt: _name_salt}) do
-    # TODO check name format
-    true
+  def is_valid?(%ClaimTx{name: name, name_salt: _name_salt}) do
+    case Util.normalize_and_validate_name(name) do
+      {:ok, _} -> true
+      {:error, _} -> false
+    end
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -124,13 +127,19 @@ defmodule Aecore.Naming.Structures.ClaimTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming) do
-    account_naming = Map.get(naming, sender, Naming.empty())
+  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
+    account_naming = Map.get(naming_state, sender, Naming.empty())
 
     pre_claim =
       Enum.find(account_naming.pre_claims, fn pre_claim ->
         pre_claim.commitment == Naming.create_commitment_hash(tx.name, tx.name_salt)
       end)
+
+    claims_for_name =
+      naming_state
+      |> Map.values()
+      |> Enum.flat_map(fn name -> name.claims end)
+      |> Enum.find(fn claim -> claim.name == tx.name end)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -142,9 +151,8 @@ defmodule Aecore.Naming.Structures.ClaimTx do
       pre_claim == nil ->
         {:error, "Name has not been pre-claimed"}
 
-      # TODO validate expiration
-
-      # TODO validate not claimed yet
+      claims_for_name != nil ->
+        {:error, "Name has aleady been claimed"}
 
       true ->
         :ok

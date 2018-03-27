@@ -147,7 +147,7 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
     payload = %{
-      hash: Util.normalized_hash!(name),
+      hash: Util.normalized_namehash!(name),
       expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
       client_ttl: 86400,
       pointers: pointers

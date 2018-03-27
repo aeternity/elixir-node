@@ -108,7 +108,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
 
         claim_to_update =
           Enum.find(account_naming.claims, fn claim ->
-            tx.hash == Util.normalized_hash!(claim.name)
+            tx.hash == Util.normalized_namehash!(claim.name)
           end)
 
         filtered_claims =
@@ -156,7 +156,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
 
     claimed =
       Enum.find(account_naming.claims, fn claim ->
-        Util.normalized_hash!(claim.name) == tx.hash
+        Util.normalized_namehash!(claim.name) == tx.hash
       end)
 
     cond do
