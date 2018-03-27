@@ -8,38 +8,52 @@ defmodule Aevm do
 
   # 0s: Stop and Arithmetic Operations
 
-  def exec([OpCodes._STOP() | op_codes], state) do
+  def loop(state) do
+    cp = State.cp(state)
+    code = State.code(state)
+
+    if cp >= byte_size(code) do
+      state
+    else
+      op_code = get_op_code(state)
+      state1 = exec(op_code, state)
+      state2 = State.inc_cp(state1)
+      loop(state2)
+    end
+  end
+
+  def exec(OpCodes._STOP(), state) do
     state
   end
 
-  def exec([OpCodes._ADD() | op_codes], state) do
+  def exec(OpCodes._ADD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 + op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._MUL() | op_codes], state) do
+  def exec(OpCodes._MUL(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 * op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._SUB() | op_codes], state) do
+  def exec(OpCodes._SUB(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 - op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._DIV() | op_codes], state) do
+  def exec(OpCodes._DIV(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -50,10 +64,10 @@ defmodule Aevm do
         Integer.floor_div(op1, op2)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._SDIV() | op_codes], state) do
+  def exec(OpCodes._SDIV(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -64,10 +78,10 @@ defmodule Aevm do
         sdiv(op1, op2)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._MOD() | op_codes], state) do
+  def exec(OpCodes._MOD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -78,10 +92,10 @@ defmodule Aevm do
         rem(op1, op2)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._SMOD() | op_codes], state) do
+  def exec(OpCodes._SMOD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -92,10 +106,10 @@ defmodule Aevm do
         smod(op1, op2)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._ADDMOD() | op_codes], state) do
+  def exec(OpCodes._ADDMOD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
     {op3, state} = pop(state)
@@ -107,10 +121,10 @@ defmodule Aevm do
         rem(op1 + op2, op3)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._MULMOD() | op_codes], state) do
+  def exec(OpCodes._MULMOD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
     {op3, state} = pop(state)
@@ -122,32 +136,32 @@ defmodule Aevm do
         rem(op1 * op2, op3)
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._EXP() | op_codes], state) do
+  def exec(OpCodes._EXP(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = :math.pow(op1, op2)
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
   # not working correctly
-  def exec([OpCodes._SIGNEXTEND() | op_codes], state) do
+  def exec(OpCodes._SIGNEXTEND(), state) do
     # TODO
     # {op1, state} = pop(state)
     # {op2, state} = pop(state)
     #
     # result = signextend(op2, op1)
     #
-    # exec(op_codes, push(result, state))
+    # push(result, state)
   end
 
   # 10s: Comparison & Bitwise Logic Operations
 
-  def exec([OpCodes._LT() | op_codes], state) do
+  def exec(OpCodes._LT(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -158,10 +172,10 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._GT() | op_codes], state) do
+  def exec(OpCodes._GT(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -172,10 +186,10 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._SLT() | op_codes], state) do
+  def exec(OpCodes._SLT(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -189,10 +203,10 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._SGT() | op_codes], state) do
+  def exec(OpCodes._SGT(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -206,10 +220,10 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._EQ() | op_codes], state) do
+  def exec(OpCodes._EQ(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
@@ -223,10 +237,10 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._ISZERO() | op_codes], state) do
+  def exec(OpCodes._ISZERO(), state) do
     {op1, state} = pop(state)
 
     result =
@@ -236,56 +250,56 @@ defmodule Aevm do
         0
       end
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._AND() | op_codes], state) do
+  def exec(OpCodes._AND(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 &&& op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._OR() | op_codes], state) do
+  def exec(OpCodes._OR(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 ||| op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._XOR() | op_codes], state) do
+  def exec(OpCodes._XOR(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = op1 ^^^ op2
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._NOT() | op_codes], state) do
+  def exec(OpCodes._NOT(), state) do
     {op1, state} = pop(state)
 
     result = bnot(op1)
 
-    exec(op_codes, push(result, state))
+    push(result, state)
   end
 
-  def exec([OpCodes._BYTE() | op_codes], state) do
+  def exec(OpCodes._BYTE(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
     result = byte(op1, op2)
 
-    exec(op_codes, push(state, result))
+    push(state, result)
   end
 
   # 20s: SHA3
 
-  def exec([OpCodes._SHA3() | op_codes], state) do
+  def exec(OpCodes._SHA3(), state) do
     # TODO
   end
 
@@ -294,407 +308,494 @@ defmodule Aevm do
 
   # 50s: Stack, Memory, Storage and Flow Operations
 
-  def exec([OpCodes._POP() | op_codes], state) do
+  def exec(OpCodes._POP(), state) do
     {_, state} = pop(state)
 
-    exec(op_codes, state)
+    state
   end
 
-  def exec([OpCodes._MLOAD() | op_codes], state) do
+  def exec(OpCodes._MLOAD(), state) do
     {address, state} = pop(state)
 
     result = Memory.load(address, state)
-    state1 = push(result, state)
 
-    exec(op_codes, state1)
+    push(result, state)
   end
 
-  def exec([OpCodes._MSTORE() | op_codes], state) do
+  def exec(OpCodes._MSTORE(), state) do
     {address, state} = pop(state)
     {value, state} = pop(state)
 
-    state1 = Memory.store(address, value, state)
-
-    exec(op_codes, state1)
+    Memory.store(address, value, state)
   end
 
-  def exec([OpCodes._MSTORE8() | op_codes], state) do
+  def exec(OpCodes._MSTORE8(), state) do
     {address, state} = pop(state)
     {value, state} = pop(state)
 
-    state1 = Memory.store8(address, value, state)
-
-    exec(op_codes, state1)
+    Memory.store8(address, value, state)
   end
 
-  def exec([OpCodes._SLOAD() | op_codes], state) do
+  def exec(OpCodes._SLOAD(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SSTORE() | op_codes], state) do
+  def exec(OpCodes._SSTORE(), state) do
     # TODO
   end
 
-  def exec([OpCodes._JUMP() | op_codes], state) do
+  def exec(OpCodes._JUMP(), state) do
     # TODO
   end
 
-  def exec([OpCodes._JUMPI() | op_codes], state) do
+  def exec(OpCodes._JUMPI(), state) do
     # TODO
   end
 
-  def exec([OpCodes._PC() | op_codes], state) do
+  def exec(OpCodes._PC(), state) do
   end
 
-  def exec([OpCodes._MSIZE() | op_codes], state) do
+  def exec(OpCodes._MSIZE(), state) do
     # TODO
   end
 
-  def exec([OpCodes._GAS() | op_codes], state) do
+  def exec(OpCodes._GAS(), state) do
     # TODO
   end
 
-  def exec([OpCodes._JUMPDEST() | op_codes], state) do
+  def exec(OpCodes._JUMPDEST(), state) do
     # TODO
   end
 
   # 60s & 70s: Push Operations
 
-  def exec([OpCodes._PUSH1() = current_op | op_codes], state) do
-    {op_code, popped, _pushed} = OpCodesUtil.opcode(current_op)
+  def exec(OpCodes._PUSH1() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
 
-    [result | rem_op_codes] = op_codes
-
-    exec(rem_op_codes, push(result, state))
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH2() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH2() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH3() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH3() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH4() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH4() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH5() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH5() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH6() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH6() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH7() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH7() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH8() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH8() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH9() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH9() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH10() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH10() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH11() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH11() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH12() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH12() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH13() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH13() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH14() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH14() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH15() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH15() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH16() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH16() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH17() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH17() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH18() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH18() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH19() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH19() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH20() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH20() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH21() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH21() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH22() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH22() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH23() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH23() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH24() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH24() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH25() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH25() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH26() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH26() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH27() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH27() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH28() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH28() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH29() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH29() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH30() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH30() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH31() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH31() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
-  def exec([OpCodes._PUSH32() | op_codes], state) do
-    # TODO
+  def exec(OpCodes._PUSH32() = current_op, state) do
+    bytes = current_op - OpCodes._PUSH1() + 1
+    {result, state1} = move_cp_n_bytes(bytes, state)
+
+    push(result, state1)
   end
 
   # 80s: Duplication Operations
 
-  def exec([OpCodes._DUP1() = current_op | op_codes], state) do
+  def exec(OpCodes._DUP1() = current_op, state) do
     # TODO:
     # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
 
     # hardcoded for now, testing purposes
-    # exec(op_codes, dup(state, 1))
+    # dup(state, 1))
   end
 
-  def exec([OpCodes._DUP2() | op_codes], state) do
+  def exec(OpCodes._DUP2(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP3() | op_codes], state) do
+  def exec(OpCodes._DUP3(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP4() | op_codes], state) do
+  def exec(OpCodes._DUP4(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP5() | op_codes], state) do
+  def exec(OpCodes._DUP5(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP6() | op_codes], state) do
+  def exec(OpCodes._DUP6(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP7() | op_codes], state) do
+  def exec(OpCodes._DUP7(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP8() | op_codes], state) do
+  def exec(OpCodes._DUP8(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP9() | op_codes], state) do
+  def exec(OpCodes._DUP9(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP10() | op_codes], state) do
+  def exec(OpCodes._DUP10(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP11() | op_codes], state) do
+  def exec(OpCodes._DUP11(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP12() | op_codes], state) do
+  def exec(OpCodes._DUP12(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP13() | op_codes], state) do
+  def exec(OpCodes._DUP13(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP14() | op_codes], state) do
+  def exec(OpCodes._DUP14(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP15() | op_codes], state) do
+  def exec(OpCodes._DUP15(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DUP16() | op_codes], state) do
+  def exec(OpCodes._DUP16(), state) do
     # TODO
   end
 
   # 90s: Exchange Operations
 
-  def exec([OpCodes._SWAP1() = current_op | op_codes], state) do
+  def exec(OpCodes._SWAP1() = current_op, state) do
     # TODO:
     # {op_code, _popped, pushed} = OpCodesUtil.opcode(current_op)
 
     # hardcoded for now, testing purposes
-    # exec(op_codes, swap(state, 1))
+    # swap(state, 1))
   end
 
-  def exec([OpCodes._SWAP2() | op_codes], state) do
+  def exec(OpCodes._SWAP2(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP3() | op_codes], state) do
+  def exec(OpCodes._SWAP3(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP4() | op_codes], state) do
+  def exec(OpCodes._SWAP4(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP5() | op_codes], state) do
+  def exec(OpCodes._SWAP5(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP6() | op_codes], state) do
+  def exec(OpCodes._SWAP6(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP7() | op_codes], state) do
+  def exec(OpCodes._SWAP7(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP8() | op_codes], state) do
+  def exec(OpCodes._SWAP8(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP9() | op_codes], state) do
+  def exec(OpCodes._SWAP9(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP10() | op_codes], state) do
+  def exec(OpCodes._SWAP10(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP11() | op_codes], state) do
+  def exec(OpCodes._SWAP11(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP12() | op_codes], state) do
+  def exec(OpCodes._SWAP12(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP13() | op_codes], state) do
+  def exec(OpCodes._SWAP13(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP14() | op_codes], state) do
+  def exec(OpCodes._SWAP14(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP15() | op_codes], state) do
+  def exec(OpCodes._SWAP15(), state) do
     # TODO
   end
 
-  def exec([OpCodes._SWAP16() | op_codes], state) do
+  def exec(OpCodes._SWAP16(), state) do
     # TODO
   end
 
   # a0s: Logging Operations
 
-  def exec([OpCodes._LOG0() | op_codes], state) do
+  def exec(OpCodes._LOG0(), state) do
     # TODO
   end
 
-  def exec([OpCodes._LOG1() | op_codes], state) do
+  def exec(OpCodes._LOG1(), state) do
     # TODO
   end
 
-  def exec([OpCodes._LOG2() | op_codes], state) do
+  def exec(OpCodes._LOG2(), state) do
     # TODO
   end
 
-  def exec([OpCodes._LOG3() | op_codes], state) do
+  def exec(OpCodes._LOG3(), state) do
     # TODO
   end
 
-  def exec([OpCodes._LOG4() | op_codes], state) do
+  def exec(OpCodes._LOG4(), state) do
     # TODO
   end
 
   # f0s: System operations
 
-  def exec([OpCodes._CREATE() | op_codes], state) do
+  def exec(OpCodes._CREATE(), state) do
     # TODO
   end
 
-  def exec([OpCodes._CALL() | op_codes], state) do
+  def exec(OpCodes._CALL(), state) do
     # TODO
   end
 
-  def exec([OpCodes._CALLCODE() | op_codes], state) do
+  def exec(OpCodes._CALLCODE(), state) do
     # TODO
   end
 
-  def exec([OpCodes._RETURN() | op_codes], state) do
+  def exec(OpCodes._RETURN(), state) do
     # TODO
   end
 
-  def exec([OpCodes._DELEGATECALL() | op_codes], state) do
+  def exec(OpCodes._DELEGATECALL(), state) do
     # TODO
   end
 
-  def exec([OpCodes._CALLBLACKBOX() | op_codes], state) do
+  def exec(OpCodes._CALLBLACKBOX(), state) do
     # TODO
   end
 
-  def exec([OpCodes._STATICCALL() | op_codes], state) do
+  def exec(OpCodes._STATICCALL(), state) do
     # TODO
   end
 
-  def exec([OpCodes._REVERT() | op_codes], state) do
+  def exec(OpCodes._REVERT(), state) do
     # TODO
   end
 
-  def exec([OpCodes._INVALID() | op_codes], state) do
+  def exec(OpCodes._INVALID(), state) do
     # TODO
   end
 
   # Halt Execution, Mark for deletion
 
-  def exec([OpCodes._SUICIDE() | op_codes], state) do
+  def exec(OpCodes._SUICIDE(), state) do
     # TODO
   end
 
@@ -754,5 +855,31 @@ defmodule Aevm do
 
   defp swap(index, state) do
     Stack.swap(index, state)
+  end
+
+  defp get_op_code(state) do
+    cp = State.cp(state)
+    code = State.code(state)
+    prev_bits = cp * 8
+
+    <<_::size(prev_bits), op_code::size(8), _::binary>> = code
+
+    op_code
+  end
+
+  defp move_cp_n_bytes(bytes, state) do
+    old_cp = State.cp(state)
+    code = State.code(state)
+
+    prev_bits = (old_cp + 1) * 8
+    value_size_bits = bytes * 8
+    <<_::size(prev_bits), value::size(value_size_bits), _::binary>> = code
+
+    state1 =
+      Enum.reduce(1..bytes, state, fn _, state_acc ->
+        State.inc_cp(state_acc)
+      end)
+
+    {value, state1}
   end
 end
