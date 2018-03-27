@@ -12,6 +12,9 @@ defmodule Aecore.Oracle.Oracle do
 
   require Logger
 
+  @type oracle_txs_with_ttl ::
+          OracleRegistrationTxData.t() | OracleQueryTxData.t() | OracleExtendTxData.t()
+
   @type json_schema :: map()
 
   @type registered_oracles :: %{
@@ -161,7 +164,7 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec tx_ttl_is_valid?(SignedTx.t(), non_neg_integer()) :: boolean
+  @spec tx_ttl_is_valid?(oracle_txs_with_ttl(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
       %OracleRegistrationTxData{} ->

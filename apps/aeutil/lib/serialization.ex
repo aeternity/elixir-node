@@ -20,16 +20,16 @@ defmodule Aeutil.Serialization do
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
-    serialized_header = serialize_value(block.header)
-    serialized_transactions = Enum.map(block.txs, fn tx -> tx(tx, :serialize) end)
-    %{"header" => serialized_header, "transactions" => serialized_transactions}
+    serialized_block = serialize_value(block)
+    Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
   end
 
   def block(block, :deserialize) do
     txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
 
     built_header =
-      block["header"]
+      block
+      |> Map.delete("transactions")
       |> deserialize_value()
       |> Header.new()
 
@@ -38,20 +38,7 @@ defmodule Aeutil.Serialization do
 
   @spec tx(map(), :serialize | :deserialize) :: SignedTx.t()
   def tx(tx, :serialize) do
-    case tx.data.payload do
-      %OracleQueryTxData{} ->
-        tx
-        |> serialize_value()
-        |> update_in(["data", "payload", "oracle_address"], &Account.base58c_encode(&1))
-
-      %OracleResponseTxData{} ->
-        tx
-        |> serialize_value()
-        |> update_in(["data", "payload", "query_id"], &OracleQueryTxData.base58c_encode(&1))
-
-      _ ->
-        serialize_value(tx)
-    end
+    serialize_value(tx)
   end
 
   def tx(tx, :deserialize) do
@@ -59,20 +46,8 @@ defmodule Aeutil.Serialization do
 
     data = DataTx.deserialize(tx_data)
 
-    updated_data =
-      case data do
-        %OracleQueryTxData{} ->
-          update_in(data, [:payload, :oracle_address], &Account.base58c_decode(&1))
-
-        %OracleResponseTxData{} ->
-          update_in(data, [:payload, :query_id], &OracleQueryTxData.base58c_decode(&1))
-
-        _ ->
-          data
-      end
-
     signature = base64_binary(tx["signature"], :deserialize)
-    %SignedTx{data: updated_data, signature: signature}
+    %SignedTx{data: data, signature: signature}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
@@ -177,6 +152,12 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_encode(value)
 
+      :oracle_address ->
+        Account.base58c_encode(value)
+
+      :query_id ->
+        OracleQueryTxData.base58c_encode(value)
+
       :signature ->
         base64_binary(value, :serialize)
 
@@ -248,6 +229,12 @@ defmodule Aeutil.Serialization do
 
       :receiver ->
         Account.base58c_decode(value)
+
+      :oracle_address ->
+        Account.base58c_decode(value)
+
+      :query_id ->
+        OracleQueryTxData.base58c_decode(value)
 
       :signature ->
         base64_binary(value, :deserialize)

@@ -63,7 +63,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
         true
       rescue
         e ->
-          Logger.error("Invalid query or response format definition; " <> inspect(e))
+          Logger.error("Invalid query or response format definition - " <> inspect(e))
 
           false
       end
