@@ -303,8 +303,93 @@ defmodule Aevm do
     # TODO
   end
 
-  ## TODO: Add exec() for #30s and 40s
-  # ---------------------------------------------------
+  # 30s: Environmental Information
+
+  def exec(OpCodes._ADDRESS(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._BALANCE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._ORIGIN(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CALLER(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CALLVALUE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CALLDATALOAD(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CALLDATASIZE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CALLDATACOPY(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CODESIZE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._CODECOPY(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._GASPRICE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._EXTCODESIZE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._EXTCODECOPY(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._RETURNDATASIZE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._RETURNDATACOPY(), state) do
+    # TODO
+  end
+
+  # 40s: Block Information
+
+  def exec(OpCodes._BLOCKHASH(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._COINBASE(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._TIMESTAMP(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._NUMBER(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._DIFFICULTY(), state) do
+    # TODO
+  end
+
+  def exec(OpCodes._GASLIMIT(), state) do
+    # TODO
+  end
 
   # 50s: Stack, Memory, Storage and Flow Operations
 
