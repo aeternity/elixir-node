@@ -7,7 +7,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
-  alias Aecore.Naming.Structures.Naming
+  alias Aecore.Naming.Naming
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits

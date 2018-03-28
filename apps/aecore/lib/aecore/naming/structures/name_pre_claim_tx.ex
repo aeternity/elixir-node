@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Structures.PreClaimTx do
+defmodule Aecore.Naming.Structures.NamePreClaimTx do
   @moduledoc """
   Aecore structure of naming pre claim data.
   """
@@ -6,8 +6,8 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.PreClaimTx
-  alias Aecore.Naming.Structures.Naming
+  alias Aecore.Naming.Structures.NamePreClaimTx
+  alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
 
   require Logger
@@ -20,16 +20,16 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of PreClaimTx we don't have a subdomain chainstate."
+  In the case of NamePreClaimTx we don't have a subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
   @typedoc "Structure of the Spend Transaction type"
-  @type t :: %PreClaimTx{
+  @type t :: %NamePreClaimTx{
           commitment: commitment_hash()
         }
 
   @doc """
-  Definition of Aecore PreClaimTx structure
+  Definition of Aecore NamePreClaimTx structure
 
   ## Parameters
   - commitment: hash of the commitment for name claiming
@@ -39,16 +39,16 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: PreClaimTx.t()
+  @spec init(payload()) :: NamePreClaimTx.t()
   def init(%{commitment: commitment} = _payload) do
-    %PreClaimTx{commitment: commitment}
+    %NamePreClaimTx{commitment: commitment}
   end
 
   @doc """
   Checks nothing, pre claim transactions can't be validated
   """
-  @spec is_valid?(PreClaimTx.t()) :: boolean()
-  def is_valid?(%PreClaimTx{commitment: _commitment}) do
+  @spec is_valid?(NamePreClaimTx.t()) :: boolean()
+  def is_valid?(%NamePreClaimTx{commitment: _commitment}) do
     true
   end
 
@@ -59,7 +59,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          PreClaimTx.t(),
+          NamePreClaimTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -68,7 +68,7 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %PreClaimTx{} = tx,
+        %NamePreClaimTx{} = tx,
         sender,
         fee,
         nonce,
@@ -101,11 +101,11 @@ defmodule Aecore.Naming.Structures.PreClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the PreClaimTx requirements,
+  Checks whether all the data is valid according to the NamePreClaimTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          PreClaimTx.t(),
+          NamePreClaimTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),

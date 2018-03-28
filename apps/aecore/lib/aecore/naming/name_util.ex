@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Util do
+defmodule Aecore.Naming.NameUtil do
   alias Aeutil.Hash
 
   @split_name_symbol "."

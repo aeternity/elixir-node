@@ -1,8 +1,8 @@
-defmodule Aecore.Naming.Structures.Naming do
-  alias Aecore.Naming.Structures.PreClaimTx
-  alias Aecore.Naming.Structures.Naming
+defmodule Aecore.Naming.Naming do
+  alias Aecore.Naming.Structures.NamePreClaimTx
+  alias Aecore.Naming.Naming
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Util
+  alias Aecore.Naming.NameUtil
   alias Aeutil.Hash
 
   @pre_claim_ttl 300
@@ -13,7 +13,7 @@ defmodule Aecore.Naming.Structures.Naming do
 
   @name_salt_byte_size 32
 
-  @type pre_claim :: %{height: non_neg_integer(), commitment: PreClaimTx.commitment_hash()}
+  @type pre_claim :: %{height: non_neg_integer(), commitment: NamePreClaimTx.commitment_hash()}
 
   @type claim :: %{
           height: non_neg_integer(),
@@ -38,6 +38,7 @@ defmodule Aecore.Naming.Structures.Naming do
 
   ## Parameters
   - pre_claims: list of pre_claims
+  - claims: list of claims
   """
   defstruct [:pre_claims, :claims]
   use ExConstructor
@@ -47,7 +48,7 @@ defmodule Aecore.Naming.Structures.Naming do
     %Naming{pre_claims: [], claims: []}
   end
 
-  @spec create_pre_claim(non_neg_integer(), PreClaimTx.commitment_hash()) :: pre_claim()
+  @spec create_pre_claim(non_neg_integer(), NamePreClaimTx.commitment_hash()) :: pre_claim()
   def create_pre_claim(height, commitment), do: %{:height => height, :commitment => commitment}
 
   @spec create_claim(
@@ -81,7 +82,7 @@ defmodule Aecore.Naming.Structures.Naming do
 
   @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
-    Hash.hash(Util.normalized_namehash!(name) <> name_salt)
+    Hash.hash(NameUtil.normalized_namehash!(name) <> name_salt)
   end
 
   @spec get_claim_expire_by_relative_limit() :: non_neg_integer()

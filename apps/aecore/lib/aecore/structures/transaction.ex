@@ -5,7 +5,7 @@ defmodule Aecore.Structures.Transaction do
   """
 
   alias Aecore.Structures.SpendTx
-  alias Aecore.Naming.Structures.PreClaimTx
+  alias Aecore.Naming.Structures.NamePreClaimTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet.Worker, as: Wallet
@@ -15,7 +15,7 @@ defmodule Aecore.Structures.Transaction do
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t() | PreClaimTx.t()
+  @type tx_types :: SpendTx.t() | NamePreClaimTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

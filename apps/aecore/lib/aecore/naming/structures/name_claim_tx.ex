@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Structures.ClaimTx do
+defmodule Aecore.Naming.Structures.NameClaimTx do
   @moduledoc """
   Aecore structure of naming claim.
   """
@@ -6,10 +6,10 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.ClaimTx
-  alias Aecore.Naming.Structures.Naming
+  alias Aecore.Naming.Structures.NameClaimTx
+  alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
-  alias Aecore.Naming.Util
+  alias Aecore.Naming.NameUtil
 
   require Logger
 
@@ -20,17 +20,17 @@ defmodule Aecore.Naming.Structures.ClaimTx do
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of ClaimTx we have the naming subdomain chainstate."
+  In the case of NameClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
   @typedoc "Structure of the Spend Transaction type"
-  @type t :: %ClaimTx{
+  @type t :: %NameClaimTx{
           name: String.t(),
           name_salt: Naming.salt()
         }
 
   @doc """
-  Definition of Aecore ClaimTx structure
+  Definition of Aecore NameClaimTx structure
 
   ## Parameters
   - name: name to be claimed
@@ -41,18 +41,18 @@ defmodule Aecore.Naming.Structures.ClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: ClaimTx.t()
+  @spec init(payload()) :: NameClaimTx.t()
   def init(%{name: name, name_salt: name_salt} = _payload) do
-    %ClaimTx{name: name, name_salt: name_salt}
+    %NameClaimTx{name: name, name_salt: name_salt}
   end
 
   @doc """
   Checks name format
   """
-  @spec is_valid?(ClaimTx.t()) :: boolean()
-  def is_valid?(%ClaimTx{name: name, name_salt: name_salt}) do
+  @spec is_valid?(NameClaimTx.t()) :: boolean()
+  def is_valid?(%NameClaimTx{name: name, name_salt: name_salt}) do
     name_valid =
-      case Util.normalize_and_validate_name(name) do
+      case NameUtil.normalize_and_validate_name(name) do
         {:ok, _} -> true
         {:error, _} -> false
       end
@@ -68,7 +68,7 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          ClaimTx.t(),
+          NameClaimTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -77,7 +77,7 @@ defmodule Aecore.Naming.Structures.ClaimTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %ClaimTx{} = tx,
+        %NameClaimTx{} = tx,
         sender,
         fee,
         nonce,
@@ -119,11 +119,11 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ClaimTx requirements,
+  Checks whether all the data is valid according to the NameClaimTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ClaimTx.t(),
+          NameClaimTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),

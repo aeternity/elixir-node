@@ -12,11 +12,11 @@ defmodule Aecore.Structures.Account do
   alias Aeutil.Bits
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Naming.Structures.PreClaimTx
-  alias Aecore.Naming.Structures.ClaimTx
-  alias Aecore.Naming.Structures.UpdateTx
-  alias Aecore.Naming.Structures.Naming
-  alias Aecore.Naming.Util
+  alias Aecore.Naming.Structures.NamePreClaimTx
+  alias Aecore.Naming.Structures.NameClaimTx
+  alias Aecore.Naming.Structures.NameUpdateTx
+  alias Aecore.Naming.Naming
+  alias Aecore.Naming.NameUtil
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -66,7 +66,7 @@ defmodule Aecore.Structures.Account do
   end
 
   @doc """
-  Builds a PreClaimTx where the miners public key is used as a sender
+  Builds a NamePreClaimTx where the miners public key is used as a sender
   """
   @spec pre_claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
   def pre_claim(name, name_salt, fee) do
@@ -77,7 +77,7 @@ defmodule Aecore.Structures.Account do
   end
 
   @doc """
-  Build a PreClaimTx from the given sender keys
+  Build a NamePreClaimTx from the given sender keys
   """
   @spec pre_claim(
           Wallet.pubkey(),
@@ -89,12 +89,12 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{commitment: Naming.create_commitment_hash(name, name_salt)}
-    spend_tx = DataTx.init(PreClaimTx, payload, sender, fee, nonce)
+    spend_tx = DataTx.init(NamePreClaimTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
   @doc """
-  Builds a ClaimTx where the miners public key is used as a sender
+  Builds a NameClaimTx where the miners public key is used as a sender
   """
   @spec claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
   def claim(name, name_salt, fee) do
@@ -105,7 +105,7 @@ defmodule Aecore.Structures.Account do
   end
 
   @doc """
-  Build a ClaimTx from the given sender keys
+  Build a NameClaimTx from the given sender keys
   """
   @spec claim(
           Wallet.pubkey(),
@@ -117,12 +117,12 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{name: name, name_salt: name_salt}
-    spend_tx = DataTx.init(ClaimTx, payload, sender, fee, nonce)
+    spend_tx = DataTx.init(NameClaimTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
   @doc """
-  Builds a ClaimTx where the miners public key is used as a sender
+  Builds a NameClaimTx where the miners public key is used as a sender
   """
   @spec name_update(String.t(), String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
   def name_update(name, pointers, fee) do
@@ -133,7 +133,7 @@ defmodule Aecore.Structures.Account do
   end
 
   @doc """
-  Build a ClaimTx from the given sender keys
+  Build a NameClaimTx from the given sender keys
   """
   @spec name_update(
           Wallet.pubkey(),
@@ -145,13 +145,13 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
     payload = %{
-      hash: Util.normalized_namehash!(name),
+      hash: NameUtil.normalized_namehash!(name),
       expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
       client_ttl: 86400,
       pointers: pointers
     }
 
-    spend_tx = DataTx.init(UpdateTx, payload, sender, fee, nonce)
+    spend_tx = DataTx.init(NameUpdateTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 

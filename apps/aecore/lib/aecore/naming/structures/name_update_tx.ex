@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Structures.UpdateTx do
+defmodule Aecore.Naming.Structures.NameUpdateTx do
   @moduledoc """
   Aecore structure of naming Update.
   """
@@ -6,9 +6,9 @@ defmodule Aecore.Naming.Structures.UpdateTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.UpdateTx
-  alias Aecore.Naming.Structures.Naming
-  alias Aecore.Naming.Util
+  alias Aecore.Naming.Structures.NameUpdateTx
+  alias Aecore.Naming.Naming
+  alias Aecore.Naming.NameUtil
   alias Aecore.Structures.Account
 
   require Logger
@@ -22,11 +22,11 @@ defmodule Aecore.Naming.Structures.UpdateTx do
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of UpdateTx we have the naming subdomain chainstate."
+  In the case of NameUpdateTx we have the naming subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
-  @typedoc "Structure of the UpdateTx Transaction type"
-  @type t :: %UpdateTx{
+  @typedoc "Structure of the NameUpdateTx Transaction type"
+  @type t :: %NameUpdateTx{
           hash: binary(),
           expire_by: non_neg_integer(),
           client_ttl: non_neg_integer(),
@@ -34,7 +34,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
         }
 
   @doc """
-  Definition of Aecore UpdateTx structure
+  Definition of Aecore NameUpdateTx structure
 
   ## Parameters
   - hash: hash of name to be updated
@@ -47,21 +47,21 @@ defmodule Aecore.Naming.Structures.UpdateTx do
 
   # Callbacks
 
-  @spec init(payload()) :: UpdateTx.t()
+  @spec init(payload()) :: NameUpdateTx.t()
   def init(%{
         hash: hash,
         expire_by: expire_by,
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    %UpdateTx{hash: hash, expire_by: expire_by, client_ttl: client_ttl, pointers: pointers}
+    %NameUpdateTx{hash: hash, expire_by: expire_by, client_ttl: client_ttl, pointers: pointers}
   end
 
   @doc """
   Checks name format
   """
-  @spec is_valid?(UpdateTx.t()) :: boolean()
-  def is_valid?(%UpdateTx{
+  @spec is_valid?(NameUpdateTx.t()) :: boolean()
+  def is_valid?(%NameUpdateTx{
         hash: _hash,
         expire_by: _expire_by,
         client_ttl: client_ttl,
@@ -80,7 +80,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          UpdateTx.t(),
+          NameUpdateTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -89,7 +89,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %UpdateTx{} = tx,
+        %NameUpdateTx{} = tx,
         sender,
         fee,
         nonce,
@@ -109,7 +109,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
 
         claim_to_update =
           Enum.find(account_naming.claims, fn claim ->
-            tx.hash == Util.normalized_namehash!(claim.name)
+            tx.hash == NameUtil.normalized_namehash!(claim.name)
           end)
 
         filtered_claims =
@@ -140,11 +140,11 @@ defmodule Aecore.Naming.Structures.UpdateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the UpdateTx requirements,
+  Checks whether all the data is valid according to the NameUpdateTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          UpdateTx.t(),
+          NameUpdateTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -157,7 +157,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
 
     claimed =
       Enum.find(account_naming.claims, fn claim ->
-        Util.normalized_namehash!(claim.name) == tx.hash
+        NameUtil.normalized_namehash!(claim.name) == tx.hash
       end)
 
     cond do
