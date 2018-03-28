@@ -437,18 +437,39 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._JUMP(), state) do
-    # TODO
+    {position, state} = pop(state)
+    jumpdests = State.jumpdests(state)
+
+    if Enum.member?(jumpdests, position) do
+      State.set_cp(position, state)
+    else
+      throw({"invalid_jump_dest", state})
+    end
   end
 
   def exec(OpCodes._JUMPI(), state) do
-    # TODO
+    {position, state} = pop(state)
+    {condition, state} = pop(state)
+    jumpdests = State.jumpdests(state)
+
+    if condition !== 0 do
+      if Enum.member?(jumpdests, position) do
+        State.set_cp(position, state)
+      else
+        throw({"invalid_jump_dest", state})
+      end
+    else
+      state
+    end
   end
 
   def exec(OpCodes._PC(), state) do
   end
 
   def exec(OpCodes._MSIZE(), state) do
-    # TODO
+    result = Memory.memory_size(state)
+
+    push(result, state)
   end
 
   def exec(OpCodes._GAS(), state) do
@@ -456,7 +477,9 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._JUMPDEST(), state) do
-    # TODO
+    cp = State.cp(state)
+
+    State.add_jumpdest(cp, state)
   end
 
   # 60s & 70s: Push Operations
@@ -991,10 +1014,7 @@ defmodule Aevm do
     value_size_bits = bytes * 8
     <<_::size(prev_bits), value::size(value_size_bits), _::binary>> = code
 
-    state1 =
-      Enum.reduce(1..bytes, state, fn _, state_acc ->
-        State.inc_cp(state_acc)
-      end)
+    state1 = State.set_cp(old_cp + bytes, state)
 
     {value, state1}
   end

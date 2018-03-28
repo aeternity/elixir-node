@@ -4,7 +4,6 @@ defmodule Memory do
   def load(address, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
-    remaining_bits = 256 - bit_position
 
     prev_saved_value = Map.get(memory, memory_index, 0)
     next_saved_value = Map.get(memory, memory_index + 32, 0)
@@ -53,6 +52,11 @@ defmodule Memory do
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value))
 
     State.set_memory(memory1, state)
+  end
+
+  def memory_size(state) do
+    memory = State.memory(state)
+    memory |> Map.keys() |> Enum.sort() |> Enum.at(-1)
   end
 
   defp get_index_in_memory(address) do

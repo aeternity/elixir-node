@@ -7,7 +7,8 @@ defmodule State do
       :memory => %{},
       :storage => %{},
       :code => code_bin,
-      :cp => 0
+      :cp => 0,
+      :jumpdests => []
     }
   end
 
@@ -23,9 +24,19 @@ defmodule State do
     Map.put(state, :storage, storage)
   end
 
+  def set_cp(cp, state) do
+    Map.put(state, :cp, cp)
+  end
+
   def inc_cp(state) do
     cp = Map.get(state, :cp)
     Map.put(state, :cp, cp + 1)
+  end
+
+  def add_jumpdest(jumpdest, state) do
+    jumpdests = jumpdests(state)
+    jumpdests1 = [jumpdest | jumpdests]
+    Map.put(state, :jumpdests, jumpdests1)
   end
 
   def stack(state) do
@@ -46,6 +57,10 @@ defmodule State do
 
   def cp(state) do
     Map.get(state, :cp)
+  end
+
+  def jumpdests(state) do
+    Map.get(state, :jumpdests)
   end
 
   defp bytecode_to_bin(bytecode) do
