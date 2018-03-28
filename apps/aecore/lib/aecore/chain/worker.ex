@@ -380,7 +380,7 @@ defmodule Aecore.Chain.Worker do
 
     accounts_unique =
       block.txs
-      |> Enum.map(&([&1.data.sender, &1.data.payload.receiver]))
+      |> Enum.map(&[&1.data.sender, &1.data.payload.receiver])
       |> List.flatten()
       |> Enum.uniq()
       |> List.delete(nil)
@@ -390,8 +390,7 @@ defmodule Aecore.Chain.Worker do
       tx_tuples =
         block.txs
         |> Enum.filter(fn tx ->
-        tx.data.sender == account ||
-          tx.data.payload.receiver == account
+          tx.data.sender == account || tx.data.payload.receiver == account
         end)
         |> Enum.map(fn filtered_tx ->
           tx_bin = Serialization.pack_binary(filtered_tx)

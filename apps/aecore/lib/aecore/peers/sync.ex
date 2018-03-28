@@ -20,7 +20,7 @@ defmodule Aecore.Peers.Sync do
   def start_link(_args) do
     GenServer.start_link(
       __MODULE__,
-      %{peer_blocks: %{}, peer_block_tasks: %{}, chain_sync_running: false},
+      %{peer_blocks: %{}, peer_block_tasks: %{}, chain_sync_status: false},
       name: __MODULE__
     )
   end
@@ -177,13 +177,13 @@ defmodule Aecore.Peers.Sync do
   def handle_call(
         :get_chain_sync_status,
         _from,
-        %{chain_sync_running: chain_sync_running} = state
+        %{chain_sync_status: chain_sync_status} = state
       ) do
-    {:reply, chain_sync_running, state}
+    {:reply, chain_sync_status, state}
   end
 
   def handle_call({:set_chain_sync_status, status}, _from, state) do
-    {:reply, :ok, %{state | chain_sync_running: status}}
+    {:reply, :ok, %{state | chain_sync_status: status}}
   end
 
   def handle_call(
