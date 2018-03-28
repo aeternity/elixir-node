@@ -98,9 +98,12 @@ defmodule Aecore.Naming.Structures.Naming do
             pre_claim.height + @pre_claim_ttl > block_height
           end)
 
-        updated_naming = %{naming | pre_claims: updated_naming_pre_claims}
+        updated_naming_claims =
+          Enum.filter(naming.claims, fn claim ->
+            claim.expires_by > block_height
+          end)
 
-        # TODO remove expired claims
+        updated_naming = %{naming | pre_claims: updated_naming_pre_claims, claims: updated_naming_claims}
 
         # prune empty naming states
         if(!Enum.empty?(updated_naming.pre_claims) || !Enum.empty?(updated_naming.claims)) do
