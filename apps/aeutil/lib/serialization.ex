@@ -8,7 +8,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aeutil.Parser
   alias Aecore.Structures.Account
 
@@ -151,7 +151,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->
-        ChainState.base58c_encode(value)
+        Chainstate.base58c_encode(value)
 
       :prev_hash ->
         Header.base58c_encode(value)
@@ -223,7 +223,7 @@ defmodule Aeutil.Serialization do
   def deserialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->
-        ChainState.base58c_decode(value)
+        Chainstate.base58c_decode(value)
 
       :prev_hash ->
         Header.base58c_decode(value)

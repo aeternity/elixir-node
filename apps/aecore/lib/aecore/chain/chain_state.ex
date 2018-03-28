@@ -1,106 +1,31 @@
 defmodule Aecore.Chain.ChainState do
   @moduledoc """
-  Module used for calculating the block and chain states.
-  The chain state is a map, telling us what amount of tokens each account has.
+  The module is a wrapper of Aecore.Structures.Chainstate
   """
+  alias Aecore.Structures.Chainstate
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Account
-  alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Bits
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Account
-
-  require Logger
-
-  @typedoc "Structure of the accounts"
-  @type accounts() :: %{Wallet.pubkey() => Account.t()}
-
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
-
-  @spec calculate_and_validate_chain_state!(list(), chainstate()) :: chainstate()
+  @spec calculate_and_validate_chain_state!(list(), Chainstate.t()) :: Chainstate.t()
   def calculate_and_validate_chain_state!(txs, chainstate) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate)
+      Chainstate.apply_transaction_on_state!(tx, chainstate)
     end)
-  end
-
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
-    cond do
-      SignedTx.is_coinbase?(tx) ->
-        receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
-
-        new_receiver_state = SignedTx.reward(data, receiver_state)
-
-        new_accounts_state =
-          AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
-
-        Map.put(chainstate, :accounts, new_accounts_state)
-
-      data.sender != nil ->
-        if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
-        else
-          throw({:error, "Invalid transaction"})
-        end
-
-      true ->
-        throw({:error, "Invalid transaction"})
-    end
   end
 
   @doc """
   Create the root hash of the tree.
   """
-  @spec calculate_root_hash(chainstate()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
-    AccountStateTree.root_hash(chainstate.accounts)
+    Chainstate.calculate_root_hash(chainstate)
   end
 
   def filter_invalid_txs(txs_list, chainstate) do
-    {valid_txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc)
-
-        if valid_chainstate do
-          {valid_txs_list ++ [tx], updated_chainstate}
-        else
-          {valid_txs_list, chainstate_acc}
-        end
-      end)
-
-    valid_txs_list
+    Chainstate.filter_invalid_txs(txs_list, chainstate)
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate) do
-    try do
-      {true, apply_transaction_on_state!(tx, chainstate)}
-    catch
-      {:error, _} -> {false, chainstate}
-    end
-  end
-
-  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
-    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + Account.balance(accounts_tree, pub_key)
-    end)
-  end
-
-  def base58c_encode(bin) do
-    Bits.encode58c("bs", bin)
-  end
-
-  def base58c_decode(<<"bs$", payload::binary>>) do
-    Bits.decode58(payload)
-  end
-
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
+  def calculate_total_tokens(chainstate) do
+    Chainstate.calculate_total_tokens(chainstate)
   end
 end

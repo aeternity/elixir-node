@@ -13,7 +13,7 @@ defmodule Aecore.Structures.AccountStateTree do
   @type hash :: binary()
 
   @spec init_empty() :: tree()
-  def init_empty() do
+  def init_empty do
     :gb_merkle_trees.empty()
   end
 

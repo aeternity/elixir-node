@@ -18,7 +18,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Difficulty
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Structures.Chainstate
 
   require Logger
 
@@ -63,6 +63,11 @@ defmodule Aecore.Chain.Worker do
   @spec top_block() :: Block.t()
   def top_block do
     GenServer.call(__MODULE__, :top_block_info).block
+  end
+
+  @spec current_state() :: Block.t()
+  def current_state do
+    GenServer.call(__MODULE__, :current_state)
   end
 
   @spec top_block_chain_state() :: ChainState.account_chainstate()
@@ -505,5 +510,5 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state(), do: %{accounts: AccountStateTree.init_empty()}
+  defp build_chain_state, do: Chainstate.init()
 end
