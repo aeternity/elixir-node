@@ -8,6 +8,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -72,25 +73,35 @@ defmodule Aecore.Structures.DataTx do
     accounts_state = chainstate.accounts
     tx_type_state = Map.get(chainstate, tx.type, %{})
 
-    {new_accounts_state, new_tx_type_state} =
-      tx.payload
-      |> tx.type.init()
-      |> tx.type.process_chainstate!(
-        tx.sender,
-        tx.fee,
-        tx.nonce,
-        accounts_state,
-        tx_type_state
-      )
+    if is_nonce_valid?(accounts_state, tx) do
+      {new_accounts_state, new_tx_type_state} =
+        tx.payload
+        |> tx.type.init()
+        |> tx.type.process_chainstate!(
+          tx.sender,
+          tx.fee,
+          tx.nonce,
+          accounts_state,
+          tx_type_state
+        )
 
-    new_chainstate =
-      if Map.has_key?(chainstate, tx.type) do
-        Map.put(chainstate, tx.type, new_tx_type_state)
-      else
-        chainstate
-      end
+      new_chainstate =
+        if Map.has_key?(chainstate, tx.type) do
+          Map.put(chainstate, tx.type, new_tx_type_state)
+        else
+          chainstate
+        end
 
-    Map.put(new_chainstate, :accounts, new_accounts_state)
+      Map.put(new_chainstate, :accounts, new_accounts_state)
+    else
+      Logger.error("Nonce is too small")
+      throw({:error, "Nonce is too small"})
+    end
+  end
+
+  def is_nonce_valid?(accounts, tx) do
+    account_state = Map.get(accounts, tx.sender, Account.empty())
+    tx.nonce > account_state.nonce
   end
 
   @spec serialize(DataTx.t()) :: map()
