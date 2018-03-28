@@ -9,6 +9,7 @@ defmodule AecoreNamingTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.Account
 
   setup do
@@ -55,6 +56,20 @@ defmodule AecoreNamingTest do
     naming_state = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state)
     [first_name] = naming_state
+    assert Enum.empty?(first_name.pre_claims)
+    assert 1 == Enum.count(first_name.claims)
+    [first_claim] = first_name.claims
+    assert "test.aet" == first_claim.name
+    assert "{\"test\": 2}" == first_claim.pointers
+
+    target_pub_key = Wallet.get_public_key("M/0/1")
+    {:ok, transfer} = Account.name_transfer("test.aet", target_pub_key, 5)
+    Pool.add_transaction(transfer)
+    Miner.mine_sync_block_to_chain()
+
+    naming_state = Map.values(Chain.chain_state().naming)
+    assert 1 == Enum.count(naming_state)
+    first_name = Chain.chain_state().naming[target_pub_key]
     assert Enum.empty?(first_name.pre_claims)
     assert 1 == Enum.count(first_name.claims)
     [first_claim] = first_name.claims

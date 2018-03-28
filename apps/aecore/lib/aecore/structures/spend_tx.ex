@@ -56,6 +56,8 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec is_valid?(SpendTx.t()) :: boolean()
   def is_valid?(%SpendTx{amount: amount}) do
+    # TODO validate sender/receiver pubkey byte size
+
     if amount >= 0 do
       true
     else
