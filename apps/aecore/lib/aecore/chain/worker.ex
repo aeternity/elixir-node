@@ -8,6 +8,7 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -385,15 +386,13 @@ defmodule Aecore.Chain.Worker do
           SpendTx ->
             [tx.data.sender, tx.data.payload.receiver]
 
-          DataTx ->
-            tx.data.payload.receiver
-
           _ ->
             tx.data.sender
         end
       end)
       |> List.flatten()
       |> Enum.uniq()
+      |> List.delete(nil)
 
     for account <- accounts_unique, into: %{} do
       # txs associated with the given account
