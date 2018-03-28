@@ -27,7 +27,7 @@ defmodule Aehttpserver.Web.TxController do
                 %{
                   tx
                   | sender: Account.base58c_encode(tx.sender),
-                    receiver: Account.base58c_encode(tx.receiver),
+                    receiver: Account.base58c_encode(tx.payload.receiver),
                     txs_hash: SignedTx.base58c_encode_root(tx.txs_hash),
                     block_hash: Header.base58c_encode(tx.block_hash),
                     signature: Base.encode64(tx.signature),
@@ -43,10 +43,14 @@ defmodule Aehttpserver.Web.TxController do
                 %{
                   tx
                   | sender: Account.base58c_encode(tx.sender),
-                    receiver: Account.base58c_encode(tx.receiver),
+                    receiver: Account.base58c_encode(tx.payload.receiver),
                     txs_hash: SignedTx.base58c_encode(tx.txs_hash),
                     block_hash: Header.base58c_encode(tx.block_hash),
-                    signature: Base.encode64(tx.signature)
+                    signature:
+                      case tx.signature do
+                        nil -> nil
+                        _ -> Base.encode64(tx.signature)
+                      end
                 }
               end)
             )

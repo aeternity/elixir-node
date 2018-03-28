@@ -11,6 +11,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Structures.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -230,4 +231,28 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value, _), do: value
+
+  def serialize_txs_info_to_json([h | t], acc) do
+    json_response_struct = %{
+      tx: %{
+        sender: Account.base58c_encode(h.sender),
+        recipient: Account.base58c_encode(h.payload.receiver),
+        amount: h.payload.amount,
+        fee: h.fee,
+        nonce: h.nonce,
+        vsn: h.payload.version
+      },
+      block_height: h.block_height,
+      block_hash: h.txs_hash,
+      # hash: tx_hash , TODO: return tx_hash
+      signatures: h.signature
+    }
+
+    acc = acc ++ [json_response_struct]
+    serialize_txs_info_to_json(t, acc)
+  end
+
+  def serialize_txs_info_to_json([], acc) do
+    acc
+  end
 end

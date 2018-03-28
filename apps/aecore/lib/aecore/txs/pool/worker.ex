@@ -159,7 +159,7 @@ defmodule Aecore.Txs.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if tx.data.sender == address or tx.data.receiver == address do
+      if tx.data.sender == address or tx.data.payload.receiver == address do
         [
           tx.data
           |> Map.from_struct()
