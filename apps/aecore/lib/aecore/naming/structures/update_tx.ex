@@ -64,12 +64,13 @@ defmodule Aecore.Naming.Structures.UpdateTx do
   def is_valid?(%UpdateTx{
         hash: _hash,
         expire_by: _expire_by,
-        client_ttl: _client_ttl,
+        client_ttl: client_ttl,
         pointers: _pointers
       }) do
     # TODO check pointers format
-    # TODO check client ttl
-    true
+    valid_pointers_format = true
+    valid_client_ttl = client_ttl <= Naming.get_client_ttl_limit()
+    valid_client_ttl && valid_pointers_format
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -151,7 +152,7 @@ defmodule Aecore.Naming.Structures.UpdateTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming) do
+  def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming) do
     account_naming = Map.get(naming, sender, Naming.empty())
 
     claimed =
@@ -169,7 +170,8 @@ defmodule Aecore.Naming.Structures.UpdateTx do
       claimed == nil ->
         {:error, "Name has not been claimed"}
 
-      # TODO validate expiration
+      tx.expire_by <= block_height ->
+        {:error, "Name expiration is now or in the past"}
 
       true ->
         :ok
