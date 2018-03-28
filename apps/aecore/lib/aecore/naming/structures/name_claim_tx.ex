@@ -158,6 +158,8 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
       claims_for_name != nil ->
         {:error, "Name has aleady been claimed"}
 
+      # TODO check name revoked state
+
       true ->
         :ok
     end

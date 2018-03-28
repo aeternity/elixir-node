@@ -13,10 +13,17 @@ defmodule Aecore.Structures.DataTx do
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type tx_types :: SpendTx | NamePreClaimTx | NameClaimTx
+  @type tx_types ::
+          SpendTx | NamePreClaimTx | NameClaimTx | NameUpdateTx | NameTransferTx | NameRevokeTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t() | NamePreClaimTx.t() | NameClaimTx.t()
+  @type payload ::
+          SpendTx.t()
+          | NamePreClaimTx.t()
+          | NameClaimTx.t()
+          | NameUpdateTx.t()
+          | NameTransferTx.t()
+          | NameRevokeTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

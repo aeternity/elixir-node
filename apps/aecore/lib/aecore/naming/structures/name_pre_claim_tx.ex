@@ -45,10 +45,11 @@ defmodule Aecore.Naming.Structures.NamePreClaimTx do
   end
 
   @doc """
-  Checks nothing, pre claim transactions can't be validated
+  Checks commitment hash byte size
   """
   @spec is_valid?(NamePreClaimTx.t()) :: boolean()
   def is_valid?(%NamePreClaimTx{commitment: _commitment}) do
+    # TODO validate commitment byte size
     true
   end
 

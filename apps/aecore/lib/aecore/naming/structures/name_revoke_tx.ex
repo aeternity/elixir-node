@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Structures.NameUpdateTx do
+defmodule Aecore.Naming.Structures.NameRevokeTx do
   @moduledoc """
   Aecore structure of naming Update.
   """
@@ -6,72 +6,53 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.NameUpdateTx
+  alias Aecore.Naming.Structures.NameRevokeTx
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
   alias Aecore.Structures.Account
 
   require Logger
 
-  @typedoc "Expected structure for the Update Transaction"
+  @typedoc "Expected structure for the Revoke Transaction"
   @type payload :: %{
-          hash: binary(),
-          expire_by: non_neg_integer(),
-          client_ttl: non_neg_integer(),
-          pointers: String.t()
+          hash: binary()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of NameUpdateTx we have the naming subdomain chainstate."
+  In the case of NameRevokeTx we have the naming subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
-  @typedoc "Structure of the NameUpdateTx Transaction type"
-  @type t :: %NameUpdateTx{
-          hash: binary(),
-          expire_by: non_neg_integer(),
-          client_ttl: non_neg_integer(),
-          pointers: String.t()
+  @typedoc "Structure of the NameRevokeTx Transaction type"
+  @type t :: %NameRevokeTx{
+          hash: binary()
         }
 
   @doc """
-  Definition of Aecore NameUpdateTx structure
+  Definition of Aecore NameRevokeTx structure
 
   ## Parameters
-  - hash: hash of name to be updated
-  - expire_by: expiration block of name update
-  - client_ttl: ttl for client use
-  - pointers: pointers from name update
+  - hash: hash of name to be revoked
   """
-  defstruct [:hash, :expire_by, :client_ttl, :pointers]
+  defstruct [:hash]
   use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: NameUpdateTx.t()
+  @spec init(payload()) :: NameRevokeTx.t()
   def init(%{
-        hash: hash,
-        expire_by: expire_by,
-        client_ttl: client_ttl,
-        pointers: pointers
+        hash: hash
       }) do
-    %NameUpdateTx{hash: hash, expire_by: expire_by, client_ttl: client_ttl, pointers: pointers}
+    %NameRevokeTx{hash: hash}
   end
 
   @doc """
-  Checks name format
+  Checks name hash byte size
   """
-  @spec is_valid?(NameUpdateTx.t()) :: boolean()
-  def is_valid?(%NameUpdateTx{
-        hash: _hash,
-        expire_by: _expire_by,
-        client_ttl: client_ttl,
-        pointers: _pointers
+  @spec is_valid?(NameRevokeTx.t()) :: boolean()
+  def is_valid?(%NameRevokeTx{
+        hash: _hash
       }) do
     # TODO validate hash byte size
-    # TODO check pointers format
-    valid_pointers_format = true
-    valid_client_ttl = client_ttl <= Naming.get_client_ttl_limit()
-    valid_client_ttl && valid_pointers_format
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -81,7 +62,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          NameUpdateTx.t(),
+          NameRevokeTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -90,7 +71,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %NameUpdateTx{} = tx,
+        %NameRevokeTx{} = tx,
         sender,
         fee,
         nonce,
@@ -108,30 +89,15 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
         account_naming = Map.get(naming, sender, Naming.empty())
 
-        claim_to_update =
-          Enum.find(account_naming.claims, fn claim ->
-            tx.hash == NameUtil.normalized_namehash!(claim.name)
-          end)
-
         filtered_claims =
           Enum.filter(account_naming.claims, fn claim ->
-            claim.name != claim_to_update.name
+            tx.hash != NameUtil.normalized_namehash!(claim.name)
           end)
 
-        updated_naming_claims = [
-          Naming.create_claim(
-            block_height,
-            claim_to_update.name,
-            claim_to_update.name_salt,
-            tx.expire_by,
-            tx.client_ttl,
-            tx.pointers
-          )
-          | filtered_claims
-        ]
-
         updated_naming_chainstate =
-          Map.put(naming, sender, %{account_naming | claims: updated_naming_claims})
+          Map.put(naming, sender, %{account_naming | claims: filtered_claims})
+
+        # TODO add hash to revoked name state
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -141,11 +107,11 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameUpdateTx requirements,
+  Checks whether all the data is valid according to the NameRevokeTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          NameUpdateTx.t(),
+          NameRevokeTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -153,7 +119,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming) do
+  def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming) do
     account_naming = Map.get(naming, sender, Naming.empty())
 
     claimed =
@@ -170,9 +136,6 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
 
       claimed == nil ->
         {:error, "Name has not been claimed"}
-
-      tx.expire_by <= block_height ->
-        {:error, "Name expiration is now or in the past"}
 
       true ->
         :ok
