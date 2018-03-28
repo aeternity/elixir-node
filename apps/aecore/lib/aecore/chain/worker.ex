@@ -399,7 +399,13 @@ defmodule Aecore.Chain.Worker do
       tx_tuples =
         block.txs
         |> Enum.filter(fn tx ->
-          tx.data.sender == account || tx.data.payload.receiver == account
+          case tx.data.type do
+            SpendTx ->
+              tx.data.sender == account || tx.data.payload.receiver == account
+
+            _ ->
+              tx.data.sender == account
+          end
         end)
         |> Enum.map(fn filtered_tx ->
           tx_bin = Serialization.pack_binary(filtered_tx)
