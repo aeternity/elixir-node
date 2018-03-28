@@ -380,10 +380,20 @@ defmodule Aecore.Chain.Worker do
 
     accounts_unique =
       block.txs
-      |> Enum.map(&[&1.data.sender, &1.data.payload.receiver])
+      |> Enum.map(fn tx ->
+        case tx.data.type do
+          SpendTx ->
+            [tx.data.sender, tx.data.payload.receiver]
+
+          DataTx ->
+            tx.data.payload.receiver
+
+          _ ->
+            tx.data.sender
+        end
+      end)
       |> List.flatten()
       |> Enum.uniq()
-      |> List.delete(nil)
 
     for account <- accounts_unique, into: %{} do
       # txs associated with the given account
