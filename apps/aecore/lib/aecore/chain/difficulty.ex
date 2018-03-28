@@ -5,8 +5,6 @@ defmodule Aecore.Chain.Difficulty do
   use Bitwise
 
   @number_of_blocks 10
-  @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
-  @target_distance 30_000
   @highest_target_scientific 0x2100FFFF
   @expected_mine_rate 30_000
 
@@ -14,7 +12,7 @@ defmodule Aecore.Chain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(Block.t(), list(Block.t())) :: integer()
+  @spec calculate_next_difficulty(integer(), list(Block.t())) :: integer()
   def calculate_next_difficulty(timestamp, previous_blocks) do
     sorted_blocks =
       Enum.sort(previous_blocks, fn block1, block2 ->

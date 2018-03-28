@@ -92,7 +92,7 @@ config :aecore, :pow,
       37_643_561
     ],
     version: 1,
-    difficulty_target: 1
+    difficulty_target: 0x2100FFFF
   }
 
 config :aecore, :peers,

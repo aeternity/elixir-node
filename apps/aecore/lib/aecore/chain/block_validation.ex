@@ -56,6 +56,8 @@ defmodule Aecore.Chain.BlockValidation do
         new_block.header.timestamp,
         blocks_for_difficulty_calculation
       )
+    IO.inspect "______CHAIN DIFF ____"
+    IO.inspect difficulty
 
     cond do
       # do not check previous block hash for genesis block, there is none

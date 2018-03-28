@@ -1,11 +1,6 @@
 defmodule Aeutil.Scientific do
   use Bitwise
 
-  @highest_target_scientific 0x2100FFFF
-  @highest_target_integer 0xFFFF000000000000000000000000000000000000000000000000000000000000
-  @nonce_bits 64
-  @max_nonce 0xFFFFFFFFFFFFFFFF
-  @nonce_range 1_000_000_000_000_000_000_000_000
 
   def scientific_to_integer(scientific) do
     {exp, significand} = break_scientific(scientific)
@@ -26,18 +21,6 @@ defmodule Aeutil.Scientific do
     end
   end
 
-  def target_to_difficulty(target) do
-    @highest_target_integer / scientific_to_integer(target)
-  end
-
-  def pick_nonce() do
-    band(:rand.uniform(@nonce_range), @max_nonce)
-  end
-
-  def next_nonce(nonce) do
-    band(nonce + 1, @max_nonce)
-  end
-
   def compare_bin_to_significand(binary, significand, zeros, number_of_bits) do
     case binary do
       <<0 :: size(zeros), integer :: size(number_of_bits), _rest :: binary()>> ->
@@ -47,18 +30,6 @@ defmodule Aeutil.Scientific do
       _ ->
         false
     end
-  end
-
-  defp int_to_sci(integer, exp) when integer > 0x7FFFFF do
-    int_to_sci(bsr(integer, 8), exp + 1)
-  end
-
-  defp int_to_sci(integer, exp) when integer < 0x008000 do
-    int_to_sci(bsl(integer, 8), exp - 1)
-  end
-
-  defp int_to_sci(integer, exp) do
-    {exp, integer}
   end
 
   def break_scientific(scientific) do
@@ -74,5 +45,17 @@ defmodule Aeutil.Scientific do
       0 -> {exp, significand}
       _ -> {-exp, significand - 0x800000}
     end
+  end
+
+  defp int_to_sci(integer, exp) when integer > 0x7FFFFF do
+    int_to_sci(bsr(integer, 8), exp + 1)
+  end
+
+  defp int_to_sci(integer, exp) when integer < 0x008000 do
+    int_to_sci(bsl(integer, 8), exp - 1)
+  end
+
+  defp int_to_sci(integer, exp) do
+    {exp, integer}
   end
 end

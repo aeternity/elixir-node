@@ -34,7 +34,7 @@ defmodule AecoreValidationTest do
   end
 
   setup ctx do
-    Miner.mine_sync_block_to_chain()
+
 
     [
       to_acc: Wallet.get_public_key("M/0")
@@ -45,7 +45,6 @@ defmodule AecoreValidationTest do
   test "validate block header height", ctx do
     new_block = get_new_block(ctx.to_acc)
     prev_block = get_prev_block()
-
     blocks_for_difficulty_calculation = [new_block, prev_block]
 
     _ =

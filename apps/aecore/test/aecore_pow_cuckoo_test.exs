@@ -104,7 +104,7 @@ defmodule AecoreCuckooTest do
     %Block{
       header: %Header{
         chain_state_hash: chain_state_hash,
-        difficulty_target: 1,
+        difficulty_target: 553713663,
         height: 1,
         nonce: 31,
         pow_evidence: nil,
