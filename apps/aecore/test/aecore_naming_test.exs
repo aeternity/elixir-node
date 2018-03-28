@@ -26,7 +26,7 @@ defmodule AecoreNamingTest do
 
   test "test naming workflow", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 5)
+    {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
     Miner.mine_sync_block_to_chain()
 
@@ -35,7 +35,7 @@ defmodule AecoreNamingTest do
     [first_name] = naming_state
     assert 1 == Enum.count(first_name.pre_claims)
 
-    {:ok, claim} = Account.claim("test.aet", 5)
+    {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
     Miner.mine_sync_block_to_chain()
 

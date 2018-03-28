@@ -50,11 +50,15 @@ defmodule Aecore.Naming.Structures.ClaimTx do
   Checks name format
   """
   @spec is_valid?(ClaimTx.t()) :: boolean()
-  def is_valid?(%ClaimTx{name: name, name_salt: _name_salt}) do
-    case Util.normalize_and_validate_name(name) do
-      {:ok, _} -> true
-      {:error, _} -> false
-    end
+  def is_valid?(%ClaimTx{name: name, name_salt: name_salt}) do
+    name_valid =
+      case Util.normalize_and_validate_name(name) do
+        {:ok, _} -> true
+        {:error, _} -> false
+      end
+
+    name_salt_valid = byte_size(name_salt) == Naming.get_name_salt_byte_size()
+    name_valid && name_salt_valid
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()

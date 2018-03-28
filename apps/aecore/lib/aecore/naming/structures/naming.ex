@@ -11,6 +11,8 @@ defmodule Aecore.Naming.Structures.Naming do
 
   @claim_expire_by_relative_limit 50000
 
+  @name_salt_byte_size 32
+
   @type pre_claim :: %{height: non_neg_integer(), commitment: PreClaimTx.commitment_hash()}
 
   @type claim :: %{
@@ -87,6 +89,9 @@ defmodule Aecore.Naming.Structures.Naming do
 
   @spec get_client_ttl_limit() :: non_neg_integer()
   def get_client_ttl_limit, do: @client_ttl_limit
+
+  @spec get_name_salt_byte_size() :: non_neg_integer()
+  def get_name_salt_byte_size, do: @name_salt_byte_size
 
   @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
           ChainState.chainstate()

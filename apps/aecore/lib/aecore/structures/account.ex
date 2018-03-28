@@ -68,12 +68,11 @@ defmodule Aecore.Structures.Account do
   @doc """
   Builds a PreClaimTx where the miners public key is used as a sender
   """
-  @spec pre_claim(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def pre_claim(name, fee) do
+  @spec pre_claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def pre_claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
-    name_salt = <<1, 2, 3>>
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
@@ -97,12 +96,11 @@ defmodule Aecore.Structures.Account do
   @doc """
   Builds a ClaimTx where the miners public key is used as a sender
   """
-  @spec claim(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def claim(name, fee) do
+  @spec claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
-    name_salt = <<1, 2, 3>>
     claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
