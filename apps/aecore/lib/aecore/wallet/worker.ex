@@ -91,6 +91,11 @@ defmodule Aecore.Wallet.Worker do
     GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
   end
 
+  @spec to_public_key(privkey()) :: pubkey()
+  def to_public_key(priv_key) when byte_size(priv_key) == 32 do
+    Aewallet.KeyPair.generate_pub_key(priv_key)
+  end
+
   ## Server Callbacks
 
   def handle_call(

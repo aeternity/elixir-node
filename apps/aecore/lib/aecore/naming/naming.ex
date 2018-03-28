@@ -99,27 +99,35 @@ defmodule Aecore.Naming.Naming do
   def apply_block_height_on_state!(%{naming: namingstate} = chainstate, block_height) do
     updated_naming_state =
       Enum.reduce(namingstate, %{}, fn {account, naming}, acc_naming_state ->
-        updated_naming_pre_claims =
-          Enum.filter(naming.pre_claims, fn pre_claim ->
-            pre_claim.height + @pre_claim_ttl > block_height
-          end)
+        # TODO refactor with different naming chain state structure
+        case naming do
+          %Naming{} ->
+            updated_naming_pre_claims =
+              Enum.filter(naming.pre_claims, fn pre_claim ->
+                pre_claim.height + @pre_claim_ttl > block_height
+              end)
 
-        updated_naming_claims =
-          Enum.filter(naming.claims, fn claim ->
-            claim.expires_by > block_height
-          end)
+            updated_naming_claims =
+              Enum.filter(naming.claims, fn claim ->
+                claim.expires_by > block_height
+              end)
 
-        updated_naming = %{
-          naming
-          | pre_claims: updated_naming_pre_claims,
-            claims: updated_naming_claims
-        }
+            updated_naming = %{
+              naming
+              | pre_claims: updated_naming_pre_claims,
+                claims: updated_naming_claims
+            }
 
-        # prune empty naming states
-        if(!Enum.empty?(updated_naming.pre_claims) || !Enum.empty?(updated_naming.claims)) do
-          Map.put(acc_naming_state, account, updated_naming)
-        else
-          acc_naming_state
+            # prune empty naming states
+            if(!Enum.empty?(updated_naming.pre_claims) || !Enum.empty?(updated_naming.claims)) do
+              Map.put(acc_naming_state, account, updated_naming)
+            else
+              acc_naming_state
+            end
+
+          _ ->
+            # TODO remove revoked after 2016 blocks
+            Map.put(acc_naming_state, account, naming)
         end
       end)
 

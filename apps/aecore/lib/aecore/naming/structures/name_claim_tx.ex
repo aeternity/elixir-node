@@ -83,17 +83,27 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
         nonce,
         block_height,
         accounts,
-        naming
+        naming_state
       ) do
-    case preprocess_check(tx, accounts[sender], sender, fee, nonce, block_height, naming) do
+    sender_account_state = Map.get(accounts, sender, Account.empty())
+
+    case preprocess_check(
+           tx,
+           sender_account_state,
+           sender,
+           fee,
+           nonce,
+           block_height,
+           naming_state
+         ) do
       :ok ->
         new_senderount_state =
-          accounts[sender]
+          sender_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming, sender, Naming.empty())
+        account_naming = Map.get(naming_state, sender, Naming.empty())
 
         updated_naming_claims = [
           Naming.create_claim(block_height, tx.name, tx.name_salt) | account_naming.claims
@@ -105,7 +115,7 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
           end)
 
         updated_naming_chainstate =
-          Map.put(naming, sender, %{
+          Map.put(naming_state, sender, %{
             account_naming
             | claims: updated_naming_claims,
               pre_claims: updated_naming_pre_claims
@@ -145,6 +155,13 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
       |> Enum.flat_map(fn name -> name.claims end)
       |> Enum.find(fn claim -> claim.name == tx.name end)
 
+    naming_revoked = Map.get(naming_state, :revoked, [])
+
+    revoked =
+      Enum.find(naming_revoked, fn {revoked, _height} ->
+        revoked == NameUtil.normalized_namehash!(tx.name)
+      end)
+
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}
@@ -158,7 +175,8 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
       claims_for_name != nil ->
         {:error, "Name has aleady been claimed"}
 
-      # TODO check name revoked state
+      revoked != nil ->
+        {:error, "Name has been revoked"}
 
       true ->
         :ok

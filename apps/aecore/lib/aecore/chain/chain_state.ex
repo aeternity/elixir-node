@@ -17,7 +17,7 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
-  @type naming() :: %{Wallet.pubkey() => Naming.t()}
+  @type naming() :: %{Wallet.pubkey() => Naming.t(), revoked: []}
 
   @type chain_state_types() :: Account.chain_state_name() | Naming.chain_state_name()
 
@@ -54,11 +54,11 @@ defmodule Aecore.Chain.ChainState do
         if SignedTx.is_valid?(tx) do
           DataTx.process_chainstate!(data, block_height, chainstate)
         else
-          throw({:error, "Invalid transaction"})
+          throw({:error, "Invalid signed transaction"})
         end
 
       true ->
-        throw({:error, "Invalid transaction"})
+        throw({:error, "Invalid transaction structure"})
     end
   end
 

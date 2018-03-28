@@ -67,7 +67,7 @@ defmodule Aecore.Txs.Pool.Worker do
 
     cond do
       !SignedTx.is_valid?(tx) ->
-        Logger.error("Invalid transaction")
+        Logger.error("Invalid transaction signature")
         {:reply, :error, tx_pool}
 
       !is_minimum_fee_met ->

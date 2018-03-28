@@ -96,17 +96,27 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
         nonce,
         block_height,
         accounts,
-        naming
+        naming_state
       ) do
-    case preprocess_check(tx, accounts[sender], sender, fee, nonce, block_height, naming) do
+    sender_account_state = Map.get(accounts, sender, Account.empty())
+
+    case preprocess_check(
+           tx,
+           sender_account_state,
+           sender,
+           fee,
+           nonce,
+           block_height,
+           naming_state
+         ) do
       :ok ->
         new_senderount_state =
-          accounts[sender]
+          sender_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming, sender, Naming.empty())
+        account_naming = Map.get(naming_state, sender, Naming.empty())
 
         claim_to_update =
           Enum.find(account_naming.claims, fn claim ->
@@ -131,7 +141,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
         ]
 
         updated_naming_chainstate =
-          Map.put(naming, sender, %{account_naming | claims: updated_naming_claims})
+          Map.put(naming_state, sender, %{account_naming | claims: updated_naming_claims})
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -153,8 +163,8 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming) do
-    account_naming = Map.get(naming, sender, Naming.empty())
+  def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming_state) do
+    account_naming = Map.get(naming_state, sender, Naming.empty())
 
     claimed =
       Enum.find(account_naming.claims, fn claim ->

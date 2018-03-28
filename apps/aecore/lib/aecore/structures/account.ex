@@ -16,6 +16,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Naming.Structures.NameClaimTx
   alias Aecore.Naming.Structures.NameUpdateTx
   alias Aecore.Naming.Structures.NameTransferTx
+  alias Aecore.Naming.Structures.NameRevokeTx
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
 
@@ -181,6 +182,33 @@ defmodule Aecore.Structures.Account do
   def name_transfer(sender, sender_priv_key, name, target, fee, nonce) do
     payload = %{hash: NameUtil.normalized_namehash!(name), target: target}
     spend_tx = DataTx.init(NameTransferTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
+  end
+
+  @doc """
+  Builds a NameTransferTx where the miners public key is used as a sender
+  """
+  @spec name_revoke(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def name_revoke(name, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    name_revoke(sender, sender_priv_key, name, fee, nonce)
+  end
+
+  @doc """
+  Build a NameTransferTx from the given sender keys
+  """
+  @spec name_revoke(
+          Wallet.pubkey(),
+          Wallet.privkey(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()}
+  def name_revoke(sender, sender_priv_key, name, fee, nonce) do
+    payload = %{hash: NameUtil.normalized_namehash!(name)}
+    spend_tx = DataTx.init(NameRevokeTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
