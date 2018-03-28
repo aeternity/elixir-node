@@ -111,6 +111,10 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :delete_chainstate)
   end
 
+  def get_db_ref(name) do
+    GenServer.call(__MODULE__, {:get_db_ref, name})
+  end
+
   ## Server side
 
   def init(_) do
@@ -122,13 +126,17 @@ defmodule Aecore.Persistence.Worker do
        "blocks_family" => blocks_family,
        "latest_block_info_family" => latest_block_info_family,
        "chain_state_family" => chain_state_family,
-       "blocks_info_family" => blocks_info_family
+       "blocks_info_family" => blocks_info_family,
+       "patricia_trie_family" => patricia_trie_family,
+       "patricia_proof_trie_family" => patricia_proof_trie_family
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
         "latest_block_info_family",
         "chain_state_family",
-        "blocks_info_family"
+        "blocks_info_family",
+        "patricia_trie_family",
+        "patricia_proof_trie_family"
       ])
 
     {:ok,
@@ -137,8 +145,11 @@ defmodule Aecore.Persistence.Worker do
        blocks_family: blocks_family,
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
-       blocks_info_family: blocks_info_family
-     }}
+       blocks_info_family: blocks_info_family,
+       patricia_db_refs: %{proof: patricia_proof_trie_family,
+                           trie: patricia_trie_family}
+     }
+    }
   end
 
   def handle_call(
@@ -315,6 +326,10 @@ defmodule Aecore.Persistence.Worker do
     :ok = Rox.put(latest_block_info_family, "top_hash", hash, write_options())
     :ok = Rox.put(latest_block_info_family, "top_height", height, write_options())
     {:reply, :ok, state}
+  end
+
+  def handle_call({:get_db_ref, name}, _from, state) when is_atom(name) do
+    {:reply, state.patricia_db_refs.trie, state}
   end
 
   defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
