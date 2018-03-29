@@ -57,11 +57,6 @@ defmodule Aecore.Pow.Hashcash do
         bits = 8*length
         block_header_hash == <<0 :: size(bits)>>
     end
-
-    # block_header_hash
-    # |> Bits.extract()
-    # |> Enum.take_while(fn bit -> bit == 0 end)
-    # |> Enum.count() <= difficulty
   end
 
   @doc """

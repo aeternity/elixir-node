@@ -27,7 +27,7 @@ defmodule AecoreChainTest do
     []
   end
 
-  @tag timeout: 20_000
+  @tag timeout: 100_000
   @tag :chain
   test "add block", setup do
     Miner.mine_sync_block_to_chain()
@@ -45,7 +45,7 @@ defmodule AecoreChainTest do
         prev_hash: top_block_hash,
         txs_hash: <<0::256>>,
         chain_state_hash: new_chain_state_hash,
-        difficulty_target: 1,
+        difficulty_target: 553713663,
         nonce: 0,
         timestamp: System.system_time(:milliseconds),
         version: 1
