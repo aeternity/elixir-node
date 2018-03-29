@@ -45,7 +45,7 @@ defmodule AecoreChainTest do
         prev_hash: top_block_hash,
         txs_hash: <<0::256>>,
         chain_state_hash: new_chain_state_hash,
-        difficulty_target: 553713663,
+        difficulty_target: 553_713_663,
         nonce: 0,
         timestamp: System.system_time(:milliseconds),
         version: 1

@@ -1,7 +1,6 @@
 defmodule Aeutil.Scientific do
   use Bitwise
 
-
   def scientific_to_integer(scientific) do
     {exp, significand} = break_scientific(scientific)
     exp3 = exp - 3
@@ -23,10 +22,12 @@ defmodule Aeutil.Scientific do
 
   def compare_bin_to_significand(binary, significand, zeros, number_of_bits) do
     case binary do
-      <<0 :: size(zeros), integer :: size(number_of_bits), _rest :: binary()>> ->
+      <<0::size(zeros), integer::size(number_of_bits), _rest::binary()>> ->
         integer < significand
-      <<0 :: size(zeros), _rest :: binary()>> ->
+
+      <<0::size(zeros), _rest::binary()>> ->
         :error
+
       _ ->
         false
     end

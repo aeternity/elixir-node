@@ -1,6 +1,7 @@
 defmodule Aecore.Pow.Hashcash do
   alias Aeutil.Scientific
   use Bitwise
+
   @moduledoc """
   Hashcash proof of work
   """
@@ -23,17 +24,19 @@ defmodule Aecore.Pow.Hashcash do
   def verify(block_header_hash, difficulty) do
     {exp, significand} = Scientific.break_scientific(difficulty)
     length = byte_size(block_header_hash)
-    zeros = 8*max(0, length - exp)
+    zeros = 8 * max(0, length - exp)
+
     case exp do
       _exp when _exp >= 0 and _exp < 3 ->
         Scientific.compare_bin_to_significand(
           block_header_hash,
-          bsr(significand, 8*(3 - exp)),
+          bsr(significand, 8 * (3 - exp)),
           zeros,
-          8*exp)
+          8 * exp
+        )
 
       _ when exp > length and exp < length + 3 ->
-        skip = 8*(exp - length)
+        skip = 8 * (exp - length)
         compare = 24 - skip
 
         case bsr(significand, compare) do
@@ -42,20 +45,19 @@ defmodule Aecore.Pow.Hashcash do
               block_header_hash,
               bsl(significand, skip),
               0,
-              24)
+              24
+            )
+
           _ ->
             :error
         end
 
       _exp when _exp >= 0 ->
-        Scientific.compare_bin_to_significand(block_header_hash,
-          significand,
-          zeros,
-          24)
+        Scientific.compare_bin_to_significand(block_header_hash, significand, zeros, 24)
 
-      _exp when _exp <0 ->
-        bits = 8*length
-        block_header_hash == <<0 :: size(bits)>>
+      _exp when _exp < 0 ->
+        bits = 8 * length
+        block_header_hash == <<0::size(bits)>>
     end
   end
 

@@ -54,8 +54,7 @@ defmodule AecoreValidationTest do
       Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
-
-    _ =
+      _ =
       BlockValidation.calculate_and_validate_block!(
         new_block,
         prev_block,

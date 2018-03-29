@@ -12,8 +12,9 @@ defmodule DifficultyTest do
     blocks = [
       Block.genesis_block()
     ]
-    timestamp = 1607275094308
-    assert 553713663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
+
+    timestamp = 1_607_275_094_308
+    assert 553_713_663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
   end
 
   @tag :difficulty
@@ -21,7 +22,7 @@ defmodule DifficultyTest do
     blocks = [
       %Block{
         header: %Header{
-          difficulty_target: 553713663,
+          difficulty_target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
@@ -33,7 +34,7 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          difficulty_target: 553713663,
+          difficulty_target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
@@ -45,23 +46,24 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          difficulty_target: 553713663,
+          difficulty_target: 553_713_663,
           height: 0,
           nonce: 0,
           prev_hash:
-          <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
               0, 0, 0, 0>>,
           timestamp: 10_000,
           txs_hash:
-          <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0>>,
+            <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+              0, 0, 0, 0>>,
           version: 1
         },
         txs: []
       }
     ]
+
     timestamp = 140_000
 
-    assert 553713663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
+    assert 553_713_663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
   end
 end
