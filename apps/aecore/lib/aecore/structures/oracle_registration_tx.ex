@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleRegistrationTxData do
+defmodule Aecore.Structures.OracleRegistrationTx do
   alias __MODULE__
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
@@ -16,7 +16,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
           ttl: Oracle.ttl()
         }
 
-  @type t :: %OracleRegistrationTxData{
+  @type t :: %OracleRegistrationTx{
           query_format: map(),
           response_format: map(),
           query_fee: non_neg_integer(),
@@ -35,14 +35,14 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
 
   use ExConstructor
 
-  @spec init(payload()) :: OracleRegistrationTxData.t()
+  @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
         query_format: query_format,
         response_format: response_format,
         query_fee: query_fee,
         ttl: ttl
       }) do
-    %OracleRegistrationTxData{
+    %OracleRegistrationTx{
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
@@ -50,8 +50,8 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
     }
   end
 
-  @spec is_valid?(OracleRegistrationTxData.t()) :: boolean()
-  def is_valid?(%OracleRegistrationTxData{
+  @spec is_valid?(OracleRegistrationTx.t()) :: boolean()
+  def is_valid?(%OracleRegistrationTx{
         query_format: query_format,
         response_format: response_format,
         ttl: ttl
@@ -72,7 +72,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   end
 
   @spec process_chainstate!(
-          OracleRegistrationTxData.t(),
+          OracleRegistrationTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -81,7 +81,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %OracleRegistrationTxData{} = tx,
+        %OracleRegistrationTx{} = tx,
         sender,
         fee,
         nonce,
@@ -99,11 +99,11 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
            registered_oracles
          ) do
       :ok ->
-        new_senderount_state =
+        new_sender_account_state =
           Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee)
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
         updated_registered_oracles =
           Map.put_new(registered_oracles, sender, %{
@@ -124,7 +124,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
   end
 
   @spec preprocess_check(
-          OracleRegistrationTxData.t(),
+          OracleRegistrationTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
@@ -160,7 +160,7 @@ defmodule Aecore.Structures.OracleRegistrationTxData do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec is_minimum_fee_met?(OracleRegistrationTxData.t(), non_neg_integer(), non_neg_integer()) ::
+  @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     case tx.ttl do

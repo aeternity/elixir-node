@@ -49,6 +49,8 @@ defmodule AecoreOracleTest do
            |> Enum.map(fn object -> object.response end)
            |> Enum.all?(fn response -> response == nil end)
 
+    oracle_respond(:valid)
+    Miner.mine_sync_block_to_chain()
     Chain.clear_state()
   end
 
@@ -83,9 +85,6 @@ defmodule AecoreOracleTest do
             Oracle.register(format, format, 5, 5, get_ttl(validity))
         end
     end
-
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
   end
 
   def query_oracle(validity, field \\ nil) do

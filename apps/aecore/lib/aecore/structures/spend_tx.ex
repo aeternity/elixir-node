@@ -45,9 +45,6 @@ defmodule Aecore.Structures.SpendTx do
   defstruct [:receiver, :amount, :version]
   use ExConstructor
 
-  @spec get_chain_state_name() :: Account.chain_state_name()
-  def get_chain_state_name(), do: :accounts
-
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()

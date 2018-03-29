@@ -95,20 +95,6 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
-  def post_query_to_oracle(tx, uri) do
-    encoded_serialized_tx =
-      tx
-      |> Serialization.tx(:serialize)
-      |> Poison.encode!()
-
-    HTTPoison.post(
-      uri,
-      encoded_serialized_tx,
-      [{"Content-Type", "application/json"}],
-      stream_to: self()
-    )
-  end
-
   defp handle_response(:block, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}

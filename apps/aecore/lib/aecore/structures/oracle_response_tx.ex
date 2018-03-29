@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleResponseTxData do
+defmodule Aecore.Structures.OracleResponseTx do
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
@@ -15,7 +15,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
           response: map()
         }
 
-  @type t :: %OracleResponseTxData{
+  @type t :: %OracleResponseTx{
           query_id: binary(),
           response: map()
         }
@@ -26,24 +26,24 @@ defmodule Aecore.Structures.OracleResponseTxData do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name(), do: :oracles
 
-  @spec init(payload()) :: OracleResponseTxData.t()
+  @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,
         response: response
       }) do
-    %OracleResponseTxData{
+    %OracleResponseTx{
       query_id: query_id,
       response: response
     }
   end
 
-  @spec is_valid?(OracleResponseTxData.t()) :: boolean()
-  def is_valid?(%OracleResponseTxData{}) do
+  @spec is_valid?(OracleResponseTx.t()) :: boolean()
+  def is_valid?(%OracleResponseTx{}) do
     true
   end
 
   @spec process_chainstate!(
-          OracleResponseTxData.t(),
+          OracleResponseTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -52,7 +52,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %OracleResponseTxData{} = tx,
+        %OracleResponseTx{} = tx,
         sender,
         fee,
         nonce,
@@ -73,16 +73,17 @@ defmodule Aecore.Structures.OracleResponseTxData do
         interaction_object = interaction_objects[tx.query_id]
         query_fee = interaction_object.query.query_fee
 
-        new_senderount_state =
+        new_sender_account_state =
           Map.get(accounts, sender, Account.empty())
-          |> deduct_fee(fee - query_fee)
+          |> Account.transaction_in(query_fee)
+          |> deduct_fee(fee)
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
         updated_interaction_objects =
           Map.put(interaction_objects, tx.query_id, %{
             interaction_object
-            | response: tx,
+            | response: tx.response,
               response_height_included: block_height
           })
 
@@ -99,7 +100,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
   end
 
   @spec preprocess_check(
-          OracleResponseTxData.t(),
+          OracleResponseTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
@@ -150,7 +151,7 @@ defmodule Aecore.Structures.OracleResponseTxData do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec is_minimum_fee_met?(OracleResponseTxData.t(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
     referenced_query_response_ttl =
       Chain.oracle_interaction_objects()[tx.query_id].query.response_ttl.ttl

@@ -1,6 +1,6 @@
 defmodule Aehttpserver.Web.Notify do
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleQueryTx
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Structures.Account
@@ -47,7 +47,7 @@ defmodule Aehttpserver.Web.Notify do
             %{"body" => Serialization.tx(tx, :serialize)}
           )
 
-        %OracleQueryTxData{} ->
+        %OracleQueryTx{} ->
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),

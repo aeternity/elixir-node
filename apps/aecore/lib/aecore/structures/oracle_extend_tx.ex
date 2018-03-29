@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleExtendTxData do
+defmodule Aecore.Structures.OracleExtendTx do
   @behaviour Aecore.Structures.Transaction
 
   alias __MODULE__
@@ -12,7 +12,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
           ttl: non_neg_integer()
         }
 
-  @type t :: %OracleExtendTxData{
+  @type t :: %OracleExtendTx{
           ttl: non_neg_integer()
         }
 
@@ -22,18 +22,18 @@ defmodule Aecore.Structures.OracleExtendTxData do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name(), do: :oracles
 
-  @spec init(payload()) :: OracleExtendTxData.t()
+  @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
-    %OracleExtendTxData{ttl: ttl}
+    %OracleExtendTx{ttl: ttl}
   end
 
-  @spec is_valid?(OracleExtendTxData.t()) :: boolean()
-  def is_valid?(%OracleExtendTxData{ttl: ttl}) do
+  @spec is_valid?(OracleExtendTx.t()) :: boolean()
+  def is_valid?(%OracleExtendTx{ttl: ttl}) do
     ttl > 0
   end
 
   @spec process_chainstate!(
-          OracleExtendTxData.t(),
+          OracleExtendTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -42,7 +42,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
           Oracle.registered_oracles()
         ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
-        %OracleExtendTxData{} = tx,
+        %OracleExtendTx{} = tx,
         sender,
         fee,
         nonce,
@@ -60,11 +60,11 @@ defmodule Aecore.Structures.OracleExtendTxData do
            registered_oracles
          ) do
       :ok ->
-        new_senderount_state =
+        new_sender_account_state =
           Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee)
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
         updated_oracle_state =
           update_in(
@@ -81,7 +81,7 @@ defmodule Aecore.Structures.OracleExtendTxData do
   end
 
   @spec preprocess_check(
-          OracleExtendTxData.t(),
+          OracleExtendTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),

@@ -6,7 +6,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTxData
+  alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
@@ -155,7 +155,7 @@ defmodule Aeutil.Serialization do
         Account.base58c_encode(value)
 
       :query_id ->
-        OracleQueryTxData.base58c_encode(value)
+        OracleQueryTx.base58c_encode(value)
 
       :signature ->
         base64_binary(value, :serialize)
@@ -233,7 +233,7 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :query_id ->
-        OracleQueryTxData.base58c_decode(value)
+        OracleQueryTx.base58c_decode(value)
 
       :signature ->
         base64_binary(value, :deserialize)

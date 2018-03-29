@@ -1,8 +1,8 @@
 defmodule Aecore.Oracle.Oracle do
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
-  alias Aecore.Structures.OracleExtendTxData
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -12,22 +12,22 @@ defmodule Aecore.Oracle.Oracle do
 
   require Logger
 
-  @type oracle_txs_with_ttl ::
-          OracleRegistrationTxData.t() | OracleQueryTxData.t() | OracleExtendTxData.t()
+  @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
 
   @type json_schema :: map()
+  @type json :: any()
 
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
-            tx: OracleRegistrationTxData.t(),
+            tx: OracleRegistrationTx.t(),
             height_included: non_neg_integer()
           }
         }
 
   @type interaction_objects :: %{
-          OracleQueryTxData.id() => %{
-            query: OracleQueryTxData.t(),
-            response: OracleResponseTxData.t(),
+          OracleQueryTx.id() => %{
+            query: OracleQueryTx.t(),
+            response: OracleResponseTx.t(),
             query_height_included: non_neg_integer(),
             response_height_included: non_neg_integer()
           }
@@ -51,7 +51,7 @@ defmodule Aecore.Oracle.Oracle do
 
     tx_data =
       DataTx.init(
-        OracleRegistrationTxData,
+        OracleRegistrationTx,
         payload,
         Wallet.get_public_key(),
         fee,
@@ -66,7 +66,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(Account.pubkey(), any(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
+  @spec query(Account.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
           :ok | :error
   def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
     payload = %{
@@ -79,7 +79,7 @@ defmodule Aecore.Oracle.Oracle do
 
     tx_data =
       DataTx.init(
-        OracleQueryTxData,
+        OracleQueryTx,
         payload,
         Wallet.get_public_key(),
         fee,
@@ -103,7 +103,7 @@ defmodule Aecore.Oracle.Oracle do
 
     tx_data =
       DataTx.init(
-        OracleResponseTxData,
+        OracleResponseTx,
         payload,
         Wallet.get_public_key(),
         fee,
@@ -122,7 +122,7 @@ defmodule Aecore.Oracle.Oracle do
 
     tx_data =
       DataTx.init(
-        OracleExtendTxData,
+        OracleExtendTx,
         payload,
         Wallet.get_public_key(),
         fee,
@@ -167,10 +167,10 @@ defmodule Aecore.Oracle.Oracle do
   @spec tx_ttl_is_valid?(oracle_txs_with_ttl(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
-      %OracleRegistrationTxData{} ->
+      %OracleRegistrationTx{} ->
         ttl_is_valid?(tx.ttl, block_height)
 
-      %OracleQueryTxData{} ->
+      %OracleQueryTx{} ->
         response_ttl_is_valid =
           case tx.response_ttl do
             %{type: :absolute} ->
@@ -185,7 +185,7 @@ defmodule Aecore.Oracle.Oracle do
 
         response_ttl_is_valid && query_ttl_is_valid
 
-      %OracleExtendTxData{} ->
+      %OracleExtendTx{} ->
         tx.ttl > 0
 
       _ ->
@@ -258,7 +258,7 @@ defmodule Aecore.Oracle.Oracle do
               response_height_included
             )
 
-          response_absolute_ttl == block_height
+          response_absolute_ttl <= block_height
         else
           false
         end

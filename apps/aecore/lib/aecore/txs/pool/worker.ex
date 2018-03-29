@@ -9,10 +9,10 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
-  alias Aecore.Structures.OracleExtendTxData
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
@@ -135,23 +135,23 @@ defmodule Aecore.Txs.Pool.Worker do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx, identifier)
 
-      %OracleRegistrationTxData{} ->
-        OracleRegistrationTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
+      %OracleRegistrationTx{} ->
+        OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
 
-      %OracleQueryTxData{} ->
+      %OracleQueryTx{} ->
         true
 
-      %OracleResponseTxData{} ->
+      %OracleResponseTx{} ->
         case identifier do
           :pool ->
             true
 
           :miner ->
-            OracleResponseTxData.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
         end
 
-      %OracleExtendTxData{} ->
-        tx.data.fee >= OracleExtendTxData.calculate_minimum_fee(tx.data.payload.ttl)
+      %OracleExtendTx{} ->
+        tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
     end
   end
 

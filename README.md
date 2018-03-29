@@ -230,7 +230,7 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 **Registering an oracle:**
   `Aecore.Oracle.Oracle.register(query_format, response_format, query_fee, fee, ttl)`
-  The query and response formats are treated as json schemas with which the queries and responses
+  The query and response formats are treated as json schemas by which the queries and responses
   are validated. The query fee is the minimum fee that will be required for queries made to the
   oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
   for the response fee he had to pay.

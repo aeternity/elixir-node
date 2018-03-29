@@ -8,10 +8,10 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTxData
-  alias Aecore.Structures.OracleQueryTxData
-  alias Aecore.Structures.OracleResponseTxData
-  alias Aecore.Structures.OracleExtendTxData
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.Header
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -449,16 +449,16 @@ defmodule Aecore.Chain.Worker do
           %SpendTx{} ->
             [tx.data.sender, tx.data.payload.receiver]
 
-          %OracleRegistrationTxData{} ->
+          %OracleRegistrationTx{} ->
             tx.data.sender
 
-          %OracleResponseTxData{} ->
+          %OracleResponseTx{} ->
             tx.data.sender
 
-          %OracleQueryTxData{} ->
+          %OracleQueryTx{} ->
             [tx.data.sender, tx.data.payload.oracle_address]
 
-          %OracleExtendTxData{} ->
+          %OracleExtendTx{} ->
             tx.data.sender
         end
       end
@@ -472,16 +472,16 @@ defmodule Aecore.Chain.Worker do
             %SpendTx{} ->
               tx.data.sender == account || tx.data.payload.receiver == account
 
-            %OracleRegistrationTxData{} ->
+            %OracleRegistrationTx{} ->
               tx.data.sender == account
 
-            %OracleResponseTxData{} ->
+            %OracleResponseTx{} ->
               tx.data.sender == account
 
-            %OracleQueryTxData{} ->
+            %OracleQueryTx{} ->
               tx.data.sender == account || tx.data.payload.oracle_address == account
 
-            %OracleExtendTxData{} ->
+            %OracleExtendTx{} ->
               tx.data.sender == account
           end
         end)

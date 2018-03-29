@@ -102,7 +102,6 @@ config :aecore, :peers,
 config :aecore, :miner, resumed_by_default: false
 
 config :aecore, :tx_data,
-  lock_time_coinbase: 10,
   miner_fee_bytes_per_token: 100,
   pool_fee_bytes_per_token: 100,
   blocks_ttl_per_token: 1000,

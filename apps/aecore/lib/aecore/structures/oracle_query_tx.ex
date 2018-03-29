@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleQueryTxData do
+defmodule Aecore.Structures.OracleQueryTx do
   @behaviour Aecore.Structures.Transaction
 
   alias __MODULE__
@@ -17,15 +17,15 @@ defmodule Aecore.Structures.OracleQueryTxData do
 
   @type payload :: %{
           oracle_address: Wallet.pubkey(),
-          query_data: any(),
+          query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
           response_ttl: Oracle.ttl()
         }
 
-  @type t :: %OracleQueryTxData{
+  @type t :: %OracleQueryTx{
           oracle_address: Wallet.pubkey(),
-          query_data: any(),
+          query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
           response_ttl: Oracle.ttl()
@@ -46,7 +46,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name(), do: :oracles
 
-  @spec init(payload()) :: OracleQueryTxData.t()
+  @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
         oracle_address: oracle_address,
         query_data: query_data,
@@ -54,7 +54,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    %OracleQueryTxData{
+    %OracleQueryTx{
       oracle_address: oracle_address,
       query_data: query_data,
       query_fee: query_fee,
@@ -63,8 +63,8 @@ defmodule Aecore.Structures.OracleQueryTxData do
     }
   end
 
-  @spec is_valid?(OracleQueryTxData.t()) :: boolean()
-  def is_valid?(%OracleQueryTxData{
+  @spec is_valid?(OracleQueryTx.t()) :: boolean()
+  def is_valid?(%OracleQueryTx{
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
@@ -73,7 +73,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
   end
 
   @spec process_chainstate!(
-          OracleQueryTxData.t(),
+          OracleQueryTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -82,7 +82,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %OracleQueryTxData{} = tx,
+        %OracleQueryTx{} = tx,
         sender,
         fee,
         nonce,
@@ -101,13 +101,13 @@ defmodule Aecore.Structures.OracleQueryTxData do
            registered_oracles
          ) do
       :ok ->
-        new_senderount_state =
+        new_sender_account_state =
           Map.get(accounts, sender, Account.empty())
           |> deduct_fee(fee + tx.query_fee)
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
-        interaction_object_id = OracleQueryTxData.id(sender, nonce, tx.oracle_address)
+        interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
         updated_interaction_objects =
           Map.put(interaction_objects, interaction_object_id, %{
@@ -131,7 +131,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
   end
 
   @spec preprocess_check(
-          OracleQueryTxData.t(),
+          OracleQueryTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
@@ -159,7 +159,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
       ) ->
         {:error, "Invalid query data"}
 
-      fee < tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
+      tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
         {:error, "Query fee lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
@@ -181,7 +181,7 @@ defmodule Aecore.Structures.OracleQueryTxData do
     Chain.registered_oracles()[oracle_address].tx.query_fee
   end
 
-  @spec is_minimum_fee_met?(OracleQueryTxData.t(), non_neg_integer(), non_neg_integer()) ::
+  @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     tx_query_fee_is_met =

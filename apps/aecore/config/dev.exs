@@ -110,7 +110,6 @@ bytes_per_token =
   end
 
 config :aecore, :tx_data,
-  lock_time_coinbase: 10,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100,
   blocks_ttl_per_token: 1000,
