@@ -73,30 +73,30 @@ defmodule Aecore.Structures.DataTx do
     accounts_state = chainstate.accounts
     tx_type_state = Map.get(chainstate, tx.type, %{})
 
-    if is_nonce_valid?(accounts_state, tx) do
-      {new_accounts_state, new_tx_type_state} =
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.sender,
-          tx.fee,
-          tx.nonce,
-          accounts_state,
-          tx_type_state
-        )
-
-      new_chainstate =
-        if Map.has_key?(chainstate, tx.type) do
-          Map.put(chainstate, tx.type, new_tx_type_state)
-        else
-          chainstate
-        end
-
-      Map.put(new_chainstate, :accounts, new_accounts_state)
-    else
+    if !is_nonce_valid?(accounts_state, tx) do
       Logger.error("Nonce is too small")
       throw({:error, "Nonce is too small"})
     end
+
+    {new_accounts_state, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.sender,
+        tx.fee,
+        tx.nonce,
+        accounts_state,
+        tx_type_state
+      )
+
+    new_chainstate =
+      if Map.has_key?(chainstate, tx.type) do
+        Map.put(chainstate, tx.type, new_tx_type_state)
+      else
+        chainstate
+      end
+
+    Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
   def is_nonce_valid?(accounts_state, tx) do
