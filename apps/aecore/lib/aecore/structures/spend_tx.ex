@@ -9,6 +9,7 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -67,8 +68,8 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, _block_height, account_state) do
+  @spec reward(SpendTx.t(), Account.t()) :: Account.t()
+  def reward(%SpendTx{} = tx, account_state) do
     Account.transaction_in(account_state, tx.amount)
   end
 
@@ -82,9 +83,9 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           ChainState.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {ChainState.accounts(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
-    sender_account_state = Map.get(accounts, sender, Account.empty())
+    sender_account_state = Account.get_account_state(accounts, sender)
 
     case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
       :ok ->
@@ -93,11 +94,11 @@ defmodule Aecore.Structures.SpendTx do
           |> deduct_fee(fee)
           |> Account.transaction_out(tx.amount * -1, nonce)
 
-        new_accounts = Map.put(accounts, sender, new_sender_account_state)
-
-        receiver = Map.get(accounts, tx.receiver, Account.empty())
+        new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
+        receiver = Account.get_account_state(accounts, tx.receiver)
         new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
-        {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
+
+        {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
 
       {:error, _reason} = err ->
         throw(err)
@@ -110,7 +111,7 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec preprocess_check(
           SpendTx.t(),
-          ChainState.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()

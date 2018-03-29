@@ -44,6 +44,25 @@ defmodule Aeutil.Serialization do
     %SignedTx{data: data, signature: signature}
   end
 
+  @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
+          binary() | :none | Account.t()
+  def account_state(account_state, :serialize) do
+    account_state
+    |> serialize_value()
+    |> Msgpax.pack!()
+  end
+
+  def account_state(:none, :deserialize), do: :none
+
+  def account_state(encoded_account_state, :deserialize) do
+    {:ok, account_state} = Msgpax.unpack(encoded_account_state)
+
+    {:ok,
+     account_state
+     |> deserialize_value()
+     |> Account.new()}
+  end
+
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)

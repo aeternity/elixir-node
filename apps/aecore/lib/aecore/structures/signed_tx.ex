@@ -71,9 +71,9 @@ defmodule Aecore.Structures.SignedTx do
     :crypto.hash(:sha256, Serialization.pack_binary(data))
   end
 
-  @spec reward(DataTx.t(), integer(), Account.t()) :: Account.t()
-  def reward(%DataTx{type: type, payload: payload}, block_height, account_state) do
-    type.reward(payload, block_height, account_state)
+  @spec reward(DataTx.t(), Account.t()) :: Account.t()
+  def reward(%DataTx{type: type, payload: payload}, account_state) do
+    type.reward(payload, account_state)
   end
 
   def base58c_encode(bin) do
