@@ -99,8 +99,8 @@ defmodule Aecore.Structures.DataTx do
     end
   end
 
-  def is_nonce_valid?(accounts, tx) do
-    account_state = Map.get(accounts, tx.sender, Account.empty())
+  def is_nonce_valid?(accounts_state, tx) do
+    account_state = Map.get(accounts_state, tx.sender, Account.empty())
     tx.nonce > account_state.nonce
   end
 
