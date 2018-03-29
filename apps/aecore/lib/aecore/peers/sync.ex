@@ -52,7 +52,7 @@ defmodule Aecore.Peers.Sync do
 
   @spec chain_sync_running?() :: boolean()
   def chain_sync_running? do
-    GenServer.call(__MODULE__, :chain_sync_running)
+    GenServer.call(__MODULE__, :get_chain_sync_status)
   end
 
   @spec set_chain_sync_status(boolean()) :: :ok

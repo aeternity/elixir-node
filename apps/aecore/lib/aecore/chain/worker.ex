@@ -13,6 +13,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleResponseTx
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.Header
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
@@ -26,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   require Logger
 
   @type txs_index :: %{binary() => [{binary(), binary()}]}
+
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
@@ -443,57 +445,49 @@ defmodule Aecore.Chain.Worker do
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
 
-    accounts =
-      for tx <- block.txs do
-        case tx.data.payload do
-          %SpendTx{} ->
+    accounts_unique =
+      block.txs
+      |> Enum.map(fn tx ->
+        case tx.data.type do
+          SpendTx ->
             [tx.data.sender, tx.data.payload.receiver]
 
-          %OracleRegistrationTx{} ->
+          OracleRegistrationTx ->
             tx.data.sender
 
-          %OracleResponseTx{} ->
-            tx.data.sender
-
-          %OracleQueryTx{} ->
+          OracleQueryTx ->
             [tx.data.sender, tx.data.payload.oracle_address]
 
-          %OracleExtendTx{} ->
+          OracleResponseTx ->
+            tx.data.sender
+
+          OracleExtendTx ->
+            tx.data.sender
+
+          _ ->
             tx.data.sender
         end
-      end
-
-    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+      end)
+      |> List.flatten()
+      |> Enum.uniq()
+      |> List.delete(nil)
 
     for account <- accounts_unique, into: %{} do
-      acc_txs =
-        Enum.filter(block.txs, fn tx ->
-          case tx.data.payload do
-            %SpendTx{} ->
+      # txs associated with the given account
+      tx_tuples =
+        block.txs
+        |> Enum.filter(fn tx ->
+          case tx.data.type do
+            SpendTx ->
               tx.data.sender == account || tx.data.payload.receiver == account
 
-            %OracleRegistrationTx{} ->
-              tx.data.sender == account
-
-            %OracleResponseTx{} ->
-              tx.data.sender == account
-
-            %OracleQueryTx{} ->
-              tx.data.sender == account || tx.data.payload.oracle_address == account
-
-            %OracleExtendTx{} ->
+            _ ->
               tx.data.sender == account
           end
         end)
-
-      tx_hashes =
-        Enum.map(acc_txs, fn tx ->
-          tx_bin = Serialization.pack_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
-        end)
-
-      tx_tuples =
-        Enum.map(tx_hashes, fn hash ->
+        |> Enum.map(fn filtered_tx ->
+          tx_bin = Serialization.pack_binary(filtered_tx)
+          hash = :crypto.hash(:sha256, tx_bin)
           {block_hash, hash}
         end)
 
