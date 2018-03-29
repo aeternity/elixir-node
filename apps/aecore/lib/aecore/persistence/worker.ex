@@ -115,6 +115,14 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:get_db_ref, name})
   end
 
+  def db_handler_put(db_name) do
+    GenServer.call(__MODULE__, {:db_handler_put, db_name})
+  end
+
+  def db_handler_get(db_name) do
+    GenServer.call(__MODULE__, {:db_handler_get, db_name})
+  end
+
   ## Server side
 
   def init(_) do
@@ -330,6 +338,20 @@ defmodule Aecore.Persistence.Worker do
 
   def handle_call({:get_db_ref, name}, _from, state) when is_atom(name) do
     {:reply, state.patricia_db_refs.trie, state}
+  end
+
+  def handle_call({:db_handler_put, db_name}, _from, state) when is_atom(db_name) do
+    handler = fn(key, val) ->
+      Rox.put(get_db_ref(db_name), key, val)
+    end
+    {:reply, handler, state}
+  end
+
+  def handle_call({:db_handler_get, db_name}, _from, state) when is_atom(db_name) do
+    handler = fn(key) ->
+      Rox.get(get_db_ref(db_name), key)
+    end
+    {:reply, handler, state}
   end
 
   defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]

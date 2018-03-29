@@ -21,16 +21,16 @@ defmodule AeutilPatriciaMerkleTreeTest do
   end
 
   def init_proof_trie() do
-    put = fn(key, val) -> Rox.put(Persistence.get_db_ref(:proof), key, val) end
-    get = fn(key) -> Rox.get(Persistence.get_db_ref(:proof), key) end
+    put = Persistence.db_handler_put(:proof)
+    get = Persistence.db_handler_get(:proof)
     Trie.new(ExternalDB.init(%{put: put, get: get}))
 
   end
 
   def create_random_trie_test() do
-    put  = fn(key, val) -> Rox.put(Persistence.get_db_ref(:trie), key, val) end
-    get  = fn(key) -> Rox.get(Persistence.get_db_ref(:trie), key) end
-    db   = MerklePatriciaTree.Trie.new(ExternalDB.init(%{put: put, get: get }))
+    put = Persistence.db_handler_put(:trie)
+    get = Persistence.db_handler_get(:trie)
+    db = Trie.new(ExternalDB.init(%{put: put, get: get}))
     list = get_random_tree_list()
 
     trie =
