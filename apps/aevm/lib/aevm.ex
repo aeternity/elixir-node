@@ -306,7 +306,8 @@ defmodule Aevm do
   # 30s: Environmental Information
 
   def exec(OpCodes._ADDRESS(), state) do
-    # TODO
+    value = State.address(state)
+    push(value, state)
   end
 
   def exec(OpCodes._BALANCE(), state) do
@@ -314,15 +315,18 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._ORIGIN(), state) do
-    # TODO
+    value = State.origin(state)
+    push(value, state)
   end
 
   def exec(OpCodes._CALLER(), state) do
-    # TODO
+    value = State.caller(state)
+    push(value, state)
   end
 
   def exec(OpCodes._CALLVALUE(), state) do
-    # TODO
+    value = State.value(state)
+    push(value, state)
   end
 
   def exec(OpCodes._CALLDATALOAD(), state) do
@@ -372,19 +376,23 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._COINBASE(), state) do
-    # TODO
+    value = State.coinbase(state)
+    push(value, state)
   end
 
   def exec(OpCodes._TIMESTAMP(), state) do
-    # TODO
+    value = State.timestamp(state)
+    push(value, state)
   end
 
   def exec(OpCodes._NUMBER(), state) do
-    # TODO
+    value = State.number(state)
+    push(value, state)
   end
 
   def exec(OpCodes._DIFFICULTY(), state) do
-    # TODO
+    value = State.difficulty(state)
+    push(value, state)
   end
 
   def exec(OpCodes._GASLIMIT(), state) do
@@ -464,6 +472,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._PC(), state) do
+    value = State.cp(state)
+    push(value, state)
   end
 
   def exec(OpCodes._MSIZE(), state) do
