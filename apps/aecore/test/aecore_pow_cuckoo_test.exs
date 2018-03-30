@@ -118,7 +118,7 @@ defmodule AecoreCuckooTest do
         %SignedTx{
           data: %DataTx{
             type: SpendTx,
-            payload: %{receiver: receiver, amount: 100, lock_time_block: 11},
+            payload: %{receiver: receiver, amount: 100},
             fee: 0,
             sender: nil,
             nonce: 0

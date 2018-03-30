@@ -12,6 +12,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
+  alias Aecore.Oracle.Oracle
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
@@ -219,11 +220,14 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
-  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
+  @spec candidate() ::
+          {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
   def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
+
+    candidate_height = top_block.header.height + 1
 
     try do
       blocks_for_difficulty_calculation =
@@ -235,9 +239,10 @@ defmodule Aecore.Miner.Worker do
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
+        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
 
-      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
+      valid_txs_by_fee =
+        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
       pubkey = Wallet.get_public_key()
 
@@ -289,13 +294,10 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  defp filter_transactions_by_fee(txs) do
-    miners_fee_bytes_per_token =
-      Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-
+  defp filter_transactions_by_fee_and_ttl(txs, block_height) do
     Enum.filter(txs, fn tx ->
-      tx_size_bytes = Pool.get_tx_size_bytes(tx)
-      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+      Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
+        Oracle.tx_ttl_is_valid?(tx, block_height)
     end)
   end
 

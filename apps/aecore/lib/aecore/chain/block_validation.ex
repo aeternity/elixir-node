@@ -1,15 +1,10 @@
 defmodule Aecore.Chain.BlockValidation do
-  @moduledoc """
-  Contains functions used to validate data inside of the block structure
-  """
-
-  require Logger
-
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
@@ -158,9 +153,14 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec sum_coinbase_transactions(Block.t()) :: integer()
+  @spec sum_coinbase_transactions(Block.t()) :: non_neg_integer()
   defp sum_coinbase_transactions(block) do
-    block.txs
+    txs_list_only_spend_txs =
+      Enum.filter(block.txs, fn tx ->
+        match?(%SpendTx{}, tx.data)
+      end)
+
+    txs_list_only_spend_txs
     |> Enum.map(fn tx ->
       if SignedTx.is_coinbase?(tx) do
         tx.data.payload.amount

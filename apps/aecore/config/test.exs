@@ -104,4 +104,9 @@ config :aecore, :miner, resumed_by_default: false
 config :aecore, :tx_data,
   miner_fee_bytes_per_token: 100,
   pool_fee_bytes_per_token: 100,
-  max_txs_per_block: 100
+  max_txs_per_block: 100,
+  blocks_ttl_per_token: 1000,
+  oracle_registration_base_fee: 4,
+  oracle_query_base_fee: 2,
+  oracle_response_base_fee: 2,
+  oracle_extend_base_fee: 1
