@@ -72,7 +72,6 @@ defmodule Aecore.Structures.Transaction do
               tx_types(),
               ChainState.account(),
               fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
