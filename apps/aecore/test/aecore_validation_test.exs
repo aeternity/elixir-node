@@ -118,7 +118,8 @@ defmodule AecoreValidationTest do
 
     block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
 
-    assert block |> BlockValidation.validate_block_transactions()
+    assert block
+           |> BlockValidation.validate_block_transactions()
            |> Enum.all?() == true
   end
 

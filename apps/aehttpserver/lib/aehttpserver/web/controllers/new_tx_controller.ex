@@ -5,10 +5,14 @@ defmodule Aehttpserver.Web.NewTxController do
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   def new_tx(conn, _params) do
-    conn.body_params
-    |> Serialization.tx(:deserialize)
-    |> Pool.add_transaction()
+    deserialized_tx = Serialization.tx(conn.body_params, :deserialize)
 
-    json(conn, %{:status => :new_tx_added})
+    case Pool.add_transaction(deserialized_tx) do
+      :error ->
+        json(put_status(conn, 400), "Invalid transaction")
+
+      :ok ->
+        json(conn, "Successful operation")
+    end
   end
 end

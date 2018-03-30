@@ -9,16 +9,32 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Peers.Sync
   alias Aeutil.Serialization
 
-  def show(conn, params) do
-    block = Chain.get_block_by_base58_hash(params["hash"])
+  def block_by_height(conn, %{"height" => height}) do
+    parsed_height = height |> Integer.parse() |> elem(0)
 
-    case block do
-      %Block{} ->
-        serialized_block = Serialization.block(block, :serialize)
-        json(conn, serialized_block)
+    if(parsed_height < 0) do
+      json(put_status(conn, 404), "Block not found")
+    else
+      case Chain.get_block_by_height(parsed_height) do
+        {:error, :chain_too_short} ->
+          json(put_status(conn, 404), "Chain too short")
 
-      {:error, message} ->
-        json(%{conn | status: 404}, %{error: message})
+        header ->
+          json(conn, Serialization.serialize_value(header))
+      end
+    end
+  end
+
+  def block_by_hash(conn, %{"hash" => hash}) do
+    case Chain.get_block_by_base58_hash(hash) do
+      {:error, :block_not_found} ->
+        json(put_status(conn, 404), "Block not found")
+
+      {:error, :invalid_hash} ->
+        json(put_status(conn, 400), "Invalid hash")
+
+      block ->
+        json(conn, Serialization.block(block, :serialize))
     end
   end
 
@@ -97,11 +113,18 @@ defmodule Aehttpserver.Web.BlockController do
     json(conn, blocks_json)
   end
 
-  def new_block(conn, _params) do
+  def post_block(conn, _params) do
     block = Serialization.block(conn.body_params, :deserialize)
-    block_hash = BlockValidation.block_header_hash(block.header)
-    Sync.add_block_to_state(block_hash, block)
-    Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-    json(conn, %{ok: "new block received"})
+
+    try do
+      BlockValidation.single_validate_block!(block)
+      block_hash = BlockValidation.block_header_hash(block.header)
+      Sync.add_block_to_state(block_hash, block)
+      Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
+      json(conn, "successful operation")
+    catch
+      {:error, _message} ->
+        json(put_status(conn, 200), "Block or header validation error")
+    end
   end
 end

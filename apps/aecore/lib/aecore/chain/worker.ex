@@ -80,23 +80,105 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: Block.t()
-  def get_block_by_base58_hash(hash) do
-    decoded_hash = Header.base58c_decode(hash)
-    get_block(decoded_hash)
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  def get_header_by_base58_hash(hash) do
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+      get_header(decoded_hash)
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
   end
 
-  @spec get_block(binary()) :: Block.t() | {:error, binary()}
-  def get_block(block_hash) do
+  @spec get_headers_by_base58_hash_backwards(String.t(), non_neg_integer()) ::
+          list(Header.t()) | {:error, atom()}
+  def get_headers_by_base58_hash_backwards(hash, count) do
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+      get_headers_backwards(decoded_hash, count)
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
+  end
+
+  @spec get_headers_by_base58_hash_forward(String.t(), non_neg_integer()) ::
+          list(Header.t()) | {:error, atom()}
+  def get_headers_by_base58_hash_forward(hash, count) do
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+
+      case get_header(decoded_hash) do
+        {:error, :header_not_found} ->
+          {:error, :header_not_found}
+
+        starting_header ->
+          get_headers_forward(starting_header, count)
+      end
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
+  end
+
+  @spec get_block_by_base58_hash(String.t()) :: Block.t() | {:error, String.t()}
+  def get_block_by_base58_hash(hash) do
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+      get_block(decoded_hash)
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
+  end
+
+  @spec get_headers_backwards(binary(), non_neg_integer()) :: list(Header.t()) | {:error, atom()}
+  def get_headers_backwards(hash, count) do
+    get_headers_backwards([], hash, count)
+  end
+
+  @spec get_headers_forward(binary(), non_neg_integer()) :: list(Header.t()) | {:error, atom()}
+  def get_headers_forward(starting_header, count) do
+    get_headers_forward([], starting_header.height, count)
+  end
+
+  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  def get_header(header_hash) do
+    case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
+      {:error, _reason} ->
+        {:error, :header_not_found}
+
+      %{block: nil} ->
+        case Persistence.get_block_by_hash(header_hash) do
+          {:ok, block} -> block.header
+          _ -> {:error, :header_not_found}
+        end
+
+      block_info ->
+        block_info.block.header
+    end
+  end
+
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  def get_header_by_height(height) do
+    case get_block_info_by_height(height, nil) do
+      {:error, :chain_too_short} -> {:error, :chain_too_short}
+      info -> info.block.header
+    end
+  end
+
+  @spec get_block(binary()) :: Block.t() | {:error, String.t()}
+  def get_block(header_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
     block =
-      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
+      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
         {:error, _} ->
           nil
 
         %{block: nil} ->
-          case Persistence.get_block_by_hash(block_hash) do
+          case Persistence.get_block_by_hash(header_hash) do
             {:ok, block} -> block
             _ -> nil
           end
@@ -108,7 +190,7 @@ defmodule Aecore.Chain.Worker do
     if block != nil do
       block
     else
-      {:error, "Block not found"}
+      {:error, :block_not_found}
     end
   end
 
@@ -423,6 +505,34 @@ defmodule Aecore.Chain.Worker do
     end)
   end
 
+  defp get_headers_forward(headers, next_header_height, count) when count > 0 do
+    case get_header_by_height(next_header_height) do
+      {:error, :header_not_found} ->
+        {:error, :header_not_found}
+
+      header ->
+        get_headers_forward([header | headers], header.height + 1, count - 1)
+    end
+  end
+
+  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
+    headers
+  end
+
+  defp get_headers_backwards(headers, next_header_hash, count) when count > 0 do
+    case get_header(next_header_hash) do
+      {:error, :header_not_found} ->
+        {:error, :header_not_found}
+
+      header ->
+        get_headers_backwards([header | headers], header.prev_hash, count - 1)
+    end
+  end
+
+  defp get_headers_backwards(headers, _next_header_hash, count) when count == 0 do
+    headers
+  end
+
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
       case get_block(next_block_hash) do
@@ -457,7 +567,7 @@ defmodule Aecore.Chain.Worker do
     n = blocks_data_map[begin_hash].block.header.height - height
 
     if n < 0 do
-      {:error, "Height higher then chain_hash height"}
+      {:error, :chain_too_short}
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 

@@ -43,18 +43,6 @@ defmodule Aecore.Chain.BlockValidation do
 
     root_hash = ChainState.calculate_root_hash(new_chain_state)
 
-    server = self()
-    work = fn -> Cuckoo.verify(new_block.header) end
-
-    spawn(fn ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
-
-    is_target_met =
-      receive do
-        {:worker_reply, _from, verified?} -> verified?
-      end
-
     target = Difficulty.calculate_next_target(blocks_for_target_calculation)
 
     cond do
@@ -65,12 +53,6 @@ defmodule Aecore.Chain.BlockValidation do
       # do not check previous block height for genesis block, there is none
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
-
-      !valid_header_time?(new_block) ->
-        throw({:error, "Invalid header time"})
-
-      !is_target_met ->
-        throw({:error, "Header hash doesnt meet the target"})
 
       new_block.header.root_hash != root_hash ->
         throw({:error, "Root hash not matching"})
@@ -88,6 +70,17 @@ defmodule Aecore.Chain.BlockValidation do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
     block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
+    server = self()
+    work = fn -> Cuckoo.verify(block.header) end
+
+    spawn(fn ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_target_met =
+      receive do
+        {:worker_reply, _from, verified?} -> verified?
+      end
 
     cond do
       block.header.txs_hash != calculate_txs_hash(block.txs) ->
@@ -107,6 +100,12 @@ defmodule Aecore.Chain.BlockValidation do
 
       block_size_bytes > Application.get_env(:aecore, :block)[:max_block_size_bytes] ->
         throw({:error, "Block size is too big"})
+
+      !valid_header_time?(block) ->
+        throw({:error, "Invalid header time"})
+
+      !is_target_met ->
+        throw({:error, "Header hash doesnt meet the target"})
 
       true ->
         :ok
