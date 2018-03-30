@@ -90,25 +90,23 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp exec_os_cmd(%{process: process, header: header, cmd: command, cmd_opt: options} = builder) do
-    try do
-      {:ok, _erlpid, ospid} = Exexec.run(command, options)
+    {:ok, _erlpid, ospid} = Exexec.run(command, options)
 
-      if process == :verify do
-        Exexec.send(ospid, solution_to_string(header.pow_evidence))
-        Exexec.send(ospid, :eof)
+    if process == :verify do
+      Exexec.send(ospid, solution_to_string(header.pow_evidence))
+      Exexec.send(ospid, :eof)
+    end
+
+    res =
+      case wait_for_result(process, "") do
+        {:ok, response} -> {:ok, %{builder | response: response}}
+        {:error, reason} -> {:error, %{builder | error: reason}}
       end
 
-      res =
-        case wait_for_result(process, "") do
-          {:ok, response} -> {:ok, %{builder | response: response}}
-          {:error, reason} -> {:error, %{builder | error: reason}}
-        end
-
-      Exexec.stop(ospid)
-      res
-    catch
-      error -> {:error, %{builder | error: error}}
-    end
+    Exexec.stop(ospid)
+    res
+  catch
+    error -> {:error, %{builder | error: error}}
   end
 
   defp export_ld_lib_path do

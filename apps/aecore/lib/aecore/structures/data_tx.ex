@@ -74,7 +74,6 @@ defmodule Aecore.Structures.DataTx do
     tx_type_state = Map.get(chainstate, tx.type, %{})
 
     if !nonce_valid?(accounts_state, tx) do
-      Logger.error("Nonce is too small")
       throw({:error, "Nonce is too small"})
     end
 
