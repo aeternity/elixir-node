@@ -919,7 +919,12 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURN(), state) do
-    # TODO
+    {from, state} = pop(state)
+    {to, state} = pop(state)
+
+    result = Memory.get_area(from, to, state)
+
+    State.set_return(result, state)
   end
 
   def exec(OpCodes._DELEGATECALL(), state) do
@@ -1027,5 +1032,15 @@ defmodule Aevm do
     state1 = State.set_cp(old_cp + bytes, state)
 
     {value, state1}
+  end
+
+  defp copy_bytes(from_byte, count, data) do
+    from_bit = from_byte * 8
+    bit_count = count * 8
+    data_size_bits = byte_size(data) * 8
+    fill_bits = data_size_bits - from_bit + bit_count
+    <<_::size(from_bit), a::size(bit_count), _::binary>> = <<data::binary, 0::size(fill_bits)>>
+
+    <<a::size(bit_count)>>
   end
 end

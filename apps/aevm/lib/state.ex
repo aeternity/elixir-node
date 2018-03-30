@@ -20,7 +20,8 @@ defmodule State do
       :timestamp => timestamp,
       :origin => origin,
       :caller => caller,
-      :value => value
+      :value => value,
+      :return => nil
     }
   end
 
@@ -49,6 +50,10 @@ defmodule State do
     jumpdests = jumpdests(state)
     jumpdests1 = [jumpdest | jumpdests]
     Map.put(state, :jumpdests, jumpdests1)
+  end
+
+  def set_return(return, state) do
+    Map.put(state, :return, return)
   end
 
   def stack(state) do

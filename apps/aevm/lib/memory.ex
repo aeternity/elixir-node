@@ -59,6 +59,21 @@ defmodule Memory do
     memory |> Map.keys() |> Enum.sort() |> Enum.at(-1)
   end
 
+  def get_area(from, to, state) do
+    memory = State.memory(state)
+    {prev_index, prev_bit_position} = get_index_in_memory(from)
+    {next_index, next_bit_position} = get_index_in_memory(to)
+
+    prev_value = Map.get(memory, prev_index, 0)
+    next_value = Map.get(memory, next_index, 0)
+
+    <<_::size(prev_bit_position), prev_part::binary>> = <<prev_value::256>>
+    <<next_part::size(next_bit_position), _::binary>> = <<next_value::256>>
+
+    area_value_binary = prev_part <> <<next_part::size(next_bit_position)>>
+    binary_word_to_integer(area_value_binary)
+  end
+
   defp get_index_in_memory(address) do
     memory_index = trunc(Float.floor(address / 32) * 32)
     bit_position = rem(address, 32) * 8
@@ -72,7 +87,7 @@ defmodule Memory do
   end
 
   defp binary_word_to_integer(word) do
-    <<word_integer::size(256)>> = word
+    <<word_integer::size(256), _::binary>> = word
 
     word_integer
   end
