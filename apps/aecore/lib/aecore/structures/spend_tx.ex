@@ -10,6 +10,7 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Wallet
   alias Aecore.Structures.Account
   alias Aecore.Structures.DataTx
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
 
@@ -68,7 +69,7 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), integer(), ChainState.account()) :: ChainState.accounts()
+  @spec reward(SpendTx.t(), non_neg_integer(), ChainState.account()) :: ChainState.accounts()
   def reward(%SpendTx{} = tx, _block_height, account_state) do
     Account.transaction_in(account_state, tx.amount)
   end
@@ -81,13 +82,14 @@ defmodule Aecore.Structures.SpendTx do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
     sender_account_state = Map.get(accounts, sender, Account.empty())
 
-    preprocess_check!(tx, sender_account_state, fee, %{})
+    preprocess_check!(tx, sender, sender_account_state, fee, block_height, %{})
 
     new_sender_account_state =
       sender_account_state
@@ -108,17 +110,39 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec preprocess_check!(
           SpendTx.t(),
+          Wallet.pubkey(),
           ChainState.account(),
+          non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, account_state, fee, %{}) do
+  def preprocess_check!(tx, _sender, account_state, fee, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
         throw({:error, "Negative balance"})
 
       true ->
         :ok
+    end
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()
+  def is_minimum_fee_met?(tx, identifier) do
+    if identifier == :validation do
+      true
+    else
+      tx_size_bytes = Pool.get_tx_size_bytes(tx)
+
+      bytes_per_token =
+        case identifier do
+          :pool ->
+            Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
+
+          :miner ->
+            Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
+        end
+
+      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
     end
   end
 
