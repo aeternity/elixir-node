@@ -52,7 +52,8 @@ defmodule EpochElixir.Mixfile do
       {:distillery, "~> 1.5.2", runtime: false},
       {:aewallet, github: "aeternity/elixir-wallet"},
       {:msgpax, "~> 2.1.1"},
-      {:bip0173, "~> 0.1.2"}
+      {:bip0173, "~> 0.1.2"},
+      {:erl_base58, "~> 0.0.1"}
     ]
   end
 end

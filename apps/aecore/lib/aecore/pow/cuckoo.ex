@@ -8,6 +8,7 @@ defmodule Aecore.Pow.Cuckoo do
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow_cuckoo.erl
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow.erl
   """
+
   require Logger
 
   alias Aecore.Chain.BlockValidation
@@ -18,8 +19,8 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{difficulty_target: difficulty, pow_evidence: soln} = header) do
-    if test_target(soln, difficulty) do
+  def verify(%Header{target: target, pow_evidence: soln} = header) do
+    if test_target(soln, target) do
       process(:verify, header)
     else
       false
@@ -76,7 +77,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp command_options(:verify), do: default_command_options() ++ [{:stdin, true}]
   defp command_options(:generate), do: default_command_options()
 
-  defp default_command_options() do
+  defp default_command_options do
     [
       {:stdout, self()},
       {:stderr, self()},
@@ -110,7 +111,7 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  defp export_ld_lib_path() do
+  defp export_ld_lib_path do
     ldpathvar =
       case :os.type() do
         {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
@@ -169,7 +170,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{header: header, response: {:generated, soln}} = builder) do
-    if test_target(soln, header.difficulty_target) do
+    if test_target(soln, header.target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
     else
       {:error, %{builder | error: :no_solution}}
@@ -184,14 +185,14 @@ defmodule Aecore.Pow.Cuckoo do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     hash = :crypto.hash(:sha256, bin)
-    Hashcash.generate(:cuckoo, hash, target)
+    Hashcash.verify(hash, target)
   end
 
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
   @spec get_node_size() :: integer()
-  defp get_node_size() do
+  defp get_node_size do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8
       {_, _, size} when size > 0 -> 4

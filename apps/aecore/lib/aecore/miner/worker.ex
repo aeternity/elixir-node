@@ -23,7 +23,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @mersenne_prime 2_147_483_647
-  @coinbase_transaction_value 100
+  @coinbase_transaction_amount 100
   @new_candidate_nonce_count 500
 
   def start_link(_args) do
@@ -56,10 +56,9 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  ## TODO check if is Synced with the chain !!
   @spec resume() :: :ok
-  def resume() do
-    if Peers.is_chain_synced?() do
+  def resume do
+    if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
       Logger.error("Can't start miner, chain not yet synced")
@@ -67,14 +66,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec suspend() :: :ok
-  def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
+  def suspend, do: GenServer.call(__MODULE__, {:mining, :stop})
 
   @spec get_state() :: :running | :idle
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
   @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
-  def mine_sync_block_to_chain() do
+  def mine_sync_block_to_chain do
     cblock = candidate()
 
     case mine_sync_block(cblock) do
@@ -171,9 +170,9 @@ defmodule Aecore.Miner.Worker do
       end
 
     cheader = %{cblock.header | nonce: nonce}
-    cblock = %{cblock | header: cheader}
+    cblock_with_header = %{cblock | header: cheader}
     work = fn -> Cuckoo.generate(cheader) end
-    start_worker(work, %{state | block_candidate: cblock})
+    start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
   defp mining(%{miner_state: :idle, job: []} = state), do: state
@@ -210,7 +209,7 @@ defmodule Aecore.Miner.Worker do
 
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
     Logger.info(fn ->
-      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
+      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
         cblock.header.nonce
       }"
     end)
@@ -221,7 +220,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
-  def candidate() do
+  def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
@@ -291,10 +290,10 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  def create_coinbase_tx(to_acc, total_fees) do
+  def create_coinbase_tx(receiver, total_fees) do
     payload = %{
-      to_acc: to_acc,
-      value: @coinbase_transaction_value + total_fees
+      receiver: receiver,
+      amount: @coinbase_transaction_amount + total_fees
     }
 
     tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
@@ -384,7 +383,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp) do
-    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
@@ -393,15 +392,15 @@ defmodule Aecore.Miner.Worker do
         top_block.header.height + 1
       )
 
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    root_hash = ChainState.calculate_root_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
       Header.create(
         top_block.header.height + 1,
         top_block_hash,
+        txs_hash,
         root_hash,
-        chain_state_hash,
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
@@ -412,7 +411,7 @@ defmodule Aecore.Miner.Worker do
     %Block{header: unmined_header, txs: valid_txs}
   end
 
-  def coinbase_transaction_value, do: @coinbase_transaction_value
+  def coinbase_transaction_amount, do: @coinbase_transaction_amount
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1

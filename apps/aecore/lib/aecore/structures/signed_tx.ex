@@ -28,16 +28,16 @@ defmodule Aecore.Structures.SignedTx do
   use ExConstructor
 
   @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(%{data: %{from_acc: key}, signature: signature}) do
+  def is_coinbase?(%{data: %{sender: key}, signature: signature}) do
     key == nil && signature == nil
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.from_acc) do
+    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
       DataTx.is_valid?(data)
     else
-      Logger.error("Can't verify the signature with the following public key: #{data.from_acc}")
+      Logger.error("Can't verify the signature with the following public key: #{data.sender}")
       false
     end
   end
@@ -58,8 +58,12 @@ defmodule Aecore.Structures.SignedTx do
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
-  def sign_tx(_tx, _priv_key) do
-    {:error, "Wrong Transaction data structure"}
+  def sign_tx(%DataTx{} = _tx, priv_key) do
+    {:error, "Wrong key size: #{priv_key}"}
+  end
+
+  def sign_tx(tx, _priv_key) do
+    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -72,13 +76,27 @@ defmodule Aecore.Structures.SignedTx do
     type.reward(payload, block_height, account_state)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("tx", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("tx", bin)
   end
 
-  @spec bech32_encode_root(binary()) :: String.t()
-  def bech32_encode_root(bin) do
-    Bits.bech32_encode("tr", bin)
+  def base58c_decode(<<"tx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
+  end
+
+  def base58c_encode_root(bin) do
+    Bits.encode58c("bx", bin)
+  end
+
+  def base58c_decode_root(<<"bx$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_root(_) do
+    {:error, "Wrong data"}
   end
 end

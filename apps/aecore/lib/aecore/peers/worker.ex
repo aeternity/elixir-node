@@ -11,7 +11,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Bits
+  alias Aecore.Structures.Header
 
   require Logger
 
@@ -27,8 +27,8 @@ defmodule Aecore.Peers.Worker do
 
   ## Client side
 
-  @spec is_chain_synced?() :: boolean()
-  def is_chain_synced?() do
+  @spec chain_synced?() :: boolean()
+  def chain_synced? do
     GenServer.call(__MODULE__, :is_chain_synced)
   end
 
@@ -43,24 +43,24 @@ defmodule Aecore.Peers.Worker do
   end
 
   @spec check_peers() :: :ok
-  def check_peers() do
+  def check_peers do
     GenServer.call(__MODULE__, :check_peers)
   end
 
   @spec all_uris() :: list(binary())
-  def all_uris() do
+  def all_uris do
     all_peers()
     |> Map.values()
     |> Enum.map(fn %{uri: uri} -> uri end)
   end
 
   @spec all_peers() :: peers
-  def all_peers() do
+  def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
   @spec genesis_block_header_hash() :: term()
-  def genesis_block_header_hash() do
+  def genesis_block_header_hash do
     BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
@@ -73,7 +73,7 @@ defmodule Aecore.Peers.Worker do
   Gets a random peer nonce
   """
   @spec get_peer_nonce() :: integer()
-  def get_peer_nonce() do
+  def get_peer_nonce do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
       _ -> :table_created
@@ -169,7 +169,7 @@ defmodule Aecore.Peers.Worker do
         fn _, %{uri: uri} ->
           case Client.get_info(uri) do
             {:ok, info} ->
-              binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+              binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
               binary_genesis_hash == genesis_block_header_hash()
 
             _ ->
@@ -284,14 +284,14 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  defp create_nonce_table() do
+  defp create_nonce_table do
     :ets.new(:nonce_table, [:named_table])
   end
 
   defp check_peer(uri, own_nonce) do
     case Client.get_info(uri) do
       {:ok, info} ->
-        binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+        binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
 
         cond do
           own_nonce == info.peer_nonce ->

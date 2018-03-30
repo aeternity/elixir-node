@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Sync do
+  @moduledoc """
+  Contains peer sync functionality
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker, as: Peers
@@ -7,7 +11,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
-  alias Aeutil.Bits
+  alias Aecore.Structures.Header
 
   require Logger
 
@@ -26,7 +30,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   @spec get_peer_blocks() :: map()
-  def get_peer_blocks() do
+  def get_peer_blocks do
     GenServer.call(__MODULE__, :get_peer_blocks)
   end
 
@@ -41,12 +45,12 @@ defmodule Aecore.Peers.Sync do
   end
 
   @spec get_running_tasks() :: map()
-  def get_running_tasks() do
+  def get_running_tasks do
     GenServer.call(__MODULE__, :get_running_tasks)
   end
 
-  @spec get_chain_sync_status() :: boolean()
-  def get_chain_sync_status() do
+  @spec chain_sync_running?() :: boolean()
+  def chain_sync_running? do
     GenServer.call(__MODULE__, :get_chain_sync_status)
   end
 
@@ -68,7 +72,7 @@ defmodule Aecore.Peers.Sync do
   @spec ask_peers_for_unknown_blocks(Peers.peers()) :: :ok
   def ask_peers_for_unknown_blocks(peers) do
     Enum.each(peers, fn {_, %{uri: uri, latest_block: top_block_hash}} ->
-      top_hash_decoded = Bits.bech32_decode(top_block_hash)
+      top_hash_decoded = Header.base58c_decode(top_block_hash)
 
       if !Map.has_key?(get_running_tasks(), uri) do
         PeerBlocksTask.start_link([uri, top_hash_decoded])
@@ -78,7 +82,9 @@ defmodule Aecore.Peers.Sync do
 
   @spec add_peer_blocks_to_sync_state(String.t(), binary()) :: :ok
   def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
-    if !Chain.has_block?(from_block_hash) do
+    if Chain.has_block?(from_block_hash) do
+      remove_running_task(peer_uri)
+    else
       add_running_task(peer_uri)
 
       case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
@@ -106,14 +112,12 @@ defmodule Aecore.Peers.Sync do
           Logger.error(fn -> message end)
           remove_running_task(peer_uri)
       end
-    else
-      remove_running_task(peer_uri)
     end
   end
 
   @spec add_valid_peer_blocks_to_chain(map()) :: :ok
   def add_valid_peer_blocks_to_chain(state) do
-    if !get_chain_sync_status() do
+    unless chain_sync_running?() do
       set_chain_sync_status(true)
 
       Enum.each(state, fn {_, block} ->
@@ -188,19 +192,17 @@ defmodule Aecore.Peers.Sync do
         %{peer_blocks: peer_blocks} = state
       ) do
     updated_peer_blocks =
-      case Chain.has_block?(block_hash) do
-        true ->
-          peer_blocks
-
-        false ->
-          try do
-            BlockValidation.single_validate_block!(block)
-            Map.put(peer_blocks, block_hash, block)
-          catch
-            {:error, message} ->
-              Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
-              peer_blocks
-          end
+      if Chain.has_block?(block_hash) do
+        peer_blocks
+      else
+        try do
+          BlockValidation.single_validate_block!(block)
+          Map.put(peer_blocks, block_hash, block)
+        catch
+          {:error, message} ->
+            Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
+            peer_blocks
+        end
       end
 
     {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
@@ -296,7 +298,8 @@ defmodule Aecore.Peers.Sync do
     end)
     |> Enum.shuffle()
     |> Enum.reduce(0, fn peer, acc ->
-      # if we have successfully added less then number_of_peers_to_add peers then try to add another one
+      # if we have successfully added less then number_of_peers_to_add peers
+      # then try to add another one
       if acc < number_of_peers_to_add do
         case Peers.add_peer(peer) do
           :ok ->
@@ -319,7 +322,9 @@ defmodule Aecore.Peers.Sync do
     has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
     block_header_hash = BlockValidation.block_header_hash(block.header)
 
-    if !Chain.has_block?(block_header_hash) do
+    if Chain.has_block?(block_header_hash) do
+      chain
+    else
       cond do
         has_parent_block_in_state ->
           build_chain(state, state[block.header.prev_hash], [block | chain])
@@ -330,8 +335,6 @@ defmodule Aecore.Peers.Sync do
         true ->
           []
       end
-    else
-      chain
     end
   end
 

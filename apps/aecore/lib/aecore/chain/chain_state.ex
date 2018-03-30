@@ -31,17 +31,23 @@ defmodule Aecore.Chain.ChainState do
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
-        to_acc_state = Map.get(chainstate.accounts, data.payload.to_acc, Account.empty())
-        new_to_acc_state = SignedTx.reward(data, block_height, to_acc_state)
-        new_accounts_state = Map.put(chainstate.accounts, data.payload.to_acc, new_to_acc_state)
+        receiver_state = Map.get(chainstate.accounts, data.payload.receiver, Account.empty())
+        new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+
+        new_accounts_state =
+          Map.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+
         Map.put(chainstate, :accounts, new_accounts_state)
 
-      data.from_acc != nil ->
+      data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate(data, chainstate)
+          DataTx.process_chainstate!(data, chainstate)
         else
           throw({:error, "Invalid transaction"})
         end
+
+      true ->
+        throw({:error, "Invalid transaction"})
     end
   end
 
@@ -49,8 +55,8 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_root_hash(chainstate()) :: binary()
+  def calculate_root_hash(chainstate) do
     merkle_tree_data =
       for {account, data} <- chainstate.accounts do
         {account, Serialization.pack_binary(data)}
@@ -109,8 +115,15 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("bs", bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

@@ -1,4 +1,8 @@
 defmodule Aecore.Chain.Difficulty do
+  @moduledoc """
+  Contains functions used to calculate the PoW difficulty.
+  """
+
   alias Aecore.Structures.Block
   alias Aeutil.Scientific
 
@@ -8,7 +12,7 @@ defmodule Aecore.Chain.Difficulty do
   @highest_target_scientific 0x2100FFFF
   @expected_mine_rate 30_000
 
-  def get_number_of_blocks() do
+  def get_number_of_blocks do
     @number_of_blocks
   end
 
@@ -23,7 +27,7 @@ defmodule Aecore.Chain.Difficulty do
 
     k_div_targets =
       for block <- sorted_blocks do
-        div(k, Scientific.scientific_to_integer(block.header.difficulty_target))
+        div(k, Scientific.scientific_to_integer(block.header.target))
       end
 
     sum_k_div_targets = Enum.sum(k_div_targets)
@@ -35,6 +39,6 @@ defmodule Aecore.Chain.Difficulty do
 
   @spec calculate_distance(Block.t(), integer()) :: float()
   defp calculate_distance(last_block, timestamp) do
-    max(1, timestamp - last_block.header.timestamp)
+    max(1, timestamp - last_block.header.time)
   end
 end

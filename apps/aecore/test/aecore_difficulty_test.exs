@@ -22,11 +22,11 @@ defmodule DifficultyTest do
     blocks = [
       %Block{
         header: %Header{
-          difficulty_target: 553_713_663,
+          target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
-          timestamp: 130_000,
+          time: 130_000,
           txs_hash: "\f{\f",
           version: 1
         },
@@ -34,11 +34,11 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          difficulty_target: 553_713_663,
+          target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
-          timestamp: 20_000,
+          time: 20_000,
           txs_hash: "\f{\f",
           version: 1
         },
@@ -46,13 +46,13 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          difficulty_target: 553_713_663,
+          target: 553_713_663,
           height: 0,
           nonce: 0,
           prev_hash:
             <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
               0, 0, 0, 0>>,
-          timestamp: 10_000,
+          time: 10_000,
           txs_hash:
             <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
               0, 0, 0, 0>>,
@@ -63,7 +63,6 @@ defmodule DifficultyTest do
     ]
 
     timestamp = 140_000
-
     assert 553_713_663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
   end
 end
