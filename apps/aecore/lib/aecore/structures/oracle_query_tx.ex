@@ -91,79 +91,71 @@ defmodule Aecore.Structures.OracleQueryTx do
         %{registered_oracles: registered_oracles, interaction_objects: interaction_objects} =
           oracle_state
       ) do
-    case preprocess_check(
-           tx,
-           sender,
-           Map.get(accounts, sender, Account.empty()),
-           fee,
-           nonce,
-           block_height,
-           registered_oracles
-         ) do
-      :ok ->
-        new_sender_account_state =
-          Map.get(accounts, sender, Account.empty())
-          |> deduct_fee(fee + tx.query_fee)
+    preprocess_check!(
+      tx,
+      sender,
+      Map.get(accounts, sender, Account.empty()),
+      fee,
+      block_height,
+      registered_oracles
+    )
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    new_sender_account_state =
+      Map.get(accounts, sender, Account.empty())
+      |> deduct_fee(fee + tx.query_fee)
+      |> Map.put(:nonce, nonce)
 
-        interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
+    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
-        updated_interaction_objects =
-          Map.put(interaction_objects, interaction_object_id, %{
-            query: tx,
-            query_height_included: block_height,
-            query_sender: sender,
-            response: nil,
-            response_height_included: nil
-          })
+    interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
-        updated_oracle_state = %{
-          oracle_state
-          | interaction_objects: updated_interaction_objects
-        }
+    updated_interaction_objects =
+      Map.put(interaction_objects, interaction_object_id, %{
+        query: tx,
+        query_height_included: block_height,
+        query_sender: sender,
+        response: nil,
+        response_height_included: nil
+      })
 
-        {updated_accounts_chainstate, updated_oracle_state}
+    updated_oracle_state = %{
+      oracle_state
+      | interaction_objects: updated_interaction_objects
+    }
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check(
+  @spec preprocess_check!(
           OracleQueryTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _sender, account_state, fee, nonce, block_height, registered_oracles) do
+  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "Invalid transaction TTL"}
+        throw({:error, "Invalid transaction TTL"})
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        {:error, "No oracle registered with that address"}
+        throw({:error, "No oracle registered with that address"})
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        {:error, "Invalid query data"}
+        throw({:error, "Invalid query data"})
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        {:error, "Query fee lower than the one required by the oracle"}
+        throw({:error, "Query fee lower than the one required by the oracle"})
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "Fee is too low"}
+        throw({:error, "Fee is too low"})
 
       true ->
         :ok

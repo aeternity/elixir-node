@@ -130,7 +130,7 @@ defmodule AecoreValidationTest do
     fee = 10
 
     payload = %{receiver: receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, 13_213_223)
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, nonce)
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 

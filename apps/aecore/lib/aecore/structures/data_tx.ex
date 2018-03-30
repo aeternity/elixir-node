@@ -8,6 +8,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -79,6 +80,10 @@ defmodule Aecore.Structures.DataTx do
         Map.get(chainstate, tx.type.get_chain_state_name(), %{})
       end
 
+    if !nonce_valid?(accounts_state, tx) do
+      throw({:error, "Nonce is too small"})
+    end
+
     {new_accounts_state, new_tx_type_state} =
       tx.payload
       |> tx.type.init()
@@ -99,6 +104,11 @@ defmodule Aecore.Structures.DataTx do
       end
 
     Map.put(new_chainstate, :accounts, new_accounts_state)
+  end
+
+  def nonce_valid?(accounts_state, tx) do
+    account_state = Map.get(accounts_state, tx.sender, Account.empty())
+    tx.nonce > account_state.nonce
   end
 
   @spec serialize(DataTx.t()) :: map()

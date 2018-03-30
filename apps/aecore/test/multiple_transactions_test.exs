@@ -80,6 +80,10 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(signed_tx3)
     :ok = Miner.mine_sync_block_to_chain()
 
+    # The state of the accounts should be the as same before the invalid tx
+    assert 0 == Chain.chain_state().accounts[account2_pub_key].balance
+    assert 90 == Chain.chain_state().accounts[account3_pub_key].balance
+
     Pool.get_and_empty_pool()
     signed_tx4 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
 

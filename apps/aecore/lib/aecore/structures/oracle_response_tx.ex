@@ -60,43 +60,39 @@ defmodule Aecore.Structures.OracleResponseTx do
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state
       ) do
-    case preprocess_check(
-           tx,
-           sender,
-           Map.get(accounts, sender, Account.empty()),
-           fee,
-           nonce,
-           block_height,
-           oracle_state
-         ) do
-      :ok ->
-        interaction_object = interaction_objects[tx.query_id]
-        query_fee = interaction_object.query.query_fee
+    preprocess_check(
+      tx,
+      sender,
+      Map.get(accounts, sender, Account.empty()),
+      fee,
+      block_height,
+      oracle_state
+    )
 
-        new_sender_account_state =
-          Map.get(accounts, sender, Account.empty())
-          |> Account.transaction_in(query_fee)
-          |> deduct_fee(fee)
+    interaction_object = interaction_objects[tx.query_id]
+    query_fee = interaction_object.query.query_fee
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    new_sender_account_state =
+      Map.get(accounts, sender, Account.empty())
+      |> Account.transaction_in(query_fee)
+      |> deduct_fee(fee)
+      |> Map.put(:nonce, nonce)
 
-        updated_interaction_objects =
-          Map.put(interaction_objects, tx.query_id, %{
-            interaction_object
-            | response: tx.response,
-              response_height_included: block_height
-          })
+    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
-        updated_oracle_state = %{
-          oracle_state
-          | interaction_objects: updated_interaction_objects
-        }
+    updated_interaction_objects =
+      Map.put(interaction_objects, tx.query_id, %{
+        interaction_object
+        | response: tx.response,
+          response_height_included: block_height
+      })
 
-        {updated_accounts_chainstate, updated_oracle_state}
+    updated_oracle_state = %{
+      oracle_state
+      | interaction_objects: updated_interaction_objects
+    }
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {updated_accounts_chainstate, updated_oracle_state}
   end
 
   @spec preprocess_check(
@@ -105,40 +101,36 @@ defmodule Aecore.Structures.OracleResponseTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, nonce, _block_height, %{
+  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
         registered_oracles: registered_oracles,
         interaction_objects: interaction_objects
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->
-        {:error, "Sender isn't a registered operator"}
+        throw({:error, "Sender isn't a registered operator"})
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        {:error, "Invalid response data"}
+        throw({:error, "Invalid response data"})
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        {:error, "No query with that ID"}
+        throw({:error, "No query with that ID"})
 
       interaction_objects[tx.query_id].response != nil ->
-        {:error, "Query already answered"}
+        throw({:error, "Query already answered"})
 
       interaction_objects[tx.query_id].query.oracle_address != sender ->
-        {:error, "Query references a different oracle"}
+        throw({:error, "Query references a different oracle"})
 
       !is_minimum_fee_met?(tx, fee) ->
-        {:error, "Fee too low"}
+        throw({:error, "Fee too low"})
 
       true ->
         :ok

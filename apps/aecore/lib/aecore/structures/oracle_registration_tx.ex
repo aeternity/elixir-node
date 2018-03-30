@@ -89,65 +89,57 @@ defmodule Aecore.Structures.OracleRegistrationTx do
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state
       ) do
-    case preprocess_check(
-           tx,
-           sender,
-           Map.get(accounts, sender, Account.empty()),
-           fee,
-           nonce,
-           block_height,
-           registered_oracles
-         ) do
-      :ok ->
-        new_sender_account_state =
-          Map.get(accounts, sender, Account.empty())
-          |> deduct_fee(fee)
+    preprocess_check!(
+      tx,
+      sender,
+      Map.get(accounts, sender, Account.empty()),
+      fee,
+      block_height,
+      registered_oracles
+    )
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    new_sender_account_state =
+      Map.get(accounts, sender, Account.empty())
+      |> deduct_fee(fee)
+      |> Map.put(:nonce, nonce)
 
-        updated_registered_oracles =
-          Map.put_new(registered_oracles, sender, %{
-            tx: tx,
-            height_included: block_height
-          })
+    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
 
-        updated_oracle_state = %{
-          oracle_state
-          | registered_oracles: updated_registered_oracles
-        }
+    updated_registered_oracles =
+      Map.put_new(registered_oracles, sender, %{
+        tx: tx,
+        height_included: block_height
+      })
 
-        {updated_accounts_chainstate, updated_oracle_state}
+    updated_oracle_state = %{
+      oracle_state
+      | registered_oracles: updated_registered_oracles
+    }
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check(
+  @spec preprocess_check!(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, nonce, block_height, registered_oracles) do
+  def preprocess_check!(tx, sender, account_state, fee, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "Invalid transaction TTL"}
+        throw({:error, "Invalid transaction TTL"})
 
       Map.has_key?(registered_oracles, sender) ->
-        {:error, "Account is already an oracle"}
+        throw({:error, "Account is already an oracle"})
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "Fee too low"}
+        throw({:error, "Fee too low"})
 
       true ->
         :ok

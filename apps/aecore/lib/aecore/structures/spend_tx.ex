@@ -88,44 +88,37 @@ defmodule Aecore.Structures.SpendTx do
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
     sender_account_state = Map.get(accounts, sender, Account.empty())
 
-    case preprocess_check(tx, sender, sender_account_state, fee, nonce, block_height, %{}) do
-      :ok ->
-        new_sender_account_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out(tx.amount * -1, nonce)
+    preprocess_check!(tx, sender, sender_account_state, fee, block_height, %{})
 
-        new_accounts = Map.put(accounts, sender, new_sender_account_state)
+    new_sender_account_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out(tx.amount * -1, nonce)
 
-        receiver = Map.get(accounts, tx.receiver, Account.empty())
-        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
-        {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
+    new_accounts = Map.put(accounts, sender, new_sender_account_state)
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    receiver = Map.get(accounts, tx.receiver, Account.empty())
+    new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
+
+    {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
   end
 
   @doc """
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check(
+  @spec preprocess_check!(
           SpendTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _sender, account_state, fee, nonce, _block_height, %{}) do
+  def preprocess_check!(tx, _sender, account_state, fee, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
-        {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Negative balance"})
 
       true ->
         :ok
