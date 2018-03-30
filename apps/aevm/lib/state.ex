@@ -1,8 +1,9 @@
 defmodule State do
-  def init_vm(
-        bytecode,
-        {address, caller, coinbase, difficulty, number, timestamp, origin, caller, value} = input
-      ) do
+
+  @spec init_vm(map(), map()) :: map()
+  def init_vm(exec, env) do
+
+    bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
     state = %{
@@ -12,16 +13,20 @@ defmodule State do
       :code => code_bin,
       :cp => 0,
       :jumpdests => [],
-      :address => address,
-      :caller => caller,
-      :coinbase => coinbase,
-      :difficulty => difficulty,
-      :number => number,
-      :timestamp => timestamp,
-      :origin => origin,
-      :caller => caller,
-      :value => value,
-      :return => nil
+      :return => nil,
+      :code => code_bin,
+      # :return_data => return_data,
+
+      :address => Map.get(exec, :address),
+      :caller => Map.get(exec, :caller),
+      :data => Map.get(exec, :data),
+      :origin => Map.get(exec, :origin),
+      :value => Map.get(exec, :value),
+
+      :coinbase => Map.get(env, :coinbase),
+      :difficulty => Map.get(env, :difficulty),
+      :number => Map.get(env, :number),
+      :timestamp => Map.get(env, :timestamp)
     }
   end
 
@@ -115,6 +120,14 @@ defmodule State do
   def value(state) do
     Map.get(state, :value)
   end
+
+  def data(state) do
+    Map.get(state, :data)
+  end
+
+  # def return_data(state) do
+  #   Map.get(state, :return_data)
+  # end
 
   defp bytecode_to_bin(bytecode) do
     bytecode

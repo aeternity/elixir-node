@@ -306,8 +306,8 @@ defmodule Aevm do
   # 30s: Environmental Information
 
   def exec(OpCodes._ADDRESS(), state) do
-    value = State.address(state)
-    push(value, state)
+    address = State.address(state)
+    push(address, state)
   end
 
   def exec(OpCodes._BALANCE(), state) do
@@ -315,13 +315,13 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._ORIGIN(), state) do
-    value = State.origin(state)
-    push(value, state)
+    origin = State.origin(state)
+    push(origin, state)
   end
 
   def exec(OpCodes._CALLER(), state) do
-    value = State.caller(state)
-    push(value, state)
+    caller = State.caller(state)
+    push(caller, state)
   end
 
   def exec(OpCodes._CALLVALUE(), state) do
@@ -330,23 +330,41 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CALLDATALOAD(), state) do
-    # TODO
+    {op1, state1} = pop(state)
+    value = value_from_data(op1, state1)
+    IO.inspect(value)
+    push(value, state1)
   end
 
   def exec(OpCodes._CALLDATASIZE(), state) do
-    # TODO
+    data = State.data(state)
+    value = byte_size(data)
+    push(value, state)
   end
 
   def exec(OpCodes._CALLDATACOPY(), state) do
-    # TODO
+    {op1, state1} = pop(state)
+    {op2, state2} = pop(state1)
+    {op3, state3} = pop(state2)
+
+    # TODO value = bytes_from_data(op2, op2, state3)
+    # TODO write_area
   end
 
   def exec(OpCodes._CODESIZE(), state) do
-    # TODO
+    code = State.code(state)
+    value = byte_size(code)
+    push(value, state)
   end
 
   def exec(OpCodes._CODECOPY(), state) do
-    # TODO
+    {op1, state1} = pop(state)
+    {op2, state2} = pop(state1)
+    {op3, state3} = pop(state2)
+
+    code = State.code(state)
+    value = copy_bytes(op2, op3, code)
+    #TODO: Memory.write_area
   end
 
   def exec(OpCodes._GASPRICE(), state) do
@@ -362,7 +380,10 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATASIZE(), state) do
-    # TODO
+    #Not sure what "output data from the previous call from the current env" means
+    return_data = State.return_data(state)
+    value = byte_size(return_data)
+    push(value, state)
   end
 
   def exec(OpCodes._RETURNDATACOPY(), state) do
@@ -957,6 +978,10 @@ defmodule Aevm do
     state
   end
 
+  #
+  # Util functions
+  #
+
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
@@ -1042,5 +1067,12 @@ defmodule Aevm do
     <<_::size(from_bit), a::size(bit_count), _::binary>> = <<data::binary, 0::size(fill_bits)>>
 
     <<a::size(bit_count)>>
+  end
+
+  defp value_from_data(address, state) do
+    data = State.data(state)
+    data_copy = copy_bytes(address, 32, data)
+    <<value::size(256)>> = data_copy
+    value
   end
 end
