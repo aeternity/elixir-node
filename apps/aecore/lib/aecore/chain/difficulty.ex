@@ -13,7 +13,7 @@ defmodule Aecore.Chain.Difficulty do
     @number_of_blocks
   end
 
-  @spec calculate_next_target(list(Block.t())) :: integer()
+  @spec calculate_next_target(list(Block.t())) :: non_neg_integer()
   def calculate_next_target(list) do
     [latest_block | _] = list
 
@@ -32,7 +32,7 @@ defmodule Aecore.Chain.Difficulty do
     end
   end
 
-  @spec limit_max_target_change(integer(), integer()) :: integer()
+  @spec limit_max_target_change(non_neg_integer(), non_neg_integer()) :: non_neg_integer()
   def limit_max_target_change(calculated_next_target, last_target) do
     cond do
       calculated_next_target - last_target > @max_target_change ->

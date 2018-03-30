@@ -38,6 +38,7 @@ defmodule Aecore.Structures.Transaction do
               Wallet.pubkey(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
+              block_height :: non_neg_integer(),
               Account.t(),
               tx_type_state()
             ) :: {Account.t(), tx_type_state()}
@@ -70,8 +71,10 @@ defmodule Aecore.Structures.Transaction do
   """
   @callback preprocess_check!(
               tx_types(),
+              Wallet.pubkey(),
               ChainState.account(),
               fee :: non_neg_integer(),
+              block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 

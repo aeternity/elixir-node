@@ -75,6 +75,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp command_options(:verify), do: default_command_options() ++ [{:stdin, true}]
+
   defp command_options(:generate), do: default_command_options()
 
   defp default_command_options do
@@ -178,7 +179,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
   ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
   ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  @spec test_target(list(), integer()) :: boolean()
+  @spec test_target(list(), non_neg_integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
@@ -189,8 +190,8 @@ defmodule Aecore.Pow.Cuckoo do
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
-  @spec get_node_size() :: integer()
-  defp get_node_size do
+  @spec get_node_size() :: non_neg_integer()
+  defp get_node_size() do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8
       {_, _, size} when size > 0 -> 4

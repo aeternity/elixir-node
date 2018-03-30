@@ -10,6 +10,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Header
 
@@ -19,10 +20,14 @@ defmodule Aecore.Peers.Worker do
   @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
   @probability_of_peer_remove_when_max 0.5
 
-  @type peers :: %{integer() => %{latest_block: String.t(), uri: String.t()}}
+  @type peers :: %{non_neg_integer() => %{latest_block: String.t(), uri: String.t()}}
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
+    GenServer.start_link(
+      __MODULE__,
+      %{peers: %{}, nonce: get_peer_nonce()},
+      name: __MODULE__
+    )
   end
 
   ## Client side
@@ -64,7 +69,7 @@ defmodule Aecore.Peers.Worker do
     BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
-  @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}
+  @spec schedule_add_peer(String.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def schedule_add_peer(uri, nonce) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end
@@ -72,8 +77,8 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Gets a random peer nonce
   """
-  @spec get_peer_nonce() :: integer()
-  def get_peer_nonce do
+  @spec get_peer_nonce() :: non_neg_integer()
+  def get_peer_nonce() do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
       _ -> :table_created
@@ -94,6 +99,7 @@ defmodule Aecore.Peers.Worker do
   def broadcast_block(block) do
     spawn(fn ->
       Client.send_block(block, all_uris())
+      :ok
     end)
 
     :ok
@@ -193,7 +199,9 @@ defmodule Aecore.Peers.Worker do
     removed_peers_count = Enum.count(peers) - Enum.count(filtered_peers)
 
     if removed_peers_count > 0 do
-      Logger.info(fn -> "#{removed_peers_count} peers were removed after the check" end)
+      Logger.info(fn ->
+        "#{removed_peers_count} peers were removed after the check"
+      end)
     end
 
     {:reply, :ok, %{state | peers: updated_peers}}
