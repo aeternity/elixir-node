@@ -55,12 +55,12 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
+    incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
 
-    assert {:error, "Incorrect height"} ==
+    assert {:error, "Header hash doesnt meet the target"} ==
              catch_throw(
                BlockValidation.calculate_and_validate_block!(
-                 wrong_height_block,
+                 incorrect_pow_block,
                  prev_block,
                  get_chain_state(),
                  blocks_for_difficulty_calculation
@@ -86,7 +86,15 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
+    wrong_time_block = %Block{
+      new_block
+      | header: %Header{
+          new_block.header
+          | time:
+              System.system_time(:milliseconds) + System.system_time(:milliseconds) +
+                30 * 60 * 1000
+        }
+    }
 
     assert {:error, "Invalid header time"} ==
              catch_throw(

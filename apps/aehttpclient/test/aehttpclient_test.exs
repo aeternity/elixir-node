@@ -11,7 +11,6 @@ defmodule AehttpclientTest do
   alias Aecore.Structures.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Bits
 
   @tag :http_client
   test "Client functions" do

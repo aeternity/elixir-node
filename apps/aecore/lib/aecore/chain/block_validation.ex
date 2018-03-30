@@ -11,12 +11,10 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
 
-  @time_validation_blocks_count 10
-  @time_validation_future_limit_ms 3_600_000
+  @time_validation_future_limit_ms 30 * 60 * 1000
 
   @spec calculate_and_validate_block!(
           Block.t(),
@@ -30,9 +28,8 @@ defmodule Aecore.Chain.BlockValidation do
         old_chain_state,
         blocks_for_target_calculation
       ) do
-    is_genesis = new_block == Block.genesis_block() && previous_block == nil
-
     single_validate_block!(new_block)
+    is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
@@ -182,19 +179,6 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: new_block_header}) do
-    case new_block_header.time <=
-           System.system_time(:milliseconds) + @time_validation_future_limit_ms do
-      true ->
-        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @time_validation_blocks_count)
-
-        last_blocks_times = for block <- last_blocks, do: block.header.time
-
-        avg = Enum.sum(last_blocks_times) / Enum.count(last_blocks_times)
-
-        new_block_header.time >= avg
-
-      false ->
-        false
-    end
+    new_block_header.time < System.system_time(:milliseconds) + @time_validation_future_limit_ms
   end
 end
