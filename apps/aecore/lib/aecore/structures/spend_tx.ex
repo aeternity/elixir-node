@@ -86,7 +86,7 @@ defmodule Aecore.Structures.SpendTx do
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
     sender_account_state = Map.get(accounts, sender, Account.empty())
 
-    preprocess_check!(tx, sender_account_state, fee, nonce, %{})
+    preprocess_check(tx, sender_account_state, fee, %{})
 
     new_sender_account_state =
       sender_account_state
@@ -109,16 +109,12 @@ defmodule Aecore.Structures.SpendTx do
           SpendTx.t(),
           ChainState.account(),
           non_neg_integer(),
-          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, account_state, fee, nonce, %{}) do
+  def preprocess_check(tx, account_state, fee, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
         throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
 
       true ->
         :ok
