@@ -101,7 +101,7 @@ defmodule Aecore.Chain.ChainState do
   defp validate_tx(tx, chainstate, block_height) do
     {true, apply_transaction_on_state!(tx, chainstate, block_height)}
   catch
-    {:error, reason} ->
+    {:error, _reason} ->
       {false, chainstate}
   end
 
