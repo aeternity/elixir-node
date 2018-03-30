@@ -14,22 +14,50 @@ defmodule Aeutil.PatriciaMerkleTree do
   @spec root_hash(Trie.t()) :: binary()
   def root_hash(%{root_hash: root_hash}), do: root_hash
 
-  @spec lookup(Trie.key(), Trie.t()) :: {:ok, Trie.value()} | :none
-  def lookup(key, trie) do
-    Trie.get(trie, key)
+  @doc """
+  Creating new trie
+  """
+  @spec new(trie_name :: atom()) :: Trie.t()
+  def new(trie_name) do
+    Trie.new(ExternalDB.init(get_db_handlers(trie_name)))
   end
 
-  @spec lookup_with_proof(Trie.key(), Trie.t()) ::
-  :none | {:ok, Trie.value(), Trie.t()}
-  def lookup_with_proof(key, trie) do
-    put = Persistence.db_handler_put(:proof)
-    get = Persistence.db_handler_get(:proof)
+  @doc """
+  Create new trie with specific hash root
+  """
+  @spec new(trie_name :: atom(), binary()) :: Trie.t()
+  def new(trie_name, root_hash) do
+    Trie.new(ExternalDB.init(get_db_handlers(trie_name)), root_hash)
+  end
 
-    proof = Trie.new(ExternalDB.init(%{put: put, get: get}))
-    {value, proof} = Proof.construct_proof({trie, key, proof})
+  defp get_db_handlers(trie_name) do
+    %{put: Persistence.db_handler_put(trie_name), get: Persistence.db_handler_get(trie_name)}
+  end
+
+  @doc """
+  Retrieve value from trie.
+  """
+  @spec lookup(Trie.key(), Trie.t()) :: {:ok, Trie.value()} | :none
+  def lookup(key, trie) do
+    case Trie.get(trie, key) do
+      nil -> :none
+      val -> val
+    end
+  end
+
+  @doc """
+  Retrieve value from trie and construct proof.
+  """
+  @spec lookup_with_proof(Trie.key(), Trie.t()) :: :none | {:ok, Trie.value(), Trie.t()}
+  def lookup_with_proof(key, trie) do
+    {value, proof} = Proof.construct_proof({trie, key, new(:proof)})
     {:ok, value, proof}
   end
 
+  @doc """
+  Check if the value already exists for this key before add it.
+  If so return error message.
+  """
   @spec insert(Trie.key(), Trie.value(), Trie.t()) :: Trie.t() | {:error, term()}
   def insert(key, value, trie) do
     case lookup(key, trie) do
@@ -46,9 +74,12 @@ defmodule Aeutil.PatriciaMerkleTree do
     Trie.update(trie, key, value)
   end
 
+  @doc """
+  Verify if value is present in the proof trie for the provided key.
+  The key represents the path in the proof trie.
+  """
   @spec verify_proof(Trie.key(), Trie.value(), Trie.t(), Trie.t()) :: boolean()
   def verify_proof(key, value, trie, proof) do
     Proof.verify_proof(key, value, trie.root_hash, proof.db)
   end
-
 end

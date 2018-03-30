@@ -154,10 +154,8 @@ defmodule Aecore.Persistence.Worker do
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
        blocks_info_family: blocks_info_family,
-       patricia_db_refs: %{proof: patricia_proof_trie_family,
-                           trie: patricia_trie_family}
-     }
-    }
+       patricia_db_refs: %{proof: patricia_proof_trie_family, trie: patricia_trie_family}
+     }}
   end
 
   def handle_call(
@@ -341,16 +339,18 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call({:db_handler_put, db_name}, _from, state) when is_atom(db_name) do
-    handler = fn(key, val) ->
+    handler = fn key, val ->
       Rox.put(get_db_ref(db_name), key, val)
     end
+
     {:reply, handler, state}
   end
 
   def handle_call({:db_handler_get, db_name}, _from, state) when is_atom(db_name) do
-    handler = fn(key) ->
+    handler = fn key ->
       Rox.get(get_db_ref(db_name), key)
     end
+
     {:reply, handler, state}
   end
 
