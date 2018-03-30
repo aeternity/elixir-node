@@ -91,7 +91,7 @@ defmodule Aecore.Structures.SpendTx do
 
     new_sender_account_state =
       sender_account_state
-      |> deduct_fee(fee)
+      |> DataTx.deduct_fee(fee)
       |> Account.transaction_out(tx.amount * -1, nonce)
 
     new_accounts = Map.put(accounts, sender, new_sender_account_state)
