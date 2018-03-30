@@ -9,6 +9,7 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
+  alias Aecore.Structures.DataTx
 
   require Logger
 
@@ -90,7 +91,7 @@ defmodule Aecore.Structures.SpendTx do
       :ok ->
         new_sender_account_state =
           sender_account_state
-          |> deduct_fee(fee)
+          |> DataTx.deduct_fee(fee)
           |> Account.transaction_out(tx.amount * -1, nonce)
 
         new_accounts = Map.put(accounts, sender, new_sender_account_state)
@@ -122,12 +123,6 @@ defmodule Aecore.Structures.SpendTx do
       true ->
         :ok
     end
-  end
-
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]

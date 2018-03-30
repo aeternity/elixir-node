@@ -99,9 +99,16 @@ defmodule Aecore.Structures.DataTx do
     Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
+  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
   def nonce_valid?(accounts_state, tx) do
     account_state = Map.get(accounts_state, tx.sender, Account.empty())
     tx.nonce > account_state.nonce
+  end
+
+  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(account_state, fee) do
+    new_balance = account_state.balance - fee
+    Map.put(account_state, :balance, new_balance)
   end
 
   @spec serialize(DataTx.t()) :: map()
