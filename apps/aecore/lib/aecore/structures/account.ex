@@ -72,8 +72,12 @@ defmodule Aecore.Structures.Account do
   Adds balance to a given address (public key)
   """
   @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
-  def transaction_in(account_state, value) do
+  def transaction_in!(account_state, value) do
     new_balance = account_state.balance + value
+    if new_balance < 0 do
+      throw({:error, "Negative balance"})
+    end
+
     %Account{account_state | balance: new_balance}
   end
 
