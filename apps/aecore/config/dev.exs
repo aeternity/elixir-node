@@ -113,5 +113,3 @@ config :aecore, :tx_data,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100,
   max_txs_per_block: 100
-
-config :aecore, :block, max_block_size_bytes: 500_000

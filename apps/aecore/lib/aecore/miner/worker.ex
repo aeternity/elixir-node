@@ -251,28 +251,6 @@ defmodule Aecore.Miner.Worker do
         | valid_txs_by_fee
       ]
 
-      new_block = create_block(top_block, chain_state, difficulty, [])
-      new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
-
-      valid_txs_by_block_size =
-        filter_transactions_by_block_size(
-          valid_txs,
-          new_block_size_bytes,
-          Application.get_env(:aecore, :block)[:max_block_size_bytes]
-        )
-
-      total_fees = calculate_total_fees(valid_txs_by_block_size)
-
-      valid_txs =
-        List.replace_at(
-          valid_txs_by_block_size,
-          0,
-          create_coinbase_tx(
-            pubkey,
-            total_fees
-          )
-        )
-
       create_block(top_block, chain_state, difficulty, valid_txs)
     catch
       message ->
@@ -319,75 +297,6 @@ defmodule Aecore.Miner.Worker do
       tx_size_bytes = Pool.get_tx_size_bytes(tx)
       tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
     end)
-  end
-
-  defp filter_transactions_by_block_size(txs, current_block_size_bytes, max_block_size_bytes) do
-    first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
-
-    filter_transactions_by_block_size(
-      txs,
-      0,
-      Enum.count(txs),
-      [],
-      current_block_size_bytes,
-      first_tx_size_bytes,
-      max_block_size_bytes
-    )
-  end
-
-  # Filters transactions by current block size in bytes by
-  # given max block size in bytes, recursively.
-  #
-  # `txs` - array of transactions to be filtered
-  # `current_tx_index` - index in the array of txs of the current transaction we are checking
-  # `txs_count` - size of txs array
-  # `filtered_txs` - selected transactions for the new block; stored in reverse order
-  # `current_block_size_bytes` - stores the initial block size + filtered_txs (in bytes)
-  # `next_tx_size_bytes` - size of the next transaction to be included
-  # `max_block_size_bytes`
-  #
-  # Returns `filtered_txs` upon reaching the end of the txs array
-  # or upon reaching a transaction that would make the new block's size
-  # bigger than the max block size. Calls itself otherwise.
-  defp filter_transactions_by_block_size(
-         txs,
-         current_tx_index,
-         txs_count,
-         filtered_txs,
-         current_block_size_bytes,
-         next_tx_size_bytes,
-         max_block_size_bytes
-       ) do
-    current_tx = Enum.at(txs, current_tx_index)
-
-    # If the function is called, then we know the current transaction won't
-    # make the new block's size bigger than max block size, so we add it
-    # to filtered_txs and proceed to check the size of the block with the
-    # next transaction, if there is one.
-    new_filtered_txs = [current_tx | filtered_txs]
-    next_tx_index = current_tx_index + 1
-
-    if next_tx_index == txs_count do
-      Enum.reverse(new_filtered_txs)
-    else
-      next_tx = Enum.at(txs, next_tx_index)
-      new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
-      new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
-
-      if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do
-        Enum.reverse(new_filtered_txs)
-      else
-        filter_transactions_by_block_size(
-          txs,
-          next_tx_index,
-          txs_count,
-          new_filtered_txs,
-          new_current_block_size_bytes,
-          new_next_tx_size_bytes,
-          max_block_size_bytes
-        )
-      end
-    end
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
