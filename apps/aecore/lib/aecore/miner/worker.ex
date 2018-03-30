@@ -231,7 +231,7 @@ defmodule Aecore.Miner.Worker do
 
       difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
 
-      txs_list = Map.values(Pool.get_pool())
+      txs_list = get_pool_values()
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
@@ -299,6 +299,17 @@ defmodule Aecore.Miner.Worker do
   end
 
   ## Internal
+
+  defp get_pool_values() do
+    pool_values = Map.values(Pool.get_pool())
+    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block] - 1
+
+    if Enum.empty?(pool_values) or length(pool_values) < max_txs_for_block do
+      pool_values
+    else
+      Enum.slice(pool_values, max_txs_for_block)
+    end
+  end
 
   defp filter_transactions_by_fee(txs) do
     miners_fee_bytes_per_token =
