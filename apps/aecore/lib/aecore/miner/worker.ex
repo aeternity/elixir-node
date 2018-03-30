@@ -285,12 +285,12 @@ defmodule Aecore.Miner.Worker do
 
   defp get_pool_values() do
     pool_values = Map.values(Pool.get_pool())
-    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block] - 1
+    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
-    if Enum.empty?(pool_values) or length(pool_values) < max_txs_for_block do
+    if length(pool_values) <= max_txs_for_block do
       pool_values
     else
-      Enum.slice(pool_values, max_txs_for_block)
+      Enum.slice(pool_values, 0..(max_txs_for_block - 1))
     end
   end
 
