@@ -41,7 +41,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   def lookup(key, trie) do
     case Trie.get(trie, key) do
       nil -> :none
-      val -> val
+      val -> {:ok, val}
     end
   end
 

@@ -1,23 +1,44 @@
 defmodule AeutilPatriciaMerkleTreeTest do
   use ExUnit.Case
 
-  alias MerklePatriciaTree.Trie
-  alias MerklePatriciaTree.DB.LevelDB
-  alias MerklePatriciaTree.Proof
-  alias MerklePatriciaTree.DB.ExternalDB
-
   alias Aeutil.PatriciaMerkleTree
-  alias Aecore.Persistence.Worker, as: Persistence
 
-  @tag :proof_test_success
-  @tag timeout: 30_000_000
+  @tag :patricia_merkle_tree
+  @tag timeout: 30_000
   test "Proof Success Tests" do
     {trie, list} = create_random_trie_test()
-    proof = init_proof_trie()
 
     Enum.each(list, fn {key, value} ->
-      {^value, proof} = Proof.construct_proof({trie, key, proof})
-      assert true = Proof.verify_proof(key, value, trie.root_hash, proof.db)
+      {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(key, trie)
+      assert true = PatriciaMerkleTree.verify_proof(key, value, trie, proof)
+    end)
+  end
+
+  @tag :patricia_merkle_tree
+  @tag timeout: 30_000
+  test "Lookup Tests" do
+    trie = PatriciaMerkleTree.new(:trie)
+    trie = PatriciaMerkleTree.enter("key", "val", trie)
+
+    assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie)
+    assert :none = PatriciaMerkleTree.lookup("key2", trie)
+
+    ## Creating new trie from previous root_hash.
+
+    prev_root_hash = trie.root_hash
+    trie2 = PatriciaMerkleTree.new(:proof, prev_root_hash)
+
+    assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie2)
+  end
+
+  @tag :patricia_merkle_tree
+  @tag timeout: 30_000
+  test "Enter Tests" do
+    trie = PatriciaMerkleTree.new(:trie)
+    {trie, list} = create_random_trie_test()
+
+    Enum.each(list, fn {key, value} ->
+      assert %{db: _, root_hash: _} = PatriciaMerkleTree.enter(key, value, trie)
     end)
   end
 
@@ -29,7 +50,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
     trie =
       Enum.reduce(list, db, fn {key, val}, acc_trie ->
-        Trie.update(acc_trie, key, val)
+        PatriciaMerkleTree.enter(key, val, acc_trie)
       end)
 
     {trie, list}
