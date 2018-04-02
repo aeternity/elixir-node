@@ -11,15 +11,14 @@ defmodule AehttpclientTest do
   alias Aecore.Structures.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Bits
 
   @tag :http_client
   test "Client functions" do
     account = Wallet.get_public_key()
     hex_acc = Account.base58c_encode(account)
     base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
-
-    AehttpclientTest.add_txs_to_pool()
+    Pool.get_and_empty_pool()
+    add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
@@ -30,13 +29,12 @@ defmodule AehttpclientTest do
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
     assert Enum.count(
-             {"localhost:4000", hex_acc}
-             |> Client.get_account_txs()
+             Client.get_account_txs({"localhost:4000", hex_acc})
              |> elem(1)
            ) == 2
   end
 
-  def add_txs_to_pool do
+  def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain()
     receiver = Wallet.get_public_key()
     sender = receiver
