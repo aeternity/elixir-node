@@ -43,9 +43,17 @@ defmodule Aecore.Structures.DataTx do
   defstruct [:type, :payload, :sender, :fee, :nonce]
   use ExConstructor
 
-  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, sender, fee, nonce) do
+  def init(type, payload, sender, fee, nonce) when sender == nil do
     %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
+  end
+
+  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
+  def init(type, payload, sender, fee, nonce) when byte_size(sender) == 33 do
+    %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
+  end
+
+  def init(_type, _payload, sender, _fee, _nonce) do
+    throw({:error, "Wrong sender key size: #{sender}"})
   end
 
   @doc """
@@ -84,17 +92,17 @@ defmodule Aecore.Structures.DataTx do
       throw({:error, "Nonce is too small"})
     end
 
-    {new_accounts_state, new_tx_type_state} =
-      tx.payload
-      |> tx.type.init()
-      |> tx.type.process_chainstate!(
-        tx.sender,
-        tx.fee,
-        tx.nonce,
-        block_height,
-        accounts_state,
-        tx_type_state
-      )
+      {new_accounts_state, new_tx_type_state} = 
+        tx.payload
+        |> tx.type.init()
+        |> tx.type.process_chainstate!(
+          tx.sender,
+          tx.fee,
+          tx.nonce,
+          block_height,
+          accounts_state,
+          tx_type_state
+        )
 
     new_chainstate =
       if tx.type == SpendTx do

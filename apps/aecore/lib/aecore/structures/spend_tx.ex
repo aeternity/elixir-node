@@ -48,8 +48,12 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount}) do
+  def init(%{receiver: receiver, amount: amount}) when byte_size(receiver) == 33 do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
+  end
+
+  def init(%{receiver: receiver, amount: _amount}) do
+    throw({:error, "Wrong receiver key size: #{receiver}"})
   end
 
   @doc """
