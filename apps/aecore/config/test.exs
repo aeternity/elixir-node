@@ -102,6 +102,7 @@ config :aecore, :peers,
 config :aecore, :miner, resumed_by_default: false
 
 config :aecore, :tx_data,
+  minimum_fee: 1,
   miner_fee_bytes_per_token: 100,
   pool_fee_bytes_per_token: 100,
   blocks_ttl_per_token: 1000,

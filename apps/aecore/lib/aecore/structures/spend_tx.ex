@@ -147,7 +147,8 @@ defmodule Aecore.Structures.SpendTx do
             Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
         end
 
-      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
+      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token) &&
+        tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
     end
   end
 

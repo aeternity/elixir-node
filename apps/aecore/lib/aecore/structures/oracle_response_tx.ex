@@ -20,6 +20,8 @@ defmodule Aecore.Structures.OracleResponseTx do
           response: map()
         }
 
+  @minimum_fee Application.get_env(:aecore, :tx_data)[:minimum_fee]
+
   defstruct [:query_id, :response]
   use ExConstructor
 
@@ -148,7 +150,7 @@ defmodule Aecore.Structures.OracleResponseTx do
     referenced_query_response_ttl =
       Chain.oracle_interaction_objects()[tx.query_id].query.response_ttl.ttl
 
-    fee >= calculate_minimum_fee(referenced_query_response_ttl)
+    fee >= calculate_minimum_fee(referenced_query_response_ttl) && fee >= @minimum_fee
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
