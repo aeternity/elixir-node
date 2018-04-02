@@ -103,23 +103,15 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming_state, sender, Naming.empty())
 
-        updated_naming_claims = [
-          Naming.create_claim(block_height, tx.name, tx.name_salt) | account_naming.claims
-        ]
-
-        updated_naming_pre_claims =
-          Enum.filter(account_naming.pre_claims, fn pre_claim ->
-            pre_claim.commitment != Naming.create_commitment_hash(tx.name, tx.name_salt)
-          end)
+        pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
+        claim_hash = NameUtil.normalized_namehash!(tx.name)
+        claim = Naming.create_claim(claim_hash, tx.name, sender, block_height)
 
         updated_naming_chainstate =
-          Map.put(naming_state, sender, %{
-            account_naming
-            | claims: updated_naming_claims,
-              pre_claims: updated_naming_pre_claims
-          })
+          naming_state
+          |> Map.delete(pre_claim_commitment)
+          |> Map.put(claim_hash, claim)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -142,25 +134,11 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
   def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
-    account_naming = Map.get(naming_state, sender, Naming.empty())
+    pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    pre_claim = Map.get(naming_state, pre_claim_commitment)
 
-    pre_claim =
-      Enum.find(account_naming.pre_claims, fn pre_claim ->
-        pre_claim.commitment == Naming.create_commitment_hash(tx.name, tx.name_salt)
-      end)
-
-    claims_for_name =
-      naming_state
-      |> Map.values()
-      |> Enum.flat_map(fn name -> name.claims end)
-      |> Enum.find(fn claim -> claim.name == tx.name end)
-
-    naming_revoked = Map.get(naming_state, :revoked, [])
-
-    revoked =
-      Enum.find(naming_revoked, fn {revoked, _height} ->
-        revoked == NameUtil.normalized_namehash!(tx.name)
-      end)
+    claim_hash = NameUtil.normalized_namehash!(tx.name)
+    claim = Map.get(naming_state, claim_hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -169,14 +147,14 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
+      pre_claim.owner != sender ->
+        {:error, "Sender is not pre-claim owner"}
+
       pre_claim == nil ->
         {:error, "Name has not been pre-claimed"}
 
-      claims_for_name != nil ->
+      claim != nil ->
         {:error, "Name has aleady been claimed"}
-
-      revoked != nil ->
-        {:error, "Name has been revoked"}
 
       true ->
         :ok

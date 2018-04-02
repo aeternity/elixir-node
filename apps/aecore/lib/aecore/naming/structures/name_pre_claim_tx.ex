@@ -95,7 +95,12 @@ defmodule Aecore.Naming.Structures.NamePreClaimTx do
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        updated_naming_chainstate = Map.put(naming_state, tx.commitment, tx.commitment)
+        commitment_expires = block_height + Naming.get_claim_expire_by_relative_limit()
+
+        commitment =
+          Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
+
+        updated_naming_chainstate = Map.put(naming_state, tx.commitment, commitment)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 

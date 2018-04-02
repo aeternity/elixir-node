@@ -14,12 +14,23 @@ defmodule Aecore.Naming.Naming do
 
   @name_salt_byte_size 32
 
+  @type name_status() :: :claimed | :revoked
+
   @type claim :: %{
+          hash: binary(),
           name: String.t(),
           owner: Wallet.pubkey(),
-          expires_by: non_neg_integer(),
-          client_ttl: non_neg_integer(),
-          pointers: String.t()
+          expires: non_neg_integer(),
+          status: name_status(),
+          ttl: non_neg_integer(),
+          pointers: list()
+        }
+
+  @type commitment :: %{
+          hash: binary(),
+          owner: Wallet.pubkey(),
+          created: non_neg_integer(),
+          expires: non_neg_integer()
         }
 
   @type chain_state_name :: :naming
@@ -28,32 +39,51 @@ defmodule Aecore.Naming.Naming do
 
   @type hash :: binary()
 
-  @type t :: claim() | NamePreClaimTx.commitment_hash()
+  @type t :: claim() | commitment()
+
+  @spec create_commitment(
+          binary(),
+          Wallet.pubkey(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: commitment()
+  def create_commitment(hash, owner, created, expires),
+    do: %{
+      :hash => hash,
+      :owner => owner,
+      :created => created,
+      :expires => expires
+    }
 
   @spec create_claim(
+          binary(),
           String.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          String.t()
+          list()
         ) :: claim()
-  def create_claim(name, owner, expire_by, client_ttl, pointers),
+  def create_claim(hash, name, owner, expire_by, client_ttl, pointers),
     do: %{
+      :hash => hash,
       :name => name,
       :owner => owner,
-      :expires_by => expire_by,
-      :client_ttl => client_ttl,
+      :expires => expire_by,
+      :status => :claimed,
+      :ttl => client_ttl,
       :pointers => pointers
     }
 
-  @spec create_claim(String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
-  def create_claim(name, owner, height),
+  @spec create_claim(binary(), String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
+  def create_claim(hash, name, owner, height),
     do: %{
+      :hash => hash,
       :name => name,
       :owner => owner,
-      :expires_by => height + @claim_expire_by_relative_limit,
-      :client_ttl => @client_ttl_limit,
-      :pointers => ""
+      :expires => height + @claim_expire_by_relative_limit,
+      :status => :claimed,
+      :ttl => @client_ttl_limit,
+      :pointers => []
     }
 
   @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
@@ -72,7 +102,7 @@ defmodule Aecore.Naming.Naming do
 
   @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
           ChainState.chainstate()
-  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
+  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, _block_height) do
     # TODO remove pre claims after ttl
     # TODO remove expired claims
     # TODO remove revoked after 2016 blocks

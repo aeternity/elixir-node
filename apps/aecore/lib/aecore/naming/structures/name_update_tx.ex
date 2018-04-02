@@ -184,6 +184,8 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
       tx.expire_by <= block_height ->
         {:error, "Name expiration is now or in the past"}
 
+      # TODO: check not revoked
+
       true ->
         :ok
     end
