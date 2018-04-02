@@ -17,8 +17,13 @@ defmodule Aevm do
     else
       op_code = get_op_code(state)
       state1 = exec(op_code, state)
-      state2 = State.inc_cp(state1)
-      loop(state2)
+
+      curr_gas = State.gas(state1)
+      {_name, _pushed, _popped, gas_price} = OpCodesUtil.opcode(op_code)
+
+      state2 = State.set_gas(curr_gas - gas_price, state1)
+      state3 = State.inc_cp(state2)
+      loop(state3)
     end
   end
 
@@ -364,7 +369,7 @@ defmodule Aevm do
 
     code = State.code(state)
     value = copy_bytes(op2, op3, code)
-    #TODO: Memory.write_area
+    # TODO: Memory.write_area
   end
 
   def exec(OpCodes._GASPRICE(), state) do
@@ -380,10 +385,10 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATASIZE(), state) do
-    #Not sure what "output data from the previous call from the current env" means
-    return_data = State.return_data(state)
-    value = byte_size(return_data)
-    push(value, state)
+    # Not sure what "output data from the previous call from the current env" means
+    # return_data = State.return_data(state)
+    # value = byte_size(return_data)
+    # push(value, state)
   end
 
   def exec(OpCodes._RETURNDATACOPY(), state) do

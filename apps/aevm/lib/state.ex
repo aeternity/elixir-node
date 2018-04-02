@@ -20,11 +20,14 @@ defmodule State do
       :address => Map.get(exec, :address),
       :caller => Map.get(exec, :caller),
       :data => Map.get(exec, :data),
+      :gas => Map.get(exec, :gas),
+      :gas_price => Map.get(exec, :gas_price),
       :origin => Map.get(exec, :origin),
       :value => Map.get(exec, :value),
 
       :coinbase => Map.get(env, :coinbase),
       :difficulty => Map.get(env, :difficulty),
+      :gas_limit => Map.get(env, :gas_limit),
       :number => Map.get(env, :number),
       :timestamp => Map.get(env, :timestamp)
     }
@@ -46,19 +49,12 @@ defmodule State do
     Map.put(state, :cp, cp)
   end
 
-  def inc_cp(state) do
-    cp = Map.get(state, :cp)
-    Map.put(state, :cp, cp + 1)
-  end
-
-  def add_jumpdest(jumpdest, state) do
-    jumpdests = jumpdests(state)
-    jumpdests1 = [jumpdest | jumpdests]
-    Map.put(state, :jumpdests, jumpdests1)
-  end
-
   def set_return(return, state) do
     Map.put(state, :return, return)
+  end
+
+  def set_gas(gas, state) do
+    Map.put(state, :gas, gas)
   end
 
   def stack(state) do
@@ -93,12 +89,36 @@ defmodule State do
     Map.get(state, :caller)
   end
 
+  def data(state) do
+    Map.get(state, :data)
+  end
+
+  def gas(state) do
+    Map.get(state, :gas)
+  end
+
+  def gas_price(state) do
+    Map.get(state, :gas_prices)
+  end
+
+  def origin(state) do
+    Map.get(state, :origin)
+  end
+
+  def value(state) do
+    Map.get(state, :value)
+  end
+
   def coinbase(state) do
     Map.get(state, :coinbase)
   end
 
   def difficulty(state) do
     Map.get(state, :difficulty)
+  end
+
+  def gas_limit(state) do
+    Map.get(state, :gas_limit)
   end
 
   def number(state) do
@@ -109,25 +129,20 @@ defmodule State do
     Map.get(state, :timestamp)
   end
 
-  def origin(state) do
-    Map.get(state, :origin)
-  end
-
-  def caller(state) do
-    Map.get(state, :caller)
-  end
-
-  def value(state) do
-    Map.get(state, :value)
-  end
-
-  def data(state) do
-    Map.get(state, :data)
-  end
-
   # def return_data(state) do
   #   Map.get(state, :return_data)
   # end
+
+  def inc_cp(state) do
+    cp = Map.get(state, :cp)
+    Map.put(state, :cp, cp + 1)
+  end
+
+  def add_jumpdest(jumpdest, state) do
+    jumpdests = jumpdests(state)
+    jumpdests1 = [jumpdest | jumpdests]
+    Map.put(state, :jumpdests, jumpdests1)
+  end
 
   defp bytecode_to_bin(bytecode) do
     bytecode
