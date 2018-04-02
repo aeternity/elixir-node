@@ -66,7 +66,8 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert false == SignedTx.is_valid?(signed_tx)
+    assert {:error, "The amount cannot be a negative number"} ==
+             SpendTx.is_valid?(signed_tx.data.payload)
   end
 
   test "coinbase tx invalid", tx do

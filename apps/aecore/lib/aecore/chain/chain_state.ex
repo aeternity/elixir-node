@@ -6,6 +6,7 @@ defmodule Aecore.Chain.ChainState do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
@@ -23,32 +24,46 @@ defmodule Aecore.Chain.ChainState do
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate, block_height)
+      case apply_transaction_on_state(tx, chainstate, block_height) do
+        {:ok, updated_chainstate} ->
+          updated_chainstate
+
+        {:error, _reason} ->
+          chainstate
+      end
     end)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
-    cond do
-      SignedTx.is_coinbase?(tx) ->
-        receiver_state = Map.get(chainstate.accounts, data.payload.receiver, Account.empty())
-        new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+  @spec apply_transaction_on_state(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  def apply_transaction_on_state(
+        %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil} = tx,
+        %{accounts: accounts} = chainstate,
+        block_height
+      ) do
+    receiver_state = Map.get(accounts, receiver, Account.empty())
+    new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
 
-        new_accounts_state =
-          Map.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+    new_accounts_state = Map.put(accounts, receiver, new_receiver_state)
 
-        Map.put(chainstate, :accounts, new_accounts_state)
+    {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
+  end
 
-      data.sender != nil ->
-        if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
-        else
-          throw({:error, "Invalid transaction"})
-        end
-
-      true ->
-        throw({:error, "Invalid transaction"})
+  def apply_transaction_on_state(%{data: %{sender: sender}} = tx, chainstate, block_height)
+      when not is_nil(sender) do
+    with :ok <- SignedTx.is_valid?(tx),
+         {:ok, spend_tx} <- DataTx.is_valid?(tx.data),
+         :ok <- SpendTx.is_valid?(spend_tx),
+         :ok <- DataTx.sender_exists?(sender, chainstate),
+         :ok <- DataTx.preprocess_check(tx.data, chainstate),
+         {:ok, updated_chainstate} <- DataTx.process_chainstate!(tx.data, chainstate) do
+      {:ok, updated_chainstate}
+    else
+      err -> err
     end
+  end
+
+  def apply_transaction_on_state(tx, chainstate, block_height) do
+    {:error, "Invalid transaction"}
   end
 
   @doc """
@@ -75,27 +90,16 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def filter_invalid_txs(txs_list, chainstate, block_height) do
-    {valid_txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+    List.foldl(txs_list, [], fn tx, valid_txs_list ->
+      case apply_transaction_on_state(tx, chainstate, block_height) do
+        {:ok, updated_chainstate} ->
+          valid_txs_list ++ [tx]
 
-        if valid_chainstate do
-          {valid_txs_list ++ [tx], updated_chainstate}
-        else
-          {valid_txs_list, chainstate_acc}
-        end
-      end)
-
-    valid_txs_list
-  end
-
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate, block_height) do
-    try do
-      {true, apply_transaction_on_state!(tx, chainstate, block_height)}
-    catch
-      {:error, _} -> {false, chainstate}
-    end
+        {:error, reason} ->
+          Logger.error(reason)
+          valid_txs_list
+      end
+    end)
   end
 
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()

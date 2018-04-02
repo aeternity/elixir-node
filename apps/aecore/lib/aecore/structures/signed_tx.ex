@@ -35,10 +35,9 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
-      DataTx.is_valid?(data)
+      :ok
     else
-      Logger.error("Can't verify the signature with the following public key: #{data.sender}")
-      false
+      {:error, "Can't verify the signature with the following public key: #{data.sender}"}
     end
   end
 

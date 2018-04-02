@@ -57,10 +57,9 @@ defmodule Aecore.Structures.SpendTx do
   @spec is_valid?(SpendTx.t()) :: boolean()
   def is_valid?(%SpendTx{amount: amount}) do
     if amount >= 0 do
-      true
+      :ok
     else
-      Logger.error("The amount cannot be a negative number")
-      false
+      {:error, "The amount cannot be a negative number"}
     end
   end
 
@@ -84,24 +83,20 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
-    sender_account_state = Map.get(accounts, sender, Account.empty())
+    sender_account_state = Map.get(accounts, sender)
 
-    case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
-      :ok ->
-        new_sender_account_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out(tx.amount * -1, nonce)
+    new_sender_account_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out(tx.amount * -1, nonce)
 
-        new_accounts = Map.put(accounts, sender, new_sender_account_state)
+    new_accounts = Map.put(accounts, sender, new_sender_account_state)
 
-        receiver = Map.get(accounts, tx.receiver, Account.empty())
-        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
-        {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
+    receiver = Map.get(accounts, tx.receiver, Account.empty())
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
+
+    {Map.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
   end
 
   @doc """

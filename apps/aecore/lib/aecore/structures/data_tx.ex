@@ -6,6 +6,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.Account
   alias Aeutil.Serialization
   alias Aeutil.Parser
 
@@ -54,12 +55,10 @@ defmodule Aecore.Structures.DataTx do
   @spec is_valid?(DataTx.t()) :: boolean()
   def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
     if fee > 0 do
-      payload
-      |> type.init()
-      |> type.is_valid?()
+      spend_tx = type.init(payload)
+      {:ok, spend_tx}
     else
-      Logger.error("Fee not enough")
-      false
+      {:error, "Fee not enough"}
     end
   end
 
@@ -72,25 +71,52 @@ defmodule Aecore.Structures.DataTx do
     accounts_state = chainstate.accounts
     tx_type_state = Map.get(chainstate, tx.type, %{})
 
-    {new_accounts_state, new_tx_type_state} =
-      tx.payload
-      |> tx.type.init()
-      |> tx.type.process_chainstate!(
-        tx.sender,
-        tx.fee,
-        tx.nonce,
-        accounts_state,
-        tx_type_state
-      )
+    case tx.payload
+         |> tx.type.init()
+         |> tx.type.process_chainstate!(
+           tx.sender,
+           tx.fee,
+           tx.nonce,
+           accounts_state,
+           tx_type_state
+         ) do
+      {:error, reason} ->
+        {:error, reason}
 
-    new_chainstate =
-      if Map.has_key?(chainstate, tx.type) do
-        Map.put(chainstate, tx.type, new_tx_type_state)
-      else
+      {new_accounts_state, new_tx_type_state} ->
+        new_chainstate =
+          if Map.has_key?(chainstate, tx.type) do
+            Map.put(chainstate, tx.type, new_tx_type_state)
+          else
+            chainstate
+          end
+
+        {:ok, Map.put(new_chainstate, :accounts, new_accounts_state)}
+    end
+  end
+
+  def sender_exists?(sender, chainstate) do
+    if Map.has_key?(chainstate.accounts, sender) do
+      :ok
+    else
+      {:error, "The senders key doesn't exist"}
+    end
+  end
+
+  def preprocess_check(
+        %DataTx{
+          type: type,
+          payload: payload,
+          sender: sender,
+          fee: fee,
+          nonce: nonce
+        } = tx,
         chainstate
-      end
+      ) do
+    sender_account_state = Map.get(chainstate.accounts, sender)
+    tx_type_state = Map.get(chainstate, type, %{})
 
-    Map.put(new_chainstate, :accounts, new_accounts_state)
+    type.preprocess_check(payload, sender_account_state, fee, nonce, tx_type_state)
   end
 
   @spec serialize(DataTx.t()) :: map()
