@@ -82,7 +82,7 @@ defmodule Aecore.Structures.DataTx do
     accounts_state = chainstate.accounts
 
     tx_type_state =
-      if(tx.type == SpendTx) do
+      if tx.type == SpendTx do
         %{}
       else
         Map.get(chainstate, tx.type.get_chain_state_name(), %{})
@@ -92,17 +92,17 @@ defmodule Aecore.Structures.DataTx do
       throw({:error, "Nonce is too small"})
     end
 
-      {new_accounts_state, new_tx_type_state} = 
-        tx.payload
-        |> tx.type.init()
-        |> tx.type.process_chainstate!(
-          tx.sender,
-          tx.fee,
-          tx.nonce,
-          block_height,
-          accounts_state,
-          tx_type_state
-        )
+    {new_accounts_state, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.sender,
+        tx.fee,
+        tx.nonce,
+        block_height,
+        accounts_state,
+        tx_type_state
+      )
 
     new_chainstate =
       if tx.type == SpendTx do
