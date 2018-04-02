@@ -18,6 +18,17 @@ defmodule Aeutil.Serialization do
 
   @type hash_types :: :chainstate | :header | :txs
 
+  @type raw_data :: %{
+          block_hash: binary(),
+          block_height: non_neg_integer(),
+          fee: non_neg_integer(),
+          nonce: non_neg_integer(),
+          payload: SpendTx.t(),
+          sender: binary() | nil,
+          signature: binary() | nil,
+          txs_hash: binary(),
+          type: atom()
+        }
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
     serialized_block = serialize_value(block)
@@ -249,6 +260,7 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value, _), do: value
 
+  @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
   def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
     serialize_txs_info_to_json(txs_info, [])
   end
