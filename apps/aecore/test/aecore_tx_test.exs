@@ -25,6 +25,7 @@ defmodule AecoreTxTest do
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
   end

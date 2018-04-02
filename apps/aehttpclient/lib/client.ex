@@ -23,7 +23,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
+  @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
   def get_block({uri, hash}) do
     hash = Header.base58c_encode(hash)
 
@@ -158,26 +158,22 @@ defmodule Aehttpclient.Client do
         {:error, "HTTPPoison Error"}
 
       unexpected ->
-        Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
+        Logger.error(fn ->
+          "unexpected client result " <> Kernel.inspect(unexpected)
+        end)
+
         {:error, "Unexpected error"}
     end
   end
 
   defp send_to_peer(data, uri) do
-    HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
+    HTTPoison.post(uri, Poison.encode!(data), [
+      {"Content-Type", "application/json"}
+    ])
   end
 
-  defp get_local_port do
-    Endpoint
-    |> :sys.get_state()
-    |> elem(3)
-    |> Enum.at(2)
-    |> elem(3)
-    |> elem(2)
-    |> Enum.at(1)
-    |> List.keyfind(:http, 0)
-    |> elem(1)
-    |> Enum.at(0)
-    |> elem(1)
+  # TODO: what is this function even doing?
+  defp get_local_port() do
+    Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

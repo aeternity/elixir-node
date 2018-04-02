@@ -7,6 +7,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
+  alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -16,18 +17,25 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
+  @type oracles :: %{
+          registered_oracles: Oracle.registered_oracles(),
+          interaction_objects: Oracle.interaction_objects()
+        }
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
+  @typedoc "Structure of the chainstate"
+  @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
+
+  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+          chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
+    Enum.reduce(txs, chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
+    |> Oracle.remove_expired_oracles(block_height)
+    |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), non_neg_integer()) :: chainstate()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
@@ -41,7 +49,7 @@ defmodule Aecore.Chain.ChainState do
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
+          DataTx.process_chainstate!(data, chainstate, block_height)
         else
           throw({:error, "Invalid transaction"})
         end
@@ -89,13 +97,12 @@ defmodule Aecore.Chain.ChainState do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
+  @spec validate_tx(SignedTx.t(), chainstate(), non_neg_integer()) :: {boolean(), chainstate()}
   defp validate_tx(tx, chainstate, block_height) do
-    try do
-      {true, apply_transaction_on_state!(tx, chainstate, block_height)}
-    catch
-      {:error, _} -> {false, chainstate}
-    end
+    {true, apply_transaction_on_state!(tx, chainstate, block_height)}
+  catch
+    {:error, _reason} ->
+      {false, chainstate}
   end
 
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()

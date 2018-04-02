@@ -7,6 +7,11 @@ defmodule Aecore.Chain.Worker do
   use Bitwise
 
   alias Aecore.Structures.Block
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
@@ -15,6 +20,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
 
@@ -75,8 +81,8 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
-  @spec top_height() :: integer()
-  def top_height do
+  @spec top_height() :: non_neg_integer()
+  def top_height() do
     GenServer.call(__MODULE__, :top_height)
   end
 
@@ -91,38 +97,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_headers_by_base58_hash_backwards(String.t(), non_neg_integer()) ::
-          list(Header.t()) | {:error, atom()}
-  def get_headers_by_base58_hash_backwards(hash, count) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-      get_headers_backwards(decoded_hash, count)
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
+  @spec lowest_valid_nonce() :: non_neg_integer()
+  def lowest_valid_nonce() do
+    GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_headers_by_base58_hash_forward(String.t(), non_neg_integer()) ::
-          list(Header.t()) | {:error, atom()}
-  def get_headers_by_base58_hash_forward(hash, count) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-
-      case get_header(decoded_hash) do
-        {:error, :header_not_found} ->
-          {:error, :header_not_found}
-
-        starting_header ->
-          get_headers_forward(starting_header, count)
-      end
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
-  end
-
-  @spec get_block_by_base58_hash(String.t()) :: Block.t() | {:error, String.t()}
+  @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
     try do
       decoded_hash = Header.base58c_decode(hash)
@@ -131,16 +111,6 @@ defmodule Aecore.Chain.Worker do
       _ ->
         {:error, :invalid_hash}
     end
-  end
-
-  @spec get_headers_backwards(binary(), non_neg_integer()) :: list(Header.t()) | {:error, atom()}
-  def get_headers_backwards(hash, count) do
-    get_headers_backwards([], hash, count)
-  end
-
-  @spec get_headers_forward(binary(), non_neg_integer()) :: list(Header.t()) | {:error, atom()}
-  def get_headers_forward(starting_header, count) do
-    get_headers_forward([], starting_header.height, count)
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, atom()}
@@ -210,12 +180,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, final_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
@@ -249,7 +219,7 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), ChainState.account_chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), ChainState.chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
@@ -268,8 +238,18 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec chain_state() :: ChainState.account_chainstate()
-  def chain_state do
+  @spec registered_oracles() :: Oracle.registered_oracles()
+  def registered_oracles() do
+    GenServer.call(__MODULE__, :registered_oracles)
+  end
+
+  @spec oracle_interaction_objects() :: Oracle.interaction_objects()
+  def oracle_interaction_objects() do
+    GenServer.call(__MODULE__, :oracle_interaction_objects)
+  end
+
+  @spec chain_state() :: %{:accounts => Chainstate.accounts(), :oracles => ChainState.oracles()}
+  def chain_state() do
     top_block_chain_state()
   end
 
@@ -311,6 +291,24 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(
+        :lowest_valid_nonce,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    pubkey = Wallet.get_public_key()
+    accounts = blocks_data_map[top_hash].chain_state.accounts
+
+    lowest_valid_nonce =
+      if Map.has_key?(accounts, pubkey) do
+        accounts[pubkey].nonce + 1
+      else
+        1
+      end
+
+    {:reply, lowest_valid_nonce, state}
+  end
+
+  def handle_call(
         {:get_block_info_from_memory_unsafe, block_hash},
         _from,
         %{blocks_data_map: blocks_data_map} = state
@@ -327,7 +325,11 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block, %Block{} = new_block, new_chain_state},
         _from,
-        %{blocks_data_map: blocks_data_map, txs_index: txs_index, top_height: top_height} = state
+        %{
+          blocks_data_map: blocks_data_map,
+          txs_index: txs_index,
+          top_height: top_height
+        } = state
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
@@ -368,7 +370,11 @@ defmodule Aecore.Chain.Worker do
       }"
     end)
 
-    state_update = %{state | blocks_data_map: hundred_blocks_data_map, txs_index: new_txs_index}
+    state_update = %{
+      state
+      | blocks_data_map: hundred_blocks_data_map,
+        txs_index: new_txs_index
+    }
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
@@ -383,6 +389,7 @@ defmodule Aecore.Chain.Worker do
 
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
@@ -401,6 +408,24 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  def handle_call(
+        :registered_oracles,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
+    {:reply, registered_oracles, state}
+  end
+
+  def handle_call(
+        :oracle_interaction_objects,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
+    {:reply, interaction_objects, state}
   end
 
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
@@ -468,6 +493,18 @@ defmodule Aecore.Chain.Worker do
           SpendTx ->
             [tx.data.sender, tx.data.payload.receiver]
 
+          OracleRegistrationTx ->
+            tx.data.sender
+
+          OracleQueryTx ->
+            [tx.data.sender, tx.data.payload.oracle_address]
+
+          OracleResponseTx ->
+            tx.data.sender
+
+          OracleExtendTx ->
+            tx.data.sender
+
           _ ->
             tx.data.sender
         end
@@ -499,38 +536,10 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_txs_index(current_txs_index, new_block_txs_index) do
-    Map.merge(current_txs_index, new_block_txs_index, fn _, current_list, new_block_list ->
-      current_list ++ new_block_list
+  defp update_txs_index(prev_txs_index, new_txs_index) do
+    Map.merge(prev_txs_index, new_txs_index, fn _, current_txs_index, new_txs_index ->
+      current_txs_index ++ new_txs_index
     end)
-  end
-
-  defp get_headers_forward(headers, next_header_height, count) when count > 0 do
-    case get_header_by_height(next_header_height) do
-      {:error, :header_not_found} ->
-        {:error, :header_not_found}
-
-      header ->
-        get_headers_forward([header | headers], header.height + 1, count - 1)
-    end
-  end
-
-  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
-    headers
-  end
-
-  defp get_headers_backwards(headers, next_header_hash, count) when count > 0 do
-    case get_header(next_header_hash) do
-      {:error, :header_not_found} ->
-        {:error, :header_not_found}
-
-      header ->
-        get_headers_backwards([header | headers], header.prev_hash, count - 1)
-    end
-  end
-
-  defp get_headers_backwards(headers, _next_header_hash, count) when count == 0 do
-    headers
   end
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
@@ -544,7 +553,12 @@ defmodule Aecore.Chain.Worker do
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
 
-          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+          get_blocks(
+            updated_blocks_acc,
+            prev_block_hash,
+            final_block_hash,
+            next_count
+          )
       end
     else
       blocks_acc
@@ -613,5 +627,6 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state, do: %{accounts: %{}}
+  defp build_chain_state(),
+    do: %{accounts: %{}, oracles: %{registered_oracles: %{}, interaction_objects: %{}}}
 end
