@@ -8,7 +8,6 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Structures.NameUpdateTx
   alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
   alias Aecore.Structures.Account
 
   require Logger

@@ -8,7 +8,6 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Structures.NameTransferTx
   alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
 

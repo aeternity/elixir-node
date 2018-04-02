@@ -8,7 +8,6 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Structures.NameRevokeTx
   alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
   alias Aecore.Structures.Account
 
   require Logger
@@ -96,6 +95,7 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
           sender_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out_nonce_update(nonce)
+
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
         claim_to_update = Map.get(naming_state, tx.hash)
