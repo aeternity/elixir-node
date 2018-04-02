@@ -95,14 +95,7 @@ defmodule Aecore.Naming.Structures.NamePreClaimTx do
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming_state, sender, Naming.empty())
-
-        updated_naming_pre_claims = [
-          Naming.create_pre_claim(block_height, tx.commitment) | account_naming.pre_claims
-        ]
-
-        updated_naming_chainstate =
-          Map.put(naming_state, sender, %{account_naming | pre_claims: updated_naming_pre_claims})
+        updated_naming_chainstate = Map.put(naming_state, tx.commitment, tx.commitment)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 

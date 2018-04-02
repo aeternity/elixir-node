@@ -17,7 +17,7 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
-  @type naming() :: %{Wallet.pubkey() => Naming.t(), revoked: []}
+  @type naming() :: %{Naming.hash() => Naming.t()}
 
   @type chain_state_types() :: Account.chain_state_name() | Naming.chain_state_name()
 
