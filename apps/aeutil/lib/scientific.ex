@@ -41,7 +41,8 @@ defmodule Aeutil.Scientific do
     significand_mask = bsl(1, 24) - 1
 
     exp =
-      bxor(scientific, significand_mask)
+      scientific
+      |> bxor(significand_mask)
       |> bsr(24)
 
     significand = band(scientific, significand_mask)

@@ -1,13 +1,13 @@
 defmodule Aecore.Pow.Hashcash do
-  alias Aeutil.Scientific
-  use Bitwise
-
   @moduledoc """
   Hashcash proof of work
   """
 
+  alias Aeutil.Scientific
   alias Aecore.Chain.BlockValidation
   alias Aecore.Structures.Header
+
+  use Bitwise
 
   @doc """
   Verify a nonce, returns :true | :false
@@ -25,7 +25,7 @@ defmodule Aecore.Pow.Hashcash do
     zeros = 8 * max(0, length - exp)
 
     case exp do
-      exponent when exponent >= 0 and exponent < 3 ->
+      _ when exp >= 0 and exp < 3 ->
         Scientific.compare_bin_to_significand(
           block_header_hash,
           bsr(significand, 8 * (3 - exp)),
@@ -50,10 +50,10 @@ defmodule Aecore.Pow.Hashcash do
             :error
         end
 
-      exponent when exponent >= 0 ->
+      _ when exp >= 0 ->
         Scientific.compare_bin_to_significand(block_header_hash, significand, zeros, 24)
 
-      exponent when exponent < 0 ->
+      _ when exp < 0 ->
         bits = 8 * length
         block_header_hash == <<0::size(bits)>>
     end
