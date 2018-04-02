@@ -80,13 +80,16 @@ defmodule AecoreNamingTest do
     assert first_name.status == :claimed
     assert first_name.pointers == ["{\"test\": 2}"]
 
-    #fund transfered account
+    # fund transfered account
     {:ok, spend} = Account.spend(transfer_to_pub, 5, 5)
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 
-    next_nonce =  Map.get(Chain.chain_state().accounts, transfer_to_pub, %{nonce: 0}).nonce + 1
-    {:ok, revoke} = Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
+    next_nonce = Map.get(Chain.chain_state().accounts, transfer_to_pub, %{nonce: 0}).nonce + 1
+
+    {:ok, revoke} =
+      Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
+
     Pool.add_transaction(revoke)
     Miner.mine_sync_block_to_chain()
 

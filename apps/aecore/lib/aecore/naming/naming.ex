@@ -1,5 +1,4 @@
 defmodule Aecore.Naming.Naming do
-  alias Aecore.Naming.Structures.NamePreClaimTx
   alias Aecore.Naming.Naming
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.NameUtil
@@ -7,6 +6,8 @@ defmodule Aecore.Naming.Naming do
   alias Aeutil.Hash
 
   @pre_claim_ttl 300
+
+  @revoke_expiration_ttl 2016
 
   @client_ttl_limit 86400
 
@@ -100,13 +101,20 @@ defmodule Aecore.Naming.Naming do
   @spec get_name_salt_byte_size() :: non_neg_integer()
   def get_name_salt_byte_size, do: @name_salt_byte_size
 
+  @spec get_revoke_expiration_ttl() :: non_neg_integer()
+  def get_revoke_expiration_ttl, do: @revoke_expiration_ttl
+
+  @spec get_pre_claim_ttl() :: non_neg_integer()
+  def get_pre_claim_ttl, do: @pre_claim_ttl
+
   @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
           ChainState.chainstate()
-  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, _block_height) do
-    # TODO remove pre claims after ttl
-    # TODO remove expired claims
-    # TODO remove revoked after 2016 blocks
+  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
+    updated_naming_state =
+      naming_state
+      |> Enum.filter(fn {_hash, name_state} -> name_state.expires > block_height end)
+      |> Enum.into(%{})
 
-    %{chainstate | naming: naming_state}
+    %{chainstate | naming: updated_naming_state}
   end
 end

@@ -99,7 +99,13 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
         claim_to_update = Map.get(naming_state, tx.hash)
-        claim = %{claim_to_update | status: :revoked}
+
+        claim = %{
+          claim_to_update
+          | status: :revoked,
+            expires: block_height + Naming.get_revoke_expiration_ttl()
+        }
+
         updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
