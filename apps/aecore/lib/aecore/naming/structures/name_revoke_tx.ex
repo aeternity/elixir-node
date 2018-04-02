@@ -96,40 +96,13 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
           sender_account_state
           |> deduct_fee(fee)
           |> Account.transaction_out_nonce_update(nonce)
-
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming_state, sender, Naming.empty())
 
-        claim_to_revoke =
-          Enum.find(account_naming.claims, fn claim ->
-            tx.hash == NameUtil.normalized_namehash!(claim.name)
-          end)
+        claim_to_update = Map.get(naming_state, tx.hash)
+        claim = %{claim_to_update | status: :revoked}
+        updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
-        filtered_claims =
-          Enum.filter(account_naming.claims, fn claim ->
-            claim.name != claim_to_revoke.name
-          end)
-
-        updated_naming_chainstate =
-          Map.put(naming_state, sender, %{account_naming | claims: filtered_claims})
-
-        # only revoke if actually found and removed for this account
-        updated_naming_chainstate_withrevokes =
-          case claim_to_revoke do
-            %{name: name} ->
-              if NameUtil.normalized_namehash!(name) == tx.hash do
-                naming_revoked = Map.get(updated_naming_chainstate, :revoked, [])
-                updated_revokes = [%{tx.hash => block_height} | naming_revoked]
-                Map.put(updated_naming_chainstate, :revoked, updated_revokes)
-              else
-                updated_naming_chainstate
-              end
-
-            _ ->
-              updated_naming_chainstate
-          end
-
-        {updated_accounts_chainstate, updated_naming_chainstate_withrevokes}
+        {updated_accounts_chainstate, updated_naming_chainstate}
 
       {:error, _reason} = err ->
         throw(err)
@@ -150,15 +123,7 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
   def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
-    account_naming = Map.get(naming_state, sender, Naming.empty())
-
-    claimed =
-      Enum.find(account_naming.claims, fn claim ->
-        NameUtil.normalized_namehash!(claim.name) == tx.hash
-      end)
-
-    naming_revoked = Map.get(naming_state, :revoked, [])
-    revoked = Enum.find(naming_revoked, fn {revoked, _height} -> revoked == tx.hash end)
+    claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -167,11 +132,14 @@ defmodule Aecore.Naming.Structures.NameRevokeTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      claimed == nil ->
+      claim == nil ->
         {:error, "Name has not been claimed"}
 
-      revoked != nil ->
-        {:error, "Name has already been revoked"}
+      claim.owner != sender ->
+        {:error, "Sender is not claim owner"}
+
+      claim.status == :revoked ->
+        {:error, "Claim is revoked"}
 
       true ->
         :ok

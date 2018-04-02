@@ -116,32 +116,17 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming_state, sender, Naming.empty())
 
-        claim_to_update =
-          Enum.find(account_naming.claims, fn claim ->
-            tx.hash == NameUtil.normalized_namehash!(claim.name)
-          end)
+        claim_to_update = Map.get(naming_state, tx.hash)
 
-        filtered_claims =
-          Enum.filter(account_naming.claims, fn claim ->
-            claim.name != claim_to_update.name
-          end)
+        claim = %{
+          claim_to_update
+          | pointers: [tx.pointers],
+            expires: tx.expire_by,
+            ttl: tx.client_ttl
+        }
 
-        updated_naming_claims = [
-          Naming.create_claim(
-            block_height,
-            claim_to_update.name,
-            claim_to_update.name_salt,
-            tx.expire_by,
-            tx.client_ttl,
-            tx.pointers
-          )
-          | filtered_claims
-        ]
-
-        updated_naming_chainstate =
-          Map.put(naming_state, sender, %{account_naming | claims: updated_naming_claims})
+        updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -164,12 +149,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
   def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming_state) do
-    account_naming = Map.get(naming_state, sender, Naming.empty())
-
-    claimed =
-      Enum.find(account_naming.claims, fn claim ->
-        NameUtil.normalized_namehash!(claim.name) == tx.hash
-      end)
+    claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -178,13 +158,17 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      claimed == nil ->
+      claim == nil ->
         {:error, "Name has not been claimed"}
+
+      claim.owner != sender ->
+        {:error, "Sender is not claim owner"}
 
       tx.expire_by <= block_height ->
         {:error, "Name expiration is now or in the past"}
 
-      # TODO: check not revoked
+      claim.status == :revoked ->
+        {:error, "Claim is revoked"}
 
       true ->
         :ok

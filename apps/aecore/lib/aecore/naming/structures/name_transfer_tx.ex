@@ -102,25 +102,10 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
           |> Account.transaction_out_nonce_update(nonce)
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        account_naming = Map.get(naming_state, sender, Naming.empty())
 
-        claim_to_update =
-          Enum.find(account_naming.claims, fn claim ->
-            tx.hash == NameUtil.normalized_namehash!(claim.name)
-          end)
-
-        filtered_claims =
-          Enum.filter(account_naming.claims, fn claim ->
-            claim.name != claim_to_update.name
-          end)
-
-        target_account_naming = Map.get(naming_state, tx.target, Naming.empty())
-        target_updated_naming_claims = [claim_to_update | target_account_naming.claims]
-
-        updated_naming_chainstate =
-          naming_state
-          |> Map.put(sender, %{account_naming | claims: filtered_claims})
-          |> Map.put(tx.target, %{account_naming | claims: target_updated_naming_claims})
+        claim_to_update = Map.get(naming_state, tx.hash)
+        claim = %{claim_to_update | owner: tx.target}
+        updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -143,12 +128,7 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
   def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
-    account_naming = Map.get(naming_state, sender, Naming.empty())
-
-    claimed =
-      Enum.find(account_naming.claims, fn claim ->
-        NameUtil.normalized_namehash!(claim.name) == tx.hash
-      end)
+    claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -157,8 +137,14 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      claimed == nil ->
+      claim == nil ->
         {:error, "Name has not been claimed"}
+
+      claim.owner != sender ->
+        {:error, "Sender is not claim owner"}
+
+      claim.status == :revoked ->
+        {:error, "Claim is revoked"}
 
       true ->
         :ok
