@@ -25,6 +25,7 @@ defmodule AecoreTxTest do
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
   end
@@ -121,5 +122,21 @@ defmodule AecoreTxTest do
     assert Enum.count(Chain.chain_state().accounts) == 2
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
     assert Chain.chain_state().accounts[tx.receiver].balance == 200
+  end
+
+  test "nonce is too small", tx do
+    sender = Wallet.get_public_key()
+    amount = 200
+    fee = 50
+
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+    :ok = Miner.mine_sync_block_to_chain()
+    # the nonce is small or equal to account nonce, so the transaction is invalid 
+    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
   end
 end

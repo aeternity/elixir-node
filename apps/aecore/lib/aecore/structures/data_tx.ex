@@ -9,6 +9,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.Account
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -55,8 +56,8 @@ defmodule Aecore.Structures.DataTx do
   @spec is_valid?(DataTx.t()) :: boolean()
   def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
     if fee > 0 do
-      spend_tx = type.init(payload)
-      {:ok, spend_tx}
+      child_tx = type.init(payload)
+      {:ok, child_tx}
     else
       {:error, "Fee not enough"}
     end
@@ -66,17 +67,20 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate!(%DataTx{} = tx, chainstate) do
+  @spec process_chainstate(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
+          ChainState.chainstate()
+  def process_chainstate(%DataTx{} = tx, chainstate, block_height) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, tx.type, %{})
+
+    tx_type_state = get_tx_type_state(chainstate, tx.type)
 
     case tx.payload
          |> tx.type.init()
-         |> tx.type.process_chainstate!(
+         |> tx.type.process_chainstate(
            tx.sender,
            tx.fee,
            tx.nonce,
+           block_height,
            accounts_state,
            tx_type_state
          ) do
@@ -85,16 +89,31 @@ defmodule Aecore.Structures.DataTx do
 
       {new_accounts_state, new_tx_type_state} ->
         new_chainstate =
-          if Map.has_key?(chainstate, tx.type) do
-            Map.put(chainstate, tx.type, new_tx_type_state)
-          else
+          if tx.type == SpendTx do
             chainstate
+          else
+            Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
           end
 
         {:ok, Map.put(new_chainstate, :accounts, new_accounts_state)}
     end
   end
 
+  @doc """
+  Gets the given transaction type state,
+  if there is any stored in the chainstate
+  """
+  @spec get_tx_type_state(ChainState.chainstate(), atom()) :: map()
+  def get_tx_type_state(chainstate, tx_type) do
+    if tx_type == SpendTx do
+      %{}
+    else
+      type = tx_type.get_chain_state_name()
+      Map.get(chainstate, type, %{})
+    end
+  end
+
+  @spec sender_exists?(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
   def sender_exists?(sender, chainstate) do
     if Map.has_key?(chainstate.accounts, sender) do
       :ok
@@ -103,6 +122,19 @@ defmodule Aecore.Structures.DataTx do
     end
   end
 
+  @spec nonce_valid?(ChainState.account(), DataTx.t()) :: :ok | {:error, String.t()}
+  def nonce_valid?(accounts_state, tx) do
+    account_state = Map.get(accounts_state, tx.sender, Account.empty())
+
+    if tx.nonce > account_state.nonce do
+      :ok
+    else
+      {:error, "Nonce is too small"}
+    end
+  end
+
+  @spec preprocess_check(DataTx.t(), ChainState.chain_state(), non_neg_integer()) ::
+          :ok | {:error, String.t()}
   def preprocess_check(
         %DataTx{
           type: type,
@@ -111,12 +143,12 @@ defmodule Aecore.Structures.DataTx do
           fee: fee,
           nonce: nonce
         } = tx,
-        chainstate
+        chainstate,
+        block_height
       ) do
     sender_account_state = Map.get(chainstate.accounts, sender)
-    tx_type_state = Map.get(chainstate, type, %{})
-
-    type.preprocess_check(payload, sender_account_state, fee, nonce, tx_type_state)
+    tx_type_state = get_tx_type_state(chainstate, tx.type)
+    type.preprocess_check(payload, sender, sender_account_state, fee, block_height, tx_type_state)
   end
 
   @spec serialize(DataTx.t()) :: map()

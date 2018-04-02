@@ -8,6 +8,7 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -17,10 +18,16 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
+  @type oracles :: %{
+          registered_oracles: Oracle.registered_oracles(),
+          interaction_objects: Oracle.interaction_objects()
+        }
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
+  @typedoc "Structure of the chainstate"
+  @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
+
+  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+          chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
@@ -32,6 +39,8 @@ defmodule Aecore.Chain.ChainState do
           chainstate
       end
     end)
+    |> Oracle.remove_expired_oracles(block_height)
+    |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
   @spec apply_transaction_on_state(SignedTx.t(), chainstate(), integer()) :: chainstate()
@@ -48,14 +57,18 @@ defmodule Aecore.Chain.ChainState do
     {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
   end
 
-  def apply_transaction_on_state(%{data: %{sender: sender}} = tx, chainstate, block_height)
+  def apply_transaction_on_state(
+    %{data: %{sender: sender, type: tx_type} = data} = tx,
+    %{accounts: accounts} = chainstate,
+    block_height)
       when not is_nil(sender) do
     with :ok <- SignedTx.is_valid?(tx),
-         {:ok, spend_tx} <- DataTx.is_valid?(tx.data),
-         :ok <- SpendTx.is_valid?(spend_tx),
+         {:ok, child_tx} <- DataTx.is_valid?(data),
+         :ok <- tx_type.is_valid?(child_tx),
          :ok <- DataTx.sender_exists?(sender, chainstate),
-         :ok <- DataTx.preprocess_check(tx.data, chainstate),
-         {:ok, updated_chainstate} <- DataTx.process_chainstate!(tx.data, chainstate) do
+         :ok <- DataTx.nonce_valid?(accounts, data),
+         :ok <- DataTx.preprocess_check(data, chainstate, block_height),
+         {:ok, updated_chainstate} <- DataTx.process_chainstate(data, chainstate, block_height) do
       {:ok, updated_chainstate}
     else
       err -> err
