@@ -84,7 +84,7 @@ defmodule Aecore.Structures.SpendTx do
           ChainState.account(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
+  def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
     sender_account_state = Map.get(accounts, sender)
 
     new_sender_account_state =

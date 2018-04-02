@@ -9,8 +9,6 @@ defmodule Aecore.Structures.OracleQueryTx do
   alias Aecore.Chain.ChainState
   alias Aeutil.Bits
 
-  require Logger
-
   @type id :: binary()
 
   @type payload :: %{
@@ -66,7 +64,8 @@ defmodule Aecore.Structures.OracleQueryTx do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    if Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
+    if Oracle.ttl_is_valid?(query_ttl) &&
+      Oracle.ttl_is_valid?(response_ttl) &&
       match?(%{type: :relative}, response_ttl) do
       :ok
     else
@@ -90,10 +89,8 @@ defmodule Aecore.Structures.OracleQueryTx do
         nonce,
         block_height,
         accounts,
-        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects} =
-          oracle_state
+        %{interaction_objects: interaction_objects} = oracle_state
       ) do
-
     new_sender_account_state =
       Map.get(accounts, sender, Account.empty())
       |> deduct_fee(fee + tx.query_fee)
@@ -128,13 +125,9 @@ defmodule Aecore.Structures.OracleQueryTx do
           non_neg_integer(),
           ChainState.oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(
-    tx,
-    _sender,
-    account_state,
-    fee,
-    block_height,
-    %{registered_oracles: registered_oracles}) do
+  def preprocess_check(tx, _sender, account_state, fee, block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}

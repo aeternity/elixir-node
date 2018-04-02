@@ -1,12 +1,11 @@
 defmodule Aecore.Structures.OracleResponseTx do
+
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
-
-  require Logger
 
   @type payload :: %{
           query_id: binary(),
@@ -58,7 +57,6 @@ defmodule Aecore.Structures.OracleResponseTx do
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state
       ) do
-
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
 
@@ -93,16 +91,10 @@ defmodule Aecore.Structures.OracleResponseTx do
           non_neg_integer(),
           ChainState.oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(
-    tx,
-    sender,
-    account_state,
-    fee,
-    _block_height,
-    %{
-      registered_oracles: registered_oracles,
-      interaction_objects: interaction_objects
-    }) do
+  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
+        registered_oracles: registered_oracles,
+        interaction_objects: interaction_objects
+      }) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}

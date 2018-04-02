@@ -1,11 +1,10 @@
 defmodule Aecore.Structures.OracleRegistrationTx do
+
   alias __MODULE__
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
-
-  require Logger
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -85,7 +84,6 @@ defmodule Aecore.Structures.OracleRegistrationTx do
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state
       ) do
-
     new_sender_account_state =
       Map.get(accounts, sender, Account.empty())
       |> deduct_fee(fee)
@@ -115,13 +113,9 @@ defmodule Aecore.Structures.OracleRegistrationTx do
           non_neg_integer(),
           ChainState.oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(
-    tx,
-    sender,
-    account_state,
-    fee,
-    block_height,
-    %{registered_oracles: registered_oracles}) do
+  def preprocess_check(tx, sender, account_state, fee, block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}

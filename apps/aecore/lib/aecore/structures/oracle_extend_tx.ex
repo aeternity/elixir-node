@@ -6,8 +6,6 @@ defmodule Aecore.Structures.OracleExtendTx do
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
-  require Logger
-
   @type payload :: %{
           ttl: non_neg_integer()
         }
@@ -43,18 +41,17 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           ChainState.account(),
-          Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+          ChainState.oracles()
+        ) :: {ChainState.accounts(), ChainState.oracles()}
   def process_chainstate(
         %OracleExtendTx{} = tx,
         sender,
         fee,
         nonce,
-        block_height,
+        _block_height,
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state
+        oracle_state
       ) do
-
     new_sender_account_state =
       Map.get(accounts, sender, Account.empty())
       |> deduct_fee(fee)
@@ -80,13 +77,9 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(
-    tx,
-    sender,
-    account_state,
-    fee,
-    _block_height,
-    %{registered_oracles: registered_oracles}) do
+  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
         {:error, "Negative balance"}

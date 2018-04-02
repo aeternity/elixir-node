@@ -58,9 +58,10 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def apply_transaction_on_state(
-    %{data: %{sender: sender, type: tx_type} = data} = tx,
-    %{accounts: accounts} = chainstate,
-    block_height)
+        %{data: %{sender: sender, type: tx_type} = data} = tx,
+        %{accounts: accounts} = chainstate,
+        block_height
+      )
       when not is_nil(sender) do
     with :ok <- SignedTx.is_valid?(tx),
          {:ok, child_tx} <- DataTx.is_valid?(data),
