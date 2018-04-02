@@ -112,12 +112,6 @@ defmodule Aecore.Structures.DataTx do
     tx.nonce > account_state.nonce
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
-  end
-
   @spec serialize(DataTx.t()) :: map()
   def serialize(%DataTx{} = tx) do
     tx
