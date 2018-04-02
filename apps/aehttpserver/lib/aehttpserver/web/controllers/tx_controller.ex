@@ -39,20 +39,7 @@ defmodule Aehttpserver.Web.TxController do
           _ ->
             json(
               conn,
-              Enum.map(user_txs, fn tx ->
-                %{
-                  tx
-                  | sender: Account.base58c_encode(tx.sender),
-                    receiver: Account.base58c_encode(tx.payload.receiver),
-                    txs_hash: SignedTx.base58c_encode(tx.txs_hash),
-                    block_hash: Header.base58c_encode(tx.block_hash),
-                    signature:
-                      case tx.signature do
-                        nil -> nil
-                        _ -> Base.encode64(tx.signature)
-                      end
-                }
-              end)
+              Serialization.serialize_txs_info_to_json(user_txs)
             )
         end
     end

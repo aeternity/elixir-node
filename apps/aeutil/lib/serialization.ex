@@ -249,6 +249,10 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value, _), do: value
 
+  def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
+    serialize_txs_info_to_json(txs_info, [])
+  end
+
   def serialize_txs_info_to_json([h | t], acc) do
     json_response_struct = %{
       tx: %{
@@ -260,9 +264,9 @@ defmodule Aeutil.Serialization do
         vsn: h.payload.version
       },
       block_height: h.block_height,
-      block_hash: h.txs_hash,
-      # hash: tx_hash , TODO: return tx_hash
-      signatures: h.signature
+      block_hash: Header.base58c_encode(h.block_hash),
+      hash: SignedTx.base58c_encode_root(h.txs_hash),
+      signatures: [base64_binary(h.signature, :serialize)]
     }
 
     acc = acc ++ [json_response_struct]
