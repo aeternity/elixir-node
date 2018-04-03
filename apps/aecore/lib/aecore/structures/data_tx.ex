@@ -8,6 +8,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -67,10 +68,21 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), ChainState.chainstate()) :: ChainState.chainstate()
-  def process_chainstate!(%DataTx{} = tx, chainstate) do
+  @spec process_chainstate!(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
+          ChainState.chainstate()
+  def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, tx.type, %{})
+
+    tx_type_state =
+      if(tx.type == SpendTx) do
+        %{}
+      else
+        Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+      end
+
+    if !nonce_valid?(accounts_state, tx) do
+      throw({:error, "Nonce is too small"})
+    end
 
     {new_accounts_state, new_tx_type_state} =
       tx.payload
@@ -79,18 +91,24 @@ defmodule Aecore.Structures.DataTx do
         tx.sender,
         tx.fee,
         tx.nonce,
+        block_height,
         accounts_state,
         tx_type_state
       )
 
     new_chainstate =
-      if Map.has_key?(chainstate, tx.type) do
-        Map.put(chainstate, tx.type, new_tx_type_state)
-      else
+      if tx.type == SpendTx do
         chainstate
+      else
+        Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
       end
 
     Map.put(new_chainstate, :accounts, new_accounts_state)
+  end
+
+  def nonce_valid?(accounts_state, tx) do
+    account_state = Map.get(accounts_state, tx.sender, Account.empty())
+    tx.nonce > account_state.nonce
   end
 
   @spec serialize(DataTx.t()) :: map()
