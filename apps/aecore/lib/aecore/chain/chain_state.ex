@@ -6,7 +6,6 @@ defmodule Aecore.Chain.ChainState do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
@@ -45,7 +44,7 @@ defmodule Aecore.Chain.ChainState do
 
   @spec apply_transaction_on_state(SignedTx.t(), chainstate(), integer()) :: chainstate()
   def apply_transaction_on_state(
-        %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil} = tx,
+        %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil},
         %{accounts: accounts} = chainstate,
         block_height
       ) do
@@ -63,11 +62,11 @@ defmodule Aecore.Chain.ChainState do
         block_height
       )
       when not is_nil(sender) do
-    with :ok <- SignedTx.is_valid?(tx),
-         {:ok, child_tx} <- DataTx.is_valid?(data),
-         :ok <- tx_type.is_valid?(child_tx),
-         :ok <- DataTx.sender_exists?(sender, chainstate),
-         :ok <- DataTx.nonce_valid?(accounts, data),
+    with :ok <- SignedTx.validate(tx),
+         {:ok, child_tx} <- DataTx.validate(data),
+         :ok <- tx_type.validate(child_tx),
+         :ok <- DataTx.validate_sender(sender, chainstate),
+         :ok <- DataTx.validate_nonce(accounts, data),
          :ok <- DataTx.preprocess_check(data, chainstate, block_height),
          {:ok, updated_chainstate} <- DataTx.process_chainstate(data, chainstate, block_height) do
       {:ok, updated_chainstate}
@@ -76,8 +75,8 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def apply_transaction_on_state(tx, chainstate, block_height) do
-    {:error, "Invalid transaction"}
+  def apply_transaction_on_state(_tx, _chainstate, _block_height) do
+    {:error, "#{__MODULE__}: Invalid transaction"}
   end
 
   @doc """
@@ -106,7 +105,7 @@ defmodule Aecore.Chain.ChainState do
   def filter_invalid_txs(txs_list, chainstate, block_height) do
     List.foldl(txs_list, [], fn tx, valid_txs_list ->
       case apply_transaction_on_state(tx, chainstate, block_height) do
-        {:ok, updated_chainstate} ->
+        {:ok, _updated_chainstate} ->
           valid_txs_list ++ [tx]
 
         {:error, reason} ->
@@ -142,6 +141,6 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 end

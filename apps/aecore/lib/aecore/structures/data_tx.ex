@@ -50,16 +50,15 @@ defmodule Aecore.Structures.DataTx do
   end
 
   @doc """
-  Checks whether the fee is above 0. If it is, it runs the transaction type
-  validation checks. Otherwise we return error.
+  Checks whether the fee is above 0.
   """
-  @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
+  @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{type: type, payload: payload, fee: fee}) do
     if fee > 0 do
       child_tx = type.init(payload)
       {:ok, child_tx}
     else
-      {:error, "Fee not enough"}
+      {:error, "#{__MODULE__}: Fee not enough"}
     end
   end
 
@@ -105,31 +104,27 @@ defmodule Aecore.Structures.DataTx do
   """
   @spec get_tx_type_state(ChainState.chainstate(), atom()) :: map()
   def get_tx_type_state(chainstate, tx_type) do
-    if tx_type == SpendTx do
-      %{}
-    else
-      type = tx_type.get_chain_state_name()
-      Map.get(chainstate, type, %{})
-    end
+    type = tx_type.get_chain_state_name()
+    Map.get(chainstate, type, %{})
   end
 
-  @spec sender_exists?(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
-  def sender_exists?(sender, chainstate) do
+  @spec validate_sender(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
+  def validate_sender(sender, chainstate) do
     if Map.has_key?(chainstate.accounts, sender) do
       :ok
     else
-      {:error, "The senders key doesn't exist"}
+      {:error, "#{__MODULE__}: The senders key doesn't exist"}
     end
   end
 
-  @spec nonce_valid?(ChainState.account(), DataTx.t()) :: :ok | {:error, String.t()}
-  def nonce_valid?(accounts_state, tx) do
+  @spec validate_nonce(ChainState.account(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate_nonce(accounts_state, tx) do
     account_state = Map.get(accounts_state, tx.sender, Account.empty())
 
     if tx.nonce > account_state.nonce do
       :ok
     else
-      {:error, "Nonce is too small"}
+      {:error, "#{__MODULE__}: Nonce is too small"}
     end
   end
 
@@ -140,8 +135,7 @@ defmodule Aecore.Structures.DataTx do
           type: type,
           payload: payload,
           sender: sender,
-          fee: fee,
-          nonce: nonce
+          fee: fee
         } = tx,
         chainstate,
         block_height

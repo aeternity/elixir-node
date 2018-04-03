@@ -59,17 +59,16 @@ defmodule Aecore.Structures.OracleQueryTx do
     }
   end
 
-  @spec is_valid?(OracleQueryTx.t()) :: boolean()
-  def is_valid?(%OracleQueryTx{
+  @spec validate(OracleQueryTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleQueryTx{
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    if Oracle.ttl_is_valid?(query_ttl) &&
-      Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl) do
+    if Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
+         match?(%{type: :relative}, response_ttl) do
       :ok
     else
-      {:error, "Ttl is invalid in OracleQueryTx"}
+      {:error, "#{__MODULE__}: Ttl is invalid in OracleQueryTx"}
     end
   end
 
@@ -130,25 +129,25 @@ defmodule Aecore.Structures.OracleQueryTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "Invalid transaction TTL"}
+        {:error, "#{__MODULE__}: Invalid transaction TTL"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        {:error, "No oracle registered with that address"}
+        {:error, "#{__MODULE__}: No oracle registered with that address"}
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        {:error, "Invalid query data"}
+        {:error, "#{__MODULE__}: Invalid query data"}
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        {:error, "Query fee lower than the one required by the oracle"}
+        {:error, "#{__MODULE__}: Query fee lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "Fee is too low"}
+        {:error, "#{__MODULE__}: Fee is too low"}
 
       true ->
         :ok
@@ -206,7 +205,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()

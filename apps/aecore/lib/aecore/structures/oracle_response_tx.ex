@@ -1,4 +1,5 @@
 defmodule Aecore.Structures.OracleResponseTx do
+  @behaviour Aecore.Structures.Transaction
 
   alias __MODULE__
   alias Aecore.Oracle.Oracle
@@ -34,8 +35,8 @@ defmodule Aecore.Structures.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}) do
+  @spec validate(OracleResponseTx.t()) :: :ok
+  def validate(%OracleResponseTx{}) do
     :ok
   end
 
@@ -97,28 +98,28 @@ defmodule Aecore.Structures.OracleResponseTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        {:error, "Sender isn't a registered operator"}
+        {:error, "#{__MODULE__}: Sender isn't a registered operator"}
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        {:error, "Invalid response data"}
+        {:error, "#{__MODULE__}: Invalid response data"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        {:error, "No query with that ID"}
+        {:error, "#{__MODULE__}: No query with that ID"}
 
       interaction_objects[tx.query_id].response != nil ->
-        {:error, "Query already answered"}
+        {:error, "#{__MODULE__}: Query already answered"}
 
       interaction_objects[tx.query_id].query.oracle_address != sender ->
-        {:error, "Query references a different oracle"}
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        {:error, "Fee too low"}
+        {:error, "#{__MODULE__}: Fee too low"}
 
       true ->
         :ok

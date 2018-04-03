@@ -62,7 +62,7 @@ defmodule Aecore.Miner.Worker do
     if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
-      Logger.error("Can't start miner, chain not yet synced")
+      Logger.error("#{__MODULE__}: Can't start miner, chain not yet synced")
     end
   end
 
@@ -122,12 +122,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def handle_call(any, _from, state) do
-    Logger.info("[Miner] handle call any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle call any: #{inspect(any)}")
     {:reply, :ok, state}
   end
 
   def handle_cast(any, state) do
-    Logger.info("[Miner] handle cast any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle cast any: #{inspect(any)}")
     {:noreply, state}
   end
 
@@ -140,12 +140,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def handle_info(:timeout, state) do
-    Logger.info("[Miner] Mining was resumed by default")
+    Logger.info("#{__MODULE__}: Mining was resumed by default")
     {:noreply, mining(%{state | miner_state: :running, block_candidate: candidate()})}
   end
 
   def handle_info(any, state) do
-    Logger.info("[Miner] handle info any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle info any: #{inspect(any)}")
     {:noreply, state}
   end
 
@@ -153,7 +153,7 @@ defmodule Aecore.Miner.Worker do
 
   defp mining(%{miner_state: :running, job: job} = state)
        when job != {} do
-    Logger.error("[Miner] Miner is still working")
+    Logger.error("#{__MODULE__}: Miner is still working")
     state
   end
 
@@ -209,11 +209,9 @@ defmodule Aecore.Miner.Worker do
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
 
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
-    Logger.info(fn ->
-      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
-        cblock.header.nonce
-      }"
-    end)
+    Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},
+        difficulty target #{cblock.header.target},
+        nonce #{cblock.header.nonce}" end)
 
     cblock = %{cblock | header: miner_header}
     Chain.add_block(cblock)
@@ -282,7 +280,7 @@ defmodule Aecore.Miner.Worker do
       create_block(top_block, chain_state, difficulty, valid_txs)
     catch
       message ->
-        Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
+        Logger.error(fn -> "#{__MODULE__}: Failed to mine block: #{Kernel.inspect(message)}" end)
         {:error, message}
     end
   end

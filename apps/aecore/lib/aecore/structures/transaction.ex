@@ -26,7 +26,7 @@ defmodule Aecore.Structures.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types()) :: boolean()
+  @callback validate(tx_types()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.

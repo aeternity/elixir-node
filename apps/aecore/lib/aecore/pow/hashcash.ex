@@ -39,7 +39,7 @@ defmodule Aecore.Pow.Hashcash do
         if nonce <= start_nonce do
           generate(%{block_header | nonce: nonce + 1}, start_nonce)
         else
-          {:error, "no solution found"}
+          {:error, "#{__MODULE__}: No solution found"}
         end
     end
   end

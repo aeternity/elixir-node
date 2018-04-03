@@ -47,6 +47,9 @@ defmodule Aecore.Structures.SpendTx do
 
   # Callbacks
 
+  @spec get_chain_state_name() :: :none
+  def get_chain_state_name(), do: :none
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
@@ -55,12 +58,12 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{amount: amount}) do
+  @spec validate(SpendTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{amount: amount}) do
     if amount >= 0 do
       :ok
     else
-      {:error, "The amount cannot be a negative number"}
+      {:error, "#{__MODULE__}: The amount cannot be a negative number"}
     end
   end
 
@@ -115,7 +118,7 @@ defmodule Aecore.Structures.SpendTx do
   def preprocess_check(tx, _sender, account_state, fee, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       true ->
         :ok

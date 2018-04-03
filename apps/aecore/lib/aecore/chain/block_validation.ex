@@ -55,23 +55,23 @@ defmodule Aecore.Chain.BlockValidation do
     cond do
       # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
-        throw({:error, "Incorrect previous hash"})
+        throw({:error, "#{__MODULE__}: Incorrect previous hash"})
 
       # do not check previous block height for genesis block, there is none
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
-        throw({:error, "Incorrect height"})
+        throw({:error, "#{__MODULE__}: Incorrect height"})
 
       !valid_header_time?(new_block) ->
-        throw({:error, "Invalid header time"})
+        throw({:error, "#{__MODULE__}: Invalid header time"})
 
       !is_target_met ->
-        throw({:error, "Header hash doesnt meet the target"})
+        throw({:error, "#{__MODULE__}: Header hash doesnt meet the target"})
 
       new_block.header.root_hash != root_hash ->
-        throw({:error, "Root hash not matching"})
+        throw({:error, "#{__MODULE__}: Root hash not matching"})
 
       target != new_block.header.target ->
-        throw({:error, "Invalid block target"})
+        throw({:error, "#{__MODULE__}: Invalid block target"})
 
       true ->
         new_chain_state
@@ -86,22 +86,22 @@ defmodule Aecore.Chain.BlockValidation do
 
     cond do
       block.header.txs_hash != calculate_txs_hash(block.txs) ->
-        throw({:error, "Root hash of transactions does not match the one in header"})
-
-      !(block |> validate_block_transactions() |> Enum.all?()) ->
-        throw({:error, "One or more transactions not valid"})
-
-      coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
         throw(
-          {:error,
-           "Sum of coinbase transactions amounts exceeds the maximum coinbase transactions amount"}
+          {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
         )
 
+      !(block |> validate_block_transactions() |> Enum.all?()) ->
+        throw({:error, "#{__MODULE__}: One or more transactions not valid"})
+
+      coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
+        throw({:error, "#{__MODULE__}: Sum of coinbase transactions amounts exceeds
+             the maximum coinbase transactions amount"})
+
       block.header.version != Block.current_block_version() ->
-        throw({:error, "Invalid block version"})
+        throw({:error, "#{__MODULE__}: Invalid block version"})
 
       block_size_bytes > Application.get_env(:aecore, :block)[:max_block_size_bytes] ->
-        throw({:error, "Block size is too big"})
+        throw({:error, "#{__MODULE__}: Block size is too big"})
 
       true ->
         :ok
@@ -118,7 +118,7 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || SignedTx.is_valid?(tx)
+      SignedTx.is_coinbase?(tx) || :ok == SignedTx.validate(tx)
     end)
   end
 

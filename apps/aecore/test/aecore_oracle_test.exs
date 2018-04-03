@@ -5,6 +5,21 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Persistence.Worker, as: Persistence
+
+  setup do
+    Persistence.start_link([])
+    Miner.start_link([])
+    Chain.clear_state()
+    Pool.get_and_empty_pool()
+
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      Pool.get_and_empty_pool()
+      :ok
+    end)
+  end
 
   @tag timeout: 120_000
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
@@ -26,7 +41,9 @@ defmodule AecoreOracleTest do
     register_oracle(:invalid, :format)
     register_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.registered_oracles()) == true
+
     Chain.clear_state()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
@@ -36,7 +53,9 @@ defmodule AecoreOracleTest do
     query_oracle(:invalid, :query_fee)
     query_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.oracle_interaction_objects()) == true
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
@@ -51,7 +70,6 @@ defmodule AecoreOracleTest do
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
-    Chain.clear_state()
   end
 
   def register_oracle(validity, field \\ nil) do

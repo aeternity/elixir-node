@@ -1,4 +1,5 @@
 defmodule Aecore.Structures.OracleRegistrationTx do
+  @behaviour Aecore.Structures.Transaction
 
   alias __MODULE__
   alias Aecore.Structures.Account
@@ -47,8 +48,8 @@ defmodule Aecore.Structures.OracleRegistrationTx do
     }
   end
 
-  @spec is_valid?(OracleRegistrationTx.t()) :: boolean()
-  def is_valid?(%OracleRegistrationTx{
+  @spec validate(OracleRegistrationTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleRegistrationTx{
         query_format: query_format,
         response_format: response_format,
         ttl: ttl
@@ -60,7 +61,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
         :ok
       rescue
         e ->
-          {:error, "Invalid query or response format definition - " <> inspect(e)}
+          {:error, "#{__MODULE__}: Invalid query or response format definition - " <> inspect(e)}
       end
 
     Oracle.ttl_is_valid?(ttl) && formats_valid
@@ -118,16 +119,16 @@ defmodule Aecore.Structures.OracleRegistrationTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "Invalid transaction TTL"}
+        {:error, "#{__MODULE__}: Invalid transaction TTL"}
 
       Map.has_key?(registered_oracles, sender) ->
-        {:error, "Account is already an oracle"}
+        {:error, "#{__MODULE__}: Account is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "Fee too low"}
+        {:error, "#{__MODULE__}: Fee too low"}
 
       true ->
         :ok

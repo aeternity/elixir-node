@@ -147,7 +147,7 @@ defmodule Aecore.Peers.Sync do
           end)
 
         :error ->
-          Logger.error("Couldn't get pool from peer")
+          Logger.error("#{__MODULE__}: Couldn't get pool from peer")
       end
     end)
   end
@@ -206,7 +206,7 @@ defmodule Aecore.Peers.Sync do
           Map.put(peer_blocks, block_hash, block)
         catch
           {:error, message} ->
-            Logger.error(fn -> "Can't add block to Sync state - #{message}" end)
+            Logger.error(fn -> "#{__MODULE__}: Can't add block to Sync state - #{message}" end)
             peer_blocks
         end
       end
@@ -236,7 +236,7 @@ defmodule Aecore.Peers.Sync do
 
     if peers_count >= @peers_target_count do
       random_peer = Enum.random(Map.keys(Peers.all_peers()))
-      Logger.info(fn -> "Removing #{random_peer} to introduce variety" end)
+      Logger.info(fn -> "#{__MODULE__}: Removing #{random_peer} to introduce variety" end)
       Peers.remove_peer(random_peer)
       :ok
     else
@@ -254,7 +254,7 @@ defmodule Aecore.Peers.Sync do
 
     cond do
       peers_count == 0 ->
-        {:error, "No peers"}
+        {:error, "#{__MODULE__}: No peers"}
 
       peers_count < @peers_target_count ->
         all_peers =
@@ -265,14 +265,14 @@ defmodule Aecore.Peers.Sync do
         new_count = get_newpeers_and_add(all_peers)
 
         if new_count > 0 do
-          Logger.info(fn -> "Aquired #{new_count} new peers" end)
+          Logger.info(fn -> "#{__MODULE__}: Aquired #{new_count} new peers" end)
           :ok
         else
           Logger.debug(fn ->
-            "No new peers added when trying to refill peers"
+            "#{__MODULE__}: No new peers added when trying to refill peers"
           end)
 
-          {:error, "No new peers added"}
+          {:error, "#{__MODULE__}: No new peers added"}
         end
 
       true ->
@@ -295,7 +295,7 @@ defmodule Aecore.Peers.Sync do
           Enum.concat(acc, Enum.map(Map.values(list), fn %{"uri" => uri} -> uri end))
 
         {:error, message} ->
-          Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
+          Logger.error(fn -> "#{__MODULE__}: Couldn't get peers from #{peer}: #{message}" end)
           acc
       end
     end)

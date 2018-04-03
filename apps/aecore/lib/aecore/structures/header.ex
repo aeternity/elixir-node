@@ -62,6 +62,6 @@ defmodule Aecore.Structures.Header do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 end

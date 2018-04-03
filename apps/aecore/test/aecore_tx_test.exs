@@ -50,7 +50,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert SignedTx.is_valid?(signed_tx)
+    assert :ok = SignedTx.validate(signed_tx)
     signature = signed_tx.signature
     message = Serialization.pack_binary(signed_tx.data)
     assert true = Signing.verify(message, signature, sender)
@@ -67,8 +67,8 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert {:error, "The amount cannot be a negative number"} ==
-             SpendTx.is_valid?(signed_tx.data.payload)
+    assert {:error, "#{SpendTx}: The amount cannot be a negative number"} ==
+             SpendTx.validate(signed_tx.data.payload)
   end
 
   test "coinbase tx invalid", tx do
@@ -136,7 +136,7 @@ defmodule AecoreTxTest do
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
-    # the nonce is small or equal to account nonce, so the transaction is invalid 
+    # the nonce is small or equal to account nonce, so the transaction is invalid
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
   end
 end

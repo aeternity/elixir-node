@@ -324,9 +324,9 @@ defmodule Aecore.Chain.Worker do
     total_tokens = ChainState.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
-      "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{
-        inspect(total_tokens)
-      }"
+      "#{__MODULE__}: Added block ##{new_block.header.height}
+      with hash #{Header.base58c_encode(new_block_hash)},
+      total tokens: #{inspect(total_tokens)}"
     end)
 
     state_update = %{
@@ -432,7 +432,7 @@ defmodule Aecore.Chain.Worker do
   defp remove_old_block_data_from_map(block_map, top_hash) do
     if block_map[top_hash].block.header.height > number_of_blocks_in_memory() do
       hash_to_remove = get_nth_prev_hash(number_of_blocks_in_memory(), top_hash, block_map)
-      Logger.info("Block ##{hash_to_remove} has been removed from memory")
+      Logger.info("#{__MODULE__}: Block ##{hash_to_remove} has been removed from memory")
 
       Map.update!(block_map, hash_to_remove, fn info ->
         %{info | block: nil, chain_state: nil}
