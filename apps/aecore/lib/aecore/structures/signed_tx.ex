@@ -34,6 +34,7 @@ defmodule Aecore.Structures.SignedTx do
     key == nil && signature == nil
   end
 
+  @spec valid_byte_size?(SignedTx.t()) :: boolean()
   def valid_byte_size?(%SignedTx{data: %{type: OracleQueryTx}} = tx) do
     if byte_size(tx.data.payload.oracle_address) == 33 do
       true
@@ -43,6 +44,7 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
+  @spec valid_byte_size?(SignedTx.t()) :: boolean()
   def valid_byte_size?(%SignedTx{data: %{type: SpendTx}} = tx) do
     if byte_size(tx.data.sender) == 33 && byte_size(tx.data.payload.receiver) == 33 do
       true
@@ -52,7 +54,8 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
-  def valid_byte_size?(tx) do
+  @spec valid_byte_size?(SignedTx.t()) :: boolean()
+  def valid_byte_size?(_tx) do
     true
   end
 
