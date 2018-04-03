@@ -3,6 +3,7 @@ defmodule Aevm do
 
   require OpCodes
   require OpCodesUtil
+  require GasCodes
   require AevmConst
   require Stack
 
@@ -19,10 +20,13 @@ defmodule Aevm do
       state1 = exec(op_code, state)
 
       curr_gas = State.gas(state1)
-      {_name, _pushed, _popped, gas_price} = OpCodesUtil.opcode(op_code)
+      {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
+      memory_gas_cost = memory_cost(state1, state)
+      gas_after = curr_gas - (op_gas_price + memory_gas_cost)
 
-      state2 = State.set_gas(curr_gas - gas_price, state1)
+      state2 = State.set_gas(gas_after, state1)
       state3 = State.inc_cp(state2)
+
       loop(state3)
     end
   end
@@ -373,7 +377,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._GASPRICE(), state) do
-    # TODO
+    gas_price = State.gas_price(state)
+    push(gas_price, state)
   end
 
   def exec(OpCodes._EXTCODESIZE(), state) do
@@ -422,7 +427,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._GASLIMIT(), state) do
-    # TODO
+    gas_limit = State.gas_limit(state)
+    push(gas_limit, state)
   end
 
   # 50s: Stack, Memory, Storage and Flow Operations
@@ -509,7 +515,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._GAS(), state) do
-    # TODO
+    gas = State.gas(state)
+    push(gas, state)
   end
 
   def exec(OpCodes._JUMPDEST(), state) do
@@ -986,6 +993,20 @@ defmodule Aevm do
   #
   # Util functions
   #
+
+  def memory_cost(state_with_ops, state_without) do
+    words1 = Memory.memory_size_words(state_with_ops)
+
+    case Memory.memory_size_words(state_without) do
+      ^words1 ->
+        0
+
+      words2 ->
+        first = round(GasCodes._GMEMORY() * words1 + Float.floor(words1 * words1 / 512))
+        second = round(GasCodes._GMEMORY() * words2 + Float.floor(words2 * words2 / 512))
+        first - second
+    end
+  end
 
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>

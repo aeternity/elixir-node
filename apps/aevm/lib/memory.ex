@@ -55,24 +55,18 @@ defmodule Memory do
   end
 
   def memory_size_words(state) do
-    case memory_size_bytes(state) do
-      nil ->
-        0
-
-      size ->
-        round(size / 32)
-    end
+    round(memory_size_bytes(state) / 32)
   end
 
   def memory_size_bytes(state) do
     memory = State.memory(state)
-    32 + (memory |> Map.keys() |> Enum.sort() |> Enum.at(-1))
+    largest_index = memory |> Map.keys() |> Enum.sort() |> Enum.at(-1, 0)
+    largest_index + 32
   end
 
   def get_area(from, to, state) do
     memory = State.memory(state)
     memory_indexes = trunc(Float.ceil(to / 32))
-    start_index = Float.floor(from / 32) * 32
 
     total_data =
       Enum.reduce(0..(memory_indexes - 1), <<>>, fn i, data_acc ->
@@ -90,7 +84,6 @@ defmodule Memory do
   def write_area(from, bytes, state) do
     memory = State.memory(state)
 
-    byte_position = rem(from, 32)
     {memory_index, bit_position} = get_index_in_memory(from)
     memory1 = write(bytes, bit_position, memory_index, memory)
 

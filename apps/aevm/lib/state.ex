@@ -98,7 +98,7 @@ defmodule State do
   end
 
   def gas_price(state) do
-    Map.get(state, :gas_prices)
+    Map.get(state, :gas_price)
   end
 
   def origin(state) do
