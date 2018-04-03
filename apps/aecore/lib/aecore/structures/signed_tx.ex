@@ -9,6 +9,8 @@ defmodule Aecore.Structures.SignedTx do
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleQueryTx
 
   require Logger
 
@@ -30,6 +32,28 @@ defmodule Aecore.Structures.SignedTx do
   @spec is_coinbase?(SignedTx.t()) :: boolean()
   def is_coinbase?(%{data: %{sender: key}, signature: signature}) do
     key == nil && signature == nil
+  end
+
+  def valid_byte_size?(%SignedTx{data: %{type: OracleQueryTx}} = tx) do
+    if byte_size(tx.data.payload.oracle_address) == 33 do
+      true
+    else
+      Logger.error("Wrong oracle address size")
+      false
+    end
+  end
+
+  def valid_byte_size?(%SignedTx{data: %{type: SpendTx}} = tx) do
+    if byte_size(tx.data.sender) == 33 && byte_size(tx.data.payload.receiver) == 33 do
+      true
+    else
+      Logger.error("Wrong sender or receiver key size")
+      false
+    end
+  end
+
+  def valid_byte_size?(tx) do
+    true
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()

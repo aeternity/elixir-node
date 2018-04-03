@@ -118,7 +118,7 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || SignedTx.is_valid?(tx)
+      SignedTx.is_coinbase?(tx) || (SignedTx.is_valid?(tx) && SignedTx.valid_byte_size?(tx))
     end)
   end
 
