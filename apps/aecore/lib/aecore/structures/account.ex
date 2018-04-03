@@ -9,6 +9,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aeutil.Bits
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.CoinbaseTx
@@ -22,26 +23,23 @@ defmodule Aecore.Structures.Account do
   Definition of Account structure
 
   ## Parameters
-  - nonce: Out transaction count
   - balance: The acccount balance
+  - nonce: Out transaction count
   """
   defstruct [:balance, :nonce]
   use ExConstructor
 
-  @spec empty() :: Account.t()
-  def empty() do
-    %Account{balance: 0, nonce: 0}
-  end
+  def empty, do: %Account{balance: 0, nonce: 0}
 
   @doc """
-  Builds a SpendTx where the miners public key is used as a sender (from_acc)
+  Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def spend(to_acc, amount, fee) do
-    from_acc = Wallet.get_public_key()
-    from_acc_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
-    spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce)
+  def spend(receiver, amount, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
   @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
@@ -62,18 +60,18 @@ defmodule Aecore.Structures.Account do
           non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
-  def spend(from_acc, from_acc_priv_key, to_acc, amount, fee, nonce) do
-    payload = %{to_acc: to_acc, value: amount}
-    spend_tx = DataTx.init(SpendTx, payload, [from_acc], fee)
-    SignedTx.sign_tx(spend_tx, nonce, from_acc_priv_key)
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
+    payload = %{receiver: receiver, amount: amount}
+    spend_tx = DataTx.init(SpendTx, payload, [sender], fee)
+    SignedTx.sign_tx(spend_tx, nonce, sender_priv_key)
   end
 
   @doc """
   Adds balance to a given address (public key)
   """
   @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
-  def transaction_in!(account_state, value) do
-    new_balance = account_state.balance + value
+  def transaction_in!(account_state, amount) do
+    new_balance = account_state.balance + amount
     if new_balance < 0 do
       throw({:error, "Negative balance"})
     end
@@ -88,5 +86,17 @@ defmodule Aecore.Structures.Account do
     end
 
     %Account{account_state | nonce: new_nonce}
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("ak", bin)
+  end
+
+  def base58c_decode(<<"ak$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

@@ -3,7 +3,7 @@ defmodule AecoreValidationTest do
   Unit tests for the BlockValidation module
   """
 
-  use ExUnit.Case, async: false, seed: 0
+  use ExUnit.Case
   doctest Aecore.Chain.BlockValidation
 
   alias Aecore.Persistence.Worker, as: Persistence
@@ -37,13 +37,13 @@ defmodule AecoreValidationTest do
     Miner.mine_sync_block_to_chain()
 
     [
-      to_acc: Wallet.get_public_key("M/0")
+      receiver: Wallet.get_public_key("M/0")
     ]
   end
 
   @tag :validation
   test "validate block header height", ctx do
-    new_block = get_new_block(ctx.to_acc)
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -71,9 +71,10 @@ defmodule AecoreValidationTest do
 
   @tag :validation
   @timeout 10_000_000
-  test "validate block header timestamp", ctx do
+  test "validate block header time", ctx do
     Miner.mine_sync_block_to_chain()
-    new_block = get_new_block(ctx.to_acc)
+
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
     blocks_for_difficulty_calculation = [new_block, prev_block]
@@ -86,12 +87,12 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_timestamp_block = %Block{new_block | header: %Header{new_block.header | timestamp: 10}}
+    wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
 
-    assert {:error, "Invalid header timestamp"} ==
+    assert {:error, "Invalid header time"} ==
              catch_throw(
                BlockValidation.calculate_and_validate_block!(
-                 wrong_timestamp_block,
+                 wrong_time_block,
                  prev_block,
                  get_chain_state(),
                  blocks_for_difficulty_calculation
@@ -101,10 +102,10 @@ defmodule AecoreValidationTest do
 
   @timeout 10_000
   test "validate transactions in a block", ctx do
-    from_acc = Wallet.get_public_key()
-    value = 5
+    sender = Wallet.get_public_key()
+    amount = 5
     fee = 1
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
 
     priv_key = Wallet.get_private_key()
 
@@ -118,10 +119,10 @@ defmodule AecoreValidationTest do
            |> Enum.all?() == true
   end
 
-  def get_new_block(to_acc) do
-    from_acc = Wallet.get_public_key()
-    value = 100
-    nonce = Map.get(Chain.chain_state().accounts, from_acc, %{nonce: 0}).nonce + 1
+  def get_new_block(receiver) do
+    sender = Wallet.get_public_key()
+    amount = 100
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
     fee = 10
 
     priv_key = Wallet.get_private_key()
@@ -131,11 +132,11 @@ defmodule AecoreValidationTest do
     new_block
   end
 
-  def get_prev_block() do
+  def get_prev_block do
     Chain.top_block()
   end
 
-  def get_chain_state() do
+  def get_chain_state do
     Chain.chain_state()
   end
 end

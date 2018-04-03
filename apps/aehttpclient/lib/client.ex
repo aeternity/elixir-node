@@ -9,6 +9,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Structures.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
+  alias Aehttpserver.Web.Endpoint
 
   require Logger
 
@@ -22,15 +23,14 @@ defmodule Aehttpclient.Client do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
+  @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
   def get_block({uri, hash}) do
-    hash = Header.bech32_encode(hash)
+    hash = Header.base58c_encode(hash)
 
     case get(uri <> "/block/#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
 
-      # TODO handle deserialization errors
       {:error, reason} ->
         {:error, reason}
     end
@@ -38,8 +38,8 @@ defmodule Aehttpclient.Client do
 
   @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
   def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    from_block_hash = Header.bech32_encode(from_block_hash)
-    to_block_hash = Header.bech32_encode(to_block_hash)
+    from_block_hash = Header.base58c_encode(from_block_hash)
+    to_block_hash = Header.base58c_encode(to_block_hash)
 
     uri =
       uri <> "/raw_blocks?" <> "from_block=" <> from_block_hash <> "&to_block=" <> to_block_hash
@@ -144,9 +144,7 @@ defmodule Aehttpclient.Client do
 
   @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
-    case(
-      HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}])
-    ) do
+    case HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}]) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         handle_response(identifier, body, headers)
 
@@ -160,27 +158,22 @@ defmodule Aehttpclient.Client do
         {:error, "HTTPPoison Error"}
 
       unexpected ->
-        Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
+        Logger.error(fn ->
+          "unexpected client result " <> Kernel.inspect(unexpected)
+        end)
+
         {:error, "Unexpected error"}
     end
   end
 
   defp send_to_peer(data, uri) do
-    HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
+    HTTPoison.post(uri, Poison.encode!(data), [
+      {"Content-Type", "application/json"}
+    ])
   end
 
   # TODO: what is this function even doing?
   defp get_local_port() do
-    Aehttpserver.Web.Endpoint
-    |> :sys.get_state()
-    |> elem(3)
-    |> Enum.at(2)
-    |> elem(3)
-    |> elem(2)
-    |> Enum.at(1)
-    |> List.keyfind(:http, 0)
-    |> elem(1)
-    |> Enum.at(0)
-    |> elem(1)
+    Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

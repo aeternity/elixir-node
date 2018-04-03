@@ -12,6 +12,9 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Header
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -22,7 +25,7 @@ defmodule Aecore.Miner.Worker do
   require Logger
 
   @mersenne_prime 2_147_483_647
-  @coinbase_transaction_value 100
+  @coinbase_transaction_amount 100
   @new_candidate_nonce_count 500
 
   def start_link(_args) do
@@ -55,10 +58,9 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  ## TODO check if is Synced with the chain !!
   @spec resume() :: :ok
-  def resume() do
-    if Peers.is_chain_synced?() do
+  def resume do
+    if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
       Logger.error("Can't start miner, chain not yet synced")
@@ -66,14 +68,14 @@ defmodule Aecore.Miner.Worker do
   end
 
   @spec suspend() :: :ok
-  def suspend(), do: GenServer.call(__MODULE__, {:mining, :stop})
+  def suspend, do: GenServer.call(__MODULE__, {:mining, :stop})
 
   @spec get_state() :: :running | :idle
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
   ## Mine single block and add it to the chain - Sync
   @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
-  def mine_sync_block_to_chain() do
+  def mine_sync_block_to_chain do
     cblock = candidate()
 
     case mine_sync_block(cblock) do
@@ -170,9 +172,9 @@ defmodule Aecore.Miner.Worker do
       end
 
     cheader = %{cblock.header | nonce: nonce}
-    cblock = %{cblock | header: cheader}
+    cblock_with_header = %{cblock | header: cheader}
     work = fn -> Cuckoo.generate(cheader) end
-    start_worker(work, %{state | block_candidate: cblock})
+    start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
   defp mining(%{miner_state: :idle, job: []} = state), do: state
@@ -209,7 +211,7 @@ defmodule Aecore.Miner.Worker do
 
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
     Logger.info(fn ->
-      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.difficulty_target}, nonce #{
+      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
         cblock.header.nonce
       }"
     end)
@@ -219,17 +221,20 @@ defmodule Aecore.Miner.Worker do
     mining(%{state | block_candidate: nil})
   end
 
-  @spec candidate() :: {:block_found, integer} | {:no_block_found, integer} | {:error, binary}
-  def candidate() do
+  @spec candidate() ::
+          {:block_found, integer()} | {:no_block_found, integer()} | {:error, binary()}
+  def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
     chain_state = Chain.chain_state(top_block_hash)
+
+    candidate_height = top_block.header.height + 1
 
     try do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
+      difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
 
       txs_list = Map.values(Pool.get_pool())
 
@@ -239,9 +244,10 @@ defmodule Aecore.Miner.Worker do
         end)
 
       valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, top_block.header.height + 1)
+        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
 
-      valid_txs_by_fee = filter_transactions_by_fee(valid_txs_by_chainstate)
+      valid_txs_by_fee =
+        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
       pubkey = Wallet.get_public_key()
 
@@ -256,6 +262,7 @@ defmodule Aecore.Miner.Worker do
       ]
 
       new_block = create_block(top_block, chain_state, difficulty, [])
+
       new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
 
       valid_txs_by_block_size =
@@ -293,17 +300,18 @@ defmodule Aecore.Miner.Worker do
 
   ## Internal
 
-  defp filter_transactions_by_fee(txs) do
-    miners_fee_bytes_per_token =
-      Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-
+  defp filter_transactions_by_fee_and_ttl(txs, block_height) do
     Enum.filter(txs, fn tx ->
-      tx_size_bytes = Pool.get_tx_size_bytes(tx)
-      tx.data.fee >= Float.floor(tx_size_bytes / miners_fee_bytes_per_token)
+      Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
+        Oracle.tx_ttl_is_valid?(tx, block_height)
     end)
   end
 
-  defp filter_transactions_by_block_size(txs, current_block_size_bytes, max_block_size_bytes) do
+  defp filter_transactions_by_block_size(
+         txs,
+         current_block_size_bytes,
+         max_block_size_bytes
+       ) do
     first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
 
     filter_transactions_by_block_size(
@@ -354,6 +362,7 @@ defmodule Aecore.Miner.Worker do
     else
       next_tx = Enum.at(txs, next_tx_index)
       new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
+
       new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
 
       if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do
@@ -373,7 +382,7 @@ defmodule Aecore.Miner.Worker do
   end
 
   defp create_block(top_block, chain_state, difficulty, valid_txs) do
-    root_hash = BlockValidation.calculate_root_hash(valid_txs)
+    txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
       ChainState.calculate_and_validate_chain_state!(
@@ -382,15 +391,15 @@ defmodule Aecore.Miner.Worker do
         top_block.header.height + 1
       )
 
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+    root_hash = ChainState.calculate_root_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
       Header.create(
         top_block.header.height + 1,
         top_block_hash,
+        txs_hash,
         root_hash,
-        chain_state_hash,
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
@@ -400,7 +409,7 @@ defmodule Aecore.Miner.Worker do
     %Block{header: unmined_header, txs: valid_txs}
   end
 
-  def coinbase_transaction_value, do: @coinbase_transaction_value
+  def coinbase_transaction_amount, do: @coinbase_transaction_amount
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1

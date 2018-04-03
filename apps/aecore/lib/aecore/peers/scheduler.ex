@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Scheduler do
+  @moduledoc """
+  Performs peer related operations every @check_time milliseconds.
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker, as: Peers
@@ -25,7 +29,7 @@ defmodule Aecore.Peers.Scheduler do
     {:noreply, state}
   end
 
-  defp schedule_work() do
+  defp schedule_work do
     Process.send_after(self(), :work, @check_time)
   end
 end

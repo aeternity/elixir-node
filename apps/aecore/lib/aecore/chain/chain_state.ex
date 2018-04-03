@@ -5,7 +5,9 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
+  alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -15,19 +17,26 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the accounts"
   @type accounts() :: %{Wallet.pubkey() => Account.t()}
 
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts()}
+  @type oracles :: %{
+          registered_oracles: Oracle.registered_oracles(),
+          interaction_objects: Oracle.interaction_objects()
+        }
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), integer()) :: chainstate()
-  def calculate_and_validate_chain_state!(txs, chainstate, _block_height) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(chainstate, tx)
+  @typedoc "Structure of the chainstate"
+  @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
+
+  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+          chainstate()
+  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+    Enum.reduce(txs, chainstate, fn tx, chainstate ->
+      apply_transaction_on_state!(chainstate, tx, block_height)
     end)
+    |> Oracle.remove_expired_oracles(block_height)
+    |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state!(chainstate(), SignedTx.t()) :: chainstate()
-  def apply_transaction_on_state!(chainstate, tx) do
+  @spec apply_transaction_on_state!(chainstate(), SignedTx.t(), non_neg_integer()) :: chainstate()
+  def apply_transaction_on_state!(chainstate, tx, block_height) do
     if !SignedTx.is_valid?(tx) do
       throw({:error, "Invalid transaction"})
     end
@@ -39,8 +48,8 @@ defmodule Aecore.Chain.ChainState do
   Builds a merkle tree from the passed chain state and
   returns the root hash of the tree.
   """
-  @spec calculate_chain_state_hash(chainstate()) :: binary()
-  def calculate_chain_state_hash(chainstate) do
+  @spec calculate_root_hash(chainstate()) :: binary()
+  def calculate_root_hash(chainstate) do
     merkle_tree_data =
       for {account, data} <- chainstate.accounts do
         {account, Serialization.pack_binary(data)}
@@ -73,13 +82,12 @@ defmodule Aecore.Chain.ChainState do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), chainstate(), integer()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate, _block_height) do
-    try do
-      {true, apply_transaction_on_state!(chainstate, tx)}
-    catch
-      {:error, _} -> {false, chainstate}
-    end
+  @spec validate_tx(SignedTx.t(), chainstate(), non_neg_integer()) :: {boolean(), chainstate()}
+  defp validate_tx(tx, chainstate, block_height) do
+    {true, apply_transaction_on_state!(chainstate, tx, block_height)}
+  catch
+    {:error, _reason} ->
+      {false, chainstate}
   end
 
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
@@ -99,8 +107,15 @@ defmodule Aecore.Chain.ChainState do
     Map.put(chainstate, :accounts, updated_accounts)
   end
 
-  @spec bech32_encode(binary()) :: String.t()
-  def bech32_encode(bin) do
-    Bits.bech32_encode("cs", bin)
+  def base58c_encode(bin) do
+    Bits.encode58c("bs", bin)
+  end
+
+  def base58c_decode(<<"bs$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

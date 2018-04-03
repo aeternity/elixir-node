@@ -31,8 +31,6 @@ defmodule AecoreChainStateTest do
 
   @tag :chain_state
   test "chain state", wallet do
-    next_block_height = Chain.top_block().header.height + 1
-
     {:ok, signed_tx1} =
       Account.spend(wallet.b_pub_key, wallet.b_priv_key, wallet.a_pub_key, 1, 1, 2)
 

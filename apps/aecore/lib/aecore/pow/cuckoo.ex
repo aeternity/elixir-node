@@ -8,6 +8,7 @@ defmodule Aecore.Pow.Cuckoo do
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow_cuckoo.erl
     - https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_pow.erl
   """
+
   require Logger
 
   alias Aecore.Chain.BlockValidation
@@ -18,8 +19,8 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{difficulty_target: difficulty, pow_evidence: soln} = header) do
-    if test_target(soln, difficulty) do
+  def verify(%Header{target: target, pow_evidence: soln} = header) do
+    if test_target(soln, target) do
       process(:verify, header)
     else
       false
@@ -74,9 +75,10 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp command_options(:verify), do: default_command_options() ++ [{:stdin, true}]
+
   defp command_options(:generate), do: default_command_options()
 
-  defp default_command_options() do
+  defp default_command_options do
     [
       {:stdout, self()},
       {:stderr, self()},
@@ -89,28 +91,26 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp exec_os_cmd(%{process: process, header: header, cmd: command, cmd_opt: options} = builder) do
-    try do
-      {:ok, _erlpid, ospid} = Exexec.run(command, options)
+    {:ok, _erlpid, ospid} = Exexec.run(command, options)
 
-      if process == :verify do
-        Exexec.send(ospid, solution_to_string(header.pow_evidence))
-        Exexec.send(ospid, :eof)
+    if process == :verify do
+      Exexec.send(ospid, solution_to_string(header.pow_evidence))
+      Exexec.send(ospid, :eof)
+    end
+
+    res =
+      case wait_for_result(process, "") do
+        {:ok, response} -> {:ok, %{builder | response: response}}
+        {:error, reason} -> {:error, %{builder | error: reason}}
       end
 
-      res =
-        case wait_for_result(process, "") do
-          {:ok, response} -> {:ok, %{builder | response: response}}
-          {:error, reason} -> {:error, %{builder | error: reason}}
-        end
-
-      Exexec.stop(ospid)
-      res
-    catch
-      error -> {:error, %{builder | error: error}}
-    end
+    Exexec.stop(ospid)
+    res
+  catch
+    error -> {:error, %{builder | error: error}}
   end
 
-  defp export_ld_lib_path() do
+  defp export_ld_lib_path do
     ldpathvar =
       case :os.type() do
         {:unix, :darwin} -> "DYLD_LIBRARY_PATH"
@@ -169,7 +169,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{header: header, response: {:generated, soln}} = builder) do
-    if test_target(soln, header.difficulty_target) do
+    if test_target(soln, header.target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
     else
       {:error, %{builder | error: :no_solution}}
@@ -179,18 +179,18 @@ defmodule Aecore.Pow.Cuckoo do
   ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
   ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
   ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
-  @spec test_target(list(), integer()) :: boolean()
+  @spec test_target(list(), non_neg_integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
     hash = :crypto.hash(:sha256, bin)
-    Hashcash.generate(:cuckoo, hash, target)
+    Hashcash.verify(hash, target)
   end
 
   ## The Cuckoo solution is a list of uint32 integers unless the graph size is
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
-  @spec get_node_size() :: integer()
+  @spec get_node_size() :: non_neg_integer()
   defp get_node_size() do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8

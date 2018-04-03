@@ -9,6 +9,10 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
@@ -35,12 +39,12 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   @spec get_pool() :: map()
-  def get_pool() do
+  def get_pool do
     GenServer.call(__MODULE__, :get_pool)
   end
 
   @spec get_and_empty_pool() :: map()
-  def get_and_empty_pool() do
+  def get_and_empty_pool do
     GenServer.call(__MODULE__, :get_and_empty_pool)
   end
 
@@ -57,20 +61,12 @@ defmodule Aecore.Txs.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    tx_size_bytes = get_tx_size_bytes(tx)
-
-    is_minimum_fee_met =
-      tx.data.fee >=
-        Float.floor(
-          tx_size_bytes / Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
-        )
-
     cond do
       !SignedTx.is_valid?(tx) ->
         Logger.error("Invalid transaction")
         {:reply, :error, tx_pool}
 
-      !is_minimum_fee_met ->
+      !is_minimum_fee_met?(tx, :pool) ->
         Logger.error("Fee is too low")
         {:reply, :error, tx_pool}
 
@@ -82,6 +78,7 @@ defmodule Aecore.Txs.Pool.Worker do
         else
           # Broadcasting notifications for new transaction in a pool(per account and every)
           Notify.broadcast_new_transaction_in_the_pool(tx)
+
           Peers.broadcast_tx(tx)
         end
 
@@ -126,9 +123,36 @@ defmodule Aecore.Txs.Pool.Worker do
     end
   end
 
-  @spec get_tx_size_bytes(SignedTx.t()) :: integer()
+  @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
   def get_tx_size_bytes(tx) do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer()) ::
+          boolean()
+  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
+    case tx.data.payload do
+      %SpendTx{} ->
+        SpendTx.is_minimum_fee_met?(tx, identifier)
+
+      %OracleRegistrationTx{} ->
+        OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
+
+      %OracleQueryTx{} ->
+        true
+
+      %OracleResponseTx{} ->
+        case identifier do
+          :pool ->
+            true
+
+          :miner ->
+            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+        end
+
+      %OracleExtendTx{} ->
+        tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
+    end
   end
 
   ## Private functions
@@ -159,9 +183,10 @@ defmodule Aecore.Txs.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if tx.data.from_acc == address or tx.data.to_acc == address do
+      if tx.data.sender == address or tx.data.receiver == address do
         [
-          Map.from_struct(tx.data)
+          tx.data
+          |> Map.from_struct()
           |> Map.put_new(:signature, tx.signature)
           | user_txs
         ]

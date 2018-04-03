@@ -9,6 +9,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.CoinbaseTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aecore.Structures.Account
 
   require Logger
 
@@ -25,7 +26,7 @@ defmodule Aecore.Structures.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          from_accs: list(binary()),
+          senders: list(binary()),
           fee: non_neg_integer()
         }
 
@@ -35,16 +36,16 @@ defmodule Aecore.Structures.DataTx do
   ## Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
-  - from_acc: The public address of the account originating the transaction
+  - senders: The public addresses of the accounts originating the transaction
   - fee: The amount of tokens given to the miner
   - nonce: A random integer generated on initialisation of a transaction (must be unique!)
   """
-  defstruct [:type, :payload, :from_accs, :fee]
+  defstruct [:type, :payload, :sender, :fee]
   use ExConstructor
 
   @spec init(tx_types(), payload(), list(binary()), integer()) :: DataTx.t()
-  def init(type, payload, from_accs, fee) do
-    %DataTx{type: type, payload: type.init(payload), from_accs: from_accs, fee: fee}
+  def init(type, payload, senders, fee) do
+    %DataTx{type: type, payload: type.init(payload), senders: from_accs, fee: fee}
   end
 
   @doc """
@@ -67,22 +68,43 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(ChainState.chainstate(), DataTx.t()) :: ChainState.chainstate()
-  def process_chainstate!(chainstate, %DataTx{} = tx) do
-    payload = tx.type.init(tx.payload)
+  @spec process_chainstate!(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
+          ChainState.chainstate()
+  def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
+    accounts_state = chainstate.accounts
 
-    if !tx.type.is_valid?(payload, tx.from_accs, tx.fee) do
-      throw({:error, "Invalid Tx"})
-    end
+    tx_type_state =
+      if(tx.type == SpendTx) do
+        %{}
+      else
+        Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+      end
 
     case tx.type.preprocess_check(payload, chainstate, tx.from_accs, tx.fee) do
       :ok -> :ok
       {:error, _reason} = err -> throw(err)
     end
 
-    chainstate
-    |> tx.type.deduct_fee(payload, tx.from_accs, tx.fee)
-    |> tx.type.process_chainstate!(payload, tx.from_accs, tx.fee)
+    {new_accounts_state, new_tx_type_state} =
+      tx.payload
+      |> tx.type.init()
+      |> tx.type.process_chainstate!(
+        tx.sender,
+        tx.fee,
+        tx.nonce,
+        block_height,
+        accounts_state,
+        tx_type_state
+      )
+
+    new_chainstate =
+      if tx.type == SpendTx do
+        chainstate
+      else
+        Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
+      end
+
+    Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -98,6 +120,6 @@ defmodule Aecore.Structures.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 
-    init(data_tx.type, data_tx.payload, data_tx.from_accs, data_tx.fee)
+    init(data_tx.type, data_tx.payload, data_tx.senders, data_tx.fee)
   end
 end
