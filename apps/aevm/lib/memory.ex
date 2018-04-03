@@ -54,24 +54,85 @@ defmodule Memory do
     State.set_memory(memory1, state)
   end
 
-  def memory_size(state) do
+  def memory_size_words(state) do
+    case memory_size_bytes(state) do
+      nil ->
+        0
+
+      size ->
+        round(size / 32)
+    end
+  end
+
+  def memory_size_bytes(state) do
     memory = State.memory(state)
-    memory |> Map.keys() |> Enum.sort() |> Enum.at(-1)
+    32 + (memory |> Map.keys() |> Enum.sort() |> Enum.at(-1))
   end
 
   def get_area(from, to, state) do
     memory = State.memory(state)
-    {prev_index, prev_bit_position} = get_index_in_memory(from)
-    {next_index, next_bit_position} = get_index_in_memory(to)
+    memory_indexes = trunc(Float.ceil(to / 32))
+    start_index = Float.floor(from / 32) * 32
 
-    prev_value = Map.get(memory, prev_index, 0)
-    next_value = Map.get(memory, next_index, 0)
+    total_data =
+      Enum.reduce(0..(memory_indexes - 1), <<>>, fn i, data_acc ->
+        data = Map.get(memory, i * 32, 0)
+        data_acc <> <<data::size(256)>>
+      end)
 
-    <<_::size(prev_bit_position), prev_part::binary>> = <<prev_value::256>>
-    <<next_part::size(next_bit_position), _::binary>> = <<next_value::256>>
+    unneeded_bits = rem(from, 32) * 8
+    area_bits = (to - from) * 8
+    <<_::size(unneeded_bits), area::size(area_bits), _::binary>> = total_data
 
-    area_value_binary = prev_part <> <<next_part::size(next_bit_position)>>
-    binary_word_to_integer(area_value_binary)
+    <<area::size(area_bits)>>
+  end
+
+  def write_area(from, bytes, state) do
+    memory = State.memory(state)
+
+    byte_position = rem(from, 32)
+    {memory_index, bit_position} = get_index_in_memory(from)
+    memory1 = write(bytes, bit_position, memory_index, memory)
+
+    State.set_memory(memory1, state)
+  end
+
+  defp write(<<>>, _byte_position, _memory_index, memory) do
+    memory
+  end
+
+  defp write(bytes, bit_position, memory_index, memory) do
+    memory_index_bits_left =
+      if bit_position == 0 do
+        256
+      else
+        256 - bit_position
+      end
+
+    size_bits = byte_size(bytes) * 8
+
+    bits_to_write =
+      if memory_index_bits_left <= size_bits do
+        memory_index_bits_left
+      else
+        size_bits
+      end
+
+    saved_value = Map.get(memory, memory_index, 0)
+
+    <<new_bytes::size(bits_to_write), bytes_left::binary>> = bytes
+
+    new_value_binary =
+      write_part(
+        bit_position,
+        <<new_bytes::size(bits_to_write)>>,
+        bits_to_write,
+        <<saved_value::256>>
+      )
+
+    memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value_binary))
+
+    write(bytes_left, 0, memory_index + 32, memory1)
   end
 
   defp get_index_in_memory(address) do

@@ -503,7 +503,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._MSIZE(), state) do
-    result = Memory.memory_size(state)
+    result = Memory.memory_size_bytes(state)
 
     push(result, state)
   end
