@@ -48,7 +48,7 @@ defmodule Aecore.Structures.DataTx do
     %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
   end
 
-  def init(_type, _payload, sender, _fee, _nonce) do
+  def init(_type, _payload, _sender, _fee, _nonce) do
     Logger.error("Wrong sender key size")
     throw({:error, "Wrong sender key size"})
   end

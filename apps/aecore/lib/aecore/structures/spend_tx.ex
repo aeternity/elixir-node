@@ -52,7 +52,7 @@ defmodule Aecore.Structures.SpendTx do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
   end
 
-  def init(%{receiver: receiver, amount: _amount}) do
+  def init(%{receiver: _receiver, amount: _amount}) do
     Logger.error("Wrong receiver key size")
     throw({:error, "Wrong receiver key size"})
   end
