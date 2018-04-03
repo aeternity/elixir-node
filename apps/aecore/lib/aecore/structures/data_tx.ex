@@ -43,17 +43,14 @@ defmodule Aecore.Structures.DataTx do
   defstruct [:type, :payload, :sender, :fee, :nonce]
   use ExConstructor
 
-  def init(type, payload, sender, fee, nonce) when sender == nil do
-    %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
-  end
-
   @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, sender, fee, nonce) when byte_size(sender) == 33 do
+  def init(type, payload, sender, fee, nonce) when sender == nil or byte_size(sender) == 33 do
     %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
   end
 
   def init(_type, _payload, sender, _fee, _nonce) do
-    throw({:error, "Wrong sender key size: #{sender}"})
+    Logger.error("Wrong sender key size")
+    throw({:error, "Wrong sender key size"})
   end
 
   @doc """

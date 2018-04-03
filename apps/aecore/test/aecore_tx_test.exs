@@ -138,4 +138,33 @@ defmodule AecoreTxTest do
     # the nonce is small or equal to account nonce, so the transaction is invalid 
     assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
   end
+
+  test "sender pub_key is too small", tx do
+    # Use private as public key for sender to get error that sender key is not 33 bytes
+    sender = Wallet.get_private_key()
+    refute byte_size(sender) == 33
+    amount = 100
+    fee = 50
+
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: tx.receiver, amount: amount}
+
+    assert catch_throw(DataTx.init(SpendTx, payload, sender, fee, 1)) ==
+             {:error, "Wrong sender key size"}
+  end
+
+  test "receiver pub_key is too small", tx do
+    sender = Wallet.get_public_key()
+    amount = 100
+    fee = 50
+
+    # Use private as public key for receiver to get error that receiver key is not 33 bytes
+    receiver = Wallet.get_private_key("M/0")
+    refute byte_size(receiver) == 33
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: receiver, amount: amount}
+
+    assert catch_throw(DataTx.init(SpendTx, payload, sender, fee, 1)) ==
+             {:error, "Wrong receiver key size"}
+  end
 end
