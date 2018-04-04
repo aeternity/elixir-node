@@ -2,8 +2,6 @@ defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
   alias Aecore.Structures.Account
 
