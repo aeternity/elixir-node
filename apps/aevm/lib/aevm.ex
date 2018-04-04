@@ -352,12 +352,14 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CALLDATACOPY(), state) do
+    #TODO: dynamic gas calculation
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
     {op3, state3} = pop(state2)
 
-    # TODO value = bytes_from_data(op2, op2, state3)
-    # TODO write_area
+    data = State.data(state)
+    data_bytes = copy_bytes(op2, op3, data)
+    Memory.write_area(op1, data_bytes, state3)
   end
 
   def exec(OpCodes._CODESIZE(), state) do
@@ -367,13 +369,14 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CODECOPY(), state) do
+    #TODO: dynamic gas calculation
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
     {op3, state3} = pop(state2)
 
     code = State.code(state)
-    value = copy_bytes(op2, op3, code)
-    # TODO: Memory.write_area
+    code_bytes = copy_bytes(op2, op3, code)
+    Memory.write_area(op1, code_bytes, state3)
   end
 
   def exec(OpCodes._GASPRICE(), state) do
@@ -397,7 +400,14 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATACOPY(), state) do
-    # TODO
+    #TODO: test
+    {op1, state1} = pop(state)
+    {op2, state2} = pop(state1)
+    {op3, state3} = pop(state2)
+
+    return_data = State.data(state)
+    return_data_bytes = copy_bytes(op2, op3, return_data)
+    Memory.write_area(op1, return_data_bytes, state3)
   end
 
   # 40s: Block Information
