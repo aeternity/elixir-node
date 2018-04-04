@@ -50,7 +50,7 @@ defmodule Aehttpserver.Web.BlockController do
 
         %{
           "hash" => Header.base58c_encode(hash),
-          "header" => Serialization.block(block, :serialize).header,
+          "header" => Map.delete(Serialization.block(block, :serialize), "transactions"),
           "tx_count" => Enum.count(block.txs)
         }
       end)
