@@ -8,10 +8,7 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTx
   alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
