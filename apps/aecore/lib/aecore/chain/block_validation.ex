@@ -61,7 +61,6 @@ defmodule Aecore.Chain.BlockValidation do
   def single_validate_block!(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
-    block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
     server = self()
     work = fn -> Cuckoo.verify(block.header) end
 
