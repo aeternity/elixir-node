@@ -48,7 +48,7 @@ defmodule AecoreValidationTest do
     blocks_for_difficulty_calculation = [new_block, prev_block]
 
     _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
@@ -58,13 +58,11 @@ defmodule AecoreValidationTest do
     wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
 
     assert {:error, "#{BlockValidation}: Incorrect height"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_height_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+             BlockValidation.calculate_and_validate_block(
+               wrong_height_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_difficulty_calculation
              )
   end
 
@@ -79,7 +77,7 @@ defmodule AecoreValidationTest do
     blocks_for_difficulty_calculation = [new_block, prev_block]
 
     _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
@@ -89,13 +87,11 @@ defmodule AecoreValidationTest do
     wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
 
     assert {:error, "#{BlockValidation}: Invalid header time"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_time_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+             BlockValidation.calculate_and_validate_block(
+               wrong_time_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_difficulty_calculation
              )
   end
 

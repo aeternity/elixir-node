@@ -10,10 +10,8 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
 
   def show(conn, params) do
-    block = Chain.get_block_by_base58_hash(params["hash"])
-
-    case block do
-      %Block{} ->
+    case Chain.get_block_by_base58_hash(params["hash"]) do
+      {:ok, block} ->
         serialized_block = Serialization.block(block, :serialize)
         json(conn, serialized_block)
 

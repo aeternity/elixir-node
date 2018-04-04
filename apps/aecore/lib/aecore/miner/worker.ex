@@ -223,7 +223,7 @@ defmodule Aecore.Miner.Worker do
   def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
-    chain_state = Chain.chain_state(top_block_hash)
+    {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
     candidate_height = top_block.header.height + 1
 

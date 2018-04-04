@@ -13,13 +13,13 @@ defmodule Aecore.Chain.BlockValidation do
   @time_validation_blocks_count 10
   @time_validation_future_limit_ms 3_600_000
 
-  @spec calculate_and_validate_block!(
+  @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
           ChainState.account_chainstate(),
           list(Block.t())
-        ) :: {:error, term()} | :ok
-  def calculate_and_validate_block!(
+        ) :: {:ok, ChainState.chainstate()} | {:error, String.t()}
+  def calculate_and_validate_block(
         new_block,
         previous_block,
         old_chain_state,
@@ -55,26 +55,26 @@ defmodule Aecore.Chain.BlockValidation do
     cond do
       # do not check previous block hash for genesis block, there is none
       !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
-        throw({:error, "#{__MODULE__}: Incorrect previous hash"})
+        {:error, "#{__MODULE__}: Incorrect previous hash"}
 
       # do not check previous block height for genesis block, there is none
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
-        throw({:error, "#{__MODULE__}: Incorrect height"})
+        {:error, "#{__MODULE__}: Incorrect height"}
 
       !valid_header_time?(new_block) ->
-        throw({:error, "#{__MODULE__}: Invalid header time"})
+        {:error, "#{__MODULE__}: Invalid header time"}
 
       !is_target_met ->
-        throw({:error, "#{__MODULE__}: Header hash doesnt meet the target"})
+        {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       new_block.header.root_hash != root_hash ->
-        throw({:error, "#{__MODULE__}: Root hash not matching"})
+        {:error, "#{__MODULE__}: Root hash not matching"}
 
       target != new_block.header.target ->
-        throw({:error, "#{__MODULE__}: Invalid block target"})
+        {:error, "#{__MODULE__}: Invalid block target"}
 
       true ->
-        new_chain_state
+        {:ok, new_chain_state}
     end
   end
 

@@ -91,35 +91,31 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: Block.t()
+  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()}
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
   end
 
-  @spec get_block(binary()) :: Block.t() | {:error, binary()}
+  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
-    block =
-      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
-        {:error, _} ->
-          nil
+    case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
+      {:error, _} = err ->
+        err
 
-        %{block: nil} ->
-          case Persistence.get_block_by_hash(block_hash) do
-            {:ok, block} -> block
-            _ -> nil
-          end
+      %{block: nil} ->
+        case Persistence.get_block_by_hash(block_hash) do
+          {:ok, block} ->
+            {:ok, block}
 
-        block_info ->
-          block_info.block
-      end
+          _ ->
+            {:error, "#{__MODULE__}: Block not found"}
+        end
 
-    if block != nil do
-      block
-    else
-      {:error, "Block not found"}
+      block_info ->
+        {:ok, block_info.block}
     end
   end
 
@@ -134,8 +130,8 @@ defmodule Aecore.Chain.Worker do
   @spec has_block?(binary()) :: boolean()
   def has_block?(hash) do
     case get_block(hash) do
+      {:ok, _block} -> true
       {:error, _} -> false
-      _block -> true
     end
   end
 
@@ -150,32 +146,37 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          ChainState.account_chainstate() | {:error, binary()}
+          ChainState.account_chainstate() | {:error, String.t()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
-      {:error, _} = error -> error
-      %{chain_state: chain_state} -> chain_state
-      _ -> {:error, "Chainstate was delated"}
+      {:error, _} = error ->
+        error
+
+      %{chain_state: chain_state} ->
+        chain_state
+
+      _ ->
+        {:error, "#{__MODULE__}: Chainstate was delated"}
     end
   end
 
-  @spec add_block(Block.t()) :: :ok | {:error, binary()}
+  @spec add_block(Block.t()) :: :ok | {:error, String.t()}
   def add_block(%Block{} = block) do
-    prev_block = get_block(block.header.prev_hash)
-    prev_block_chain_state = chain_state(block.header.prev_hash)
-
-    blocks_for_difficulty_calculation =
-      get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks())
-
-    new_chain_state =
-      BlockValidation.calculate_and_validate_block!(
-        block,
-        prev_block,
-        prev_block_chain_state,
-        blocks_for_difficulty_calculation
-      )
-
-    add_validated_block(block, new_chain_state)
+    with {:ok, prev_block} <- get_block(block.header.prev_hash),
+         {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
+         blocks_for_difficulty_calculation =
+           get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks()),
+         {:ok, new_chain_state} <-
+           BlockValidation.calculate_and_validate_block(
+             block,
+             prev_block,
+             prev_block_chain_state,
+             blocks_for_difficulty_calculation
+           ) do
+      add_validated_block(block, new_chain_state)
+    else
+      err -> err
+    end
   end
 
   @spec add_validated_block(Block.t(), ChainState.chainstate()) :: :ok
@@ -183,17 +184,17 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate() | {:error, binary()}
+  @spec chain_state(binary()) :: {:ok, ChainState.account_chainstate()} | {:error, String.t()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
-      error = {:error, _} ->
-        error
+      {:error, _} = err ->
+        err
 
       %{chain_state: chain_state} ->
-        chain_state
+        {:ok, chain_state}
 
       _ ->
-        {:error, "Chainstate was deleted"}
+        {:error, "#{__MODULE__}: Chainstate was deleted"}
     end
   end
 
@@ -272,12 +273,12 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map} = state
       ) do
-    block_info = blocks_data_map[block_hash]
+    case Map.fetch(blocks_data_map, block_hash) do
+      {:ok, block_info} ->
+        {:reply, block_info, state}
 
-    if block_info != nil do
-      {:reply, block_info, state}
-    else
-      {:reply, {:error, "Block not found"}, state}
+      :error ->
+        {:reply, {:error, "#{__MODULE__}: Block not found"}, state}
     end
   end
 
@@ -400,19 +401,19 @@ defmodule Aecore.Chain.Worker do
 
     top_chain_state =
       case Persistence.get_all_accounts_chain_states() do
-        chain_states when chain_states == %{} -> state.blocks_data_map[top_hash].chain_state
+        %{} -> state.blocks_data_map[top_hash].chain_state
         chain_states -> chain_states
       end
 
     blocks_map =
       case Persistence.get_blocks(number_of_blocks_in_memory()) do
-        blocks_map when blocks_map == %{} -> %{}
+        %{} -> %{}
         blocks_map -> blocks_map
       end
 
     blocks_data_map =
       case Persistence.get_all_blocks_info() do
-        blocks_info_map when blocks_info_map == %{} ->
+        %{} ->
           state.blocks_data_map
 
         blocks_info_map ->
@@ -452,17 +453,8 @@ defmodule Aecore.Chain.Worker do
           SpendTx ->
             [tx.data.sender, tx.data.payload.receiver]
 
-          OracleRegistrationTx ->
-            tx.data.sender
-
           OracleQueryTx ->
             [tx.data.sender, tx.data.payload.oracle_address]
-
-          OracleResponseTx ->
-            tx.data.sender
-
-          OracleExtendTx ->
-            tx.data.sender
 
           _ ->
             tx.data.sender
@@ -504,10 +496,7 @@ defmodule Aecore.Chain.Worker do
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
       case get_block(next_block_hash) do
-        {:error, _} ->
-          blocks_acc
-
-        block ->
+        {:ok, block} ->
           updated_blocks_acc = [block | blocks_acc]
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
@@ -518,6 +507,9 @@ defmodule Aecore.Chain.Worker do
             final_block_hash,
             next_count
           )
+
+        {:error, _} ->
+          blocks_acc
       end
     else
       blocks_acc
