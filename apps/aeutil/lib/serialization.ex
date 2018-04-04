@@ -265,7 +265,7 @@ defmodule Aeutil.Serialization do
     serialize_txs_info_to_json(txs_info, [])
   end
 
-  def serialize_txs_info_to_json([h | t], acc) do
+  defp serialize_txs_info_to_json([h | t], acc) do
     json_response_struct = %{
       tx: %{
         sender: Account.base58c_encode(h.sender),
@@ -285,7 +285,7 @@ defmodule Aeutil.Serialization do
     serialize_txs_info_to_json(t, acc)
   end
 
-  def serialize_txs_info_to_json([], acc) do
+  defp serialize_txs_info_to_json([], acc) do
     acc
   end
 end
