@@ -17,7 +17,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Structures.Chainstate
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet

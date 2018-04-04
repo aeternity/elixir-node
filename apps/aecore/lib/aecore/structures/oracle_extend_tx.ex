@@ -55,6 +55,7 @@ defmodule Aecore.Structures.OracleExtendTx do
       sender,
       Map.get(accounts, sender, Account.empty()),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
@@ -82,9 +83,10 @@ defmodule Aecore.Structures.OracleExtendTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, _block_height, registered_oracles) do
+  def preprocess_check!(tx, sender, account_state, fee, _nonce, _block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})

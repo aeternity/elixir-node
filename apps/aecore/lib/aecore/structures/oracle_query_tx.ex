@@ -97,6 +97,7 @@ defmodule Aecore.Structures.OracleQueryTx do
       sender,
       Account.get_account_state(accounts, sender),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
@@ -133,9 +134,10 @@ defmodule Aecore.Structures.OracleQueryTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
+  def preprocess_check!(tx, _sender, account_state, fee, _nonce, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})

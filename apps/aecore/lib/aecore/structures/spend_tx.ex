@@ -6,7 +6,6 @@ defmodule Aecore.Structures.SpendTx do
   @behaviour Aecore.Structures.Transaction
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
-  alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
   alias Aecore.Structures.Chainstate
@@ -125,7 +124,7 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, _block_height, nonce, %{}) do
+  def preprocess_check!(tx, _sender, account_state, fee, _block_height, _nonce, %{}) do
     preprocess_check!(tx, account_state, fee)
   end
 
