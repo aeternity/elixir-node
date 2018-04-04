@@ -53,7 +53,7 @@ defmodule AecoreChainStateTest do
       end)
 
     chain_state =
-      apply_txs_on_state!([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate})
+      apply_txs_on_state!([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate}, 1)
 
     assert {6, 100} ==
              {
@@ -74,10 +74,10 @@ defmodule AecoreChainStateTest do
              }
   end
 
-  def apply_txs_on_state!(txs, chainstate) do
+  def apply_txs_on_state!(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      Chainstate.apply_transaction_on_state!(tx, chainstate)
+      Chainstate.apply_transaction_on_state!(tx, chainstate, block_height)
     end)
   end
 end

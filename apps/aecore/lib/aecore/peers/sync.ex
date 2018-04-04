@@ -8,6 +8,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Structures.Header
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
@@ -59,7 +60,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:set_chain_sync_status, status})
   end
 
-  @spec add_block_to_state(binary(), term()) :: :ok
+  @spec add_block_to_state(binary(), Block.t()) :: :ok
   def add_block_to_state(block_hash, block) do
     GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
   end
@@ -93,6 +94,7 @@ defmodule Aecore.Peers.Sync do
             Enum.each(blocks, fn block ->
               try do
                 BlockValidation.single_validate_block!(block)
+
                 peer_block_hash = BlockValidation.block_header_hash(block.header)
 
                 if !Chain.has_block?(peer_block_hash) do
@@ -105,7 +107,11 @@ defmodule Aecore.Peers.Sync do
             end)
 
             earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
-            add_peer_blocks_to_sync_state(peer_uri, earliest_block.header.prev_hash)
+
+            add_peer_blocks_to_sync_state(
+              peer_uri,
+              earliest_block.header.prev_hash
+            )
           end
 
         {:error, message} ->
@@ -262,7 +268,10 @@ defmodule Aecore.Peers.Sync do
           Logger.info(fn -> "Aquired #{new_count} new peers" end)
           :ok
         else
-          Logger.debug(fn -> "No new peers added when trying to refill peers" end)
+          Logger.debug(fn ->
+            "No new peers added when trying to refill peers"
+          end)
+
           {:error, "No new peers added"}
         end
 
@@ -274,6 +283,7 @@ defmodule Aecore.Peers.Sync do
   defp get_newpeers_and_add(known) do
     known_count = length(known)
     known_set = MapSet.new(known)
+
     number_of_peers_to_add = Enum.min([@peers_target_count - known_count, known_count])
 
     known

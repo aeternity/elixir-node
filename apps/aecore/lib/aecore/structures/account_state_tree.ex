@@ -9,7 +9,7 @@ defmodule Aecore.Structures.AccountStateTree do
 
   # abstract datatype representing a merkle tree
   @type tree :: tuple()
-
+  @type accounts_state :: tree()
   @type hash :: binary()
 
   @spec init_empty() :: tree()
@@ -27,6 +27,10 @@ defmodule Aecore.Structures.AccountStateTree do
   def get(tree, key) do
     account_state = :gb_merkle_trees.lookup(key, tree)
     Serialization.account_state(account_state, :deserialize)
+  end
+
+  def has_key?(tree, key) do
+    :gb_merkle_trees.lookup(key, tree) != :none
   end
 
   @spec delete(tree(), Wallet.pubkey()) :: tree()

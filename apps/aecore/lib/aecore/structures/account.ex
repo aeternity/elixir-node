@@ -64,7 +64,7 @@ defmodule Aecore.Structures.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
-    payload = %{receiver: receiver, amount: amount, lock_time_block: 0}
+    payload = %{receiver: receiver, amount: amount}
     spend_tx = DataTx.init(SpendTx, payload, sender, fee, nonce)
     SignedTx.sign_tx(spend_tx, sender_priv_key)
   end

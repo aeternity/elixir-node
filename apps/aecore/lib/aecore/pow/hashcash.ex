@@ -16,7 +16,7 @@ defmodule Aecore.Pow.Hashcash do
     verify(block_header_hash, block_header.target)
   end
 
-  @spec verify(binary(), integer()) :: boolean()
+  @spec verify(binary(), non_neg_integer()) :: boolean()
   def verify(block_header_hash, difficulty) do
     block_header_hash
     |> Bits.extract()
@@ -27,7 +27,7 @@ defmodule Aecore.Pow.Hashcash do
   @doc """
   Find a nonce
   """
-  @spec generate(Header.t(), integer()) :: {:ok, Header.t()} | {:error, term()}
+  @spec generate(Header.t(), non_neg_integer()) :: {:ok, Header.t()} | {:error, term()}
   def generate(%Header{nonce: nonce} = block_header, start_nonce) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
 

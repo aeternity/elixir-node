@@ -10,28 +10,33 @@ defmodule Aecore.Structures.Chainstate do
   alias Aecore.Structures.AccountStateTree
   alias Aecore.Structures.Chainstate
   alias Aeutil.Bits
+  alias Aecore.Oracle.Oracle
 
   require Logger
 
-  @type tree :: tuple()
-
   @type t :: %Chainstate{
-          accounts: tree()
+          accounts: AccountStateTree.accounts_state(),
+          oracles: Oracle.oracles()
         }
 
   defstruct [
-    :accounts
+    :accounts,
+    :oracles
   ]
+
+  use ExConstructor
 
   @spec init :: Chainstate.t()
   def init do
     %Chainstate{
-      :accounts => AccountStateTree.init_empty()
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => %{registered_oracles: %{}, interaction_objects: %{}}
     }
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), Chainstate.t()) :: Chainstate.t()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate) do
+  @spec apply_transaction_on_state!(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
+          Chainstate.t()
+  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
     cond do
       SignedTx.is_coinbase?(tx) ->
         receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
@@ -45,7 +50,7 @@ defmodule Aecore.Structures.Chainstate do
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate)
+          DataTx.process_chainstate!(data, chainstate, block_height)
         else
           throw({:error, "Invalid transaction"})
         end
@@ -63,10 +68,10 @@ defmodule Aecore.Structures.Chainstate do
     AccountStateTree.root_hash(chainstate.accounts)
   end
 
-  def filter_invalid_txs(txs_list, chainstate) do
+  def filter_invalid_txs(txs_list, chainstate, block_height) do
     {valid_txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc)
+        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
 
         if valid_chainstate do
           {valid_txs_list ++ [tx], updated_chainstate}
@@ -78,9 +83,10 @@ defmodule Aecore.Structures.Chainstate do
     valid_txs_list
   end
 
-  @spec validate_tx(SignedTx.t(), Chainstate.t()) :: {boolean(), Chainstate.t()}
-  defp validate_tx(tx, chainstate) do
-    {true, apply_transaction_on_state!(tx, chainstate)}
+  @spec validate_tx(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
+          {boolean(), Chainstate.t()}
+  defp validate_tx(tx, chainstate, block_height) do
+    {true, apply_transaction_on_state!(tx, chainstate, block_height)}
   catch
     {:error, _} -> {false, chainstate}
   end
@@ -103,4 +109,10 @@ defmodule Aecore.Structures.Chainstate do
   def base58c_decode(_) do
     {:error, "Wrong data"}
   end
+
+  @spec to_struct(map()) :: Chainstate.t()
+  def to_struct(destructed_chainstate), do: struct(Chainstate, destructed_chainstate)
+
+  @spec destruct(Chainstate.t()) :: map()
+  def destruct(chainstate), do: Map.from_struct(chainstate)
 end

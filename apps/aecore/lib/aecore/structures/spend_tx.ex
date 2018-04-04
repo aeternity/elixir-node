@@ -9,7 +9,9 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
+  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.AccountStateTree
+  alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
 
@@ -78,16 +80,21 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec process_chainstate!(
           SpendTx.t(),
-          binary(),
+          Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          non_neg_integer(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()} | {:error, String.t()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
+        ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
+    process_chainstate!(tx, sender, fee, nonce, accounts, %{})
+  end
+
+  defp process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check(tx, sender_account_state, fee, nonce, %{}) do
+    case preprocess_check!(tx, sender_account_state, fee) do
       :ok ->
         new_sender_account_state =
           sender_account_state
@@ -109,30 +116,53 @@ defmodule Aecore.Structures.SpendTx do
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check(
+  @spec preprocess_check!(
           SpendTx.t(),
-          Account.t(),
+          Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          non_neg_integer(),
+          tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, account_state, fee, nonce, %{}) do
+  def preprocess_check!(tx, _sender, account_state, fee, _block_height, nonce, %{}) do
+    preprocess_check!(tx, account_state, fee)
+  end
+
+  defp preprocess_check!(tx, account_state, fee) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
-        {:error, "Negative balance"}
-
-      account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Negative balance"})
 
       true ->
         :ok
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(Chainstate.accounts_state(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()
+  def is_minimum_fee_met?(tx, identifier) do
+    if identifier == :validation do
+      true
+    else
+      tx_size_bytes = Pool.get_tx_size_bytes(tx)
+
+      bytes_per_token =
+        case identifier do
+          :pool ->
+            Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
+
+          :miner ->
+            Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
+        end
+
+      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
+    end
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]

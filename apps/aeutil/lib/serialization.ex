@@ -6,6 +6,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Chainstate
@@ -34,12 +35,16 @@ defmodule Aeutil.Serialization do
     Block.new(header: built_header, txs: txs)
   end
 
-  @spec tx(map(), :deserialize) :: SpendTx.t()
-  def tx(tx, :serialize), do: serialize_value(tx)
+  @spec tx(map(), :serialize | :deserialize) :: SignedTx.t()
+  def tx(tx, :serialize) do
+    serialize_value(tx)
+  end
 
   def tx(tx, :deserialize) do
     tx_data = tx["data"]
+
     data = DataTx.deserialize(tx_data)
+
     signature = base64_binary(tx["signature"], :deserialize)
     %SignedTx{data: data, signature: signature}
   end
@@ -165,6 +170,12 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_encode(value)
 
+      :oracle_address ->
+        Account.base58c_encode(value)
+
+      :query_id ->
+        OracleQueryTx.base58c_encode(value)
+
       :signature ->
         base64_binary(value, :serialize)
 
@@ -236,6 +247,12 @@ defmodule Aeutil.Serialization do
 
       :receiver ->
         Account.base58c_decode(value)
+
+      :oracle_address ->
+        Account.base58c_decode(value)
+
+      :query_id ->
+        OracleQueryTx.base58c_decode(value)
 
       :signature ->
         base64_binary(value, :deserialize)
