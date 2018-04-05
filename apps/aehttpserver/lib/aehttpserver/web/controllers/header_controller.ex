@@ -11,30 +11,26 @@ defmodule Aehttpserver.Web.HeaderController do
 
   def header_by_hash(conn, %{"hash" => hash}) do
     case Chain.get_header_by_base58_hash(hash) do
+      {:ok, header} ->
+        json(conn, Serialization.serialize_value(header))
+
       {:error, :invalid_hash} ->
-        json(put_status(conn, 400), "Invalid hash")
+        json(put_status(conn, 400), %{reason: "Invalid hash"})
 
       {:error, :header_not_found} ->
-        json(put_status(conn, 404), "Header not found")
-
-      header ->
-        json(conn, Serialization.serialize_value(header))
+        json(put_status(conn, 404), %{reason: "Header not found"})
     end
   end
 
   def header_by_height(conn, %{"height" => height}) do
     parsed_height = height |> Integer.parse() |> elem(0)
 
-    if(parsed_height < 0) do
-      json(put_status(conn, 400), "Header not found")
+    with true <- parsed_height > 0,
+         {:ok, header} <- Chain.get_header_by_height(parsed_height) do
+      json(conn, Serialization.serialize_value(header))
     else
-      case Chain.get_header_by_height(parsed_height) do
-        {:error, :header_not_found} ->
-          json(put_status(conn, 400), "Header not found")
-
-        header ->
-          json(conn, Serialization.serialize_value(header))
-      end
+      _ ->
+        json(put_status(conn, 400), "Header not found")
     end
   end
 end

@@ -58,4 +58,8 @@ defmodule Aehttpserver.Web.InfoController do
       peer_nonce: own_nonce
     })
   end
+
+  def public_key(conn, _params) do
+    json(conn, %{pubkey: Account.base58c_encode(Wallet.get_public_key())})
+  end
 end

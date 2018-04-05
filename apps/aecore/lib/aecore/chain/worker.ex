@@ -121,12 +121,12 @@ defmodule Aecore.Chain.Worker do
 
       %{block: nil} ->
         case Persistence.get_block_by_hash(header_hash) do
-          {:ok, block} -> block.header
+          {:ok, block} -> {:ok, block.header}
           _ -> {:error, :header_not_found}
         end
 
       block_info ->
-        block_info.block.header
+        {:ok, block_info.block.header}
     end
   end
 
@@ -134,7 +134,7 @@ defmodule Aecore.Chain.Worker do
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil) do
       {:error, :chain_too_short} -> {:error, :chain_too_short}
-      info -> info.block.header
+      info -> {:ok, info.block.header}
     end
   end
 
@@ -149,12 +149,12 @@ defmodule Aecore.Chain.Worker do
 
         %{block: nil} ->
           case Persistence.get_block_by_hash(header_hash) do
-            {:ok, block} -> block
+            {:ok, block} -> {:ok, block}
             _ -> nil
           end
 
         block_info ->
-          block_info.block
+          {:ok, block_info.block}
       end
 
     if block != nil do
@@ -168,7 +168,7 @@ defmodule Aecore.Chain.Worker do
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
-      info -> info.block
+      info -> {:ok, info.block}
     end
   end
 
@@ -202,7 +202,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    prev_block = get_block(block.header.prev_hash)
+    {:ok, prev_block} = get_block(block.header.prev_hash)
     prev_block_chain_state = chain_state(block.header.prev_hash)
 
     blocks_for_difficulty_calculation =
@@ -545,10 +545,7 @@ defmodule Aecore.Chain.Worker do
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
       case get_block(next_block_hash) do
-        {:error, _} ->
-          blocks_acc
-
-        block ->
+        {:ok, block} ->
           updated_blocks_acc = [block | blocks_acc]
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
@@ -559,6 +556,9 @@ defmodule Aecore.Chain.Worker do
             final_block_hash,
             next_count
           )
+
+        {:error, _} ->
+          blocks_acc
       end
     else
       blocks_acc

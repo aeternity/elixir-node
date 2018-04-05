@@ -13,28 +13,28 @@ defmodule Aehttpserver.Web.BlockController do
     parsed_height = height |> Integer.parse() |> elem(0)
 
     if(parsed_height < 0) do
-      json(put_status(conn, 404), "Block not found")
+      json(put_status(conn, 404), %{reason: "Block not found"})
     else
       case Chain.get_block_by_height(parsed_height) do
-        {:error, :chain_too_short} ->
-          json(put_status(conn, 404), "Chain too short")
+        {:ok, block} ->
+          json(conn, Serialization.serialize_value(block))
 
-        header ->
-          json(conn, Serialization.serialize_value(header))
+        {:error, :chain_too_short} ->
+          json(put_status(conn, 404), %{reason: "Chain too short"})
       end
     end
   end
 
   def block_by_hash(conn, %{"hash" => hash}) do
     case Chain.get_block_by_base58_hash(hash) do
+      {:ok, block} ->
+        json(conn, Serialization.block(block, :serialize))
+
       {:error, :block_not_found} ->
-        json(put_status(conn, 404), "Block not found")
+        json(put_status(conn, 404), %{reason: "Block not found"})
 
       {:error, :invalid_hash} ->
-        json(put_status(conn, 400), "Invalid hash")
-
-      block ->
-        json(conn, Serialization.block(block, :serialize))
+        json(put_status(conn, 400), %{reason: "Invalid hash"})
     end
   end
 
@@ -124,7 +124,7 @@ defmodule Aehttpserver.Web.BlockController do
       json(conn, "successful operation")
     catch
       {:error, _message} ->
-        json(put_status(conn, 200), "Block or header validation error")
+        json(put_status(conn, 400), %{reason: "Block or header validation error"})
     end
   end
 end
