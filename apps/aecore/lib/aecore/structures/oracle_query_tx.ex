@@ -33,8 +33,6 @@ defmodule Aecore.Structures.OracleQueryTx do
 
   @nonce_size 256
 
-  @minimum_fee Application.get_env(:aecore, :tx_data)[:minimum_fee]
-
   defstruct [
     :oracle_address,
     :query_data,
@@ -179,20 +177,19 @@ defmodule Aecore.Structures.OracleQueryTx do
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     tx_query_fee_is_met =
-      tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].tx.query_fee &&
-        tx.query_fee >= @minimum_fee
+      tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].tx.query_fee
 
     tx_fee_is_met =
       case tx.query_ttl do
         %{ttl: ttl, type: :relative} ->
-          fee >= calculate_minimum_fee(ttl) && fee >= @minimum_fee
+          fee >= calculate_minimum_fee(ttl)
 
         %{ttl: ttl, type: :absolute} ->
           if block_height != nil do
             fee >=
               ttl
               |> Oracle.calculate_relative_ttl(block_height)
-              |> calculate_minimum_fee() && fee >= @minimum_fee
+              |> calculate_minimum_fee()
           else
             true
           end

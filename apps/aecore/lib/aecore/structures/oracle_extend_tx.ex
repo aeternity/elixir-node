@@ -16,8 +16,6 @@ defmodule Aecore.Structures.OracleExtendTx do
           ttl: non_neg_integer()
         }
 
-  @minimum_fee Application.get_env(:aecore, :tx_data)[:minimum_fee]
-
   defstruct [:ttl]
   use ExConstructor
 
@@ -94,7 +92,7 @@ defmodule Aecore.Structures.OracleExtendTx do
       !Map.has_key?(registered_oracles, sender) ->
         throw({:error, "Account isn't a registered operator"})
 
-      fee < calculate_minimum_fee(tx.ttl) && fee < @minimum_fee ->
+      fee < calculate_minimum_fee(tx.ttl) ->
         throw({:error, "Fee is too low"})
 
       true ->

@@ -5,7 +5,6 @@ defmodule Aecore.Structures.SignedTx do
 
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits

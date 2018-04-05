@@ -23,8 +23,6 @@ defmodule Aecore.Structures.OracleRegistrationTx do
           ttl: Oracle.ttl()
         }
 
-  @minimum_fee Application.get_env(:aecore, :tx_data)[:minimum_fee]
-
   defstruct [
     :query_format,
     :response_format,
@@ -159,14 +157,14 @@ defmodule Aecore.Structures.OracleRegistrationTx do
   def is_minimum_fee_met?(tx, fee, block_height) do
     case tx.ttl do
       %{ttl: ttl, type: :relative} ->
-        fee >= calculate_minimum_fee(ttl) && fee >= @minimum_fee
+        fee >= calculate_minimum_fee(ttl)
 
       %{ttl: ttl, type: :absolute} ->
         if block_height != nil do
           fee >=
             ttl
             |> Oracle.calculate_relative_ttl(block_height)
-            |> calculate_minimum_fee() && fee >= @minimum_fee
+            |> calculate_minimum_fee()
         else
           true
         end
