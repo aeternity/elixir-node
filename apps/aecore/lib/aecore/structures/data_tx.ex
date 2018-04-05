@@ -9,8 +9,12 @@ defmodule Aecore.Structures.DataTx do
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
+
+  # Gets valid public key size - 33
+  @pub_key_size Wallet.get_pub_key_size()
 
   @typedoc "Name of the specified transaction module"
   @type tx_types :: SpendTx
@@ -44,7 +48,8 @@ defmodule Aecore.Structures.DataTx do
   use ExConstructor
 
   @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, sender, fee, nonce) when sender == nil or byte_size(sender) == 33 do
+  def init(type, payload, sender, fee, nonce)
+      when sender == nil or byte_size(sender) == @pub_key_size do
     %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
   end
 

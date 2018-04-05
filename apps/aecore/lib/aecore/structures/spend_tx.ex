@@ -7,11 +7,14 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
-  alias Aecore.Wallet
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.Account
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
+
+  # Gets valid public key size - 33
+  @pub_key_size Wallet.get_pub_key_size()
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
@@ -48,7 +51,7 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount}) when byte_size(receiver) == 33 do
+  def init(%{receiver: receiver, amount: amount}) when byte_size(receiver) == @pub_key_size do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
   end
 

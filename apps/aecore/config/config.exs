@@ -51,6 +51,8 @@ aewallet_path =
 
 config :aecore, :spend_tx, version: 1
 
+config :aecore, :aewallet, pub_key_size: 33
+
 config :aecore, :aewallet, pass: aewallet_pass
 
 config :aecore, :aewallet, path: Path.absname(aewallet_path)

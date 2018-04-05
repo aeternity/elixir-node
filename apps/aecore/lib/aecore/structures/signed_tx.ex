@@ -8,6 +8,7 @@ defmodule Aecore.Structures.SignedTx do
   alias Aecore.Structures.SignedTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Bits
 
   require Logger
@@ -32,9 +33,9 @@ defmodule Aecore.Structures.SignedTx do
     key == nil && signature == nil
   end
 
-  @spec valid_byte_size?(SignedTx.t()) :: boolean()
-  def valid_byte_size?(%SignedTx{data: %{payload: %{oracle_address: address}}}) do
-    if byte_size(address) == 33 do
+  @spec valid_byte_size?(DataTx.t()) :: boolean()
+  def valid_byte_size?(%DataTx{payload: %{oracle_address: address}}) do
+    if Wallet.key_size_valid?(address) do
       true
     else
       Logger.error("Wrong oracle address size")
@@ -42,16 +43,14 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
-  @spec valid_byte_size?(SignedTx.t()) :: boolean()
-  def valid_byte_size?(%SignedTx{
-        data: %{
-          sender: sender,
-          payload: %{
-            receiver: receiver
-          }
+  @spec valid_byte_size?(DataTx.t()) :: boolean()
+  def valid_byte_size?(%DataTx{
+        sender: sender,
+        payload: %{
+          receiver: receiver
         }
       }) do
-    if byte_size(sender) == 33 && byte_size(receiver) == 33 do
+    if Wallet.key_size_valid?(sender) && Wallet.key_size_valid?(receiver) do
       true
     else
       Logger.error("Wrong sender or receiver key size")
@@ -59,14 +58,15 @@ defmodule Aecore.Structures.SignedTx do
     end
   end
 
-  @spec valid_byte_size?(SignedTx.t()) :: boolean()
-  def valid_byte_size?(_tx) do
+  @spec valid_byte_size?(DataTx.t()) :: boolean()
+  def valid_byte_size?(_data) do
     true
   end
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
+    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) &&
+         valid_byte_size?(data) do
       DataTx.is_valid?(data)
     else
       Logger.error("Can't verify the signature with the following public key: #{data.sender}")
