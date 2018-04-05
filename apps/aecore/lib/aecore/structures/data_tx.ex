@@ -9,6 +9,7 @@ defmodule Aecore.Structures.DataTx do
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aeutil.Bits
 
   require Logger
 
@@ -125,5 +126,17 @@ defmodule Aecore.Structures.DataTx do
     data_tx = Serialization.deserialize_value(tx)
 
     init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("th", bin)
+  end
+
+  def base58c_decode(<<"th$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end
