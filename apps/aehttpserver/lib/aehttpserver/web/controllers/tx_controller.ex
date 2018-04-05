@@ -2,8 +2,6 @@ defmodule Aehttpserver.Web.TxController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
   alias Aeutil.Serialization
   alias Aecore.Structures.Account
 
@@ -21,34 +19,20 @@ defmodule Aehttpserver.Web.TxController do
           "true" ->
             proof = Pool.add_proof_to_txs(user_txs)
 
+            json_info_with_proof =
+              Map.put(Serialization.serialize_txs_info_to_json(user_txs), :proof, proof)
+
             json(
               conn,
-              Enum.map(proof, fn tx ->
-                %{
-                  tx
-                  | sender: Account.base58c_encode(tx.sender),
-                    receiver: Account.base58c_encode(tx.receiver),
-                    txs_hash: SignedTx.base58c_encode_root(tx.txs_hash),
-                    block_hash: Header.base58c_encode(tx.block_hash),
-                    signature: Base.encode64(tx.signature),
-                    proof: Serialization.merkle_proof(tx.proof, [])
-                }
-              end)
+              json_info_with_proof
             )
 
           _ ->
+            json_info = Serialization.serialize_txs_info_to_json(user_txs)
+
             json(
               conn,
-              Enum.map(user_txs, fn tx ->
-                %{
-                  tx
-                  | sender: Account.base58c_encode(tx.sender),
-                    receiver: Account.base58c_encode(tx.receiver),
-                    txs_hash: SignedTx.base58c_encode(tx.txs_hash),
-                    block_hash: Header.base58c_encode(tx.block_hash),
-                    signature: Base.encode64(tx.signature)
-                }
-              end)
+              json_info
             )
         end
     end

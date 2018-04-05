@@ -12,11 +12,23 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Structures.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
 
+  @type raw_data :: %{
+          block_hash: binary(),
+          block_height: non_neg_integer(),
+          fee: non_neg_integer(),
+          nonce: non_neg_integer(),
+          payload: SpendTx.t(),
+          sender: binary() | nil,
+          signature: binary() | nil,
+          txs_hash: binary(),
+          type: atom()
+        }
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
     serialized_block = serialize_value(block)
@@ -247,4 +259,33 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value, _), do: value
+
+  @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
+  def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
+    serialize_txs_info_to_json(txs_info, [])
+  end
+
+  defp serialize_txs_info_to_json([h | t], acc) do
+    json_response_struct = %{
+      tx: %{
+        sender: Account.base58c_encode(h.sender),
+        recipient: Account.base58c_encode(h.payload.receiver),
+        amount: h.payload.amount,
+        fee: h.fee,
+        nonce: h.nonce,
+        vsn: h.payload.version
+      },
+      block_height: h.block_height,
+      block_hash: Header.base58c_encode(h.block_hash),
+      hash: SignedTx.base58c_encode_root(h.txs_hash),
+      signatures: [base64_binary(h.signature, :serialize)]
+    }
+
+    acc = acc ++ [json_response_struct]
+    serialize_txs_info_to_json(t, acc)
+  end
+
+  defp serialize_txs_info_to_json([], acc) do
+    acc
+  end
 end
