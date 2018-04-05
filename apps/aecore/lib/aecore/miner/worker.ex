@@ -233,9 +233,12 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
+      timestamp = System.system_time(:milliseconds)
 
-      txs_list = Map.values(Pool.get_pool())
+      difficulty =
+        Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
+
+      txs_list = get_pool_values()
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
@@ -256,30 +259,7 @@ defmodule Aecore.Miner.Worker do
         | valid_txs_by_fee
       ]
 
-      new_block = create_block(top_block, chain_state, difficulty, [])
-
-      new_block_size_bytes = new_block |> :erlang.term_to_binary() |> :erlang.byte_size()
-
-      valid_txs_by_block_size =
-        filter_transactions_by_block_size(
-          valid_txs,
-          new_block_size_bytes,
-          Application.get_env(:aecore, :block)[:max_block_size_bytes]
-        )
-
-      total_fees = calculate_total_fees(valid_txs_by_block_size)
-
-      valid_txs =
-        List.replace_at(
-          valid_txs_by_block_size,
-          0,
-          create_coinbase_tx(
-            pubkey,
-            total_fees
-          )
-        )
-
-      create_block(top_block, chain_state, difficulty, valid_txs)
+      create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
@@ -306,6 +286,17 @@ defmodule Aecore.Miner.Worker do
 
   ## Internal
 
+  defp get_pool_values() do
+    pool_values = Map.values(Pool.get_pool())
+    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
+
+    if length(pool_values) < max_txs_for_block do
+      pool_values
+    else
+      Enum.slice(pool_values, 0..(max_txs_for_block - 1))
+    end
+  end
+
   defp filter_transactions_by_fee_and_ttl(txs, block_height) do
     Enum.filter(txs, fn tx ->
       Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
@@ -313,81 +304,7 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  defp filter_transactions_by_block_size(
-         txs,
-         current_block_size_bytes,
-         max_block_size_bytes
-       ) do
-    first_tx_size_bytes = txs |> Enum.at(0) |> Pool.get_tx_size_bytes()
-
-    filter_transactions_by_block_size(
-      txs,
-      0,
-      Enum.count(txs),
-      [],
-      current_block_size_bytes,
-      first_tx_size_bytes,
-      max_block_size_bytes
-    )
-  end
-
-  # Filters transactions by current block size in bytes by
-  # given max block size in bytes, recursively.
-  #
-  # `txs` - array of transactions to be filtered
-  # `current_tx_index` - index in the array of txs of the current transaction we are checking
-  # `txs_count` - size of txs array
-  # `filtered_txs` - selected transactions for the new block; stored in reverse order
-  # `current_block_size_bytes` - stores the initial block size + filtered_txs (in bytes)
-  # `next_tx_size_bytes` - size of the next transaction to be included
-  # `max_block_size_bytes`
-  #
-  # Returns `filtered_txs` upon reaching the end of the txs array
-  # or upon reaching a transaction that would make the new block's size
-  # bigger than the max block size. Calls itself otherwise.
-  defp filter_transactions_by_block_size(
-         txs,
-         current_tx_index,
-         txs_count,
-         filtered_txs,
-         current_block_size_bytes,
-         next_tx_size_bytes,
-         max_block_size_bytes
-       ) do
-    current_tx = Enum.at(txs, current_tx_index)
-
-    # If the function is called, then we know the current transaction won't
-    # make the new block's size bigger than max block size, so we add it
-    # to filtered_txs and proceed to check the size of the block with the
-    # next transaction, if there is one.
-    new_filtered_txs = [current_tx | filtered_txs]
-    next_tx_index = current_tx_index + 1
-
-    if next_tx_index == txs_count do
-      Enum.reverse(new_filtered_txs)
-    else
-      next_tx = Enum.at(txs, next_tx_index)
-      new_next_tx_size_bytes = Pool.get_tx_size_bytes(next_tx)
-
-      new_current_block_size_bytes = current_block_size_bytes + next_tx_size_bytes
-
-      if new_current_block_size_bytes + new_next_tx_size_bytes > max_block_size_bytes do
-        Enum.reverse(new_filtered_txs)
-      else
-        filter_transactions_by_block_size(
-          txs,
-          next_tx_index,
-          txs_count,
-          new_filtered_txs,
-          new_current_block_size_bytes,
-          new_next_tx_size_bytes,
-          max_block_size_bytes
-        )
-      end
-    end
-  end
-
-  defp create_block(top_block, chain_state, difficulty, valid_txs) do
+  defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp) do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
@@ -409,7 +326,8 @@ defmodule Aecore.Miner.Worker do
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
-        Block.current_block_version()
+        Block.current_block_version(),
+        timestamp
       )
 
     %Block{header: unmined_header, txs: valid_txs}
