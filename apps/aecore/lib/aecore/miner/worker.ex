@@ -389,7 +389,7 @@ defmodule Aecore.Miner.Worker do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      ChainState.calculate_and_validate_chain_state(
         valid_txs,
         chain_state,
         top_block.header.height + 1

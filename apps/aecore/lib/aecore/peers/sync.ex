@@ -83,41 +83,37 @@ defmodule Aecore.Peers.Sync do
 
   @spec add_peer_blocks_to_sync_state(String.t(), binary()) :: :ok
   def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
-    if Chain.has_block?(from_block_hash) do
-      remove_running_task(peer_uri)
+    with false <- Chain.has_block?(from_block_hash),
+         {:ok, blocks} <-
+           HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}),
+         false <- Enum.empty?(blocks) do
+      Enum.each(blocks, fn block ->
+        case BlockValidation.single_validate_block(block) do
+          :ok ->
+            peer_block_hash = BlockValidation.block_header_hash(block.header)
+
+            if !Chain.has_block?(peer_block_hash) do
+              add_block_to_state(peer_block_hash, block)
+            end
+
+          {:error, message} ->
+            Logger.error(fn -> message end)
+        end
+      end)
+
+      earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
+
+      add_peer_blocks_to_sync_state(
+        peer_uri,
+        earliest_block.header.prev_hash
+      )
     else
-      add_running_task(peer_uri)
+      true ->
+        remove_running_task(peer_uri)
 
-      case HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}) do
-        {:ok, blocks} ->
-          if !Enum.empty?(blocks) do
-            Enum.each(blocks, fn block ->
-              try do
-                BlockValidation.single_validate_block!(block)
-
-                peer_block_hash = BlockValidation.block_header_hash(block.header)
-
-                if !Chain.has_block?(peer_block_hash) do
-                  add_block_to_state(peer_block_hash, block)
-                end
-              catch
-                {:error, message} ->
-                  Logger.error(fn -> message end)
-              end
-            end)
-
-            earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
-
-            add_peer_blocks_to_sync_state(
-              peer_uri,
-              earliest_block.header.prev_hash
-            )
-          end
-
-        {:error, message} ->
-          Logger.error(fn -> message end)
-          remove_running_task(peer_uri)
-      end
+      {:error, message} ->
+        Logger.error(fn -> message end)
+        remove_running_task(peer_uri)
     end
   end
 
@@ -201,10 +197,10 @@ defmodule Aecore.Peers.Sync do
       if Chain.has_block?(block_hash) do
         peer_blocks
       else
-        try do
-          BlockValidation.single_validate_block!(block)
-          Map.put(peer_blocks, block_hash, block)
-        catch
+        case BlockValidation.single_validate_block(block) do
+          :ok ->
+            Map.put(peer_blocks, block_hash, block)
+
           {:error, message} ->
             Logger.error(fn -> "#{__MODULE__}: Can't add block to Sync state - #{message}" end)
             peer_blocks

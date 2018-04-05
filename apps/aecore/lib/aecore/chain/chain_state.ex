@@ -25,9 +25,9 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the chainstate"
   @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+  @spec calculate_and_validate_chain_state(list(), chainstate(), non_neg_integer()) ::
           chainstate()
-  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+  def calculate_and_validate_chain_state(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
       case apply_transaction_on_state(tx, chainstate, block_height) do

@@ -36,7 +36,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      ChainState.calculate_and_validate_chain_state(
         Block.genesis_block().txs,
         build_chain_state(),
         0
@@ -108,7 +108,7 @@ defmodule Aecore.Chain.Worker do
             {:ok, block}
 
           _ ->
-            {:error, "#{__MODULE__}: Block not found"}
+            {:error, "#{__MODULE__}: Block not found for hash [#{block_hash}]"}
         end
 
       block_info ->
@@ -275,7 +275,7 @@ defmodule Aecore.Chain.Worker do
         {:reply, block_info, state}
 
       :error ->
-        {:reply, {:error, "#{__MODULE__}: Block not found"}, state}
+        {:reply, {:error, "#{__MODULE__}: Block not found with hash [#{block_hash}]"}, state}
     end
   end
 
