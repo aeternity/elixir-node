@@ -77,4 +77,6 @@ defmodule Aecore.Structures.Transaction do
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
+
+  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
 end
