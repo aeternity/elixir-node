@@ -8,6 +8,7 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Difficulty
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
@@ -45,9 +46,14 @@ defmodule AecoreValidationTest do
     new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
+      _ =
       BlockValidation.calculate_and_validate_block!(
         new_block,
         prev_block,
@@ -76,7 +82,11 @@ defmodule AecoreValidationTest do
     new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
       BlockValidation.calculate_and_validate_block!(
@@ -143,7 +153,7 @@ defmodule AecoreValidationTest do
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
-    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
+    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Miner.candidate())
     new_block
   end
 
