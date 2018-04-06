@@ -10,8 +10,9 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Block
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
-  alias Aeutil.Bits
+  alias Aecore.Structures.Header
 
   require Logger
 
@@ -19,16 +20,20 @@ defmodule Aecore.Peers.Worker do
   @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
   @probability_of_peer_remove_when_max 0.5
 
-  @type peers :: %{integer() => %{latest_block: String.t(), uri: String.t()}}
+  @type peers :: %{non_neg_integer() => %{latest_block: String.t(), uri: String.t()}}
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{peers: %{}, nonce: get_peer_nonce()}, name: __MODULE__)
+    GenServer.start_link(
+      __MODULE__,
+      %{peers: %{}, nonce: get_peer_nonce()},
+      name: __MODULE__
+    )
   end
 
   ## Client side
 
-  @spec is_chain_synced?() :: boolean()
-  def is_chain_synced?() do
+  @spec chain_synced?() :: boolean()
+  def chain_synced? do
     GenServer.call(__MODULE__, :is_chain_synced)
   end
 
@@ -43,28 +48,28 @@ defmodule Aecore.Peers.Worker do
   end
 
   @spec check_peers() :: :ok
-  def check_peers() do
+  def check_peers do
     GenServer.call(__MODULE__, :check_peers)
   end
 
   @spec all_uris() :: list(binary())
-  def all_uris() do
+  def all_uris do
     all_peers()
     |> Map.values()
-    |> Enum.map(fn(%{uri: uri}) -> uri end)
+    |> Enum.map(fn %{uri: uri} -> uri end)
   end
 
   @spec all_peers() :: peers
-  def all_peers() do
+  def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
   @spec genesis_block_header_hash() :: term()
-  def genesis_block_header_hash() do
+  def genesis_block_header_hash do
     BlockValidation.block_header_hash(Block.genesis_block().header)
   end
 
-  @spec schedule_add_peer(String.t(), integer()) :: :ok | {:error, String.t()}
+  @spec schedule_add_peer(String.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def schedule_add_peer(uri, nonce) do
     GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
   end
@@ -72,17 +77,19 @@ defmodule Aecore.Peers.Worker do
   @doc """
   Gets a random peer nonce
   """
-  @spec get_peer_nonce() :: integer()
+  @spec get_peer_nonce() :: non_neg_integer()
   def get_peer_nonce() do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
       _ -> :table_created
     end
+
     case :ets.lookup(:nonce_table, :nonce) do
       [] ->
         nonce = :rand.uniform(@mersenne_prime)
         :ets.insert(:nonce_table, {:nonce, nonce})
         nonce
+
       _ ->
         :ets.lookup(:nonce_table, :nonce)[:nonce]
     end
@@ -92,7 +99,9 @@ defmodule Aecore.Peers.Worker do
   def broadcast_block(block) do
     spawn(fn ->
       Client.send_block(block, all_uris())
+      :ok
     end)
+
     :ok
   end
 
@@ -101,6 +110,7 @@ defmodule Aecore.Peers.Worker do
     spawn(fn ->
       Client.send_tx(tx, all_uris())
     end)
+
     :ok
   end
 
@@ -112,23 +122,29 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:is_chain_synced, _from, %{peers: peers} = state) do
     local_latest_block_height = Chain.top_height()
-    peer_uris = peers
+
+    peer_uris =
+      peers
       |> Map.values()
-      |> Enum.map(fn(%{uri: uri}) -> uri end)
+      |> Enum.map(fn %{uri: uri} -> uri end)
+
     peer_latest_block_heights =
-      Enum.map(peer_uris, fn(uri) ->
-          case Client.get_info(uri) do
-            {:ok, info} ->
-              info.current_block_height
-            :error ->
-              0
-          end
-        end)
-    is_synced = if Enum.empty?(peer_uris) do
-      true
-    else
-      Enum.max(peer_latest_block_heights) <= local_latest_block_height
-    end
+      Enum.map(peer_uris, fn uri ->
+        case Client.get_info(uri) do
+          {:ok, info} ->
+            info.current_block_height
+
+          :error ->
+            0
+        end
+      end)
+
+    is_synced =
+      if Enum.empty?(peer_uris) do
+        true
+      else
+        Enum.max(peer_latest_block_heights) <= local_latest_block_height
+      end
 
     {:reply, is_synced, state}
   end
@@ -154,18 +170,25 @@ defmodule Aecore.Peers.Worker do
   is updated if the one in the latest GET /info request is different.
   """
   def handle_call(:check_peers, _from, %{peers: peers} = state) do
-    filtered_peers = :maps.filter(fn(_, %{uri: uri}) ->
-        case Client.get_info(uri) do
-          {:ok, info} ->
-            binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
-            binary_genesis_hash == genesis_block_header_hash()
-          _ ->
-            false
-        end
-      end, peers)
+    filtered_peers =
+      :maps.filter(
+        fn _, %{uri: uri} ->
+          case Client.get_info(uri) do
+            {:ok, info} ->
+              binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
+              binary_genesis_hash == genesis_block_header_hash()
+
+            _ ->
+              false
+          end
+        end,
+        peers
+      )
+
     updated_peers =
       for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
         {_, info} = Client.get_info(uri)
+
         if info.current_block_hash != latest_block do
           {nonce, %{uri: uri, latest_block: info.current_block_hash}}
         else
@@ -174,8 +197,11 @@ defmodule Aecore.Peers.Worker do
       end
 
     removed_peers_count = Enum.count(peers) - Enum.count(filtered_peers)
+
     if removed_peers_count > 0 do
-      Logger.info(fn -> "#{removed_peers_count} peers were removed after the check" end)
+      Logger.info(fn ->
+        "#{removed_peers_count} peers were removed after the check"
+      end)
     end
 
     {:reply, :ok, %{state | peers: updated_peers}}
@@ -203,35 +229,52 @@ defmodule Aecore.Peers.Worker do
   ## Internal functions
   defp add_peer(uri, state) do
     %{peers: peers} = state
-    state_has_uri = peers
+
+    state_has_uri =
+      peers
       |> Map.values()
-      |> Enum.map(fn(%{uri: uri}) -> uri end)
+      |> Enum.map(fn %{uri: uri} -> uri end)
       |> Enum.member?(uri)
 
     if state_has_uri do
       Logger.debug(fn ->
-        "Skipped adding #{uri}, already known" end)
+        "Skipped adding #{uri}, already known"
+      end)
+
       {:reply, {:error, "Peer already known"}, state}
     else
       case check_peer(uri, get_peer_nonce()) do
-        {:ok, info} -> cond do
-          Map.has_key?(peers, info.peer_nonce) ->
-            Logger.debug(fn ->
-              "Skipped adding #{uri}, same nonce already present" end)
-            {:reply, {:error, "Peer already known"}, state}
-          should_a_peer_be_added?(map_size(peers)) ->
-            peers_update1 = trim_peers(peers)
-            updated_peers = Map.put(peers_update1, info.peer_nonce,
-                              %{uri: uri, latest_block: info.current_block_hash})
-            Logger.info(fn -> "Added #{uri} to the peer list" end)
-            Sync.ask_peers_for_unknown_blocks(updated_peers)
-            {:reply, :ok, %{state | peers: updated_peers}}
-          true ->
-            Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
+        {:ok, info} ->
+          cond do
+            Map.has_key?(peers, info.peer_nonce) ->
+              Logger.debug(fn ->
+                "Skipped adding #{uri}, same nonce already present"
+              end)
+
+              {:reply, {:error, "Peer already known"}, state}
+
+            should_a_peer_be_added?(map_size(peers)) ->
+              peers_update1 = trim_peers(peers)
+
+              updated_peers =
+                Map.put(peers_update1, info.peer_nonce, %{
+                  uri: uri,
+                  latest_block: info.current_block_hash
+                })
+
+              Logger.info(fn -> "Added #{uri} to the peer list" end)
+              Sync.ask_peers_for_unknown_blocks(updated_peers)
+              Sync.add_unknown_peer_pool_txs(updated_peers)
+              {:reply, :ok, %{state | peers: updated_peers}}
+
+            true ->
+              Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
               {:reply, :ok, state}
-        end
+          end
+
         {:error, "Equal peer nonces"} ->
           {:reply, :ok, state}
+
         {:error, reason} ->
           Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
@@ -249,32 +292,35 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  defp create_nonce_table() do
+  defp create_nonce_table do
     :ets.new(:nonce_table, [:named_table])
   end
 
   defp check_peer(uri, own_nonce) do
-    case(Client.get_info(uri)) do
+    case Client.get_info(uri) do
       {:ok, info} ->
-        binary_genesis_hash = Bits.bech32_decode(info.genesis_block_hash)
+        binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
+
         cond do
           own_nonce == info.peer_nonce ->
             {:error, "Equal peer nonces"}
+
           binary_genesis_hash != genesis_block_header_hash() ->
             {:error, "Genesis header hash not valid"}
+
           !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
             {:error, "Peer is not an aehttpserver"}
+
           true ->
             {:ok, info}
         end
+
       _error ->
         {:error, "Request error"}
     end
   end
 
   defp should_a_peer_be_added?(peers_count) do
-    peers_count < @peers_max_count
-    || :rand.uniform() < @probability_of_peer_remove_when_max
+    peers_count < @peers_max_count || :rand.uniform() < @probability_of_peer_remove_when_max
   end
-
 end

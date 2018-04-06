@@ -5,26 +5,25 @@ defmodule AehttpclientTest do
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aehttpclient.Client
   alias Aecore.Structures.SignedTx
+  alias Aecore.Structures.Header
+  alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Bits
-  alias Aewallet.Encoding
 
   @tag :http_client
   test "Client functions" do
     account = Wallet.get_public_key()
-    hex_acc = Encoding.encode(account, :ae)
-
-    AehttpclientTest.add_txs_to_pool()
+    hex_acc = Account.base58c_encode(account)
+    base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
+    Pool.get_and_empty_pool()
+    add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
              Client.get_block(
-               {"localhost:4000",
-                Bits.bech32_decode(
-                  "bl1qpqwc2g9w0c06u2yxmgrffr50r508z9zww3jhca9x6xx57kfg2pcsrhq9dp"
-                )}
+               {"localhost:4000", Header.base58c_decode(base58_encoded_top_block_hash)}
              )
 
     assert {:ok, _} = Client.get_peers("localhost:4000")
@@ -37,18 +36,20 @@ defmodule AehttpclientTest do
 
   def add_txs_to_pool() do
     Miner.mine_sync_block_to_chain()
-    to_acc = Wallet.get_public_key()
+    receiver = Wallet.get_public_key()
+    sender = receiver
 
-    from_acc = to_acc
-    init_nonce = Map.get(Chain.chain_state(), from_acc, %{nonce: 0}).nonce
-    {:ok, tx1} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 1, 10)
-    {:ok, tx2} = SpendTx.create(from_acc, to_acc, 5, init_nonce + 2, 10)
+    init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
+    payload1 = %{receiver: sender, amount: 5}
+
+    tx1 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 1)
+    tx2 = DataTx.init(SpendTx, payload1, receiver, 10, init_nonce + 2)
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
     {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
 
-    Pool.add_transaction(signed_tx1)
-    Pool.add_transaction(signed_tx2)
+    assert :ok = Pool.add_transaction(signed_tx1)
+    assert :ok = Pool.add_transaction(signed_tx2)
   end
 end

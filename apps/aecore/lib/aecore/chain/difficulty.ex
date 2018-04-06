@@ -1,57 +1,44 @@
 defmodule Aecore.Chain.Difficulty do
+  @moduledoc """
+  Contains functions used to calculate the PoW difficulty.
+  """
 
   alias Aecore.Structures.Block
+  alias Aeutil.Scientific
+
+  use Bitwise
 
   @number_of_blocks 10
-  @max_difficulty_change Application.get_env(:aecore, :pow)[:max_difficulty_change]
-  @target_distance 30_000
+  @highest_target_scientific 0x2100FFFF
+  @expected_mine_rate 30_000
 
-  def get_number_of_blocks() do
+  def get_number_of_blocks do
     @number_of_blocks
   end
 
-  @spec calculate_next_difficulty(list(Block.t())) :: integer()
-  def calculate_next_difficulty(list) do
-    [latest_block | _] = list
-
-    if length(list) == 1 do
-      latest_block.header.difficulty_target
-    else
-      distance = calculate_distance(list)
-
-      next_difficulty = (latest_block.header.difficulty_target * (@target_distance / distance))
-        |> Float.ceil()
-        |> round()
-
-      limit_max_difficulty_change(next_difficulty, latest_block.header.difficulty_target)
-    end
-  end
-
-  @spec limit_max_difficulty_change(integer(), integer()) :: integer()
-  def limit_max_difficulty_change(calculated_next_difficulty, last_difficult) do
-    cond do
-      calculated_next_difficulty - last_difficult > @max_difficulty_change ->
-        last_difficult + @max_difficulty_change
-
-      last_difficult - calculated_next_difficulty > @max_difficulty_change ->
-        last_difficult - @max_difficulty_change
-
-      true ->
-        calculated_next_difficulty
-    end
-  end
-
-  @spec calculate_distance(list(Block.t())) :: float()
-  defp calculate_distance(list) do
-    [head | tail] = list
-
-    distances =
-      List.foldl(tail, {head, []}, fn cur, {head, acc} ->
-        time_diff = head.header.timestamp - cur.header.timestamp
-        {cur, acc ++ [time_diff]}
+  @spec calculate_next_difficulty(integer(), list(Block.t())) :: integer()
+  def calculate_next_difficulty(timestamp, previous_blocks) do
+    sorted_blocks =
+      Enum.sort(previous_blocks, fn block1, block2 ->
+        block1.header.height < block2.header.height
       end)
 
-    sum = distances |> elem(1) |> Enum.sum()
-    sum / length(distances |> elem(1))
+    k = Scientific.scientific_to_integer(@highest_target_scientific) * bsl(1, 32)
+
+    k_div_targets =
+      for block <- sorted_blocks do
+        div(k, Scientific.scientific_to_integer(block.header.target))
+      end
+
+    sum_k_div_targets = Enum.sum(k_div_targets)
+    last_block = hd(sorted_blocks)
+    total_time = calculate_distance(last_block, timestamp)
+    new_target_int = div(total_time * k, @expected_mine_rate * sum_k_div_targets)
+    min(@highest_target_scientific, Scientific.integer_to_scientific(new_target_int))
+  end
+
+  @spec calculate_distance(Block.t(), integer()) :: float()
+  defp calculate_distance(last_block, timestamp) do
+    max(1, timestamp - last_block.header.time)
   end
 end

@@ -7,7 +7,12 @@ defmodule Aecore.Wallet.Worker do
 
   alias Aewallet.Wallet
   alias Aewallet.KeyPair
-  alias Aewallet.Encoding
+
+  @typedoc "Public key representing an account"
+  @type pubkey() :: binary()
+
+  @typedoc "Private key of the account"
+  @type privkey() :: binary()
 
   @typedoc "Wallet type"
   @type wallet_type :: :ae | :btc
@@ -34,7 +39,7 @@ defmodule Aecore.Wallet.Worker do
   Gets the default dir for storing the wallet
   """
   @spec get_aewallet_dir() :: String.t()
-  def get_aewallet_dir() do
+  def get_aewallet_dir do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
@@ -42,12 +47,12 @@ defmodule Aecore.Wallet.Worker do
   Gets the default password for the dafault wallet
   """
   @spec get_aewallet_pass() :: String.t()
-  def get_aewallet_pass() do
+  def get_aewallet_pass do
     Application.get_env(:aecore, :aewallet)[:pass]
   end
 
   @spec get_public_key() :: binary()
-  def get_public_key() do
+  def get_public_key do
     get_public_key("")
   end
 
@@ -67,7 +72,7 @@ defmodule Aecore.Wallet.Worker do
   end
 
   @spec get_private_key() :: binary()
-  def get_private_key() do
+  def get_private_key do
     get_private_key("")
   end
 
@@ -86,47 +91,20 @@ defmodule Aecore.Wallet.Worker do
     GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
   end
 
-  @doc """
-  Encodes compressed public key to a human readable format.
-  Using the Bech32 formatting based on BIP-0173
-
-  ## Examples
-      iex> Aecore.Wallet.Worker.encode(pub_key, :ae)
-      "ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u"
-
-      iex> Aecode.Wallet.Worker.decode(pub_key, :btc)
-      "btc1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc963alrmy"
-  """
-  @spec encode(binary(), wallet_type()) :: String.t()
-  def encode(pub_key, :ae) do
-    Encoding.encode(pub_key, :ae)
-  end
-
-  def encode(pub_key, :btc) do
-    Encoding.encode(pub_key, :btc)
-  end
-
-  @doc """
-  Decodes an encoded/formatted public key to its compressed version
-
-  ## Examples
-      iex> Aewallet.Encoding.decode("ae1qq04nuehhr26nz7ggtgaqq939f9hsaq5hrlhsjrlcg5wngpq4pzc968kfa8u")
-      {:ok, compressed_pubkey}
-  """
-  @spec decode(String.t()) :: binary()
-  def decode(formatted_key) do
-    {:ok, pub_key} = Encoding.decode(formatted_key)
-  end
-
   ## Server Callbacks
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: nil} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, network}},
+        _from,
+        %{pubkey: nil} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         {:ok, pub_key} =
           get_aewallet_dir()
           |> get_file_name()
           |> Wallet.get_public_key(password, network: network)
+
         pub_key
       else
         key = derive_key(derivation_path, password)
@@ -138,12 +116,16 @@ defmodule Aecore.Wallet.Worker do
         pub_key
       else
         nil
-    end
+      end
 
     {:reply, pub_key, %{state | pubkey: pub_key_state}}
   end
 
-  def handle_call({:get_pub_key, {derivation_path, password, network}}, _from, %{pubkey: pub_key} = state) do
+  def handle_call(
+        {:get_pub_key, {derivation_path, password, _network}},
+        _from,
+        %{pubkey: pub_key} = state
+      ) do
     pub_key =
       if derivation_path == "" do
         pub_key

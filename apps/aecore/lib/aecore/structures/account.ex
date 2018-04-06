@@ -4,91 +4,92 @@ defmodule Aecore.Structures.Account do
   """
 
   require Logger
+
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aeutil.Bits
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
 
   @type t :: %Account{
-    balance: non_neg_integer(),
-    nonce: non_neg_integer(),
-    locked: list(map())
-  }
+          balance: non_neg_integer(),
+          nonce: non_neg_integer()
+        }
 
   @doc """
   Definition of Account structure
 
   ## Parameters
-  - nonce: Out transaction count
   - balance: The acccount balance
-  - locked: %{amount: non_neq_integer(), block: non_neq_integer()} map with amount of tokens and block when they will go to balance
+  - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :locked]
+  defstruct [:balance, :nonce]
   use ExConstructor
 
-  @spec empty() :: Account.t()
-  def empty() do
-    %Account{balance: 0,
-             nonce: 0,
-             locked: []}
+  def empty, do: %Account{balance: 0, nonce: 0}
+
+  @doc """
+  Builds a SpendTx where the miners public key is used as a sender (sender)
+  """
+  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  def spend(receiver, amount, fee) do
+    sender = Wallet.get_public_key()
+    sender_priv_key = Wallet.get_private_key()
+    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
-  @spec tx_in!(Account.t() | nil, SpendTx.t(), integer()) :: Account.t()
-  def tx_in!(nil, tx, block_height) do
-    tx_in!(empty(), tx, block_height)
+  @doc """
+  Build a SpendTx from the given sender keys to the receivers account
+  """
+  @spec spend(
+          Wallet.pubkey(),
+          Wallet.privkey(),
+          Wallet.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()}
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
+    payload = %{receiver: receiver, amount: amount}
+    spend_tx = DataTx.init(SpendTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
-  def tx_in!(account, tx, block_height) do
-    if block_height <= tx.lock_time_block do
-      if tx.value < 0 do
-        throw {:error, "Can't lock a negative transaction"}
-      end
-      new_locked = account.locked ++ [%{amount: tx.value, block: tx.lock_time_block}]
-      %Account{account | locked: new_locked}
+
+  @doc """
+  Adds balance to a given address (public key)
+  """
+  @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
+  def transaction_in(account_state, amount) do
+    new_balance = account_state.balance + amount
+    Map.put(account_state, :balance, new_balance)
+  end
+
+  @doc """
+  Deducts balance from a given address (public key)
+  """
+  @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
+  def transaction_out(account_state, amount, nonce) do
+    account_state
+    |> Map.put(:nonce, nonce)
+    |> transaction_in(amount)
+  end
+
+  def base58c_encode(bin) do
+    if bin == nil do
+      nil
     else
-      new_balance = account.balance + tx.value
-      if new_balance < 0 do
-        throw {:error, "Negative balance"}
-      end
-      %Account{account | balance: new_balance}
+      Bits.encode58c("ak", bin)
     end
   end
 
-  @spec tx_out!(Account.t(), SpendTx.t(), integer()) :: Account.t()
-  def tx_out!(account, tx, _block_height) do
-    if account.nonce >= tx.nonce do
-      throw {:error, "Nonce too small"}
-    end
-    if tx.value < 0 do
-      throw {:error, "Value is negative"}
-    end
-    new_balance = account.balance - tx.value - tx.fee
-    if new_balance < 0 do
-      throw {:error, "Negative balance"}
-    end
-    %Account{account | balance: new_balance, nonce: tx.nonce}
+  def base58c_decode(<<"ak$", payload::binary>>) do
+    Bits.decode58(payload)
   end
 
-  @spec update_locked(Account.t(), integer()) :: Account.t() 
-  def update_locked(account, new_height) do
-    {unlocked_amount, updated_locked} = 
-      Enum.reduce(
-        account.locked,
-        {0, []},
-        fn(%{amount: amount, block: lock_time_block},
-           {amount_update_value, updated_locked}) ->
-          cond do
-            lock_time_block > new_height ->
-              {amount_update_value, 
-               updated_locked ++ [%{amount: amount, block: lock_time_block}]}
-            lock_time_block == new_height ->
-              {amount_update_value + amount, 
-               updated_locked}
-            true ->
-              Logger.error(fn -> "Update chain state locked: new block height (#{new_height}) greater than lock time block (#{lock_time_block})" end)
-              {amount_update_value,
-               updated_locked}
-          end
-        end)
-    %Account{account | balance: account.balance + unlocked_amount, 
-                       locked: updated_locked}
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
-
 end

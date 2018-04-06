@@ -6,7 +6,7 @@ defmodule Aehttpclient.Mixfile do
       app: :aehttpclient,
       version: "0.1.0",
       elixir: "~> 1.6",
-      start_permanent: Mix.env == :prod,
+      start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
   end
@@ -22,7 +22,8 @@ defmodule Aehttpclient.Mixfile do
   defp deps do
     [
       {:httpoison, "~> 1.0.0"},
-      {:aeutil, in_umbrella: true}
+      {:aeutil, in_umbrella: true},
+      {:aehttpserver, in_umbrella: true}
     ]
   end
 end

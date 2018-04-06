@@ -1,19 +1,26 @@
-[![Travis Build](https://travis-ci.org/aeternity/elixir-research.svg?branch=master)](https://travis-ci.org/aeternity/elixir-research)
+[![Travis Build](https://travis-ci.org/aeternity/elixir-node.svg?branch=master)](https://travis-ci.org/aeternity/elixir-node)
 
-# **Elixir blockchain research**
+# **Aeternity Elixir Full Node**
 
-This is an elixir implementation of a basic blockchain. We aim to keep the blockchain as simple as possible and to research and experiment with different technologies
+This is an elixir full node implementation of the aeternity specification.
 
-## Getting Started
+
+## Docker Container
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory, prebuilt images are not yet published.
+
+ - Build container `docker build . -t elixir-node`
+ - Run node in container `docker run --name elixir-node -it -p 4000:4000 elixir-node`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
+
+## Getting started on your local machine
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### Required packages
 
 To install and use the Elixir Blockchain you will need [Elixir](https://elixir-lang.org/install.html), [Rust](https://www.rust-lang.org/install.html) (for RocksDB persistence) and the source code by cloning or downloading the repository.
-
-
-### Required packages
 
 Make sure you have installed the following packages to make sure that the Wallet will work properly:
 ```bash
@@ -23,6 +30,10 @@ sudo apt-get install libgmp3-dev
 ```
 
 ## Usage
+
+#### **Fetching dependencies**
+`mix deps.get`
+
 #### **Starting the application**
 Start the application in interactive Elixir mode
 
@@ -37,6 +48,21 @@ This will continuously mine new blocks until terminated or suspended.
 To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
+
+#### **Building custom child Transaction**
+To build a custom transaction you need to follow few simple steps:
+- Make your own `transaction module`;
+- Create your `custom transaction structure`;
+- Override the `Transaction Behaviour` callbacks;
+- Write all your specific functions and checks inside your new `Transaction module`;
+
+All custom transactions are childs to the `DataTx` Transaction that wraps them inside.
+The DataTx strucure hold:
+- The name of your `transaction type` that should be you `Transaction Module name`;
+- The `payload` that will hold your `custom transaction structure`;
+- The `sender`;
+- The `nonce`;
+- The `fee`;
 
 ### **API calls**
 
@@ -131,7 +157,7 @@ To suspend/stop the miner from mining:
 
 - To get all blocks from the current chain:
 
-  `GET localhost:4000/blocks`  
+  `GET localhost:4000/blocks`
 
 - To get all blocks with full information about the blocks:
 
@@ -177,7 +203,7 @@ To suspend/stop the miner from mining:
 
 - To get the transaction pool of an account:
 
-  `GET localhost:4000/tx_pool/{account}`  
+  `GET localhost:4000/tx_pool/{account}`
 
   Where *account* is a hex encoded public key
 
@@ -195,6 +221,72 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
+
+#### **Oracle usage**
+**TTL (time to live):**
+  Determines the lifetime of an object measured in blocks, it can be either absolute
+  or relative (absolute - the object is removed when a block with a height equal to the TTL is mined;
+  relative - the object is removed when a block with height equal to the TTL + block height in which the transaction was included is mined). A TTL is defined like so - %{ttl: value, type: :relative | :absolute}
+
+**Registering an oracle:**
+  `Aecore.Oracle.Oracle.register(query_format, response_format, query_fee, fee, ttl)`
+  The query and response formats are treated as json schemas by which the queries and responses
+  are validated. The query fee is the minimum fee that will be required for queries made to the
+  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
+  for the response fee he had to pay.
+
+  example format schema -
+    ```
+    %{
+      "type" =>
+        "object",
+      "properties" => %{
+        "base" => %{
+          "type" =>
+          "string"
+        },
+        "date" => %{
+          "type" =>
+            "string"
+        },
+        "rates" => %{
+          "type" =>
+            "object"
+        }
+      }
+    }
+    ```
+
+  To list all registered oracles -  `Aecore.Chain.Worker.registered_oracles()`
+
+**Querying an oracle:**
+  `Aecore.Oracle.Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
+  The query TTL determines the time in which the oracle is able to respond, if he doesn't respond in time, the account making the query will get the query_fee back. The response TTL determines for how long the response will remain in the state after it is added, this TTL can only be relative.
+
+  example query -
+  ```
+  Aecore.Oracle.Oracle.query(
+    "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+    %{
+      "currency" =>
+        "USD"
+     },
+     5,
+     10,
+     %{ttl: 10, type: :absolute},
+     %{ttl: 5, type: :relative}
+  )
+  ```
+
+**Respond to a query:**
+  `Aecore.Oracle.Oracle.respond(query_id, response, fee)`
+  Responds to a query which is referenced by ID, if the response is added successfully, the oracle receives the query_fee contained in the query.
+
+**Extend a registered oracle:**
+  `Aecore.Oracle.Oracle.extend(ttl, fee)`
+  Extends the TTL of an oracle with the address that matches the address of the node.
+
+All transactions have to be mined in order to take effect.
 
 ### Docker
 
