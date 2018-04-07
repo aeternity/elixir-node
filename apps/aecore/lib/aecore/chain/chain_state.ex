@@ -5,7 +5,6 @@ defmodule Aecore.Chain.ChainState do
   """
 
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
   alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
@@ -41,7 +40,7 @@ defmodule Aecore.Chain.ChainState do
       throw({:error, "Invalid transaction"})
     end
 
-    SignedTx.process_chainstate!(chainstate, tx)
+    SignedTx.process_chainstate!(chainstate, block_height, tx)
   end
 
   @doc """

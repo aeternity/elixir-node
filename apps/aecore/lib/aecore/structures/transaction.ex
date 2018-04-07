@@ -5,9 +5,7 @@ defmodule Aecore.Structures.Transaction do
   """
 
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.CoinbaseTx
   alias Aecore.Chain.ChainState
-  alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
@@ -24,9 +22,11 @@ defmodule Aecore.Structures.Transaction do
 
   # Callbacks
 
+  @callback get_chain_state_name() :: atom() | nil
+
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types(), list(binary()), fee :: integer()) :: boolean()
+  @callback is_valid?(tx_types(), SignedTx.t()) :: boolean()
 
   @doc """
   Default function for executing a given transaction type.
@@ -35,11 +35,9 @@ defmodule Aecore.Structures.Transaction do
   """
   @callback process_chainstate!(
               tx_types(),
-              list(Wallet.pubkey()),
-              fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
+              SignedTx.t(),
               block_height :: non_neg_integer(),
-              Account.t(),
+              ChainState.account(),
               tx_type_state()
             ) :: {Account.t(), tx_type_state()}
 
@@ -47,36 +45,15 @@ defmodule Aecore.Structures.Transaction do
   Default preprocess_check implementation for deduction of the fee.
   You may add as many as you need additional checks
   depending on your transaction specifications.
-
-  ## Example
-      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
-        cond do
-          account_state.balance - (tx.amount + fee) < 0 ->
-           {:error, "Negative balance"}
-
-        account_state.nonce >= nonce ->
-           {:error, "Nonce too small"}
-
-        1-st_additional_check_required_by_your_tx_functionality ->
-          {:error, reason}
-
-        . . .
-
-        n-th_additional_checks_required_by_your_tx_functionality ->
-           {:error, reason}
-
-          true ->
-           :ok
-      end
   """
   @callback preprocess_check!(
-              tx_types(),
-              list(Wallet.pubkey()),
-              ChainState.account(),
-              fee :: non_neg_integer(),
-              block_height :: non_neg_integer(),
-              tx_type_state :: map()
-            ) :: :ok | {:error, reason}
+              ChainState.accounts(),
+              tx_type_state(),
+              block_height ::  non_neg_integer(),
+              SpendTx.t(),
+              tx_types()
+            ) :: :ok
 
-  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(ChainState.accounts(), tx_types(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+
 end

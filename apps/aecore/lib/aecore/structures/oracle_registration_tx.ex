@@ -1,7 +1,6 @@
 defmodule Aecore.Structures.OracleRegistrationTx do
   alias __MODULE__
   alias Aecore.Structures.Account
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
 
@@ -49,13 +48,14 @@ defmodule Aecore.Structures.OracleRegistrationTx do
       ttl: ttl
     }
   end
-
-  @spec is_valid?(OracleRegistrationTx.t()) :: boolean()
+  
+  @spec is_valid?(OracleRegistrationTx.t(), SignedTx.t()) :: boolean()
   def is_valid?(%OracleRegistrationTx{
         query_format: query_format,
         response_format: response_format,
-        ttl: ttl
-      }) do
+        ttl: ttl}, signed_tx) do
+    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
+        
     formats_valid =
       try do
         ExJsonSchema.Schema.resolve(query_format)
@@ -64,72 +64,72 @@ defmodule Aecore.Structures.OracleRegistrationTx do
       rescue
         e ->
           Logger.error("Invalid query or response format definition - " <> inspect(e))
-
           false
       end
 
-    Oracle.ttl_is_valid?(ttl) && formats_valid
+    cond do
+      ttl <= 0 ->
+        Logger.error("Invalid ttl")
+        false
+
+      !formats_valid ->
+        false
+      
+      !Oracle.ttl_is_valid?(ttl) ->
+        Logger.error("Invald ttl")
+        false
+      
+      length(senders) != 1 ->
+        Logger.error("Invalid senders number")
+        false
+
+      true ->
+        true
+    end
   end
 
   @spec process_chainstate!(
-          OracleRegistrationTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
-          tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+          tx_type_state(),
+          non_neg_integer(),
+          OracleRegistrationTx.t(),
+          SignedTx.t()
+  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
-        %OracleRegistrationTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state
-      ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      registered_oracles
-    )
-
-    new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
-      |> deduct_fee(fee)
-      |> Map.put(:nonce, nonce)
-
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+        %{registered_oracles: registered_oracles} = oracle_state,
+        block_height,
+        %OracleRegistrationTx{} = tx,
+        signed_tx
+  ) do
+    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
 
     updated_registered_oracles =
-      Map.put_new(registered_oracles, sender, %{
-        tx: tx,
-        height_included: block_height
-      })
+      Map.put_new(registered_oracles, sender, 
+        %{tx: tx, height_included: block_height})
 
     updated_oracle_state = %{
       oracle_state
       | registered_oracles: updated_registered_oracles
     }
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {accounts, updated_oracle_state}
   end
 
   @spec preprocess_check!(
-          OracleRegistrationTx.t(),
-          Wallet.pubkey(),
-          ChainState.account(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, block_height, registered_oracles) do
+    ChainState.accounts(),
+    Oracle.registered_oracles(),
+    non_neg_integer(),
+    OracleRegistrationTx.t(),
+    SignedTx.t()
+  ) :: :ok
+  def preprocess_check!(accounts, registered_oracles, block_height, tx, signed_tx) do
+    data_tx = SignedTx.data_tx(signed_tx)
+    sender = DataTx.sender(data_tx)
+    fee = DataTx.fee(data_tx)
+
     cond do
-      account_state.balance - fee < 0 ->
+      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
@@ -146,10 +146,9 @@ defmodule Aecore.Structures.OracleRegistrationTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, signed_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::

@@ -19,7 +19,7 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{target: target, pow_evidence: soln} = header) do
+  def verify(%{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
       process(:verify, header)
     else

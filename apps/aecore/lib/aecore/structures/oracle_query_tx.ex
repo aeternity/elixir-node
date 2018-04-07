@@ -62,50 +62,58 @@ defmodule Aecore.Structures.OracleQueryTx do
       response_ttl: response_ttl
     }
   end
-
-  @spec is_valid?(OracleQueryTx.t()) :: boolean()
+  
+  @spec is_valid?(OracleQueryTx.t(), SignedTx.t()) :: boolean()
   def is_valid?(%OracleQueryTx{
         query_ttl: query_ttl,
         response_ttl: response_ttl
-      }) do
-    Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl)
+      }, signed_tx) do
+    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
+
+    cond do
+      !Oracle.ttl_is_valid?(query_ttl) ->
+        Logger.error("Invalid query ttl")
+        false
+
+      !Oracle.ttl_is_valid?(response_ttl) ->
+        Logger.error("Invalid response ttl")
+        false
+
+      !match?(%{type: :relative}, response_ttl) ->
+        Logger.error("Invalid ttl type")
+        false
+
+      length(senders) != 1 ->
+        Logger.error("Invalid senders number")
+        false
+
+      true ->
+        true
+    end
   end
-
+  
   @spec process_chainstate!(
-          OracleQueryTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
-          tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+          tx_type_state(),
+          non_neg_integer(),
+          OracleQueryTx.t(),
+          SignedTx.t()
+  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
-        %OracleQueryTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects} =
-          oracle_state
-      ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      registered_oracles
-    )
+        %{interaction_objects: interaction_objects} = oracle_state,
+        block_height,
+        %OracleQueryTx{} = tx,
+        signed_tx
+  ) do
+    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
+    nonce = signed_tx |> SignedTx.nonce()
 
-    new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
-      |> deduct_fee(fee + tx.query_fee)
-      |> Map.put(:nonce, nonce)
-
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_state =
+      accounts
+      |> Map.update(sender, Account.empty(), fn acc ->
+        Account.transaction_in!(acc, tx.query_fee * -1)
+      end)
 
     interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
@@ -123,20 +131,23 @@ defmodule Aecore.Structures.OracleQueryTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {updated_accounts_state, updated_oracle_state}
   end
-
+  
   @spec preprocess_check!(
-          OracleQueryTx.t(),
-          Wallet.pubkey(),
-          ChainState.account(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
+    ChainState.accounts(),
+    Oracle.registered_oracles(),
+    non_neg_integer(),
+    OracleQueryTx.t(),
+    SignedTx.t()
+  ) :: :ok
+  def preprocess_check!(accounts, registered_oracles, block_height, tx, signed_tx) do
+    data_tx = SignedTx.data_tx(signed_tx)
+    sender = DataTx.sender(data_tx)
+    fee = DataTx.fee(data_tx)
+
     cond do
-      account_state.balance - fee < 0 ->
+      Map.get(accounts, sender, Account.empty()).balance - fee - tx.query_fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
@@ -162,10 +173,9 @@ defmodule Aecore.Structures.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, signed_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
   end
 
   @spec get_oracle_query_fee(binary()) :: non_neg_integer()

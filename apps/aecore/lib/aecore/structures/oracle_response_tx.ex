@@ -2,7 +2,6 @@ defmodule Aecore.Structures.OracleResponseTx do
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
 
@@ -37,48 +36,44 @@ defmodule Aecore.Structures.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}) do
-    true
-  end
+  @spec is_valid?(OracleResponseTx.t(), SignedTx.t()) :: boolean()
+  def is_valid?(%OracleResponseTx{}, signed_tx) do
+    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
 
+    cond do
+      length(senders) != 1 ->
+        Logger.error("Invalid senders number")
+        false
+
+      true ->
+        true
+    end
+  end
+ 
   @spec process_chainstate!(
-          OracleResponseTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
-          tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+          tx_type_state(),
+          non_neg_integer(),
+          OracleResponseTx.t(),
+          SignedTx.t()
+  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
-        %OracleResponseTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        %{interaction_objects: interaction_objects} = oracle_state
-      ) do
-    preprocess_check(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      oracle_state
-    )
+        %{interaction_objects: interaction_objects} = oracle_state,
+        block_height,
+        %OracleResponseTx{} = tx,
+        signed_tx
+  ) do
+    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
 
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
 
-    new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
-      |> Account.transaction_in(query_fee)
-      |> deduct_fee(fee)
-      |> Map.put(:nonce, nonce)
-
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_state =
+      accounts
+      |> Map.update(sender, Account.empty(), fn acc ->
+        Account.transaction_in!(acc, query_fee)
+      end)
 
     updated_interaction_objects =
       Map.put(interaction_objects, tx.query_id, %{
@@ -92,23 +87,26 @@ defmodule Aecore.Structures.OracleResponseTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {updated_accounts_state, updated_oracle_state}
   end
-
-  @spec preprocess_check(
-          OracleResponseTx.t(),
-          Wallet.pubkey(),
-          ChainState.account(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
-        registered_oracles: registered_oracles,
-        interaction_objects: interaction_objects
-      }) do
+  
+  @spec preprocess_check!(
+    ChainState.accounts(),
+    Oracle.registered_oracles(),
+    non_neg_integer(),
+    OracleResponseTx.t(),
+    SignedTx.t()
+  ) :: :ok
+  def preprocess_check!(accounts, %{
+    registered_oracles: registered_oracles,
+    interaction_objects: interaction_objects
+  }, _block_height, tx, signed_tx) do
+    data_tx = SignedTx.data_tx(signed_tx)
+    sender = DataTx.sender(data_tx)
+    fee = DataTx.fee(data_tx)
+    
     cond do
-      account_state.balance - fee < 0 ->
+      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->
@@ -137,10 +135,9 @@ defmodule Aecore.Structures.OracleResponseTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(ChainState.accounts(), OracleResponseTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, signed_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()

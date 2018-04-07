@@ -14,6 +14,7 @@ defmodule AecoreCuckooTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.CoinbaseTx
 
   @moduledoc """
   Unit tests for the cuckoo module
@@ -121,13 +122,13 @@ defmodule AecoreCuckooTest do
       txs: [
         %SignedTx{
           data: %DataTx{
-            type: SpendTx,
+            type: CoinbaseTx,
             payload: %{receiver: receiver, amount: 100},
             fee: 0,
-            sender: nil,
+            senders: [],
             nonce: 0
           },
-          signature: nil
+          signatures: []
         }
       ]
     }

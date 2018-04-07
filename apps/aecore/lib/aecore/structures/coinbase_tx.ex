@@ -42,6 +42,8 @@ defmodule Aecore.Structures.CoinbaseTx do
   use ExConstructor
 
   # Callbacks
+  
+  def get_chain_state_name() do nil end
 
   @spec init(payload()) :: CoinbaseTx.t()
   def init(%{to_acc: to_acc, value: value} = _payload) do
@@ -59,19 +61,21 @@ defmodule Aecore.Structures.CoinbaseTx do
   @doc """
   Checks transactions internal contents validity
   """
-  @spec is_valid?(CoinbaseTx.t(), list(binary()), non_neg_integer()) :: boolean()
-  def is_valid?(%CoinbaseTx{value: value}, from_accs, fee) do
+  @spec is_valid?(CoinbaseTx.t(), SignedTx.t()) :: boolean()
+  def is_valid?(%CoinbaseTx{value: value}, signed_tx) do
+    data_tx = SignedTx.data_tx(signed_tx)
+
     cond do
       value < 0 ->
         Logger.error("Value cannot be a negative number")
         false
 
-      fee != 0 ->
+      DataTx.fee(data_tx) != 0 ->
         Logger.error("Fee has to be 0")
         false
 
-      length(from_accs) != 0 ->
-        Logger.error("Invalid from_accs size")
+      length(DataTx.senders(data_tx)) != 0 ->
+        Logger.error("Invalid senders size")
         false
 
       true ->
@@ -83,25 +87,23 @@ defmodule Aecore.Structures.CoinbaseTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          ChainState.chainstate(),
+          ChainState.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
           CoinbaseTx.t(),
-          list(binary()),
-          non_neg_integer()
+          SignedTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(chainstate, %CoinbaseTx{} = tx, [], 0) do
-    new_to_account_state =
-      chainstate.accounts
-      |> Map.get(tx.to_acc, Account.empty())
-      |> Account.transaction_in(tx.value)
+  def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _signed_tx) do
+    new_accounts_state =
+      accounts
+      |> Map.update(tx.to_acc, Account.empty(), fn acc ->
+        Account.transaction_in(acc, tx.value)
+      end)
 
-    new_chainstate_accounts =
-      chainstate.accounts
-      |> Map.put(tx.to_acc, new_to_account_state)
-
-    %{chainstate | accounts: new_chainstate_accounts}
+    {new_accounts_state, %{}}   
   end
 
-  def process_chainstate!(_chainstate, _tx, _from_accs, _fee) do
+  def process_chainstate!(_accounts, %{}, _block_height, _tx, _signed_tx) do
     throw({:error, "Invalid coinbase tx"})
   end
 
@@ -109,17 +111,19 @@ defmodule Aecore.Structures.CoinbaseTx do
   Checks whether all the data is valid according to the CoinbaseTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check(
+  @spec preprocess_check!(
+          ChainState.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
           CoinbaseTx.t(),
-          Chainstate.chainstate(),
-          list(binary()),
-          non_neg_integer()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check(_tx, _chainstate, _from_accs, _fee) do
+          SignedTx.t()
+        ) :: :ok
+  def preprocess_check!(_accounts, %{}, _block_height, _tx, _signed_tx) do
     :ok
   end
 
-  def deduct_fee(chainstate, _tx, _from_acc, _fee) do
-    chainstate
+  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.accounts()
+  def deduct_fee(accounts, _tx, _signed_tx, _fee) do
+    accounts
   end
 end

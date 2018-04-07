@@ -13,8 +13,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -256,7 +254,7 @@ defmodule Aecore.Miner.Worker do
       valid_txs = [
         Account.create_coinbase_tx(
           pubkey,
-          @coinbase_transaction_value + total_fees
+          @coinbase_transaction_amount + total_fees
         )
         | valid_txs_by_fee
       ]
@@ -280,7 +278,7 @@ defmodule Aecore.Miner.Worker do
           0,
           Account.create_coinbase_tx(
             pubkey,
-            @coinbase_transaction_value + total_fees
+            @coinbase_transaction_amount + total_fees
           )
         )
 

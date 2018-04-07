@@ -1,0 +1,48 @@
+defmodule Aecore.Structures.Channel do
+  @moduledoc """
+  Aecore structure of a transaction data.
+  """
+
+  require Logger
+
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Structures.Channel
+
+  @type t :: %Channel{
+          initiator_pubkey: Wallet.pubkey(),
+          responder_pubkey: Wallet.pubkey(),
+          initiator_amount: integer(),
+          responder_amount: integer(),
+          lock_period: non_neg_integer()
+        }
+
+  @doc """
+  Definition of State Channel OnChain structure
+
+  ## Parameters
+  TODO
+  """
+  defstruct [
+    :initiator_pubkey,
+    :responder_pubkey,
+    :initiator_amount,
+    :responder_amount,
+    :lock_period
+  ]
+
+  use ExConstructor
+
+  @spec create(Wallet.pubkey(), Wallet.pubkey(), integer(), integer(), non_neg_integer()) ::
+          Channel.t()
+  def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period) do
+    %Channel{
+      initiator_pubkey: initiator_pubkey,
+      responder_pubkey: responder_pubkey,
+      responder_pubkey: initiator_amount,
+      responder_amount: responder_amount,
+      lock_period: lock_period
+    }
+  end
+
+end

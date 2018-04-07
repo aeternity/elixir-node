@@ -33,6 +33,8 @@ defmodule Aecore.Structures.SignedTx do
     %SignedTx{data: data, signatures: signatures}
   end
 
+  def data_tx(%SignedTx{data: data}) do data end
+
   @spec is_coinbase?(SignedTx.t()) :: boolean()
   def is_coinbase?(%SignedTx{data: data}) do
     data.type == CoinbaseTx
@@ -40,16 +42,17 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    signatures_valid?(tx) && DataTx.is_valid?(data)
+    signatures_valid?(tx) && DataTx.is_valid?(data, tx)
   end
 
-  def process_chainstate!(chainstate, %SignedTx{data: data, signatures: sigs}) do
+  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) :: ChainState.chainstate()
+  def process_chainstate!(chainstate, block_height, %SignedTx{data: data, signatures: sigs} = signed_tx) do
     sigs
     |> Enum.zip(data.from_accs)
     |> Enum.reduce(chainstate, fn {sig, acc}, chainstate ->
       Signature.process_chainstate!(chainstate, sig, acc, data)
     end)
-    |> DataTx.process_chainstate!(data)
+    |> DataTx.process_chainstate!(block_height, data, signed_tx)
   end
 
   @doc """
@@ -112,12 +115,12 @@ defmodule Aecore.Structures.SignedTx do
     {:error, "Wrong data"}
   end
 
-  @spec get_nonce(SignedTx.t()) :: integer()
-  def get_nonce(%SignedTx{signatures: []}) do
+  @spec nonce(SignedTx.t()) :: integer()
+  def nonce(%SignedTx{signatures: []}) do
     -1
   end
 
-  def get_nonce(%SignedTx{signatures: [sig | _]}) do
+  def nonce(%SignedTx{signatures: [sig | _]}) do
     sig.nonce
   end
 

@@ -4,9 +4,10 @@ defmodule Aecore.Structures.OracleExtendTx do
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Structures.Account
-  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
+  
+  @type tx_type_state :: ChainState.oracles()
 
   @type payload :: %{
           ttl: non_neg_integer()
@@ -27,44 +28,39 @@ defmodule Aecore.Structures.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec is_valid?(OracleExtendTx.t()) :: boolean()
-  def is_valid?(%OracleExtendTx{ttl: ttl}) do
-    ttl > 0
+  @spec is_valid?(OracleExtendTx.t(), SignedTx.t()) :: boolean()
+  def is_valid?(%OracleExtendTx{ttl: ttl}, signed_tx) do
+    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
+
+    cond do
+      ttl <= 0 ->
+        Logger.error("Invalid ttl")
+        false
+
+      length(senders) != 1 ->
+        Logger.error("Invalid senders number")
+        false
+
+      true ->
+        true
+    end
   end
-
+  
   @spec process_chainstate!(
-          OracleExtendTx.t(),
-          binary(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
           ChainState.account(),
-          Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+          tx_type_state(),
+          non_neg_integer(),
+          OracleExtendTx.t(),
+          SignedTx.t()
+  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
-        %OracleExtendTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state
-      ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      registered_oracles
-    )
-
-    new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
-      |> deduct_fee(fee)
-      |> Map.put(:nonce, nonce)
-
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+        oracle_state,
+        _block_height,
+        %OracleExtendTx{} = tx,
+        signed_tx
+  ) do
+    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
 
     updated_oracle_state =
       update_in(
@@ -73,20 +69,23 @@ defmodule Aecore.Structures.OracleExtendTx do
         &(&1 + tx.ttl)
       )
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {accounts, updated_oracle_state}
   end
-
+  
   @spec preprocess_check!(
-          OracleExtendTx.t(),
-          Wallet.pubkey(),
-          ChainState.account(),
-          non_neg_integer(),
-          non_neg_integer(),
-          Oracle.registered_oracles()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, _block_height, registered_oracles) do
+    ChainState.accounts(),
+    Oracle.registered_oracles(),
+    non_neg_integer(),
+    OracleExtendTx.t(),
+    SignedTx.t()
+  ) :: :ok
+  def preprocess_check!(accounts, registered_oracles, _block_height, tx, signed_tx) do
+    data_tx = SignedTx.data_tx(signed_tx)
+    sender = DataTx.sender(data_tx)
+    fee = DataTx.fee(data_tx)
+
     cond do
-      account_state.balance - fee < 0 ->
+      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->
@@ -100,10 +99,9 @@ defmodule Aecore.Structures.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, signed_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()

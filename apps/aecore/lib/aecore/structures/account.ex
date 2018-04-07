@@ -69,7 +69,7 @@ defmodule Aecore.Structures.Account do
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
+  @spec transaction_in!(ChainState.account(), integer()) :: ChainState.account()
   def transaction_in!(account_state, amount) do
     new_balance = account_state.balance + amount
     if new_balance < 0 do
