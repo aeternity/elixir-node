@@ -50,7 +50,11 @@ defmodule Aecore.Chain.BlockValidation do
         {:worker_reply, _from, verified?} -> verified?
       end
 
-    target = Difficulty.calculate_next_target(blocks_for_target_calculation)
+    target =
+      Difficulty.calculate_next_difficulty(
+        new_block.header.time,
+        blocks_for_target_calculation
+      )
 
     cond do
       # do not check previous block hash for genesis block, there is none

@@ -116,6 +116,7 @@ defmodule Aecore.Structures.DataTx do
     Map.put(new_chainstate, :accounts, new_accounts_state)
   end
 
+  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
   def nonce_valid?(accounts_state, tx) do
     account_state = Map.get(accounts_state, tx.sender, Account.empty())
     tx.nonce > account_state.nonce
