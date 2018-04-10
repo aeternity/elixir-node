@@ -74,7 +74,7 @@ defmodule Aecore.Structures.DataTx do
     accounts_state_tree = chainstate.accounts
 
     tx_type_state =
-      if(tx.type == SpendTx) do
+      if tx.type == SpendTx do
         %{}
       else
         Map.get(chainstate, tx.type.get_chain_state_name(), %{})
@@ -106,6 +106,7 @@ defmodule Aecore.Structures.DataTx do
     Map.put(new_chainstate, :accounts, new_accounts_state_tree)
   end
 
+  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
   def nonce_valid?(accounts_state, tx) do
     tx.nonce > Account.nonce(accounts_state, tx.sender)
   end
