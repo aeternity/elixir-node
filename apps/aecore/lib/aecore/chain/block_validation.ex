@@ -55,6 +55,7 @@ defmodule Aecore.Chain.BlockValidation do
             new_block.header.time,
             blocks_for_target_calculation
           )
+
         cond do
           # do not check previous block height for genesis block, there is none
           !(is_genesis || check_correct_height?(new_block, previous_block)) ->
