@@ -55,7 +55,8 @@ defmodule EpochElixir.Mixfile do
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:merkle_patricia_tree,
-       git: "https://github.com/meivantodorov/merkle_patricia_tree.git", branch: "proof"}
+       git: "https://github.com/meivantodorov/merkle_patricia_tree.git",
+       branch: "meivantodorov/deleting-node"}
     ]
   end
 end

@@ -1,7 +1,8 @@
 defmodule Aeutil.PatriciaMerkleTree do
   @moduledoc """
 
-  TODO
+  This module provides apis for creating, updating, deleting
+  patricia merkle tries, The actual handler is https://github.com/exthereum/merkle_patricia_tree
 
   """
 
@@ -11,25 +12,30 @@ defmodule Aeutil.PatriciaMerkleTree do
 
   alias Aecore.Persistence.Worker, as: Persistence
 
-  @spec root_hash(Trie.t()) :: binary()
+  @typedoc """
+  Depending on the name, different data base ref will
+  be used for the trie creaton.
+  """
+  @type trie_name :: :account | :txs | :proof
+
+  @spec root_hash(Trie.t()) :: binary
   def root_hash(%{root_hash: root_hash}), do: root_hash
 
   @doc """
-  Creating new trie
+  Creating new trie.
   """
-  @spec new(trie_name :: atom()) :: Trie.t()
-  def new(trie_name) do
-    Trie.new(ExternalDB.init(get_db_handlers(trie_name)))
-  end
+  @spec new(trie_name) :: Trie.t()
+  def new(trie_name), do: Trie.new(ExternalDB.init(get_db_handlers(trie_name)))
 
   @doc """
   Create new trie with specific hash root
   """
-  @spec new(trie_name :: atom(), binary()) :: Trie.t()
+  @spec new(trie_name, binary) :: Trie.t()
   def new(trie_name, root_hash) do
     Trie.new(ExternalDB.init(get_db_handlers(trie_name)), root_hash)
   end
 
+  @spec new(trie_name) :: Trie.t()
   defp get_db_handlers(trie_name) do
     %{put: Persistence.db_handler_put(trie_name), get: Persistence.db_handler_get(trie_name)}
   end
@@ -58,7 +64,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Check if the value already exists for this key before add it.
   If so return error message.
   """
-  @spec insert(Trie.key(), Trie.value(), Trie.t()) :: Trie.t() | {:error, term()}
+  @spec insert(Trie.key(), Trie.value(), Trie.t()) :: Trie.t() | {:error, term}
   def insert(key, value, trie) do
     case lookup(key, trie) do
       {:ok, ^value} ->
@@ -70,15 +76,13 @@ defmodule Aeutil.PatriciaMerkleTree do
   end
 
   @spec enter(Trie.key(), Trie.value(), Trie.t()) :: Trie.t()
-  def enter(key, value, trie) do
-    Trie.update(trie, key, value)
-  end
+  def enter(key, value, trie), do: Trie.update(trie, key, value)
 
   @doc """
   Verify if value is present in the proof trie for the provided key.
   The key represents the path in the proof trie.
   """
-  @spec verify_proof(Trie.key(), Trie.value(), Trie.t(), Trie.t()) :: boolean()
+  @spec verify_proof(Trie.key(), Trie.value(), Trie.t(), Trie.t()) :: boolean
   def verify_proof(key, value, trie, proof) do
     Proof.verify_proof(key, value, trie.root_hash, proof.db)
   end
