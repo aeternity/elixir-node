@@ -3,11 +3,15 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   alias Aeutil.PatriciaMerkleTree
 
+  setup do
+    %{db: PatriciaMerkleTree.new(:trie)}
+  end
+
   @tag :patricia_merkle_tree_proof
   @tag timeout: 30_000
-  test "Proof Success Tests" do
+  test "Proof Success Tests", %{db: db} do
     trie_list = gen_random_tree_list()
-    trie = create_trie(trie_list)
+    trie = create_trie(trie_list, db)
 
     Enum.each(trie_list, fn {key, value} ->
       {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(key, trie)
@@ -17,9 +21,9 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Lookup Tests" do
+  test "Lookup Tests", %{db: db} do
     ## Creating trie with only one leaf node.
-    trie = PatriciaMerkleTree.enter("key", "val", PatriciaMerkleTree.new(:trie))
+    trie = PatriciaMerkleTree.enter("key", "val", db)
 
     ## Retrieving the value of the leaf
     assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie)
@@ -37,14 +41,18 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Enter Tests" do
+  test "Enter Tests", %{db: db} do
     trie_list = gen_random_tree_list()
-    assert %{db: _, root_hash: _} = create_trie(trie_list)
+    assert %{db: _, root_hash: _} = create_trie(trie_list, db)
   end
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Fail to insert Tests" do
+  test "Insert Tests", %{db: db} do
+    trie_list = gen_random_tree_list()
+    trie = PatriciaMerkleTree.insert("key", "a", db)
+    assert {:ok, "a"} = PatriciaMerkleTree.lookup("key", trie)
+    assert {:error, :already_present} = PatriciaMerkleTree.insert("key", "a", trie)
   end
 
   def init_proof_trie(), do: PatriciaMerkleTree.new(:proof)
@@ -52,9 +60,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
   @doc """
   Creates trie from trie list by entering each element
   """
-  def create_trie(trie_list) do
-    db = PatriciaMerkleTree.new(:trie)
-
+  def create_trie(trie_list, db) do
     Enum.reduce(trie_list, db, fn {key, val}, acc_trie ->
       PatriciaMerkleTree.enter(key, val, acc_trie)
     end)
