@@ -86,4 +86,11 @@ defmodule Aeutil.PatriciaMerkleTree do
   def verify_proof(key, value, trie, proof) do
     Proof.verify_proof(key, value, trie.root_hash, proof.db)
   end
+
+  @doc """
+  Deleting a value for given key and reorganizing the trie
+  """
+  @spec delete(Trie.key, Trie.t) :: Trie.t
+  def delete(key, trie), do: Trie.delete(trie, key)
+
 end

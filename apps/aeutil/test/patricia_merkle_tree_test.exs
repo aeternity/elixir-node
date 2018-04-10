@@ -4,14 +4,14 @@ defmodule AeutilPatriciaMerkleTreeTest do
   alias Aeutil.PatriciaMerkleTree
 
   setup do
-    %{db: PatriciaMerkleTree.new(:trie)}
+    %{trie: PatriciaMerkleTree.new(:trie)}
   end
 
   @tag :patricia_merkle_tree_proof
   @tag timeout: 30_000
-  test "Proof Success Tests", %{db: db} do
+  test "Proof Success", %{trie: empty_trie} do
     trie_list = gen_random_tree_list()
-    trie = create_trie(trie_list, db)
+    trie = create_trie(trie_list, empty_trie)
 
     Enum.each(trie_list, fn {key, value} ->
       {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(key, trie)
@@ -21,9 +21,9 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Lookup Tests", %{db: db} do
+  test "Lookup", %{trie: empty_trie} do
     ## Creating trie with only one leaf node.
-    trie = PatriciaMerkleTree.enter("key", "val", db)
+    trie = PatriciaMerkleTree.enter("key", "val", empty_trie)
 
     ## Retrieving the value of the leaf
     assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie)
@@ -41,27 +41,34 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Enter Tests", %{db: db} do
+  test "Enter", %{trie: empty_trie} do
     trie_list = gen_random_tree_list()
-    assert %{db: _, root_hash: _} = create_trie(trie_list, db)
+    assert %{db: _, root_hash: _} = create_trie(trie_list, empty_trie)
   end
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Insert Tests", %{db: db} do
-    trie_list = gen_random_tree_list()
-    trie = PatriciaMerkleTree.insert("key", "a", db)
+  test "Insert", %{trie: empty_trie} do
+    trie = PatriciaMerkleTree.insert("key", "a", empty_trie)
     assert {:ok, "a"} = PatriciaMerkleTree.lookup("key", trie)
     assert {:error, :already_present} = PatriciaMerkleTree.insert("key", "a", trie)
   end
 
-  def init_proof_trie(), do: PatriciaMerkleTree.new(:proof)
+  @tag :patricia_merkle_tree
+  @tag timeout: 30_000
+  test "Delete a node from trie", %{trie: empty_trie} do
+    trie = PatriciaMerkleTree.insert("key", "a", empty_trie)
+    assert {:ok, "a"} = PatriciaMerkleTree.lookup("key", trie)
+    new_trie = PatriciaMerkleTree.delete("key", trie)
+    assert :none = PatriciaMerkleTree.lookup("key", new_trie)
+    assert empty_trie.root_hash == new_trie.root_hash
+  end
 
   @doc """
   Creates trie from trie list by entering each element
   """
-  def create_trie(trie_list, db) do
-    Enum.reduce(trie_list, db, fn {key, val}, acc_trie ->
+  def create_trie(trie_list, empty_trie) do
+    Enum.reduce(trie_list, empty_trie, fn {key, val}, acc_trie ->
       PatriciaMerkleTree.enter(key, val, acc_trie)
     end)
   end
