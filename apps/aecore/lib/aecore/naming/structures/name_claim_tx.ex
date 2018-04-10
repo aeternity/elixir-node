@@ -147,11 +147,11 @@ defmodule Aecore.Naming.Structures.NameClaimTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      pre_claim.owner != sender ->
-        {:error, "Sender is not pre-claim owner"}
-
       pre_claim == nil ->
         {:error, "Name has not been pre-claimed"}
+
+      pre_claim.owner != sender ->
+        {:error, "Sender is not pre-claim owner"}
 
       claim != nil ->
         {:error, "Name has aleady been claimed"}

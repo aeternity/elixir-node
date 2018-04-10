@@ -102,4 +102,36 @@ defmodule AecoreNamingTest do
     assert first_name.status == :revoked
     assert first_name.pointers == ["{\"test\": 2}"]
   end
+
+  test "not pre-claimed name not claimable", setup do
+    {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
+    Pool.add_transaction(claim)
+    Miner.mine_sync_block_to_chain()
+
+    naming_state = Map.values(Chain.chain_state().naming)
+    assert 0 == Enum.count(naming_state)
+  end
+
+  test "name not claimable with incorrect salt", setup do
+    Miner.mine_sync_block_to_chain()
+    {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
+    Pool.add_transaction(pre_claim)
+    Miner.mine_sync_block_to_chain()
+
+    naming_state = Map.values(Chain.chain_state().naming)
+    assert 1 == Enum.count(naming_state)
+    [first_name] = naming_state
+    assert first_name.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert first_name.owner == Wallet.get_public_key()
+
+    {:ok, claim} = Account.claim("test.aet", <<2::256>>, 5)
+    Pool.add_transaction(claim)
+    Miner.mine_sync_block_to_chain()
+
+    naming_state = Map.values(Chain.chain_state().naming)
+    assert 1 == Enum.count(naming_state)
+    [first_name] = naming_state
+    assert first_name.owner == Wallet.get_public_key()
+    assert !Map.has_key?(first_name,:name)
+  end
 end
