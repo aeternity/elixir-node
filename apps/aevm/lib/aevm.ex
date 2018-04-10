@@ -309,7 +309,13 @@ defmodule Aevm do
   # 20s: SHA3
 
   def exec(OpCodes._SHA3(), state) do
-    # TODO
+    {op1, state1} = pop(state)
+    {op2, state2} = pop(state1)
+
+    value = Memory.get_area(op1, op2, state2)
+    sha3hash = sha3_hash(value)
+    <<hash::integer-unsigned-256>> = sha3hash
+    push(hash, state2)
   end
 
   # 30s: Environmental Information
@@ -352,7 +358,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CALLDATACOPY(), state) do
-    #TODO: dynamic gas calculation
+    # TODO: dynamic gas calculation
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
     {op3, state3} = pop(state2)
@@ -369,7 +375,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CODECOPY(), state) do
-    #TODO: dynamic gas calculation
+    # TODO: dynamic gas calculation
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
     {op3, state3} = pop(state2)
@@ -400,7 +406,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATACOPY(), state) do
-    #TODO: test
+    # TODO: test
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
     {op3, state3} = pop(state2)
@@ -1110,5 +1116,9 @@ defmodule Aevm do
     data_copy = copy_bytes(address, 32, data)
     <<value::size(256)>> = data_copy
     value
+  end
+
+  def sha3_hash(data) when is_binary(data) do
+    :sha3.hash(256, data)
   end
 end

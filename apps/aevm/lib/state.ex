@@ -14,7 +14,6 @@ defmodule State do
       :cp => 0,
       :jumpdests => [],
       :return => nil,
-      :code => code_bin,
       # :return_data => return_data,
 
       :address => Map.get(exec, :address),

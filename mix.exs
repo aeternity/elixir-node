@@ -41,7 +41,8 @@ defmodule EpochElixir.Mixfile do
      {:distillery, "~> 1.5.2", runtime: false},
      {:aewallet, github: "aeternity/elixir-wallet"},
      {:msgpax, "~> 2.1.1"},
-     {:bip0173, "~> 0.1.2"}
+     {:bip0173, "~> 0.1.2"},
+     {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]}
     ]
   end
 end
