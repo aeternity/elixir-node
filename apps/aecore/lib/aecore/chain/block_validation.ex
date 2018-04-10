@@ -50,13 +50,12 @@ defmodule Aecore.Chain.BlockValidation do
             {:worker_reply, _from, verified?} -> verified?
           end
 
-        target = Difficulty.calculate_next_target(blocks_for_target_calculation)
-
+        target =
+          Difficulty.calculate_next_difficulty(
+            new_block.header.time,
+            blocks_for_target_calculation
+          )
         cond do
-          # do not check previous block hash for genesis block, there is none
-          !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
-            {:error, "#{__MODULE__}: Incorrect previous hash"}
-
           # do not check previous block height for genesis block, there is none
           !(is_genesis || check_correct_height?(new_block, previous_block)) ->
             {:error, "#{__MODULE__}: Incorrect height"}
@@ -86,7 +85,8 @@ defmodule Aecore.Chain.BlockValidation do
   def single_validate_block(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
-    block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
+    block_txs_count = length(block.txs)
+    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
     cond do
       block.header.txs_hash != calculate_txs_hash(block.txs) ->
@@ -102,8 +102,8 @@ defmodule Aecore.Chain.BlockValidation do
       block.header.version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
 
-      block_size_bytes > Application.get_env(:aecore, :block)[:max_block_size_bytes] ->
-        {:error, "#{__MODULE__}: Block size is too big"}
+      block_txs_count > max_txs_for_block ->
+        {:error, "#{__MODULE__}: Too many transactions"}
 
       true ->
         :ok
@@ -170,12 +170,6 @@ defmodule Aecore.Chain.BlockValidation do
       end
     end)
     |> Enum.sum()
-  end
-
-  @spec check_prev_hash?(Block.t(), Block.t()) :: boolean()
-  defp check_prev_hash?(new_block, previous_block) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
-    new_block.header.prev_hash == prev_block_header_hash
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()

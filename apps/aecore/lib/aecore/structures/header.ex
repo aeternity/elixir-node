@@ -38,15 +38,17 @@ defmodule Aecore.Structures.Header do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: Header
-  def create(height, prev_hash, txs_hash, root_hash, target, nonce, version) do
+
+  def create(height, prev_hash, txs_hash, root_hash, target, nonce, version, time) do
     %Header{
       height: height,
       prev_hash: prev_hash,
       txs_hash: txs_hash,
       root_hash: root_hash,
-      time: System.system_time(:milliseconds),
+      time: time,
       nonce: nonce,
       version: version,
       target: target
