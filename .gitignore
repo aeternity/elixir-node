@@ -35,7 +35,3 @@ apps/aecore/logs
 
 # Ignore linter directories
 .elixir_ls/
-
-#Ignore libsodium files
-libsodium-src/
-libsodium-src.tar.gz

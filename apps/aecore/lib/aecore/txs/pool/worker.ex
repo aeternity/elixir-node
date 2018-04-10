@@ -17,6 +17,7 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.Hash
   alias Aecore.Structures.DataTx
   alias Aehttpserver.Web.Notify
 
@@ -115,7 +116,7 @@ defmodule Aecore.Txs.Pool.Worker do
         DataTx.init(tx.type, tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      key = :crypto.hash(:sha256, key)
+      key = Hash.hash_blake2b(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
