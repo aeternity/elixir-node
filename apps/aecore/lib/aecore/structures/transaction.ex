@@ -26,14 +26,14 @@ defmodule Aecore.Structures.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types()) :: boolean()
+  @callback validate(tx_types()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.
   Make necessary changes to the account_state and tx_type_state of
   the transaction (Transaction type-specific chainstate)
   """
-  @callback process_chainstate!(
+  @callback process_chainstate(
               tx_types(),
               Wallet.pubkey(),
               fee :: non_neg_integer(),
@@ -49,7 +49,7 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->
            {:error, "Negative balance"}
@@ -69,7 +69,7 @@ defmodule Aecore.Structures.Transaction do
            :ok
       end
   """
-  @callback preprocess_check!(
+  @callback preprocess_check(
               tx_types(),
               Wallet.pubkey(),
               ChainState.account(),

@@ -53,8 +53,7 @@ defmodule AecoreValidationTest do
       Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
-      _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
@@ -63,14 +62,12 @@ defmodule AecoreValidationTest do
 
     wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
 
-    assert {:error, "Incorrect height"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_height_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+    assert {:error, "#{BlockValidation}: Incorrect height"} ==
+             BlockValidation.calculate_and_validate_block(
+               wrong_height_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_difficulty_calculation
              )
   end
 
@@ -89,7 +86,7 @@ defmodule AecoreValidationTest do
       Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
@@ -98,14 +95,12 @@ defmodule AecoreValidationTest do
 
     wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
 
-    assert {:error, "Invalid header time"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_time_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+    assert {:error, "#{BlockValidation}: Invalid header time"} ==
+             BlockValidation.calculate_and_validate_block(
+               wrong_time_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_difficulty_calculation
              )
   end
 

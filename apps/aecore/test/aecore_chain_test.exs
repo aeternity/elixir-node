@@ -35,9 +35,9 @@ defmodule AecoreChainTest do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
-    chain_state = Chain.chain_state(top_block_hash)
+    {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
-    new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
+    new_chain_state = ChainState.calculate_and_validate_chain_state([], chain_state, 1)
     new_root_hash = ChainState.calculate_root_hash(new_chain_state)
 
     block_unmined = %Block{
@@ -68,14 +68,17 @@ defmodule AecoreChainTest do
 
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
-    assert top_block_from_chain == Chain.get_block_by_base58_hash(top_block_hash_next_base58)
+    assert {:ok, top_block_from_chain} ==
+             Chain.get_block_by_base58_hash(top_block_hash_next_base58)
 
     assert previous_block.header.height + 1 == top_block_from_chain.header.height
 
-    assert BlockValidation.calculate_and_validate_block!(
+    {:ok, chainstate} = Chain.chain_state(previous_block_hash)
+
+    assert BlockValidation.calculate_and_validate_block(
              top_block_from_chain,
              previous_block,
-             Chain.chain_state(previous_block_hash),
+             chainstate,
              blocks_for_difficulty_calculation
            )
 

@@ -47,10 +47,7 @@ defmodule MultipleTransactionsTest do
     {account4_pub_key, _account4_priv_key} = account4
 
     :ok = Miner.mine_sync_block_to_chain()
-    Pool.get_and_empty_pool()
-
     :ok = Miner.mine_sync_block_to_chain()
-    Pool.get_and_empty_pool()
 
     nonce1 = Map.get(Chain.chain_state().accounts, account_pub_key, %{nonce: 0}).nonce + 1
 
@@ -60,6 +57,8 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
     Pool.get_and_empty_pool()
+
+    assert 100 == Chain.chain_state().accounts[account2_pub_key].balance
 
     nonce2 = Map.get(Chain.chain_state().accounts, account2_pub_key, %{nonce: 0}).nonce + 1
     signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)

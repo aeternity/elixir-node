@@ -142,7 +142,7 @@ defmodule Aecore.Oracle.Oracle do
         true
 
       {:error, [{message, _}]} ->
-        Logger.error(fn -> message end)
+        Logger.error(fn -> "#{__MODULE__}: " <> message end)
         false
     end
   end
@@ -174,7 +174,7 @@ defmodule Aecore.Oracle.Oracle do
         response_ttl_is_valid =
           case tx.response_ttl do
             %{type: :absolute} ->
-              Logger.error("Response TTL has to be relative")
+              Logger.error("#{__MODULE__}: Response TTL has to be relative")
               false
 
             %{type: :relative} ->
@@ -203,7 +203,7 @@ defmodule Aecore.Oracle.Oracle do
         ttl > 0
 
       _ ->
-        Logger.error("Invalid TTL definition")
+        Logger.error("#{__MODULE__}: Invalid TTL definition")
         false
     end
   end

@@ -6,8 +6,6 @@ defmodule Aecore.Structures.OracleExtendTx do
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
-  require Logger
-
   @type payload :: %{
           ttl: non_neg_integer()
         }
@@ -27,38 +25,33 @@ defmodule Aecore.Structures.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec is_valid?(OracleExtendTx.t()) :: boolean()
-  def is_valid?(%OracleExtendTx{ttl: ttl}) do
-    ttl > 0
+  @spec validate(OracleExtendTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleExtendTx{ttl: ttl}) do
+    if ttl > 0 do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Negative ttl in OracleExtendTx"}
+    end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleExtendTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           ChainState.account(),
-          Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
-  def process_chainstate!(
+          ChainState.oracles()
+        ) :: {ChainState.accounts(), ChainState.oracles()}
+  def process_chainstate(
         %OracleExtendTx{} = tx,
         sender,
         fee,
         nonce,
-        block_height,
+        _block_height,
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state
+        oracle_state
       ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      registered_oracles
-    )
-
     new_sender_account_state =
       Map.get(accounts, sender, Account.empty())
       |> deduct_fee(fee)
@@ -76,7 +69,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           OracleExtendTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
@@ -84,16 +77,18 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, _block_height, registered_oracles) do
+  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Account isn't a registered operator"})
+        {:error, "#{__MODULE__}: Account isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee is too low"}
 
       true ->
         :ok

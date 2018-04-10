@@ -32,13 +32,16 @@ defmodule Aecore.Structures.SignedTx do
     key == nil && signature == nil
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%SignedTx{data: data} = tx) do
+  @doc """
+  Checks weather the signature is correct.
+  """
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
-      DataTx.is_valid?(data)
+      :ok
     else
-      Logger.error("Can't verify the signature with the following public key: #{data.sender}")
-      false
+      {:error, "#{__MODULE__}: Can't verify the signature
+      with the following public key: #{data.sender}"}
     end
   end
 
@@ -59,11 +62,11 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def sign_tx(%DataTx{} = _tx, priv_key) do
-    {:error, "Wrong key size: #{priv_key}"}
+    {:error, "#{__MODULE__}: Wrong key size: #{priv_key}"}
   end
 
   def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
+    {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -85,7 +88,7 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   def base58c_encode_root(bin) do
@@ -97,6 +100,6 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def base58c_decode_root(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 end

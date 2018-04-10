@@ -25,38 +25,58 @@ defmodule Aecore.Chain.ChainState do
   @typedoc "Structure of the chainstate"
   @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
 
-  @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
+  @spec calculate_and_validate_chain_state(list(), chainstate(), non_neg_integer()) ::
           chainstate()
-  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    Enum.reduce(txs, chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(tx, chainstate, block_height)
+  def calculate_and_validate_chain_state(txs, chainstate, block_height) do
+    txs
+    |> Enum.reduce(chainstate, fn tx, chainstate ->
+      case apply_transaction_on_state(tx, chainstate, block_height) do
+        {:ok, updated_chainstate} ->
+          updated_chainstate
+
+        {:error, _reason} ->
+          chainstate
+      end
     end)
     |> Oracle.remove_expired_oracles(block_height)
     |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state!(SignedTx.t(), chainstate(), non_neg_integer()) :: chainstate()
-  def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do
-    cond do
-      SignedTx.is_coinbase?(tx) ->
-        receiver_state = Map.get(chainstate.accounts, data.payload.receiver, Account.empty())
-        new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+  @spec apply_transaction_on_state(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  def apply_transaction_on_state(
+        %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil},
+        %{accounts: accounts} = chainstate,
+        block_height
+      ) do
+    receiver_state = Map.get(accounts, receiver, Account.empty())
+    new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
 
-        new_accounts_state =
-          Map.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+    new_accounts_state = Map.put(accounts, receiver, new_receiver_state)
 
-        Map.put(chainstate, :accounts, new_accounts_state)
+    {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
+  end
 
-      data.sender != nil ->
-        if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate, block_height)
-        else
-          throw({:error, "Invalid transaction"})
-        end
-
-      true ->
-        throw({:error, "Invalid transaction"})
+  def apply_transaction_on_state(
+        %{data: %{sender: sender, type: tx_type} = data} = tx,
+        %{accounts: accounts} = chainstate,
+        block_height
+      )
+      when not is_nil(sender) do
+    with :ok <- SignedTx.validate(tx),
+         {:ok, child_tx} <- DataTx.validate(data),
+         :ok <- tx_type.validate(child_tx),
+         :ok <- DataTx.validate_sender(sender, chainstate),
+         :ok <- DataTx.validate_nonce(accounts, data),
+         :ok <- DataTx.preprocess_check(data, chainstate, block_height),
+         {:ok, updated_chainstate} <- DataTx.process_chainstate(data, chainstate, block_height) do
+      {:ok, updated_chainstate}
+    else
+      err -> err
     end
+  end
+
+  def apply_transaction_on_state(_tx, _chainstate, _block_height) do
+    {:error, "#{__MODULE__}: Invalid transaction"}
   end
 
   @doc """
@@ -83,26 +103,16 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def filter_invalid_txs(txs_list, chainstate, block_height) do
-    {valid_txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+    List.foldl(txs_list, [], fn tx, valid_txs_list ->
+      case apply_transaction_on_state(tx, chainstate, block_height) do
+        {:ok, _updated_chainstate} ->
+          valid_txs_list ++ [tx]
 
-        if valid_chainstate do
-          {valid_txs_list ++ [tx], updated_chainstate}
-        else
-          {valid_txs_list, chainstate_acc}
-        end
-      end)
-
-    valid_txs_list
-  end
-
-  @spec validate_tx(SignedTx.t(), chainstate(), non_neg_integer()) :: {boolean(), chainstate()}
-  defp validate_tx(tx, chainstate, block_height) do
-    {true, apply_transaction_on_state!(tx, chainstate, block_height)}
-  catch
-    {:error, _reason} ->
-      {false, chainstate}
+        {:error, reason} ->
+          Logger.error(reason)
+          valid_txs_list
+      end
+    end)
   end
 
   @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
@@ -131,6 +141,6 @@ defmodule Aecore.Chain.ChainState do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 end

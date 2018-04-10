@@ -77,11 +77,11 @@ defmodule PersistenceTest do
   @tag timeout: 20_000
   @tag :persistence
   test "Failure cases", persistance_state do
-    assert {:error, "bad block structure"} =
-             Aecore.Persistence.Worker.add_block_by_hash(:wrong_input_type)
+    assert {:error, "#{Persistence}: Bad block structure"} ==
+             Persistence.add_block_by_hash(:wrong_input_type)
 
-    assert {:error, "bad hash value"} =
-             Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
+    assert {:error, "#{Persistence}: Bad hash value"} ==
+             Persistence.get_block_by_hash(:wrong_input_type)
 
     assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)
 

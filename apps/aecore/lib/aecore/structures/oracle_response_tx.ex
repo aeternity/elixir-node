@@ -1,14 +1,12 @@
 defmodule Aecore.Structures.OracleResponseTx do
+  @behaviour Aecore.Structures.Transaction
+
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
-
-  require Logger
-
-  @type tx_type_state :: ChainState.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -37,21 +35,21 @@ defmodule Aecore.Structures.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}) do
-    true
+  @spec validate(OracleResponseTx.t()) :: :ok
+  def validate(%OracleResponseTx{}) do
+    :ok
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleResponseTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           ChainState.account(),
-          tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+          ChainState.oracles()
+        ) :: {ChainState.accounts(), ChainState.oracles()}
+  def process_chainstate(
         %OracleResponseTx{} = tx,
         sender,
         fee,
@@ -60,15 +58,6 @@ defmodule Aecore.Structures.OracleResponseTx do
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state
       ) do
-    preprocess_check(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      oracle_state
-    )
-
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
 
@@ -101,7 +90,7 @@ defmodule Aecore.Structures.OracleResponseTx do
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          ChainState.oracles()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(tx, sender, account_state, fee, _block_height, %{
         registered_oracles: registered_oracles,
@@ -109,28 +98,28 @@ defmodule Aecore.Structures.OracleResponseTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Sender isn't a registered operator"})
+        {:error, "#{__MODULE__}: Sender isn't a registered operator"}
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        throw({:error, "Invalid response data"})
+        {:error, "#{__MODULE__}: Invalid response data"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        throw({:error, "No query with that ID"})
+        {:error, "#{__MODULE__}: No query with that ID"}
 
       interaction_objects[tx.query_id].response != nil ->
-        throw({:error, "Query already answered"})
+        {:error, "#{__MODULE__}: Query already answered"}
 
       interaction_objects[tx.query_id].query.oracle_address != sender ->
-        throw({:error, "Query references a different oracle"})
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee too low"}
 
       true ->
         :ok

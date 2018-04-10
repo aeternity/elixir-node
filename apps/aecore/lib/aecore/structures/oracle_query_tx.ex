@@ -9,10 +9,6 @@ defmodule Aecore.Structures.OracleQueryTx do
   alias Aecore.Chain.ChainState
   alias Aeutil.Bits
 
-  require Logger
-
-  @type tx_type_state :: ChainState.oracles()
-
   @type id :: binary()
 
   @type payload :: %{
@@ -63,43 +59,37 @@ defmodule Aecore.Structures.OracleQueryTx do
     }
   end
 
-  @spec is_valid?(OracleQueryTx.t()) :: boolean()
-  def is_valid?(%OracleQueryTx{
+  @spec validate(OracleQueryTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleQueryTx{
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl)
+    if Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
+         match?(%{type: :relative}, response_ttl) do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Ttl is invalid in OracleQueryTx"}
+    end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleQueryTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           ChainState.account(),
-          tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+          ChainState.oracles()
+        ) :: {ChainState.accounts(), ChainState.oracles()}
+  def process_chainstate(
         %OracleQueryTx{} = tx,
         sender,
         fee,
         nonce,
         block_height,
         accounts,
-        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects} =
-          oracle_state
+        %{interaction_objects: interaction_objects} = oracle_state
       ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Map.get(accounts, sender, Account.empty()),
-      fee,
-      block_height,
-      registered_oracles
-    )
-
     new_sender_account_state =
       Map.get(accounts, sender, Account.empty())
       |> deduct_fee(fee + tx.query_fee)
@@ -126,36 +116,38 @@ defmodule Aecore.Structures.OracleQueryTx do
     {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           OracleQueryTx.t(),
           Wallet.pubkey(),
           ChainState.account(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          ChainState.oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
+  def preprocess_check(tx, _sender, account_state, fee, block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        throw({:error, "No oracle registered with that address"})
+        {:error, "#{__MODULE__}: No oracle registered with that address"}
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        throw({:error, "Invalid query data"})
+        {:error, "#{__MODULE__}: Invalid query data"}
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        throw({:error, "Query fee lower than the one required by the oracle"})
+        {:error, "#{__MODULE__}: Query fee lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee is too low"}
 
       true ->
         :ok
@@ -213,7 +205,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
