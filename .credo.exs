@@ -33,7 +33,7 @@
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
       #
-      strict: false,
+      strict: true,
       #
       # If you want to use uncolored output by default, you can change `color`
       # to `false` below:
@@ -94,7 +94,7 @@
         {Credo.Check.Refactor.DoubleBooleanNegation},
         {Credo.Check.Refactor.CondStatements, priority: :higher},
         {Credo.Check.Refactor.CyclomaticComplexity, priority: :normal},
-        {Credo.Check.Refactor.FunctionArity},
+        {Credo.Check.Refactor.FunctionArity, max_arity: 7},
         {Credo.Check.Refactor.LongQuoteBlocks},
         {Credo.Check.Refactor.MatchInCondition, priority: :higher},
         {Credo.Check.Refactor.NegatedConditionsInUnless, priority: :high},

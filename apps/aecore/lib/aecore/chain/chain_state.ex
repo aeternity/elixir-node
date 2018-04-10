@@ -28,7 +28,8 @@ defmodule Aecore.Chain.ChainState do
   @spec calculate_and_validate_chain_state!(list(), chainstate(), non_neg_integer()) ::
           chainstate()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    Enum.reduce(txs, chainstate, fn tx, chainstate ->
+    txs
+    |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
     |> Oracle.remove_expired_oracles(block_height)
@@ -88,13 +89,13 @@ defmodule Aecore.Chain.ChainState do
         {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
 
         if valid_chainstate do
-          {valid_txs_list ++ [tx], updated_chainstate}
+          {[tx | valid_txs_list], updated_chainstate}
         else
           {valid_txs_list, chainstate_acc}
         end
       end)
 
-    valid_txs_list
+    Enum.reverse(valid_txs_list)
   end
 
   @spec validate_tx(SignedTx.t(), chainstate(), non_neg_integer()) :: {boolean(), chainstate()}

@@ -161,16 +161,16 @@ defmodule AecoreTxTest do
     # Now acc1 has 80 tokens
     assert Chain.chain_state().accounts[acc1].balance == 80
 
-    amount = 50
-    fee = 40
+    amount2 = 50
+    fee2 = 40
     # Balance of acc1 is more than amount and fee, send tokens to acc2
 
-    payload = %{receiver: acc2, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, acc1, fee, 1)
-    priv_key = Wallet.get_private_key("m/1")
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    payload2 = %{receiver: acc2, amount: amount2}
+    tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
+    priv_key2 = Wallet.get_private_key("m/1")
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, priv_key2)
 
-    :ok = Pool.add_transaction(signed_tx)
+    :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()
 
     # the balance of acc1 and acc2 is not changed because amount + fee > balance of acc1

@@ -1,4 +1,9 @@
 defmodule Aecore.Structures.OracleResponseTx do
+  @moduledoc """
+  Contains the transaction structure for oracle responses
+  and functions associated with those transactions.
+  """
+
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
@@ -24,7 +29,7 @@ defmodule Aecore.Structures.OracleResponseTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
@@ -73,7 +78,8 @@ defmodule Aecore.Structures.OracleResponseTx do
     query_fee = interaction_object.query.query_fee
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      accounts
+      |> Map.get(sender, Account.empty())
       |> Account.transaction_in(query_fee)
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)

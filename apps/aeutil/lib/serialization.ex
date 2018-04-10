@@ -281,11 +281,11 @@ defmodule Aeutil.Serialization do
       signatures: [base64_binary(h.signature, :serialize)]
     }
 
-    acc = acc ++ [json_response_struct]
+    acc = [json_response_struct | acc]
     serialize_txs_info_to_json(t, acc)
   end
 
   defp serialize_txs_info_to_json([], acc) do
-    acc
+    Enum.reverse(acc)
   end
 end

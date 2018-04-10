@@ -82,12 +82,12 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec top_height() :: non_neg_integer()
-  def top_height() do
+  def top_height do
     GenServer.call(__MODULE__, :top_height)
   end
 
   @spec lowest_valid_nonce() :: non_neg_integer()
-  def lowest_valid_nonce() do
+  def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
@@ -198,17 +198,17 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec registered_oracles() :: Oracle.registered_oracles()
-  def registered_oracles() do
+  def registered_oracles do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
   @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  def oracle_interaction_objects() do
+  def oracle_interaction_objects do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
   @spec chain_state() :: %{:accounts => Chainstate.accounts(), :oracles => ChainState.oracles()}
-  def chain_state() do
+  def chain_state do
     top_block_chain_state()
   end
 
@@ -586,6 +586,6 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state(),
+  defp build_chain_state,
     do: %{accounts: %{}, oracles: %{registered_oracles: %{}, interaction_objects: %{}}}
 end

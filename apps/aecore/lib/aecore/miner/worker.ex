@@ -286,7 +286,7 @@ defmodule Aecore.Miner.Worker do
 
   ## Internal
 
-  defp get_pool_values() do
+  defp get_pool_values do
     pool_values = Map.values(Pool.get_pool())
     max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
