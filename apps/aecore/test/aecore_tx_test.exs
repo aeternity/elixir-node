@@ -163,7 +163,7 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     # Now acc1 has 80 tokens
-    assert Chain.chain_state().accounts[acc1].balance == 80
+    assert Account.balance(Chain.chain_state().accounts, acc1) == 80
 
     amount = 50
     fee = 40
@@ -178,7 +178,7 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     # the balance of acc1 and acc2 is not changed because amount + fee > balance of acc1
-    assert Chain.chain_state().accounts[acc2] == nil
-    assert Chain.chain_state().accounts[acc1].balance == 80
+    assert Account.balance(Chain.chain_state().accounts, acc2) == 0
+    assert Account.balance(Chain.chain_state().accounts, acc1) == 80
   end
 end

@@ -32,6 +32,16 @@ defmodule Aecore.Structures.Chainstate do
     }
   end
 
+  @spec calculate_and_validate_chain_state!(list(), Chainstate.t(), non_neg_integer()) ::
+          Chainstate.t()
+  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
+    Enum.reduce(txs, chainstate, fn tx, chainstate ->
+      apply_transaction_on_state!(tx, chainstate, block_height)
+    end)
+    |> Oracle.remove_expired_oracles(block_height)
+    |> Oracle.remove_expired_interaction_objects(block_height)
+  end
+
   @spec apply_transaction_on_state!(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
           Chainstate.t()
   def apply_transaction_on_state!(%SignedTx{data: data} = tx, chainstate, block_height) do

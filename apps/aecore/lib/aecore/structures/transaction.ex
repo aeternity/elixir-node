@@ -6,7 +6,7 @@ defmodule Aecore.Structures.Transaction do
 
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
-  alias Aecore.Chain.ChainStateWrapper
+  alias Aecore.Structures.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -72,13 +72,12 @@ defmodule Aecore.Structures.Transaction do
   @callback preprocess_check!(
               tx_types(),
               Wallet.pubkey(),
-              ChainStateWrapper.account(),
+              Chainstate.account(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainStateWrapper.account(), fee :: non_neg_integer()) ::
-              ChainStateWrapper.account()
+  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
 end
