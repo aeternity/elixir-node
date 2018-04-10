@@ -3,12 +3,12 @@ defmodule Aecore.Structures.OracleRegistrationTx do
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Structures.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: ChainStateWrapper.oracles()
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -78,9 +78,9 @@ defmodule Aecore.Structures.OracleRegistrationTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {ChainStateWrapper.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleRegistrationTx{} = tx,
         sender,
@@ -123,7 +123,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
   @spec preprocess_check!(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()

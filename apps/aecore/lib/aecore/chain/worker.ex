@@ -14,7 +14,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.Header
   alias Aecore.Structures.SpendTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
@@ -42,7 +42,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      ChainStateWrapper.calculate_and_validate_chain_state!(
         Block.genesis_block().txs,
         build_chain_state(),
         0
@@ -79,7 +79,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :current_state)
   end
 
-  @spec top_block_chain_state() :: ChainState.account_chainstate()
+  @spec top_block_chain_state() :: ChainStateWrapper.account_chainstate()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -158,7 +158,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          ChainState.account_chainstate() | {:error, binary()}
+          ChainStateWrapper.account_chainstate() | {:error, binary()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
@@ -186,7 +186,7 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), ChainState.chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), ChainStateWrapper.chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
@@ -215,7 +215,10 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
-  @spec chain_state() :: %{:accounts => Chainstate.accounts(), :oracles => ChainState.oracles()}
+  @spec chain_state() :: %{
+          :accounts => Chainstate.accounts(),
+          :oracles => ChainStateWrapper.oracles()
+        }
   def chain_state() do
     top_block_chain_state()
   end
@@ -329,7 +332,7 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+    total_tokens = ChainStateWrapper.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{

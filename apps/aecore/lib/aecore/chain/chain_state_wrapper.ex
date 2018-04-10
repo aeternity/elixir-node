@@ -1,4 +1,4 @@
-defmodule Aecore.Chain.ChainState do
+defmodule Aecore.Chain.ChainStateWrapper do
   @moduledoc """
   The module is a wrapper of Aecore.Structures.Chainstate
   """

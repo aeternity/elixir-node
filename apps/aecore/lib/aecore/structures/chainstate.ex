@@ -24,8 +24,6 @@ defmodule Aecore.Structures.Chainstate do
     :oracles
   ]
 
-  use ExConstructor
-
   @spec init :: Chainstate.t()
   def init do
     %Chainstate{
@@ -109,10 +107,4 @@ defmodule Aecore.Structures.Chainstate do
   def base58c_decode(_) do
     {:error, "Wrong data"}
   end
-
-  @spec to_struct(map()) :: Chainstate.t()
-  def to_struct(destructed_chainstate), do: struct(Chainstate, destructed_chainstate)
-
-  @spec destruct(Chainstate.t()) :: map()
-  def destruct(chainstate), do: Map.from_struct(chainstate)
 end

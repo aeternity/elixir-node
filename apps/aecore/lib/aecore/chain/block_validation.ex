@@ -5,7 +5,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
@@ -16,7 +16,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec calculate_and_validate_block!(
           Block.t(),
           Block.t(),
-          ChainState.account_chainstate(),
+          ChainStateWrapper.account_chainstate(),
           list(Block.t())
         ) :: {:error, term()} | :ok
 
@@ -31,13 +31,13 @@ defmodule Aecore.Chain.BlockValidation do
     single_validate_block!(new_block)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      ChainStateWrapper.calculate_and_validate_chain_state!(
         new_block.txs,
         old_chain_state,
         new_block.header.height
       )
 
-    root_hash = ChainState.calculate_root_hash(new_chain_state)
+    root_hash = ChainStateWrapper.calculate_root_hash(new_chain_state)
 
     server = self()
     work = fn -> Cuckoo.verify(new_block.header) end

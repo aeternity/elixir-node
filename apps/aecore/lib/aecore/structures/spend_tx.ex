@@ -44,7 +44,6 @@ defmodule Aecore.Structures.SpendTx do
   - version: States whats the version of the Spend Transaction
   """
   defstruct [:receiver, :amount, :version]
-  use ExConstructor
 
   # Callbacks
 
@@ -86,14 +85,10 @@ defmodule Aecore.Structures.SpendTx do
           AccountStateTree.tree(),
           tx_type_state()
         ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
-    process_chainstate!(tx, sender, fee, nonce, accounts, %{})
-  end
-
-  defp process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, accounts, %{}) do
+  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check!(tx, sender_account_state, fee) do
+    case preprocess_check!(tx, sender, sender_account_state, fee, block_height, nonce, %{}) do
       :ok ->
         new_sender_account_state =
           sender_account_state
@@ -124,13 +119,9 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, _block_height, _nonce, %{}) do
-    preprocess_check!(tx, account_state, fee)
-  end
-
-  defp preprocess_check!(tx, account_state, fee) do
+  def preprocess_check!(tx, _sender, sender_account_state, fee, _block_height, _nonce, %{}) do
     cond do
-      account_state.balance - (fee + tx.amount) < 0 ->
+      sender_account_state.balance - (fee + tx.amount) < 0 ->
         throw({:error, "Negative balance"})
 
       true ->

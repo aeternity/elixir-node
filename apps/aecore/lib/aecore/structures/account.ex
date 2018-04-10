@@ -29,7 +29,6 @@ defmodule Aecore.Structures.Account do
   - nonce: Out transaction count
   """
   defstruct [:balance, :nonce]
-  use ExConstructor
 
   def empty, do: %Account{balance: 0, nonce: 0}
 
@@ -92,9 +91,7 @@ defmodule Aecore.Structures.Account do
   def get_account_state(tree, key) do
     case AccountStateTree.get(tree, key) do
       :none ->
-        tree
-        |> AccountStateTree.put(key, empty())
-        |> get_account_state(key)
+        empty()
 
       {:ok, account_state} ->
         account_state

@@ -16,7 +16,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet
@@ -239,7 +239,7 @@ defmodule Aecore.Miner.Worker do
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
+        ChainStateWrapper.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
 
       valid_txs_by_fee =
         filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
@@ -305,13 +305,13 @@ defmodule Aecore.Miner.Worker do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      ChainStateWrapper.calculate_and_validate_chain_state!(
         valid_txs,
         chain_state,
         top_block.header.height + 1
       )
 
-    root_hash = ChainState.calculate_root_hash(new_chain_state)
+    root_hash = ChainStateWrapper.calculate_root_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =

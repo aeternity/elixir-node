@@ -1,11 +1,11 @@
-defmodule AecoreChainStateTest do
+defmodule AecoreChainStateWrapperTest do
   @moduledoc """
   Unit test for the chain module
   """
 
   use ExUnit.Case
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence

@@ -3,13 +3,13 @@ defmodule Aecore.Structures.OracleResponseTx do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Structures.Account
   alias Aecore.Structures.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: ChainStateWrapper.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -49,9 +49,9 @@ defmodule Aecore.Structures.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {ChainStateWrapper.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleResponseTx{} = tx,
         sender,
@@ -99,7 +99,7 @@ defmodule Aecore.Structures.OracleResponseTx do
   @spec preprocess_check(
           OracleResponseTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
@@ -138,7 +138,7 @@ defmodule Aecore.Structures.OracleResponseTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainStateWrapper.account(), non_neg_integer()) :: ChainStateWrapper.account()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

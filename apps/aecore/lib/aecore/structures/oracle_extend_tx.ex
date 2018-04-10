@@ -38,9 +38,9 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+        ) :: {ChainStateWrapper.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
         %OracleExtendTx{} = tx,
         sender,
@@ -80,7 +80,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   @spec preprocess_check!(
           OracleExtendTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          ChainStateWrapper.account(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
@@ -102,7 +102,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainStateWrapper.account(), non_neg_integer()) :: ChainStateWrapper.account()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

@@ -9,7 +9,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Account
-  alias Aecore.Structures.Chainstate
 
   require Logger
 
@@ -224,10 +223,8 @@ defmodule Aecore.Oracle.Oracle do
                                                                         acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         acc
-        |> Chainstate.destruct()
-        |> pop_in([:oracles, :registered_oracles, address])
+        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
         |> elem(1)
-        |> Chainstate.to_struct()
       else
         acc
       end

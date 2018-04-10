@@ -4,7 +4,7 @@ defmodule Aecore.Structures.DataTx do
   """
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.ChainStateWrapper
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
@@ -68,8 +68,8 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
-          ChainState.chainstate()
+  @spec process_chainstate!(DataTx.t(), ChainStateWrapper.chainstate(), non_neg_integer()) ::
+          ChainStateWrapper.chainstate()
   def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
     accounts_state_tree = chainstate.accounts
 
