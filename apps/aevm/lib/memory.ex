@@ -64,18 +64,19 @@ defmodule Memory do
     largest_index + 32
   end
 
-  def get_area(from, to, state) do
+  def get_area(from, bytes, state) do
     memory = State.memory(state)
-    memory_indexes = trunc(Float.ceil(to / 32))
+    memory_indexes = trunc(Float.ceil((from + bytes) / 32))
+    start_index = trunc(Float.ceil(from / 32))
 
     total_data =
       Enum.reduce(0..(memory_indexes - 1), <<>>, fn i, data_acc ->
-        data = Map.get(memory, i * 32, 0)
+        data = Map.get(memory, (start_index + i) * 32, 0)
         data_acc <> <<data::size(256)>>
       end)
 
     unneeded_bits = rem(from, 32) * 8
-    area_bits = (to - from) * 8
+    area_bits = bytes * 8
     <<_::size(unneeded_bits), area::size(area_bits), _::binary>> = total_data
 
     <<area::size(area_bits)>>
