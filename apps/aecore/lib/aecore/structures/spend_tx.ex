@@ -13,9 +13,6 @@ defmodule Aecore.Structures.SpendTx do
 
   require Logger
 
-  # Gets valid public key size - 33
-  @pub_key_size Wallet.get_pub_key_size()
-
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
           receiver: Wallet.pubkey(),
@@ -51,25 +48,26 @@ defmodule Aecore.Structures.SpendTx do
   # Callbacks
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount}) when byte_size(receiver) == @pub_key_size do
+  def init(%{receiver: receiver, amount: amount}) do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
-  end
-
-  def init(%{receiver: _receiver, amount: _amount}) do
-    Logger.error("Wrong receiver key size")
-    throw({:error, "Wrong receiver key size"})
   end
 
   @doc """
   Checks wether the amount that is send is not a negative number
   """
   @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{amount: amount}) do
-    if amount >= 0 do
-      true
-    else
-      Logger.error("The amount cannot be a negative number")
-      false
+  def is_valid?(%SpendTx{receiver: receiver, amount: amount}) do
+    cond do
+      amount < 0 ->
+        Logger.error("The amount cannot be a negative number")
+        false
+
+      !Wallet.key_size_valid?(receiver) ->
+        Logger.error("Wrong receiver key size")
+        false
+
+      true ->
+        true
     end
   end
 

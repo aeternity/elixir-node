@@ -13,9 +13,6 @@ defmodule Aecore.Structures.DataTx do
 
   require Logger
 
-  # Gets valid public key size - 33
-  @pub_key_size Wallet.get_pub_key_size()
-
   @typedoc "Name of the specified transaction module"
   @type tx_types :: SpendTx
 
@@ -48,14 +45,8 @@ defmodule Aecore.Structures.DataTx do
   use ExConstructor
 
   @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, sender, fee, nonce)
-      when sender == nil or byte_size(sender) == @pub_key_size do
+  def init(type, payload, sender, fee, nonce) do
     %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
-  end
-
-  def init(_type, _payload, _sender, _fee, _nonce) do
-    Logger.error("Wrong sender key size")
-    throw({:error, "Wrong sender key size"})
   end
 
   @doc """
@@ -63,14 +54,20 @@ defmodule Aecore.Structures.DataTx do
   validation checks. Otherwise we return error.
   """
   @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee > 0 do
-      payload
-      |> type.init()
-      |> type.is_valid?()
-    else
-      Logger.error("Fee not enough")
-      false
+  def is_valid?(%DataTx{sender: sender, type: type, payload: payload, fee: fee}) do
+    cond do
+      fee <= 0 ->
+        Logger.error("Fee not enough")
+        false
+
+      !Wallet.key_size_valid?(sender) ->
+        Logger.error("Wrong sender key size")
+        false
+
+      true ->
+        payload
+        |> type.init()
+        |> type.is_valid?()
     end
   end
 

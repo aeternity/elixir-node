@@ -149,8 +149,8 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
     payload = %{receiver: tx.receiver, amount: amount}
 
-    assert catch_throw(DataTx.init(SpendTx, payload, sender, fee, 1)) ==
-             {:error, "Wrong sender key size"}
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert DataTx.is_valid?(data_tx) == false
   end
 
   test "receiver pub_key is too small", tx do
@@ -164,8 +164,8 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
     payload = %{receiver: receiver, amount: amount}
 
-    assert catch_throw(DataTx.init(SpendTx, payload, sender, fee, 1)) ==
-             {:error, "Wrong receiver key size"}
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert DataTx.is_valid?(data_tx) == false
   end
 
   test "sum of amount and fee more than balance", tx do
