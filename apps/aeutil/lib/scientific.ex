@@ -1,4 +1,9 @@
 defmodule Aeutil.Scientific do
+  @moduledoc """
+  Converts integer to scientific notation.
+  It's used for the storing the target in the block and recalculating the next targer
+  """
+
   use Bitwise
 
   @spec scientific_to_integer(integer) :: integer()
