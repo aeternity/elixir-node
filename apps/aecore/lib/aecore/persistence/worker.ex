@@ -151,7 +151,6 @@ defmodule Aecore.Persistence.Worker do
        "patricia_proof_family" => patricia_proof_family,
        "patricia_account_family" => patricia_account_family,
        "patricia_txs_family" => patricia_txs_family
-
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
@@ -170,10 +169,12 @@ defmodule Aecore.Persistence.Worker do
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
        blocks_info_family: blocks_info_family,
-       patricia_families: %{proof: patricia_proof_family,
-                            account: patricia_account_family,
-                            txs: patricia_txs_family,
-                            test_trie: db}
+       patricia_families: %{
+         proof: patricia_proof_family,
+         account: patricia_account_family,
+         txs: patricia_txs_family,
+         test_trie: db
+       }
      }}
   end
 
@@ -355,6 +356,7 @@ defmodule Aecore.Persistence.Worker do
 
   def handle_call({:db_handler, {type, db_ref_name}}, _from, state) when is_atom(db_ref_name) do
     db_ref = state.patricia_families[db_ref_name]
+
     handler =
       case type do
         :put ->
@@ -363,6 +365,7 @@ defmodule Aecore.Persistence.Worker do
         :get ->
           fn key -> Rox.get(db_ref, key) end
       end
+
     {:reply, handler, state}
   end
 
