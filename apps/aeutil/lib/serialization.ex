@@ -9,14 +9,26 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Structures.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
 
+  @type raw_data :: %{
+          block_hash: binary(),
+          block_height: non_neg_integer(),
+          fee: non_neg_integer(),
+          nonce: non_neg_integer(),
+          payload: SpendTx.t(),
+          sender: binary() | nil,
+          signature: binary() | nil,
+          txs_hash: binary(),
+          type: atom()
+        }
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
     serialized_block = serialize_value(block)
@@ -47,6 +59,25 @@ defmodule Aeutil.Serialization do
 
     signature = base64_binary(tx["signature"], :deserialize)
     %SignedTx{data: data, signature: signature}
+  end
+
+  @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
+          binary() | :none | Account.t()
+  def account_state(account_state, :serialize) do
+    account_state
+    |> serialize_value()
+    |> Msgpax.pack!()
+  end
+
+  def account_state(:none, :deserialize), do: :none
+
+  def account_state(encoded_account_state, :deserialize) do
+    {:ok, account_state} = Msgpax.unpack(encoded_account_state)
+
+    {:ok,
+     account_state
+     |> deserialize_value()
+     |> Account.new()}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
@@ -137,7 +168,7 @@ defmodule Aeutil.Serialization do
   def serialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->
-        ChainState.base58c_encode(value)
+        Chainstate.base58c_encode(value)
 
       :prev_hash ->
         Header.base58c_encode(value)
@@ -215,7 +246,7 @@ defmodule Aeutil.Serialization do
   def deserialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->
-        ChainState.base58c_decode(value)
+        Chainstate.base58c_decode(value)
 
       :prev_hash ->
         Header.base58c_decode(value)
@@ -247,4 +278,33 @@ defmodule Aeutil.Serialization do
   end
 
   def deserialize_value(value, _), do: value
+
+  @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
+  def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
+    serialize_txs_info_to_json(txs_info, [])
+  end
+
+  defp serialize_txs_info_to_json([h | t], acc) do
+    json_response_struct = %{
+      tx: %{
+        sender: Account.base58c_encode(h.sender),
+        recipient: Account.base58c_encode(h.payload.receiver),
+        amount: h.payload.amount,
+        fee: h.fee,
+        nonce: h.nonce,
+        vsn: h.payload.version
+      },
+      block_height: h.block_height,
+      block_hash: Header.base58c_encode(h.block_hash),
+      hash: SignedTx.base58c_encode_root(h.txs_hash),
+      signatures: [base64_binary(h.signature, :serialize)]
+    }
+
+    acc = acc ++ [json_response_struct]
+    serialize_txs_info_to_json(t, acc)
+  end
+
+  defp serialize_txs_info_to_json([], acc) do
+    acc
+  end
 end

@@ -13,7 +13,8 @@ defmodule DifficultyTest do
       Block.genesis_block()
     ]
 
-    assert 1 == Difficulty.calculate_next_target(blocks)
+    timestamp = 1_607_275_094_308
+    assert 553_713_663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
   end
 
   @tag :difficulty
@@ -21,7 +22,7 @@ defmodule DifficultyTest do
     blocks = [
       %Block{
         header: %Header{
-          target: 6,
+          target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
@@ -33,7 +34,7 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          target: 1,
+          target: 553_713_663,
           height: 1,
           nonce: 0,
           prev_hash: <<1, 24, 45>>,
@@ -45,7 +46,7 @@ defmodule DifficultyTest do
       },
       %Block{
         header: %Header{
-          target: 1,
+          target: 553_713_663,
           height: 0,
           nonce: 0,
           prev_hash:
@@ -61,6 +62,7 @@ defmodule DifficultyTest do
       }
     ]
 
-    assert 6 == Difficulty.calculate_next_target(blocks)
+    timestamp = 140_000
+    assert 553_713_663 == Difficulty.calculate_next_difficulty(timestamp, blocks)
   end
 end

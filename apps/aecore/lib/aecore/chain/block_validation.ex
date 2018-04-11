@@ -5,7 +5,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
@@ -16,9 +16,10 @@ defmodule Aecore.Chain.BlockValidation do
   @spec calculate_and_validate_block!(
           Block.t(),
           Block.t(),
-          ChainState.account_chainstate(),
+          Chainstate.account_chainstate(),
           list(Block.t())
         ) :: {:error, term()} | :ok
+
   def calculate_and_validate_block!(
         new_block,
         previous_block,
@@ -30,13 +31,13 @@ defmodule Aecore.Chain.BlockValidation do
     single_validate_block!(new_block)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      Chainstate.calculate_and_validate_chain_state!(
         new_block.txs,
         old_chain_state,
         new_block.header.height
       )
 
-    root_hash = ChainState.calculate_root_hash(new_chain_state)
+    root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
     server = self()
     work = fn -> Cuckoo.verify(new_block.header) end
@@ -50,7 +51,11 @@ defmodule Aecore.Chain.BlockValidation do
         {:worker_reply, _from, verified?} -> verified?
       end
 
-    target = Difficulty.calculate_next_target(blocks_for_target_calculation)
+    target =
+      Difficulty.calculate_next_difficulty(
+        new_block.header.time,
+        blocks_for_target_calculation
+      )
 
     cond do
       # do not check previous block hash for genesis block, there is none

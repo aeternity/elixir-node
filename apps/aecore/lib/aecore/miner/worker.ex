@@ -16,7 +16,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Txs.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet
@@ -233,13 +233,16 @@ defmodule Aecore.Miner.Worker do
       blocks_for_difficulty_calculation =
         Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      difficulty = Difficulty.calculate_next_target(blocks_for_difficulty_calculation)
+      timestamp = System.system_time(:milliseconds)
+
+      difficulty =
+        Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
 
       txs_list = get_pool_values()
       ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
       valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
+        Chainstate.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
 
       valid_txs_by_fee =
         filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
@@ -256,7 +259,7 @@ defmodule Aecore.Miner.Worker do
         | valid_txs_by_fee
       ]
 
-      create_block(top_block, chain_state, difficulty, valid_txs)
+      create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
     catch
       message ->
         Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
@@ -301,17 +304,17 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  defp create_block(top_block, chain_state, difficulty, valid_txs) do
+  defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp) do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      Chainstate.calculate_and_validate_chain_state!(
         valid_txs,
         chain_state,
         top_block.header.height + 1
       )
 
-    root_hash = ChainState.calculate_root_hash(new_chain_state)
+    root_hash = Chainstate.calculate_root_hash(new_chain_state)
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     unmined_header =
@@ -323,7 +326,8 @@ defmodule Aecore.Miner.Worker do
         difficulty,
         0,
         # start from nonce 0, will be incremented in mining
-        Block.current_block_version()
+        Block.current_block_version(),
+        timestamp
       )
 
     %Block{header: unmined_header, txs: valid_txs}
