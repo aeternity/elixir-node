@@ -22,6 +22,7 @@ config :aecore, :peers,
   peers_max_count: 4
 
 config :aecore, :pow,
+  new_candidate_nonce_count: 10,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
   max_target_change: 1,

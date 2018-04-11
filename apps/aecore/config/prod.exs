@@ -38,7 +38,14 @@ config :aecore, :persistence,
   path: Path.absname(persistence_path),
   write_options: [sync: true, disable_wal: false]
 
+new_candidate_nonce_count =
+  case System.get_env("NEW CANDIDATE NONCE COUNT") do
+    nil -> 10
+    env -> env
+  end
+
 config :aecore, :pow,
+  new_candidate_nonce_count: new_candidate_nonce_count,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./mean28s-generic", "-t 5", 28},
   max_target_change: 1,
