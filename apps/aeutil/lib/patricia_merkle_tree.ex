@@ -90,7 +90,6 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Deleting a value for given key and reorganizing the trie
   """
-  @spec delete(Trie.key, Trie.t) :: Trie.t
+  @spec delete(Trie.key(), Trie.t()) :: Trie.t()
   def delete(key, trie), do: Trie.delete(trie, key)
-
 end
