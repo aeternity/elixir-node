@@ -109,7 +109,7 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Map.values(Chain.chain_state().naming)
-    assert 0 == Enum.count(naming_state)
+    assert Enum.empty?(naming_state)
   end
 
   test "name not claimable with incorrect salt", setup do
@@ -132,7 +132,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state)
     [first_name] = naming_state
     assert first_name.owner == Wallet.get_public_key()
-    assert !Map.has_key?(first_name,:name)
+    assert !Map.has_key?(first_name, :name)
   end
 
   test "name not claimable from different account", setup do
@@ -151,7 +151,7 @@ defmodule AecoreNamingTest do
     claim_pub = Aecore.Wallet.Worker.to_public_key(claim_priv)
     next_nonce = Map.get(Chain.chain_state().accounts, claim_pub, %{nonce: 0}).nonce + 1
 
-    {:ok, claim} = Account.claim(claim_pub,claim_priv,"test.aet", <<1::256>>, 5,next_nonce)
+    {:ok, claim} = Account.claim(claim_pub, claim_priv, "test.aet", <<1::256>>, 5, next_nonce)
     Pool.add_transaction(claim)
     Miner.mine_sync_block_to_chain()
 
@@ -159,7 +159,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state)
     [first_name] = naming_state
     assert first_name.owner == Wallet.get_public_key()
-    assert !Map.has_key?(first_name,:name)
+    assert !Map.has_key?(first_name, :name)
   end
 
   test "name not updatable from different account", setup do
@@ -191,7 +191,9 @@ defmodule AecoreNamingTest do
     update_pub = Aecore.Wallet.Worker.to_public_key(update_priv)
     next_nonce = Map.get(Chain.chain_state().accounts, update_pub, %{nonce: 0}).nonce + 1
 
-    {:ok, update} = Account.name_update(update_pub, update_priv,"test.aet", "{\"test\": 2}", 5, next_nonce)
+    {:ok, update} =
+      Account.name_update(update_pub, update_priv, "test.aet", "{\"test\": 2}", 5, next_nonce)
+
     Pool.add_transaction(update)
     Miner.mine_sync_block_to_chain()
 
@@ -249,7 +251,17 @@ defmodule AecoreNamingTest do
 
     transfer_to_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
     transfer_to_pub = Aecore.Wallet.Worker.to_public_key(transfer_to_priv)
-    {:ok, transfer} = Account.name_transfer(transfer_from_pub, transfer_from_priv, "test.aet", transfer_to_pub, 5, next_nonce)
+
+    {:ok, transfer} =
+      Account.name_transfer(
+        transfer_from_pub,
+        transfer_from_priv,
+        "test.aet",
+        transfer_to_pub,
+        5,
+        next_nonce
+      )
+
     Pool.add_transaction(transfer)
     Miner.mine_sync_block_to_chain()
 
@@ -326,6 +338,7 @@ defmodule AecoreNamingTest do
     transfer_from_priv = Aecore.Wallet.Worker.get_private_key("m/0/2")
     transfer_from_pub = Aecore.Wallet.Worker.to_public_key(transfer_from_priv)
     next_nonce = Map.get(Chain.chain_state().accounts, transfer_from_pub, %{nonce: 0}).nonce + 1
+
     {:ok, revoke} =
       Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.aet", 5, next_nonce)
 

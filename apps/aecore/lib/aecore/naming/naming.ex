@@ -4,6 +4,7 @@ defmodule Aecore.Naming.Naming do
   alias Aecore.Naming.NameUtil
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Hash
+  alias Aeutil.Bits
 
   @pre_claim_ttl 300
 
@@ -116,5 +117,29 @@ defmodule Aecore.Naming.Naming do
       |> Enum.into(%{})
 
     %{chainstate | naming: updated_naming_state}
+  end
+
+  def base58c_encode_hash(bin) do
+    Bits.encode58c("nm", bin)
+  end
+
+  def base58c_decode_hash(<<"nm$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_hash(_) do
+    {:error, "Wrong data"}
+  end
+
+  def base58c_encode_commitment(bin) do
+    Bits.encode58c("cm", bin)
+  end
+
+  def base58c_decode_commitment(<<"cm$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_commitment(_) do
+    {:error, "Wrong data"}
   end
 end

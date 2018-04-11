@@ -8,6 +8,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
+  alias Aecore.Naming.Naming
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aecore.Structures.Account
@@ -146,11 +147,23 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_encode(value)
 
+      :target ->
+        Account.base58c_encode(value)
+
       :signature ->
         base64_binary(value, :serialize)
 
       :proof ->
         base64_binary(value, :serialize)
+
+      :commitment ->
+        Naming.base58c_encode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :serialize)
+
+      :hash ->
+        Naming.base58c_encode_hash(value)
 
       _ ->
         value
@@ -218,11 +231,26 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_decode(value)
 
+      :target ->
+        Account.base58c_decode(value)
+
       :signature ->
         base64_binary(value, :deserialize)
 
       :proof ->
         base64_binary(value, :deserialize)
+
+      :commitment ->
+        Naming.base58c_decode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :deserialize)
+
+      :hash ->
+        Naming.base58c_decode_hash(value)
+
+      :name ->
+        value
 
       _ ->
         Parser.to_atom!(value)
