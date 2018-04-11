@@ -3,6 +3,7 @@ defmodule Aehttpserver.Web.HeaderController do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.HTTPUtil
 
   def top(conn, _params) do
     header = Serialization.serialize_value(Chain.top_block().header)
@@ -15,10 +16,10 @@ defmodule Aehttpserver.Web.HeaderController do
         json(conn, Serialization.serialize_value(header))
 
       {:error, :invalid_hash} ->
-        json(put_status(conn, 400), %{reason: "Invalid hash"})
+        HTTPUtil.json_bad_request(conn, "Invalid hash")
 
       {:error, :header_not_found} ->
-        json(put_status(conn, 404), %{reason: "Header not found"})
+        HTTPUtil.json_not_found(conn, "Header not found")
     end
   end
 
@@ -30,7 +31,7 @@ defmodule Aehttpserver.Web.HeaderController do
       json(conn, Serialization.serialize_value(header))
     else
       _ ->
-        json(put_status(conn, 400), "Header not found")
+        HTTPUtil.json_not_found(conn, "Header not found")
     end
   end
 end

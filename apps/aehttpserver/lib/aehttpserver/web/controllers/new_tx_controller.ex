@@ -9,7 +9,7 @@ defmodule Aehttpserver.Web.NewTxController do
 
     case Pool.add_transaction(deserialized_tx) do
       :error ->
-        json(put_status(conn, 400), %{reason: "Invalid transaction"})
+        HTTPUtil.json_bad_request(conn, "Invalid transaction")
 
       :ok ->
         json(conn, "Successful operation")
