@@ -55,7 +55,12 @@ defmodule Aecore.Structures.SignedTx do
   @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
   def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
     signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
-    {:ok, %SignedTx{data: tx, signature: signature}}
+
+    if byte_size(signature) <= get_sign_max_size() do
+      {:ok, %SignedTx{data: tx, signature: signature}}
+    else
+      {:error, "Wrong signature size"}
+    end
   end
 
   def sign_tx(%DataTx{} = _tx, priv_key) do
@@ -64,6 +69,10 @@ defmodule Aecore.Structures.SignedTx do
 
   def sign_tx(tx, _priv_key) do
     {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
+  end
+
+  def get_sign_max_size() do
+    Application.get_env(:aecore, :signed_tx)[:sign_max_size]
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()

@@ -53,6 +53,10 @@ config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
 
+config :aecore, :signed_tx, sign_max_size: 72
+
+config :aecore, :oracle_response_tx, query_id: 32
+
 config :aecore, :aewallet, pass: aewallet_pass
 
 config :aecore, :aewallet, path: Path.absname(aewallet_path)
