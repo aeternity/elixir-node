@@ -9,6 +9,15 @@ defmodule Aecore.Persistence.Worker do
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
 
+  @typedoc """
+  To operate with a patricia merkle tree
+  we do need db reference
+
+  Those names referes to the keys into patricia_families
+  map in our state
+  """
+  @type db_ref_name :: :proof | :txs | :account
+
   require Logger
 
   def start_link(_args) do
@@ -111,16 +120,20 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :delete_chainstate)
   end
 
-  def get_db_ref(name) do
-    GenServer.call(__MODULE__, {:get_db_ref, name})
+  @doc """
+  We need db put handler when we update a patricia tree
+  """
+  @spec db_handler_put(db_ref_name()) :: function()
+  def db_handler_put(db_ref_name) do
+    GenServer.call(__MODULE__, {:db_handler, {:put, db_ref_name}})
   end
 
-  def db_handler_put(db_name) do
-    GenServer.call(__MODULE__, {:db_handler_put, db_name})
-  end
-
-  def db_handler_get(db_name) do
-    GenServer.call(__MODULE__, {:db_handler_get, db_name})
+  @doc """
+  We need db get handler when we retrieve a hash from patricia tree
+  """
+  @spec db_handler_get(db_ref_name()) :: function()
+  def db_handler_get(db_ref_name) do
+    GenServer.call(__MODULE__, {:db_handler, {:get, db_ref_name}})
   end
 
   ## Server side
@@ -135,16 +148,19 @@ defmodule Aecore.Persistence.Worker do
        "latest_block_info_family" => latest_block_info_family,
        "chain_state_family" => chain_state_family,
        "blocks_info_family" => blocks_info_family,
-       "patricia_trie_family" => patricia_trie_family,
-       "patricia_proof_trie_family" => patricia_proof_trie_family
+       "patricia_proof_family" => patricia_proof_family,
+       "patricia_account_family" => patricia_account_family,
+       "patricia_txs_family" => patricia_txs_family
+
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
         "latest_block_info_family",
         "chain_state_family",
         "blocks_info_family",
-        "patricia_trie_family",
-        "patricia_proof_trie_family"
+        "patricia_proof_family",
+        "patricia_account_family",
+        "patricia_txs_family"
       ])
 
     {:ok,
@@ -154,7 +170,10 @@ defmodule Aecore.Persistence.Worker do
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
        blocks_info_family: blocks_info_family,
-       patricia_db_refs: %{proof: patricia_proof_trie_family, trie: patricia_trie_family}
+       patricia_families: %{proof: patricia_proof_family,
+                            account: patricia_account_family,
+                            txs: patricia_txs_family,
+                            test_trie: db}
      }}
   end
 
@@ -334,23 +353,16 @@ defmodule Aecore.Persistence.Worker do
     {:reply, :ok, state}
   end
 
-  def handle_call({:get_db_ref, name}, _from, state) when is_atom(name) do
-    {:reply, state.patricia_db_refs.trie, state}
-  end
+  def handle_call({:db_handler, {type, db_ref_name}}, _from, state) when is_atom(db_ref_name) do
+    db_ref = state.patricia_families[db_ref_name]
+    handler =
+      case type do
+        :put ->
+          fn key, val -> Rox.put(db_ref, key, val) end
 
-  def handle_call({:db_handler_put, db_name}, _from, state) when is_atom(db_name) do
-    handler = fn key, val ->
-      Rox.put(get_db_ref(db_name), key, val)
-    end
-
-    {:reply, handler, state}
-  end
-
-  def handle_call({:db_handler_get, db_name}, _from, state) when is_atom(db_name) do
-    handler = fn key ->
-      Rox.get(get_db_ref(db_name), key)
-    end
-
+        :get ->
+          fn key -> Rox.get(db_ref, key) end
+      end
     {:reply, handler, state}
   end
 

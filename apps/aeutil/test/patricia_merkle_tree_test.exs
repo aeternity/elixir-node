@@ -4,7 +4,11 @@ defmodule AeutilPatriciaMerkleTreeTest do
   alias Aeutil.PatriciaMerkleTree
 
   setup do
-    %{trie: PatriciaMerkleTree.new(:trie)}
+    on_exit(fn ->
+      :ok
+    end)
+
+    %{db_ref_name: :test_trie, trie: PatriciaMerkleTree.new(:test_trie)}
   end
 
   @tag :patricia_merkle_tree_proof
@@ -21,7 +25,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
-  test "Lookup", %{trie: empty_trie} do
+  test "Lookup", %{db_ref_name: db_ref_name, trie: empty_trie} do
     ## Creating trie with only one leaf node.
     trie = PatriciaMerkleTree.enter("key", "val", empty_trie)
 
@@ -34,7 +38,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
     ## Creating new trie from previous root_hash
     ## and the expected result should be the value
     ## of the existing leaf in the first trie.
-    trie2 = PatriciaMerkleTree.new(:proof, trie.root_hash)
+    trie2 = PatriciaMerkleTree.new(db_ref_name, trie.root_hash)
 
     assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie2)
   end
@@ -73,7 +77,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
     end)
   end
 
-  def gen_random_tree_list(), do: for(_ <- 0..10_000, do: {random_key(), "0000"})
+  def gen_random_tree_list(), do: for(_ <- 0..500, do: {random_key(), "0000"})
 
   def random_key() do
     <<:rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
