@@ -9,7 +9,6 @@ defmodule Aecore.Structures.SpendTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
-  alias Aecore.Txs.Pool.Worker, as: Pool
 
   require Logger
 
