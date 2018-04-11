@@ -6,12 +6,13 @@ defmodule Aecore.Structures.OracleQueryTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aeutil.Bits
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: Chainstate.oracles()
 
   @type id :: binary()
 
@@ -79,9 +80,9 @@ defmodule Aecore.Structures.OracleQueryTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          Chainstate.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {Chainstate.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleQueryTx{} = tx,
         sender,
@@ -95,18 +96,19 @@ defmodule Aecore.Structures.OracleQueryTx do
     preprocess_check!(
       tx,
       sender,
-      Map.get(accounts, sender, Account.empty()),
+      Account.get_account_state(accounts, sender),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      Account.get_account_state(accounts, sender)
       |> deduct_fee(fee + tx.query_fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
     interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
@@ -130,12 +132,13 @@ defmodule Aecore.Structures.OracleQueryTx do
   @spec preprocess_check!(
           OracleQueryTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          Chainstate.account(),
+          non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
+  def preprocess_check!(tx, _sender, account_state, fee, _nonce, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})
@@ -163,7 +166,7 @@ defmodule Aecore.Structures.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
