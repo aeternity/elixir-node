@@ -2,8 +2,8 @@ defmodule Aecore.Structures.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-  alias Aecore.Naming.Structures.NamePreClaimTx
-  alias Aecore.Naming.Structures.NameClaimTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.SpendTx

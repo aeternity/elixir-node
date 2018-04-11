@@ -5,10 +5,10 @@ defmodule Aecore.Structures.Transaction do
   """
 
   alias Aecore.Structures.SpendTx
-  alias Aecore.Naming.Structures.NamePreClaimTx
-  alias Aecore.Naming.Structures.NameClaimTx
-  alias Aecore.Naming.Structures.NameUpdateTx
-  alias Aecore.Naming.Structures.NameRevokeTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet.Worker, as: Wallet

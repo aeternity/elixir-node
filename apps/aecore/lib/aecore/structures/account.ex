@@ -12,11 +12,11 @@ defmodule Aecore.Structures.Account do
   alias Aeutil.Bits
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Naming.Structures.NamePreClaimTx
-  alias Aecore.Naming.Structures.NameClaimTx
-  alias Aecore.Naming.Structures.NameUpdateTx
-  alias Aecore.Naming.Structures.NameTransferTx
-  alias Aecore.Naming.Structures.NameRevokeTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
 

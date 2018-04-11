@@ -1,72 +1,74 @@
-defmodule Aecore.Naming.Structures.NameTransferTx do
+defmodule Aecore.Naming.Tx.NameClaimTx do
   @moduledoc """
-  Aecore structure of naming transfer.
+  Aecore structure of naming claim.
   """
 
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.NameTransferTx
+  alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Naming.NameUtil
 
   require Logger
 
-  @typedoc "Expected structure for the Transfer Transaction"
+  @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
-          hash: binary(),
-          target: Wallet.pubkey()
+          name: String.t(),
+          name_salt: Naming.salt()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of NameTransferTx we have the naming subdomain chainstate."
+  In the case of NameClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: ChainState.naming()
 
-  @typedoc "Structure of the NameTransferTx Transaction type"
-  @type t :: %NameTransferTx{
-          hash: binary(),
-          target: Wallet.pubkey()
+  @typedoc "Structure of the Spend Transaction type"
+  @type t :: %NameClaimTx{
+          name: String.t(),
+          name_salt: Naming.salt()
         }
 
   @doc """
-  Definition of Aecore NameTransferTx structure
+  Definition of Aecore NameClaimTx structure
 
   ## Parameters
-  - hash: hash of name to be transfered
-  - target: target public key to transfer to
+  - name: name to be claimed
+  - name_salt: salt that the name was pre-claimed with
   """
-  defstruct [:hash, :target]
+  defstruct [:name, :name_salt]
   use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: NameTransferTx.t()
-  def init(%{hash: hash, target: target}) do
-    %NameTransferTx{hash: hash, target: target}
+  @spec init(payload()) :: NameClaimTx.t()
+  def init(%{name: name, name_salt: name_salt} = _payload) do
+    %NameClaimTx{name: name, name_salt: name_salt}
   end
 
   @doc """
-  Checks target and hash byte sizes
+  Checks name format
   """
-  @spec is_valid?(NameTransferTx.t()) :: boolean()
-  def is_valid?(%NameTransferTx{
-        hash: _hash,
-        target: _target
-      }) do
-    # TODO validate hash byte size
-    # TODO validate target pubkey byte size
-    true
+  @spec is_valid?(NameClaimTx.t()) :: boolean()
+  def is_valid?(%NameClaimTx{name: name, name_salt: name_salt}) do
+    name_valid =
+      case NameUtil.normalize_and_validate_name(name) do
+        {:ok, _} -> true
+        {:error, _} -> false
+      end
+
+    name_salt_valid = byte_size(name_salt) == Naming.get_name_salt_byte_size()
+    name_valid && name_salt_valid
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
   def get_chain_state_name(), do: :naming
 
   @doc """
-  Changes the naming state for claim transfers.
+  Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
-          NameTransferTx.t(),
+          NameClaimTx.t(),
           binary(),
           non_neg_integer(),
           non_neg_integer(),
@@ -75,7 +77,7 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(
-        %NameTransferTx{} = tx,
+        %NameClaimTx{} = tx,
         sender,
         fee,
         nonce,
@@ -102,9 +104,14 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
 
         updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
 
-        claim_to_update = Map.get(naming_state, tx.hash)
-        claim = %{claim_to_update | owner: tx.target}
-        updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
+        pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
+        claim_hash = NameUtil.normalized_namehash!(tx.name)
+        claim = Naming.create_claim(claim_hash, tx.name, sender, block_height)
+
+        updated_naming_chainstate =
+          naming_state
+          |> Map.delete(pre_claim_commitment)
+          |> Map.put(claim_hash, claim)
 
         {updated_accounts_chainstate, updated_naming_chainstate}
 
@@ -114,11 +121,11 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameTransferTx requirements,
+  Checks whether all the data is valid according to the NameClaimTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
-          NameTransferTx.t(),
+          NameClaimTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -127,7 +134,11 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
   def preprocess_check(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
-    claim = Map.get(naming_state, tx.hash)
+    pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    pre_claim = Map.get(naming_state, pre_claim_commitment)
+
+    claim_hash = NameUtil.normalized_namehash!(tx.name)
+    claim = Map.get(naming_state, claim_hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -136,14 +147,14 @@ defmodule Aecore.Naming.Structures.NameTransferTx do
       account_state.nonce >= nonce ->
         {:error, "Nonce too small"}
 
-      claim == nil ->
-        {:error, "Name has not been claimed"}
+      pre_claim == nil ->
+        {:error, "Name has not been pre-claimed"}
 
-      claim.owner != sender ->
-        {:error, "Sender is not claim owner"}
+      pre_claim.owner != sender ->
+        {:error, "Sender is not pre-claim owner"}
 
-      claim.status == :revoked ->
-        {:error, "Claim is revoked"}
+      claim != nil ->
+        {:error, "Name has aleady been claimed"}
 
       true ->
         :ok

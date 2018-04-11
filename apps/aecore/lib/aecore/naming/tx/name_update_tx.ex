@@ -1,4 +1,4 @@
-defmodule Aecore.Naming.Structures.NameUpdateTx do
+defmodule Aecore.Naming.Tx.NameUpdateTx do
   @moduledoc """
   Aecore structure of naming Update.
   """
@@ -6,7 +6,7 @@ defmodule Aecore.Naming.Structures.NameUpdateTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Chain.ChainState
-  alias Aecore.Naming.Structures.NameUpdateTx
+  alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
 
