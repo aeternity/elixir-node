@@ -33,7 +33,7 @@
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
       #
-      strict: false,
+      strict: true,
       #
       # If you want to use uncolored output by default, you can change `color`
       # to `false` below:
@@ -73,9 +73,9 @@
         # set this value to 0 (zero).
         #
         {Credo.Check.Design.TagTODO, exit_status: 2},
-        {Credo.Check.Design.TagFIXME},
+        {Credo.Check.Design.TagFIXME, exit_status: 0},
         {Credo.Check.Readability.FunctionNames, priority: :higher},
-        {Credo.Check.Readability.LargeNumbers, priority: :normal},
+        {Credo.Check.Readability.LargeNumbers, priority: :high},
         {Credo.Check.Readability.MaxLineLength, priority: :higher, max_length: 100},
         {Credo.Check.Readability.ModuleAttributeNames, priority: :higher},
         {Credo.Check.Readability.ModuleDoc, priority: :higher},
@@ -83,19 +83,19 @@
         {Credo.Check.Readability.ParenthesesOnZeroArityDefs, priority: :higher},
         {Credo.Check.Readability.ParenthesesInCondition, priority: :higher},
         {Credo.Check.Readability.PredicateFunctionNames, priority: :higher},
-        {Credo.Check.Readability.PreferImplicitTry, priority: :normal},
+        {Credo.Check.Readability.PreferImplicitTry, exit_status: 0},
         {Credo.Check.Readability.RedundantBlankLines, priority: :higher},
-        {Credo.Check.Readability.StringSigils},
+        {Credo.Check.Readability.StringSigils, exit_status: 0},
         {Credo.Check.Readability.TrailingBlankLine, priority: :higher},
         {Credo.Check.Readability.TrailingWhiteSpace, priority: :higher},
         {Credo.Check.Readability.VariableNames, priority: :higher},
         {Credo.Check.Readability.Semicolons, priority: :higher},
         {Credo.Check.Readability.SpaceAfterCommas, priority: :higher},
-        {Credo.Check.Refactor.DoubleBooleanNegation},
+        {Credo.Check.Refactor.DoubleBooleanNegation, exit_status: 0},
         {Credo.Check.Refactor.CondStatements, priority: :higher},
-        {Credo.Check.Refactor.CyclomaticComplexity, priority: :normal},
-        {Credo.Check.Refactor.FunctionArity, max_arity: 7},
-        {Credo.Check.Refactor.LongQuoteBlocks},
+        {Credo.Check.Refactor.CyclomaticComplexity, exit_status: 0},
+        {Credo.Check.Refactor.FunctionArity, exit_status: 0, max_arity: 7},
+        {Credo.Check.Refactor.LongQuoteBlocks, exit_status: 0},
         {Credo.Check.Refactor.MatchInCondition, priority: :higher},
         {Credo.Check.Refactor.NegatedConditionsInUnless, priority: :high},
         {Credo.Check.Refactor.NegatedConditionsWithElse, priority: :high},
@@ -104,11 +104,11 @@
         {Credo.Check.Refactor.UnlessWithElse, priority: :higher},
         {Credo.Check.Warning.BoolOperationOnSameValues, priority: :higher},
         {Credo.Check.Warning.ExpensiveEmptyEnumCheck, priority: :higher},
-        {Credo.Check.Warning.IExPry},
+        {Credo.Check.Warning.IExPry, priority: :higher},
         {Credo.Check.Warning.IoInspect, priority: :higher},
         {Credo.Check.Warning.LazyLogging, priority: :high},
-        {Credo.Check.Warning.OperationOnSameValues},
-        {Credo.Check.Warning.OperationWithConstantResult},
+        {Credo.Check.Warning.OperationOnSameValues, exit_status: 0},
+        {Credo.Check.Warning.OperationWithConstantResult, exit_status: 0},
         {Credo.Check.Warning.UnusedEnumOperation, priority: :high},
         {Credo.Check.Warning.UnusedFileOperation, priority: :high},
         {Credo.Check.Warning.UnusedKeywordOperation, priority: :high},
@@ -122,9 +122,9 @@
         # Controversial and experimental checks (opt-in, just remove `, false`)
         #
         # {Credo.Check.Refactor.ABCSize},
-        {Credo.Check.Refactor.AppendSingleItem},
-        {Credo.Check.Refactor.VariableRebinding},
-        {Credo.Check.Warning.MapGetUnsafePass},
+        {Credo.Check.Refactor.AppendSingleItem, priority: :high},
+        {Credo.Check.Refactor.VariableRebinding, exit_status: 0},
+        {Credo.Check.Warning.MapGetUnsafePass, exit_status: 0},
         {Credo.Check.Consistency.MultiAliasImportRequireUse, false},
 
         # Deprecated checks (these will be deleted after a grace period)
