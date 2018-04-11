@@ -2,6 +2,7 @@ defmodule Aehttpserver.Web.NewTxController do
   use Aehttpserver.Web, :controller
 
   alias Aeutil.Serialization
+  alias Aeutil.HTTPUtil
   alias Aecore.Txs.Pool.Worker, as: Pool
 
   def new_tx(conn, _params) do
