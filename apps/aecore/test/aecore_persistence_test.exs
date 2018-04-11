@@ -77,10 +77,10 @@ defmodule PersistenceTest do
   @tag timeout: 20_000
   @tag :persistence
   test "Failure cases", persistance_state do
-    assert {:error, "#{Persistence}: Bad block structure"} ==
+    assert {:error, "#{Persistence}: Bad block structure: :wrong_input_type"} ==
              Persistence.add_block_by_hash(:wrong_input_type)
 
-    assert {:error, "#{Persistence}: Bad hash value"} ==
+    assert {:error, "#{Persistence}: Bad hash value: :wrong_input_type"} ==
              Persistence.get_block_by_hash(:wrong_input_type)
 
     assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)

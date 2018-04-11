@@ -58,7 +58,7 @@ defmodule Aecore.Structures.DataTx do
       child_tx = type.init(payload)
       {:ok, child_tx}
     else
-      {:error, "#{__MODULE__}: Fee not enough"}
+      {:error, "#{__MODULE__}: Fee not enough: #{inspect(fee)}"}
     end
   end
 
@@ -113,7 +113,7 @@ defmodule Aecore.Structures.DataTx do
     if Map.has_key?(chainstate.accounts, sender) do
       :ok
     else
-      {:error, "#{__MODULE__}: The senders key doesn't exist"}
+      {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
     end
   end
 
@@ -124,7 +124,7 @@ defmodule Aecore.Structures.DataTx do
     if tx.nonce > account_state.nonce do
       :ok
     else
-      {:error, "#{__MODULE__}: Nonce is too small"}
+      {:error, "#{__MODULE__}: Nonce is too small: #{inspect(tx.nonce)}"}
     end
   end
 

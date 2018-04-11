@@ -98,19 +98,19 @@ defmodule Aecore.Structures.OracleResponseTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        {:error, "#{__MODULE__}: Sender isn't a registered operator"}
+        {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        {:error, "#{__MODULE__}: Invalid response data"}
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        {:error, "#{__MODULE__}: No query with that ID"}
+        {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
       interaction_objects[tx.query_id].response != nil ->
         {:error, "#{__MODULE__}: Query already answered"}
@@ -119,7 +119,7 @@ defmodule Aecore.Structures.OracleResponseTx do
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        {:error, "#{__MODULE__}: Fee too low"}
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

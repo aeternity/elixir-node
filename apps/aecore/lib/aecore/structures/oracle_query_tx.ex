@@ -68,7 +68,7 @@ defmodule Aecore.Structures.OracleQueryTx do
          match?(%{type: :relative}, response_ttl) do
       :ok
     else
-      {:error, "#{__MODULE__}: Ttl is invalid in OracleQueryTx"}
+      {:error, "#{__MODULE__}: Ttl: #{inspect(response_ttl)} is invalid in OracleQueryTx"}
     end
   end
 
@@ -129,25 +129,27 @@ defmodule Aecore.Structures.OracleQueryTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "#{__MODULE__}: Invalid transaction TTL"}
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        {:error, "#{__MODULE__}: No oracle registered with that address"}
+        {:error, "#{__MODULE__}: No oracle registered with the address:
+         #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        {:error, "#{__MODULE__}: Invalid query data"}
+        {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        {:error, "#{__MODULE__}: Query fee lower than the one required by the oracle"}
+        {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
+         lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "#{__MODULE__}: Fee is too low"}
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok

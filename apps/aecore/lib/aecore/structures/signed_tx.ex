@@ -41,7 +41,7 @@ defmodule Aecore.Structures.SignedTx do
       :ok
     else
       {:error, "#{__MODULE__}: Can't verify the signature
-      with the following public key: #{data.sender}"}
+      with the following public key: #{inspect(data.sender)}"}
     end
   end
 
@@ -62,7 +62,7 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def sign_tx(%DataTx{} = _tx, priv_key) do
-    {:error, "#{__MODULE__}: Wrong key size: #{priv_key}"}
+    {:error, "#{__MODULE__}: Wrong key size: #{inspect(priv_key)}"}
   end
 
   def sign_tx(tx, _priv_key) do
@@ -87,8 +87,8 @@ defmodule Aecore.Structures.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "#{__MODULE__}: Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_root(bin) do
@@ -99,7 +99,7 @@ defmodule Aecore.Structures.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode_root(_) do
-    {:error, "#{__MODULE__}: Wrong data"}
+  def base58c_decode_root(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 end

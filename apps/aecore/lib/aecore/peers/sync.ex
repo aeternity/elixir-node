@@ -143,7 +143,7 @@ defmodule Aecore.Peers.Sync do
           end)
 
         :error ->
-          Logger.error("#{__MODULE__}: Couldn't get pool from peer")
+          Logger.error("#{__MODULE__}: Couldn't get pool from peer: #{inspect(peer)}")
       end
     end)
   end
@@ -353,7 +353,7 @@ defmodule Aecore.Peers.Sync do
           remove_block_from_state(BlockValidation.block_header_hash(block.header))
 
         :error ->
-          Logger.info("Block couldn't be added to chain")
+          Logger.info("Block: #{inspect(block)} couldn't be added to chain")
       end
     end)
   end

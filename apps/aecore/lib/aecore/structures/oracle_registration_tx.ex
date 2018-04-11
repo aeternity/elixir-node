@@ -61,7 +61,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
         :ok
       rescue
         e ->
-          {:error, "#{__MODULE__}: Invalid query or response format definition - " <> inspect(e)}
+          {:error, "#{__MODULE__}: Invalid query or response format definition - #{inspect(e)}"}
       end
 
     Oracle.ttl_is_valid?(ttl) && formats_valid
@@ -119,16 +119,16 @@ defmodule Aecore.Structures.OracleRegistrationTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "#{__MODULE__}: Invalid transaction TTL"}
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       Map.has_key?(registered_oracles, sender) ->
-        {:error, "#{__MODULE__}: Account is already an oracle"}
+        {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        {:error, "#{__MODULE__}: Fee too low"}
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

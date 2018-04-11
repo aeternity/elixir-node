@@ -65,11 +65,11 @@ defmodule Aecore.Txs.Pool.Worker do
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     cond do
       :ok != SignedTx.validate(tx) ->
-        Logger.error("#{__MODULE__}: Invalid transaction")
+        Logger.error("#{__MODULE__}: Invalid transaction: #{inspect(tx)}")
         {:reply, :error, tx_pool}
 
       !is_minimum_fee_met?(tx, :pool) ->
-        Logger.error("#{__MODULE__}: Fee is too low")
+        Logger.error("#{__MODULE__}: Fee: #{tx.data.fee} is too low")
         {:reply, :error, tx_pool}
 
       true ->

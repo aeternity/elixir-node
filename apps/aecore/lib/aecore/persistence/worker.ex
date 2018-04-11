@@ -43,7 +43,8 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
   end
 
-  def add_block_by_hash(_block), do: {:error, "#{__MODULE__}: Bad block structure"}
+  def add_block_by_hash(block),
+    do: {:error, "#{__MODULE__}: Bad block structure: #{inspect(block)}"}
 
   @spec get_block_by_hash(String.t()) ::
           {:ok, block :: Block.t()} | :not_found | {:error, reason :: term()}
@@ -51,7 +52,7 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:get_block_by_hash, hash})
   end
 
-  def get_block_by_hash(_hash), do: {:error, "#{__MODULE__}: Bad hash value"}
+  def get_block_by_hash(hash), do: {:error, "#{__MODULE__}: Bad hash value: #{inspect(hash)}"}
 
   @doc """
   Retrieving last 'num' blocks from db. If have less than 'num' blocks,

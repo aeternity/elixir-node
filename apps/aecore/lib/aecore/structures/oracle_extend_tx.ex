@@ -30,7 +30,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     if ttl > 0 do
       :ok
     else
-      {:error, "#{__MODULE__}: Negative ttl in OracleExtendTx"}
+      {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
     end
   end
 
@@ -82,13 +82,13 @@ defmodule Aecore.Structures.OracleExtendTx do
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        {:error, "#{__MODULE__}: Account isn't a registered operator"}
+        {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
-        {:error, "#{__MODULE__}: Fee is too low"}
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok

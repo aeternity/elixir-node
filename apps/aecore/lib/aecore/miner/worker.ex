@@ -227,42 +227,36 @@ defmodule Aecore.Miner.Worker do
 
     candidate_height = top_block.header.height + 1
 
-    try do
-      blocks_for_difficulty_calculation =
-        Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      timestamp = System.system_time(:milliseconds)
+    timestamp = System.system_time(:milliseconds)
 
-      difficulty =
-        Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
+    difficulty =
+      Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
 
-      txs_list = get_pool_values()
-      ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
+    txs_list = get_pool_values()
+    ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
-      valid_txs_by_chainstate =
-        ChainState.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
+    valid_txs_by_chainstate =
+      ChainState.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
 
-      valid_txs_by_fee =
-        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
+    valid_txs_by_fee =
+      filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
-      pubkey = Wallet.get_public_key()
+    pubkey = Wallet.get_public_key()
 
-      total_fees = calculate_total_fees(valid_txs_by_fee)
+    total_fees = calculate_total_fees(valid_txs_by_fee)
 
-      valid_txs = [
-        create_coinbase_tx(
-          pubkey,
-          total_fees
-        )
-        | valid_txs_by_fee
-      ]
+    valid_txs = [
+      create_coinbase_tx(
+        pubkey,
+        total_fees
+      )
+      | valid_txs_by_fee
+    ]
 
-      create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
-    catch
-      message ->
-        Logger.error(fn -> "#{__MODULE__}: Failed to mine block: #{Kernel.inspect(message)}" end)
-        {:error, message}
-    end
+    create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
   end
 
   def calculate_total_fees(txs) do

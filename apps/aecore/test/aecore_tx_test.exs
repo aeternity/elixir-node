@@ -67,7 +67,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert {:error, "#{SpendTx}: The amount cannot be a negative number"} ==
+    assert {:error, "#{SpendTx}: The amount cannot be a negative number: -5"} ==
              SpendTx.validate(signed_tx.data.payload)
   end
 

@@ -159,7 +159,9 @@ defmodule Aecore.Peers.Worker do
       {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
     else
       Logger.error(fn -> "#{__MODULE__}: #{uri} is not in the peer list" end)
-      {:reply, {:error, "#{__MODULE__}: Peer not found"}, %{state | peers: peers}}
+
+      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} not found"},
+       %{state | peers: peers}}
     end
   end
 
@@ -241,7 +243,7 @@ defmodule Aecore.Peers.Worker do
         "#{__MODULE__}: Skipped adding #{uri}, already known"
       end)
 
-      {:reply, {:error, "#{__MODULE__}: Peer already known"}, state}
+      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} already known"}, state}
     else
       case check_peer(uri, get_peer_nonce()) do
         {:ok, info} ->

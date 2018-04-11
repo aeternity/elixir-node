@@ -63,7 +63,7 @@ defmodule Aecore.Structures.SpendTx do
     if amount >= 0 do
       :ok
     else
-      {:error, "#{__MODULE__}: The amount cannot be a negative number"}
+      {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
     end
   end
 
@@ -118,7 +118,8 @@ defmodule Aecore.Structures.SpendTx do
   def preprocess_check(tx, _sender, account_state, fee, _block_height, %{}) do
     cond do
       account_state.balance - (fee + tx.amount) < 0 ->
-        {:error, "#{__MODULE__}: Negative balance"}
+        {:error,
+         "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - (fee + tx.amount))}"}
 
       true ->
         :ok

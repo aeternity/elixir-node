@@ -75,8 +75,8 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def apply_transaction_on_state(_tx, _chainstate, _block_height) do
-    {:error, "#{__MODULE__}: Invalid transaction"}
+  def apply_transaction_on_state(tx, _chainstate, _block_height) do
+    {:error, "#{__MODULE__}: Invalid transaction: #{inspect(tx)}"}
   end
 
   @doc """
@@ -102,7 +102,7 @@ defmodule Aecore.Chain.ChainState do
     end
   end
 
-  def filter_invalid_txs(txs_list, chainstate, block_height) do
+  def get_valid_txs(txs_list, chainstate, block_height) do
     List.foldl(txs_list, [], fn tx, valid_txs_list ->
       case apply_transaction_on_state(tx, chainstate, block_height) do
         {:ok, _updated_chainstate} ->
@@ -140,7 +140,7 @@ defmodule Aecore.Chain.ChainState do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "#{__MODULE__}: Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 end
