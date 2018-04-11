@@ -39,6 +39,11 @@ defmodule Aecore.Oracle.Oracle do
           }
         }
 
+  @type oracles :: %{
+          registered_oracles: registered_oracles(),
+          interaction_objects: interaction_objects()
+        }
+
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @doc """
@@ -224,7 +229,7 @@ defmodule Aecore.Oracle.Oracle do
                                                                         acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         acc
-        |> pop_in([:oracles, :registered_oracles, address])
+        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
         |> elem(1)
       else
         acc
@@ -259,10 +264,7 @@ defmodule Aecore.Oracle.Oracle do
       response_has_expired =
         if response != nil do
           response_absolute_ttl =
-            calculate_absolute_ttl(
-              query.query_ttl,
-              response_height_included
-            )
+            calculate_absolute_ttl(query.query_ttl, response_height_included)
 
           response_absolute_ttl <= block_height
         else

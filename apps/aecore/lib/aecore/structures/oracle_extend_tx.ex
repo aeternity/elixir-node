@@ -43,9 +43,9 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          Chainstate.account(),
           Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+        ) :: {Chainstate.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
         %OracleExtendTx{} = tx,
         sender,
@@ -60,6 +60,7 @@ defmodule Aecore.Structures.OracleExtendTx do
       sender,
       Map.get(accounts, sender, Account.empty()),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
@@ -85,12 +86,13 @@ defmodule Aecore.Structures.OracleExtendTx do
   @spec preprocess_check!(
           OracleExtendTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          Chainstate.account(),
+          non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, _block_height, registered_oracles) do
+  def preprocess_check!(tx, sender, account_state, fee, _nonce, _block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})
@@ -106,7 +108,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
