@@ -96,13 +96,11 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
   def get_header_by_base58_hash(hash) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-      get_header(decoded_hash)
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
+    decoded_hash = Header.base58c_decode(hash)
+    get_header(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
   end
 
   @spec lowest_valid_nonce() :: non_neg_integer()
@@ -112,13 +110,11 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-      get_block(decoded_hash)
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
+    decoded_hash = Header.base58c_decode(hash)
+    get_block(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, atom()}
