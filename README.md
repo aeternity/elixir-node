@@ -29,7 +29,7 @@ sudo apt-get install libtool
 sudo apt-get install libgmp3-dev
 wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
  mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1
-  cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && cd ..
+  cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && sudo make install && cd ..
 ```
 
 ## Usage

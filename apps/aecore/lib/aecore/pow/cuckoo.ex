@@ -184,7 +184,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
-    hash = Hash.hash_blake2b(bin)
+    hash = Hash.hash(bin)
     Hashcash.verify(hash, target)
   end
 

@@ -202,7 +202,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
-    Hash.hash_blake2b(bin)
+    Hash.hash(bin)
   end
 
   def base58c_encode(bin) do

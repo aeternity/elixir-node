@@ -116,7 +116,7 @@ defmodule Aecore.Txs.Pool.Worker do
         DataTx.init(tx.type, tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      key = Hash.hash_blake2b(key)
+      key = Hash.hash(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end

@@ -69,7 +69,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    Hash.hash_blake2b(Serialization.pack_binary(data))
+    Hash.hash(Serialization.pack_binary(data))
   end
 
   @spec reward(DataTx.t(), non_neg_integer(), Account.t()) :: Account.t()
