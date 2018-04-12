@@ -3,11 +3,13 @@ defmodule Aecore.Structures.DataTx do
   Aecore structure of a transaction data.
   """
 
+  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aeutil.MapUtil
 
   require Logger
 
@@ -25,7 +27,8 @@ defmodule Aecore.Structures.DataTx do
           type: tx_types(),
           payload: payload(),
           senders: list(binary()),
-          fee: non_neg_integer()
+          fee: non_neg_integer(),
+          nonce: non_neg_integer()
         }
 
   @doc """
@@ -38,7 +41,7 @@ defmodule Aecore.Structures.DataTx do
   - fee: The amount of tokens given to the miner
   - nonce: A random integer generated on initialisation of a transaction (must be unique!)
   """
-  defstruct [:type, :payload, :senders, :fee]
+  defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
 
   def valid_types() do [Aecore.Structures.SpendTx,
@@ -48,18 +51,19 @@ defmodule Aecore.Structures.DataTx do
                         Aecore.Structures.OracleRegistrationTx,
                         Aecore.Structures.OracleResponseTx] end
 
-  @spec init(tx_types(), payload(), list(binary()) | binary(), integer()) :: DataTx.t()
-  def init(type, payload, senders, fee) when is_list(senders) do
-    %DataTx{type: type, payload: type.init(payload), senders: senders, fee: fee}
+  @spec init(tx_types(), payload(), list(binary()) | binary(), non_neg_integer(), integer()) :: DataTx.t()
+  def init(type, payload, senders, fee, nonce) when is_list(senders) do
+    %DataTx{type: type, payload: type.init(payload), senders: senders, nonce: nonce, fee: fee}
   end
 
-  def init(type, payload, sender, fee) when is_binary(sender) do
-    %DataTx{type: type, payload: type.init(payload), senders: [sender], fee: fee}
+  def init(type, payload, sender, fee, nonce) when is_binary(sender) do
+    %DataTx{type: type, payload: type.init(payload), senders: [sender], nonce: nonce, fee: fee}
   end
 
   def fee(%DataTx{fee: fee}) do fee end
   def senders(%DataTx{senders: senders}) do senders end
   def type(%DataTx{type: type}) do type end
+  def nonce(%DataTx{nonce: nonce}) do nonce end
   def payload(%DataTx{payload: payload}) do payload end
 
   def sender(tx) do
@@ -102,14 +106,19 @@ defmodule Aecore.Structures.DataTx do
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     :ok = tx.type.preprocess_check!(accounts_state, tx_type_state, block_height, payload, signed_tx)
-
-    {new_accounts_state, new_tx_type_state} =
+    
+    nonce_accounts_state = if Enum.empty?(tx.senders) do
       accounts_state
-      |> tx.type.deduct_fee(payload, signed_tx, fee)
-      |> Map.update(sender(tx), Account.empty(), fn acc ->
+    else
+      MapUtil.update(accounts_state, sender(tx), Account.empty(), fn acc ->
         Account.apply_nonce!(acc, tx.nonce)
       end)
-      |>tx.type.process_chainstate!(
+    end
+
+    {new_accounts_state, new_tx_type_state} =
+      nonce_accounts_state
+      |> tx.type.deduct_fee(payload, signed_tx, fee)
+      |> tx.type.process_chainstate!(
         tx_type_state,
         block_height,
         payload,
@@ -137,13 +146,13 @@ defmodule Aecore.Structures.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
 
-    init(data_tx.type, data_tx.payload, data_tx.senders, data_tx.fee)
+    init(data_tx.type, data_tx.payload, data_tx.senders, data_tx.fee, data_tx.nonce)
   end
  
   @spec standard_deduct_fee(ChainState.accounts(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
   def standard_deduct_fee(accounts, signed_tx, fee) do
     sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender
-    Map.update(accounts, sender, Account.empty(), fn acc ->
+    MapUtil.update(accounts, sender, Account.empty(), fn acc ->
       Account.transaction_in!(acc, fee * -1)
     end)
   end

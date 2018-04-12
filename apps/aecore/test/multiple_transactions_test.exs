@@ -169,10 +169,7 @@ defmodule MultipleTransactionsTest do
     {sender_pub_key, sender_priv_key} = sender
     {receiver_pub_key, _receiver_priv_key} = receiver
 
-    payload = %{receiver: receiver_pub_key, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, [sender_pub_key], fee)
-
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, nonce, sender_priv_key)
+    {:ok, signed_tx} = Account.spend(sender_pub_key, sender_priv_key, receiver_pub_key, amount, fee, nonce)
     signed_tx
   end
 end

@@ -4,12 +4,16 @@ defmodule Aecore.Structures.SpendTx do
   """
 
   @behaviour Aecore.Structures.Transaction
+  
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aeutil.MapUtil
 
   require Logger
 
@@ -81,14 +85,6 @@ defmodule Aecore.Structures.SpendTx do
   end
 
   @doc """
-  Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
-  """
-  @spec reward(SpendTx.t(), non_neg_integer(), ChainState.account()) :: ChainState.accounts()
-  def reward(%SpendTx{} = tx, _block_height, account_state) do
-    Account.transaction_in(account_state, tx.amount)
-  end
-
-  @doc """
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate!(
@@ -103,11 +99,11 @@ defmodule Aecore.Structures.SpendTx do
 
     new_accounts =
       accounts
-      |> Map.update(sender, Account.empty(), fn acc ->
-        Account.transaction_in(acc, tx.amount * -1)
+      |> MapUtil.update(sender, Account.empty(), fn acc ->
+        Account.transaction_in!(acc, tx.amount * -1)
       end)
-      |> Map.update(tx.receiver, Account.empty(), fn acc ->
-        Account.transaction_in(acc, tx.amount)
+      |> MapUtil.update(tx.receiver, Account.empty(), fn acc ->
+        Account.transaction_in!(acc, tx.amount)
       end)
 
     {new_accounts, %{}}

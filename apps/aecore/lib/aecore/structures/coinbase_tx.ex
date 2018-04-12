@@ -4,18 +4,22 @@ defmodule Aecore.Structures.CoinbaseTx do
   """
 
   @behaviour Aecore.Structures.Transaction
+
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.CoinbaseTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Structures.Account
+  alias Aeutil.MapUtil
 
   require Logger
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          to_acc: Wallet.pubkey(),
-          value: non_neg_integer()
+          receiver: Wallet.pubkey(),
+          amount: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -27,18 +31,18 @@ defmodule Aecore.Structures.CoinbaseTx do
 
   @typedoc "Structure of the Coinbase Transaction type"
   @type t :: %CoinbaseTx{
-          to_acc: Wallet.pubkey(),
-          value: non_neg_integer()
+          receiver: Wallet.pubkey(),
+          amount: non_neg_integer()
         }
 
   @doc """
   Definition of Aecore CoinbaseTx structure
 
   ## Parameters
-  - to_acc: To account is the public address of the account receiving the transaction
-  - value: The amount of tokens send through the transaction
+  - receiver: To account is the public address of the account receiving coinbase tokens
+  - amount: The amount of tokens account should be granted
   """
-  defstruct [:to_acc, :value]
+  defstruct [:receiver, :amount]
   use ExConstructor
 
   # Callbacks
@@ -46,27 +50,27 @@ defmodule Aecore.Structures.CoinbaseTx do
   def get_chain_state_name() do nil end
 
   @spec init(payload()) :: CoinbaseTx.t()
-  def init(%{to_acc: to_acc, value: value} = _payload) do
-    %CoinbaseTx{to_acc: to_acc, value: value}
+  def init(%{receiver: receiver, amount: amount} = _payload) do
+    %CoinbaseTx{receiver: receiver, amount: amount}
   end
 
   @doc """
   Creates a rewarding CoinbaseTx for the miner that mined the block
   """
   @spec create(binary(), integer()) :: payload()
-  def create(to_acc, value) do
-    %CoinbaseTx{to_acc: to_acc, value: value}
+  def create(receiver, amount) do
+    %CoinbaseTx{receiver: receiver, amount: amount}
   end
 
   @doc """
   Checks transactions internal contents validity
   """
   @spec is_valid?(CoinbaseTx.t(), SignedTx.t()) :: boolean()
-  def is_valid?(%CoinbaseTx{value: value}, signed_tx) do
+  def is_valid?(%CoinbaseTx{amount: amount}, signed_tx) do
     data_tx = SignedTx.data_tx(signed_tx)
 
     cond do
-      value < 0 ->
+      amount < 0 ->
         Logger.error("Value cannot be a negative number")
         false
 
@@ -96,8 +100,8 @@ defmodule Aecore.Structures.CoinbaseTx do
   def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _signed_tx) do
     new_accounts_state =
       accounts
-      |> Map.update(tx.to_acc, Account.empty(), fn acc ->
-        Account.transaction_in(acc, tx.value)
+      |> MapUtil.update(tx.receiver, Account.empty(), fn acc ->
+        Account.transaction_in!(acc, tx.amount)
       end)
 
     {new_accounts_state, %{}}   

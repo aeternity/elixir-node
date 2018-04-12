@@ -1,5 +1,10 @@
 defmodule Aecore.Structures.OracleRegistrationTx do
+  
+  @behaviour Aecore.Structures.Transaction
+  
   alias __MODULE__
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.ChainState
@@ -90,11 +95,11 @@ defmodule Aecore.Structures.OracleRegistrationTx do
 
   @spec process_chainstate!(
           ChainState.account(),
-          tx_type_state(),
+          Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           SignedTx.t()
-  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+  ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state,
@@ -118,12 +123,16 @@ defmodule Aecore.Structures.OracleRegistrationTx do
 
   @spec preprocess_check!(
     ChainState.accounts(),
-    Oracle.registered_oracles(),
+    Oracle.oracles(),
     non_neg_integer(),
     OracleRegistrationTx.t(),
     SignedTx.t()
   ) :: :ok
-  def preprocess_check!(accounts, registered_oracles, block_height, tx, signed_tx) do
+  def preprocess_check!(accounts, 
+                        %{registered_oracles: registered_oracles},
+                        block_height, 
+                        tx, 
+                        signed_tx) do
     data_tx = SignedTx.data_tx(signed_tx)
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)

@@ -9,7 +9,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SignedTx.Signature
   alias Aecore.Chain.ChainState
   alias Aeutil.Parser
   alias Aecore.Structures.Account
@@ -45,16 +44,8 @@ defmodule Aeutil.Serialization do
     tx_data = tx["data"]
 
     data = DataTx.deserialize(tx_data)
-    signatures = Enum.map(tx["signatures"], fn sig -> sig(sig, :deserialize) end)
+    signatures = Enum.map(tx["signatures"], fn sig -> deserialize_value(sig, :signature) end)
     %SignedTx{data: data, signatures: signatures}
-  end
-
-  def sig(sig, :serialize), do: serialize_value(sig)
-
-  def sig(sig, :deserialize) do
-    nonce = sig["nonce"]
-    signature = base64_binary(sig["signature"], :deserialize)
-    %Signature{nonce: nonce, signature: signature}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()

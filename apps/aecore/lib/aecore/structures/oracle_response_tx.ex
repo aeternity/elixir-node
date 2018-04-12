@@ -1,9 +1,15 @@
-defmodule Aecore.Structures.OracleResponseTx do
+defmodule Aecore.Structures.OracleResponseTx do 
+
+  @behaviour Aecore.Structures.Transaction
+  
   alias __MODULE__
+  alias Aecore.Structures.DataTx
+  alias Aecore.Structures.SignedTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
+  alias Aeutil.MapUtil
 
   require Logger
 
@@ -56,7 +62,7 @@ defmodule Aecore.Structures.OracleResponseTx do
           non_neg_integer(),
           OracleResponseTx.t(),
           SignedTx.t()
-  ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+  ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
@@ -71,7 +77,7 @@ defmodule Aecore.Structures.OracleResponseTx do
 
     updated_accounts_state =
       accounts
-      |> Map.update(sender, Account.empty(), fn acc ->
+      |> MapUtil.update(sender, Account.empty(), fn acc ->
         Account.transaction_in!(acc, query_fee)
       end)
 
@@ -92,15 +98,17 @@ defmodule Aecore.Structures.OracleResponseTx do
   
   @spec preprocess_check!(
     ChainState.accounts(),
-    Oracle.registered_oracles(),
+    Oracle.oracles(),
     non_neg_integer(),
     OracleResponseTx.t(),
     SignedTx.t()
   ) :: :ok
-  def preprocess_check!(accounts, %{
-    registered_oracles: registered_oracles,
-    interaction_objects: interaction_objects
-  }, _block_height, tx, signed_tx) do
+  def preprocess_check!(accounts,
+                        %{registered_oracles: registered_oracles,
+                          interaction_objects: interaction_objects},
+                        _block_height,
+                        tx,
+                        signed_tx) do
     data_tx = SignedTx.data_tx(signed_tx)
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)

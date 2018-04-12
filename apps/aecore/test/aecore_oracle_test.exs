@@ -5,16 +5,24 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Wallet.Worker, as: Wallet
 
   @tag timeout: 120_000
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
+    pk = Wallet.get_public_key()
+    Pool.get_and_empty_pool()
+    Miner.mine_sync_block_to_chain()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+    assert %{} == Pool.get_and_empty_pool()
+    assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pk) 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
+    assert %{} == Pool.get_and_empty_pool()
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
+    assert %{} == Pool.get_and_empty_pool()
 
     interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
 

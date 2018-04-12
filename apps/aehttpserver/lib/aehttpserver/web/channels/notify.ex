@@ -31,10 +31,10 @@ defmodule Aehttpserver.Web.Notify do
 
   def broadcast_tx(tx, is_to_sender) do
     if is_to_sender do
-      if tx.data.sender != nil do
+      for sender <- tx.data.senders do
         Endpoint.broadcast!(
           "room:notifications",
-          "new_tx:" <> Account.base58c_encode(tx.data.sender),
+          "new_tx:" <> Account.base58c_encode(sender),
           %{"body" => Serialization.tx(tx, :serialize)}
         )
       end

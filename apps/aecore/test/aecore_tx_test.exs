@@ -17,6 +17,9 @@ defmodule AecoreTxTest do
   alias Aeutil.Serialization
 
   setup tx do
+    Persistence.delete_all_blocks()
+    Chain.clear_state()
+    Pool.get_and_empty_pool()
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
@@ -40,13 +43,13 @@ defmodule AecoreTxTest do
     fee = 1
 
     payload = %{receiver: tx.receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, [sender], fee)
+    tx_data = DataTx.init(SpendTx, payload, [sender], fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert SignedTx.is_valid?(signed_tx)
-    signature = signed_tx.signature
+    [signature] = signed_tx.signatures
     message = Serialization.pack_binary(signed_tx.data)
     assert true = Signing.verify(message, signature, sender)
   end
@@ -57,26 +60,12 @@ defmodule AecoreTxTest do
     fee = 1
 
     payload = %{receiver: tx.receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, [sender], fee)
+    tx_data = DataTx.init(SpendTx, payload, [sender], fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert false == SignedTx.is_valid?(signed_tx)
-  end
-
-  test "coinbase tx invalid", tx do
-    sender = Wallet.get_public_key()
-    amount = 5
-    fee = 1
-
-    payload = %{receiver: tx.receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-
-    priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, tx.nonce, priv_key)
-
-    assert !SignedTx.is_coinbase?(signed_tx)
   end
 
   test "invalid spend transaction", tx do

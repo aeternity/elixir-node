@@ -90,10 +90,10 @@ defmodule Aecore.Structures.ChannelOpenTx do
   def process_chainstate!(chainstate, %ChannelOpenTx{} = tx, [responder_acc, initiator_acc], _fee) do
     new_accounts =
       chainstate.accounts
-      |> Map.update(initiator_acc, Account.empty(), fn acc ->
+      |> MapUtil.update(initiator_acc, Account.empty(), fn acc ->
         Account.transaction_in!(tx.initiator_amount * -1)
       end)
-      |> Map.update(responder_acc, Account.empty(), fn acc ->
+      |> MapUtil.update(responder_acc, Account.empty(), fn acc ->
         Account.transaction_in!(tx.responder_amount * -1)
       end)
 
@@ -128,7 +128,7 @@ defmodule Aecore.Structures.ChannelOpenTx do
           ChainState.account()
   def deduct_fee(chainstate, _tx, [from_acc], fee) do
     new_accounts =
-      Map.update!(chainstate.accounts, from_acc, fn acc ->
+      MapUtil.update!(chainstate.accounts, from_acc, fn acc ->
         Account.transaction_in(acc, fee * -1)
       end)
 

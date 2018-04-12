@@ -13,7 +13,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Structures.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Txs.Pool.Worker, as: Pool
@@ -238,7 +237,7 @@ defmodule Aecore.Miner.Worker do
 
       ordered_txs_list =
         Enum.sort(txs_list, fn tx1, tx2 ->
-          SignedTx.get_nonce(tx1) < SignedTx.get_nonce(tx2)
+          tx1.data.nonce < tx2.data.nonce
         end)
 
       valid_txs_by_chainstate =

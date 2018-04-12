@@ -3,6 +3,8 @@ defmodule Aecore.Structures.SignedTx do
   Aecore structure of a signed transaction.
   """
 
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aewallet.Signing
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.CoinbaseTx
@@ -14,7 +16,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @type t :: %SignedTx{
           data: DataTx.t(),
-          signatures: list(Signature.t())
+          signatures: list(Wallet.pubkey())
         }
 
   @doc """
@@ -46,13 +48,8 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) :: ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %SignedTx{data: data, signatures: sigs} = signed_tx) do
-    sigs
-    |> Enum.zip(data.from_accs)
-    |> Enum.reduce(chainstate, fn {sig, acc}, chainstate ->
-      Signature.process_chainstate!(chainstate, sig, acc, data)
-    end)
-    |> DataTx.process_chainstate!(block_height, data, signed_tx)
+  def process_chainstate!(chainstate, block_height, %SignedTx{data: data} = signed_tx) do
+    DataTx.process_chainstate!(chainstate, block_height, data, signed_tx)
   end
 
   @doc """
@@ -67,13 +64,16 @@ defmodule Aecore.Structures.SignedTx do
   """
 
   @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) :: {:ok, SignedTx.t()}
-  def sign_tx(%DataTx{} = tx, nonce, priv_key) do
-    sign_tx(%SignedTx{data: tx, signatures: []}, nonce, priv_key)
+  def sign_tx(%DataTx{} = tx, priv_key) do
+    sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
   end
 
   # TODO solve problem of proper ordering of sigs
-  def sign_tx(%SignedTx{data: data, signatures: sigs}, nonce, priv_key) do
-    {:ok, signature} = Signature.sign_tx(data, nonce, priv_key)
+  def sign_tx(%SignedTx{data: data, signatures: sigs}, priv_key) do
+    signature =
+      data
+      |> Serialization.pack_binary()
+      |> Signing.sign(priv_key)
     {:ok, %SignedTx{data: data, signatures: [signature | sigs]}}
   end
 
@@ -114,25 +114,18 @@ defmodule Aecore.Structures.SignedTx do
   def base58c_decode_root(_) do
     {:error, "Wrong data"}
   end
-
-  @spec nonce(SignedTx.t()) :: integer()
-  def nonce(%SignedTx{signatures: []}) do
-    -1
-  end
-
-  def nonce(%SignedTx{signatures: [sig | _]}) do
-    sig.nonce
-  end
-
+  
   defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
-    if length(sigs) != length(data.from_accs) do
-      Logger.error("Not enough signatures")
+    if length(sigs) != length(DataTx.senders(data)) do
+      Logger.error("Wrong signature count")
       false
     else
+      data_binary = Serialization.pack_binary(data)
+
       sigs
-      |> Enum.zip(data.from_accs)
+      |> Enum.zip(DataTx.senders(data))
       |> Enum.reduce(true, fn {sig, acc}, validity ->
-        if Signature.is_valid?(sig, acc, data) do
+        if Signing.verify(data_binary, sig, acc) do
           validity
         else
           Logger.error("Signature of #{acc} invalid")

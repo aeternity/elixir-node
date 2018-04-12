@@ -45,7 +45,7 @@ defmodule Aecore.Structures.Account do
   @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
   def create_coinbase_tx(to_acc, value) do
     payload = CoinbaseTx.create(to_acc, value)
-    data = DataTx.init(CoinbaseTx, payload, [], 0)
+    data = DataTx.init(CoinbaseTx, payload, [], 0, 0)
     SignedTx.create(data)
   end
 
@@ -62,8 +62,8 @@ defmodule Aecore.Structures.Account do
         ) :: {:ok, SignedTx.t()}
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
     payload = %{receiver: receiver, amount: amount}
-    spend_tx = DataTx.init(SpendTx, payload, [sender], fee)
-    SignedTx.sign_tx(spend_tx, nonce, sender_priv_key)
+    spend_tx = DataTx.init(SpendTx, payload, [sender], fee, nonce)
+    SignedTx.sign_tx(spend_tx, sender_priv_key)
   end
 
   @doc """
