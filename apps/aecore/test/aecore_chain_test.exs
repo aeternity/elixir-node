@@ -6,7 +6,7 @@ defmodule AecoreChainTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
@@ -37,8 +37,9 @@ defmodule AecoreChainTest do
 
     {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
-    new_chain_state = ChainState.calculate_and_validate_chain_state([], chain_state, 1)
-    new_root_hash = ChainState.calculate_root_hash(new_chain_state)
+    new_chain_state = Chainstate.calculate_and_validate_chain_state([], chain_state, 1)
+
+    new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
     block_unmined = %Block{
       header: %Header{

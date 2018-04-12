@@ -1,4 +1,4 @@
-defmodule Aecore.Chain.ChainState do
+defmodule Aecore.Structures.Chainstate do
   @moduledoc """
   Module used for calculating the block and chain states.
   The chain state is a map, telling us what amount of tokens each account has.
@@ -7,26 +7,33 @@ defmodule Aecore.Chain.ChainState do
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Account
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Serialization
+  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Structures.Chainstate
   alias Aeutil.Bits
+  alias Aecore.Oracle.Oracle
 
   require Logger
 
-  @typedoc "Structure of the accounts"
-  @type accounts() :: %{Wallet.pubkey() => Account.t()}
-
-  @type oracles :: %{
-          registered_oracles: Oracle.registered_oracles(),
-          interaction_objects: Oracle.interaction_objects()
+  @type t :: %Chainstate{
+          accounts: AccountStateTree.accounts_state(),
+          oracles: Oracle.oracles()
         }
 
-  @typedoc "Structure of the chainstate"
-  @type chainstate() :: %{:accounts => accounts(), :oracles => oracles()}
+  defstruct [
+    :accounts,
+    :oracles
+  ]
 
-  @spec calculate_and_validate_chain_state(list(), chainstate(), non_neg_integer()) ::
-          chainstate()
+  @spec init :: Chainstate.t()
+  def init do
+    %Chainstate{
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => %{registered_oracles: %{}, interaction_objects: %{}}
+    }
+  end
+
+  @spec calculate_and_validate_chain_state(list(), Chainstate.t(), non_neg_integer()) ::
+          Chainstate.t()
   def calculate_and_validate_chain_state(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
@@ -42,16 +49,18 @@ defmodule Aecore.Chain.ChainState do
     |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state(SignedTx.t(), chainstate(), integer()) :: chainstate()
+  @spec apply_transaction_on_state(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
+          Chainstate.t()
   def apply_transaction_on_state(
         %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil},
         %{accounts: accounts} = chainstate,
         block_height
       ) do
-    receiver_state = Map.get(accounts, receiver, Account.empty())
-    new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+    receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
+    new_receiver_state = SignedTx.reward(data, receiver_state)
 
-    new_accounts_state = Map.put(accounts, receiver, new_receiver_state)
+    new_accounts_state =
+      AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
 
     {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
   end
@@ -61,7 +70,7 @@ defmodule Aecore.Chain.ChainState do
         %{accounts: accounts} = chainstate,
         block_height
       )
-      when not is_nil(sender) do
+      when is_binary(sender) do
     with :ok <- SignedTx.validate(tx),
          {:ok, child_tx} <- DataTx.validate(data),
          :ok <- tx_type.validate(child_tx),
@@ -80,28 +89,17 @@ defmodule Aecore.Chain.ChainState do
   end
 
   @doc """
-  Builds a merkle tree from the passed chain state and
-  returns the root hash of the tree.
+  Create the root hash of the tree.
   """
-  @spec calculate_root_hash(chainstate()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
-    merkle_tree_data =
-      for {account, data} <- chainstate.accounts do
-        {account, Serialization.pack_binary(data)}
-      end
-
-    if Enum.empty?(merkle_tree_data) do
-      <<0::256>>
-    else
-      merkle_tree =
-        List.foldl(merkle_tree_data, :gb_merkle_trees.empty(), fn node, merkle_tree ->
-          :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-        end)
-
-      :gb_merkle_trees.root_hash(merkle_tree)
-    end
+    AccountStateTree.root_hash(chainstate.accounts)
   end
 
+  @doc """
+  Goes through all the transactions and only picks the valid ones
+  """
+  @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
     List.foldl(txs_list, [], fn tx, valid_txs_list ->
       case apply_transaction_on_state(tx, chainstate, block_height) do
@@ -115,21 +113,11 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec calculate_total_tokens(chainstate()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts}) do
-    Enum.reduce(accounts, 0, fn {_account, state}, acc ->
-      acc + state.balance
+  @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
+  def calculate_total_tokens(%{accounts: accounts_tree}) do
+    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
+      acc + Account.balance(accounts_tree, pub_key)
     end)
-  end
-
-  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
-  def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
-    updated_accounts =
-      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
-        Map.put(acc, address, Account.update_locked(state, header))
-      end)
-
-    Map.put(chainstate, :accounts, updated_accounts)
   end
 
   def base58c_encode(bin) do

@@ -4,12 +4,12 @@ defmodule Aecore.Structures.DataTx do
   """
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountStateTree
   alias Aeutil.Serialization
   alias Aeutil.Parser
-  alias Aecore.Structures.Account
 
   require Logger
 
@@ -69,7 +69,7 @@ defmodule Aecore.Structures.DataTx do
   @spec process_chainstate(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
           ChainState.chainstate()
   def process_chainstate(%DataTx{} = tx, chainstate, block_height) do
-    accounts_state = chainstate.accounts
+    accounts_state_tree = chainstate.accounts
 
     tx_type_state = get_tx_type_state(chainstate, tx.type)
 
@@ -80,13 +80,13 @@ defmodule Aecore.Structures.DataTx do
            tx.fee,
            tx.nonce,
            block_height,
-           accounts_state,
+           accounts_state_tree,
            tx_type_state
          ) do
       {:error, reason} ->
         {:error, reason}
 
-      {new_accounts_state, new_tx_type_state} ->
+      {new_accounts_state_tree, new_tx_type_state} ->
         new_chainstate =
           if tx.type == SpendTx do
             chainstate
@@ -94,7 +94,7 @@ defmodule Aecore.Structures.DataTx do
             Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
           end
 
-        {:ok, Map.put(new_chainstate, :accounts, new_accounts_state)}
+        {:ok, Map.put(new_chainstate, :accounts, new_accounts_state_tree)}
     end
   end
 
@@ -109,19 +109,19 @@ defmodule Aecore.Structures.DataTx do
   end
 
   @spec validate_sender(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
-  def validate_sender(sender, chainstate) do
-    if Map.has_key?(chainstate.accounts, sender) do
-      :ok
-    else
-      {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
+  def validate_sender(sender, %{accounts: acc} = chainstate) do
+    case AccountStateTree.get(acc, sender) do
+      {:ok, account_key} ->
+        :ok
+
+      :none ->
+        {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
     end
   end
 
   @spec validate_nonce(ChainState.account(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate_nonce(accounts_state, tx) do
-    account_state = Map.get(accounts_state, tx.sender, Account.empty())
-
-    if tx.nonce > account_state.nonce do
+    if tx.nonce > Account.nonce(accounts_state, tx.sender) do
       :ok
     else
       {:error, "#{__MODULE__}: Nonce is too small: #{inspect(tx.nonce)}"}
@@ -135,14 +135,24 @@ defmodule Aecore.Structures.DataTx do
           type: type,
           payload: payload,
           sender: sender,
-          fee: fee
+          fee: fee,
+          nonce: nonce
         } = tx,
-        chainstate,
+        %{accounts: accounts} = chainstate,
         block_height
       ) do
-    sender_account_state = Map.get(chainstate.accounts, sender)
+    sender_account_state = Account.get_account_state(accounts, sender)
     tx_type_state = get_tx_type_state(chainstate, tx.type)
-    type.preprocess_check(payload, sender, sender_account_state, fee, block_height, tx_type_state)
+
+    type.preprocess_check(
+      payload,
+      sender,
+      sender_account_state,
+      fee,
+      nonce,
+      block_height,
+      tx_type_state
+    )
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -157,7 +167,6 @@ defmodule Aecore.Structures.DataTx do
   @spec deserialize(payload()) :: DataTx.t()
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
-
     init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
   end
 end

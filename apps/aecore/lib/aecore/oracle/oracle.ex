@@ -33,6 +33,11 @@ defmodule Aecore.Oracle.Oracle do
           }
         }
 
+  @type oracles :: %{
+          registered_oracles: registered_oracles(),
+          interaction_objects: interaction_objects()
+        }
+
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @doc """
@@ -218,7 +223,7 @@ defmodule Aecore.Oracle.Oracle do
                                                                         acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         acc
-        |> pop_in([:oracles, :registered_oracles, address])
+        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
         |> elem(1)
       else
         acc
@@ -226,10 +231,7 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  def remove_expired_interaction_objects(
-        chain_state,
-        block_height
-      ) do
+  def remove_expired_interaction_objects(chain_state, block_height) do
     Enum.reduce(chain_state.oracles.interaction_objects, chain_state, fn {query_id,
                                                                           %{
                                                                             query: query,
@@ -242,21 +244,13 @@ defmodule Aecore.Oracle.Oracle do
                                                                               response_height_included
                                                                           }},
                                                                          acc ->
-      query_absolute_ttl =
-        calculate_absolute_ttl(
-          query.query_ttl,
-          query_height_included
-        )
-
+      query_absolute_ttl = calculate_absolute_ttl(query.query_ttl, query_height_included)
       query_has_expired = query_absolute_ttl <= block_height && response == nil
 
       response_has_expired =
         if response != nil do
           response_absolute_ttl =
-            calculate_absolute_ttl(
-              query.query_ttl,
-              response_height_included
-            )
+            calculate_absolute_ttl(query.query_ttl, response_height_included)
 
           response_absolute_ttl <= block_height
         else
