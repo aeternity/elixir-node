@@ -1,13 +1,13 @@
 defmodule Aehttpserver.Web.InfoController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Plug.Conn
 
   require Logger

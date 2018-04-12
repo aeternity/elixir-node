@@ -2,13 +2,13 @@ defmodule AehttpclientTest do
   use ExUnit.Case
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aehttpclient.Client
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 

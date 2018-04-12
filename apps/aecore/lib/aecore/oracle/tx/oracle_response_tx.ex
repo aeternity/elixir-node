@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.OracleResponseTx do
+defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @moduledoc """
   Contains the transaction structure for oracle responses
   and functions associated with those transactions.
@@ -8,9 +8,9 @@ defmodule Aecore.Structures.OracleResponseTx do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 

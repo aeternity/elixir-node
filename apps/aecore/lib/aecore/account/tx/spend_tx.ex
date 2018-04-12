@@ -1,16 +1,16 @@
-defmodule Aecore.Structures.SpendTx do
+defmodule Aecore.Account.Tx.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  @behaviour Aecore.Structures.Transaction
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  @behaviour Aecore.Tx.Transaction
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Wallet
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
 

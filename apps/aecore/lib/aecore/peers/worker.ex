@@ -8,11 +8,11 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.Sync
   alias Aehttpclient.Client
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
 
   require Logger
 

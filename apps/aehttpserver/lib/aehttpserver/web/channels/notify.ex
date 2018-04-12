@@ -3,11 +3,11 @@ defmodule Aehttpserver.Web.Notify do
   Contains functionality for broadcasting new blocks/transactions via websocket.
   """
 
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
 
   def broadcast_new_transaction_in_the_pool(tx) do
     broadcast_tx(tx, true)
