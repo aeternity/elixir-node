@@ -9,6 +9,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -97,77 +98,73 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         accounts,
         naming_state
       ) do
-    sender_account_state = Map.get(accounts, sender, Account.empty())
+    sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check(
-           tx,
-           sender_account_state,
-           sender,
-           fee,
-           nonce,
-           block_height,
-           naming_state
-         ) do
-      :ok ->
-        new_senderount_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out_nonce_update(nonce)
+    preprocess_check!(
+      tx,
+      sender_account_state,
+      sender,
+      fee,
+      nonce,
+      block_height,
+      naming_state
+    )
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
+    new_senderount_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out_nonce_update(nonce)
 
-        claim_to_update = Map.get(naming_state, tx.hash)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_senderount_state)
 
-        claim = %{
-          claim_to_update
-          | pointers: [tx.pointers],
-            expires: tx.expire_by,
-            ttl: tx.client_ttl
-        }
+    claim_to_update = Map.get(naming_state, tx.hash)
 
-        updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
+    claim = %{
+      claim_to_update
+      | pointers: [tx.pointers],
+        expires: tx.expire_by,
+        ttl: tx.client_ttl
+    }
 
-        {updated_accounts_chainstate, updated_naming_chainstate}
+    updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {updated_accounts_chainstate, updated_naming_chainstate}
   end
 
   @doc """
   Checks whether all the data is valid according to the NameUpdateTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check(
+  @spec preprocess_check!(
           NameUpdateTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
+          non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(tx, account_state, sender, fee, nonce, block_height, naming_state) do
+  def preprocess_check!(tx, account_state, sender, fee, nonce, block_height, naming_state) do
     claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
+        throw({:error, "Negative balance"})
 
       account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Nonce too small"})
 
       claim == nil ->
-        {:error, "Name has not been claimed"}
+        throw({:error, "Name has not been claimed"})
 
       claim.owner != sender ->
-        {:error, "Sender is not claim owner"}
+        throw({:error, "Sender is not claim owner"})
 
       tx.expire_by <= block_height ->
-        {:error, "Name expiration is now or in the past"}
+        throw({:error, "Name expiration is now or in the past"})
 
       claim.status == :revoked ->
-        {:error, "Claim is revoked"}
+        throw({:error, "Claim is revoked"})
 
       true ->
         :ok

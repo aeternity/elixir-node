@@ -85,7 +85,7 @@ defmodule AecoreNamingTest do
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 
-    next_nonce = Map.get(Chain.chain_state().accounts, transfer_to_pub, %{nonce: 0}).nonce + 1
+    next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
     {:ok, revoke} =
       Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
@@ -149,8 +149,8 @@ defmodule AecoreNamingTest do
 
     claim_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
     claim_pub = Aecore.Wallet.Worker.to_public_key(claim_priv)
-    next_nonce = Map.get(Chain.chain_state().accounts, claim_pub, %{nonce: 0}).nonce + 1
 
+    next_nonce = Account.nonce(Chain.chain_state().accounts, claim_pub) + 1
     {:ok, claim} = Account.claim(claim_pub, claim_priv, "test.aet", <<1::256>>, 5, next_nonce)
     Pool.add_transaction(claim)
     Miner.mine_sync_block_to_chain()
@@ -189,7 +189,7 @@ defmodule AecoreNamingTest do
 
     update_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
     update_pub = Aecore.Wallet.Worker.to_public_key(update_priv)
-    next_nonce = Map.get(Chain.chain_state().accounts, update_pub, %{nonce: 0}).nonce + 1
+    next_nonce = Account.nonce(Chain.chain_state().accounts, update_pub) + 1
 
     {:ok, update} =
       Account.name_update(update_pub, update_priv, "test.aet", "{\"test\": 2}", 5, next_nonce)
@@ -247,7 +247,7 @@ defmodule AecoreNamingTest do
 
     transfer_from_priv = Aecore.Wallet.Worker.get_private_key("m/0/2")
     transfer_from_pub = Aecore.Wallet.Worker.to_public_key(transfer_from_priv)
-    next_nonce = Map.get(Chain.chain_state().accounts, transfer_from_pub, %{nonce: 0}).nonce + 1
+    next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_from_pub) + 1
 
     transfer_to_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
     transfer_to_pub = Aecore.Wallet.Worker.to_public_key(transfer_to_priv)
@@ -333,11 +333,11 @@ defmodule AecoreNamingTest do
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 
-    next_nonce = Map.get(Chain.chain_state().accounts, transfer_to_pub, %{nonce: 0}).nonce + 1
+    next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
     transfer_from_priv = Aecore.Wallet.Worker.get_private_key("m/0/2")
     transfer_from_pub = Aecore.Wallet.Worker.to_public_key(transfer_from_priv)
-    next_nonce = Map.get(Chain.chain_state().accounts, transfer_from_pub, %{nonce: 0}).nonce + 1
+    next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_from_pub) + 1
 
     {:ok, revoke} =
       Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.aet", 5, next_nonce)

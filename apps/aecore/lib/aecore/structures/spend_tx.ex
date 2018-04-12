@@ -87,29 +87,32 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
           AccountStateTree.tree(),
           tx_type_state()
         ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check!(tx, sender, sender_account_state, sender, fee, block_height, nonce, block_height, %{}) do
-      :ok ->
-        new_sender_account_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out(tx.amount * -1, nonce)
+    preprocess_check!(
+      tx,
+      sender_account_state,
+      sender,
+      fee,
+      nonce,
+      block_height,
+      %{}
+    )
 
-        new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
-        receiver = Account.get_account_state(accounts, tx.receiver)
-        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
+    new_sender_account_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out(tx.amount * -1, nonce)
 
-        {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
+    new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
+    receiver = Account.get_account_state(accounts, tx.receiver)
+    new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
   end
 
   @doc """
@@ -118,7 +121,6 @@ defmodule Aecore.Structures.SpendTx do
   """
   @spec preprocess_check!(
           SpendTx.t(),
-          Wallet.pubkey(),
           AccountStateTree.tree(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -126,7 +128,15 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, sender_account_state, _sender, fee, _block_height, _nonce, _block_height, %{}) do
+  def preprocess_check!(
+        tx,
+        sender_account_state,
+        _sender,
+        fee,
+        _nonce,
+        _block_height,
+        %{}
+      ) do
     cond do
       sender_account_state.balance - (fee + tx.amount) < 0 ->
         throw({:error, "Negative balance"})

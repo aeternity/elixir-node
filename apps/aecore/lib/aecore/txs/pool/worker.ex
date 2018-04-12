@@ -19,6 +19,11 @@ defmodule Aecore.Txs.Pool.Worker do
   alias Aeutil.Serialization
   alias Aecore.Structures.DataTx
   alias Aehttpserver.Web.Notify
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -150,6 +155,22 @@ defmodule Aecore.Txs.Pool.Worker do
 
       %OracleExtendTx{} ->
         tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
+
+      # TODO use correct fee for naming transactions
+      %NameClaimTx{} ->
+        true
+
+      %NamePreClaimTx{} ->
+        true
+
+      %NameRevokeTx{} ->
+        true
+
+      %NameTransferTx{} ->
+        true
+
+      %NameUpdateTx{} ->
+        true
     end
   end
 

@@ -4,22 +4,42 @@ defmodule Aecore.Structures.DataTx do
   """
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.Chainstate
   alias Aecore.Structures.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleResponseTx
 
   require Logger
 
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
-          SpendTx | NamePreClaimTx | NameClaimTx | NameUpdateTx | NameTransferTx | NameRevokeTx
+          SpendTx
+          | OracleExtendTx
+          | OracleRegistrationTx
+          | OracleResponseTx
+          | OracleResponseTx
+          | NamePreClaimTx
+          | NameClaimTx
+          | NameUpdateTx
+          | NameTransferTx
+          | NameRevokeTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
           SpendTx.t()
+          | OracleExtendTx.t()
+          | OracleQueryTx.t()
+          | OracleRegistrationTx.t()
+          | OracleResponseTx.t()
           | NamePreClaimTx.t()
           | NameClaimTx.t()
           | NameUpdateTx.t()

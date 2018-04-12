@@ -12,7 +12,10 @@ defmodule Aecore.Structures.Transaction do
   alias Aecore.Structures.Account
   alias Aecore.Structures.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
-
+  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleResponseTx
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -20,7 +23,10 @@ defmodule Aecore.Structures.Transaction do
   @typedoc "Structure of a custom transaction"
   @type tx_types ::
           SpendTx.t()
-          #TODO add oracle
+          | OracleExtendTx.t()
+          | OracleQueryTx.t()
+          | OracleRegistrationTx.t()
+          | OracleResponseTx.t()
           | NamePreClaimTx.t()
           | NameClaimTx.t()
           | NameUpdateTx.t()
@@ -85,7 +91,6 @@ defmodule Aecore.Structures.Transaction do
   """
   @callback preprocess_check!(
               tx_types(),
-              Wallet.pubkey(),
               Chainstate.account(),
               Wallet.pubkey(),
               fee :: non_neg_integer(),

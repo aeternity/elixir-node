@@ -84,7 +84,7 @@ defmodule Aecore.Structures.Account do
   def pre_claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
@@ -112,7 +112,7 @@ defmodule Aecore.Structures.Account do
   def claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
@@ -140,7 +140,7 @@ defmodule Aecore.Structures.Account do
   def name_update(name, pointers, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_update(sender, sender_priv_key, name, pointers, fee, nonce)
   end
 
@@ -174,7 +174,7 @@ defmodule Aecore.Structures.Account do
   def name_transfer(name, target, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce)
   end
 
@@ -202,7 +202,7 @@ defmodule Aecore.Structures.Account do
   def name_revoke(name, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce)
   end
 

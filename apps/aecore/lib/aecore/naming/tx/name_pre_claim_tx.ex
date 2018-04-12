@@ -9,6 +9,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Naming
   alias Aecore.Structures.Account
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -77,43 +78,38 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         accounts,
         naming_state
       ) do
-    sender_account_state = Map.get(accounts, sender, Account.empty())
+    sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check(
-           tx,
-           sender_account_state,
-           sender,
-           fee,
-           nonce,
-           block_height,
-           naming_state
-         ) do
-      :ok ->
-        new_senderount_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out_nonce_update(nonce)
+    preprocess_check!(
+      tx,
+      sender_account_state,
+      sender,
+      fee,
+      nonce,
+      block_height,
+      naming_state
+    )
 
-        updated_accounts_chainstate = Map.put(accounts, sender, new_senderount_state)
-        commitment_expires = block_height + Naming.get_pre_claim_ttl()
+    new_senderount_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out_nonce_update(nonce)
 
-        commitment =
-          Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_senderount_state)
+    commitment_expires = block_height + Naming.get_pre_claim_ttl()
 
-        updated_naming_chainstate = Map.put(naming_state, tx.commitment, commitment)
+    commitment = Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
 
-        {updated_accounts_chainstate, updated_naming_chainstate}
+    updated_naming_chainstate = Map.put(naming_state, tx.commitment, commitment)
 
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {updated_accounts_chainstate, updated_naming_chainstate}
   end
 
   @doc """
   Checks whether all the data is valid according to the NamePreClaimTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check(
+  @spec preprocess_check!(
           NamePreClaimTx.t(),
           ChainState.account(),
           Wallet.pubkey(),
@@ -122,13 +118,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           block_height :: non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check(_tx, account_state, _sender, fee, nonce, _block_height, _naming_state) do
+  def preprocess_check!(_tx, account_state, _sender, fee, nonce, _block_height, _naming_state) do
     cond do
       account_state.balance - fee < 0 ->
-        {:error, "Negative balance"}
+        throw({:error, "Negative balance"})
 
       account_state.nonce >= nonce ->
-        {:error, "Nonce too small"}
+        throw({:error, "Nonce too small"})
 
       true ->
         :ok

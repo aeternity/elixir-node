@@ -50,10 +50,12 @@ defmodule Aecore.Structures.OracleExtendTx do
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state
       ) do
+    sender_account_state = Account.get_account_state(accounts, sender)
+
     preprocess_check!(
       tx,
       sender,
-      Map.get(accounts, sender, Account.empty()),
+      sender_account_state,
       fee,
       nonce,
       block_height,
@@ -61,7 +63,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      sender_account_state
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 

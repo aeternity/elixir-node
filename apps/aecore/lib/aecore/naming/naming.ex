@@ -43,6 +43,11 @@ defmodule Aecore.Naming.Naming do
 
   @type t :: claim() | commitment()
 
+  @type state() :: %{hash() => t()}
+
+  @spec init_empty() :: state()
+  def init_empty(), do: %{}
+
   @spec create_commitment(
           binary(),
           Wallet.pubkey(),

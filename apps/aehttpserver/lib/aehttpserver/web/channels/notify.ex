@@ -1,6 +1,7 @@
 defmodule Aehttpserver.Web.Notify do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Structures.Account
@@ -51,6 +52,13 @@ defmodule Aehttpserver.Web.Notify do
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+
+        %NameTransferTx{} ->
+          Aehttpserver.Web.Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.target),
             %{"body" => Serialization.tx(tx, :serialize)}
           )
 
