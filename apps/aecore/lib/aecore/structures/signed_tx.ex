@@ -44,12 +44,12 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    signatures_valid?(tx) && DataTx.is_valid?(data, tx)
+    signatures_valid?(tx) && DataTx.is_valid?(data)
   end
 
   @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) :: ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %SignedTx{data: data} = signed_tx) do
-    DataTx.process_chainstate!(chainstate, block_height, data, signed_tx)
+  def process_chainstate!(chainstate, block_height, %SignedTx{data: data}) do
+    DataTx.process_chainstate!(chainstate, block_height, data)
   end
 
   @doc """

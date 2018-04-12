@@ -6,7 +6,6 @@ defmodule Aecore.Structures.SpendTx do
   @behaviour Aecore.Structures.Transaction
   
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -62,9 +61,9 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t(), SignedTx.t()) :: boolean()
-  def is_valid?(%SpendTx{} = tx, signed_tx) do
-    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
+  @spec is_valid?(SpendTx.t(), DataTx.t()) :: boolean()
+  def is_valid?(%SpendTx{} = tx, data_tx) do
+    senders = DataTx.senders(data_tx)
 
     cond do
       tx.amount < 0 ->
@@ -92,10 +91,10 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
-          SignedTx.t()
+          DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, _block_height, %SpendTx{} = tx, signed_tx) do
-    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
+  def process_chainstate!(accounts, %{}, _block_height, %SpendTx{} = tx, data_tx) do
+    sender = DataTx.sender(data_tx)
 
     new_accounts =
       accounts
@@ -118,10 +117,9 @@ defmodule Aecore.Structures.SpendTx do
     tx_type_state(),
     non_neg_integer(),
     SpendTx.t(),
-    SignedTx.t()
+    DataTx.t()
   ) :: :ok
-  def preprocess_check!(accounts, %{}, _block_height, tx, signed_tx) do
-    data_tx = SignedTx.data_tx(signed_tx)
+  def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = Map.get(accounts, DataTx.sender(data_tx), Account.empty())
     
     cond do
@@ -133,9 +131,9 @@ defmodule Aecore.Structures.SpendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), SpendTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(accounts, _tx, signed_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
+  @spec deduct_fee(ChainState.accounts(), SpendTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()

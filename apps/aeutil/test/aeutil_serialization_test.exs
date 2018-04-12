@@ -4,7 +4,6 @@ defmodule AeutilSerializationTest do
   alias Aeutil.Serialization
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SignedTx.Signature
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
@@ -58,7 +57,7 @@ defmodule AeutilSerializationTest do
             nonce: 743_183_534_114,
             fee: 40
           },
-          signatures: [%Signature{signature: <<1, 2, 3>>, nonce: 743_183_534_114}]
+          signatures: [<<1, 2, 3>>]
         }
       ]
     }

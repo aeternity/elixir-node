@@ -6,7 +6,6 @@ defmodule Aecore.Structures.CoinbaseTx do
   @behaviour Aecore.Structures.Transaction
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.CoinbaseTx
   alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
@@ -65,10 +64,8 @@ defmodule Aecore.Structures.CoinbaseTx do
   @doc """
   Checks transactions internal contents validity
   """
-  @spec is_valid?(CoinbaseTx.t(), SignedTx.t()) :: boolean()
-  def is_valid?(%CoinbaseTx{amount: amount}, signed_tx) do
-    data_tx = SignedTx.data_tx(signed_tx)
-
+  @spec is_valid?(CoinbaseTx.t(), DataTx.t()) :: boolean()
+  def is_valid?(%CoinbaseTx{amount: amount}, data_tx) do
     cond do
       amount < 0 ->
         Logger.error("Value cannot be a negative number")
@@ -95,9 +92,9 @@ defmodule Aecore.Structures.CoinbaseTx do
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
-          SignedTx.t()
+          DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _signed_tx) do
+  def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
       |> MapUtil.update(tx.receiver, Account.empty(), fn acc ->
@@ -107,7 +104,7 @@ defmodule Aecore.Structures.CoinbaseTx do
     {new_accounts_state, %{}}   
   end
 
-  def process_chainstate!(_accounts, %{}, _block_height, _tx, _signed_tx) do
+  def process_chainstate!(_accounts, %{}, _block_height, _tx, _data_tx) do
     throw({:error, "Invalid coinbase tx"})
   end
 
@@ -120,14 +117,14 @@ defmodule Aecore.Structures.CoinbaseTx do
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
-          SignedTx.t()
+          DataTx.t()
         ) :: :ok
-  def preprocess_check!(_accounts, %{}, _block_height, _tx, _signed_tx) do
+  def preprocess_check!(_accounts, %{}, _block_height, _tx, _data_tx) do
     :ok
   end
 
-  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.accounts()
-  def deduct_fee(accounts, _tx, _signed_tx, _fee) do
+  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.accounts()
+  def deduct_fee(accounts, _tx, _data_tx, _fee) do
     accounts
   end
 end

@@ -3,7 +3,6 @@ defmodule Aecore.Structures.OracleQueryTx do
 
   alias __MODULE__
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
@@ -66,12 +65,12 @@ defmodule Aecore.Structures.OracleQueryTx do
     }
   end
   
-  @spec is_valid?(OracleQueryTx.t(), SignedTx.t()) :: boolean()
+  @spec is_valid?(OracleQueryTx.t(), DataTx.t()) :: boolean()
   def is_valid?(%OracleQueryTx{
         query_ttl: query_ttl,
         response_ttl: response_ttl
-      }, signed_tx) do
-    senders = signed_tx |> SignedTx.data_tx() |> DataTx.senders()
+      }, data_tx) do
+    senders = DataTx.senders(data_tx)
 
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
@@ -100,17 +99,17 @@ defmodule Aecore.Structures.OracleQueryTx do
           tx_type_state(),
           non_neg_integer(),
           OracleQueryTx.t(),
-          SignedTx.t()
+          DataTx.t()
   ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
         %OracleQueryTx{} = tx,
-        signed_tx
+        data_tx
   ) do
-    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender()
-    nonce = signed_tx |> SignedTx.data_tx() |> DataTx.nonce()
+    sender = DataTx.sender(data_tx)
+    nonce = DataTx.nonce(data_tx)
 
     updated_accounts_state =
       accounts
@@ -142,14 +141,13 @@ defmodule Aecore.Structures.OracleQueryTx do
     Oracle.oracles(),
     non_neg_integer(),
     OracleQueryTx.t(),
-    SignedTx.t()
+    DataTx.t()
   ) :: :ok
   def preprocess_check!(accounts,
                         %{registered_oracles: registered_oracles},
                         block_height,
                         tx, 
-                        signed_tx) do
-    data_tx = SignedTx.data_tx(signed_tx)
+                        data_tx) do
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -180,9 +178,9 @@ defmodule Aecore.Structures.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
-  def deduct_fee(accounts, _tx, signed_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, signed_tx, fee)
+  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  def deduct_fee(accounts, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end
 
   @spec get_oracle_query_fee(binary()) :: non_neg_integer()

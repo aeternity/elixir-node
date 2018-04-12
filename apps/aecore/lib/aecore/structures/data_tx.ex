@@ -3,7 +3,6 @@ defmodule Aecore.Structures.DataTx do
   Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.SignedTx
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aeutil.Serialization
@@ -74,8 +73,8 @@ defmodule Aecore.Structures.DataTx do
   Checks whether the fee is above 0. If it is, it runs the transaction type
   validation checks. Otherwise we return error.
   """
-  @spec is_valid?(DataTx.t(), SignedTx.t()) :: boolean()
-  def is_valid?(%DataTx{fee: fee, type: type} = tx, signed_tx) do
+  @spec is_valid?(DataTx.t()) :: boolean()
+  def is_valid?(%DataTx{fee: fee, type: type} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
         Logger.error("Invalid tx type=#{type}")
@@ -85,7 +84,7 @@ defmodule Aecore.Structures.DataTx do
         Logger.error("Negative fee")
         false
       
-      !is_payload_valid?(tx, signed_tx) ->
+      !is_payload_valid?(tx) ->
         false
       
       true ->
@@ -97,15 +96,15 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), DataTx.t(), SignedTx.t()) ::
+  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
           ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %DataTx{fee: fee} = tx, signed_tx) do
+  def process_chainstate!(chainstate, block_height, %DataTx{fee: fee} = tx) do
     accounts_state = chainstate.accounts
     payload = tx.type.init(tx.payload)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    :ok = tx.type.preprocess_check!(accounts_state, tx_type_state, block_height, payload, signed_tx)
+    :ok = tx.type.preprocess_check!(accounts_state, tx_type_state, block_height, payload, tx)
     
     nonce_accounts_state = if Enum.empty?(tx.senders) do
       accounts_state
@@ -117,12 +116,12 @@ defmodule Aecore.Structures.DataTx do
 
     {new_accounts_state, new_tx_type_state} =
       nonce_accounts_state
-      |> tx.type.deduct_fee(payload, signed_tx, fee)
+      |> tx.type.deduct_fee(payload, tx, fee)
       |> tx.type.process_chainstate!(
         tx_type_state,
         block_height,
         payload,
-        signed_tx
+        tx
       )
 
     if tx.type.get_chain_state_name() == nil do
@@ -149,17 +148,17 @@ defmodule Aecore.Structures.DataTx do
     init(data_tx.type, data_tx.payload, data_tx.senders, data_tx.fee, data_tx.nonce)
   end
  
-  @spec standard_deduct_fee(ChainState.accounts(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
-  def standard_deduct_fee(accounts, signed_tx, fee) do
-    sender = signed_tx |> SignedTx.data_tx() |> DataTx.sender
+  @spec standard_deduct_fee(ChainState.accounts(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  def standard_deduct_fee(accounts, data_tx, fee) do
+    sender = DataTx.sender(data_tx)
     MapUtil.update(accounts, sender, Account.empty(), fn acc ->
       Account.transaction_in!(acc, fee * -1)
     end)
   end
 
-  defp is_payload_valid?(%DataTx{type: type, payload: payload}, signed_tx) do
+  defp is_payload_valid?(%DataTx{type: type, payload: payload} = data_tx) do
     payload
     |> type.init()
-    |> type.is_valid?(signed_tx)
+    |> type.is_valid?(data_tx)
   end 
 end

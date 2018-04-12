@@ -26,7 +26,7 @@ defmodule Aecore.Structures.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types(), SignedTx.t()) :: boolean()
+  @callback is_valid?(tx_types(), DataTx.t()) :: boolean()
 
   @doc """
   Default function for executing a given transaction type.
@@ -35,7 +35,7 @@ defmodule Aecore.Structures.Transaction do
   """
   @callback process_chainstate!(
               tx_types(),
-              SignedTx.t(),
+              DataTx.t(),
               block_height :: non_neg_integer(),
               ChainState.account(),
               tx_type_state()
@@ -54,6 +54,6 @@ defmodule Aecore.Structures.Transaction do
               tx_types()
             ) :: :ok
 
-  @callback deduct_fee(ChainState.accounts(), tx_types(), SignedTx.t(), non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(ChainState.accounts(), tx_types(), DataTx.t(), non_neg_integer()) :: ChainState.account()
 
 end
