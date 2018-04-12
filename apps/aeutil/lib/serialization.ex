@@ -5,8 +5,10 @@ defmodule Aeutil.Serialization do
 
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Structures.OracleRegistrationTx
   alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.DataTx
   alias Aecore.Structures.SignedTx
   alias Aecore.Structures.Chainstate
@@ -307,4 +309,107 @@ defmodule Aeutil.Serialization do
   defp serialize_txs_info_to_json([], acc) do
     acc
   end
+
+  def rlp_encode(%SignedTx{} = tx) do
+    list_of_formatted_data =
+      case tx.data.type do
+        SpendTx ->
+          if tx.signature == nil and tx.data.sender == nil do
+            [
+              tag(:coinbasetx),
+              tx.data.payload.version,
+              tx.data.payload.receiver,
+              tx.data.nonce,
+              tx.data.payload.amount
+            ]
+          else
+            [
+              tag(:spendtx),
+              tx.data.payload.version,
+              tx.data.sender,
+              tx.data.payload.receiver,
+              tx.data.payload.amount,
+              tx.data.fee,
+              tx.data.nonce
+            ]
+          end
+
+        OracleRegistrationTx ->
+          [
+            tag(:oracleregister),
+            tx.data.payload.version,
+            tx.data.sender,
+            tx.data.nonce,
+            :erlang.term_to_binary(tx.data.payload.query_format),
+            :erlang.term_to_binary(tx.data.payload.response_format),
+            tx.data.payload.query_fee,
+            tx.data.payload.ttl.type,
+            tx.data.payload.ttl.value,
+            tx.data.fee
+          ]
+
+        OracleQueryTx ->
+          [
+            tag(:oraclequery),
+            tx.data.payload.version,
+            tx.data.sender,
+            tx.data.nonce,
+            tx.data.payload.oracle_address,
+            tx.data.payload.query_data,
+            tx.data.payload.query_fee,
+            tx.data.payload.query_ttl.type,
+            tx.data.payload.query_ttl.value,
+            tx.data.payload.response_ttl.type,
+            tx.data.payload.response_ttl.value,
+            tx.data.fee
+          ]
+
+        OracleResponseTx ->
+          [
+            tag(:oracleresponse),
+            tx.data.payload.version,
+            tx.data.sender,
+            tx.data.nonce,
+            tx.data.payload.query_id,
+            tx.data.payload.response,
+            tx.data.fee
+          ]
+
+        OracleExtendTx ->
+          [
+            tag(:oracleextend),
+            tx.data.payload.version,
+            tx.data.sender,
+            tx.data.nonce,
+            tx.data.payload.ttl.type,
+            tx.data.payload.ttl.type,
+            tx.data.fee
+          ]
+      end
+
+    ExRLP.encode(list_of_formatted_data)
+  end
+
+  def tag(type) do
+    case type do
+      :account -> 10
+      :signedtx -> 11
+      :spendtx -> 12
+      :coinbasetx -> 13
+      :oracle -> 20
+      :oraclequery -> 21
+      :oracleregister -> 22
+      :oracleresponse -> 21
+      :oracleextend -> 25
+    end
+  end
+
+  # def reverse_tag(tag) do
+  #   case tag do
+  #      ->
+  #   end
+  # def rlp_decode(binary) do
+  # TODO: implement RLP decoding
+  # end
+  # end
 end
