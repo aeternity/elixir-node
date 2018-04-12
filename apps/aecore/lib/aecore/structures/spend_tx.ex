@@ -120,12 +120,10 @@ defmodule Aecore.Structures.SpendTx do
           tx_type_state
         ) :: :ok | {:error, String.t()}
   def preprocess_check!(tx, _sender, sender_account_state, fee, _block_height, _nonce, %{}) do
-    cond do
-      sender_account_state.balance - (fee + tx.amount) < 0 ->
-        throw({:error, "Negative balance"})
-
-      true ->
-        :ok
+    if sender_account_state.balance - (fee + tx.amount) >= 0 do
+      :ok
+    else
+      throw({:error, "Negative balance"})
     end
   end
 

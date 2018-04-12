@@ -1,4 +1,8 @@
 defmodule Aeutil.HTTPUtil do
+  @moduledoc """
+  HTTP Util functions for easier use
+  """
+
   alias Phoenix.Controller
   alias Plug.Conn
 

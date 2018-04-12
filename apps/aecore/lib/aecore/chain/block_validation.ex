@@ -1,4 +1,8 @@
 defmodule Aecore.Chain.BlockValidation do
+  @moduledoc """
+  Contains functions used to validate data inside of the block structure
+  """
+
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Structures.Block

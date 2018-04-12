@@ -172,8 +172,7 @@ defmodule Aehttpclient.Client do
     ])
   end
 
-  # TODO: what is this function even doing?
-  defp get_local_port() do
+  defp get_local_port do
     Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

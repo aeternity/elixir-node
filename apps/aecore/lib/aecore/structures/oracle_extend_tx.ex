@@ -1,4 +1,9 @@
 defmodule Aecore.Structures.OracleExtendTx do
+  @moduledoc """
+  Contains the transaction structure for oracle extensions
+  and functions associated with those transactions.
+  """
+
   @behaviour Aecore.Structures.Transaction
 
   alias __MODULE__
@@ -20,7 +25,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
@@ -61,7 +66,8 @@ defmodule Aecore.Structures.OracleExtendTx do
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      accounts
+      |> Map.get(sender, Account.empty())
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 

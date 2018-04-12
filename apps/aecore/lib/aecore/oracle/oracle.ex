@@ -1,4 +1,8 @@
 defmodule Aecore.Oracle.Oracle do
+  @moduledoc """
+  Contains wrapping functions for working with oracles, data validation and TTL calculations.
+  """
+
   alias Aecore.Structures.OracleRegistrationTx
   alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.OracleResponseTx
@@ -9,6 +13,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Structures.Account
+  alias ExJsonSchema.Schema, as: JsonSchema
+  alias ExJsonSchema.Validator, as: JsonValidator
 
   require Logger
 
@@ -140,9 +146,9 @@ defmodule Aecore.Oracle.Oracle do
 
   @spec data_valid?(map(), map()) :: true | false
   def data_valid?(format, data) do
-    schema = ExJsonSchema.Schema.resolve(format)
+    schema = JsonSchema.resolve(format)
 
-    case ExJsonSchema.Validator.validate(schema, data) do
+    case JsonValidator.validate(schema, data) do
       :ok ->
         true
 
@@ -231,20 +237,29 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  def remove_expired_interaction_objects(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.interaction_objects, chain_state, fn {query_id,
-                                                                          %{
-                                                                            query: query,
-                                                                            query_sender:
-                                                                              query_sender,
-                                                                            response: response,
-                                                                            query_height_included:
-                                                                              query_height_included,
-                                                                            response_height_included:
-                                                                              response_height_included
-                                                                          }},
-                                                                         acc ->
-      query_absolute_ttl = calculate_absolute_ttl(query.query_ttl, query_height_included)
+  def remove_expired_interaction_objects(
+        chain_state,
+        block_height
+      ) do
+    interaction_objects = chain_state.oracles.interaction_objects
+
+    Enum.reduce(interaction_objects, chain_state, fn {query_id,
+                                                      %{
+                                                        query: query,
+                                                        query_sender: query_sender,
+                                                        response: response,
+                                                        query_height_included:
+                                                          query_height_included,
+                                                        response_height_included:
+                                                          response_height_included
+                                                      }},
+                                                     acc ->
+      query_absolute_ttl =
+        calculate_absolute_ttl(
+          query.query_ttl,
+          query_height_included
+        )
+
       query_has_expired = query_absolute_ttl <= block_height && response == nil
 
       response_has_expired =
