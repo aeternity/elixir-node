@@ -54,13 +54,11 @@ defmodule Aecore.Structures.Chainstate do
   def apply_transaction_on_state(
         %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil},
         %{accounts: accounts} = chainstate,
-        block_height
+        _block_height
       ) do
-    receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
+    receiver_state = Account.get_account_state(accounts, receiver)
     new_receiver_state = SignedTx.reward(data, receiver_state)
-
-    new_accounts_state =
-      AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+    new_accounts_state = AccountStateTree.put(accounts, receiver, new_receiver_state)
 
     {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
   end

@@ -4,7 +4,6 @@ defmodule Aecore.Structures.DataTx do
   """
 
   alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.Account
   alias Aecore.Structures.AccountStateTree
@@ -109,9 +108,9 @@ defmodule Aecore.Structures.DataTx do
   end
 
   @spec validate_sender(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
-  def validate_sender(sender, %{accounts: acc} = chainstate) do
-    case AccountStateTree.get(acc, sender) do
-      {:ok, account_key} ->
+  def validate_sender(sender, %{accounts: account}) do
+    case AccountStateTree.get(account, sender) do
+      {:ok, _account_key} ->
         :ok
 
       :none ->
