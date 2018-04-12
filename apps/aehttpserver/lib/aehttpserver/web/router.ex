@@ -21,6 +21,7 @@ defmodule Aehttpserver.Web.Router do
     post("/new_block", BlockController, :new_block)
     get("/blocks", BlockController, :get_blocks)
     get("/raw_blocks", BlockController, :get_raw_blocks)
+    get("/registered_oracles", OracleController, :registered_oracles)
     get("/pool_txs", TxPoolController, :get_pool_txs)
     resources("/block", BlockController, param: "hash", only: [:show])
     resources("/balance", BalanceController, param: "account", only: [:show])
@@ -31,6 +32,10 @@ defmodule Aehttpserver.Web.Router do
     pipe_through(:api)
     pipe_through(:authorized)
 
+    post("/oracle_query", OracleController, :oracle_query)
+    options("/oracle_query", OracleController, :options)
+
+    post("/oracle_response", OracleController, :oracle_response)
     resources("/miner", MinerController, param: "operation", only: [:show])
   end
 end

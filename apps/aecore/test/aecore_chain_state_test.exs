@@ -1,15 +1,16 @@
-defmodule AecoreChainStateTest do
+defmodule AecoreChainstateTest do
   @moduledoc """
   Unit test for the chain module
   """
 
   use ExUnit.Case
 
-  alias Aecore.Chain.ChainState
   alias Aecore.Structures.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Structures.Chainstate
 
   setup do
     on_exit(fn ->
@@ -31,7 +32,7 @@ defmodule AecoreChainStateTest do
 
   @tag :chain_state
   test "chain state", wallet do
-    next_block_height = Chain.top_block().header.height + 1
+    init_accounts_state = Chain.chain_state().accounts
 
     {:ok, signed_tx1} =
       Account.spend(wallet.b_pub_key, wallet.b_priv_key, wallet.a_pub_key, 1, 1, 2)
@@ -39,32 +40,43 @@ defmodule AecoreChainStateTest do
     {:ok, signed_tx2} =
       Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2)
 
-    chain_state =
-      apply_txs_on_state!(
-        [signed_tx1, signed_tx2],
-        %{
-          :accounts => %{
-            wallet.a_pub_key => %Account{balance: 3, nonce: 100},
-            wallet.b_pub_key => %Account{balance: 5, nonce: 1},
-            wallet.c_pub_key => %Account{balance: 4, nonce: 1}
-          }
-        },
-        1
-      )
+    init_accounts = %{
+      wallet.a_pub_key => %Account{balance: 3, nonce: 100},
+      wallet.b_pub_key => %Account{balance: 5, nonce: 1},
+      wallet.c_pub_key => %Account{balance: 4, nonce: 1}
+    }
 
-    assert %{
-             :accounts => %{
-               wallet.a_pub_key => %Account{balance: 6, nonce: 100},
-               wallet.b_pub_key => %Account{balance: 3, nonce: 2},
-               wallet.c_pub_key => %Account{balance: 1, nonce: 2}
+    accounts_chainstate =
+      Enum.reduce(init_accounts, init_accounts_state, fn {k, v}, acc ->
+        AccountStateTree.put(acc, k, v)
+      end)
+
+    chain_state =
+      apply_txs_on_state!([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate}, 1)
+
+    assert {6, 100} ==
+             {
+               Account.balance(chain_state.accounts, wallet.a_pub_key),
+               Account.nonce(chain_state.accounts, wallet.a_pub_key)
              }
-           } == chain_state
+
+    assert {3, 2} ==
+             {
+               Account.balance(chain_state.accounts, wallet.b_pub_key),
+               Account.nonce(chain_state.accounts, wallet.b_pub_key)
+             }
+
+    assert {1, 2} ==
+             {
+               Account.balance(chain_state.accounts, wallet.c_pub_key),
+               Account.nonce(chain_state.accounts, wallet.c_pub_key)
+             }
   end
 
   def apply_txs_on_state!(txs, chainstate, block_height) do
     txs
     |> Enum.reduce(chainstate, fn tx, chainstate ->
-      ChainState.apply_transaction_on_state!(tx, chainstate, block_height)
+      Chainstate.apply_transaction_on_state!(tx, chainstate, block_height)
     end)
   end
 end

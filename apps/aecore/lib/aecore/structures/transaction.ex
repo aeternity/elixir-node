@@ -10,7 +10,7 @@ defmodule Aecore.Structures.Transaction do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Structures.Account
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -20,6 +20,7 @@ defmodule Aecore.Structures.Transaction do
   @typedoc "Structure of a custom transaction"
   @type tx_types ::
           SpendTx.t()
+          #TODO add oracle
           | NamePreClaimTx.t()
           | NameClaimTx.t()
           | NameUpdateTx.t()
@@ -62,7 +63,7 @@ defmodule Aecore.Structures.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
+      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->
            {:error, "Negative balance"}
@@ -82,9 +83,10 @@ defmodule Aecore.Structures.Transaction do
            :ok
       end
   """
-  @callback preprocess_check(
+  @callback preprocess_check!(
               tx_types(),
-              ChainState.account(),
+              Wallet.pubkey(),
+              Chainstate.account(),
               Wallet.pubkey(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
@@ -92,5 +94,5 @@ defmodule Aecore.Structures.Transaction do
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
 end

@@ -15,8 +15,12 @@ defmodule AecoreTxTest do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
+  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Structures.Account
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+
     Persistence.start_link([])
     Miner.start_link([])
     Chain.clear_state()
@@ -25,6 +29,7 @@ defmodule AecoreTxTest do
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
   end
@@ -90,8 +95,8 @@ defmodule AecoreTxTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Enum.count(Chain.chain_state().accounts) == 1
-    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 100
+    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
+    assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 100
 
     payload = %{receiver: tx.receiver, amount: amount}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
@@ -104,21 +109,76 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     # We should have only made two coinbase transactions
-    assert Enum.count(Chain.chain_state().accounts) == 1
-    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
+    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
+    assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 200
 
     :ok = Miner.mine_sync_block_to_chain()
     # At this poing the sender should have 300 tokens,
     # enough to mine the transaction in the pool
 
-    assert Enum.count(Chain.chain_state().accounts) == 1
-    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 300
+    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
+    assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 300
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Enum.count(Chain.chain_state().accounts) == 2
-    assert Chain.chain_state().accounts[Wallet.get_public_key()].balance == 200
-    assert Chain.chain_state().accounts[tx.receiver].balance == 200
+    assert AccountStateTree.size(Chain.chain_state().accounts) == 2
+    assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 200
+    assert Account.balance(Chain.chain_state().accounts, tx.receiver) == 200
+  end
+
+  test "nonce is too small", tx do
+    sender = Wallet.get_public_key()
+    amount = 200
+    fee = 50
+
+    payload = %{receiver: tx.receiver, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+    :ok = Miner.mine_sync_block_to_chain()
+    # the nonce is small or equal to account nonce, so the transaction is invalid
+    assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 100
+  end
+
+  test "sum of amount and fee more than balance", tx do
+    sender = Wallet.get_public_key()
+    acc1 = Wallet.get_public_key("M/1")
+    acc2 = Wallet.get_public_key("M/2")
+    amount = 80
+    fee = 40
+
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
+    # Send tokens to the first account, sender has 200 tokens
+
+    payload = %{receiver: acc1, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
+    priv_key = Wallet.get_private_key()
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+    :ok = Miner.mine_sync_block_to_chain()
+
+    # Now acc1 has 80 tokens
+    assert Account.balance(Chain.chain_state().accounts, acc1) == 80
+
+    amount = 50
+    fee = 40
+    # Balance of acc1 is more than amount and fee, send tokens to acc2
+
+    payload = %{receiver: acc2, amount: amount}
+    tx_data = DataTx.init(SpendTx, payload, acc1, fee, 1)
+    priv_key = Wallet.get_private_key("m/1")
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    :ok = Pool.add_transaction(signed_tx)
+    :ok = Miner.mine_sync_block_to_chain()
+
+    # the balance of acc1 and acc2 is not changed because amount + fee > balance of acc1
+    assert Account.balance(Chain.chain_state().accounts, acc2) == 0
+    assert Account.balance(Chain.chain_state().accounts, acc1) == 80
   end
 end

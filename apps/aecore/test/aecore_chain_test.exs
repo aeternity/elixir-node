@@ -6,7 +6,7 @@ defmodule AecoreChainTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.ChainState
+  alias Aecore.Structures.Chainstate
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Chain.BlockValidation
@@ -27,7 +27,7 @@ defmodule AecoreChainTest do
     []
   end
 
-  @tag timeout: 20_000
+  @tag timeout: 100_000
   @tag :chain
   test "add block", setup do
     Miner.mine_sync_block_to_chain()
@@ -36,8 +36,10 @@ defmodule AecoreChainTest do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     chain_state = Chain.chain_state(top_block_hash)
-    new_chain_state = ChainState.calculate_and_validate_chain_state!([], chain_state, 1)
-    new_root_hash = ChainState.calculate_root_hash(new_chain_state)
+
+    new_chain_state = Chainstate.calculate_and_validate_chain_state!([], chain_state, 1)
+
+    new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
     block_unmined = %Block{
       header: %Header{
@@ -45,7 +47,7 @@ defmodule AecoreChainTest do
         prev_hash: top_block_hash,
         txs_hash: <<0::256>>,
         root_hash: new_root_hash,
-        target: 1,
+        target: 553_713_663,
         nonce: 0,
         time: System.system_time(:milliseconds),
         version: 1
@@ -56,6 +58,7 @@ defmodule AecoreChainTest do
     {:ok, block_mined} = Miner.mine_sync_block(block_unmined)
 
     top_block_next = Chain.top_block()
+
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)
 
     blocks_for_difficulty_calculation =
@@ -63,6 +66,7 @@ defmodule AecoreChainTest do
 
     top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
+
     previous_block_hash = BlockValidation.block_header_hash(previous_block.header)
 
     assert top_block_from_chain == Chain.get_block_by_base58_hash(top_block_hash_next_base58)

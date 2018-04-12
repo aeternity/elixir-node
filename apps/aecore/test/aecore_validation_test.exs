@@ -8,6 +8,7 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Difficulty
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.SignedTx
@@ -17,8 +18,10 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup_all do
+    Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -45,9 +48,14 @@ defmodule AecoreValidationTest do
     new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
+      _ =
       BlockValidation.calculate_and_validate_block!(
         new_block,
         prev_block,
@@ -76,7 +84,11 @@ defmodule AecoreValidationTest do
     new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
     _ =
       BlockValidation.calculate_and_validate_block!(
@@ -104,8 +116,8 @@ defmodule AecoreValidationTest do
     sender = Wallet.get_public_key()
     amount = 5
     fee = 1
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
 
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     payload1 = %{receiver: ctx.receiver, amount: amount}
     tx1 = DataTx.init(SpendTx, payload1, sender, fee, nonce + 1)
 
@@ -118,23 +130,24 @@ defmodule AecoreValidationTest do
 
     block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
 
-    assert block |> BlockValidation.validate_block_transactions()
+    assert block
+           |> BlockValidation.validate_block_transactions()
            |> Enum.all?() == true
   end
 
   def get_new_block(receiver) do
     sender = Wallet.get_public_key()
     amount = 100
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     fee = 10
 
     payload = %{receiver: receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, 13_213_223)
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, nonce)
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
-    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
+    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Miner.candidate())
     new_block
   end
 

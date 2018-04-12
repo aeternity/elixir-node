@@ -8,6 +8,7 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
@@ -58,7 +59,7 @@ defmodule Aecore.Persistence.Worker do
   then we will retrieve all blocks. The 'num' must be integer and greater
   than one
   """
-  @spec get_blocks(integer()) :: {:ok, map()} | :not_found | {:error, reason :: term()}
+  @spec get_blocks(non_neg_integer()) :: {:ok, map()} | :not_found | {:error, reason :: term()}
   def get_blocks(num) do
     GenServer.call(__MODULE__, {:get_blocks, num})
   end
@@ -74,10 +75,13 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_latest_block_height_and_hash)
   end
 
-  @spec update_latest_block_height_and_hash(binary(), integer()) ::
+  @spec update_latest_block_height_and_hash(binary(), non_neg_integer()) ::
           {:ok, map()} | :not_found | {:error, reason :: term()}
   def update_latest_block_height_and_hash(hash, height) do
-    GenServer.call(__MODULE__, {:update_latest_block_height_and_hash, hash, height})
+    GenServer.call(
+      __MODULE__,
+      {:update_latest_block_height_and_hash, hash, height}
+    )
   end
 
   @spec add_account_chain_state(account :: binary(), chain_state :: map()) ::
@@ -199,7 +203,8 @@ defmodule Aecore.Persistence.Worker do
     {:reply, Rox.get(blocks_family, hash), state}
   end
 
-  def handle_call({:get_blocks, blocks_num}, _from, state) when blocks_num < 1 do
+  def handle_call({:get_blocks, blocks_num}, _from, state)
+      when blocks_num < 1 do
     {:reply, "Blocks number must be greater than one", state}
   end
 
@@ -269,9 +274,9 @@ defmodule Aecore.Persistence.Worker do
     {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
 
     reply =
-      case Map.get(chainstate.accounts, account) do
-        nil -> :not_found
-        value -> {:ok, value}
+      case AccountStateTree.get(chainstate.accounts, account) do
+        :none -> :not_found
+        value -> value
       end
 
     {:reply, reply, state}
@@ -313,7 +318,9 @@ defmodule Aecore.Persistence.Worker do
         %{latest_block_info_family: latest_block_info_family} = state
       ) do
     :ok = Rox.put(latest_block_info_family, "top_hash", hash, write_options())
+
     :ok = Rox.put(latest_block_info_family, "top_height", height, write_options())
+
     {:reply, :ok, state}
   end
 

@@ -11,10 +11,10 @@ defmodule Aecore.Structures.Header do
           prev_hash: binary(),
           txs_hash: binary(),
           root_hash: binary(),
-          time: integer(),
-          nonce: integer(),
+          time: non_neg_integer(),
+          nonce: non_neg_integer(),
           version: non_neg_integer(),
-          target: integer()
+          target: non_neg_integer()
         }
 
   defstruct [
@@ -36,17 +36,19 @@ defmodule Aecore.Structures.Header do
           binary(),
           binary(),
           binary(),
-          integer(),
           non_neg_integer(),
-          integer()
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
         ) :: Header
-  def create(height, prev_hash, txs_hash, root_hash, target, nonce, version) do
+
+  def create(height, prev_hash, txs_hash, root_hash, target, nonce, version, time) do
     %Header{
       height: height,
       prev_hash: prev_hash,
       txs_hash: txs_hash,
       root_hash: root_hash,
-      time: System.system_time(:milliseconds),
+      time: time,
       nonce: nonce,
       version: version,
       target: target
