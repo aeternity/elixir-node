@@ -6,6 +6,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Structures.Block
   alias Aecore.Structures.Header
   alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.SpendTx
   alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.OracleResponseTx
   alias Aecore.Structures.OracleExtendTx
