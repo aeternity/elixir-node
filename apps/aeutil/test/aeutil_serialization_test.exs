@@ -69,7 +69,7 @@ defmodule AeutilSerializationTest do
         %{
           "data" => %{
             "fee" => 40,
-            "senders" => ["ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ"],
+            "sender" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvcxHFFZ",
             "nonce" => 743_183_534_114,
             "payload" => %{
               "receiver" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",

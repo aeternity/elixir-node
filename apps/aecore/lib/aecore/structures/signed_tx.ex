@@ -114,6 +114,39 @@ defmodule Aecore.Structures.SignedTx do
   def base58c_decode_root(_) do
     {:error, "Wrong data"}
   end
+
+  @spec serialize(SignedTx.t()) :: map()
+  def serialize(%SignedTx{} = tx) do
+    signatures_length = length(tx.signatures)
+    cond do
+      signatures_length == 0 ->
+        %{"data" => DataTx.serialize(tx.data)}
+      signatures_length == 1 ->
+        signature_serialized = 
+          tx.signatures
+          |> Enum.at(0)
+          |> Serialization.serialize_value(:signature)
+        %{"data" => DataTx.serialize(tx.data),
+          "signature" => signature_serialized}
+      true ->
+        %{"data" => DataTx.serialize(tx.data),
+          "signature" => Serialization.serialize_value(:signature)}
+    end
+  end
+
+  @spec deserialize(map()) :: DataTx.t()
+  def deserialize(tx) do
+    signed_tx = Serialization.deserialize_value(tx)
+    data = DataTx.deserialize(signed_tx.data)
+    cond do
+      signed_tx.signature != nil ->
+        create(data, [signed_tx.signature])
+      signed_tx.signatures != nil ->
+        create(data, signed_tx.signatures)
+      true ->
+        create(data, [])
+    end
+  end
   
   defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
     if length(sigs) != length(DataTx.senders(data)) do

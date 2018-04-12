@@ -2,6 +2,7 @@ defmodule Aehttpserver.Web.Notify do
   alias Aecore.Structures.SpendTx
   alias Aecore.Structures.OracleQueryTx
   alias Aeutil.Serialization
+  alias Aecore.Structures.SignedTx
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Structures.Account
 
@@ -11,14 +12,14 @@ defmodule Aehttpserver.Web.Notify do
     broadcast_tx(tx, false)
 
     Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
-      "body" => Serialization.tx(tx, :serialize)
+      "body" => SignedTx.serialize(tx)
     })
   end
 
   def broadcast_new_block_added_to_chain_and_new_mined_tx(block) do
     Enum.each(block.txs, fn tx ->
       Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
-        "body" => Serialization.tx(tx, :serialize)
+        "body" => SignedTx.serialize(tx)
       })
 
       broadcast_tx(tx, true)
@@ -35,7 +36,7 @@ defmodule Aehttpserver.Web.Notify do
         Endpoint.broadcast!(
           "room:notifications",
           "new_tx:" <> Account.base58c_encode(sender),
-          %{"body" => Serialization.tx(tx, :serialize)}
+          %{"body" => SignedTx.serialize(tx)}
         )
       end
     else
@@ -44,14 +45,14 @@ defmodule Aehttpserver.Web.Notify do
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.receiver),
-            %{"body" => Serialization.tx(tx, :serialize)}
+            %{"body" => SignedTx.serialize(tx)}
           )
 
         %OracleQueryTx{} ->
           Aehttpserver.Web.Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
-            %{"body" => Serialization.tx(tx, :serialize)}
+            %{"body" => SignedTx.serialize(tx)}
           )
 
         _ ->

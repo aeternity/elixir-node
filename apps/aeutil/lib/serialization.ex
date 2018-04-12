@@ -19,12 +19,16 @@ defmodule Aeutil.Serialization do
 
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
-    serialized_block = serialize_value(block)
-    Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
+    serialized_header = serialize_value(block.header)
+    serialized_txs = Enum.map(block.txs, 
+                              fn tx -> SignedTx.serialize(tx) end)
+
+    Map.put(serialized_header, "transactions", serialized_txs)
   end
 
   def block(block, :deserialize) do
-    txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
+    txs = Enum.map(block["transactions"],
+                   fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
       block
@@ -33,19 +37,6 @@ defmodule Aeutil.Serialization do
       |> Header.new()
 
     Block.new(header: built_header, txs: txs)
-  end
-
-  @spec tx(map(), :serialize | :deserialize) :: SignedTx.t()
-  def tx(tx, :serialize) do
-    serialize_value(tx)
-  end
-
-  def tx(tx, :deserialize) do
-    tx_data = tx["data"]
-
-    data = DataTx.deserialize(tx_data)
-    signatures = Enum.map(tx["signatures"], fn sig -> deserialize_value(sig, :signature) end)
-    %SignedTx{data: data, signatures: signatures}
   end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
@@ -144,6 +135,9 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_encode_root(value)
 
+      :sender ->
+        Account.base58c_encode(value)
+
       :senders ->
         Account.base58c_encode(value)
 
@@ -158,6 +152,9 @@ defmodule Aeutil.Serialization do
 
       :signature ->
         base64_binary(value, :serialize)
+
+      :signatures ->
+        base64_binary(value, :deserialize)
 
       :proof ->
         base64_binary(value, :serialize)
@@ -225,6 +222,9 @@ defmodule Aeutil.Serialization do
       :senders ->
         Account.base58c_decode(value)
 
+      :sender ->
+        Account.base58c_decode(value)
+
       :receiver ->
         Account.base58c_decode(value)
 
@@ -235,6 +235,9 @@ defmodule Aeutil.Serialization do
         OracleQueryTx.base58c_decode(value)
 
       :signature ->
+        base64_binary(value, :deserialize)
+
+      :signatures ->
         base64_binary(value, :deserialize)
 
       :proof ->

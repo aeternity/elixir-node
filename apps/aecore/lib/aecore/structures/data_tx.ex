@@ -6,7 +6,6 @@ defmodule Aecore.Structures.DataTx do
   alias Aecore.Structures.DataTx
   alias Aecore.Chain.ChainState
   alias Aeutil.Serialization
-  alias Aeutil.Parser
   alias Aecore.Structures.Account
   alias Aeutil.MapUtil
 
@@ -134,18 +133,33 @@ defmodule Aecore.Structures.DataTx do
 
   @spec serialize(DataTx.t()) :: map()
   def serialize(%DataTx{} = tx) do
-    tx
-    |> Map.from_struct()
-    |> Enum.reduce(%{}, fn {key, value}, new_tx ->
-      Map.put(new_tx, Parser.to_string!(key), Serialization.serialize_value(value))
-    end)
+    map_without_senders = %{
+      "type" => Serialization.serialize_value(tx.type),
+      "payload" => Serialization.serialize_value(tx.payload),
+      "fee" => Serialization.serialize_value(tx.fee),
+      "nonce" => Serialization.serialize_value(tx.nonce)
+    }
+    if length(tx.senders) == 1 do
+      Map.put(map_without_senders,
+              "sender",
+              Serialization.serialize_value(sender(tx), :sender))
+    else
+      Map.put(map_without_senders,
+              "senders",
+              Serialization.serialize_value(tx.senders, :sender))
+    end
   end
 
-  @spec deserialize(payload()) :: DataTx.t()
-  def deserialize(%{} = tx) do
-    data_tx = Serialization.deserialize_value(tx)
+  @spec deserialize(map()) :: DataTx.t()
+  def deserialize(%{} = data_tx) do
+    senders =
+      if data_tx.sender != nil do
+        [data_tx.sender]
+      else
+        data_tx.senders
+      end
 
-    init(data_tx.type, data_tx.payload, data_tx.senders, data_tx.fee, data_tx.nonce)
+    init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
  
   @spec standard_deduct_fee(ChainState.accounts(), DataTx.t(), non_neg_integer()) :: ChainState.account()
