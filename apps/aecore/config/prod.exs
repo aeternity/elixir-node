@@ -40,7 +40,7 @@ config :aecore, :persistence,
 
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
-  params: {"./lean", "-t 5", 28},
+  params: {"./mean28s-generic", "-t 5", 28},
   max_target_change: 1,
   genesis_header: %{
     height: 0,
