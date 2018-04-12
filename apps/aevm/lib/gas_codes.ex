@@ -115,7 +115,7 @@ defmodule GasCodes do
 
   # Partial payment for *COPY operations, multiplied by words copied,
   # rounded up.
-  defmacro _GGCOPY do quote do: 3 end
+  defmacro _GCOPY do quote do: 3 end
 
   # Payment for BLOCKHASH operation.
   defmacro _GBLOCKHASH do quote do: 20 end

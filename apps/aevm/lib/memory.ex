@@ -23,7 +23,6 @@ defmodule Memory do
     <<prev_bits::size(remaining_bits), next_bits::binary>> = <<value::256>>
 
     prev_saved_value = Map.get(memory, memory_index, 0)
-    next_saved_value = Map.get(memory, memory_index + 32, 0)
 
     new_prev_value =
       write_part(
@@ -33,10 +32,16 @@ defmodule Memory do
         <<prev_saved_value::256>>
       )
 
-    new_next_value = write_part(0, next_bits, bit_position, <<next_saved_value::256>>)
-
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_prev_value))
-    memory2 = Map.put(memory1, memory_index + 32, binary_word_to_integer(new_next_value))
+
+    memory2 =
+      if rem(memory_index, 32) != 0 do
+        next_saved_value = Map.get(memory, memory_index + 32, 0)
+        new_next_value = write_part(0, next_bits, bit_position, <<next_saved_value::256>>)
+        Map.put(memory1, memory_index + 32, binary_word_to_integer(new_next_value))
+      else
+        memory1
+      end
 
     State.set_memory(memory2, state)
   end
@@ -59,6 +64,7 @@ defmodule Memory do
   end
 
   def memory_size_bytes(state) do
+    #TODO: fix word count when (nothing when not initialised, 1 even if there are zeroes written)
     memory = State.memory(state)
     largest_index = memory |> Map.keys() |> Enum.sort() |> Enum.at(-1, 0)
     largest_index + 32

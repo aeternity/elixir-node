@@ -17,13 +17,12 @@ defmodule Aevm do
       state
     else
       op_code = get_op_code(state)
+      curr_gas = State.gas(state)
+
+      gas = op_cost(op_code, state)
       state1 = exec(op_code, state)
 
-      curr_gas = State.gas(state1)
-      {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
-      memory_gas_cost = memory_cost(state1, state)
-      gas_after = curr_gas - (op_gas_price + memory_gas_cost)
-
+      gas_after = curr_gas - (gas + memory_cost(state1, state))
       state2 = State.set_gas(gas_after, state1)
       state3 = State.inc_cp(state2)
 
@@ -347,7 +346,6 @@ defmodule Aevm do
   def exec(OpCodes._CALLDATALOAD(), state) do
     {op1, state1} = pop(state)
     value = value_from_data(op1, state1)
-    IO.inspect(value)
     push(value, state1)
   end
 
@@ -1010,17 +1008,47 @@ defmodule Aevm do
   # Util functions
   #
 
-  def memory_cost(state_with_ops, state_without) do
+  defp memory_cost(state_with_ops, state_without) do
     words1 = Memory.memory_size_words(state_with_ops)
-
+    
     case Memory.memory_size_words(state_without) do
       ^words1 ->
         0
 
       words2 ->
-        first = round(GasCodes._GMEMORY() * words1 + Float.floor(words1 * words1 / 512))
-        second = round(GasCodes._GMEMORY() * words2 + Float.floor(words2 * words2 / 512))
-        first - second
+        GasCodes._GMEMORY() * words1 + round(Float.floor(words1 * words1 / 512))
+    end
+  end
+
+
+  defp op_cost(op, state) do
+    {op_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op)
+    all = op_gas_price + dynamic_cost(op_name, state)
+  end
+
+  defp dynamic_cost(op_name, state) do
+    case op_name do
+      # TODO
+      "CALL" ->
+        0
+
+      # TODO
+      "DELEGATECALL" ->
+        0
+
+      # TODO
+      "CALLCODE" ->
+        0
+
+      # test peek(1or2?)
+      "CALLDATACOPY" ->
+        a = GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      "CODECOPY" ->
+        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      _ ->
+        0
     end
   end
 
@@ -1078,6 +1106,10 @@ defmodule Aevm do
     Stack.swap(index, state)
   end
 
+  defp peek(index, state) do
+    Stack.peek(index, state)
+  end
+
   defp get_op_code(state) do
     cp = State.cp(state)
     code = State.code(state)
@@ -1101,14 +1133,20 @@ defmodule Aevm do
     {value, state1}
   end
 
-  defp copy_bytes(from_byte, count, data) do
+  def copy_bytes(from_byte, count, data) do
+    #TODO not working when used by instructions
     from_bit = from_byte * 8
     bit_count = count * 8
     data_size_bits = byte_size(data) * 8
+    #not sure about this
+    if (from_byte + count >= data_size_bits/8) && (from_byte > data_size_bits/8) do
+      <<0::size(data_size_bits)>>
+    else
     fill_bits = data_size_bits - from_bit + bit_count
     <<_::size(from_bit), a::size(bit_count), _::binary>> = <<data::binary, 0::size(fill_bits)>>
 
     <<a::size(bit_count)>>
+    end
   end
 
   defp value_from_data(address, state) do
