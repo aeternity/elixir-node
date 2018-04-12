@@ -94,6 +94,17 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  def get_header_by_base58_hash(hash) do
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+      get_header(decoded_hash)
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
+  end
+
   @spec lowest_valid_nonce() :: non_neg_integer()
   def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
@@ -101,33 +112,63 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
-    decoded_hash = Header.base58c_decode(hash)
-    get_block(decoded_hash)
+    try do
+      decoded_hash = Header.base58c_decode(hash)
+      get_block(decoded_hash)
+    rescue
+      _ ->
+        {:error, :invalid_hash}
+    end
   end
 
-  @spec get_block(binary()) :: Block.t() | {:error, binary()}
-  def get_block(block_hash) do
+  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  def get_header(header_hash) do
+    case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
+      {:error, _reason} ->
+        {:error, :header_not_found}
+
+      %{block: nil} ->
+        case Persistence.get_block_by_hash(header_hash) do
+          {:ok, block} -> {:ok, block.header}
+          _ -> {:error, :header_not_found}
+        end
+
+      block_info ->
+        {:ok, block_info.block.header}
+    end
+  end
+
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  def get_header_by_height(height) do
+    case get_block_info_by_height(height, nil) do
+      {:error, :chain_too_short} -> {:error, :chain_too_short}
+      info -> {:ok, info.block.header}
+    end
+  end
+
+  @spec get_block(binary()) :: Block.t() | {:error, String.t()}
+  def get_block(header_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
     block =
-      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
+      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
         {:error, _} ->
           nil
 
         %{block: nil} ->
-          case Persistence.get_block_by_hash(block_hash) do
-            {:ok, block} -> block
+          case Persistence.get_block_by_hash(header_hash) do
+            {:ok, block} -> {:ok, block}
             _ -> nil
           end
 
         block_info ->
-          block_info.block
+          {:ok, block_info.block}
       end
 
     if block != nil do
       block
     else
-      {:error, "Block not found"}
+      {:error, :block_not_found}
     end
   end
 
@@ -135,7 +176,7 @@ defmodule Aecore.Chain.Worker do
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
-      info -> info.block
+      info -> {:ok, info.block}
     end
   end
 
@@ -169,7 +210,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    prev_block = get_block(block.header.prev_hash)
+    {:ok, prev_block} = get_block(block.header.prev_hash)
     prev_block_chain_state = chain_state(block.header.prev_hash)
 
     blocks_for_difficulty_calculation =
@@ -515,10 +556,7 @@ defmodule Aecore.Chain.Worker do
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
       case get_block(next_block_hash) do
-        {:error, _} ->
-          blocks_acc
-
-        block ->
+        {:ok, block} ->
           updated_blocks_acc = [block | blocks_acc]
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
@@ -529,6 +567,9 @@ defmodule Aecore.Chain.Worker do
             final_block_hash,
             next_count
           )
+
+        {:error, _} ->
+          blocks_acc
       end
     else
       blocks_acc
@@ -551,7 +592,7 @@ defmodule Aecore.Chain.Worker do
     n = blocks_data_map[begin_hash].block.header.height - height
 
     if n < 0 do
-      {:error, "Height higher then chain_hash height"}
+      {:error, :chain_too_short}
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 
