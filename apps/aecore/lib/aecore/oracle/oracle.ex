@@ -241,18 +241,19 @@ defmodule Aecore.Oracle.Oracle do
         chain_state,
         block_height
       ) do
-    inter_objects = chain_state.oracles.interaction_objects
+    interaction_objects = chain_state.oracles.interaction_objects
 
-    Enum.reduce(inter_objects, chain_state, fn {query_id,
-                                                %{
-                                                  query: query,
-                                                  query_sender: query_sender,
-                                                  response: response,
-                                                  query_height_included: query_height_included,
-                                                  response_height_included:
-                                                    response_height_included
-                                                }},
-                                               acc ->
+    Enum.reduce(interaction_objects, chain_state, fn {query_id,
+                                                      %{
+                                                        query: query,
+                                                        query_sender: query_sender,
+                                                        response: response,
+                                                        query_height_included:
+                                                          query_height_included,
+                                                        response_height_included:
+                                                          response_height_included
+                                                      }},
+                                                     acc ->
       query_absolute_ttl =
         calculate_absolute_ttl(
           query.query_ttl,
