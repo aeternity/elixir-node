@@ -5,8 +5,8 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
   alias Aeutil.HTTPUtil
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Peers.Sync
   alias Aeutil.Serialization
 

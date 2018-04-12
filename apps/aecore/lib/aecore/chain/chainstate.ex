@@ -1,14 +1,14 @@
-defmodule Aecore.Structures.Chainstate do
+defmodule Aecore.Chain.Chainstate do
   @moduledoc """
   Module used for calculating the block and chain states.
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
 

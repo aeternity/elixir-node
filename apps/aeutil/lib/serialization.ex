@@ -3,16 +3,16 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Account.Account
+  alias Aecore.Account.Tx.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 

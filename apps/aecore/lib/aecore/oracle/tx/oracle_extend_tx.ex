@@ -1,14 +1,14 @@
-defmodule Aecore.Structures.OracleExtendTx do
+defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @moduledoc """
   Contains the transaction structure for oracle extensions
   and functions associated with those transactions.
   """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
