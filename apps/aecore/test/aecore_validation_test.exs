@@ -18,8 +18,10 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup_all do
+    Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -61,12 +63,12 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
+    incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
 
-    assert {:error, "Incorrect height"} ==
+    assert {:error, "Header hash doesnt meet the target"} ==
              catch_throw(
                BlockValidation.calculate_and_validate_block!(
-                 wrong_height_block,
+                 incorrect_pow_block,
                  prev_block,
                  get_chain_state(),
                  blocks_for_difficulty_calculation
@@ -96,7 +98,15 @@ defmodule AecoreValidationTest do
         blocks_for_difficulty_calculation
       )
 
-    wrong_time_block = %Block{new_block | header: %Header{new_block.header | time: 10}}
+    wrong_time_block = %Block{
+      new_block
+      | header: %Header{
+          new_block.header
+          | time:
+              System.system_time(:milliseconds) + System.system_time(:milliseconds) +
+                30 * 60 * 1000
+        }
+    }
 
     assert {:error, "Invalid header time"} ==
              catch_throw(
@@ -114,8 +124,8 @@ defmodule AecoreValidationTest do
     sender = Wallet.get_public_key()
     amount = 5
     fee = 1
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
 
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     payload1 = %{receiver: ctx.receiver, amount: amount}
     tx1 = DataTx.init(SpendTx, payload1, sender, fee, nonce + 1)
 
@@ -136,7 +146,7 @@ defmodule AecoreValidationTest do
   def get_new_block(receiver) do
     sender = Wallet.get_public_key()
     amount = 100
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     fee = 10
 
     payload = %{receiver: receiver, amount: amount}

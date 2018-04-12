@@ -1,13 +1,20 @@
 defmodule Aecore.Structures.OracleRegistrationTx do
+  @moduledoc """
+  Contains the transaction structure for oracle registration
+  and functions associated with those transactions.
+  """
+
   alias __MODULE__
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.ChainState
+  alias ExJsonSchema.Schema, as: JsonSchema
+  alias Aecore.Structures.Chainstate
+  alias Aecore.Structures.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -31,7 +38,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
   ]
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   use ExConstructor
 
@@ -58,8 +65,8 @@ defmodule Aecore.Structures.OracleRegistrationTx do
       }) do
     formats_valid =
       try do
-        ExJsonSchema.Schema.resolve(query_format)
-        ExJsonSchema.Schema.resolve(response_format)
+        JsonSchema.resolve(query_format)
+        JsonSchema.resolve(response_format)
         true
       rescue
         e ->
@@ -77,9 +84,9 @@ defmodule Aecore.Structures.OracleRegistrationTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          Chainstate.account(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {Chainstate.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleRegistrationTx{} = tx,
         sender,
@@ -92,18 +99,19 @@ defmodule Aecore.Structures.OracleRegistrationTx do
     preprocess_check!(
       tx,
       sender,
-      Map.get(accounts, sender, Account.empty()),
+      Account.get_account_state(accounts, sender),
       fee,
       block_height,
       registered_oracles
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      accounts
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
     updated_registered_oracles =
       Map.put_new(registered_oracles, sender, %{
@@ -122,7 +130,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
   @spec preprocess_check!(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          Chainstate.account(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
@@ -146,7 +154,7 @@ defmodule Aecore.Structures.OracleRegistrationTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

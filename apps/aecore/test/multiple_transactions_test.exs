@@ -14,8 +14,11 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Structures.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Structures.Account
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
@@ -52,7 +55,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state().accounts, account_pub_key, %{nonce: 0}).nonce + 1
+    nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
 
     signed_tx1 = create_signed_tx(account, account2, 100, nonce1, 10)
 
@@ -60,29 +63,29 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
     Pool.get_and_empty_pool()
+    nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
-    nonce2 = Map.get(Chain.chain_state().accounts, account2_pub_key, %{nonce: 0}).nonce + 1
     signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)
 
     assert :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
-    assert 0 == Chain.chain_state().accounts[account2_pub_key].balance
-    assert 90 == Chain.chain_state().accounts[account3_pub_key].balance
+
+    assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
+    assert 90 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
 
     # account2 => 0; account3 => 90
 
     # account3 has 90 tokens, spends 90 (+10 fee) to account2 should be invalid
-
-    nonce3 = Map.get(Chain.chain_state().accounts, account3_pub_key, %{nonce: 0}).nonce + 1
+    nonce3 = Account.nonce(TestUtils.get_accounts_chainstate(), account3_pub_key) + 1
     signed_tx3 = create_signed_tx(account3, account2, 90, nonce3, 10)
     assert :ok = Pool.add_transaction(signed_tx3)
     :ok = Miner.mine_sync_block_to_chain()
 
     # The state of the accounts should be the as same before the invalid tx
-    assert 0 == Chain.chain_state().accounts[account2_pub_key].balance
-    assert 90 == Chain.chain_state().accounts[account3_pub_key].balance
+    assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
+    assert 90 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
 
     Pool.get_and_empty_pool()
     signed_tx4 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
@@ -91,7 +94,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
-    assert 100 == Chain.chain_state().accounts[account2_pub_key].balance
+    assert 100 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
 
     # acccount2 => 100; account3 => 90
 
@@ -110,9 +113,10 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
-    assert 0 == Chain.chain_state().accounts[account2_pub_key].balance
-    assert 120 == Chain.chain_state().accounts[account3_pub_key].balance
-    assert 40 == Chain.chain_state().accounts[account4_pub_key].balance
+
+    assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
+    assert 120 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
+    assert 40 == Account.balance(TestUtils.get_accounts_chainstate(), account4_pub_key)
 
     # account2 => 0; account3 => 120; account4 => 40
   end
@@ -126,6 +130,7 @@ defmodule MultipleTransactionsTest do
     account2 = setup.account2
     account3 = setup.account3
     account4 = setup.account4
+
     {account_pub_key, _account_priv_key} = account
     {account2_pub_key, _account2_priv_key} = account2
 
@@ -135,8 +140,8 @@ defmodule MultipleTransactionsTest do
 
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state().accounts, account_pub_key, %{nonce: 0}).nonce
-    nonce2 = Map.get(Chain.chain_state().accounts, account2_pub_key, %{nonce: 0}).nonce
+    nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
+    nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
     signed_tx1 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
     assert :ok = Pool.add_transaction(signed_tx1)
@@ -154,11 +159,15 @@ defmodule MultipleTransactionsTest do
     signed_tx4 = create_signed_tx(account2, account4, 50, nonce2 + 2, 10)
     assert :ok = Pool.add_transaction(signed_tx4)
 
-    miner_balance_before_mining = Chain.chain_state().accounts[account_pub_key].balance
+    miner_balance_before_mining =
+      Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
+
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
-    miner_balance_after_mining = Chain.chain_state().accounts[account_pub_key].balance
+
+    miner_balance_after_mining =
+      Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
 
     assert miner_balance_after_mining ==
              miner_balance_before_mining + Miner.coinbase_transaction_amount() + 20

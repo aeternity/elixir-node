@@ -113,11 +113,12 @@ defmodule Aecore.Txs.Pool.Worker do
       tree = BlockValidation.build_merkle_tree(block.txs)
 
       key =
-        DataTx.init(tx.type, tx.payload, tx.sender, tx.fee, tx.nonce)
+        tx.type
+        |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      key = Hash.hash(key)
-      merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
+      hashed_key = Hash.hash(key)
+      merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
   end

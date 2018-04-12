@@ -78,7 +78,7 @@ defmodule Aecore.Peers.Worker do
   Gets a random peer nonce
   """
   @spec get_peer_nonce() :: non_neg_integer()
-  def get_peer_nonce() do
+  def get_peer_nonce do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
       _ -> :table_created

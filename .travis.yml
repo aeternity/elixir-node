@@ -17,7 +17,7 @@ before_install:
 
 script:
   - mix compile --warnings-as-errors
-  - mix credo list --ignore readability,design,refactor
+  - mix credo list
   - mix format --check-formatted
   - mix coveralls -u
 

@@ -28,8 +28,8 @@ sudo apt-get install autoconf autogen
 sudo apt-get install libtool
 sudo apt-get install libgmp3-dev
 wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
- mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1
-  cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && sudo make install && cd ..
+mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1
+cd libsodium-src && ./configure && make && make check && sudo make install && cd ..
 ```
 
 ## Usage
@@ -180,7 +180,7 @@ The DataTx strucure hold:
 
 - To post new block to the chain:
 
-  `POST localhost:4000/new_block`
+  `POST localhost:4000/block`
 
   Body: **serialized_block**
 

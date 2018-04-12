@@ -108,7 +108,7 @@ defmodule AecoreCuckooTest do
         nonce: 37,
         pow_evidence: nil,
         prev_hash: prev_hash,
-        time: 1523540274221,
+        time: 1_523_540_274_221,
         txs_hash: txs_hash,
         version: 1
       },

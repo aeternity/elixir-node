@@ -1,4 +1,8 @@
 defmodule Aeutil.Hash do
+  @moduledoc """
+  Module for hashing functions
+  """
+
   @hash_bytes_size 32
 
   @spec hash_blake2b(binary()) :: binary()
