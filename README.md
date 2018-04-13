@@ -291,11 +291,12 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 All transactions have to be mined in order to take effect.
 
-### Docker
+#### **Naming usage**
 
-A `Dockerfile` and `docker-compose.yml` are found in the base directory
+Names will follow IDNA2008 normalization and have a maximum length of 253 characters, while each label is allowed to be 63 characters maximum. Names must end with `.aet` or `.test`.
 
- - Build container `docker build . -t elixir-research`
- - Run node in container `docker run --name elixir-research -it -p 4000:4000 elixir-research`
-
- - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
+ * `NamePreClaim` a name, to register your interest in claiming it, while not announcing what name, a private binary salt is chosen. `Account.pre_claim(name, salt, fee)`
+ * `NameClaim` is possible after one block to publicly claim the name by setting the owner `Account.claim(name, salt, fee)`. Claims expire after 50000 blocks, if not renewed using update.
+ * `NameUpdate` updates associated pointers to one registered name, while updating the expiry. `Account.name_update(name, pointers, fee)`
+ * `NameTransfer` transfers one account claim to a different owner. `Account.name_transfer(name, target, fee)`
+ * `NameRevoke` revokes one name claim, will result in deletion after 2016 blocks. `Account.name_revoke(name, fee)`
