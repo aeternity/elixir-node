@@ -61,7 +61,7 @@ defmodule GetTxsForAddressTest do
         |> SpendTx.new()
 
       key = SignedTx.hash_tx(transaction)
-      transaction_bin = Serialization.pack_binary(transaction)
+      transaction_bin = Serialization.rlp_encode(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
 
       assert {:ok, :verified} =

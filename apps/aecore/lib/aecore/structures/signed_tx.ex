@@ -34,7 +34,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec is_valid?(SignedTx.t()) :: boolean()
   def is_valid?(%SignedTx{data: data} = tx) do
-    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
+    if Signing.verify(Serialization.rlp_encode(data), tx.signature, data.sender) do
       DataTx.is_valid?(data)
     else
       Logger.error("Can't verify the signature with the following public key: #{data.sender}")
@@ -54,7 +54,7 @@ defmodule Aecore.Structures.SignedTx do
   """
   @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
   def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
-    signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
+    signature = Signing.sign(Serialization.rlp_encode(tx), priv_key)
     {:ok, %SignedTx{data: tx, signature: signature}}
   end
 
@@ -68,7 +68,7 @@ defmodule Aecore.Structures.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    :crypto.hash(:sha256, Serialization.pack_binary(data))
+    :crypto.hash(:sha256, Serialization.rlp_encode(data))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()

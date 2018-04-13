@@ -56,7 +56,7 @@ defmodule AecoreTxTest do
 
     assert SignedTx.is_valid?(signed_tx)
     signature = signed_tx.signature
-    message = Serialization.pack_binary(signed_tx.data)
+    message = Serialization.rlp_encode(signed_tx.data)
     assert true = Signing.verify(message, signature, sender)
   end
 

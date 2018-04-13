@@ -537,7 +537,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.pack_binary(filtered_tx)
+          tx_bin = Serialization.rlp_encode(filtered_tx)
           hash = :crypto.hash(:sha256, tx_bin)
           {block_hash, hash}
         end)

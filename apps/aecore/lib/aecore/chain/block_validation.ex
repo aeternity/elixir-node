@@ -144,7 +144,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = Serialization.pack_binary(transaction.data)
+          transaction_data_bin = Serialization.rlp_encode(transaction.data)
           {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
         end
 
