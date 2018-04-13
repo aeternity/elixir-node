@@ -9,16 +9,16 @@ defmodule AecoreValidationTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Difficulty
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
 
   setup_all do
     Code.require_file("test_utils.ex", "./test")
@@ -154,7 +154,7 @@ defmodule AecoreValidationTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
+    Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Miner.candidate())
     new_block
   end

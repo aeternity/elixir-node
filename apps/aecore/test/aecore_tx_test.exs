@@ -1,6 +1,6 @@
 defmodule AecoreTxTest do
   @moduledoc """
-  Unit tests for the Aecore.Txs.Tx module
+  Unit tests for the Aecore.Tx.Tx module
   """
 
   use ExUnit.Case
@@ -8,15 +8,15 @@ defmodule AecoreTxTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.Account
 
   setup do
     Code.require_file("test_utils.ex", "./test")

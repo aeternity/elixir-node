@@ -9,15 +9,15 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Difficulty
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Chain.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet
 

@@ -1,16 +1,16 @@
-defmodule Aecore.Structures.OracleRegistrationTx do
+defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @moduledoc """
   Contains the transaction structure for oracle registration
   and functions associated with those transactions.
   """
 
   alias __MODULE__
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 

@@ -1,12 +1,12 @@
-defmodule Aecore.Structures.Transaction do
+defmodule Aecore.Tx.Transaction do
   @moduledoc """
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required

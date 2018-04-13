@@ -6,16 +6,16 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
@@ -24,9 +24,9 @@ defmodule Aecore.Chain.Worker do
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 

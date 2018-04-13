@@ -5,11 +5,11 @@ defmodule Aecore.Chain.BlockValidation do
 
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
   alias Aeutil.Hash
