@@ -23,6 +23,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aeutil.Hash
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -535,7 +536,7 @@ defmodule Aecore.Chain.Worker do
         end)
         |> Enum.map(fn filtered_tx ->
           tx_bin = Serialization.pack_binary(filtered_tx)
-          hash = :crypto.hash(:sha256, tx_bin)
+          hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)
 

@@ -9,6 +9,7 @@ defmodule Aecore.Tx.SignedTx do
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
+  alias Aeutil.Hash
 
   require Logger
 
@@ -68,7 +69,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    :crypto.hash(:sha256, Serialization.pack_binary(data))
+    Hash.hash(Serialization.pack_binary(data))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()
