@@ -1,4 +1,4 @@
-defmodule Aecore.Txs.Pool.Worker.Supervisor do
+defmodule Aecore.Tx.Pool.Worker.Supervisor do
   @moduledoc """
   Supervisor responsible for all of the worker modules in his folder
   """
@@ -11,7 +11,7 @@ defmodule Aecore.Txs.Pool.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      Aecore.Txs.Pool.Worker
+      Aecore.Tx.Pool.Worker
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

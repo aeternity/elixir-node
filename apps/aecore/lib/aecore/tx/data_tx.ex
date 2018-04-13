@@ -1,14 +1,14 @@
-defmodule Aecore.Structures.DataTx do
+defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
 
   require Logger
 

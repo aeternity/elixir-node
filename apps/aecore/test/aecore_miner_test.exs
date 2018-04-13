@@ -2,7 +2,7 @@ defmodule MinerTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
 

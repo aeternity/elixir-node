@@ -1,10 +1,11 @@
-defmodule Aecore.Structures.SignedTx do
+defmodule Aecore.Tx.SignedTx do
   @moduledoc """
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits

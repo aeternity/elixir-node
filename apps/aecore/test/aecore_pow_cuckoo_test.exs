@@ -9,11 +9,11 @@ defmodule AecoreCuckooTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
 
   setup do
     on_exit(fn ->
