@@ -3,8 +3,8 @@ defmodule HashcashTest do
   doctest Aecore.Pow.Hashcash
 
   # alias Aecore.Pow.Hashcash
-  # alias Aecore.Structures.Header
-  # alias Aecore.Structures.Block
+  # alias Aecore.Chain.Header
+  # alias Aecore.Chain.Block
 
   # @tag timeout: 10000000
   # test "successfull test" do

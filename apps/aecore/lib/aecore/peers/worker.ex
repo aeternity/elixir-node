@@ -8,11 +8,11 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.Sync
   alias Aehttpclient.Client
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
 
   require Logger
 
@@ -78,7 +78,7 @@ defmodule Aecore.Peers.Worker do
   Gets a random peer nonce
   """
   @spec get_peer_nonce() :: non_neg_integer()
-  def get_peer_nonce() do
+  def get_peer_nonce do
     case :ets.info(:nonce_table) do
       :undefined -> create_nonce_table()
       _ -> :table_created

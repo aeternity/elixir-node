@@ -1,14 +1,20 @@
-defmodule Aecore.Structures.OracleQueryTx do
-  @behaviour Aecore.Structures.Transaction
+defmodule Aecore.Oracle.Tx.OracleQueryTx do
+  @moduledoc """
+  Contains the transaction structure for oracle queries
+  and functions associated with those transactions.
+  """
+
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
-  alias Aecore.Structures.AccountStateTree
+  alias Aeutil.Hash
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -45,7 +51,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
@@ -104,7 +110,8 @@ defmodule Aecore.Structures.OracleQueryTx do
     )
 
     new_sender_account_state =
-      Account.get_account_state(accounts, sender)
+      accounts
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee + tx.query_fee)
       |> Map.put(:nonce, nonce)
 
@@ -205,7 +212,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
-    :crypto.hash(:sha256, bin)
+    Hash.hash(bin)
   end
 
   def base58c_encode(bin) do
