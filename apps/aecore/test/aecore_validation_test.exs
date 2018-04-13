@@ -64,7 +64,7 @@ defmodule AecoreValidationTest do
 
     incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
 
-    assert {:error, "#{BlockValidation}: Incorrect height"} ==
+    assert {:error, "#{BlockValidation}: Header hash doesnt meet the target"} ==
              BlockValidation.calculate_and_validate_block(
                incorrect_pow_block,
                prev_block,

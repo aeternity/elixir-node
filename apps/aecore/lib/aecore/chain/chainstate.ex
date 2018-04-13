@@ -102,13 +102,14 @@ defmodule Aecore.Chain.Chainstate do
     List.foldl(txs_list, [], fn tx, valid_txs_list ->
       case apply_transaction_on_state(tx, chainstate, block_height) do
         {:ok, _updated_chainstate} ->
-          valid_txs_list ++ [tx]
+          [tx | valid_txs_list]
 
         {:error, reason} ->
           Logger.error(reason)
           valid_txs_list
       end
     end)
+    |> Enum.reverse()
   end
 
   @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()

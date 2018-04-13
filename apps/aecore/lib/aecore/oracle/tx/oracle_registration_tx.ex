@@ -4,7 +4,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   and functions associated with those transactions.
   """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Account.Account

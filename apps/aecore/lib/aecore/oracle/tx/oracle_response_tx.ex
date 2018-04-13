@@ -4,7 +4,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   and functions associated with those transactions.
   """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Oracle.Oracle

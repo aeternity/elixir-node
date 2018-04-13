@@ -121,10 +121,10 @@ defmodule Aecore.Chain.BlockValidation do
         {:error, "#{__MODULE__}: Too many transactions"}
 
       !valid_header_time?(block) ->
-        throw({:error, "Invalid header time"})
+        {:error, "#{__MODULE__}: Invalid header time"}
 
       !is_target_met ->
-        throw({:error, "Header hash doesnt meet the target"})
+        {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
         :ok

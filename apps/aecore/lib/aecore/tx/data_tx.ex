@@ -4,11 +4,11 @@ defmodule Aecore.Tx.DataTx do
   """
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 

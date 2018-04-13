@@ -9,10 +9,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -161,31 +158,6 @@ defmodule Aecore.Chain.Worker do
 
       block_info ->
         {:ok, block_info.block}
-
-        # TODO: Remove this
-  # @spec get_block(binary()) :: Block.t() | {:error, String.t()}
-  # def get_block(header_hash) do
-  #   ## At first we are making attempt to get the block from the chain state.
-  #   ## If there is no such block then we check into the db.
-  #   block =
-  #     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
-  #       {:error, _} ->
-  #         nil
-
-  #       %{block: nil} ->
-  #         case Persistence.get_block_by_hash(header_hash) do
-  #           {:ok, block} -> {:ok, block}
-  #           _ -> nil
-  #         end
-
-  #       block_info ->
-  #         {:ok, block_info.block}
-  #     end
-
-  #   if block != nil do
-  #     block
-  #   else
-  #     {:error, :block_not_found}
     end
   end
 
@@ -246,7 +218,7 @@ defmodule Aecore.Chain.Worker do
       add_validated_block(block, new_chain_state)
     else
       err -> err
-    en
+    end
   end
 
   @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
