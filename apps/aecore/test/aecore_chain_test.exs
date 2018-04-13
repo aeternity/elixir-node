@@ -6,9 +6,9 @@ defmodule AecoreChainTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
@@ -94,7 +94,7 @@ defmodule AecoreChainTest do
     Enum.each(0..9, fn _i -> Miner.mine_sync_block_to_chain() end)
 
     Enum.each(1..10, fn i ->
-      assert Chain.get_block_by_height(i).header.height == i
+      assert elem(Chain.get_block_by_height(i), 1).header.height == i
     end)
   end
 end

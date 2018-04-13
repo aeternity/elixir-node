@@ -6,12 +6,16 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
@@ -19,9 +23,9 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -86,12 +90,21 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec top_height() :: non_neg_integer()
-  def top_height() do
+  def top_height do
     GenServer.call(__MODULE__, :top_height)
   end
 
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  def get_header_by_base58_hash(hash) do
+    decoded_hash = Header.base58c_decode(hash)
+    get_header(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
+  end
+
   @spec lowest_valid_nonce() :: non_neg_integer()
-  def lowest_valid_nonce() do
+  def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
@@ -99,6 +112,34 @@ defmodule Aecore.Chain.Worker do
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
+  end
+
+  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  def get_header(header_hash) do
+    case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
+      {:error, _reason} ->
+        {:error, :header_not_found}
+
+      %{block: nil} ->
+        case Persistence.get_block_by_hash(header_hash) do
+          {:ok, block} -> {:ok, block.header}
+          _ -> {:error, :header_not_found}
+        end
+
+      block_info ->
+        {:ok, block_info.block.header}
+    end
+  end
+
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  def get_header_by_height(height) do
+    case get_block_info_by_height(height, nil) do
+      {:error, :chain_too_short} -> {:error, :chain_too_short}
+      info -> {:ok, info.block.header}
+    end
   end
 
   @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
@@ -120,6 +161,31 @@ defmodule Aecore.Chain.Worker do
 
       block_info ->
         {:ok, block_info.block}
+
+        # TODO: Remove this
+  # @spec get_block(binary()) :: Block.t() | {:error, String.t()}
+  # def get_block(header_hash) do
+  #   ## At first we are making attempt to get the block from the chain state.
+  #   ## If there is no such block then we check into the db.
+  #   block =
+  #     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
+  #       {:error, _} ->
+  #         nil
+
+  #       %{block: nil} ->
+  #         case Persistence.get_block_by_hash(header_hash) do
+  #           {:ok, block} -> {:ok, block}
+  #           _ -> nil
+  #         end
+
+  #       block_info ->
+  #         {:ok, block_info.block}
+  #     end
+
+  #   if block != nil do
+  #     block
+  #   else
+  #     {:error, :block_not_found}
     end
   end
 
@@ -127,7 +193,7 @@ defmodule Aecore.Chain.Worker do
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
-      info -> info.block
+      info -> {:ok, info.block}
     end
   end
 
@@ -180,7 +246,7 @@ defmodule Aecore.Chain.Worker do
       add_validated_block(block, new_chain_state)
     else
       err -> err
-    end
+    en
   end
 
   @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
@@ -203,20 +269,20 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec registered_oracles() :: Oracle.registered_oracles()
-  def registered_oracles() do
+  def registered_oracles do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
   @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  def oracle_interaction_objects() do
+  def oracle_interaction_objects do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
   @spec chain_state() :: %{
           :accounts => Chainstate.accounts(),
-          :oracles => Chainstate.oracles()
+          :oracles => Oracle.oracles()
         }
-  def chain_state() do
+  def chain_state do
     top_block_chain_state()
   end
 
@@ -539,7 +605,7 @@ defmodule Aecore.Chain.Worker do
     n = blocks_data_map[begin_hash].block.header.height - height
 
     if n < 0 do
-      {:error, "Height higher then chain_hash height"}
+      {:error, :chain_too_short}
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 

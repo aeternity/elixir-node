@@ -103,6 +103,12 @@ config :aecore, :peers,
 
 config :aecore, :miner, resumed_by_default: true
 
+bytes_per_token =
+  case System.get_env("BYTES_PER_TOKEN") do
+    nil -> 100
+    env -> String.to_integer(env)
+  end
+
 config :aecore, :tx_data,
   miner_fee_bytes_per_token: 100,
   pool_fee_bytes_per_token: 100,

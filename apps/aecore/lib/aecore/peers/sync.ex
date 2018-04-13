@@ -8,11 +8,11 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Worker, as: Peers
   alias Aehttpclient.Client, as: HttpClient
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Header
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
 
   require Logger
 

@@ -3,20 +3,39 @@ defmodule Aehttpserver.Web.BlockController do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.HTTPUtil
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Peers.Sync
   alias Aeutil.Serialization
 
-  def show(conn, params) do
-    case Chain.get_block_by_base58_hash(params["hash"]) do
-      {:ok, block} ->
-        serialized_block = Serialization.block(block, :serialize)
-        json(conn, serialized_block)
+  def block_by_height(conn, %{"height" => height}) do
+    parsed_height = height |> Integer.parse() |> elem(0)
 
-      {:error, message} ->
-        json(%{conn | status: 404}, %{error: message})
+    if parsed_height < 0 do
+      HTTPUtil.json_not_found(conn, "Block not found")
+    else
+      case Chain.get_block_by_height(parsed_height) do
+        {:ok, block} ->
+          json(conn, Serialization.serialize_value(block))
+
+        {:error, :chain_too_short} ->
+          HTTPUtil.json_not_found(conn, "Chain too short")
+      end
+    end
+  end
+
+  def block_by_hash(conn, %{"hash" => hash}) do
+    case Chain.get_block_by_base58_hash(hash) do
+      {:ok, block} ->
+        json(conn, Serialization.block(block, :serialize))
+
+      {:error, :block_not_found} ->
+        HTTPUtil.json_not_found(conn, "Block not found")
+
+      {:error, :invalid_hash} ->
+        HTTPUtil.json_bad_request(conn, "Invalid hash")
     end
   end
 
@@ -95,11 +114,18 @@ defmodule Aehttpserver.Web.BlockController do
     json(conn, blocks_json)
   end
 
-  def new_block(conn, _params) do
+  def post_block(conn, _params) do
     block = Serialization.block(conn.body_params, :deserialize)
-    block_hash = BlockValidation.block_header_hash(block.header)
-    Sync.add_block_to_state(block_hash, block)
-    Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-    json(conn, %{ok: "new block received"})
+
+    try do
+      BlockValidation.single_validate_block!(block)
+      block_hash = BlockValidation.block_header_hash(block.header)
+      Sync.add_block_to_state(block_hash, block)
+      Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
+      json(conn, "successful operation")
+    catch
+      {:error, _message} ->
+        HTTPUtil.json_not_found(conn, "Block or header validation error")
+    end
   end
 end

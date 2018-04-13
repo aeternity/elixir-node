@@ -1,4 +1,4 @@
-defmodule Aecore.Txs.Pool.Worker do
+defmodule Aecore.Tx.Pool.Worker do
   @moduledoc """
   Module for working with the transaction pool.
   The pool itself is a map with an empty initial state.
@@ -6,18 +6,18 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
-  alias Aecore.Structures.DataTx
+  alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -112,11 +112,12 @@ defmodule Aecore.Txs.Pool.Worker do
       tree = BlockValidation.build_merkle_tree(block.txs)
 
       key =
-        DataTx.init(tx.type, tx.payload, tx.sender, tx.fee, tx.nonce)
+        tx.type
+        |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      key = :crypto.hash(:sha256, key)
-      merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
+      hashed_key = :crypto.hash(:sha256, key)
+      merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
   end

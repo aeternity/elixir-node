@@ -2,7 +2,7 @@ defmodule Aehttpserver.Web.BalanceController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
 
   def show(conn, params) do
     acc = Account.base58c_decode(params["account"])

@@ -5,12 +5,12 @@ defmodule AecoreChainstateTest do
 
   use ExUnit.Case
 
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
 
   setup do
     on_exit(fn ->

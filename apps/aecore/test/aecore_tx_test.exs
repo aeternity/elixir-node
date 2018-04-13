@@ -1,6 +1,6 @@
 defmodule AecoreTxTest do
   @moduledoc """
-  Unit tests for the Aecore.Txs.Tx module
+  Unit tests for the Aecore.Tx.Tx module
   """
 
   use ExUnit.Case
@@ -8,15 +8,15 @@ defmodule AecoreTxTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.Account
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -166,16 +166,16 @@ defmodule AecoreTxTest do
     # Now acc1 has 80 tokens
     assert Account.balance(Chain.chain_state().accounts, acc1) == 80
 
-    amount = 50
-    fee = 40
+    amount2 = 50
+    fee2 = 40
     # Balance of acc1 is more than amount and fee, send tokens to acc2
 
-    payload = %{receiver: acc2, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, acc1, fee, 1)
-    priv_key = Wallet.get_private_key("m/1")
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    payload2 = %{receiver: acc2, amount: amount2}
+    tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
+    priv_key2 = Wallet.get_private_key("m/1")
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, priv_key2)
 
-    :ok = Pool.add_transaction(signed_tx)
+    :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()
 
     # the balance of acc1 and acc2 is not changed because amount + fee > balance of acc1

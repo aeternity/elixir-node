@@ -5,7 +5,7 @@ defmodule Aecore.Pow.Hashcash do
 
   alias Aeutil.Scientific
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
 
   use Bitwise
 
@@ -13,7 +13,7 @@ defmodule Aecore.Pow.Hashcash do
   Verify a nonce, returns :true | :false
   """
   @spec verify(map()) :: boolean()
-  def verify(%Aecore.Structures.Header{} = block_header) do
+  def verify(%Aecore.Chain.Header{} = block_header) do
     block_header_hash = BlockValidation.block_header_hash(block_header)
     verify(block_header_hash, block_header.target)
   end
