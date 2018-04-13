@@ -72,7 +72,7 @@ defmodule Aecore.Tx.SignedTx do
     {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
-  def get_sign_max_size() do
+  def get_sign_max_size do
     Application.get_env(:aecore, :signed_tx)[:sign_max_size]
   end
 

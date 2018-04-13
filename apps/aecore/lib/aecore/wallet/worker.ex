@@ -43,8 +43,8 @@ defmodule Aecore.Wallet.Worker do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
-  @spec get_pub_key_size() :: non_neg_integer()
-  def get_pub_key_size() do
+  @spec get_pub_key_size :: non_neg_integer()
+  def get_pub_key_size do
     Application.get_env(:aecore, :aewallet)[:pub_key_size]
   end
 

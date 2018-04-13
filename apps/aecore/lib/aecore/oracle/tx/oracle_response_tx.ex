@@ -48,8 +48,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     byte_size(query_id) == get_query_id_size()
   end
 
-  @spec get_query_id_size() :: non_neg_integer()
-  def get_query_id_size() do
+  @spec get_query_id_size :: non_neg_integer()
+  def get_query_id_size do
     Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
