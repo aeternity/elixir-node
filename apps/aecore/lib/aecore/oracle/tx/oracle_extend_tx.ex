@@ -1,9 +1,14 @@
-defmodule Aecore.Structures.OracleExtendTx do
-  @behaviour Aecore.Structures.Transaction
+defmodule Aecore.Oracle.Tx.OracleExtendTx do
+  @moduledoc """
+  Contains the transaction structure for oracle extensions
+  and functions associated with those transactions.
+  """
+
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
@@ -20,7 +25,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
@@ -50,7 +55,7 @@ defmodule Aecore.Structures.OracleExtendTx do
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state
       ) do
-    sender_account_state = Account.get_account_state(accounts, sender)
+    sender_account_state = Account.get_account_state(accounts, sender, Account.empty())
 
     preprocess_check!(
       tx,

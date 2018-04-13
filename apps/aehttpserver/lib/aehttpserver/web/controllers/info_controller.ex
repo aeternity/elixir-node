@@ -1,13 +1,13 @@
 defmodule Aehttpserver.Web.InfoController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Plug.Conn
 
   require Logger
@@ -57,5 +57,9 @@ defmodule Aehttpserver.Web.InfoController do
       public_key: pubkey_hex,
       peer_nonce: own_nonce
     })
+  end
+
+  def public_key(conn, _params) do
+    json(conn, %{pubkey: Account.base58c_encode(Wallet.get_public_key())})
   end
 end

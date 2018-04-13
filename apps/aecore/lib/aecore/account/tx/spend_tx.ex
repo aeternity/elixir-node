@@ -1,16 +1,15 @@
-defmodule Aecore.Structures.SpendTx do
+defmodule Aecore.Account.Tx.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  @behaviour Aecore.Structures.Transaction
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  @behaviour Aecore.Tx.Transaction
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Wallet
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -137,12 +136,10 @@ defmodule Aecore.Structures.SpendTx do
         _block_height,
         %{}
       ) do
-    cond do
-      sender_account_state.balance - (fee + tx.amount) < 0 ->
-        throw({:error, "Negative balance"})
-
-      true ->
-        :ok
+    if sender_account_state.balance - (fee + tx.amount) >= 0 do
+      :ok
+    else
+      throw({:error, "Negative balance"})
     end
   end
 
@@ -152,24 +149,9 @@ defmodule Aecore.Structures.SpendTx do
     Map.put(account_state, :balance, new_balance)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()
-  def is_minimum_fee_met?(tx, identifier) do
-    if identifier == :validation do
-      true
-    else
-      tx_size_bytes = Pool.get_tx_size_bytes(tx)
-
-      bytes_per_token =
-        case identifier do
-          :pool ->
-            Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
-
-          :miner ->
-            Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-        end
-
-      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
-    end
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]

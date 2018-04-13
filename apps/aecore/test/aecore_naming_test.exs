@@ -8,9 +8,9 @@ defmodule AecoreNamingTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
 

@@ -1,16 +1,16 @@
-defmodule Aecore.Structures.Transaction do
+defmodule Aecore.Tx.Transaction do
   @moduledoc """
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.OracleQueryTx

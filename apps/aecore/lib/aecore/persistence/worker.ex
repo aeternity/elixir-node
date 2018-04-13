@@ -8,7 +8,7 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 

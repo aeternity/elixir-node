@@ -1,4 +1,4 @@
-defmodule Aecore.Txs.Pool.Worker do
+defmodule Aecore.Tx.Pool.Worker do
   @moduledoc """
   Module for working with the transaction pool.
   The pool itself is a map with an empty initial state.
@@ -6,18 +6,19 @@ defmodule Aecore.Txs.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
-  alias Aecore.Structures.DataTx
+  alias Aeutil.Hash
+  alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
@@ -117,11 +118,12 @@ defmodule Aecore.Txs.Pool.Worker do
       tree = BlockValidation.build_merkle_tree(block.txs)
 
       key =
-        DataTx.init(tx.type, tx.payload, tx.sender, tx.fee, tx.nonce)
+        tx.type
+        |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      key = :crypto.hash(:sha256, key)
-      merkle_proof = :gb_merkle_trees.merkle_proof(key, tree)
+      hashed_key = Hash.hash(key)
+      merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
   end
@@ -136,7 +138,7 @@ defmodule Aecore.Txs.Pool.Worker do
   def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data.payload do
       %SpendTx{} ->
-        SpendTx.is_minimum_fee_met?(tx, identifier)
+        SpendTx.is_minimum_fee_met?(tx)
 
       %OracleRegistrationTx{} ->
         OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
@@ -156,21 +158,20 @@ defmodule Aecore.Txs.Pool.Worker do
       %OracleExtendTx{} ->
         tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
 
-      # TODO use correct fee for naming transactions
       %NameClaimTx{} ->
-        true
+        NameClaimTx.is_minimum_fee_met?(tx)
 
       %NamePreClaimTx{} ->
-        true
+        NamePreClaimTx.is_minimum_fee_met?(tx)
 
       %NameRevokeTx{} ->
-        true
+        NameRevokeTx.is_minimum_fee_met?(tx)
 
       %NameTransferTx{} ->
-        true
+        NameTransferTx.is_minimum_fee_met?(tx)
 
       %NameUpdateTx{} ->
-        true
+        NameUpdateTx.is_minimum_fee_met?(tx)
     end
   end
 

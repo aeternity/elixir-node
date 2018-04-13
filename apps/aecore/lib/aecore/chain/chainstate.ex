@@ -1,14 +1,14 @@
-defmodule Aecore.Structures.Chainstate do
+defmodule Aecore.Chain.Chainstate do
   @moduledoc """
   Module used for calculating the block and chain states.
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Naming.Naming
@@ -39,7 +39,8 @@ defmodule Aecore.Structures.Chainstate do
   @spec calculate_and_validate_chain_state!(list(), Chainstate.t(), non_neg_integer()) ::
           Chainstate.t()
   def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    Enum.reduce(txs, chainstate, fn tx, chainstate ->
+    txs
+    |> Enum.reduce(chainstate, fn tx, chainstate ->
       apply_transaction_on_state!(tx, chainstate, block_height)
     end)
     |> Oracle.remove_expired_oracles(block_height)
@@ -86,13 +87,13 @@ defmodule Aecore.Structures.Chainstate do
         {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
 
         if valid_chainstate do
-          {valid_txs_list ++ [tx], updated_chainstate}
+          {[tx | valid_txs_list], updated_chainstate}
         else
           {valid_txs_list, chainstate_acc}
         end
       end)
 
-    valid_txs_list
+    Enum.reverse(valid_txs_list)
   end
 
   @spec validate_tx(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::

@@ -3,13 +3,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Aecore structure of naming pre claim data.
   """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
 
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Naming
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -135,5 +135,10 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

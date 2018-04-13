@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.Account do
+defmodule Aecore.Account.Account do
   @moduledoc """
   Aecore structure of a transaction data.
   """
@@ -7,11 +7,11 @@ defmodule Aecore.Structures.Account do
 
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aeutil.Bits
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
@@ -19,7 +19,7 @@ defmodule Aecore.Structures.Account do
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Account.AccountStateTree
 
   @type t :: %Account{
           balance: non_neg_integer(),
