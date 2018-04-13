@@ -1,8 +1,6 @@
 defmodule State do
-
   @spec init_vm(map(), map()) :: map()
   def init_vm(exec, env) do
-
     bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
@@ -23,7 +21,6 @@ defmodule State do
       :gas_price => Map.get(exec, :gas_price),
       :origin => Map.get(exec, :origin),
       :value => Map.get(exec, :value),
-
       :coinbase => Map.get(env, :coinbase),
       :difficulty => Map.get(env, :difficulty),
       :gas_limit => Map.get(env, :gas_limit),
@@ -135,12 +132,6 @@ defmodule State do
   def inc_cp(state) do
     cp = Map.get(state, :cp)
     Map.put(state, :cp, cp + 1)
-  end
-
-  def add_jumpdest(jumpdest, state) do
-    jumpdests = jumpdests(state)
-    jumpdests1 = [jumpdest | jumpdests]
-    Map.put(state, :jumpdests, jumpdests1)
   end
 
   defp bytecode_to_bin(bytecode) do
