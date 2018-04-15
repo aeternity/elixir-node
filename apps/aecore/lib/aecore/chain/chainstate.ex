@@ -11,6 +11,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
+  alias Aecore.Account.Tx.SpendTx
 
   require Logger
 
@@ -51,14 +52,25 @@ defmodule Aecore.Chain.Chainstate do
         receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
 
         new_receiver_state = SignedTx.reward(data, receiver_state)
+        updated_receiver_state = %{new_receiver_state | last_updated: block_height}
 
         new_accounts_state =
-          AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+          AccountStateTree.put(chainstate.accounts, data.payload.receiver, updated_receiver_state)
 
         Map.put(chainstate, :accounts, new_accounts_state)
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
+          chainstate =
+            case data.payload do
+              %SpendTx{} ->
+                chainstate = last_updated_receiver(tx, chainstate, block_height)
+                last_updated_sender(tx, chainstate, block_height)
+
+              _ ->
+                last_updated_sender(tx, chainstate, block_height)
+            end
+
           DataTx.process_chainstate!(data, chainstate, block_height)
         else
           throw({:error, "Invalid transaction"})
@@ -117,5 +129,25 @@ defmodule Aecore.Chain.Chainstate do
 
   def base58c_decode(_) do
     {:error, "Wrong data"}
+  end
+
+  defp last_updated_receiver(%SignedTx{data: data}, chainstate, block_height) do
+    receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
+    updated_receiver_state = %{receiver_state | last_updated: block_height}
+
+    new_accounts_state =
+      AccountStateTree.put(chainstate.accounts, data.payload.receiver, updated_receiver_state)
+
+    %{chainstate | accounts: new_accounts_state}
+  end
+
+  defp last_updated_sender(%SignedTx{data: data}, chainstate, block_height) do
+    sender_state = Account.get_account_state(chainstate.accounts, data.sender)
+    updated_sender_state = %{sender_state | last_updated: block_height}
+
+    new_accounts_state =
+      AccountStateTree.put(chainstate.accounts, data.sender, updated_sender_state)
+
+    %{chainstate | accounts: new_accounts_state}
   end
 end
