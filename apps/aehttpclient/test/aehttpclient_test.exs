@@ -2,10 +2,13 @@ defmodule AehttpclientTest do
   use ExUnit.Case
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aehttpclient.Client
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -25,13 +28,15 @@ defmodule AehttpclientTest do
 
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
-    assert Enum.count(
-             Client.get_account_txs({"localhost:4000", hex_acc})
-             |> elem(1)
-           ) == 2
+    acc_txs =
+      {"localhost:4000", hex_acc}
+      |> Client.get_account_txs()
+      |> elem(1)
+
+    assert Enum.count(acc_txs) == 2
   end
 
-  def add_txs_to_pool() do
+  def add_txs_to_pool do
     Miner.mine_sync_block_to_chain()
     receiver = Wallet.get_public_key()
     sender = receiver

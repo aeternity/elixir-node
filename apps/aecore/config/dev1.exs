@@ -77,7 +77,7 @@ config :aecore, :pow,
       37_643_561
     ],
     version: 1,
-    target: 1
+    target: 0x2100FFFF
   }
 
 config :aecore, :peers,
@@ -95,10 +95,9 @@ bytes_per_token =
 config :aecore, :tx_data,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100,
+  max_txs_per_block: 100,
   blocks_ttl_per_token: 1000,
   oracle_registration_base_fee: 4,
   oracle_query_base_fee: 2,
   oracle_response_base_fee: 2,
   oracle_extend_base_fee: 1
-
-config :aecore, :block, max_block_size_bytes: 500_000

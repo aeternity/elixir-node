@@ -1,17 +1,17 @@
-defmodule Aecore.Structures.SpendTx do
+defmodule Aecore.Account.Tx.SpendTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  @behaviour Aecore.Structures.Transaction
-  
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
-  alias Aecore.Chain.ChainState
+  @behaviour Aecore.Tx.Transaction
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Wallet
-  alias Aecore.Structures.Account
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.MapUtil
 
   require Logger
@@ -46,7 +46,6 @@ defmodule Aecore.Structures.SpendTx do
   - version: States whats the version of the Spend Transaction
   """
   defstruct [:receiver, :amount, :version]
-  use ExConstructor
 
   # Callbacks
   

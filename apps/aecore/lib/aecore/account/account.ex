@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.Account do
+defmodule Aecore.Account.Account do
   @moduledoc """
   Aecore structure of a transaction data.
   """
@@ -7,17 +7,20 @@ defmodule Aecore.Structures.Account do
 
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aeutil.Bits
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Structures.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer()
         }
+
+  @type account_payload :: %{balance: non_neg_integer(), nonce: non_neg_integer()}
 
   @doc """
   Definition of Account structure
@@ -27,9 +30,16 @@ defmodule Aecore.Structures.Account do
   - nonce: Out transaction count
   """
   defstruct [:balance, :nonce]
-  use ExConstructor
 
   def empty, do: %Account{balance: 0, nonce: 0}
+
+  @spec new(account_payload()) :: Account.t()
+  def new(%{balance: balance, nonce: nonce}) do
+    %Account{
+      balance: balance,
+      nonce: nonce
+    }
+  end
 
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
@@ -38,7 +48,7 @@ defmodule Aecore.Structures.Account do
   def spend(receiver, amount, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Map.get(Chain.chain_state().accounts, sender, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
@@ -79,6 +89,33 @@ defmodule Aecore.Structures.Account do
     %Account{account_state | balance: new_balance}
   end
 
+  @spec get_account_state(AccountStateTree.tree(), Wallet.pubkey()) :: Account.t()
+  def get_account_state(tree, key) do
+    case AccountStateTree.get(tree, key) do
+      :none ->
+        empty()
+
+      {:ok, account_state} ->
+        account_state
+    end
+  end
+
+  @doc """
+  Return the balance for a given key.
+  """
+  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  def balance(tree, key) do
+    get_account_state(tree, key).balance
+  end
+
+  @doc """
+  Return the nonce for a given key.
+  """
+  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  def nonce(tree, key) do
+    get_account_state(tree, key).nonce
+  end
+
   @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
@@ -89,7 +126,11 @@ defmodule Aecore.Structures.Account do
   end
 
   def base58c_encode(bin) do
-    Bits.encode58c("ak", bin)
+    if bin == nil do
+      nil
+    else
+      Bits.encode58c("ak", bin)
+    end
   end
 
   def base58c_decode(<<"ak$", payload::binary>>) do

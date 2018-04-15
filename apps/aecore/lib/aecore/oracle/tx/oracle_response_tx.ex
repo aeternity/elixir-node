@@ -1,18 +1,23 @@
-defmodule Aecore.Structures.OracleResponseTx do 
+defmodule Aecore.Oracle.Tx.OracleResponseTx do
+  @moduledoc """
+  Contains the transaction structure for oracle responses
+  and functions associated with those transactions.
+  """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
   
   alias __MODULE__
-  alias Aecore.Structures.DataTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.ChainState
-  alias Aecore.Structures.Account
-  alias Aeutil.MapUtil
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -28,7 +33,7 @@ defmodule Aecore.Structures.OracleResponseTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
@@ -54,7 +59,7 @@ defmodule Aecore.Structures.OracleResponseTx do
         true
     end
   end
- 
+
   @spec process_chainstate!(
           ChainState.account(),
           tx_type_state(),

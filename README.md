@@ -177,7 +177,7 @@ The DataTx strucure hold:
 
 - To post new block to the chain:
 
-  `POST localhost:4000/new_block`
+  `POST localhost:4000/block`
 
   Body: **serialized_block**
 

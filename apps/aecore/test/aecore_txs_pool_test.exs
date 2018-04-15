@@ -5,16 +5,17 @@ defmodule AecoreTxsPoolTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
 
   setup wallet do
+    Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -42,7 +43,7 @@ defmodule AecoreTxsPoolTest do
     # Empty the pool from the other tests
     Pool.get_and_empty_pool()
 
-    nonce1 = Map.get(Chain.chain_state().accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
+    nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
     {:ok, signed_tx1} =
       Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, 5, 10, nonce1)
@@ -64,7 +65,7 @@ defmodule AecoreTxsPoolTest do
   end
 
   test "add negative transaction fail", wallet do
-    nonce = Map.get(Chain.chain_state().accounts, wallet.a_pub_key, %{nonce: 0}).nonce + 1
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
     {:ok, signed_tx} =
       Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, -5, 10, nonce)

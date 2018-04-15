@@ -94,7 +94,7 @@ config :aecore, :pow,
       37_643_561
     ],
     version: 1,
-    target: 1
+    target: 0x2100FFFF
   }
 
 config :aecore, :peers,
@@ -103,7 +103,16 @@ config :aecore, :peers,
 
 config :aecore, :miner, resumed_by_default: true
 
+bytes_per_token =
+  case System.get_env("BYTES_PER_TOKEN") do
+    nil -> 100
+    env -> String.to_integer(env)
+  end
+
 config :aecore, :tx_data,
+  miner_fee_bytes_per_token: 100,
+  pool_fee_bytes_per_token: 100,
+  max_txs_per_block: 100,
   miner_fee_bytes_per_token: bytes_per_token,
   pool_fee_bytes_per_token: 100,
   blocks_ttl_per_token: 1000,
@@ -111,5 +120,3 @@ config :aecore, :tx_data,
   oracle_query_base_fee: 2,
   oracle_response_base_fee: 2,
   oracle_extend_base_fee: 1
-
-config :aecore, :block, max_block_size_bytes: 500_000

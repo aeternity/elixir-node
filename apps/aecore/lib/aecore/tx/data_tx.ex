@@ -1,12 +1,14 @@
-defmodule Aecore.Structures.DataTx do
+defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.DataTx
-  alias Aecore.Chain.ChainState
+  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
-  alias Aecore.Structures.Account
+  alias Aeutil.Parser
+  alias Aecore.Account.Account
   alias Aeutil.MapUtil
 
   require Logger
@@ -42,12 +44,12 @@ defmodule Aecore.Structures.DataTx do
   defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
 
-  def valid_types() do [Aecore.Structures.SpendTx,
+  def valid_types() do [Aecore.Account.Tx.SpendTx,
                         Aecore.Structures.CoinbaseTx,
-                        Aecore.Structures.OracleExtendTx,
-                        Aecore.Structures.OracleQueryTx,
-                        Aecore.Structures.OracleRegistrationTx,
-                        Aecore.Structures.OracleResponseTx] end
+                        Aecore.Oracle.Tx.OracleExtendTx,
+                        Aecore.Oracle.Tx.OracleQueryTx,
+                        Aecore.Oracle.Tx.OracleRegistrationTx,
+                        Aecore.Oracle.Tx.OracleResponseTx] end
 
   @spec init(tx_types(), payload(), list(binary()) | binary(), non_neg_integer(), integer()) :: DataTx.t()
   def init(type, payload, senders, fee, nonce) when is_list(senders) do
@@ -129,6 +131,11 @@ defmodule Aecore.Structures.DataTx do
       %{chainstate | accounts: new_accounts_state}
       |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
     end
+  end
+
+  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
+  def nonce_valid?(accounts_state, tx) do
+    tx.nonce > Account.nonce(accounts_state, tx.sender)
   end
 
   @spec serialize(DataTx.t()) :: map()

@@ -3,14 +3,14 @@ defmodule Aecore.Structures.CoinbaseTx do
   Aecore structure of a transaction data.
   """
 
-  @behaviour Aecore.Structures.Transaction
+  @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Structures.DataTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Structures.CoinbaseTx
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aeutil.MapUtil
 
   require Logger
