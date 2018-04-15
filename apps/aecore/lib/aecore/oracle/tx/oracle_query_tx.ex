@@ -72,11 +72,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec is_valid?(OracleQueryTx.t()) :: boolean()
   def is_valid?(%OracleQueryTx{
+        oracle_address: oracle_address,
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
     Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl)
+      match?(%{type: :relative}, response_ttl) && Wallet.key_size_valid?(oracle_address)
   end
 
   @spec process_chainstate!(

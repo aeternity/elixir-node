@@ -44,8 +44,13 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}) do
-    true
+  def is_valid?(%OracleResponseTx{query_id: query_id}) do
+    byte_size(query_id) == get_query_id_size()
+  end
+
+  @spec get_query_id_size :: non_neg_integer()
+  def get_query_id_size do
+    Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
   @spec process_chainstate!(
