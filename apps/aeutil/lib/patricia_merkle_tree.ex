@@ -56,8 +56,10 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec lookup_with_proof(Trie.key(), Trie.t()) :: :none | {:ok, Trie.value(), Trie.t()}
   def lookup_with_proof(key, trie) do
-    {value, proof} = Proof.construct_proof({trie, key, new(:proof)})
-    {:ok, value, proof}
+    case Proof.construct_proof({trie, key, new(:proof)}) do
+      {nil, proof} -> :none
+      {value, proof} -> {:ok, value, proof}
+    end
   end
 
   @doc """

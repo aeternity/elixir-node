@@ -21,6 +21,9 @@ defmodule AeutilPatriciaMerkleTreeTest do
       {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(key, trie)
       assert true = PatriciaMerkleTree.verify_proof(key, value, trie, proof)
     end)
+
+    assert :none = PatriciaMerkleTree.lookup_with_proof("not_existing_key", trie)
+    # assert :none =  #PatriciaMerkleTree.verify_proof(key, value, trie, proof)
   end
 
   @tag :patricia_merkle_tree
@@ -77,9 +80,9 @@ defmodule AeutilPatriciaMerkleTreeTest do
     end)
   end
 
-  def gen_random_tree_list(), do: for(_ <- 0..500, do: {random_key(), "0000"})
+  def gen_random_tree_list, do: for(_ <- 0..500, do: {random_key(), "0000"})
 
-  def random_key() do
+  def random_key do
     <<:rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
       :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
       :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4, :rand.uniform(15)::4,
