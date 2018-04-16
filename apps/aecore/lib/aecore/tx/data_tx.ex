@@ -12,7 +12,6 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
 
-
   require Logger
 
   @typedoc "Name of the specified transaction module"
