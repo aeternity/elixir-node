@@ -27,6 +27,9 @@ Make sure you have installed the following packages to make sure that the Wallet
 sudo apt-get install autoconf autogen
 sudo apt-get install libtool
 sudo apt-get install libgmp3-dev
+wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
+mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1
+cd libsodium-src && ./configure && make && make check && sudo make install && cd ..
 ```
 
 ## Usage
@@ -49,7 +52,7 @@ To suspend/stop the miner from mining:
 
 `Aecore.Miner.Worker.suspend() `
 
-### **Building custom child Transaction**
+#### **Building custom child Transaction**
 To build a custom transaction you need to follow few simple steps:
 - Make your own `transaction module`;
 - Create your `custom transaction structure`;
@@ -177,7 +180,7 @@ The DataTx strucure hold:
 
 - To post new block to the chain:
 
-  `POST localhost:4000/new_block`
+  `POST localhost:4000/block`
 
   Body: **serialized_block**
 
@@ -221,3 +224,78 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
+
+#### **Oracle usage**
+**TTL (time to live):**
+  Determines the lifetime of an object measured in blocks, it can be either absolute
+  or relative (absolute - the object is removed when a block with a height equal to the TTL is mined;
+  relative - the object is removed when a block with height equal to the TTL + block height in which the transaction was included is mined). A TTL is defined like so - %{ttl: value, type: :relative | :absolute}
+
+**Registering an oracle:**
+  `Aecore.Oracle.Oracle.register(query_format, response_format, query_fee, fee, ttl)`
+  The query and response formats are treated as json schemas by which the queries and responses
+  are validated. The query fee is the minimum fee that will be required for queries made to the
+  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
+  for the response fee he had to pay.
+
+  example format schema -
+    ```
+    %{
+      "type" =>
+        "object",
+      "properties" => %{
+        "base" => %{
+          "type" =>
+          "string"
+        },
+        "date" => %{
+          "type" =>
+            "string"
+        },
+        "rates" => %{
+          "type" =>
+            "object"
+        }
+      }
+    }
+    ```
+
+  To list all registered oracles -  `Aecore.Chain.Worker.registered_oracles()`
+
+**Querying an oracle:**
+  `Aecore.Oracle.Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
+  The query TTL determines the time in which the oracle is able to respond, if he doesn't respond in time, the account making the query will get the query_fee back. The response TTL determines for how long the response will remain in the state after it is added, this TTL can only be relative.
+
+  example query -
+  ```
+  Aecore.Oracle.Oracle.query(
+    "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+    %{
+      "currency" =>
+        "USD"
+     },
+     5,
+     10,
+     %{ttl: 10, type: :absolute},
+     %{ttl: 5, type: :relative}
+  )
+  ```
+
+**Respond to a query:**
+  `Aecore.Oracle.Oracle.respond(query_id, response, fee)`
+  Responds to a query which is referenced by ID, if the response is added successfully, the oracle receives the query_fee contained in the query.
+
+**Extend a registered oracle:**
+  `Aecore.Oracle.Oracle.extend(ttl, fee)`
+  Extends the TTL of an oracle with the address that matches the address of the node.
+
+All transactions have to be mined in order to take effect.
+
+### Docker
+
+A `Dockerfile` and `docker-compose.yml` are found in the base directory
+
+ - Build container `docker build . -t elixir-research`
+ - Run node in container `docker run --name elixir-research -it -p 4000:4000 elixir-research`
+
+ - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining

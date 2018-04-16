@@ -3,10 +3,10 @@ defmodule Aehttpclient.Client do
   Client used for making requests to a node.
   """
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
@@ -23,11 +23,11 @@ defmodule Aehttpclient.Client do
     get(uri <> "/info", :info)
   end
 
-  @spec get_block({term(), binary()}) :: {:ok, Block} | {:error, binary()}
+  @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
   def get_block({uri, hash}) do
     hash = Header.base58c_encode(hash)
 
-    case get(uri <> "/block/#{hash}", :block) do
+    case get(uri <> "/block-by-hash?hash=#{hash}", :block) do
       {:ok, serialized_block} ->
         {:ok, Serialization.block(serialized_block, :deserialize)}
 
@@ -54,13 +54,13 @@ defmodule Aehttpclient.Client do
   @spec send_block(Block.t(), list(binary())) :: :ok
   def send_block(block, peers) do
     data = Serialization.block(block, :serialize)
-    post_to_peers("new_block", data, peers)
+    post_to_peers("block", data, peers)
   end
 
   @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
     data = Serialization.tx(tx, :serialize)
-    post_to_peers("new_tx", data, peers)
+    post_to_peers("tx", data, peers)
   end
 
   @spec post_to_peers(String.t(), binary(), list(String.t())) :: :ok
@@ -158,26 +158,21 @@ defmodule Aehttpclient.Client do
         {:error, "HTTPPoison Error"}
 
       unexpected ->
-        Logger.error(fn -> "unexpected client result " <> Kernel.inspect(unexpected) end)
+        Logger.error(fn ->
+          "unexpected client result " <> Kernel.inspect(unexpected)
+        end)
+
         {:error, "Unexpected error"}
     end
   end
 
   defp send_to_peer(data, uri) do
-    HTTPoison.post(uri, Poison.encode!(data), [{"Content-Type", "application/json"}])
+    HTTPoison.post(uri, Poison.encode!(data), [
+      {"Content-Type", "application/json"}
+    ])
   end
 
   defp get_local_port do
-    Endpoint
-    |> :sys.get_state()
-    |> elem(3)
-    |> Enum.at(2)
-    |> elem(3)
-    |> elem(2)
-    |> Enum.at(1)
-    |> List.keyfind(:http, 0)
-    |> elem(1)
-    |> Enum.at(0)
-    |> elem(1)
+    Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

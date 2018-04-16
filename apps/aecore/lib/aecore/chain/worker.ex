@@ -6,22 +6,32 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Header
-  alias Aecore.Chain.ChainState
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
+  alias Aeutil.Hash
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
   @type txs_index :: %{binary() => [{binary(), binary()}]}
+
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
@@ -33,7 +43,7 @@ defmodule Aecore.Chain.Worker do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
     genesis_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      Chainstate.calculate_and_validate_chain_state!(
         Block.genesis_block().txs,
         build_chain_state(),
         0
@@ -65,7 +75,12 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_info).block
   end
 
-  @spec top_block_chain_state() :: ChainState.account_chainstate()
+  @spec current_state() :: Block.t()
+  def current_state do
+    GenServer.call(__MODULE__, :current_state)
+  end
+
+  @spec top_block_chain_state() :: Chainstate.account_chainstate()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -75,40 +90,82 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_block_hash)
   end
 
-  @spec top_height() :: integer()
+  @spec top_height() :: non_neg_integer()
   def top_height do
     GenServer.call(__MODULE__, :top_height)
+  end
+
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  def get_header_by_base58_hash(hash) do
+    decoded_hash = Header.base58c_decode(hash)
+    get_header(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
+  end
+
+  @spec lowest_valid_nonce() :: non_neg_integer()
+  def lowest_valid_nonce do
+    GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
   @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
   end
 
-  @spec get_block(binary()) :: Block.t() | {:error, binary()}
-  def get_block(block_hash) do
+  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  def get_header(header_hash) do
+    case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
+      {:error, _reason} ->
+        {:error, :header_not_found}
+
+      %{block: nil} ->
+        case Persistence.get_block_by_hash(header_hash) do
+          {:ok, block} -> {:ok, block.header}
+          _ -> {:error, :header_not_found}
+        end
+
+      block_info ->
+        {:ok, block_info.block.header}
+    end
+  end
+
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  def get_header_by_height(height) do
+    case get_block_info_by_height(height, nil) do
+      {:error, :chain_too_short} -> {:error, :chain_too_short}
+      info -> {:ok, info.block.header}
+    end
+  end
+
+  @spec get_block(binary()) :: Block.t() | {:error, String.t()}
+  def get_block(header_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
     block =
-      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
+      case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
         {:error, _} ->
           nil
 
         %{block: nil} ->
-          case Persistence.get_block_by_hash(block_hash) do
-            {:ok, block} -> block
+          case Persistence.get_block_by_hash(header_hash) do
+            {:ok, block} -> {:ok, block}
             _ -> nil
           end
 
         block_info ->
-          block_info.block
+          {:ok, block_info.block}
       end
 
     if block != nil do
       block
     else
-      {:error, "Block not found"}
+      {:error, :block_not_found}
     end
   end
 
@@ -116,7 +173,7 @@ defmodule Aecore.Chain.Worker do
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
-      info -> info.block
+      info -> {:ok, info.block}
     end
   end
 
@@ -128,18 +185,18 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_blocks(binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, nil, count))
   end
 
-  @spec get_blocks(binary(), binary(), integer()) :: list(Block.t())
+  @spec get_blocks(binary(), binary(), non_neg_integer()) :: list(Block.t())
   def get_blocks(start_block_hash, final_block_hash, count) do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
 
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          ChainState.account_chainstate() | {:error, binary()}
+          Chainstate.account_chainstate() | {:error, binary()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
@@ -150,7 +207,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec add_block(Block.t()) :: :ok | {:error, binary()}
   def add_block(%Block{} = block) do
-    prev_block = get_block(block.header.prev_hash)
+    {:ok, prev_block} = get_block(block.header.prev_hash)
     prev_block_chain_state = chain_state(block.header.prev_hash)
 
     blocks_for_difficulty_calculation =
@@ -167,12 +224,12 @@ defmodule Aecore.Chain.Worker do
     add_validated_block(block, new_chain_state)
   end
 
-  @spec add_validated_block(Block.t(), ChainState.account_chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: ChainState.account_chainstate() | {:error, binary()}
+  @spec chain_state(binary()) :: Chainstate.t() | {:error, binary()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       error = {:error, _} ->
@@ -186,7 +243,20 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec chain_state() :: ChainState.account_chainstate()
+  @spec registered_oracles() :: Oracle.registered_oracles()
+  def registered_oracles do
+    GenServer.call(__MODULE__, :registered_oracles)
+  end
+
+  @spec oracle_interaction_objects() :: Oracle.interaction_objects()
+  def oracle_interaction_objects do
+    GenServer.call(__MODULE__, :oracle_interaction_objects)
+  end
+
+  @spec chain_state() :: %{
+          :accounts => Chainstate.accounts(),
+          :oracles => Oracle.oracles()
+        }
   def chain_state do
     top_block_chain_state()
   end
@@ -229,6 +299,24 @@ defmodule Aecore.Chain.Worker do
   end
 
   def handle_call(
+        :lowest_valid_nonce,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    pubkey = Wallet.get_public_key()
+    accounts_state_tree = blocks_data_map[top_hash].chain_state.accounts
+
+    lowest_valid_nonce =
+      if AccountStateTree.has_key?(accounts_state_tree, pubkey) do
+        Account.nonce(accounts_state_tree, pubkey) + 1
+      else
+        1
+      end
+
+    {:reply, lowest_valid_nonce, state}
+  end
+
+  def handle_call(
         {:get_block_info_from_memory_unsafe, block_hash},
         _from,
         %{blocks_data_map: blocks_data_map} = state
@@ -245,7 +333,11 @@ defmodule Aecore.Chain.Worker do
   def handle_call(
         {:add_validated_block, %Block{} = new_block, new_chain_state},
         _from,
-        %{blocks_data_map: blocks_data_map, txs_index: txs_index, top_height: top_height} = state
+        %{
+          blocks_data_map: blocks_data_map,
+          txs_index: txs_index,
+          top_height: top_height
+        } = state
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
@@ -278,7 +370,7 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = ChainState.calculate_total_tokens(new_chain_state)
+    total_tokens = Chainstate.calculate_total_tokens(new_chain_state)
 
     Logger.info(fn ->
       "Added block ##{new_block.header.height} with hash #{Header.base58c_encode(new_block_hash)}, total tokens: #{
@@ -286,7 +378,11 @@ defmodule Aecore.Chain.Worker do
       }"
     end)
 
-    state_update = %{state | blocks_data_map: hundred_blocks_data_map, txs_index: new_txs_index}
+    state_update = %{
+      state
+      | blocks_data_map: hundred_blocks_data_map,
+        txs_index: new_txs_index
+    }
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
@@ -301,6 +397,7 @@ defmodule Aecore.Chain.Worker do
 
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
@@ -319,6 +416,24 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
+  end
+
+  def handle_call(
+        :registered_oracles,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
+    {:reply, registered_oracles, state}
+  end
+
+  def handle_call(
+        :oracle_interaction_objects,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
+    {:reply, interaction_objects, state}
   end
 
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
@@ -379,39 +494,49 @@ defmodule Aecore.Chain.Worker do
   defp calculate_block_acc_txs_info(block) do
     block_hash = BlockValidation.block_header_hash(block.header)
 
-    accounts =
-      for tx <- block.txs do
-        case tx.data do
-          %SpendTx{} ->
-            [tx.data.sender, tx.data.receiver]
+    accounts_unique =
+      block.txs
+      |> Enum.map(fn tx ->
+        case tx.data.type do
+          SpendTx ->
+            [tx.data.sender, tx.data.payload.receiver]
 
-          %DataTx{} ->
+          OracleRegistrationTx ->
+            tx.data.sender
+
+          OracleQueryTx ->
+            [tx.data.sender, tx.data.payload.oracle_address]
+
+          OracleResponseTx ->
+            tx.data.sender
+
+          OracleExtendTx ->
+            tx.data.sender
+
+          _ ->
             tx.data.sender
         end
-      end
-
-    accounts_unique = accounts |> List.flatten() |> Enum.uniq() |> List.delete(nil)
+      end)
+      |> List.flatten()
+      |> Enum.uniq()
+      |> List.delete(nil)
 
     for account <- accounts_unique, into: %{} do
-      acc_txs =
-        Enum.filter(block.txs, fn tx ->
-          case tx.data do
-            %SpendTx{} ->
-              tx.data.sender == account || tx.data.receiver == account
+      # txs associated with the given account
+      tx_tuples =
+        block.txs
+        |> Enum.filter(fn tx ->
+          case tx.data.type do
+            SpendTx ->
+              tx.data.sender == account || tx.data.payload.receiver == account
 
-            %DataTx{} ->
+            _ ->
               tx.data.sender == account
           end
         end)
-
-      tx_hashes =
-        Enum.map(acc_txs, fn tx ->
-          tx_bin = Serialization.pack_binary(tx)
-          :crypto.hash(:sha256, tx_bin)
-        end)
-
-      tx_tuples =
-        Enum.map(tx_hashes, fn hash ->
+        |> Enum.map(fn filtered_tx ->
+          tx_bin = Serialization.pack_binary(filtered_tx)
+          hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)
 
@@ -419,24 +544,29 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp update_txs_index(current_txs_index, new_block_txs_index) do
-    Map.merge(current_txs_index, new_block_txs_index, fn _, current_list, new_block_list ->
-      current_list ++ new_block_list
+  defp update_txs_index(prev_txs_index, new_txs_index) do
+    Map.merge(prev_txs_index, new_txs_index, fn _, current_txs_index, new_txs_index ->
+      current_txs_index ++ new_txs_index
     end)
   end
 
   defp get_blocks(blocks_acc, next_block_hash, final_block_hash, count) do
     if next_block_hash != final_block_hash && count > 0 do
       case get_block(next_block_hash) do
-        {:error, _} ->
-          blocks_acc
-
-        block ->
+        {:ok, block} ->
           updated_blocks_acc = [block | blocks_acc]
           prev_block_hash = block.header.prev_hash
           next_count = count - 1
 
-          get_blocks(updated_blocks_acc, prev_block_hash, final_block_hash, next_count)
+          get_blocks(
+            updated_blocks_acc,
+            prev_block_hash,
+            final_block_hash,
+            next_count
+          )
+
+        {:error, _} ->
+          blocks_acc
       end
     else
       blocks_acc
@@ -459,7 +589,7 @@ defmodule Aecore.Chain.Worker do
     n = blocks_data_map[begin_hash].block.header.height - height
 
     if n < 0 do
-      {:error, "Height higher then chain_hash height"}
+      {:error, :chain_too_short}
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 
@@ -505,5 +635,5 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state, do: %{accounts: %{}}
+  defp build_chain_state, do: Chainstate.init()
 end

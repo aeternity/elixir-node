@@ -2,11 +2,11 @@ defmodule AeutilSerializationTest do
   use ExUnit.Case
 
   alias Aeutil.Serialization
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
 
   @tag :serialization
   test "serialize a block" do
@@ -76,7 +76,7 @@ defmodule AeutilSerializationTest do
               "amount" => 100,
               "version" => 1
             },
-            "type" => "Elixir.Aecore.Structures.SpendTx"
+            "type" => "Elixir.Aecore.Account.Tx.SpendTx"
           },
           "signature" => "AQID"
         }

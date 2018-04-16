@@ -2,24 +2,23 @@ defmodule AehttpclientTest do
   use ExUnit.Case
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aehttpclient.Client
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Bits
 
   @tag :http_client
   test "Client functions" do
     account = Wallet.get_public_key()
     hex_acc = Account.base58c_encode(account)
     base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
-
-    AehttpclientTest.add_txs_to_pool()
+    Pool.get_and_empty_pool()
+    add_txs_to_pool()
     assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
@@ -29,11 +28,12 @@ defmodule AehttpclientTest do
 
     assert {:ok, _} = Client.get_peers("localhost:4000")
 
-    assert Enum.count(
-             {"localhost:4000", hex_acc}
-             |> Client.get_account_txs()
-             |> elem(1)
-           ) == 2
+    acc_txs =
+      {"localhost:4000", hex_acc}
+      |> Client.get_account_txs()
+      |> elem(1)
+
+    assert Enum.count(acc_txs) == 2
   end
 
   def add_txs_to_pool do
