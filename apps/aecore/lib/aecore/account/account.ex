@@ -128,6 +128,12 @@ defmodule Aecore.Account.Account do
     get_account_state(tree, key).last_updated
   end
 
+  def last_updated(tree, key, block_height) do
+    state = Account.get_account_state(tree, key)
+    updated_state = %{state | last_updated: block_height}
+    AccountStateTree.put(tree, key, updated_state)
+  end
+
   def base58c_encode(bin) do
     if bin == nil do
       nil
