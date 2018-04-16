@@ -61,7 +61,7 @@ defmodule Aecore.Structures.Account do
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in(ChainState.account(), integer()) :: ChainState.account()
+  @spec transaction_in(ChainState.accounts(), integer()) :: ChainState.accounts()
   def transaction_in(account_state, amount) do
     new_balance = account_state.balance + amount
     Map.put(account_state, :balance, new_balance)
@@ -70,7 +70,7 @@ defmodule Aecore.Structures.Account do
   @doc """
   Deducts balance from a given address (public key)
   """
-  @spec transaction_out(ChainState.account(), integer(), integer()) :: ChainState.account()
+  @spec transaction_out(ChainState.accounts(), integer(), integer()) :: ChainState.accounts()
   def transaction_out(account_state, amount, nonce) do
     account_state
     |> Map.put(:nonce, nonce)

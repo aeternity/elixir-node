@@ -30,7 +30,7 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Find a nonce
   """
-  @spec generate(map()) :: {:ok, map()}
+  @spec generate(map()) :: {:ok, map()} | error :: term()
   def generate(%{} = header), do: process(:generate, header)
 
   ### =============================================================================

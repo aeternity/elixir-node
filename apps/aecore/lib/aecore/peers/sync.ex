@@ -115,7 +115,7 @@ defmodule Aecore.Peers.Sync do
           end
 
         {:error, message} ->
-          Logger.error(fn -> message end)
+          Logger.error(message)
           remove_running_task(peer_uri)
       end
     end
@@ -295,7 +295,7 @@ defmodule Aecore.Peers.Sync do
           Enum.concat(acc, Enum.map(Map.values(list), fn %{"uri" => uri} -> uri end))
 
         {:error, message} ->
-          Logger.error(fn -> "Couldn't get peers from #{peer}: #{message}" end)
+          Logger.error("Couldn't get peers from #{peer}: #{message}")
           acc
       end
     end)

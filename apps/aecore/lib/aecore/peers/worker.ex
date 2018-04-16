@@ -247,9 +247,7 @@ defmodule Aecore.Peers.Worker do
         {:ok, info} ->
           cond do
             Map.has_key?(peers, info.peer_nonce) ->
-              Logger.debug(fn ->
-                "Skipped adding #{uri}, same nonce already present"
-              end)
+              Logger.debug("Skipped adding #{uri}, same nonce already present")
 
               {:reply, {:error, "Peer already known"}, state}
 
@@ -262,13 +260,13 @@ defmodule Aecore.Peers.Worker do
                   latest_block: info.current_block_hash
                 })
 
-              Logger.info(fn -> "Added #{uri} to the peer list" end)
+              Logger.info("Added #{uri} to the peer list")
               Sync.ask_peers_for_unknown_blocks(updated_peers)
               Sync.add_unknown_peer_pool_txs(updated_peers)
               {:reply, :ok, %{state | peers: updated_peers}}
 
             true ->
-              Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
+              Logger.debug("Max peers reached. #{uri} not added")
               {:reply, :ok, state}
           end
 
@@ -276,7 +274,7 @@ defmodule Aecore.Peers.Worker do
           {:reply, :ok, state}
 
         {:error, reason} ->
-          Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
+          Logger.error("Failed to add peer. reason=#{reason}")
           {:reply, {:error, reason}, state}
       end
     end
@@ -285,7 +283,7 @@ defmodule Aecore.Peers.Worker do
   defp trim_peers(peers) do
     if map_size(peers) >= @peers_max_count do
       random_peer = Enum.random(Map.keys(peers))
-      Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
+      Logger.debug("Max peers reached. #{random_peer} removed")
       Map.delete(peers, random_peer)
     else
       peers

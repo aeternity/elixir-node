@@ -112,15 +112,17 @@ defmodule Aecore.Chain.ChainState do
     end)
   end
 
-  @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
-  def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
-    updated_accounts =
-      Enum.reduce(accounts, %{}, fn {address, state}, acc ->
-        Map.put(acc, address, Account.update_locked(state, header))
-      end)
+  # Unused Function
 
-    Map.put(chainstate, :accounts, updated_accounts)
-  end
+  # @spec update_chain_state_locked(chainstate(), Header.t()) :: chainstate()
+  # def update_chain_state_locked(%{accounts: accounts} = chainstate, header) do
+  #   updated_accounts =
+  #     Enum.reduce(accounts, %{}, fn {address, state}, acc ->
+  #       Map.put(acc, address, Account.update_locked(state, header))
+  #     end)
+
+  #   Map.put(chainstate, :accounts, updated_accounts)
+  # end
 
   def base58c_encode(bin) do
     Bits.encode58c("bs", bin)

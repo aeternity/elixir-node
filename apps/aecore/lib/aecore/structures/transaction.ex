@@ -4,8 +4,11 @@ defmodule Aecore.Structures.Transaction do
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -14,7 +17,12 @@ defmodule Aecore.Structures.Transaction do
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t()
+  @type tx_types ::
+          SpendTx.t()
+          | OracleRegistrationTx.t()
+          | OracleQueryTx.t()
+          | OracleResponseTx.t()
+          | OracleExtendTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -39,9 +47,9 @@ defmodule Aecore.Structures.Transaction do
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
-              Account.t(),
+              ChainState.accounts(),
               tx_type_state()
-            ) :: {Account.t(), tx_type_state()}
+            ) :: {ChainState.accounts(), tx_type_state()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -72,11 +80,11 @@ defmodule Aecore.Structures.Transaction do
   @callback preprocess_check!(
               tx_types(),
               Wallet.pubkey(),
-              ChainState.account(),
+              ChainState.accounts(),
               fee :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(ChainState.accounts(), fee :: non_neg_integer()) :: ChainState.accounts()
 end

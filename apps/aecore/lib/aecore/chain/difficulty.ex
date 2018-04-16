@@ -33,7 +33,7 @@ defmodule Aecore.Chain.Difficulty do
     sum_k_div_targets = Enum.sum(k_div_targets)
     last_block = hd(sorted_blocks)
     total_time = calculate_distance(last_block, timestamp)
-    new_target_int = div(total_time * k, @expected_mine_rate * sum_k_div_targets)
+    new_target_int = div(trunc(total_time * k), @expected_mine_rate * sum_k_div_targets)
     min(@highest_target_scientific, Scientific.integer_to_scientific(new_target_int))
   end
 

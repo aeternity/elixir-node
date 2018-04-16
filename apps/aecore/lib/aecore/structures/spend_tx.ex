@@ -68,7 +68,7 @@ defmodule Aecore.Structures.SpendTx do
   @doc """
   Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
   """
-  @spec reward(SpendTx.t(), non_neg_integer(), ChainState.account()) :: ChainState.accounts()
+  @spec reward(SpendTx.t(), non_neg_integer(), Account.t()) :: Account.t()
   def reward(%SpendTx{} = tx, _block_height, account_state) do
     Account.transaction_in(account_state, tx.amount)
   end
@@ -82,7 +82,7 @@ defmodule Aecore.Structures.SpendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainState.accounts(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
@@ -110,7 +110,7 @@ defmodule Aecore.Structures.SpendTx do
   @spec preprocess_check!(
           SpendTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()

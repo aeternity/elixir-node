@@ -29,7 +29,7 @@ defmodule Aeutil.Serialization do
           txs_hash: binary(),
           type: atom()
         }
-  @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
+  @spec block(Block.t() | map(), :serialize | :deserialize) :: map() | Block.t()
   def block(block, :serialize) do
     serialized_block = serialize_value(block)
     Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
@@ -88,7 +88,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec pack_binary(term()) :: map()
+  @spec pack_binary(term()) :: binary()
   def pack_binary(term) do
     term
     |> remove_struct()
@@ -99,11 +99,11 @@ defmodule Aeutil.Serialization do
   Loops through a structure are simplifies it. Removes all the strucutured maps
   """
   @spec remove_struct(list()) :: list()
-  @spec remove_struct(map()) :: map()
   def remove_struct(term) when is_list(term) do
     for elem <- term, do: remove_struct(elem)
   end
 
+  @spec remove_struct(map()) :: map()
   def remove_struct(term) when is_map(term) do
     if Map.has_key?(term, :__struct__) do
       term
@@ -193,8 +193,8 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of deserializing a strucure
   """
-  @spec deserialize_value(any()) :: any()
-  def deserialize_value(value), do: deserialize_value(value, "")
+  @spec deserialize_value(any(), atom()) :: any()
+  def deserialize_value(value), do: deserialize_value(value, :other)
 
   @doc """
   Loops recursively through a given serialized structure, converts the keys to atoms

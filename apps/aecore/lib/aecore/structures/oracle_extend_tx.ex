@@ -5,6 +5,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   alias Aecore.Oracle.Oracle
   alias Aecore.Structures.Account
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.ChainState
 
   require Logger
 
@@ -38,7 +39,7 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainState.accounts(),
           Oracle.registered_oracles()
         ) :: {ChainState.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
@@ -79,7 +80,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   @spec preprocess_check!(
           OracleExtendTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          ChainState.accounts(),
           non_neg_integer(),
           non_neg_integer(),
           Oracle.registered_oracles()
@@ -100,7 +101,7 @@ defmodule Aecore.Structures.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), non_neg_integer()) :: ChainState.accounts()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

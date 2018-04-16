@@ -78,7 +78,7 @@ defmodule Aecore.Structures.OracleQueryTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
+          ChainState.accounts(),
           tx_type_state()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(

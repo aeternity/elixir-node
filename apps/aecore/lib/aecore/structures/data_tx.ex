@@ -9,14 +9,28 @@ defmodule Aecore.Structures.DataTx do
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Structures.Account
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
 
   require Logger
 
   @typedoc "Name of the specified transaction module"
-  @type tx_types :: SpendTx
+  @type tx_types ::
+          SpendTx
+          | OracleRegistrationTx
+          | OracleQueryTx
+          | OracleResponseTx
+          | OracleExtendTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t()
+  @type payload ::
+          SpendTx.t()
+          | OracleRegistrationTx.t()
+          | OracleQueryTx.t()
+          | OracleResponseTx.t()
+          | OracleExtendTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
