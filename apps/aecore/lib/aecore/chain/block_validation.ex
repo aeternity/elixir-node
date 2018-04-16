@@ -16,14 +16,14 @@ defmodule Aecore.Chain.BlockValidation do
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
-  @opaque tree :: :gb_merkle_trees.tree()
+  @type tree :: :gb_merkle_trees.tree()
 
   @spec calculate_and_validate_block!(
           Block.t(),
           Block.t(),
-          Chainstate.account_chainstate(),
+          Chainstate.chainstate(),
           list(Block.t())
-        ) :: {:error, term()} | :ok
+        ) :: {:error, term()} | Chainstate.chainstate()
 
   def calculate_and_validate_block!(
         new_block,

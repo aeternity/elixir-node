@@ -8,7 +8,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -118,7 +117,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec preprocess_check!(
           SpendTx.t(),
           Wallet.pubkey(),
-          AccountStateTree.tree(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
@@ -132,7 +131,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     end
   end
 
-  @spec deduct_fee(Chainstate.accounts_state(), non_neg_integer()) :: Account.t()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

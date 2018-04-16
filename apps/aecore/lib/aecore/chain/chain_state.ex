@@ -40,7 +40,7 @@ defmodule Aecore.Chain.ChainState do
     cond do
       SignedTx.is_coinbase?(tx) ->
         receiver_state = Map.get(chainstate.accounts, data.payload.receiver, Account.empty())
-        new_receiver_state = SignedTx.reward(data, block_height, receiver_state)
+        new_receiver_state = SignedTx.reward(data, receiver_state)
 
         new_accounts_state =
           Map.put(chainstate.accounts, data.payload.receiver, new_receiver_state)

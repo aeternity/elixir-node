@@ -86,9 +86,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.accounts(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {Chainstate.accounts(), tx_type_state()}
+        ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(
         %OracleQueryTx{} = tx,
         sender,
@@ -173,7 +173,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

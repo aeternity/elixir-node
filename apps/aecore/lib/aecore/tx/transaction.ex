@@ -9,8 +9,8 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Structures.OracleResponseTx
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.SpendTx
-  alias Aecore.Chain.ChainState
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -49,9 +49,9 @@ defmodule Aecore.Tx.Transaction do
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
-              ChainState.accounts(),
+              AccountStateTree.tree(),
               tx_type_state()
-            ) :: {ChainState.accounts(), tx_type_state()}
+            ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -82,12 +82,12 @@ defmodule Aecore.Tx.Transaction do
   @callback preprocess_check!(
               tx_types(),
               Wallet.pubkey(),
-              ChainState.accounts(),
+              Account.t(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.accounts(), fee :: non_neg_integer()) :: ChainState.accounts()
+  @callback deduct_fee(Account.t(), fee :: non_neg_integer()) :: Account.t()
 end
