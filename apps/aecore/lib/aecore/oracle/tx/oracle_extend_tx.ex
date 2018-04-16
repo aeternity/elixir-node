@@ -1,9 +1,14 @@
-defmodule Aecore.Structures.OracleExtendTx do
-  @behaviour Aecore.Structures.Transaction
+defmodule Aecore.Oracle.Tx.OracleExtendTx do
+  @moduledoc """
+  Contains the transaction structure for oracle extensions
+  and functions associated with those transactions.
+  """
+
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.ChainState
 
@@ -21,7 +26,7 @@ defmodule Aecore.Structures.OracleExtendTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
@@ -39,9 +44,9 @@ defmodule Aecore.Structures.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.accounts(),
+          Chainstate.accounts(),
           Oracle.registered_oracles()
-        ) :: {ChainState.accounts(), Oracle.registered_oracles()}
+        ) :: {Chainstate.accounts(), Oracle.registered_oracles()}
   def process_chainstate!(
         %OracleExtendTx{} = tx,
         sender,
@@ -56,12 +61,14 @@ defmodule Aecore.Structures.OracleExtendTx do
       sender,
       Map.get(accounts, sender, Account.empty()),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      accounts
+      |> Map.get(sender, Account.empty())
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 
@@ -80,12 +87,13 @@ defmodule Aecore.Structures.OracleExtendTx do
   @spec preprocess_check!(
           OracleExtendTx.t(),
           Wallet.pubkey(),
-          ChainState.accounts(),
+          Chainstate.accounts(),
+          non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           Oracle.registered_oracles()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, _block_height, registered_oracles) do
+  def preprocess_check!(tx, sender, account_state, fee, _nonce, _block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})

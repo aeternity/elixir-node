@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.Transaction do
+defmodule Aecore.Tx.Transaction do
   @moduledoc """
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
@@ -10,6 +10,8 @@ defmodule Aecore.Structures.Transaction do
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Chain.ChainState
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -82,6 +84,7 @@ defmodule Aecore.Structures.Transaction do
               Wallet.pubkey(),
               ChainState.accounts(),
               fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}

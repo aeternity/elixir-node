@@ -12,7 +12,7 @@ defmodule Aecore do
       Aecore.Persistence.Worker.Supervisor,
       Aecore.Chain.Worker.Supervisor,
       Aecore.Miner.Worker.Supervisor,
-      Aecore.Txs.Pool.Worker.Supervisor,
+      Aecore.Tx.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
       Aecore.Wallet.Worker.Supervisor,
       supervisor(Exexec, [], function: :start)

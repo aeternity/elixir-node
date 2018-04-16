@@ -1,17 +1,24 @@
-defmodule Aecore.Structures.OracleQueryTx do
-  @behaviour Aecore.Structures.Transaction
+defmodule Aecore.Oracle.Tx.OracleQueryTx do
+  @moduledoc """
+  Contains the transaction structure for oracle queries
+  and functions associated with those transactions.
+  """
+
+  @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
+  alias Aeutil.Hash
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
-  @type tx_type_state :: ChainState.oracles()
+  @type tx_type_state :: Chainstate.oracles()
 
   @type id :: binary()
 
@@ -44,7 +51,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
@@ -65,11 +72,12 @@ defmodule Aecore.Structures.OracleQueryTx do
 
   @spec is_valid?(OracleQueryTx.t()) :: boolean()
   def is_valid?(%OracleQueryTx{
+        oracle_address: oracle_address,
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
     Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl)
+      match?(%{type: :relative}, response_ttl) && Wallet.key_size_valid?(oracle_address)
   end
 
   @spec process_chainstate!(
@@ -80,7 +88,7 @@ defmodule Aecore.Structures.OracleQueryTx do
           non_neg_integer(),
           ChainState.accounts(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {Chainstate.accounts(), tx_type_state()}
   def process_chainstate!(
         %OracleQueryTx{} = tx,
         sender,
@@ -94,18 +102,20 @@ defmodule Aecore.Structures.OracleQueryTx do
     preprocess_check!(
       tx,
       sender,
-      Map.get(accounts, sender, Account.empty()),
+      Account.get_account_state(accounts, sender),
       fee,
+      nonce,
       block_height,
       registered_oracles
     )
 
     new_sender_account_state =
-      Map.get(accounts, sender, Account.empty())
+      accounts
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee + tx.query_fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
     interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
@@ -129,12 +139,13 @@ defmodule Aecore.Structures.OracleQueryTx do
   @spec preprocess_check!(
           OracleQueryTx.t(),
           Wallet.pubkey(),
-          ChainState.account(),
+          Chainstate.account(),
+          non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, block_height, registered_oracles) do
+  def preprocess_check!(tx, _sender, account_state, fee, _nonce, block_height, registered_oracles) do
     cond do
       account_state.balance - fee < 0 ->
         throw({:error, "Negative balance"})
@@ -162,7 +173,7 @@ defmodule Aecore.Structures.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
@@ -201,7 +212,7 @@ defmodule Aecore.Structures.OracleQueryTx do
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
-    :crypto.hash(:sha256, bin)
+    Hash.hash(bin)
   end
 
   def base58c_encode(bin) do

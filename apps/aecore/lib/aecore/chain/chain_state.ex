@@ -4,9 +4,9 @@ defmodule Aecore.Chain.ChainState do
   The chain state is a map, telling us what amount of tokens each account has.
   """
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.Account
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Account
   alias Aecore.Oracle.Oracle
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization

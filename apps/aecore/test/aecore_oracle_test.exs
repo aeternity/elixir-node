@@ -4,7 +4,7 @@ defmodule AecoreOracleTest do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   @tag timeout: 120_000
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do

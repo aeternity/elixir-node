@@ -12,8 +12,9 @@ defmodule Aecore.Pow.Cuckoo do
   require Logger
 
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
+  alias Aeutil.Hash
 
   @doc """
   Proof of Work verification (with difficulty check)
@@ -74,7 +75,7 @@ defmodule Aecore.Pow.Cuckoo do
     {:ok, command, options}
   end
 
-  defp command_options(:verify), do: default_command_options() ++ [{:stdin, true}]
+  defp command_options(:verify), do: [{:stdin, true} | default_command_options()]
 
   defp command_options(:generate), do: default_command_options()
 
@@ -183,7 +184,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
-    hash = :crypto.hash(:sha256, bin)
+    hash = Hash.hash(bin)
     Hashcash.verify(hash, target)
   end
 
@@ -191,7 +192,7 @@ defmodule Aecore.Pow.Cuckoo do
   ## greater than 33 (when it needs u64 to store). Hash result for difficulty
   ## control accordingly.
   @spec get_node_size() :: non_neg_integer()
-  defp get_node_size() do
+  defp get_node_size do
     case Application.get_env(:aecore, :pow)[:params] do
       {_, _, size} when size > 32 -> 8
       {_, _, size} when size > 0 -> 4

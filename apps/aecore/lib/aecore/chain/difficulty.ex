@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Difficulty do
   Contains functions used to calculate the PoW difficulty.
   """
 
-  alias Aecore.Structures.Block
+  alias Aecore.Chain.Block
   alias Aeutil.Scientific
 
   use Bitwise

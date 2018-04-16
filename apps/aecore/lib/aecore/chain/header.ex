@@ -1,9 +1,9 @@
-defmodule Aecore.Structures.Header do
+defmodule Aecore.Chain.Header do
   @moduledoc """
   Structure of Header
   """
 
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Header
   alias Aeutil.Bits
 
   @type t :: %Header{

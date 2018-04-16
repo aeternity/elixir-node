@@ -1,56 +1,47 @@
 defmodule Aecore.Chain.BlockValidation do
+  @moduledoc """
+  Contains functions used to validate data inside of the block structure
+  """
+
   alias Aecore.Pow.Cuckoo
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Chain.ChainState
-  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
+  alias Aeutil.Hash
 
-  @time_validation_blocks_count 10
-  @time_validation_future_limit_ms 3_600_000
+  @time_validation_future_limit_ms 30 * 60 * 1000
 
   @opaque tree :: :gb_merkle_trees.tree()
 
   @spec calculate_and_validate_block!(
           Block.t(),
           Block.t(),
-          ChainState.chainstate(),
+          Chainstate.account_chainstate(),
           list(Block.t())
-        ) :: {:error, term()} | ChainState.chainstate()
+        ) :: {:error, term()} | :ok
+
   def calculate_and_validate_block!(
         new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
       ) do
+    single_validate_block!(new_block)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
-    single_validate_block!(new_block)
-
     new_chain_state =
-      ChainState.calculate_and_validate_chain_state!(
+      Chainstate.calculate_and_validate_chain_state!(
         new_block.txs,
         old_chain_state,
         new_block.header.height
       )
 
-    root_hash = ChainState.calculate_root_hash(new_chain_state)
-
-    server = self()
-    work = fn -> Cuckoo.verify(new_block.header) end
-
-    spawn(fn ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
-
-    is_target_met =
-      receive do
-        {:worker_reply, _from, verified?} -> verified?
-      end
+    root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
     target =
       Difficulty.calculate_next_difficulty(
@@ -67,12 +58,6 @@ defmodule Aecore.Chain.BlockValidation do
       !(is_genesis || check_correct_height?(new_block, previous_block)) ->
         throw({:error, "Incorrect height"})
 
-      !valid_header_time?(new_block) ->
-        throw({:error, "Invalid header time"})
-
-      !is_target_met ->
-        throw({:error, "Header hash doesnt meet the target"})
-
       new_block.header.root_hash != root_hash ->
         throw({:error, "Root hash not matching"})
 
@@ -88,6 +73,18 @@ defmodule Aecore.Chain.BlockValidation do
   def single_validate_block!(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
+    server = self()
+    work = fn -> Cuckoo.verify(block.header) end
+
+    spawn(fn ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_target_met =
+      receive do
+        {:worker_reply, _from, verified?} -> verified?
+      end
+
     block_txs_count = length(block.txs)
     max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
@@ -110,6 +107,12 @@ defmodule Aecore.Chain.BlockValidation do
       block_txs_count > max_txs_for_block ->
         throw({:error, "Too many transactions"})
 
+      !valid_header_time?(block) ->
+        throw({:error, "Invalid header time"})
+
+      !is_target_met ->
+        throw({:error, "Header hash doesnt meet the target"})
+
       true ->
         :ok
     end
@@ -118,7 +121,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
     block_header_bin = Serialization.pack_binary(header)
-    :crypto.hash(:sha256, block_header_bin)
+    Hash.hash(block_header_bin)
   end
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
@@ -149,7 +152,7 @@ defmodule Aecore.Chain.BlockValidation do
       merkle_tree =
         for transaction <- txs do
           transaction_data_bin = Serialization.pack_binary(transaction.data)
-          {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
+          {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 
       merkle_tree
@@ -190,19 +193,6 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: new_block_header}) do
-    case new_block_header.time <=
-           System.system_time(:milliseconds) + @time_validation_future_limit_ms do
-      true ->
-        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @time_validation_blocks_count)
-
-        last_blocks_times = for block <- last_blocks, do: block.header.time
-
-        avg = Enum.sum(last_blocks_times) / Enum.count(last_blocks_times)
-
-        new_block_header.time >= avg
-
-      false ->
-        false
-    end
+    new_block_header.time < System.system_time(:milliseconds) + @time_validation_future_limit_ms
   end
 end
