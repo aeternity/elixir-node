@@ -309,10 +309,10 @@ defmodule Aevm do
     {op1, state1} = pop(state)
     {op2, state2} = pop(state1)
 
-    value = Memory.get_area(op1, op2, state2)
+    {value, state3} = Memory.get_area(op1, op2, state2)
     sha3hash = sha3_hash(value)
     <<hash::integer-unsigned-256>> = sha3hash
-    push(hash, state2)
+    push(hash, state3)
   end
 
   # 30s: Environmental Information
@@ -454,9 +454,9 @@ defmodule Aevm do
   def exec(OpCodes._MLOAD(), state) do
     {address, state} = pop(state)
 
-    result = Memory.load(address, state)
+    {result, state1} = Memory.load(address, state)
 
-    push(result, state)
+    push(result, state1)
   end
 
   def exec(OpCodes._MSTORE(), state) do
@@ -967,11 +967,11 @@ defmodule Aevm do
     {from, state} = pop(state)
     {to, state} = pop(state)
 
-    result = Memory.get_area(from, to, state)
+    {result, state1} = Memory.get_area(from, to, state)
 
-    state1 = State.set_return(result, state)
-    code = State.code(state1)
-    State.set_cp(byte_size(code), state1)
+    state2 = State.set_return(result, state1)
+    code = State.code(state2)
+    State.set_cp(byte_size(code), state2)
   end
 
   def exec(OpCodes._DELEGATECALL(), state) do

@@ -12,7 +12,9 @@ defmodule Memory do
     <<next::size(bit_position), _::binary>> = <<next_saved_value::256>>
 
     value_binary = prev <> <<next::size(bit_position)>>
-    binary_word_to_integer(value_binary)
+
+    memory1 = update_memory_size(address + 32, memory)
+    {binary_word_to_integer(value_binary), State.set_memory(memory1, state)}
   end
 
   def store(address, value, state) do
@@ -35,7 +37,7 @@ defmodule Memory do
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_prev_value))
 
     memory2 =
-      if rem(memory_index, 32) != 0 do
+      if rem(address, 32) != 0 do
         next_saved_value = Map.get(memory, memory_index + 32, 0)
         new_next_value = write_part(0, next_bits, bit_position, <<next_saved_value::256>>)
         Map.put(memory1, memory_index + 32, binary_word_to_integer(new_next_value))
@@ -43,7 +45,8 @@ defmodule Memory do
         memory1
       end
 
-    State.set_memory(memory2, state)
+    memory3 = update_memory_size(address + 32, memory2)
+    State.set_memory(memory3, state)
   end
 
   def store8(address, value, state) do
@@ -56,18 +59,18 @@ defmodule Memory do
 
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value))
 
-    State.set_memory(memory1, state)
+    memory2 = update_memory_size(address + 8, memory1)
+    State.set_memory(memory2, state)
   end
 
   def memory_size_words(state) do
-    round(memory_size_bytes(state) / 32)
+    memory = State.memory(state)
+    Map.get(memory, :size)
   end
 
   def memory_size_bytes(state) do
-    #TODO: fix word count when (nothing when not initialised, 1 even if there are zeroes written)
-    memory = State.memory(state)
-    largest_index = memory |> Map.keys() |> Enum.sort() |> Enum.at(-1, 0)
-    largest_index + 32
+    memory_size_words = memory_size_words(state)
+    memory_size_words * 32
   end
 
   def get_area(from, bytes, state) do
@@ -85,7 +88,8 @@ defmodule Memory do
     area_bits = bytes * 8
     <<_::size(unneeded_bits), area::size(area_bits), _::binary>> = total_data
 
-    <<area::size(area_bits)>>
+    memory1 = update_memory_size(from + bytes, memory)
+    {<<area::size(area_bits)>>, State.set_memory(memory1, state)}
   end
 
   def write_area(from, bytes, state) do
@@ -94,7 +98,8 @@ defmodule Memory do
     {memory_index, bit_position} = get_index_in_memory(from)
     memory1 = write(bytes, bit_position, memory_index, memory)
 
-    State.set_memory(memory1, state)
+    memory2 = update_memory_size(from + byte_size(bytes), memory1)
+    State.set_memory(memory2, state)
   end
 
   defp write(<<>>, _byte_position, _memory_index, memory) do
@@ -151,5 +156,16 @@ defmodule Memory do
     <<word_integer::size(256), _::binary>> = word
 
     word_integer
+  end
+
+  defp update_memory_size(address, memory) do
+    {memory_index, _} = get_index_in_memory(address)
+    current_mem_size_words = Map.get(memory, :size)
+
+    if memory_index / 32 > current_mem_size_words do
+      Map.put(memory, :size, round(memory_index / 32))
+    else
+      memory
+    end
   end
 end

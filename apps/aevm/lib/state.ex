@@ -6,7 +6,7 @@ defmodule State do
 
     state = %{
       :stack => [],
-      :memory => %{},
+      :memory => %{size: 0},
       :storage => %{},
       :code => code_bin,
       :cp => 0,
