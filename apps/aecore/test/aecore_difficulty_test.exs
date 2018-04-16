@@ -4,8 +4,8 @@ defmodule DifficultyTest do
   doctest Aecore.Chain.Difficulty
 
   alias Aecore.Chain.Difficulty, as: Difficulty
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
 
   @tag :difficulty
   test "difficulty calculation genesis block only" do

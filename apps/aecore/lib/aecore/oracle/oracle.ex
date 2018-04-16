@@ -1,14 +1,20 @@
 defmodule Aecore.Oracle.Oracle do
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  @moduledoc """
+  Contains wrapping functions for working with oracles, data validation and TTL calculations.
+  """
+
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
+  alias ExJsonSchema.Schema, as: JsonSchema
+  alias ExJsonSchema.Validator, as: JsonValidator
 
   require Logger
 
@@ -31,6 +37,11 @@ defmodule Aecore.Oracle.Oracle do
             query_height_included: non_neg_integer(),
             response_height_included: non_neg_integer()
           }
+        }
+
+  @type oracles :: %{
+          registered_oracles: registered_oracles(),
+          interaction_objects: interaction_objects()
         }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
@@ -135,9 +146,9 @@ defmodule Aecore.Oracle.Oracle do
 
   @spec data_valid?(map(), map()) :: true | false
   def data_valid?(format, data) do
-    schema = ExJsonSchema.Schema.resolve(format)
+    schema = JsonSchema.resolve(format)
 
-    case ExJsonSchema.Validator.validate(schema, data) do
+    case JsonValidator.validate(schema, data) do
       :ok ->
         true
 
@@ -218,7 +229,7 @@ defmodule Aecore.Oracle.Oracle do
                                                                         acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         acc
-        |> pop_in([:oracles, :registered_oracles, address])
+        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
         |> elem(1)
       else
         acc
@@ -230,18 +241,19 @@ defmodule Aecore.Oracle.Oracle do
         chain_state,
         block_height
       ) do
-    Enum.reduce(chain_state.oracles.interaction_objects, chain_state, fn {query_id,
-                                                                          %{
-                                                                            query: query,
-                                                                            query_sender:
-                                                                              query_sender,
-                                                                            response: response,
-                                                                            query_height_included:
-                                                                              query_height_included,
-                                                                            response_height_included:
-                                                                              response_height_included
-                                                                          }},
-                                                                         acc ->
+    interaction_objects = chain_state.oracles.interaction_objects
+
+    Enum.reduce(interaction_objects, chain_state, fn {query_id,
+                                                      %{
+                                                        query: query,
+                                                        query_sender: query_sender,
+                                                        response: response,
+                                                        query_height_included:
+                                                          query_height_included,
+                                                        response_height_included:
+                                                          response_height_included
+                                                      }},
+                                                     acc ->
       query_absolute_ttl =
         calculate_absolute_ttl(
           query.query_ttl,
@@ -253,10 +265,7 @@ defmodule Aecore.Oracle.Oracle do
       response_has_expired =
         if response != nil do
           response_absolute_ttl =
-            calculate_absolute_ttl(
-              query.query_ttl,
-              response_height_included
-            )
+            calculate_absolute_ttl(query.query_ttl, response_height_included)
 
           response_absolute_ttl <= block_height
         else

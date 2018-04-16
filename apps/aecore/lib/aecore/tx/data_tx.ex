@@ -1,15 +1,20 @@
-defmodule Aecore.Structures.DataTx do
+defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
-  alias Aecore.Structures.DataTx
-  alias Aecore.Chain.ChainState
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+<<<<<<< HEAD:apps/aecore/lib/aecore/structures/data_tx.ex
   alias Aecore.Structures.Account
   alias Aeutil.Bits
+=======
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Account.Account
+>>>>>>> master:apps/aecore/lib/aecore/tx/data_tx.ex
 
   require Logger
 
@@ -54,14 +59,20 @@ defmodule Aecore.Structures.DataTx do
   validation checks. Otherwise we return error.
   """
   @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee > 0 do
-      payload
-      |> type.init()
-      |> type.is_valid?()
-    else
-      Logger.error("Fee not enough")
-      false
+  def is_valid?(%DataTx{sender: sender, type: type, payload: payload, fee: fee}) do
+    cond do
+      fee <= 0 ->
+        Logger.error("Fee not enough")
+        false
+
+      !Wallet.key_size_valid?(sender) ->
+        Logger.error("Wrong sender key size")
+        false
+
+      true ->
+        payload
+        |> type.init()
+        |> type.is_valid?()
     end
   end
 
@@ -69,23 +80,23 @@ defmodule Aecore.Structures.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
-          ChainState.chainstate()
+  @spec process_chainstate!(DataTx.t(), Chainstate.chainstate(), non_neg_integer()) ::
+          Chainstate.chainstate()
   def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
-    accounts_state = chainstate.accounts
+    accounts_state_tree = chainstate.accounts
 
     tx_type_state =
-      if(tx.type == SpendTx) do
+      if tx.type == SpendTx do
         %{}
       else
         Map.get(chainstate, tx.type.get_chain_state_name(), %{})
       end
 
-    if !nonce_valid?(accounts_state, tx) do
+    if !nonce_valid?(accounts_state_tree, tx) do
       throw({:error, "Nonce is too small"})
     end
 
-    {new_accounts_state, new_tx_type_state} =
+    {new_accounts_state_tree, new_tx_type_state} =
       tx.payload
       |> tx.type.init()
       |> tx.type.process_chainstate!(
@@ -93,7 +104,7 @@ defmodule Aecore.Structures.DataTx do
         tx.fee,
         tx.nonce,
         block_height,
-        accounts_state,
+        accounts_state_tree,
         tx_type_state
       )
 
@@ -104,12 +115,12 @@ defmodule Aecore.Structures.DataTx do
         Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
       end
 
-    Map.put(new_chainstate, :accounts, new_accounts_state)
+    Map.put(new_chainstate, :accounts, new_accounts_state_tree)
   end
 
+  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
   def nonce_valid?(accounts_state, tx) do
-    account_state = Map.get(accounts_state, tx.sender, Account.empty())
-    tx.nonce > account_state.nonce
+    tx.nonce > Account.nonce(accounts_state, tx.sender)
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -124,7 +135,6 @@ defmodule Aecore.Structures.DataTx do
   @spec deserialize(payload()) :: DataTx.t()
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
-
     init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
   end
 

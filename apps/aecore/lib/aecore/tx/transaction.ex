@@ -1,12 +1,12 @@
-defmodule Aecore.Structures.Transaction do
+defmodule Aecore.Tx.Transaction do
   @moduledoc """
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.Account
-  alias Aecore.Chain.ChainState
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -72,11 +72,12 @@ defmodule Aecore.Structures.Transaction do
   @callback preprocess_check!(
               tx_types(),
               Wallet.pubkey(),
-              ChainState.account(),
+              Chainstate.account(),
               fee :: non_neg_integer(),
+              nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(ChainState.account(), fee :: non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
 end
