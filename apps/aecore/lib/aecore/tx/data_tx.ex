@@ -8,13 +8,10 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
-<<<<<<< HEAD:apps/aecore/lib/aecore/structures/data_tx.ex
-  alias Aecore.Structures.Account
   alias Aeutil.Bits
-=======
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
->>>>>>> master:apps/aecore/lib/aecore/tx/data_tx.ex
+
 
   require Logger
 
