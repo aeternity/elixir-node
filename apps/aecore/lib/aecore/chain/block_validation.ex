@@ -20,7 +20,7 @@ defmodule Aecore.Chain.BlockValidation do
           Block.t(),
           Chainstate.account_chainstate(),
           list(Block.t())
-        ) :: {:ok, Chainstate.chainstate()} | {:error, String.t()}
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(
         new_block,
         previous_block,
@@ -40,18 +40,6 @@ defmodule Aecore.Chain.BlockValidation do
 
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-        server = self()
-        work = fn -> Cuckoo.verify(new_block.header) end
-
-        spawn(fn ->
-          send(server, {:worker_reply, self(), work.()})
-        end)
-
-        is_target_met =
-          receive do
-            {:worker_reply, _from, verified?} -> verified?
-          end
-
         target =
           Difficulty.calculate_next_difficulty(
             new_block.header.time,
@@ -65,9 +53,6 @@ defmodule Aecore.Chain.BlockValidation do
 
           !valid_header_time?(new_block) ->
             {:error, "#{__MODULE__}: Invalid header time"}
-
-          !is_target_met ->
-            {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
           new_block.header.root_hash != root_hash ->
             {:error, "#{__MODULE__}: Root hash not matching"}

@@ -65,8 +65,7 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), ChainState.chainstate(), non_neg_integer()) ::
-          ChainState.chainstate()
+  @spec process_chainstate(DataTx.t(), ChainState.t(), non_neg_integer()) :: Chainstate.t()
   def process_chainstate(%DataTx{} = tx, chainstate, block_height) do
     accounts_state_tree = chainstate.accounts
 
@@ -101,13 +100,13 @@ defmodule Aecore.Tx.DataTx do
   Gets the given transaction type state,
   if there is any stored in the chainstate
   """
-  @spec get_tx_type_state(ChainState.chainstate(), atom()) :: map()
+  @spec get_tx_type_state(Chainstate.t(), atom()) :: map()
   def get_tx_type_state(chainstate, tx_type) do
     type = tx_type.get_chain_state_name()
     Map.get(chainstate, type, %{})
   end
 
-  @spec validate_sender(Wallet.pubkey(), ChainState.chainstate()) :: :ok | {:error, String.t()}
+  @spec validate_sender(Wallet.pubkey(), Chainstate.t()) :: :ok | {:error, String.t()}
   def validate_sender(sender, %{accounts: account}) do
     case AccountStateTree.get(account, sender) do
       {:ok, _account_key} ->
@@ -118,7 +117,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec validate_nonce(ChainState.account(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate_nonce(Account.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate_nonce(accounts_state, tx) do
     if tx.nonce > Account.nonce(accounts_state, tx.sender) do
       :ok
@@ -127,7 +126,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(DataTx.t(), ChainState.chain_state(), non_neg_integer()) ::
+  @spec preprocess_check(DataTx.t(), Chainstate.t(), non_neg_integer()) ::
           :ok | {:error, String.t()}
   def preprocess_check(
         %DataTx{

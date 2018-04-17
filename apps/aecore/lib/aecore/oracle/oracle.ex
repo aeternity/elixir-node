@@ -39,7 +39,7 @@ defmodule Aecore.Oracle.Oracle do
           }
         }
 
-  @type oracles :: %{
+  @type t :: %{
           registered_oracles: registered_oracles(),
           interaction_objects: interaction_objects()
         }

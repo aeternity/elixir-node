@@ -11,7 +11,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Account.AccountStateTree
 
@@ -84,9 +83,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
-          ChainState.oracles()
-        ) :: {ChainState.accounts(), ChainState.oracles()}
+          AccountStateTree.tree(),
+          Oracle.t()
+        ) :: {AccountStateTree.tree(), Oracle.t()}
   def process_chainstate(
         %OracleQueryTx{} = tx,
         sender,
@@ -126,11 +125,11 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec preprocess_check(
           OracleQueryTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.oracles()
+          Oracle.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(tx, _sender, account_state, fee, _nonce, block_height, %{
         registered_oracles: registered_oracles
@@ -164,7 +163,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

@@ -16,7 +16,7 @@ defmodule Aecore.Chain.Chainstate do
 
   @type t :: %Chainstate{
           accounts: AccountStateTree.accounts_state(),
-          oracles: Oracle.oracles()
+          oracles: Oracle.t()
         }
 
   defstruct [
@@ -99,18 +99,19 @@ defmodule Aecore.Chain.Chainstate do
   """
   @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
-    txs_list
-    |> List.foldl([], fn tx, valid_txs_list ->
-      case apply_transaction_on_state(tx, chainstate, block_height) do
-        {:ok, _updated_chainstate} ->
-          [tx | valid_txs_list]
+    {txs_list, _} =
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, updated_chainstate} ->
+        case apply_transaction_on_state(tx, chainstate, block_height) do
+          {:ok, updated_chainstate} ->
+            {[tx | valid_txs_list], updated_chainstate}
 
-        {:error, reason} ->
-          Logger.error(reason)
-          valid_txs_list
-      end
-    end)
-    |> Enum.reverse()
+          {:error, reason} ->
+            Logger.error(reason)
+            {valid_txs_list, updated_chainstate}
+        end
+      end)
+
+    Enum.reverse(txs_list)
   end
 
   @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()

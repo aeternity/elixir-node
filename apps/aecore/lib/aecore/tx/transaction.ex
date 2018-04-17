@@ -72,12 +72,12 @@ defmodule Aecore.Tx.Transaction do
   @callback preprocess_check(
               tx_types(),
               Wallet.pubkey(),
-              Chainstate.account(),
+              Account.t(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
+  @callback deduct_fee(Account.t(), fee :: non_neg_integer()) :: Account.t()
 end

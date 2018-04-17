@@ -238,7 +238,7 @@ defmodule Aeutil.Serialization do
           Map.put(new_value, :root_hash, deserialize_value(val, :root_hash))
 
         _ ->
-          Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+          Map.put(new_value, Parser.to_atom(key), deserialize_value(val, Parser.to_atom(key)))
       end
     end)
   end
@@ -273,7 +273,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :deserialize)
 
       _ ->
-        Parser.to_atom!(value)
+        Parser.to_atom(value)
     end
   end
 

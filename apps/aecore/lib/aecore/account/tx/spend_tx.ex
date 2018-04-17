@@ -8,7 +8,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -86,7 +85,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           non_neg_integer(),
           AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {AccountStateTree.tree(), tx_type_state()}
   def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
 
@@ -124,7 +123,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     end
   end
 
-  @spec deduct_fee(Chainstate.accounts_state(), non_neg_integer()) :: Account.t()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

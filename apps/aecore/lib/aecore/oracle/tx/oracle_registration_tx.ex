@@ -11,7 +11,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   @type payload :: %{
@@ -80,9 +79,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.account(),
-          ChainState.oracles()
-        ) :: {ChainState.accounts(), ChainState.oracles()}
+          AccountStateTree.tree(),
+          Oracle.t()
+        ) :: {AccountStateTree.tree(), Oracle.t()}
   def process_chainstate(
         %OracleRegistrationTx{} = tx,
         sender,
@@ -117,11 +116,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec preprocess_check(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          ChainState.oracles()
+          Oracle.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(tx, sender, account_state, fee, _nonce, block_height, %{
         registered_oracles: registered_oracles
