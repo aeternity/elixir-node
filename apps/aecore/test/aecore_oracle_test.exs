@@ -5,16 +5,44 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Account.Account
+  alias Aecore.Persistence.Worker, as: Persistence
+
+  setup do
+    Code.require_file("test_utils.ex", "./test")
+
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      :ok
+    end)
+  end
 
   @tag timeout: 120_000
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+    pub_key = Wallet.get_public_key()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
+
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
 
@@ -23,11 +51,16 @@ defmodule AecoreOracleTest do
 
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+
     register_oracle(:invalid, :format)
     register_oracle(:invalid, :ttl)
+
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.registered_oracles()) == true
+
     Chain.clear_state()
+
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
@@ -51,6 +84,10 @@ defmodule AecoreOracleTest do
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
+
     Chain.clear_state()
   end
 
