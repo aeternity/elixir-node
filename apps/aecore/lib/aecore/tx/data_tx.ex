@@ -12,6 +12,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Structures.OracleQueryTx
   alias Aecore.Structures.OracleResponseTx
   alias Aecore.Structures.OracleExtendTx
+  alias Aeutil.Bits
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
 
@@ -145,5 +146,17 @@ defmodule Aecore.Tx.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
     init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("th", bin)
+  end
+
+  def base58c_decode(<<"th$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end

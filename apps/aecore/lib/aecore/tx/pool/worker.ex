@@ -130,7 +130,7 @@ defmodule Aecore.Tx.Pool.Worker do
 
   @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer()) ::
           boolean()
-  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
+  def is_minimum_fee_met?(tx, identifier, block_height \\ 0) do
     case tx.data.payload do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx)

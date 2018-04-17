@@ -109,4 +109,20 @@ defmodule Aecore.Tx.SignedTx do
   def base58c_decode_root(_) do
     {:error, "Wrong data"}
   end
+
+  def base58c_encode_signature(bin) do
+    if bin == nil do
+      nil
+    else
+      Bits.encode58c("sg", bin)
+    end
+  end
+
+  def base58c_decode_signature(<<"sg$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_signature(_) do
+    {:error, "Wrong data"}
+  end
 end
