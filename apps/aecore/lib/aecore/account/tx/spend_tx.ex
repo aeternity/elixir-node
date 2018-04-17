@@ -6,7 +6,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @behaviour Aecore.Tx.Transaction
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
@@ -55,12 +55,18 @@ defmodule Aecore.Account.Tx.SpendTx do
   Checks wether the amount that is send is not a negative number
   """
   @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{amount: amount}) do
-    if amount >= 0 do
-      true
-    else
-      Logger.error("The amount cannot be a negative number")
-      false
+  def is_valid?(%SpendTx{receiver: receiver, amount: amount}) do
+    cond do
+      amount < 0 ->
+        Logger.error("The amount cannot be a negative number")
+        false
+
+      !Wallet.key_size_valid?(receiver) ->
+        Logger.error("Wrong receiver key size")
+        false
+
+      true ->
+        true
     end
   end
 

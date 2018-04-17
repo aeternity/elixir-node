@@ -8,6 +8,8 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aeutil.Bits
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
 
   require Logger
@@ -53,14 +55,20 @@ defmodule Aecore.Tx.DataTx do
   validation checks. Otherwise we return error.
   """
   @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee > 0 do
-      payload
-      |> type.init()
-      |> type.is_valid?()
-    else
-      Logger.error("Fee not enough")
-      false
+  def is_valid?(%DataTx{sender: sender, type: type, payload: payload, fee: fee}) do
+    cond do
+      fee <= 0 ->
+        Logger.error("Fee not enough")
+        false
+
+      !Wallet.key_size_valid?(sender) ->
+        Logger.error("Wrong sender key size")
+        false
+
+      true ->
+        payload
+        |> type.init()
+        |> type.is_valid?()
     end
   end
 
@@ -124,5 +132,17 @@ defmodule Aecore.Tx.DataTx do
   def deserialize(%{} = tx) do
     data_tx = Serialization.deserialize_value(tx)
     init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("th", bin)
+  end
+
+  def base58c_decode(<<"th$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 end
