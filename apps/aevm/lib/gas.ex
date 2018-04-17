@@ -1,0 +1,101 @@
+defmodule Gas do
+  use Bitwise
+
+  require OpCodesUtil
+  require GasCodes
+
+  def update_gas(op_code, memory_gas_cost, state) do
+    curr_gas = State.gas(state)
+    {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
+    gas_after = curr_gas - (op_gas_price + memory_gas_cost)
+    State.set_gas(gas_after, state)
+  end
+
+  def memory_gas_cost(state_with_ops, state_without) do
+    words1 = Memory.memory_size_words(state_with_ops)
+    IO.inspect("words1: #{words1}")
+    case Memory.memory_size_words(state_without) do
+      ^words1 ->
+        0
+
+      words2 ->
+        first = round(GasCodes._GMEMORY() * words1 + Float.floor(words1 * words1 / 512))
+        second = round(GasCodes._GMEMORY() * words2 + Float.floor(words2 * words2 / 512))
+        first - second
+    end
+  end
+
+  def dynamic_gas_cost("CALL", state) do
+    # TODO
+  end
+
+  def dynamic_gas_cost("DELEGATECALL", state) do
+    # TODO
+  end
+
+  def dynamic_gas_cost("CALLDATACOPY", state) do
+    GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+  end
+
+  def dynamic_gas_cost("CODECOPY", state) do
+    GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+  end
+
+  def dynamic_gas_cost("EXTCODECOPY", state) do
+    GasCodes._GCOPY() * round(Float.ceil(peek(3, state) / 32))
+  end
+
+  def dynamic_gas_cost("LOG0", state) do
+    GasCodes._GLOGDATA() * peek(1, state)
+  end
+
+  def dynamic_gas_cost("LOG1", state) do
+    GasCodes._GLOGDATA() * peek(1, state)
+  end
+
+  def dynamic_gas_cost("LOG2", state) do
+    GasCodes._GLOGDATA() * peek(1, state)
+  end
+
+  def dynamic_gas_cost("LOG3", state) do
+    GasCodes._GLOGDATA() * peek(1, state)
+  end
+
+  def dynamic_gas_cost("LOG4", state) do
+    GasCodes._GLOGDATA() * peek(1, state)
+  end
+
+  def dynamic_gas_cost("SHA3", state) do
+    peeked = peek(1, state)
+    GasCodes._GSHA3WORD() * round(Float.ceil(peeked / 32))
+  end
+
+  def dynamic_gas_cost("SSTORE", state) do
+    # TODO
+  end
+
+  def dynamic_gas_cost("EXP", state) do
+    case peek(1, state) do
+      0 -> 0
+      peeked -> GasCodes._GEXPBYTE() * (1 + log(peeked))
+    end
+  end
+
+  def dynamic_gas_cost(_op_name, _state) do
+    0
+  end
+
+  defp peek(index, state) do
+    Stack.peek(index, state)
+  end
+
+  def log(value) when is_integer(value) do
+    log(value, -1)
+  end
+
+  def log(0, num), do: num
+
+  def log(value, num) do
+    log(Bitwise.bsr(value, 8), num + 1)
+  end
+end

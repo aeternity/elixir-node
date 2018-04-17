@@ -13,7 +13,7 @@ defmodule Memory do
 
     value_binary = prev <> <<next::size(bit_position)>>
 
-    memory1 = update_memory_size(address + 32, memory)
+    memory1 = update_memory_size(address + 31, memory)
     {binary_word_to_integer(value_binary), State.set_memory(memory1, state)}
   end
 
@@ -45,7 +45,7 @@ defmodule Memory do
         memory1
       end
 
-    memory3 = update_memory_size(address + 32, memory2)
+    memory3 = update_memory_size(address + 31, memory2)
     State.set_memory(memory3, state)
   end
 
@@ -59,7 +59,7 @@ defmodule Memory do
 
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value))
 
-    memory2 = update_memory_size(address + 8, memory1)
+    memory2 = update_memory_size(address + 7, memory1)
     State.set_memory(memory2, state)
   end
 
@@ -88,7 +88,7 @@ defmodule Memory do
     area_bits = bytes * 8
     <<_::size(unneeded_bits), area::size(area_bits), _::binary>> = total_data
 
-    memory1 = update_memory_size(from + bytes, memory)
+    memory1 = update_memory_size(from + bytes - 1, memory)
     {<<area::size(area_bits)>>, State.set_memory(memory1, state)}
   end
 
@@ -98,7 +98,7 @@ defmodule Memory do
     {memory_index, bit_position} = get_index_in_memory(from)
     memory1 = write(bytes, bit_position, memory_index, memory)
 
-    memory2 = update_memory_size(from + byte_size(bytes), memory1)
+    memory2 = update_memory_size(from + byte_size(bytes) - 1, memory1)
     State.set_memory(memory2, state)
   end
 

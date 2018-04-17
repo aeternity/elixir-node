@@ -3,9 +3,7 @@ defmodule Aevm do
 
   require OpCodes
   require OpCodesUtil
-  require GasCodes
   require AevmConst
-  require Stack
 
   def loop(state) do
     state1 = load_jumpdests(state)
@@ -20,10 +18,14 @@ defmodule Aevm do
       state
     else
       op_code = get_op_code(state)
+      op_name = OpCodesUtil.mnemonic(op_code)
+
+      dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
       state1 = exec(op_code, state)
 
-      memory_gas_cost = memory_cost(state1, state)
-      state2 = update_gas(op_code, memory_gas_cost, state1)
+      mem_gas_cost = Gas.memory_gas_cost(state1, state)
+      gas_cost = mem_gas_cost + dynamic_gas_cost
+      state2 = Gas.update_gas(op_code, gas_cost, state1)
 
       state3 = State.inc_cp(state2)
 
@@ -154,7 +156,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = :math.pow(op1, op2)
+    result = round(:math.pow(op1, op2))
 
     push(result, state)
   end
@@ -300,10 +302,10 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._BYTE(), state) do
-    {op1, state} = pop(state)
-    {op2, state} = pop(state)
+    {byte, state} = pop(state)
+    {value, state} = pop(state)
 
-    result = byte(op1, op2)
+    result = byte(byte, value)
 
     push(state, result)
   end
@@ -311,10 +313,10 @@ defmodule Aevm do
   # 20s: SHA3
 
   def exec(OpCodes._SHA3(), state) do
-    {op1, state1} = pop(state)
-    {op2, state2} = pop(state1)
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
 
-    {value, state3} = Memory.get_area(op1, op2, state2)
+    {value, state3} = Memory.get_area(from_pos, nbytes, state2)
     sha3hash = sha3_hash(value)
     <<hash::integer-unsigned-256>> = sha3hash
     push(hash, state3)
@@ -347,8 +349,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CALLDATALOAD(), state) do
-    {op1, state1} = pop(state)
-    value = value_from_data(op1, state1)
+    {address, state1} = pop(state)
+    value = value_from_data(address, state1)
     push(value, state1)
   end
 
@@ -359,14 +361,13 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CALLDATACOPY(), state) do
-    # TODO: dynamic gas calculation
-    {op1, state1} = pop(state)
-    {op2, state2} = pop(state1)
-    {op3, state3} = pop(state2)
+    {nbytes, state1} = pop(state)
+    {from_data_pos, state2} = pop(state1)
+    {to_data_pos, state3} = pop(state2)
 
     data = State.data(state)
-    data_bytes = copy_bytes(op2, op3, data)
-    Memory.write_area(op1, data_bytes, state3)
+    data_bytes = copy_bytes(from_data_pos, to_data_pos, data)
+    Memory.write_area(nbytes, data_bytes, state3)
   end
 
   def exec(OpCodes._CODESIZE(), state) do
@@ -376,14 +377,13 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._CODECOPY(), state) do
-    # TODO: dynamic gas calculation
-    {op1, state1} = pop(state)
-    {op2, state2} = pop(state1)
-    {op3, state3} = pop(state2)
+    {nbytes, state1} = pop(state)
+    {from_code_pos, state2} = pop(state1)
+    {to_code_pos, state3} = pop(state2)
 
     code = State.code(state)
-    code_bytes = copy_bytes(op2, op3, code)
-    Memory.write_area(op1, code_bytes, state3)
+    code_bytes = copy_bytes(from_code_pos, to_code_pos, code)
+    Memory.write_area(nbytes, code_bytes, state3)
   end
 
   def exec(OpCodes._GASPRICE(), state) do
@@ -408,13 +408,13 @@ defmodule Aevm do
 
   def exec(OpCodes._RETURNDATACOPY(), state) do
     # TODO: test
-    {op1, state1} = pop(state)
-    {op2, state2} = pop(state1)
-    {op3, state3} = pop(state2)
+    {nbytes, state1} = pop(state)
+    {from_rdata_pos, state2} = pop(state1)
+    {to_rdata_pos, state3} = pop(state2)
 
     return_data = State.data(state)
-    return_data_bytes = copy_bytes(op2, op3, return_data)
-    Memory.write_area(op1, return_data_bytes, state3)
+    return_data_bytes = copy_bytes(from_rdata_pos, to_rdata_pos, return_data)
+    Memory.write_area(nbytes, return_data_bytes, state3)
   end
 
   # 40s: Block Information
@@ -424,23 +424,23 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._COINBASE(), state) do
-    value = State.coinbase(state)
-    push(value, state)
+    coinbase = State.coinbase(state)
+    push(coinbase, state)
   end
 
   def exec(OpCodes._TIMESTAMP(), state) do
-    value = State.timestamp(state)
-    push(value, state)
+    timestamp = State.timestamp(state)
+    push(timestamp, state)
   end
 
   def exec(OpCodes._NUMBER(), state) do
-    value = State.number(state)
-    push(value, state)
+    number = State.number(state)
+    push(number, state)
   end
 
   def exec(OpCodes._DIFFICULTY(), state) do
-    value = State.difficulty(state)
-    push(value, state)
+    difficulty = State.difficulty(state)
+    push(difficulty, state)
   end
 
   def exec(OpCodes._GASLIMIT(), state) do
@@ -498,7 +498,7 @@ defmodule Aevm do
     jumpdests = State.jumpdests(state)
 
     if Enum.member?(jumpdests, position) do
-      state1 = update_gas(OpCodes._JUMPDEST(), 0, state)
+      state1 = Gas.update_gas(OpCodes._JUMPDEST(), 0, state)
       State.set_cp(position, state1)
     else
       throw({"invalid_jump_dest", state})
@@ -512,7 +512,7 @@ defmodule Aevm do
 
     if condition !== 0 do
       if Enum.member?(jumpdests, position) do
-        state1 = update_gas(OpCodes._JUMPDEST(), 0, state)
+        state1 = Gas.update_gas(OpCodes._JUMPDEST(), 0, state)
         State.set_cp(position, state1)
       else
         throw({"invalid_jump_dest", state})
@@ -523,8 +523,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._PC(), state) do
-    value = State.cp(state)
-    push(value, state)
+    pc = State.cp(state)
+    push(pc, state)
   end
 
   def exec(OpCodes._MSIZE(), state) do
@@ -969,10 +969,10 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURN(), state) do
-    {from, state} = pop(state)
-    {to, state} = pop(state)
+    {from_pos, state} = pop(state)
+    {nbytes, state} = pop(state)
 
-    {result, state1} = Memory.get_area(from, to, state)
+    {result, state1} = Memory.get_area(from_pos, nbytes, state)
 
     state2 = State.set_return(result, state1)
     code = State.code(state2)
@@ -1012,20 +1012,6 @@ defmodule Aevm do
   #
   # Util functions
   #
-
-  defp memory_cost(state_with_ops, state_without) do
-    words1 = Memory.memory_size_words(state_with_ops)
-
-    case Memory.memory_size_words(state_without) do
-      ^words1 ->
-        0
-
-      words2 ->
-        first = round(GasCodes._GMEMORY() * words1 + Float.floor(words1 * words1 / 512))
-        second = round(GasCodes._GMEMORY() * words2 + Float.floor(words2 * words2 / 512))
-        first - second
-    end
-  end
 
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
@@ -1079,10 +1065,6 @@ defmodule Aevm do
 
   defp swap(index, state) do
     Stack.swap(index, state)
-  end
-
-  defp peek(index, state) do
-    Stack.peek(index, state)
   end
 
   defp get_op_code(state) do
@@ -1155,38 +1137,5 @@ defmodule Aevm do
 
     state2 = State.inc_cp(state1)
     load_jumpdests(state2)
-  end
-
-  defp dynamic_cost(op_name, state) do
-    case op_name do
-      # TODO
-      "CALL" ->
-        0
-
-      # TODO
-      "DELEGATECALL" ->
-        0
-
-      # TODO
-      "CALLCODE" ->
-        0
-
-      # test peek(1or2?)
-      "CALLDATACOPY" ->
-        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
-
-      "CODECOPY" ->
-        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
-
-      _ ->
-        0
-    end
-  end
-
-  defp update_gas(op_code, memory_gas_cost, state) do
-    curr_gas = State.gas(state)
-    {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
-    gas_after = curr_gas - (op_gas_price + memory_gas_cost)
-    State.set_gas(gas_after, state)
   end
 end
