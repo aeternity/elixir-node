@@ -162,8 +162,8 @@ defmodule Memory do
     {memory_index, _} = get_index_in_memory(address)
     current_mem_size_words = Map.get(memory, :size)
 
-    if memory_index / 32 > current_mem_size_words do
-      Map.put(memory, :size, round(memory_index / 32))
+    if (memory_index + 32) / 32 > current_mem_size_words do
+      Map.put(memory, :size, round((memory_index + 32) / 32))
     else
       memory
     end
