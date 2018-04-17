@@ -1,14 +1,15 @@
-defmodule Aecore.Structures.SignedTx do
+defmodule Aecore.Tx.SignedTx do
   @moduledoc """
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
+  alias Aeutil.Hash
 
   require Logger
 
@@ -55,7 +56,12 @@ defmodule Aecore.Structures.SignedTx do
   @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
   def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
     signature = Signing.sign(Serialization.rlp_encode(tx), priv_key)
-    {:ok, %SignedTx{data: tx, signature: signature}}
+
+    if byte_size(signature) <= get_sign_max_size() do
+      {:ok, %SignedTx{data: tx, signature: signature}}
+    else
+      {:error, "Wrong signature size"}
+    end
   end
 
   def sign_tx(%DataTx{} = _tx, priv_key) do
@@ -66,9 +72,13 @@ defmodule Aecore.Structures.SignedTx do
     {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
+  def get_sign_max_size do
+    Application.get_env(:aecore, :signed_tx)[:sign_max_size]
+  end
+
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    :crypto.hash(:sha256, Serialization.rlp_encode(data))
+    Hash.hash(Serialization.pack_binary(data))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()
@@ -97,6 +107,22 @@ defmodule Aecore.Structures.SignedTx do
   end
 
   def base58c_decode_root(_) do
+    {:error, "Wrong data"}
+  end
+
+  def base58c_encode_signature(bin) do
+    if bin == nil do
+      nil
+    else
+      Bits.encode58c("sg", bin)
+    end
+  end
+
+  def base58c_decode_signature(<<"sg$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_signature(_) do
     {:error, "Wrong data"}
   end
 end

@@ -1,11 +1,16 @@
-defmodule Aecore.Structures.OracleResponseTx do
+defmodule Aecore.Oracle.Tx.OracleResponseTx do
+  @moduledoc """
+  Contains the transaction structure for oracle responses
+  and functions associated with those transactions.
+  """
+
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -25,7 +30,7 @@ defmodule Aecore.Structures.OracleResponseTx do
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
-  def get_chain_state_name(), do: :oracles
+  def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
@@ -39,8 +44,13 @@ defmodule Aecore.Structures.OracleResponseTx do
   end
 
   @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}) do
-    true
+  def is_valid?(%OracleResponseTx{query_id: query_id}) do
+    byte_size(query_id) == get_query_id_size()
+  end
+
+  @spec get_query_id_size :: non_neg_integer()
+  def get_query_id_size do
+    Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
   @spec process_chainstate!(
@@ -74,7 +84,8 @@ defmodule Aecore.Structures.OracleResponseTx do
     query_fee = interaction_object.query.query_fee
 
     new_sender_account_state =
-      Account.get_account_state(accounts, sender)
+      accounts
+      |> Account.get_account_state(sender)
       |> Account.transaction_in(query_fee)
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)

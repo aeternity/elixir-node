@@ -2,7 +2,7 @@ defmodule Aehttpserver.Web.OracleController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Oracle.Oracle
-  alias Aecore.Structures.Account
+  alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.Bits

@@ -6,15 +6,16 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Chain.Block
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
@@ -22,9 +23,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.AccountStateTree
+  alias Aeutil.Hash
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -89,35 +91,31 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec top_height() :: non_neg_integer()
-  def top_height() do
+  def top_height do
     GenServer.call(__MODULE__, :top_height)
   end
 
   @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
   def get_header_by_base58_hash(hash) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-      get_header(decoded_hash)
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
+    decoded_hash = Header.base58c_decode(hash)
+    get_header(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
   end
 
   @spec lowest_valid_nonce() :: non_neg_integer()
-  def lowest_valid_nonce() do
+  def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
   @spec get_block_by_base58_hash(String.t()) :: Block.t()
   def get_block_by_base58_hash(hash) do
-    try do
-      decoded_hash = Header.base58c_decode(hash)
-      get_block(decoded_hash)
-    rescue
-      _ ->
-        {:error, :invalid_hash}
-    end
+    decoded_hash = Header.base58c_decode(hash)
+    get_block(decoded_hash)
+  rescue
+    _ ->
+      {:error, :invalid_hash}
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, atom()}
@@ -246,20 +244,20 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec registered_oracles() :: Oracle.registered_oracles()
-  def registered_oracles() do
+  def registered_oracles do
     GenServer.call(__MODULE__, :registered_oracles)
   end
 
   @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  def oracle_interaction_objects() do
+  def oracle_interaction_objects do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
   @spec chain_state() :: %{
           :accounts => Chainstate.accounts(),
-          :oracles => Chainstate.oracles()
+          :oracles => Oracle.oracles()
         }
-  def chain_state() do
+  def chain_state do
     top_block_chain_state()
   end
 
@@ -538,7 +536,7 @@ defmodule Aecore.Chain.Worker do
         end)
         |> Enum.map(fn filtered_tx ->
           tx_bin = Serialization.rlp_encode(filtered_tx)
-          hash = :crypto.hash(:sha256, tx_bin)
+          hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)
 

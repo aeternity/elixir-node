@@ -6,9 +6,9 @@ defmodule AecoreChainTest do
   use ExUnit.Case
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Structures.Chainstate
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner

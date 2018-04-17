@@ -3,7 +3,7 @@ defmodule Aehttpserver.Web.NewTxController do
 
   alias Aeutil.Serialization
   alias Aeutil.HTTPUtil
-  alias Aecore.Txs.Pool.Worker, as: Pool
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   def new_tx(conn, _params) do
     deserialized_tx = Serialization.tx(conn.body_params, :deserialize)

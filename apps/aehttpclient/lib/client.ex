@@ -3,10 +3,10 @@ defmodule Aehttpclient.Client do
   Client used for making requests to a node.
   """
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
@@ -172,8 +172,7 @@ defmodule Aehttpclient.Client do
     ])
   end
 
-  # TODO: what is this function even doing?
-  defp get_local_port() do
+  defp get_local_port do
     Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end

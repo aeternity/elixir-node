@@ -5,15 +5,15 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
   alias Aeutil.HTTPUtil
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aecore.Peers.Sync
   alias Aeutil.Serialization
 
   def block_by_height(conn, %{"height" => height}) do
     parsed_height = height |> Integer.parse() |> elem(0)
 
-    if(parsed_height < 0) do
+    if parsed_height < 0 do
       HTTPUtil.json_not_found(conn, "Block not found")
     else
       case Chain.get_block_by_height(parsed_height) do

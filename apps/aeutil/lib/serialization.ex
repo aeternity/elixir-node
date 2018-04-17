@@ -3,19 +3,19 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.Chainstate
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
-  alias Aecore.Structures.Account
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Account.Account
+  alias Aecore.Account.Tx.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -288,6 +288,9 @@ defmodule Aeutil.Serialization do
   end
 
   defp serialize_txs_info_to_json([h | t], acc) do
+    tx = DataTx.init(h.type, h.payload, h.sender, h.fee, h.nonce)
+    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signature: nil})
+
     json_response_struct = %{
       tx: %{
         sender: Account.base58c_encode(h.sender),
@@ -299,20 +302,20 @@ defmodule Aeutil.Serialization do
       },
       block_height: h.block_height,
       block_hash: Header.base58c_encode(h.block_hash),
-      hash: SignedTx.base58c_encode_root(h.txs_hash),
-      signatures: [base64_binary(h.signature, :serialize)]
+      hash: DataTx.base58c_encode(tx_hash),
+      signatures: [SignedTx.base58c_encode_signature(h.signature)]
     }
 
-    acc = acc ++ [json_response_struct]
+    acc = [json_response_struct | acc]
     serialize_txs_info_to_json(t, acc)
   end
 
   defp serialize_txs_info_to_json([], acc) do
-    acc
+    Enum.reverse(acc)
   end
 
   def rlp_encode(%SignedTx{} = tx) do
-    ExRLP.encode([type_to_tag(SignedTx),1,rlp_encode(tx.data)])
+    ExRLP.encode([type_to_tag(SignedTx), 1, rlp_encode(tx.data)])
   end
 
   # def rlp_encode(%SignedTx{} = tx) do

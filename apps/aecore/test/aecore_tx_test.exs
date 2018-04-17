@@ -1,6 +1,6 @@
 defmodule AecoreTxTest do
   @moduledoc """
-  Unit tests for the Aecore.Txs.Tx module
+  Unit tests for the Aecore.Tx.Tx module
   """
 
   use ExUnit.Case
@@ -8,15 +8,15 @@ defmodule AecoreTxTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Txs.Pool.Worker, as: Pool
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.DataTx
-  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
-  alias Aecore.Structures.AccountStateTree
-  alias Aecore.Structures.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.Account
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -68,10 +68,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: tx.receiver, amount: amount}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
-
-    assert false == SignedTx.is_valid?(signed_tx)
+    assert false == DataTx.is_valid?(tx_data)
   end
 
   test "coinbase tx invalid", tx do
@@ -143,6 +140,35 @@ defmodule AecoreTxTest do
     assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 100
   end
 
+  test "sender pub_key is too small", tx do
+    # Use private as public key for sender to get error that sender key is not 33 bytes
+    sender = Wallet.get_private_key()
+    refute byte_size(sender) == 33
+    amount = 100
+    fee = 50
+
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: tx.receiver, amount: amount}
+
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert DataTx.is_valid?(data_tx) == false
+  end
+
+  test "receiver pub_key is too small", tx do
+    sender = Wallet.get_public_key()
+    amount = 100
+    fee = 50
+
+    # Use private as public key for receiver to get error that receiver key is not 33 bytes
+    receiver = Wallet.get_private_key("M/0")
+    refute byte_size(receiver) == 33
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: receiver, amount: amount}
+
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert DataTx.is_valid?(data_tx) == false
+  end
+
   test "sum of amount and fee more than balance", tx do
     sender = Wallet.get_public_key()
     acc1 = Wallet.get_public_key("M/1")
@@ -165,16 +191,16 @@ defmodule AecoreTxTest do
     # Now acc1 has 80 tokens
     assert Account.balance(Chain.chain_state().accounts, acc1) == 80
 
-    amount = 50
-    fee = 40
+    amount2 = 50
+    fee2 = 40
     # Balance of acc1 is more than amount and fee, send tokens to acc2
 
-    payload = %{receiver: acc2, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, acc1, fee, 1)
-    priv_key = Wallet.get_private_key("m/1")
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+    payload2 = %{receiver: acc2, amount: amount2}
+    tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
+    priv_key2 = Wallet.get_private_key("m/1")
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, priv_key2)
 
-    :ok = Pool.add_transaction(signed_tx)
+    :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()
 
     # the balance of acc1 and acc2 is not changed because amount + fee > balance of acc1
