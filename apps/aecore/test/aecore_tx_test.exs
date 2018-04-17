@@ -68,10 +68,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: tx.receiver, amount: amount}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
-
-    assert false == SignedTx.is_valid?(signed_tx)
+    assert false == DataTx.is_valid?(tx_data)
   end
 
   test "coinbase tx invalid", tx do

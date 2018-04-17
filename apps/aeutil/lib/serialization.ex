@@ -312,108 +312,37 @@ defmodule Aeutil.Serialization do
   end
 
   def rlp_encode(%SignedTx{} = tx) do
-    ExRLP.encode([type_to_tag(SignedTx),1,rlp_encode(tx.data)])
+    signature =
+      if tx.signature == nil do
+        <<0>>
+      else
+        tx.signature
+      end
+
+    ExRLP.encode([type_to_tag(SignedTx), 1, ExRLP.encode([signature]), rlp_encode(tx.data)])
   end
 
-  # def rlp_encode(%SignedTx{} = tx) do
-  #   list_of_formatted_data =
-  #     case tx.data.type do
-  #       SpendTx ->
-  #         if tx.signature == nil and tx.data.sender == nil do
-  #           [
-  #             type_to_tag(CoinbaseTx),
-  #             1,
-  #             tx.data.payload.receiver,
-  #             tx.data.nonce,
-  #             tx.data.payload.amount
-  #           ]
-  #         else
-  #           [
-  #             type_to_tag(SpendTx),
-  #             1,
-  #             tx.data.sender,
-  #             tx.data.payload.receiver,
-  #             tx.data.payload.amount,
-  #             tx.data.fee,
-  #             tx.data.nonce
-  #           ]
-  #         end
-
-  #       OracleRegistrationTx ->
-  #         [
-  #           type_to_tag(OracleRegistrationTx),
-  #           1,
-  #           tx.data.sender,
-  #           tx.data.nonce,
-  #           transform_item(tx.data.payload.query_format),
-  #           transform_item(tx.data.payload.response_format),
-  #           tx.data.payload.query_fee,
-  #           transform_item(tx.data.payload.ttl.type),
-  #           tx.data.payload.ttl.ttl,
-  #           tx.data.fee
-  #         ]
-
-  #       OracleQueryTx ->
-  #         [
-  #           type_to_tag(OracleQueryTx),
-  #           1,
-  #           tx.data.sender,
-  #           tx.data.nonce,
-  #           tx.data.payload.oracle_address,
-  #           transform_item(tx.data.payload.query_data),
-  #           tx.data.payload.query_fee,
-  #           transform_item(tx.data.payload.query_ttl.type),
-  #           tx.data.payload.query_ttl.ttl,
-  #           transform_item(tx.data.payload.response_ttl.type),
-  #           tx.data.payload.response_ttl.ttl,
-  #           tx.data.fee
-  #         ]
-
-  #       OracleResponseTx ->
-  #         [
-  #           type_to_tag(OracleResponseTx),
-  #           1,
-  #           tx.data.sender,
-  #           tx.data.nonce,
-  #           tx.data.payload.query_id,
-  #           transform_item(tx.data.payload.response),
-  #           tx.data.fee
-  #         ]
-
-  #       OracleExtendTx ->
-  #         [
-  #           type_to_tag(OracleExtendTx),
-  #           1,
-  #           tx.data.sender,
-  #           tx.data.nonce,
-  #           tx.data.payload.ttl.type,
-  #           tx.data.payload.ttl.ttl,
-  #           tx.data.fee
-  #         ]
-  #     end
-
-  #   ExRLP.encode(list_of_formatted_data)
-  # end
-
   def rlp_encode(%DataTx{type: SpendTx} = tx) do
+    tx_map = nils_to_binary(tx)
+
     list_of_formatted_data =
-      if tx.sender == nil do
+      if tx_map.sender == <<0>> do
         [
           type_to_tag(CoinbaseTx),
           1,
-          tx.payload.receiver,
-          tx.nonce,
-          tx.payload.amount
+          tx_map.payload.receiver,
+          tx_map.nonce,
+          tx_map.payload.amount
         ]
       else
         [
           type_to_tag(SpendTx),
           1,
-          tx.sender,
-          tx.payload.receiver,
-          tx.payload.amount,
-          tx.fee,
-          tx.nonce
+          tx_map.sender,
+          tx_map.payload.receiver,
+          tx_map.payload.amount,
+          tx_map.fee,
+          tx_map.nonce
         ]
       end
 
@@ -421,64 +350,72 @@ defmodule Aeutil.Serialization do
   end
 
   def rlp_encode(%DataTx{type: OracleRegistrationTx} = tx) do
+    tx_map = nils_to_binary(tx)
+
     list_of_formatted_data = [
       type_to_tag(OracleRegistrationTx),
       1,
-      tx.sender,
-      tx.nonce,
-      transform_item(tx.payload.query_format),
-      transform_item(tx.payload.response_format),
-      tx.payload.query_fee,
-      transform_item(tx.payload.ttl.type),
-      tx.payload.ttl.ttl,
-      tx.fee
+      tx_map.sender,
+      tx_map.nonce,
+      transform_item(tx_map.payload.query_format),
+      transform_item(tx_map.payload.response_format),
+      tx_map.payload.query_fee,
+      transform_item(tx_map.payload.ttl.type),
+      tx_map.payload.ttl.ttl,
+      tx_map.fee
     ]
 
     ExRLP.encode(list_of_formatted_data)
   end
 
   def rlp_encode(%DataTx{type: OracleQueryTx} = tx) do
+    tx_map = nils_to_binary(tx)
+
     list_of_formatted_data = [
       type_to_tag(OracleQueryTx),
       1,
-      tx.sender,
-      tx.nonce,
-      tx.payload.oracle_address,
-      transform_item(tx.payload.query_data),
-      tx.payload.query_fee,
-      transform_item(tx.payload.query_ttl.type),
-      tx.payload.query_ttl.ttl,
-      transform_item(tx.payload.response_ttl.type),
-      tx.payload.response_ttl.ttl,
-      tx.fee
+      tx_map.sender,
+      tx_map.nonce,
+      tx_map.payload.oracle_address,
+      transform_item(tx_map.payload.query_data),
+      tx_map.payload.query_fee,
+      transform_item(tx_map.payload.query_ttl.type),
+      tx_map.payload.query_ttl.ttl,
+      transform_item(tx_map.payload.response_ttl.type),
+      tx_map.payload.response_ttl.ttl,
+      tx_map.fee
     ]
 
     ExRLP.encode(list_of_formatted_data)
   end
 
   def rlp_encode(%DataTx{type: OracleResponseTx} = tx) do
+    tx_map = nils_to_binary(tx)
+
     list_of_formatted_data = [
       type_to_tag(OracleResponseTx),
       1,
-      tx.sender,
-      tx.nonce,
-      tx.payload.query_id,
-      transform_item(tx.payload.response),
-      tx.fee
+      tx_map.sender,
+      tx_map.nonce,
+      tx_map.payload.query_id,
+      transform_item(tx_map.payload.response),
+      tx_map.fee
     ]
 
     ExRLP.encode(list_of_formatted_data)
   end
 
   def rlp_encode(%DataTx{type: OracleExtendTx} = tx) do
+    tx_map = nils_to_binary(tx)
+
     list_of_formatted_data = [
       type_to_tag(OracleExtendTx),
       1,
-      tx.sender,
-      tx.nonce,
-      tx.payload.ttl.type,
-      tx.payload.ttl.ttl,
-      tx.fee
+      tx_map.sender,
+      tx_map.nonce,
+      tx_map.payload.ttl.type,
+      tx_map.payload.ttl.ttl,
+      tx_map.fee
     ]
 
     ExRLP.encode(list_of_formatted_data)
@@ -511,6 +448,7 @@ defmodule Aeutil.Serialization do
 
   def tag_to_type(tag) do
     case tag do
+      11 -> SignedTx
       12 -> SpendTx
       13 -> CoinbaseTx
       21 -> OracleQueryTx
@@ -526,6 +464,9 @@ defmodule Aeutil.Serialization do
     ver = transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
+      SignedTx ->
+        [signatures, tx_data] = rest_data
+
       SpendTx ->
         [sender, receiver, amount, fee, nonce] = rest_data
 
@@ -609,5 +550,22 @@ defmodule Aeutil.Serialization do
       :int -> :binary.decode_unsigned(item)
       :binary -> :erlang.binary_to_term(item)
     end
+  end
+
+  # @spec nils_to_binary(SignedTx.t()) :: Map.t()
+  defp nils_to_binary(tx) when is_map(tx) do
+    tx = remove_struct(tx)
+
+    Enum.reduce(tx, %{}, fn {k, v}, acc ->
+      Map.put(
+        acc,
+        k,
+        case v do
+          %{} = v -> nils_to_binary(v)
+          nil -> <<0>>
+          _ -> v
+        end
+      )
+    end)
   end
 end
