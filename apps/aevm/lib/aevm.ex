@@ -8,6 +8,11 @@ defmodule Aevm do
   require Stack
 
   def loop(state) do
+    state1 = load_jumpdests(state)
+    loop1(state1)
+  end
+
+  defp loop1(state) do
     cp = State.cp(state)
     code = State.code(state)
 
@@ -22,7 +27,7 @@ defmodule Aevm do
 
       state3 = State.inc_cp(state2)
 
-      loop(state3)
+      loop1(state3)
     end
   end
 
@@ -1008,7 +1013,7 @@ defmodule Aevm do
   # Util functions
   #
 
-  def memory_cost(state_with_ops, state_without) do
+  defp memory_cost(state_with_ops, state_without) do
     words1 = Memory.memory_size_words(state_with_ops)
 
     case Memory.memory_size_words(state_without) do
@@ -1076,6 +1081,10 @@ defmodule Aevm do
     Stack.swap(index, state)
   end
 
+  defp peek(index, state) do
+    Stack.peek(index, state)
+  end
+
   defp get_op_code(state) do
     cp = State.cp(state)
     code = State.code(state)
@@ -1120,13 +1129,12 @@ defmodule Aevm do
     :sha3.hash(256, data)
   end
 
-  def load_jumpdests(%{cp: cp, code: code} = state) when cp >= byte_size(code) do
+  defp load_jumpdests(%{cp: cp, code: code} = state) when cp >= byte_size(code) do
     State.set_cp(0, state)
   end
 
-  def load_jumpdests(state) do
+  defp load_jumpdests(state) do
     cp = State.cp(state)
-    code = State.code(state)
 
     op_code = get_op_code(state)
 
@@ -1147,6 +1155,32 @@ defmodule Aevm do
 
     state2 = State.inc_cp(state1)
     load_jumpdests(state2)
+  end
+
+  defp dynamic_cost(op_name, state) do
+    case op_name do
+      # TODO
+      "CALL" ->
+        0
+
+      # TODO
+      "DELEGATECALL" ->
+        0
+
+      # TODO
+      "CALLCODE" ->
+        0
+
+      # test peek(1or2?)
+      "CALLDATACOPY" ->
+        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      "CODECOPY" ->
+        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      _ ->
+        0
+    end
   end
 
   defp update_gas(op_code, memory_gas_cost, state) do
