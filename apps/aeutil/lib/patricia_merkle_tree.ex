@@ -58,7 +58,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   def lookup_with_proof(key, trie) do
     case Proof.construct_proof({trie, key, new(:proof)}) do
       {nil, _proof} -> :none
-      {value, proof} -> {:ok, value, proof}
+      {val, proof} -> {:ok, val, proof}
     end
   end
 
