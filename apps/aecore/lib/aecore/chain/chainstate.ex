@@ -11,6 +11,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
+  alias Aecore.Account.Tx.SpendTx
 
   require Logger
 
@@ -51,15 +52,28 @@ defmodule Aecore.Chain.Chainstate do
         receiver_state = Account.get_account_state(chainstate.accounts, data.payload.receiver)
 
         new_receiver_state = SignedTx.reward(data, receiver_state)
+        updated_receiver_state = %{new_receiver_state | last_updated: block_height}
 
         new_accounts_state =
-          AccountStateTree.put(chainstate.accounts, data.payload.receiver, new_receiver_state)
+          AccountStateTree.put(chainstate.accounts, data.payload.receiver, updated_receiver_state)
 
         Map.put(chainstate, :accounts, new_accounts_state)
 
       data.sender != nil ->
         if SignedTx.is_valid?(tx) do
-          DataTx.process_chainstate!(data, chainstate, block_height)
+          updated_accounts_state_tree =
+            case data.payload do
+              %SpendTx{} ->
+                chainstate.accounts
+                |> Account.last_updated(data.payload.receiver, block_height)
+                |> Account.last_updated(data.sender, block_height)
+
+              _ ->
+                Account.last_updated(chainstate.accounts, data.sender, block_height)
+            end
+
+          updated_chainstate = %{chainstate | accounts: updated_accounts_state_tree}
+          DataTx.process_chainstate!(data, updated_chainstate, block_height)
         else
           throw({:error, "Invalid transaction"})
         end
