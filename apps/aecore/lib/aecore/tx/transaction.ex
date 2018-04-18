@@ -6,7 +6,6 @@ defmodule Aecore.Tx.Transaction do
 
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
