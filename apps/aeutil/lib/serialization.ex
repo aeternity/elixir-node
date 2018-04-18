@@ -332,15 +332,15 @@ defmodule Aeutil.Serialization do
       if tx_map.sender == <<0>> do
         [
           type_to_tag(CoinbaseTx),
-          1,
+          get_version(CoinbaseTx),
           tx_map.payload.receiver,
-          tx_map.nonce,
+          tx_map.nonce,                   # Should be Height
           tx_map.payload.amount
         ]
       else
         [
           type_to_tag(SpendTx),
-          1,
+          get_version(SpendTx),
           tx_map.sender,
           tx_map.payload.receiver,
           tx_map.payload.amount,
@@ -352,18 +352,33 @@ defmodule Aeutil.Serialization do
     ExRLP.encode(list_of_formatted_data)
   end
 
-  def rlp_encode(%DataTx{type: OracleRegistrationTx} = tx) do
+  def rlp_encode(%DataTx{type: CoinbaseTx} = tx) do
     tx_map = nils_to_binary(tx)
 
     list_of_formatted_data = [
+      type_to_tag(CoinbaseTx),
+      get_version(CoinbaseTx),
+      tx_map.payload.receiver, 
+      tx_map.nonce,                  # Here should be Height, but at this moment nonce is being encoded
+      tx_map.payload.amount
+    ]
+
+    ExRLP.encode(list_of_formatted_data)
+  end
+
+  def rlp_encode(%DataTx{type: OracleRegistrationTx} = tx) do
+    tx_map = nils_to_binary(tx)
+    ttl_type = encode_ttl_type(tx_map.payload.ttl)
+
+    list_of_formatted_data = [
       type_to_tag(OracleRegistrationTx),
-      1,
+      get_version(OracleRegistrationTx),
       tx_map.sender,
       tx_map.nonce,
-      transform_item(tx_map.payload.query_format),
-      transform_item(tx_map.payload.response_format),
+      transform_item(tx_map.payload.query_format),  # In Erlang core it is described as a UTF8 encoded String, but we have a map
+      transform_item(tx_map.payload.response_format),  # In Erlang core it is described as a UTF8 encoded String, but we have a map
       tx_map.payload.query_fee,
-      transform_item(tx_map.payload.ttl.type),
+      ttl_type,
       tx_map.payload.ttl.ttl,
       tx_map.fee
     ]
@@ -373,18 +388,20 @@ defmodule Aeutil.Serialization do
 
   def rlp_encode(%DataTx{type: OracleQueryTx} = tx) do
     tx_map = nils_to_binary(tx)
+    ttl_type_q = encode_ttl_type(tx_map.payload.query_ttl)
+    ttl_type_r = encode_ttl_type(tx_map.payload.response_ttl)
 
     list_of_formatted_data = [
       type_to_tag(OracleQueryTx),
-      1,
+      get_version(OracleQueryTx),
       tx_map.sender,
       tx_map.nonce,
       tx_map.payload.oracle_address,
-      transform_item(tx_map.payload.query_data),
+      transform_item(tx_map.payload.query_data),    # In Erlang core it is described as a binary, but not encoded natively (query_data in our case is a map)
       tx_map.payload.query_fee,
-      transform_item(tx_map.payload.query_ttl.type),
+      ttl_type_q,
       tx_map.payload.query_ttl.ttl,
-      transform_item(tx_map.payload.response_ttl.type),
+      ttl_type_r,
       tx_map.payload.response_ttl.ttl,
       tx_map.fee
     ]
@@ -397,7 +414,7 @@ defmodule Aeutil.Serialization do
 
     list_of_formatted_data = [
       type_to_tag(OracleResponseTx),
-      1,
+      get_version(OracleResponseTx),
       tx_map.sender,
       tx_map.nonce,
       tx_map.payload.query_id,
@@ -410,13 +427,14 @@ defmodule Aeutil.Serialization do
 
   def rlp_encode(%DataTx{type: OracleExtendTx} = tx) do
     tx_map = nils_to_binary(tx)
+    ttl_type = encode_ttl_type(tx_map.payload.ttl)
 
     list_of_formatted_data = [
       type_to_tag(OracleExtendTx),
-      1,
+      get_version(OracleExtendTx),
       tx_map.sender,
       tx_map.nonce,
-      tx_map.payload.ttl.type,
+      ttl_type,
       tx_map.payload.ttl.ttl,
       tx_map.fee
     ]
@@ -424,8 +442,25 @@ defmodule Aeutil.Serialization do
     ExRLP.encode(list_of_formatted_data)
   end
 
+  def rlp_encode(%Chainstate{accounts: accounts}, pkey) do
+    account_info = Account.get_account_state(accounts, pkey)
+
+    list_of_formatted_data = [
+      type_to_tag(Account),
+      get_version(Account),
+      pkey,
+      account_info.nonce,
+      account_info.balance
+    ]
+
+    ExRLP.encode(list_of_formatted_data)
+  end
+
   def type_to_tag(type) do
     case type do
+      Account ->
+        10
+
       SignedTx ->
         11
 
@@ -451,6 +486,7 @@ defmodule Aeutil.Serialization do
 
   def tag_to_type(tag) do
     case tag do
+      10 -> Account
       11 -> SignedTx
       12 -> SpendTx
       13 -> CoinbaseTx
@@ -467,9 +503,14 @@ defmodule Aeutil.Serialization do
     _ver = transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
+      Account ->
+        [pkey, nonce, balance] = rest_data
+        [pkey, transform_item(nonce, :int), transform_item(balance, :int)]
+
       SignedTx ->
         [signatures, tx_data] = rest_data
         [signatures, tx_data]
+
       SpendTx ->
         [sender, receiver, amount, fee, nonce] = rest_data
 
@@ -498,6 +539,7 @@ defmodule Aeutil.Serialization do
           response_ttl_value,
           fee
         ] = rest_data
+
         [
           sender,
           transform_item(nonce, :int),
@@ -567,7 +609,28 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  # @spec nils_to_binary(SignedTx.t()) :: Map.t()
+  defp get_version(type) do
+    case type do
+      Account -> 1
+      SignedTx -> 1
+      SpendTx -> 1
+      CoinbaseTx -> 1
+      OracleQueryTx -> 1
+      OracleRegistrationTx -> 1
+      OracleResponseTx -> 1
+      OracleExtendTx -> 1
+      _ -> {:error, "Unknown structure type"}
+    end
+  end
+
+  defp encode_ttl_type(%{type: type}) do
+    case type do
+      :absolute -> 0
+      :relative -> 1
+    end
+  end
+
+  @spec nils_to_binary(SignedTx.t()) :: Map.t()
   defp nils_to_binary(tx) when is_map(tx) do
     tx = remove_struct(tx)
 
@@ -575,10 +638,13 @@ defmodule Aeutil.Serialization do
       Map.put(
         acc,
         k,
-        case v do
-          %{} = v -> nils_to_binary(v)
-          nil -> <<0>>
-          _ -> v
+        case v do # Added to avoid nils from SpendTx(Coin-based), because CoinbaseTx doesnt have separate structure at this moment
+          %{} = v ->
+            nils_to_binary(v)
+          nil ->
+            <<0>>
+          _ ->
+            v
         end
       )
     end)
