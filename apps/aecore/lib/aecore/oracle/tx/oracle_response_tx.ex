@@ -59,7 +59,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.accounts_state() ,
+          AccountStateTree.accounts_state(),
           tx_type_state()
         ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate!(

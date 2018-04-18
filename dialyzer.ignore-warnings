@@ -32,7 +32,7 @@
 :0: Unknown type 'Elixir.Chainstate':accounts/0
 :0: Unknown type 'Elixir.List':t/0
 :0: Unknown type 'Elixir.SignedTx':t/0
-apps/aecore/lib/aecore/account/account.ex:95: The pattern {'ok', Vaccount_state@1} can never match the type binary() | #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'nonce':=non_neg_integer()}
+apps/aecore/lib/aecore/account/account.ex:101: The pattern {'ok', Vaccount_state@1} can never match the type binary() | #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}
 apps/aecore/lib/aecore/account/tx/spend_tx.ex:108: The pattern Verr@1 = {'error', _reason@1} can never match the type 'ok'
 apps/aecore/lib/aecore/chain/worker.ex:469: The call 'Elixir.Map':merge(Vblocks_info_map@2::'not_found' | {'error',_} | {'ok',map()},Vblocks_map@3::'not_found' | {'error',_} | {'ok',map()} | #{},fun((_,_,_) -> #{'block':=_, _=>_})) will never return since the success typing is (map(),map(),fun((_,_,_) -> any())) -> any() and the contract is (map(),map(),fun((key(),value(),value()) -> value())) -> map()
 apps/aecore/lib/aecore/chain/worker.ex:472: The created fun has no local return

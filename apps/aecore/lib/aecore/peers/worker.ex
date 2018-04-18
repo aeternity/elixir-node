@@ -247,7 +247,7 @@ defmodule Aecore.Peers.Worker do
         {:ok, info} ->
           cond do
             Map.has_key?(peers, info.peer_nonce) ->
-              Logger.debug("Skipped adding #{uri}, same nonce already present")
+              Logger.debug(fn -> "Skipped adding #{uri}, same nonce already present" end)
 
               {:reply, {:error, "Peer already known"}, state}
 
@@ -266,7 +266,7 @@ defmodule Aecore.Peers.Worker do
               {:reply, :ok, %{state | peers: updated_peers}}
 
             true ->
-              Logger.debug("Max peers reached. #{uri} not added")
+              Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
               {:reply, :ok, state}
           end
 
@@ -283,7 +283,7 @@ defmodule Aecore.Peers.Worker do
   defp trim_peers(peers) do
     if map_size(peers) >= @peers_max_count do
       random_peer = Enum.random(Map.keys(peers))
-      Logger.debug("Max peers reached. #{random_peer} removed")
+      Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
       Map.delete(peers, random_peer)
     else
       peers
