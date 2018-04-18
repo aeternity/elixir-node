@@ -187,8 +187,8 @@ defmodule Aecore.Chain.Worker do
     Enum.reverse(get_blocks([], start_block_hash, final_block_hash, count))
   end
 
-  @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          Chainstate.account_chainstate() | {:error, String.t()}
+  @spec get_chain_state_by_height(non_neg_integer(), binary() | nil) ::
+          Chainstate.t() | {:error, String.t()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error ->
