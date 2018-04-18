@@ -4,16 +4,25 @@ defmodule Gas do
   require OpCodesUtil
   require GasCodes
 
-  def update_gas(op_code, memory_gas_cost, state) do
+  def update_gas(gas_cost, state) do
     curr_gas = State.gas(state)
+
+    if curr_gas >= gas_cost do
+      gas_after = curr_gas - gas_cost
+      State.set_gas(gas_after, state)
+    else
+      throw({"out_of_gas", state})
+    end
+  end
+
+  def op_gas_cost(op_code) do
     {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
-    gas_after = curr_gas - (op_gas_price + memory_gas_cost)
-    State.set_gas(gas_after, state)
+    op_gas_price
   end
 
   def memory_gas_cost(state_with_ops, state_without) do
     words1 = Memory.memory_size_words(state_with_ops)
-    IO.inspect("words1: #{words1}")
+
     case Memory.memory_size_words(state_without) do
       ^words1 ->
         0
@@ -27,10 +36,12 @@ defmodule Gas do
 
   def dynamic_gas_cost("CALL", state) do
     # TODO
+    0
   end
 
   def dynamic_gas_cost("DELEGATECALL", state) do
     # TODO
+    0
   end
 
   def dynamic_gas_cost("CALLDATACOPY", state) do
@@ -71,7 +82,15 @@ defmodule Gas do
   end
 
   def dynamic_gas_cost("SSTORE", state) do
-    # TODO
+    address = peek(0, state)
+    value = peek(1, state)
+    curr_storage = Storage.sload(address, state)
+
+    if value != 0 && curr_storage === nil do
+      GasCodes._GSSET()
+    else
+      GasCodes._GSRESET()
+    end
   end
 
   def dynamic_gas_cost("EXP", state) do

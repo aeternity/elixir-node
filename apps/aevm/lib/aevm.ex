@@ -24,8 +24,11 @@ defmodule Aevm do
       state1 = exec(op_code, state)
 
       mem_gas_cost = Gas.memory_gas_cost(state1, state)
-      gas_cost = mem_gas_cost + dynamic_gas_cost
-      state2 = Gas.update_gas(op_code, gas_cost, state1)
+      op_gas_cost = Gas.op_gas_cost(op_code)
+
+      gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
+
+      state2 = Gas.update_gas(gas_cost, state1)
 
       state3 = State.inc_cp(state2)
 
@@ -498,7 +501,8 @@ defmodule Aevm do
     jumpdests = State.jumpdests(state)
 
     if Enum.member?(jumpdests, position) do
-      state1 = Gas.update_gas(OpCodes._JUMPDEST(), 0, state)
+      jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
+      state1 = Gas.update_gas(jumpdest_cost, state)
       State.set_cp(position, state1)
     else
       throw({"invalid_jump_dest", state})
@@ -512,7 +516,8 @@ defmodule Aevm do
 
     if condition !== 0 do
       if Enum.member?(jumpdests, position) do
-        state1 = Gas.update_gas(OpCodes._JUMPDEST(), 0, state)
+        jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
+        state1 = Gas.update_gas(jumpdest_cost, state)
         State.set_cp(position, state1)
       else
         throw({"invalid_jump_dest", state})
@@ -1164,43 +1169,11 @@ defmodule Aevm do
     load_jumpdests(state2)
   end
 
-  defp dynamic_cost(op_name, state) do
-    case op_name do
-      # TODO
-      "CALL" ->
-        0
-
-      # TODO
-      "DELEGATECALL" ->
-        0
-
-      # TODO
-      "CALLCODE" ->
-        0
-
-      # test peek(1or2?)
-      "CALLDATACOPY" ->
-        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
-
-      "CODECOPY" ->
-        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
-
-      _ ->
-        0
-    end
-  end
-
-  defp update_gas(op_code, memory_gas_cost, state) do
-    curr_gas = State.gas(state)
-    {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
-    gas_after = curr_gas - (op_gas_price + memory_gas_cost)
-    State.set_gas(gas_after, state)
-  end
-
   defp log(topics, from_pos, nbytes, state) do
     account = State.address(state)
     {memory_area, state1} = Memory.get_area(from_pos, nbytes, state)
     logs = State.logs(state)
+
     topics_joined =
       Enum.reduce(topics, <<>>, fn topic, acc ->
         acc <> <<topic::256>>
