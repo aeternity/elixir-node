@@ -43,8 +43,8 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Retrieve value from trie.
   """
-  @spec lookup(Trie.key(), Trie.t()) :: {:ok, Trie.value()} | :none
-  def lookup(key, trie) do
+  @spec lookup(Trie.t(), Trie.key()) :: {:ok, Trie.value()} | :none
+  def lookup(trie, key) do
     case Trie.get(trie, key) do
       nil -> :none
       val -> {:ok, val}
@@ -54,8 +54,8 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Retrieve value from trie and construct proof.
   """
-  @spec lookup_with_proof(Trie.key(), Trie.t()) :: :none | {:ok, Trie.value(), Trie.t()}
-  def lookup_with_proof(key, trie) do
+  @spec lookup_with_proof(Trie.key(), Trie.key()) :: :none | {:ok, Trie.value(), Trie.t()}
+  def lookup_with_proof(trie, key) do
     case Proof.construct_proof({trie, key, new(:proof)}) do
       {nil, _proof} -> :none
       {val, proof} -> {:ok, val, proof}
@@ -66,9 +66,9 @@ defmodule Aeutil.PatriciaMerkleTree do
   Check if the value already exists for this key before add it.
   If so return error message.
   """
-  @spec insert(Trie.key(), Trie.value(), Trie.t()) :: Trie.t() | {:error, term}
-  def insert(key, value, trie) do
-    case lookup(key, trie) do
+  @spec insert(Trie.t(), Trie.key(), Trie.value()) :: Trie.t() | {:error, term}
+  def insert(trie, key, value) do
+    case lookup(trie, key) do
       {:ok, ^value} ->
         {:error, :already_present}
 
@@ -77,21 +77,21 @@ defmodule Aeutil.PatriciaMerkleTree do
     end
   end
 
-  @spec enter(Trie.key(), Trie.value(), Trie.t()) :: Trie.t()
-  def enter(key, value, trie), do: Trie.update(trie, key, value)
+  @spec enter(Trie.t(), Trie.key(), Trie.value()) :: Trie.t()
+  def enter(trie, key, value), do: Trie.update(trie, key, value)
 
   @doc """
   Verify if value is present in the proof trie for the provided key.
   The key represents the path in the proof trie.
   """
-  @spec verify_proof(Trie.key(), Trie.value(), Trie.t(), Trie.t()) :: boolean
-  def verify_proof(key, value, trie, proof) do
+  @spec verify_proof(Trie.t(), Trie.key(), Trie.value(), Trie.t()) :: boolean
+  def verify_proof(trie, key, value, proof) do
     Proof.verify_proof(key, value, trie.root_hash, proof.db)
   end
 
   @doc """
   Deleting a value for given key and reorganizing the trie
   """
-  @spec delete(Trie.key(), Trie.t()) :: Trie.t()
-  def delete(key, trie), do: Trie.delete(trie, key)
+  @spec delete(Trie.t(), Trie.key()) :: Trie.t()
+  def delete(trie, key), do: Trie.delete(trie, key)
 end

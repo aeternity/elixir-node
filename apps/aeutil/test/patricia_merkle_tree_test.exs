@@ -18,32 +18,31 @@ defmodule AeutilPatriciaMerkleTreeTest do
     trie = create_trie(trie_list, empty_trie)
 
     Enum.each(trie_list, fn {key, value} ->
-      {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(key, trie)
-      assert true = PatriciaMerkleTree.verify_proof(key, value, trie, proof)
+      {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(trie, key)
+      assert true = PatriciaMerkleTree.verify_proof(trie, key, value, proof)
     end)
 
-    assert :none = PatriciaMerkleTree.lookup_with_proof("not_existing_key", trie)
-    # assert :none =  #PatriciaMerkleTree.verify_proof(key, value, trie, proof)
+    assert :none = PatriciaMerkleTree.lookup_with_proof(trie, "not_existing_key")
   end
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
   test "Lookup", %{db_ref_name: db_ref_name, trie: empty_trie} do
     ## Creating trie with only one leaf node.
-    trie = PatriciaMerkleTree.enter("key", "val", empty_trie)
+    trie = PatriciaMerkleTree.enter(empty_trie, "key", "val")
 
     ## Retrieving the value of the leaf
-    assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie)
+    assert {:ok, "val"} = PatriciaMerkleTree.lookup(trie, "key")
 
     ## There is no such path `key2` so we should get `:none`
-    assert :none = PatriciaMerkleTree.lookup("key2", trie)
+    assert :none = PatriciaMerkleTree.lookup(trie, "key2")
 
     ## Creating new trie from previous root_hash
     ## and the expected result should be the value
     ## of the existing leaf in the first trie.
     trie2 = PatriciaMerkleTree.new(db_ref_name, trie.root_hash)
 
-    assert {:ok, "val"} = PatriciaMerkleTree.lookup("key", trie2)
+    assert {:ok, "val"} = PatriciaMerkleTree.lookup(trie2, "key")
   end
 
   @tag :patricia_merkle_tree
@@ -56,18 +55,18 @@ defmodule AeutilPatriciaMerkleTreeTest do
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
   test "Insert", %{trie: empty_trie} do
-    trie = PatriciaMerkleTree.insert("key", "a", empty_trie)
-    assert {:ok, "a"} = PatriciaMerkleTree.lookup("key", trie)
-    assert {:error, :already_present} = PatriciaMerkleTree.insert("key", "a", trie)
+    trie = PatriciaMerkleTree.insert(empty_trie, "key", "a")
+    assert {:ok, "a"} = PatriciaMerkleTree.lookup(trie, "key")
+    assert {:error, :already_present} = PatriciaMerkleTree.insert(trie, "key", "a")
   end
 
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
   test "Delete a node from trie", %{trie: empty_trie} do
-    trie = PatriciaMerkleTree.insert("key", "a", empty_trie)
-    assert {:ok, "a"} = PatriciaMerkleTree.lookup("key", trie)
-    new_trie = PatriciaMerkleTree.delete("key", trie)
-    assert :none = PatriciaMerkleTree.lookup("key", new_trie)
+    trie = PatriciaMerkleTree.insert(empty_trie, "key", "a")
+    assert {:ok, "a"} = PatriciaMerkleTree.lookup(trie, "key")
+    new_trie = PatriciaMerkleTree.delete(trie, "key")
+    assert :none = PatriciaMerkleTree.lookup(new_trie, "key")
     assert empty_trie.root_hash == new_trie.root_hash
   end
 
@@ -76,7 +75,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
   """
   def create_trie(trie_list, empty_trie) do
     Enum.reduce(trie_list, empty_trie, fn {key, val}, acc_trie ->
-      PatriciaMerkleTree.enter(key, val, acc_trie)
+      PatriciaMerkleTree.enter(acc_trie, key, val)
     end)
   end
 
