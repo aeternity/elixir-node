@@ -935,23 +935,48 @@ defmodule Aevm do
   # a0s: Logging Operations
 
   def exec(OpCodes._LOG0(), state) do
-    # TODO
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+
+    log([], from_pos, nbytes, state2)
   end
 
   def exec(OpCodes._LOG1(), state) do
-    # TODO
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+    {topic1, state3} = pop(state2)
+
+    log([topic1], from_pos, nbytes, state3)
   end
 
   def exec(OpCodes._LOG2(), state) do
-    # TODO
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+    {topic1, state3} = pop(state2)
+    {topic2, state4} = pop(state3)
+
+    log([topic1, topic2], from_pos, nbytes, state4)
   end
 
   def exec(OpCodes._LOG3(), state) do
-    # TODO
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+    {topic1, state3} = pop(state2)
+    {topic2, state4} = pop(state3)
+    {topic3, state5} = pop(state4)
+
+    log([topic1, topic2, topic3], from_pos, nbytes, state5)
   end
 
   def exec(OpCodes._LOG4(), state) do
-    # TODO
+    {from_pos, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+    {topic1, state3} = pop(state2)
+    {topic2, state4} = pop(state3)
+    {topic3, state5} = pop(state4)
+    {topic4, state6} = pop(state5)
+
+    log([topic1, topic2, topic3, topic4], from_pos, nbytes, state6)
   end
 
   # f0s: System operations
@@ -1137,5 +1162,52 @@ defmodule Aevm do
 
     state2 = State.inc_cp(state1)
     load_jumpdests(state2)
+  end
+
+  defp dynamic_cost(op_name, state) do
+    case op_name do
+      # TODO
+      "CALL" ->
+        0
+
+      # TODO
+      "DELEGATECALL" ->
+        0
+
+      # TODO
+      "CALLCODE" ->
+        0
+
+      # test peek(1or2?)
+      "CALLDATACOPY" ->
+        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      "CODECOPY" ->
+        GasCodes._GCOPY() * round(Float.ceil(peek(2, state) / 32))
+
+      _ ->
+        0
+    end
+  end
+
+  defp update_gas(op_code, memory_gas_cost, state) do
+    curr_gas = State.gas(state)
+    {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
+    gas_after = curr_gas - (op_gas_price + memory_gas_cost)
+    State.set_gas(gas_after, state)
+  end
+
+  defp log(topics, from_pos, nbytes, state) do
+    account = State.address(state)
+    {memory_area, state1} = Memory.get_area(from_pos, nbytes, state)
+    logs = State.logs(state)
+    topics_joined =
+      Enum.reduce(topics, <<>>, fn topic, acc ->
+        acc <> <<topic::256>>
+      end)
+
+    log = <<account::256>> <> topics_joined <> memory_area
+
+    State.set_logs([log | logs], state1)
   end
 end

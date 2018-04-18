@@ -12,6 +12,7 @@ defmodule State do
       :cp => 0,
       :jumpdests => [],
       :return => nil,
+      :logs => [],
       # :return_data => return_data,
 
       :address => Map.get(exec, :address),
@@ -49,6 +50,10 @@ defmodule State do
     Map.put(state, :return, return)
   end
 
+  def set_logs(logs, state) do
+    Map.put(state, :logs, logs)
+  end
+
   def set_gas(gas, state) do
     Map.put(state, :gas, gas)
   end
@@ -75,6 +80,10 @@ defmodule State do
 
   def jumpdests(state) do
     Map.get(state, :jumpdests)
+  end
+
+  def logs(state) do
+    Map.get(state, :logs)
   end
 
   def address(state) do

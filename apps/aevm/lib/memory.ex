@@ -75,21 +75,12 @@ defmodule Memory do
 
   def get_area(from, bytes, state) do
     memory = State.memory(state)
-    memory_indexes = trunc(Float.ceil((from + bytes) / 32))
-    start_index = trunc(Float.ceil(from / 32))
 
-    total_data =
-      Enum.reduce(0..(memory_indexes - 1), <<>>, fn i, data_acc ->
-        data = Map.get(memory, (start_index + i) * 32, 0)
-        data_acc <> <<data::size(256)>>
-      end)
-
-    unneeded_bits = rem(from, 32) * 8
-    area_bits = bytes * 8
-    <<_::size(unneeded_bits), area::size(area_bits), _::binary>> = total_data
+    {memory_index, bit_position} = get_index_in_memory(from)
+    area = read(<<>>, bytes, bit_position, memory_index, memory)
 
     memory1 = update_memory_size(from + bytes - 1, memory)
-    {<<area::size(area_bits)>>, State.set_memory(memory1, state)}
+    {area, State.set_memory(memory1, state)}
   end
 
   def write_area(from, bytes, state) do
@@ -102,7 +93,37 @@ defmodule Memory do
     State.set_memory(memory2, state)
   end
 
-  defp write(<<>>, _byte_position, _memory_index, memory) do
+  defp read(read_value, 0, _bit_position, _memory_index, _memory) do
+    read_value
+  end
+
+  defp read(read_value, bytes_left, bit_position, memory_index, memory) do
+    memory_index_bits_left =
+      if bit_position == 0 do
+        256
+      else
+        256 - bit_position
+      end
+
+    size_bits = bytes_left * 8
+
+    bits_to_read =
+      if memory_index_bits_left <= size_bits do
+        memory_index_bits_left
+      else
+        size_bits
+      end
+
+    saved_value = Map.get(memory, memory_index, 0)
+
+    <<_::size(bit_position), read_part::size(bits_to_read), _::binary>> = <<saved_value::256>>
+
+    new_read_value = read_value <> <<read_part::size(bits_to_read)>>
+    new_bytes_left = bytes_left - round(bits_to_read / 8)
+    read(new_read_value, new_bytes_left, 0, memory_index + 32, memory)
+  end
+
+  defp write(<<>>, _bit_position, _memory_index, memory) do
     memory
   end
 
