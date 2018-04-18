@@ -142,7 +142,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     fee = DataTx.fee(data_tx)
 
     cond do
-      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
+      AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->

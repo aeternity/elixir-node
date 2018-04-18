@@ -81,7 +81,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     updated_accounts_state =
       accounts
-      |> MapUtil.update(sender, Account.empty(), fn acc ->
+      |> AccountStateTree.update(sender, fn acc ->
         Account.transaction_in!(acc, query_fee)
       end)
 
@@ -117,7 +117,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     fee = DataTx.fee(data_tx)
     
     cond do
-      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
+      AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->

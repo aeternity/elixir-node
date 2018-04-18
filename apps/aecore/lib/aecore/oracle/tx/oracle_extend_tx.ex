@@ -93,7 +93,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     fee = DataTx.fee(data_tx)
 
     cond do
-      Map.get(accounts, sender, Account.empty()).balance - fee < 0 ->
+      AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->

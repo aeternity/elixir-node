@@ -9,7 +9,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Account.Account
-  alias Aeutil.MapUtil
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -110,7 +110,7 @@ defmodule Aecore.Tx.DataTx do
     nonce_accounts_state = if Enum.empty?(tx.senders) do
       accounts_state
     else
-      MapUtil.update(accounts_state, sender(tx), Account.empty(), fn acc ->
+      AccountStateTree.update(accounts_state, sender(tx), fn acc ->
         Account.apply_nonce!(acc, tx.nonce)
       end)
     end
@@ -169,10 +169,10 @@ defmodule Aecore.Tx.DataTx do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
  
-  @spec standard_deduct_fee(ChainState.accounts(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec standard_deduct_fee(AccountStateTree.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
   def standard_deduct_fee(accounts, data_tx, fee) do
     sender = DataTx.sender(data_tx)
-    MapUtil.update(accounts, sender, Account.empty(), fn acc ->
+    AccountStateTree.update(accounts, sender, fn acc ->
       Account.transaction_in!(acc, fee * -1)
     end)
   end

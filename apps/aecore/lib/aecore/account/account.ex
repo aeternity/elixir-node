@@ -89,23 +89,12 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance}
   end
 
-  @spec get_account_state(AccountStateTree.tree(), Wallet.pubkey()) :: Account.t()
-  def get_account_state(tree, key) do
-    case AccountStateTree.get(tree, key) do
-      :none ->
-        empty()
-
-      {:ok, account_state} ->
-        account_state
-    end
-  end
-
   @doc """
   Return the balance for a given key.
   """
   @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
   def balance(tree, key) do
-    get_account_state(tree, key).balance
+    AccountStateTree.get(tree, key).balance
   end
 
   @doc """
@@ -113,7 +102,7 @@ defmodule Aecore.Account.Account do
   """
   @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
   def nonce(tree, key) do
-    get_account_state(tree, key).nonce
+    AccountStateTree.get(tree, key).nonce
   end
 
   @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()

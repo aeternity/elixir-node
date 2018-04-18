@@ -7,6 +7,7 @@ defmodule PersistenceTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Account.Account
 
   setup persistance_state do
     Persistence.start_link([])
@@ -53,6 +54,9 @@ defmodule PersistenceTest do
     ## For specific account
     assert {:ok, %{balance: _}} = Persistence.get_account_chain_state(persistance_state.account1)
 
+    ## Non existant accounts are empty
+    empty = Account.empty()
+    assert {:ok, empty} = Persistence.get_account_chain_state(persistance_state.account2)
     ## For all accounts
     all_accounts = Persistence.get_all_accounts_chain_states()
     assert false == Enum.empty?(Map.keys(all_accounts))
@@ -83,7 +87,6 @@ defmodule PersistenceTest do
     assert {:error, "bad hash value"} =
              Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
 
-    assert :not_found = Persistence.get_account_chain_state(persistance_state.account2)
 
     assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
   end

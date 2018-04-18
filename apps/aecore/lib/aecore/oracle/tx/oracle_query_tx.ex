@@ -15,7 +15,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Account.AccountStateTree
-  alias Aeutil.MapUtil
 
   require Logger
 
@@ -119,7 +118,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     updated_accounts_state =
       accounts
-      |> MapUtil.update(sender, Account.empty(), fn acc ->
+      |> AccountStateTree.update(sender, fn acc ->
         Account.transaction_in!(acc, tx.query_fee * -1)
       end)
 
@@ -158,7 +157,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     fee = DataTx.fee(data_tx)
 
     cond do
-      Map.get(accounts, sender, Account.empty()).balance - fee - tx.query_fee < 0 ->
+      AccountStateTree.get(accounts, sender).balance - fee - tx.query_fee < 0 ->
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->

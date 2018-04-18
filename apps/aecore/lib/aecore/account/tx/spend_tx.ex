@@ -12,7 +12,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aeutil.MapUtil
 
   require Logger
 
@@ -97,10 +96,10 @@ defmodule Aecore.Account.Tx.SpendTx do
 
     new_accounts =
       accounts
-      |> MapUtil.update(sender, Account.empty(), fn acc ->
+      |> AccountStateTree.update(sender, fn acc ->
         Account.transaction_in!(acc, tx.amount * -1)
       end)
-      |> MapUtil.update(tx.receiver, Account.empty(), fn acc ->
+      |> AccountStateTree.update(tx.receiver, fn acc ->
         Account.transaction_in!(acc, tx.amount)
       end)
 
@@ -119,7 +118,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     DataTx.t()
   ) :: :ok
   def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
-    sender_state = Map.get(accounts, DataTx.sender(data_tx), Account.empty())
+    sender_state = AccountStateTree.get(accounts, DataTx.sender(data_tx))
     
     cond do
       sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 ->

@@ -62,7 +62,9 @@ defmodule Aecore.Chain.Chainstate do
 
   def filter_invalid_txs(txs_list, chainstate, block_height) do
     {valid_txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
+      List.foldl(txs_list,
+                 {[], chainstate},
+                 fn tx, {valid_txs_list, chainstate_acc} ->
         {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
 
         if valid_chainstate do
@@ -78,9 +80,11 @@ defmodule Aecore.Chain.Chainstate do
   @spec validate_tx(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
           {boolean(), Chainstate.t()}
   defp validate_tx(tx, chainstate, block_height) do
-    {true, apply_transaction_on_state!(tx, chainstate, block_height)}
-  catch
-    {:error, _} -> {false, chainstate}
+    try do
+      {true, apply_transaction_on_state!(chainstate, block_height, tx)}
+    catch
+      {:error, _} -> {false, chainstate}
+    end
   end
 
   @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()

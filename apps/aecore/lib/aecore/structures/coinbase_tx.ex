@@ -11,7 +11,7 @@ defmodule Aecore.Structures.CoinbaseTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
   alias Aecore.Account.Account
-  alias Aeutil.MapUtil
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -97,7 +97,7 @@ defmodule Aecore.Structures.CoinbaseTx do
   def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
-      |> MapUtil.update(tx.receiver, Account.empty(), fn acc ->
+      |> AccountStateTree.update(tx.receiver, fn acc ->
         Account.transaction_in!(acc, tx.amount)
       end)
 
