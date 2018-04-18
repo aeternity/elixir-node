@@ -44,9 +44,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           Oracle.registered_oracles()
-        ) :: {AccountStateTree.tree(), Oracle.registered_oracles()}
+        ) :: {AccountStateTree.accounts_state(), Oracle.registered_oracles()}
   def process_chainstate!(
         %OracleExtendTx{} = tx,
         sender,

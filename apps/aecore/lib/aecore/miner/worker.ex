@@ -185,6 +185,7 @@ defmodule Aecore.Miner.Worker do
     {pid, ref} =
       spawn_monitor(fn ->
         send(server, {:worker_reply, self(), work.()})
+        :ok
       end)
 
     %{state | job: {pid, ref}}

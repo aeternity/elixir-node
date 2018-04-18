@@ -10,8 +10,8 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -49,9 +49,9 @@ defmodule Aecore.Tx.Transaction do
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
-              AccountStateTree.tree(),
+              AccountStateTree.accounts_state(),
               tx_type_state()
-            ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
+            ) :: {AccountStateTree.accounts_state(), tx_type_state()} | {:error, String.t()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.

@@ -59,9 +59,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Chainstate.account(),
+          AccountStateTree.accounts_state() ,
           tx_type_state()
-        ) :: {Chainstate.accounts(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate!(
         %OracleResponseTx{} = tx,
         sender,
@@ -110,7 +110,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec preprocess_check(
           OracleResponseTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()
@@ -149,7 +149,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     end
   end
 
-  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

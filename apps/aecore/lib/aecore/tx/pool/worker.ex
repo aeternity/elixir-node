@@ -128,9 +128,9 @@ defmodule Aecore.Tx.Pool.Worker do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer()) ::
+  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer() | nil) ::
           boolean()
-  def is_minimum_fee_met?(tx, identifier, block_height \\ 0) do
+  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data.payload do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx)

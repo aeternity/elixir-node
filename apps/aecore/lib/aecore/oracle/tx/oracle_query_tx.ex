@@ -86,9 +86,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()} | {:error, String.t()}
   def process_chainstate!(
         %OracleQueryTx{} = tx,
         sender,
@@ -139,7 +139,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec preprocess_check!(
           OracleQueryTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),

@@ -84,9 +84,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Chainstate.account(),
+          AccountStateTree.accounts_state(),
           tx_type_state()
-        ) :: {Chainstate.accounts(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate!(
         %OracleRegistrationTx{} = tx,
         sender,
@@ -130,7 +130,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec preprocess_check!(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state()

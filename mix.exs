@@ -16,7 +16,8 @@ defmodule EpochElixir.Mixfile do
           "_build/dev/lib/aehttpclient/ebin",
           "_build/dev/lib/aehttpserver/ebin",
           "_build/dev/lib/aeutil/ebin"
-        ]
+        ],
+        ignore_warnings: "dialyzer.ignore-warnings"
       ],
       test_coverage: [
         tool: ExCoveralls
