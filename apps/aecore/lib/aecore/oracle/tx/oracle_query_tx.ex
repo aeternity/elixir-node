@@ -14,6 +14,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
+  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -74,7 +75,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   def is_valid?(
         %OracleQueryTx{
           query_ttl: query_ttl,
-          response_ttl: response_ttl
+          response_ttl: response_ttl,
+          oracle_address: oracle_address
         },
         data_tx
       ) do
@@ -91,6 +93,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
       !match?(%{type: :relative}, response_ttl) ->
         Logger.error("Invalid ttl type")
+        false
+
+      !Wallet.key_size_valid?(oracle_address) ->
+        Logger.error("oracle_adddress size invalid")
         false
 
       length(senders) != 1 ->
@@ -227,7 +233,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
-    :crypto.hash(:sha256, bin)
+    Hash.hash(bin)
   end
 
   def base58c_encode(bin) do

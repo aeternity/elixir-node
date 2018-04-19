@@ -4,8 +4,11 @@ defmodule Aecore.Tx.DataTx do
   """
 
   alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
+  alias Aeutil.Bits
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -182,6 +185,18 @@ defmodule Aecore.Tx.DataTx do
       end
 
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("th", bin)
+  end
+
+  def base58c_decode(<<"th$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode(_) do
+    {:error, "Wrong data"}
   end
 
   @spec standard_deduct_fee(AccountStateTree.t(), DataTx.t(), non_neg_integer()) ::

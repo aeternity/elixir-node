@@ -46,15 +46,26 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec is_valid?(OracleResponseTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{}, data_tx) do
+  def is_valid?(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
-    if length(senders) != 1 do
-      Logger.error("Invalid senders number")
-      false
-    else
-      true
+    cond do
+      length(senders) != 1 ->
+        Loger.error("Invalid senders number")
+        false
+
+      byte_size(query_id) != get_query_id_size() ->
+        Logger.error("Wrong query_id size")
+        false
+
+      true ->
+        true
     end
+  end
+
+  @spec get_query_id_size :: non_neg_integer()
+  def get_query_id_size do
+    Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
   @spec process_chainstate!(

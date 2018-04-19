@@ -17,10 +17,15 @@ defmodule Aecore.Account.Account do
 
   @type t :: %Account{
           balance: non_neg_integer(),
-          nonce: non_neg_integer()
+          nonce: non_neg_integer(),
+          last_updated: non_neg_integer()
         }
 
-  @type account_payload :: %{balance: non_neg_integer(), nonce: non_neg_integer()}
+  @type account_payload :: %{
+          balance: non_neg_integer(),
+          nonce: non_neg_integer(),
+          last_updated: non_neg_integer()
+        }
 
   @doc """
   Definition of Account structure
@@ -29,15 +34,16 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce]
+  defstruct [:balance, :nonce, :last_updated]
 
-  def empty, do: %Account{balance: 0, nonce: 0}
+  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0}
 
   @spec new(account_payload()) :: Account.t()
-  def new(%{balance: balance, nonce: nonce}) do
+  def new(%{balance: balance, nonce: nonce, last_updated: last_updated}) do
     %Account{
       balance: balance,
-      nonce: nonce
+      nonce: nonce,
+      last_updated: last_updated
     }
   end
 
@@ -93,7 +99,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the balance for a given key.
   """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
     AccountStateTree.get(tree, key).balance
   end
@@ -101,7 +107,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the nonce for a given key.
   """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: integer()
+  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
   end
@@ -113,6 +119,20 @@ defmodule Aecore.Account.Account do
     end
 
     %Account{account_state | nonce: new_nonce}
+  end
+
+  @doc """
+  Return the last_updated for a given key.
+  """
+  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def last_updated(tree, key) do
+    AccountStateTree.get(tree, key).last_updated
+  end
+
+  def last_updated(tree, key, block_height) do
+    state = Account.get_account_state(tree, key)
+    updated_state = %{state | last_updated: block_height}
+    AccountStateTree.put(tree, key, updated_state)
   end
 
   def base58c_encode(bin) do

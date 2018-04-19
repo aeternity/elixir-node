@@ -7,10 +7,10 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
 
@@ -59,7 +59,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Checks wether the amount that is send is not a negative number
   """
   @spec is_valid?(SpendTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%SpendTx{} = tx, data_tx) do
+  def is_valid?(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -70,6 +70,9 @@ defmodule Aecore.Account.Tx.SpendTx do
       tx.version != get_tx_version() ->
         Logger.error("Invalid version")
         false
+
+      !Wallet.key_size_valid?(receiver) ->
+        Logger.error("Wrong receiver key size")
 
       length(senders) != 1 ->
         Logger.error("Invalid senders number")
@@ -132,24 +135,9 @@ defmodule Aecore.Account.Tx.SpendTx do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation) :: boolean()
-  def is_minimum_fee_met?(tx, identifier) do
-    if identifier == :validation do
-      true
-    else
-      tx_size_bytes = Pool.get_tx_size_bytes(tx)
-
-      bytes_per_token =
-        case identifier do
-          :pool ->
-            Application.get_env(:aecore, :tx_data)[:pool_fee_bytes_per_token]
-
-          :miner ->
-            Application.get_env(:aecore, :tx_data)[:miner_fee_bytes_per_token]
-        end
-
-      tx.data.fee >= Float.floor(tx_size_bytes / bytes_per_token)
-    end
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
