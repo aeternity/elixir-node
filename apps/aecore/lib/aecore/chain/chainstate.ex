@@ -79,11 +79,9 @@ defmodule Aecore.Chain.Chainstate do
   @spec validate_tx(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
           {boolean(), Chainstate.t()}
   defp validate_tx(tx, chainstate, block_height) do
-    try do
-      {true, apply_transaction_on_state!(chainstate, block_height, tx)}
-    catch
-      {:error, _} -> {false, chainstate}
-    end
+    {true, apply_transaction_on_state!(chainstate, block_height, tx)}
+  catch
+    {:error, _} -> {false, chainstate}
   end
 
   @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()

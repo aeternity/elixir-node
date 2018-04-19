@@ -50,13 +50,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   def is_valid?(%OracleResponseTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
 
-    cond do
-      length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
-
-      true ->
-        true
+    if length(senders) != 1 do
+      Logger.error("Invalid senders number")
+      false
+    else
+      true
     end
   end
 

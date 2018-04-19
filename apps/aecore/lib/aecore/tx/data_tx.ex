@@ -44,7 +44,7 @@ defmodule Aecore.Tx.DataTx do
   defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
 
-  def valid_types() do
+  def valid_types do
     [
       Aecore.Account.Tx.SpendTx,
       Aecore.Structures.CoinbaseTx,

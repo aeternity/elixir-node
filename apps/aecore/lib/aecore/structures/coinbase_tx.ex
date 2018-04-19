@@ -46,9 +46,7 @@ defmodule Aecore.Structures.CoinbaseTx do
 
   # Callbacks
 
-  def get_chain_state_name() do
-    nil
-  end
+  def get_chain_state_name, do: nil
 
   @spec init(payload()) :: CoinbaseTx.t()
   def init(%{receiver: receiver, amount: amount} = _payload) do

@@ -48,10 +48,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @callback get_chain_state_name() :: atom() | nil
-  def get_chain_state_name() do
-    nil
-  end
+  @callback get_chain_state_name :: atom() | nil
+  def get_chain_state_name, do: nil
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
@@ -122,12 +120,10 @@ defmodule Aecore.Account.Tx.SpendTx do
   def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = AccountStateTree.get(accounts, DataTx.sender(data_tx))
 
-    cond do
-      sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 ->
-        throw({:error, "Negative balance"})
-
-      true ->
-        :ok
+    if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
+      throw({:error, "Negative balance"})
+    else
+      :ok
     end
   end
 

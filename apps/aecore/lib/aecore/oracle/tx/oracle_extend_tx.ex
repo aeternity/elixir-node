@@ -9,7 +9,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
