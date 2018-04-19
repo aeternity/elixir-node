@@ -54,6 +54,11 @@ defmodule Aecore.Tx.Transaction do
               tx_types()
             ) :: :ok
 
-  @callback deduct_fee(ChainState.accounts(), tx_types(), DataTx.t(), non_neg_integer()) ::
-              ChainState.account()
+  @callback deduct_fee(
+              ChainState.accounts(),
+              non_neg_integer(),
+              tx_types(),
+              DataTx.t(),
+              non_neg_integer()
+            ) :: ChainState.account()
 end

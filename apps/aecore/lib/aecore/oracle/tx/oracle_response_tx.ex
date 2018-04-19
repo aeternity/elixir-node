@@ -90,7 +90,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.transaction_in!(acc, query_fee)
+        Account.transaction_in!(acc, block_height, query_fee)
       end)
 
     updated_interaction_objects =
@@ -155,10 +155,15 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleResponseTx.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(accounts, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, data_tx, fee)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          OracleResponseTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()

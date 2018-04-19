@@ -94,11 +94,11 @@ defmodule Aecore.Structures.CoinbaseTx do
           CoinbaseTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, _block_height, %CoinbaseTx{} = tx, _data_tx) do
+  def process_chainstate!(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
       |> AccountStateTree.update(tx.receiver, fn acc ->
-        Account.transaction_in!(acc, tx.amount)
+        Account.transaction_in!(acc, block_height, tx.amount)
       end)
 
     {new_accounts_state, %{}}
@@ -123,9 +123,14 @@ defmodule Aecore.Structures.CoinbaseTx do
     :ok
   end
 
-  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.accounts()
-  def deduct_fee(accounts, _tx, _data_tx, _fee) do
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          CoinbaseTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.accounts()
+  def deduct_fee(accounts, _block_height, _tx, _data_tx, _fee) do
     accounts
   end
 end

@@ -34,7 +34,7 @@ defmodule AecoreOracleTest do
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pub_key)
-    
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
 

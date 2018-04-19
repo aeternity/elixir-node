@@ -216,6 +216,10 @@ defmodule Aecore.Tx.SignedTx do
             Logger.error("Missing signature of #{acc}")
             false
 
+          !Wallet.key_size_valid?(acc) ->
+            Logger.error("Wrong sender size")
+            false
+
           Signing.verify(data_binary, sig, acc) ->
             validity
 

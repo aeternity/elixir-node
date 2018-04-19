@@ -143,20 +143,6 @@ defmodule AecoreTxTest do
     assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 100
   end
 
-  test "sender pub_key is too small", tx do
-    # Use private as public key for sender to get error that sender key is not 33 bytes
-    sender = Wallet.get_private_key()
-    refute byte_size(sender) == 33
-    amount = 100
-    fee = 50
-
-    :ok = Miner.mine_sync_block_to_chain()
-    payload = %{receiver: tx.receiver, amount: amount}
-
-    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
-    assert DataTx.is_valid?(data_tx) == false
-  end
-
   test "receiver pub_key is too small", tx do
     sender = Wallet.get_public_key()
     amount = 100

@@ -73,6 +73,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
       !Wallet.key_size_valid?(receiver) ->
         Logger.error("Wrong receiver key size")
+        false
 
       length(senders) != 1 ->
         Logger.error("Invalid senders number")
@@ -93,16 +94,16 @@ defmodule Aecore.Account.Tx.SpendTx do
           SpendTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, _block_height, %SpendTx{} = tx, data_tx) do
+  def process_chainstate!(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.sender(data_tx)
 
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.transaction_in!(acc, tx.amount * -1)
+        Account.transaction_in!(acc, block_height, tx.amount * -1)
       end)
       |> AccountStateTree.update(tx.receiver, fn acc ->
-        Account.transaction_in!(acc, tx.amount)
+        Account.transaction_in!(acc, block_height, tx.amount)
       end)
 
     {new_accounts, %{}}
@@ -129,10 +130,15 @@ defmodule Aecore.Account.Tx.SpendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), SpendTx.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(accounts, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, data_tx, fee)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          SpendTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

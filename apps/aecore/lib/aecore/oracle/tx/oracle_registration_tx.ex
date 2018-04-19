@@ -162,10 +162,15 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(accounts, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, data_tx, fee)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          OracleExtendTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::

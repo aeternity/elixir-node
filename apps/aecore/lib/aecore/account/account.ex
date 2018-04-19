@@ -85,15 +85,16 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given address (public key)
   """
-  @spec transaction_in!(ChainState.account(), integer()) :: ChainState.account()
-  def transaction_in!(account_state, amount) do
+  @spec transaction_in!(ChainState.account(), non_neg_integer(), integer()) ::
+          ChainState.account()
+  def transaction_in!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
 
     if new_balance < 0 do
       throw({:error, "Negative balance"})
     end
 
-    %Account{account_state | balance: new_balance}
+    %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
   @doc """
@@ -127,12 +128,6 @@ defmodule Aecore.Account.Account do
   @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
   def last_updated(tree, key) do
     AccountStateTree.get(tree, key).last_updated
-  end
-
-  def last_updated(tree, key, block_height) do
-    state = Account.get_account_state(tree, key)
-    updated_state = %{state | last_updated: block_height}
-    AccountStateTree.put(tree, key, updated_state)
   end
 
   def base58c_encode(bin) do

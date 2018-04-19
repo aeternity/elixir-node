@@ -128,7 +128,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.transaction_in!(acc, tx.query_fee * -1)
+        Account.transaction_in!(acc, block_height, tx.query_fee * -1)
       end)
 
     interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
@@ -194,10 +194,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.account()
-  def deduct_fee(accounts, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, data_tx, fee)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          OracleQueryTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec get_oracle_query_fee(binary()) :: non_neg_integer()

@@ -138,7 +138,7 @@ defmodule Aecore.Tx.DataTx do
 
     {new_accounts_state, new_tx_type_state} =
       nonce_accounts_state
-      |> tx.type.deduct_fee(payload, tx, fee)
+      |> tx.type.deduct_fee(payload, block_height, tx, fee)
       |> tx.type.process_chainstate!(
         tx_type_state,
         block_height,
@@ -199,13 +199,17 @@ defmodule Aecore.Tx.DataTx do
     {:error, "Wrong data"}
   end
 
-  @spec standard_deduct_fee(AccountStateTree.t(), DataTx.t(), non_neg_integer()) ::
-          ChainState.account()
-  def standard_deduct_fee(accounts, data_tx, fee) do
+  @spec standard_deduct_fee(
+          AccountStateTree.t(),
+          DataTx.t(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def standard_deduct_fee(accounts, block_height, data_tx, fee) do
     sender = DataTx.sender(data_tx)
 
     AccountStateTree.update(accounts, sender, fn acc ->
-      Account.transaction_in!(acc, fee * -1)
+      Account.transaction_in!(acc, block_height, fee * -1)
     end)
   end
 
