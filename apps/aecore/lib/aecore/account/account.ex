@@ -73,7 +73,7 @@ defmodule Aecore.Account.Account do
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
     payload = %{receiver: receiver, amount: amount}
     spend_tx = DataTx.init(SpendTx, payload, [sender], fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    SignedTx.sign_tx(spend_tx, sender, sender_priv_key)
   end
 
   @doc """

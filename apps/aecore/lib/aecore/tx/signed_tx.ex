@@ -66,19 +66,39 @@ defmodule Aecore.Tx.SignedTx do
 
   """
 
-  @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) :: {:ok, SignedTx.t()}
-  def sign_tx(%DataTx{} = tx, priv_key) do
-    sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) ::
+          {:ok, SignedTx.t()} | {:error, binary()}
+  def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
+    signatures =
+      for _ <- DataTx.senders(tx) do
+        nil
+      end
+
+    sign_tx(%SignedTx{data: tx, signatures: signatures}, pub_key, priv_key)
   end
 
-  # TODO solve problem of proper ordering of sigs
-  def sign_tx(%SignedTx{data: data, signatures: sigs}, priv_key) do
-    signature =
+  def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
+    new_signature =
       data
       |> Serialization.pack_binary()
       |> Signing.sign(priv_key)
 
-    {:ok, %SignedTx{data: data, signatures: [signature | sigs]}}
+    {success, new_sigs} =
+      sigs
+      |> Enum.zip(DataTx.senders(data))
+      |> Enum.reduce({false, []}, fn {sig, sender}, {success, acc} ->
+        if sender == pub_key do
+          {true, [new_signature | acc]}
+        else
+          {success, [sig | acc]}
+        end
+      end)
+
+    if success do
+      {:ok, %SignedTx{data: data, signatures: new_sigs}}
+    else
+      {:error, "Not in senders"}
+    end
   end
 
   def sign_tx(tx, _priv_key) do
@@ -170,11 +190,17 @@ defmodule Aecore.Tx.SignedTx do
       sigs
       |> Enum.zip(DataTx.senders(data))
       |> Enum.reduce(true, fn {sig, acc}, validity ->
-        if Signing.verify(data_binary, sig, acc) do
-          validity
-        else
-          Logger.error("Signature of #{acc} invalid")
-          false
+        cond do
+          sig == nil ->
+            Logger.error("Missing signature of #{acc}")
+            false
+
+          Signing.verify(data_binary, sig, acc) ->
+            validity
+
+          true ->
+            Logger.error("Signature of #{acc} invalid")
+            false
         end
       end)
     end
