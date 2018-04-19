@@ -9,7 +9,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   require Logger

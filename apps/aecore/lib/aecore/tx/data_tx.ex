@@ -4,11 +4,9 @@ defmodule Aecore.Tx.DataTx do
   """
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Bits
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 

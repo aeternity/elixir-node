@@ -10,7 +10,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
-  alias Aecore.Account.Tx.SpendTx
 
   require Logger
 
