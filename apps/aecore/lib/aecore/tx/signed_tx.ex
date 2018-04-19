@@ -35,7 +35,9 @@ defmodule Aecore.Tx.SignedTx do
     %SignedTx{data: data, signatures: signatures}
   end
 
-  def data_tx(%SignedTx{data: data}) do data end
+  def data_tx(%SignedTx{data: data}) do
+    data
+  end
 
   @spec is_coinbase?(SignedTx.t()) :: boolean()
   def is_coinbase?(%SignedTx{data: data}) do
@@ -47,7 +49,8 @@ defmodule Aecore.Tx.SignedTx do
     signatures_valid?(tx) && DataTx.is_valid?(data)
   end
 
-  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) :: ChainState.chainstate()
+  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
+          ChainState.chainstate()
   def process_chainstate!(chainstate, block_height, %SignedTx{data: data}) do
     DataTx.process_chainstate!(chainstate, block_height, data)
   end
@@ -74,6 +77,7 @@ defmodule Aecore.Tx.SignedTx do
       data
       |> Serialization.pack_binary()
       |> Signing.sign(priv_key)
+
     {:ok, %SignedTx{data: data, signatures: [signature | sigs]}}
   end
 
@@ -118,19 +122,24 @@ defmodule Aecore.Tx.SignedTx do
   @spec serialize(SignedTx.t()) :: map()
   def serialize(%SignedTx{} = tx) do
     signatures_length = length(tx.signatures)
+
     cond do
       signatures_length == 0 ->
         %{"data" => DataTx.serialize(tx.data)}
+
       signatures_length == 1 ->
-        signature_serialized = 
+        signature_serialized =
           tx.signatures
           |> Enum.at(0)
           |> Serialization.serialize_value(:signature)
-        %{"data" => DataTx.serialize(tx.data),
-          "signature" => signature_serialized}
+
+        %{"data" => DataTx.serialize(tx.data), "signature" => signature_serialized}
+
       true ->
-        %{"data" => DataTx.serialize(tx.data),
-          "signature" => Serialization.serialize_value(:signature)}
+        %{
+          "data" => DataTx.serialize(tx.data),
+          "signature" => Serialization.serialize_value(:signature)
+        }
     end
   end
 
@@ -138,16 +147,19 @@ defmodule Aecore.Tx.SignedTx do
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)
+
     cond do
       signed_tx.signature != nil ->
         create(data, [signed_tx.signature])
+
       signed_tx.signatures != nil ->
         create(data, signed_tx.signatures)
+
       true ->
         create(data, [])
     end
   end
-  
+
   defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
     if length(sigs) != length(DataTx.senders(data)) do
       Logger.error("Wrong signature count")

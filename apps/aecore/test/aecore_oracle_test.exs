@@ -16,7 +16,7 @@ defmodule AecoreOracleTest do
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
     assert %{} == Pool.get_and_empty_pool()
-    assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pk) 
+    assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pk)
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     assert %{} == Pool.get_and_empty_pool()

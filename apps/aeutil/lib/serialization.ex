@@ -32,15 +32,13 @@ defmodule Aeutil.Serialization do
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
     serialized_header = serialize_value(block.header)
-    serialized_txs = Enum.map(block.txs, 
-                              fn tx -> SignedTx.serialize(tx) end)
+    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
 
     Map.put(serialized_header, "transactions", serialized_txs)
   end
 
   def block(block, :deserialize) do
-    txs = Enum.map(block["transactions"],
-                   fn tx -> SignedTx.deserialize(tx) end)
+    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
       block

@@ -28,6 +28,7 @@ defmodule Aecore.Account.AccountStateTree do
     case :gb_merkle_trees.lookup(key, tree) do
       :none ->
         Account.empty()
+
       account_state ->
         {:ok, acc} = Serialization.account_state(account_state, :deserialize)
         acc

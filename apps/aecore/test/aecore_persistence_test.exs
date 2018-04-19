@@ -87,7 +87,6 @@ defmodule PersistenceTest do
     assert {:error, "bad hash value"} =
              Aecore.Persistence.Worker.get_block_by_hash(:wrong_input_type)
 
-
     assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
   end
 end

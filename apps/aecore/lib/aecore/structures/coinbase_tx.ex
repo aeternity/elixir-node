@@ -45,8 +45,10 @@ defmodule Aecore.Structures.CoinbaseTx do
   use ExConstructor
 
   # Callbacks
-  
-  def get_chain_state_name() do nil end
+
+  def get_chain_state_name() do
+    nil
+  end
 
   @spec init(payload()) :: CoinbaseTx.t()
   def init(%{receiver: receiver, amount: amount} = _payload) do
@@ -101,7 +103,7 @@ defmodule Aecore.Structures.CoinbaseTx do
         Account.transaction_in!(acc, tx.amount)
       end)
 
-    {new_accounts_state, %{}}   
+    {new_accounts_state, %{}}
   end
 
   def process_chainstate!(_accounts, %{}, _block_height, _tx, _data_tx) do
@@ -123,7 +125,8 @@ defmodule Aecore.Structures.CoinbaseTx do
     :ok
   end
 
-  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.accounts()
+  @spec deduct_fee(ChainState.accounts(), CoinbaseTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.accounts()
   def deduct_fee(accounts, _tx, _data_tx, _fee) do
     accounts
   end

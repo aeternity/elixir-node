@@ -57,14 +57,14 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
-  ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         oracle_state,
         _block_height,
         %OracleExtendTx{} = tx,
         data_tx
-  ) do
+      ) do
     sender = DataTx.sender(data_tx)
 
     updated_oracle_state =
@@ -76,19 +76,21 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
     {accounts, updated_oracle_state}
   end
-  
+
   @spec preprocess_check!(
-    ChainState.accounts(),
-    Oracle.oracles(),
-    non_neg_integer(),
-    OracleExtendTx.t(),
-    DataTx.t()
-  ) :: :ok
-  def preprocess_check!(accounts,
-                        %{registered_oracles: registered_oracles},
-                        _block_height, 
-                        tx, 
-                        data_tx) do
+          ChainState.accounts(),
+          Oracle.oracles(),
+          non_neg_integer(),
+          OracleExtendTx.t(),
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check!(
+        accounts,
+        %{registered_oracles: registered_oracles},
+        _block_height,
+        tx,
+        data_tx
+      ) do
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -107,7 +109,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def deduct_fee(accounts, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end

@@ -57,14 +57,18 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ttl: ttl
     }
   end
-  
+
   @spec is_valid?(OracleRegistrationTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleRegistrationTx{
-        query_format: query_format,
-        response_format: response_format,
-        ttl: ttl}, data_tx) do
+  def is_valid?(
+        %OracleRegistrationTx{
+          query_format: query_format,
+          response_format: response_format,
+          ttl: ttl
+        },
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
-        
+
     formats_valid =
       try do
         JsonSchema.resolve(query_format)
@@ -84,11 +88,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
       !formats_valid ->
         false
-      
+
       !Oracle.ttl_is_valid?(ttl) ->
         Logger.error("Invald ttl")
         false
-      
+
       length(senders) != 1 ->
         Logger.error("Invalid senders number")
         false
@@ -104,19 +108,18 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-  ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state,
         block_height,
         %OracleRegistrationTx{} = tx,
         data_tx
-  ) do
+      ) do
     sender = DataTx.sender(data_tx)
 
     updated_registered_oracles =
-      Map.put_new(registered_oracles, sender, 
-        %{tx: tx, height_included: block_height})
+      Map.put_new(registered_oracles, sender, %{tx: tx, height_included: block_height})
 
     updated_oracle_state = %{
       oracle_state
@@ -127,17 +130,19 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec preprocess_check!(
-    ChainState.accounts(),
-    Oracle.oracles(),
-    non_neg_integer(),
-    OracleRegistrationTx.t(),
-    DataTx.t()
-  ) :: :ok
-  def preprocess_check!(accounts, 
-                        %{registered_oracles: registered_oracles},
-                        block_height, 
-                        tx, 
-                        data_tx) do
+          ChainState.accounts(),
+          Oracle.oracles(),
+          non_neg_integer(),
+          OracleRegistrationTx.t(),
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check!(
+        accounts,
+        %{registered_oracles: registered_oracles},
+        block_height,
+        tx,
+        data_tx
+      ) do
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -159,7 +164,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), OracleExtendTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def deduct_fee(accounts, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end

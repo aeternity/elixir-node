@@ -43,7 +43,8 @@ defmodule Aecore.Chain.Chainstate do
     |> Oracle.remove_expired_interaction_objects(block_height)
   end
 
-  @spec apply_transaction_on_state!(Chainstate.t(), non_neg_integer(), SignedTx.t()) :: Chainstate.t()
+  @spec apply_transaction_on_state!(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+          Chainstate.t()
   def apply_transaction_on_state!(chainstate, block_height, tx) do
     if !SignedTx.is_valid?(tx) do
       throw({:error, "Invalid transaction"})
@@ -62,9 +63,7 @@ defmodule Aecore.Chain.Chainstate do
 
   def filter_invalid_txs(txs_list, chainstate, block_height) do
     {valid_txs_list, _} =
-      List.foldl(txs_list,
-                 {[], chainstate},
-                 fn tx, {valid_txs_list, chainstate_acc} ->
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
         {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
 
         if valid_chainstate do

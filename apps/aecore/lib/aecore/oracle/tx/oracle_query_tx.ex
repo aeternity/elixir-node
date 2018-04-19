@@ -69,12 +69,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       response_ttl: response_ttl
     }
   end
-  
+
   @spec is_valid?(OracleQueryTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleQueryTx{
-        query_ttl: query_ttl,
-        response_ttl: response_ttl
-      }, data_tx) do
+  def is_valid?(
+        %OracleQueryTx{
+          query_ttl: query_ttl,
+          response_ttl: response_ttl
+        },
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -105,14 +108,14 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
-  ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
         %OracleQueryTx{} = tx,
         data_tx
-  ) do
+      ) do
     sender = DataTx.sender(data_tx)
     nonce = DataTx.nonce(data_tx)
 
@@ -140,19 +143,21 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     {updated_accounts_state, updated_oracle_state}
   end
-  
+
   @spec preprocess_check!(
-    ChainState.accounts(),
-    Oracle.oracles(),
-    non_neg_integer(),
-    OracleQueryTx.t(),
-    DataTx.t()
-  ) :: :ok
-  def preprocess_check!(accounts,
-                        %{registered_oracles: registered_oracles},
-                        block_height,
-                        tx, 
-                        data_tx) do
+          ChainState.accounts(),
+          Oracle.oracles(),
+          non_neg_integer(),
+          OracleQueryTx.t(),
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check!(
+        accounts,
+        %{registered_oracles: registered_oracles},
+        block_height,
+        tx,
+        data_tx
+      ) do
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -183,7 +188,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), OracleQueryTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def deduct_fee(accounts, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end

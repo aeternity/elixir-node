@@ -47,10 +47,12 @@ defmodule Aecore.Account.Tx.SpendTx do
   defstruct [:receiver, :amount, :version]
 
   # Callbacks
-  
+
   @callback get_chain_state_name() :: atom() | nil
-  def get_chain_state_name() do nil end
-  
+  def get_chain_state_name() do
+    nil
+  end
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
@@ -111,15 +113,15 @@ defmodule Aecore.Account.Tx.SpendTx do
   before the transaction is executed.
   """
   @spec preprocess_check!(
-    ChainState.accounts(),
-    tx_type_state(),
-    non_neg_integer(),
-    SpendTx.t(),
-    DataTx.t()
-  ) :: :ok
+          ChainState.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
+          SpendTx.t(),
+          DataTx.t()
+        ) :: :ok
   def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = AccountStateTree.get(accounts, DataTx.sender(data_tx))
-    
+
     cond do
       sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 ->
         throw({:error, "Negative balance"})
@@ -129,7 +131,8 @@ defmodule Aecore.Account.Tx.SpendTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), SpendTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), SpendTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def deduct_fee(accounts, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end

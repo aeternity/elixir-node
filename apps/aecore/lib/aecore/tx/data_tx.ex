@@ -44,14 +44,19 @@ defmodule Aecore.Tx.DataTx do
   defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
 
-  def valid_types() do [Aecore.Account.Tx.SpendTx,
-                        Aecore.Structures.CoinbaseTx,
-                        Aecore.Oracle.Tx.OracleExtendTx,
-                        Aecore.Oracle.Tx.OracleQueryTx,
-                        Aecore.Oracle.Tx.OracleRegistrationTx,
-                        Aecore.Oracle.Tx.OracleResponseTx] end
+  def valid_types() do
+    [
+      Aecore.Account.Tx.SpendTx,
+      Aecore.Structures.CoinbaseTx,
+      Aecore.Oracle.Tx.OracleExtendTx,
+      Aecore.Oracle.Tx.OracleQueryTx,
+      Aecore.Oracle.Tx.OracleRegistrationTx,
+      Aecore.Oracle.Tx.OracleResponseTx
+    ]
+  end
 
-  @spec init(tx_types(), payload(), list(binary()) | binary(), non_neg_integer(), integer()) :: DataTx.t()
+  @spec init(tx_types(), payload(), list(binary()) | binary(), non_neg_integer(), integer()) ::
+          DataTx.t()
   def init(type, payload, senders, fee, nonce) when is_list(senders) do
     %DataTx{type: type, payload: type.init(payload), senders: senders, nonce: nonce, fee: fee}
   end
@@ -60,11 +65,25 @@ defmodule Aecore.Tx.DataTx do
     %DataTx{type: type, payload: type.init(payload), senders: [sender], nonce: nonce, fee: fee}
   end
 
-  def fee(%DataTx{fee: fee}) do fee end
-  def senders(%DataTx{senders: senders}) do senders end
-  def type(%DataTx{type: type}) do type end
-  def nonce(%DataTx{nonce: nonce}) do nonce end
-  def payload(%DataTx{payload: payload}) do payload end
+  def fee(%DataTx{fee: fee}) do
+    fee
+  end
+
+  def senders(%DataTx{senders: senders}) do
+    senders
+  end
+
+  def type(%DataTx{type: type}) do
+    type
+  end
+
+  def nonce(%DataTx{nonce: nonce}) do
+    nonce
+  end
+
+  def payload(%DataTx{payload: payload}) do
+    payload
+  end
 
   def sender(tx) do
     List.last(senders(tx))
@@ -84,10 +103,10 @@ defmodule Aecore.Tx.DataTx do
       fee < 0 ->
         Logger.error("Negative fee")
         false
-      
+
       !is_payload_valid?(tx) ->
         false
-      
+
       true ->
         true
     end
@@ -106,14 +125,15 @@ defmodule Aecore.Tx.DataTx do
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     :ok = tx.type.preprocess_check!(accounts_state, tx_type_state, block_height, payload, tx)
-    
-    nonce_accounts_state = if Enum.empty?(tx.senders) do
-      accounts_state
-    else
-      AccountStateTree.update(accounts_state, sender(tx), fn acc ->
-        Account.apply_nonce!(acc, tx.nonce)
-      end)
-    end
+
+    nonce_accounts_state =
+      if Enum.empty?(tx.senders) do
+        accounts_state
+      else
+        AccountStateTree.update(accounts_state, sender(tx), fn acc ->
+          Account.apply_nonce!(acc, tx.nonce)
+        end)
+      end
 
     {new_accounts_state, new_tx_type_state} =
       nonce_accounts_state
@@ -146,14 +166,11 @@ defmodule Aecore.Tx.DataTx do
       "fee" => Serialization.serialize_value(tx.fee),
       "nonce" => Serialization.serialize_value(tx.nonce)
     }
+
     if length(tx.senders) == 1 do
-      Map.put(map_without_senders,
-              "sender",
-              Serialization.serialize_value(sender(tx), :sender))
+      Map.put(map_without_senders, "sender", Serialization.serialize_value(sender(tx), :sender))
     else
-      Map.put(map_without_senders,
-              "senders",
-              Serialization.serialize_value(tx.senders, :sender))
+      Map.put(map_without_senders, "senders", Serialization.serialize_value(tx.senders, :sender))
     end
   end
 
@@ -168,10 +185,12 @@ defmodule Aecore.Tx.DataTx do
 
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
- 
-  @spec standard_deduct_fee(AccountStateTree.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+
+  @spec standard_deduct_fee(AccountStateTree.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def standard_deduct_fee(accounts, data_tx, fee) do
     sender = DataTx.sender(data_tx)
+
     AccountStateTree.update(accounts, sender, fn acc ->
       Account.transaction_in!(acc, fee * -1)
     end)
@@ -181,5 +200,5 @@ defmodule Aecore.Tx.DataTx do
     payload
     |> type.init()
     |> type.is_valid?(data_tx)
-  end 
+  end
 end

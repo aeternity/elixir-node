@@ -51,10 +51,11 @@ defmodule Aecore.Tx.Transaction do
   @callback preprocess_check!(
               ChainState.accounts(),
               tx_type_state(),
-              block_height ::  non_neg_integer(),
+              block_height :: non_neg_integer(),
               SpendTx.t(),
               tx_types()
             ) :: :ok
 
-  @callback deduct_fee(ChainState.accounts(), tx_types(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @callback deduct_fee(ChainState.accounts(), tx_types(), DataTx.t(), non_neg_integer()) ::
+              ChainState.account()
 end

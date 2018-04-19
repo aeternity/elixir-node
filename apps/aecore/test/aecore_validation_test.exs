@@ -146,7 +146,7 @@ defmodule AecoreValidationTest do
 
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223)
-    
+
     Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
     new_block

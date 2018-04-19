@@ -5,7 +5,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   """
 
   @behaviour Aecore.Tx.Transaction
-  
+
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
@@ -66,14 +66,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-  ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate!(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
         %OracleResponseTx{} = tx,
         data_tx
-  ) do
+      ) do
     sender = DataTx.sender(data_tx)
 
     interaction_object = interaction_objects[tx.query_id]
@@ -99,23 +99,24 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     {updated_accounts_state, updated_oracle_state}
   end
-  
+
   @spec preprocess_check!(
-    ChainState.accounts(),
-    Oracle.oracles(),
-    non_neg_integer(),
-    OracleResponseTx.t(),
-    DataTx.t()
-  ) :: :ok
-  def preprocess_check!(accounts,
-                        %{registered_oracles: registered_oracles,
-                          interaction_objects: interaction_objects},
-                        _block_height,
-                        tx,
-                        data_tx) do
+          ChainState.accounts(),
+          Oracle.oracles(),
+          non_neg_integer(),
+          OracleResponseTx.t(),
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check!(
+        accounts,
+        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects},
+        _block_height,
+        tx,
+        data_tx
+      ) do
     sender = DataTx.sender(data_tx)
     fee = DataTx.fee(data_tx)
-    
+
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         throw({:error, "Negative balance"})
@@ -146,7 +147,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     end
   end
 
-  @spec deduct_fee(ChainState.accounts(), OracleResponseTx.t(), DataTx.t(), non_neg_integer()) :: ChainState.account()
+  @spec deduct_fee(ChainState.accounts(), OracleResponseTx.t(), DataTx.t(), non_neg_integer()) ::
+          ChainState.account()
   def deduct_fee(accounts, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, data_tx, fee)
   end
