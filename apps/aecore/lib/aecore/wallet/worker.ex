@@ -46,6 +46,20 @@ defmodule Aecore.Wallet.Worker do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
+  @spec get_pub_key_size :: non_neg_integer()
+  def get_pub_key_size do
+    Application.get_env(:aecore, :aewallet)[:pub_key_size]
+  end
+
+  @spec key_size_valid?(pub_key :: binary()) :: boolean()
+  def key_size_valid?(pub_key) do
+    if byte_size(pub_key) == get_pub_key_size() do
+      :ok
+    else
+      {:error, "#{__MODULE__}: The key size is not correct, should be 33 bytes."}
+    end
+  end
+
   @doc """
   Gets the default password for the dafault wallet
   """

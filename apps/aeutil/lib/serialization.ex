@@ -285,6 +285,9 @@ defmodule Aeutil.Serialization do
   end
 
   defp serialize_txs_info_to_json([h | t], acc) do
+    tx = DataTx.init(h.type, h.payload, h.sender, h.fee, h.nonce)
+    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signature: nil})
+
     json_response_struct = %{
       tx: %{
         sender: Account.base58c_encode(h.sender),
@@ -296,8 +299,8 @@ defmodule Aeutil.Serialization do
       },
       block_height: h.block_height,
       block_hash: Header.base58c_encode(h.block_hash),
-      hash: SignedTx.base58c_encode_root(h.txs_hash),
-      signatures: [base64_binary(h.signature, :serialize)]
+      hash: DataTx.base58c_encode(tx_hash),
+      signatures: [SignedTx.base58c_encode_signature(h.signature)]
     }
 
     acc = [json_response_struct | acc]

@@ -71,6 +71,14 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
+    last_updated_height = Chain.top_height()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account2_pub_key)
+
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account3_pub_key)
 
     assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
     assert 90 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
@@ -86,6 +94,13 @@ defmodule MultipleTransactionsTest do
     # The state of the accounts should be the as same before the invalid tx
     assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
     assert 90 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
+
+    # Check for last_updated
+    assert last_updated_height ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account2_pub_key)
+
+    assert last_updated_height ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account3_pub_key)
 
     Pool.get_and_empty_pool()
     signed_tx4 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
@@ -113,6 +128,16 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account2_pub_key)
+
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account3_pub_key)
+
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account4_pub_key)
 
     assert 0 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
     assert 120 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
@@ -152,6 +177,13 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
+
+    # Check for last_updated
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account_pub_key)
+
+    assert Chain.top_height() ==
+             Account.last_updated(TestUtils.get_accounts_chainstate(), account2_pub_key)
 
     signed_tx3 = create_signed_tx(account2, account3, 50, nonce2 + 1, 10)
     assert :ok = Pool.add_transaction(signed_tx3)

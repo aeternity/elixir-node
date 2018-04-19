@@ -17,6 +17,7 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 
@@ -116,7 +117,7 @@ defmodule Aecore.Tx.Pool.Worker do
         |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
         |> Serialization.pack_binary()
 
-      hashed_key = :crypto.hash(:sha256, key)
+      hashed_key = Hash.hash(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
       Map.put_new(tx, :proof, merkle_proof)
     end
@@ -132,7 +133,7 @@ defmodule Aecore.Tx.Pool.Worker do
   def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
     case tx.data.payload do
       %SpendTx{} ->
-        SpendTx.is_minimum_fee_met?(tx, identifier)
+        SpendTx.is_minimum_fee_met?(tx)
 
       %OracleRegistrationTx{} ->
         OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)

@@ -45,6 +45,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     :ok
   end
 
+  @spec get_query_id_size :: non_neg_integer()
+  def get_query_id_size do
+    Application.get_env(:aecore, :oracle_response_tx)[:query_id]
+  end
+
   @spec process_chainstate(
           OracleResponseTx.t(),
           Wallet.pubkey(),

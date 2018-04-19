@@ -18,7 +18,9 @@ defmodule EpochElixir.Mixfile do
           "_build/dev/lib/aeutil/ebin"
         ]
       ],
-      test_coverage: [tool: ExCoveralls],
+      test_coverage: [
+        tool: ExCoveralls
+      ],
       preferred_cli_env: [
         coveralls: :test,
         "coveralls.detail": :test,
@@ -46,6 +48,8 @@ defmodule EpochElixir.Mixfile do
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
+      {:enacl, [github: "jlouis/enacl", ref: "c8403ab", manager: :rebar]},
+      {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:gen_state_machine, "~> 2.0.1"},
       {:logger_file_backend, "~> 0.0.10"},
       {:excoveralls, "~> 0.8.1", only: :test},
@@ -54,7 +58,8 @@ defmodule EpochElixir.Mixfile do
       {:aewallet, github: "aeternity/elixir-wallet"},
       {:msgpax, "~> 2.1.1"},
       {:bip0173, "~> 0.1.2"},
-      {:erl_base58, "~> 0.0.1"}
+      {:erl_base58, "~> 0.0.1"},
+      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
     ]
   end
 end

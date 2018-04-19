@@ -14,6 +14,7 @@ defmodule Aecore.Pow.Cuckoo do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
+  alias Aeutil.Hash
 
   @doc """
   Proof of Work verification (with difficulty check)
@@ -183,7 +184,7 @@ defmodule Aecore.Pow.Cuckoo do
   defp test_target(soln, target) do
     nodesize = get_node_size()
     bin = solution_to_binary(:lists.sort(soln), nodesize * 8, <<>>)
-    hash = :crypto.hash(:sha256, bin)
+    hash = Hash.hash(bin)
     Hashcash.verify(hash, target)
   end
 

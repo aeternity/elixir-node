@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
   alias Aeutil.Bits
+  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
 
   @type id :: binary()
@@ -66,11 +67,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec validate(OracleQueryTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleQueryTx{
+        oracle_address: oracle_address,
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
     if Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-         match?(%{type: :relative}, response_ttl) do
+         match?(%{type: :relative}, response_ttl) && Wallet.key_size_valid?(oracle_address) do
       :ok
     else
       {:error, "#{__MODULE__}: Ttl: #{inspect(response_ttl)} is invalid in OracleQueryTx"}
@@ -202,7 +204,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
-    :crypto.hash(:sha256, bin)
+    Hash.hash(bin)
   end
 
   def base58c_encode(bin) do
