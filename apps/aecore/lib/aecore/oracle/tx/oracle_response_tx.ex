@@ -10,7 +10,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree

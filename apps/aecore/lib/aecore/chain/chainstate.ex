@@ -5,7 +5,6 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate

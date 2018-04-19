@@ -6,8 +6,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Chain.Chainstate

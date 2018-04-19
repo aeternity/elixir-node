@@ -13,9 +13,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Oracle.Oracle
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
