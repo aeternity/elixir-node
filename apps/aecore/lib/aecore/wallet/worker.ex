@@ -210,6 +210,5 @@ defmodule Aecore.Wallet.Worker do
     path
     |> Path.join("*/")
     |> Path.wildcard()
-    |> List.flatten()
   end
 end

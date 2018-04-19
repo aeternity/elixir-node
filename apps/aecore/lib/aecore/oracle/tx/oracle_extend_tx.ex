@@ -87,7 +87,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec preprocess_check!(
           OracleExtendTx.t(),
           Wallet.pubkey(),
-          Chainstate.accounts(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
