@@ -207,7 +207,7 @@ defmodule Aecore.Tx.DataTx do
     sender = DataTx.sender(data_tx)
 
     AccountStateTree.update(accounts, sender, fn acc ->
-      Account.transaction_in!(acc, block_height, fee * -1)
+      Account.apply_transfer!(acc, block_height, fee * -1)
     end)
   end
 

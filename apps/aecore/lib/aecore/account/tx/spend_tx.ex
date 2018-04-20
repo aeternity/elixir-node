@@ -99,10 +99,10 @@ defmodule Aecore.Account.Tx.SpendTx do
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.transaction_in!(acc, block_height, tx.amount * -1)
+        Account.apply_transfer!(acc, block_height, tx.amount * -1)
       end)
       |> AccountStateTree.update(tx.receiver, fn acc ->
-        Account.transaction_in!(acc, block_height, tx.amount)
+        Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 
     {new_accounts, %{}}

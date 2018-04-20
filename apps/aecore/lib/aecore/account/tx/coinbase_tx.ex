@@ -98,7 +98,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
     new_accounts_state =
       accounts
       |> AccountStateTree.update(tx.receiver, fn acc ->
-        Account.transaction_in!(acc, block_height, tx.amount)
+        Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 
     {new_accounts_state, %{}}

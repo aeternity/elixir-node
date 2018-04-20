@@ -48,6 +48,30 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
+  Return the balance for a given key.
+  """
+  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def balance(tree, key) do
+    AccountStateTree.get(tree, key).balance
+  end
+
+  @doc """
+  Return the nonce for a given key.
+  """
+  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def nonce(tree, key) do
+    AccountStateTree.get(tree, key).nonce
+  end
+
+  @doc """
+  Return the last_updated for a given key.
+  """
+  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def last_updated(tree, key) do
+    AccountStateTree.get(tree, key).last_updated
+  end
+
+  @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
@@ -83,11 +107,11 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Adds balance to a given address (public key)
+  Adds balance to a given Account state and updates last update block.
   """
-  @spec transaction_in!(ChainState.account(), non_neg_integer(), integer()) ::
+  @spec apply_transfer!(ChainState.account(), non_neg_integer(), integer()) ::
           ChainState.account()
-  def transaction_in!(account_state, block_height, amount) do
+  def apply_transfer!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
 
     if new_balance < 0 do
@@ -97,22 +121,6 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
-  @doc """
-  Return the balance for a given key.
-  """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def balance(tree, key) do
-    AccountStateTree.get(tree, key).balance
-  end
-
-  @doc """
-  Return the nonce for a given key.
-  """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def nonce(tree, key) do
-    AccountStateTree.get(tree, key).nonce
-  end
-
   @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
@@ -120,14 +128,6 @@ defmodule Aecore.Account.Account do
     end
 
     %Account{account_state | nonce: new_nonce}
-  end
-
-  @doc """
-  Return the last_updated for a given key.
-  """
-  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def last_updated(tree, key) do
-    AccountStateTree.get(tree, key).last_updated
   end
 
   def base58c_encode(bin) do

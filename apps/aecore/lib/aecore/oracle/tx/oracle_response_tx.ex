@@ -90,7 +90,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.transaction_in!(acc, block_height, query_fee)
+        Account.apply_transfer!(acc, block_height, query_fee)
       end)
 
     updated_interaction_objects =
