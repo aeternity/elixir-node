@@ -9,6 +9,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
@@ -224,7 +225,7 @@ defmodule Aecore.Tx.DataTx do
     end)
   end
 
-  defp is_payload_valid?(%DataTx{type: type, payload: payload} = data_tx) do
+  defp payload_valid?(%DataTx{type: type, payload: payload} = data_tx) do
     payload
     |> type.init()
     |> type.is_valid?(data_tx)

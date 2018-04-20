@@ -9,7 +9,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   alias Aecore.Account.Tx.CoinbaseTx
   alias Aecore.Account.Account
   alias Aecore.Chain.ChainState
-  alias Aecore.Wallet
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -65,7 +65,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   Checks transactions internal contents validity
   """
   @spec is_valid?(CoinbaseTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%CoinbaseTx{amount: amount}, data_tx) do
+  def is_valid?(%CoinbaseTx{amount: amount, receiver: receiver}, data_tx) do
     cond do
       amount < 0 ->
         Logger.error("Value cannot be a negative number")
@@ -73,6 +73,10 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
 
       DataTx.fee(data_tx) != 0 ->
         Logger.error("Fee has to be 0")
+        false
+
+      !Wallet.key_size_valid?(receiver) ->
+        Logger.error("Wrong receiver key size")
         false
 
       length(DataTx.senders(data_tx)) != 0 ->
