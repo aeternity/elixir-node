@@ -46,7 +46,7 @@ defmodule Aecore.Tx.DataTx do
   def valid_types do
     [
       Aecore.Account.Tx.SpendTx,
-      Aecore.Structures.CoinbaseTx,
+      Aecore.Account.Tx.CoinbaseTx,
       Aecore.Oracle.Tx.OracleExtendTx,
       Aecore.Oracle.Tx.OracleQueryTx,
       Aecore.Oracle.Tx.OracleRegistrationTx,

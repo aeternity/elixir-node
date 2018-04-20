@@ -13,7 +13,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Structures.CoinbaseTx
+  alias Aecore.Account.Tx.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),

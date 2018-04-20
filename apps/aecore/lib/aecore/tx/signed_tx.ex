@@ -7,7 +7,7 @@ defmodule Aecore.Tx.SignedTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Structures.CoinbaseTx
+  alias Aecore.Account.Tx.CoinbaseTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits

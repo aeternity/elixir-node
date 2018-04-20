@@ -1,4 +1,4 @@
-defmodule Aecore.Structures.CoinbaseTx do
+defmodule Aecore.Account.Tx.CoinbaseTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
@@ -6,7 +6,7 @@ defmodule Aecore.Structures.CoinbaseTx do
   @behaviour Aecore.Tx.Transaction
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Structures.CoinbaseTx
+  alias Aecore.Account.Tx.CoinbaseTx
   alias Aecore.Account.Account
   alias Aecore.Chain.ChainState
   alias Aecore.Wallet
