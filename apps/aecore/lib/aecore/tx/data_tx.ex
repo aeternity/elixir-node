@@ -36,9 +36,9 @@ defmodule Aecore.Tx.DataTx do
   ## Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
-  - senders: The public addresses of the accounts originating the transaction
+  - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
-  - nonce: A random integer generated on initialisation of a transaction (must be unique!)
+  - nonce: An integer bigger then current nonce of main sender Account. (see senders)
   """
   defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
@@ -64,28 +64,34 @@ defmodule Aecore.Tx.DataTx do
     %DataTx{type: type, payload: type.init(payload), senders: [sender], nonce: nonce, fee: fee}
   end
 
+  @spec fee(DataTx.t()) :: non_neg_integer()
   def fee(%DataTx{fee: fee}) do
     fee
   end
 
+  @spec senders(DataTx.t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
     senders
   end
 
-  def type(%DataTx{type: type}) do
-    type
+  @spec main_sender(DataTx.t()) :: binary() | nil
+  def main_sender(tx) do
+    List.first(senders(tx))
   end
 
+  @spec nonce(DataTx.t()) :: non_neg_integer()
   def nonce(%DataTx{nonce: nonce}) do
     nonce
   end
 
-  def payload(%DataTx{payload: payload}) do
-    payload
-  end
-
-  def sender(tx) do
-    List.last(senders(tx))
+  @spec payload(DataTx.t()) :: map()
+  def payload(%DataTx{payload: payload, type: type}) do
+    if Enum.member?(valid_types(), type) do
+      type.init(payload)
+    else
+      Logger.error("Call to DataTx payload with invalid transaction type")
+      %{}
+    end
   end
 
   @doc """
@@ -119,7 +125,7 @@ defmodule Aecore.Tx.DataTx do
           ChainState.chainstate()
   def process_chainstate!(chainstate, block_height, %DataTx{fee: fee} = tx) do
     accounts_state = chainstate.accounts
-    payload = tx.type.init(tx.payload)
+    payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
@@ -129,7 +135,7 @@ defmodule Aecore.Tx.DataTx do
       if Enum.empty?(tx.senders) do
         accounts_state
       else
-        AccountStateTree.update(accounts_state, sender(tx), fn acc ->
+        AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
           Account.apply_nonce!(acc, tx.nonce)
         end)
       end
@@ -167,7 +173,11 @@ defmodule Aecore.Tx.DataTx do
     }
 
     if length(tx.senders) == 1 do
-      Map.put(map_without_senders, "sender", Serialization.serialize_value(sender(tx), :sender))
+      Map.put(
+        map_without_senders,
+        "sender",
+        Serialization.serialize_value(main_sender(tx), :sender)
+      )
     else
       Map.put(map_without_senders, "senders", Serialization.serialize_value(tx.senders, :sender))
     end
@@ -204,7 +214,7 @@ defmodule Aecore.Tx.DataTx do
           non_neg_integer()
         ) :: ChainState.account()
   def standard_deduct_fee(accounts, block_height, data_tx, fee) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
 
     AccountStateTree.update(accounts, sender, fn acc ->
       Account.apply_transfer!(acc, block_height, fee * -1)

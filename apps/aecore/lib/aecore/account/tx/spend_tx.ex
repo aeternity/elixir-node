@@ -94,7 +94,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate!(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
 
     new_accounts =
       accounts
@@ -120,7 +120,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t()
         ) :: :ok
   def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
-    sender_state = AccountStateTree.get(accounts, DataTx.sender(data_tx))
+    sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
     if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
       throw({:error, "Negative balance"})

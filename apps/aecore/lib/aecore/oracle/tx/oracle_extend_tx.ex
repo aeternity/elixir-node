@@ -64,7 +64,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         %OracleExtendTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
 
     updated_oracle_state =
       update_in(
@@ -90,7 +90,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
     cond do

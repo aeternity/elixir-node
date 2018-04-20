@@ -114,7 +114,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         %OracleRegistrationTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
 
     updated_registered_oracles =
       Map.put_new(registered_oracles, sender, %{tx: tx, height_included: block_height})
@@ -141,7 +141,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
     cond do

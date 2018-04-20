@@ -122,7 +122,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         %OracleQueryTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
     nonce = DataTx.nonce(data_tx)
 
     updated_accounts_state =
@@ -164,7 +164,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
     cond do

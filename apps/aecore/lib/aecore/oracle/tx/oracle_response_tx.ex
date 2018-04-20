@@ -82,7 +82,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         %OracleResponseTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
 
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
@@ -122,7 +122,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         tx,
         data_tx
       ) do
-    sender = DataTx.sender(data_tx)
+    sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
     cond do
