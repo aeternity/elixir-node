@@ -109,7 +109,10 @@ defmodule Aecore.Tx.DataTx do
         Logger.error("Negative fee")
         false
 
-      !is_payload_valid?(tx) ->
+      !senders_pubkeys_size_valid?(tx.senders) ->
+        false
+
+      !payload_valid?(tx) ->
         false
 
       true ->
@@ -226,4 +229,18 @@ defmodule Aecore.Tx.DataTx do
     |> type.init()
     |> type.is_valid?(data_tx)
   end
+
+  defp senders_pubkeys_size_valid?([sender | rest]) do
+    if Wallet.key_size_valid?(sender) do
+      senders_pubkeys_size_valid?(rest)
+    else
+      Logger.error("Invalid sender size")
+      false
+    end
+  end
+
+  defp senders_pubkeys_size_valid?([]) do
+    true
+  end
+
 end
