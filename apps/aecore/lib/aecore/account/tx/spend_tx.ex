@@ -57,11 +57,16 @@ defmodule Aecore.Account.Tx.SpendTx do
   Checks wether the amount that is send is not a negative number
   """
   @spec validate(SpendTx.t()) :: :ok | {:error, String.t()}
-  def validate(%SpendTx{amount: amount}) do
-    if amount >= 0 do
+  def validate(%SpendTx{amount: amount, receiver: receiver}) do
+    with true <- amount >= 0,
+         :ok <- Wallet.key_size_valid?(receiver) do
       :ok
     else
-      {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
+      false ->
+        {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
+
+      err ->
+        err
     end
   end
 

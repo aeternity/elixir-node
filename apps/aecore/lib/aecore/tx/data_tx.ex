@@ -110,12 +110,15 @@ defmodule Aecore.Tx.DataTx do
 
   @spec validate_sender(Wallet.pubkey(), Chainstate.t()) :: :ok | {:error, String.t()}
   def validate_sender(sender, %{accounts: account}) do
-    case AccountStateTree.get(account, sender) do
-      {:ok, _account_key} ->
-        :ok
-
+    with :ok <- Wallet.key_size_valid?(sender),
+         {:ok, _account_key} <- AccountStateTree.get(account, sender) do
+      :ok
+    else
       :none ->
         {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
+
+      err ->
+        err
     end
   end
 

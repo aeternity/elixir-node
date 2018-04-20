@@ -12,7 +12,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Wallet
 
   require Logger
 
@@ -35,20 +34,29 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @spec calculate_and_validate_chain_state(list(), Chainstate.t(), non_neg_integer()) ::
-          Chainstate.t()
+          {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
-      case apply_transaction_on_state(tx, chainstate, block_height) do
-        {:ok, updated_chainstate} ->
-          updated_chainstate
+    updated_chainstate =
+      Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
+        case apply_transaction_on_state(tx, chainstate, block_height) do
+          {:ok, updated_chainstate} ->
+            {:cont, updated_chainstate}
 
-        {:error, _reason} ->
-          chainstate
-      end
-    end)
-    |> Oracle.remove_expired_oracles(block_height)
-    |> Oracle.remove_expired_interaction_objects(block_height)
+          {:error, reason} ->
+            {:halt, reason}
+        end
+      end)
+
+    case updated_chainstate do
+      %Chainstate{} = new_chainstate ->
+        {:ok,
+         new_chainstate
+         |> Oracle.remove_expired_oracles(block_height)
+         |> Oracle.remove_expired_interaction_objects(block_height)}
+
+      error ->
+        {:error, error}
+    end
   end
 
   @spec apply_transaction_on_state(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
@@ -69,7 +77,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   def apply_transaction_on_state(
-        %{data: %{sender: sender, type: %{receiver: receiver} = tx_type} = data} = tx,
+        %{data: %{sender: sender, type: tx_type} = data} = tx,
         %{accounts: accounts} = chainstate,
         block_height
       )
@@ -78,8 +86,6 @@ defmodule Aecore.Chain.Chainstate do
          {:ok, child_tx} <- DataTx.validate(data),
          new_chainstate = apply_last_updated(data, chainstate, block_height),
          :ok <- tx_type.validate(child_tx),
-         :ok <- Wallet.key_size_valid?(sender),
-         :ok <- Wallet.key_size_valid?(receiver),
          :ok <- DataTx.validate_sender(sender, new_chainstate),
          :ok <- DataTx.validate_nonce(accounts, data),
          :ok <- DataTx.preprocess_check(data, new_chainstate, block_height),
@@ -96,7 +102,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   def apply_last_updated(
-        %{payload: %{receiver: receiver} = child_tx, sender: sender} = data,
+        %{payload: child_tx, sender: sender},
         chainstate,
         block_height
       ) do
@@ -105,14 +111,14 @@ defmodule Aecore.Chain.Chainstate do
       |> case do
         %SpendTx{} ->
           chainstate.accounts
-          |> Account.last_updated(receiver, block_height)
+          |> Account.last_updated(child_tx.receiver, block_height)
 
         _ ->
           chainstate.accounts
       end
       |> Account.last_updated(sender, block_height)
 
-    {:ok, %{chainstate | accounts: updated_accounts_state_tree}}
+    %{chainstate | accounts: updated_accounts_state_tree}
   end
 
   @doc """

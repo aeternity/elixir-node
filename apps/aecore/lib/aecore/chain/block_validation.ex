@@ -32,7 +32,7 @@ defmodule Aecore.Chain.BlockValidation do
 
     case single_validate_block(new_block) do
       :ok ->
-        new_chain_state =
+        {:ok, new_chain_state} =
           Chainstate.calculate_and_validate_chain_state(
             new_block.txs,
             old_chain_state,

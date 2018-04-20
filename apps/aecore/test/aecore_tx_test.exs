@@ -155,7 +155,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: tx.receiver, amount: amount}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
-    assert DataTx.is_valid?(data_tx) == false
+    assert {:error, _reason} = Wallet.key_size_valid?(data_tx.sender)
   end
 
   test "receiver pub_key is too small", tx do
@@ -170,7 +170,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: receiver, amount: amount}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
-    assert DataTx.is_valid?(data_tx) == false
+    assert {:error, _reason} = Wallet.key_size_valid?(data_tx.payload.receiver)
   end
 
   test "sum of amount and fee more than balance", tx do

@@ -39,7 +39,7 @@ defmodule Aecore.Chain.Worker do
   def init(_) do
     genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
 
-    genesis_chain_state =
+    {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
         Block.genesis_block().txs,
         build_chain_state(),
