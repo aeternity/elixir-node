@@ -212,22 +212,22 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of deserializing a strucure
   """
-  @spec deserialize_value(any(), atom()) :: any()
+  @spec deserialize_value(any()) :: any()
   def deserialize_value(value), do: deserialize_value(value, :other)
 
   @doc """
   Loops recursively through a given serialized structure, converts the keys to atoms
   and decodes the encoded binary values
   """
-  @spec deserialize_value(list()) :: list()
-  @spec deserialize_value(map()) :: map()
-  @spec deserialize_value(binary()) :: binary() | atom()
+  @spec deserialize_value(nil, atom()) :: nil
   def deserialize_value(nil, _), do: nil
 
+  @spec deserialize_value(list(), atom()) :: list()
   def deserialize_value(value, type) when is_list(value) do
     for elem <- value, do: deserialize_value(elem, type)
   end
 
+  @spec deserialize_value(map(), atom()) :: map()
   def deserialize_value(value, _) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, new_value ->
       case key do
@@ -243,6 +243,7 @@ defmodule Aeutil.Serialization do
     end)
   end
 
+  @spec deserialize_value(binary(), atom()) :: binary() | atom()
   def deserialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->

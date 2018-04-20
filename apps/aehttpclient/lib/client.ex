@@ -16,8 +16,6 @@ defmodule Aehttpclient.Client do
   @typedoc "Client request identifier"
   @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
-  @spec handle_response(req_kind(), map() | list(), list(map())) :: {:ok, map()}
-
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -95,6 +93,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
+  @spec handle_response(req_kind(), map() | list(), list(map())) :: {:ok, map()}
   defp handle_response(:block, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}

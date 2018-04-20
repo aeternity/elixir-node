@@ -196,7 +196,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_chain_state_by_height(non_neg_integer(), binary() | nil) ::
-          ChainState.account_chainstate() | {:error, binary()}
+          ChainState.t() | {:error, binary()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
