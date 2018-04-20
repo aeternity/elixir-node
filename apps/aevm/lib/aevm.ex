@@ -164,15 +164,13 @@ defmodule Aevm do
     push(result, state)
   end
 
-  # not working correctly
   def exec(OpCodes._SIGNEXTEND(), state) do
-    # TODO
-    # {op1, state} = pop(state)
-    # {op2, state} = pop(state)
-    #
-    # result = signextend(op2, op1)
-    #
-    # push(result, state)
+    {op1, state} = pop(state)
+    {op2, state} = pop(state)
+
+    result = signextend(op1, op2)
+
+    push(result, state)
   end
 
   # 10s: Comparison & Bitwise Logic Operations
@@ -1168,5 +1166,13 @@ defmodule Aevm do
     log = <<account::256>> <> topics_joined <> memory_area
 
     State.set_logs([log | logs], state1)
+  end
+
+  defp signextend(op1, op2) do
+    extend_to = 256 - 8 * (op1 + 1 &&& 255) &&& 255
+    <<_::size(extend_to), sign_bit::size(1), trunc_val::bits>> = <<op2::integer-unsigned-256>>
+    pad = for _ <- 1..extend_to, into: <<>>, do: <<sign_bit::1>>
+    <<val::integer-unsigned-256>> = <<pad::bits, sign_bit::1, trunc_val::bits>>
+    val
   end
 end
