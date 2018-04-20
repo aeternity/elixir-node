@@ -51,7 +51,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     cond do
       length(senders) != 1 ->
-        Loger.error("Invalid senders number")
+        Logger.error("Invalid senders number")
         false
 
       byte_size(query_id) != get_query_id_size() ->
