@@ -16,7 +16,7 @@ defmodule Aehttpclient.Client do
   @typedoc "Client request identifier"
   @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
-  @spec handle_response(req_kind(), any(), list(map())) :: {:ok, any()}
+  @spec handle_response(req_kind(), map() | list(), list(map())) :: {:ok, map()}
 
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
