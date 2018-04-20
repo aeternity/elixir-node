@@ -243,5 +243,4 @@ defmodule Aecore.Tx.DataTx do
   defp senders_pubkeys_size_valid?([]) do
     true
   end
-
 end
