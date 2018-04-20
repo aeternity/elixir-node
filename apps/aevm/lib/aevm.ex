@@ -390,8 +390,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._GASPRICE(), state) do
-    gas_price = State.gas_price(state)
-    push(gas_price, state)
+    gasPrice = State.gasPrice(state)
+    push(gasPrice, state)
   end
 
   def exec(OpCodes._EXTCODESIZE(), state) do
@@ -427,28 +427,28 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._COINBASE(), state) do
-    coinbase = State.coinbase(state)
-    push(coinbase, state)
+    currentCoinbase = State.currentCoinbase(state)
+    push(currentCoinbase, state)
   end
 
   def exec(OpCodes._TIMESTAMP(), state) do
-    timestamp = State.timestamp(state)
-    push(timestamp, state)
+    currentTimestamp = State.currentTimestamp(state)
+    push(currentTimestamp, state)
   end
 
   def exec(OpCodes._NUMBER(), state) do
-    number = State.number(state)
-    push(number, state)
+    currentNumber = State.currentNumber(state)
+    push(currentNumber, state)
   end
 
   def exec(OpCodes._DIFFICULTY(), state) do
-    difficulty = State.difficulty(state)
-    push(difficulty, state)
+    currentDifficulty = State.currentDifficulty(state)
+    push(currentDifficulty, state)
   end
 
   def exec(OpCodes._GASLIMIT(), state) do
-    gas_limit = State.gas_limit(state)
-    push(gas_limit, state)
+    currentGasLimit = State.currentGasLimit(state)
+    push(currentGasLimit, state)
   end
 
   # 50s: Stack, Memory, Storage and Flow Operations
@@ -1066,20 +1066,6 @@ defmodule Aevm do
     mask = 255
     Bitwise.band(Bitwise.bsr(value, byte_pos), mask)
   end
-
-  # defp signextend(value1, value2) do
-  #   value1_bits = Aeutil.Bits.extract(<<value1>>)
-  #   ext_value1 = extend_bits(value2, value1_bits)
-  # end
-  #
-  # defp extend_bits(number_to_extn_with, list) do
-  #   if number_to_extn_with > 0 do
-  #     list = List.insert_at(list, 0, List.first(list))
-  #     new_list = extend_bits(number_to_extn_with - 1, list)
-  #   else
-  #     list
-  #   end
-  # end
 
   defp push(value, state) do
     Stack.push(value, state)

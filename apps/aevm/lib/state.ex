@@ -1,6 +1,6 @@
 defmodule State do
-  @spec init_vm(map(), map()) :: map()
-  def init_vm(exec, env) do
+  @spec init_vm(map(), map(), map()) :: map()
+  def init_vm(exec, env, pre) do
     bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
@@ -8,7 +8,6 @@ defmodule State do
       :stack => [],
       :memory => %{size: 0},
       :storage => %{},
-      :code => code_bin,
       :cp => 0,
       :jumpdests => [],
       :return => nil,
@@ -16,17 +15,18 @@ defmodule State do
       # :return_data => return_data,
 
       :address => Map.get(exec, :address),
+      :origin => Map.get(exec, :origin),
       :caller => Map.get(exec, :caller),
       :data => Map.get(exec, :data),
+      :code => code_bin,
+      :gasPrice => Map.get(exec, :gasPrice),
       :gas => Map.get(exec, :gas),
-      :gas_price => Map.get(exec, :gas_price),
-      :origin => Map.get(exec, :origin),
-      :value => Map.get(exec, :value),
-      :coinbase => Map.get(env, :coinbase),
-      :difficulty => Map.get(env, :difficulty),
-      :gas_limit => Map.get(env, :gas_limit),
-      :number => Map.get(env, :number),
-      :timestamp => Map.get(env, :timestamp)
+
+      :currentCoinbase => Map.get(env, :currentCoinbase),
+      :currentDifficulty => Map.get(env, :currentDifficulty),
+      :currentGasLimit => Map.get(env, :currentGasLimit),
+      :currentNumber => Map.get(env, :currentNumber),
+      :currentTimestamp => Map.get(env, :currentTimestamp)
     }
   end
 
@@ -102,8 +102,8 @@ defmodule State do
     Map.get(state, :gas)
   end
 
-  def gas_price(state) do
-    Map.get(state, :gas_price)
+  def gasPrice(state) do
+    Map.get(state, :gasPrice)
   end
 
   def origin(state) do
@@ -114,24 +114,24 @@ defmodule State do
     Map.get(state, :value)
   end
 
-  def coinbase(state) do
-    Map.get(state, :coinbase)
+  def currentCoinbase(state) do
+    Map.get(state, :currentCoinbase)
   end
 
-  def difficulty(state) do
-    Map.get(state, :difficulty)
+  def currentDifficulty(state) do
+    Map.get(state, :currentDifficulty)
   end
 
-  def gas_limit(state) do
-    Map.get(state, :gas_limit)
+  def currentGasLimit(state) do
+    Map.get(state, :currentGasLimit)
   end
 
-  def number(state) do
-    Map.get(state, :number)
+  def currentNumber(state) do
+    Map.get(state, :currentNumber)
   end
 
-  def timestamp(state) do
-    Map.get(state, :timestamp)
+  def currentTimestamp(state) do
+    Map.get(state, :currentTimestamp)
   end
 
   # def return_data(state) do
