@@ -66,6 +66,8 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   """
   @spec is_valid?(CoinbaseTx.t(), DataTx.t()) :: boolean()
   def is_valid?(%CoinbaseTx{amount: amount, receiver: receiver}, data_tx) do
+    senders = DataTx.senders(data_tx)
+
     cond do
       amount < 0 ->
         Logger.error("Value cannot be a negative number")
@@ -79,7 +81,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
         Logger.error("Wrong receiver key size")
         false
 
-      length(DataTx.senders(data_tx)) != 0 ->
+      !Enum.empty?(senders) ->
         Logger.error("Invalid senders size")
         false
 
