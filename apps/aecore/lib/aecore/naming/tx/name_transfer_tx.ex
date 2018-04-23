@@ -60,8 +60,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     :ok
   end
 
-  @spec get_chain_state_name() :: Naming.chain_state_name()
-  def get_chain_state_name(), do: :naming
+  @spec get_chain_state_name :: Naming.chain_state_name()
+  def get_chain_state_name, do: :naming
 
   @doc """
   Changes the naming state for claim transfers.

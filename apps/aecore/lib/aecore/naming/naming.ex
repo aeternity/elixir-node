@@ -1,4 +1,8 @@
 defmodule Aecore.Naming.Naming do
+  @moduledoc """
+  Aecore naming module implementation.
+  """
+
   alias Aecore.Naming.Naming
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.NameUtil
@@ -45,8 +49,8 @@ defmodule Aecore.Naming.Naming do
 
   @type state() :: %{hash() => t()}
 
-  @spec init_empty() :: state()
-  def init_empty(), do: %{}
+  @spec init_empty :: state()
+  def init_empty, do: %{}
 
   @spec create_commitment(
           binary(),

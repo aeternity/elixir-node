@@ -54,8 +54,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     :ok
   end
 
-  @spec get_chain_state_name() :: Naming.chain_state_name()
-  def get_chain_state_name(), do: :naming
+  @spec get_chain_state_name :: Naming.chain_state_name()
+  def get_chain_state_name, do: :naming
 
   @doc """
   Pre claims a name for one account.
@@ -124,14 +124,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
-    IO.inspect("tx.data.fee: #{tx.data.fee}")
-
-    IO.inspect(
-      "Application.get_env(:aecore, :tx_data)[:minimum_fee]: #{
-        Application.get_env(:aecore, :tx_data)[:minimum_fee]
-      }"
-    )
-
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

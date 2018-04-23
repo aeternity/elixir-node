@@ -60,7 +60,7 @@ defmodule Aehttpserver.Web.Notify do
           )
 
         %NameTransferTx{} ->
-          Aehttpserver.Web.Endpoint.broadcast!(
+          Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.target),
             %{"body" => Serialization.tx(tx, :serialize)}

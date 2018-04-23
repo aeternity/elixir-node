@@ -56,8 +56,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     :ok
   end
 
-  @spec get_chain_state_name() :: Naming.chain_state_name()
-  def get_chain_state_name(), do: :naming
+  @spec get_chain_state_name :: Naming.chain_state_name()
+  def get_chain_state_name, do: :naming
 
   @doc """
   Revokes a previously claimed name for one account
