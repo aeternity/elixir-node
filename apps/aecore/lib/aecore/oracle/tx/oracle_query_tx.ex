@@ -11,14 +11,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type id :: binary()
 
@@ -70,45 +65,38 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     }
   end
 
-  @spec is_valid?(OracleQueryTx.t()) :: boolean()
-  def is_valid?(%OracleQueryTx{
+  @spec validate(OracleQueryTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleQueryTx{
         oracle_address: oracle_address,
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
-      match?(%{type: :relative}, response_ttl) && Wallet.key_size_valid?(oracle_address)
+    if Oracle.ttl_is_valid?(query_ttl) && Oracle.ttl_is_valid?(response_ttl) &&
+         match?(%{type: :relative}, response_ttl) && Wallet.key_size_valid?(oracle_address) do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Ttl: #{inspect(response_ttl)} is invalid in OracleQueryTx"}
+    end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleQueryTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Chainstate.account(),
-          tx_type_state()
-        ) :: {Chainstate.accounts(), tx_type_state()}
-  def process_chainstate!(
+          AccountStateTree.tree(),
+          Oracle.t()
+        ) :: {AccountStateTree.tree(), Oracle.t()}
+  def process_chainstate(
         %OracleQueryTx{} = tx,
         sender,
         fee,
         nonce,
         block_height,
         accounts,
-        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects} =
-          oracle_state
+        %{interaction_objects: interaction_objects} = oracle_state
       ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Account.get_account_state(accounts, sender),
-      fee,
-      nonce,
-      block_height,
-      registered_oracles
-    )
-
     new_sender_account_state =
       accounts
       |> Account.get_account_state(sender)
@@ -136,44 +124,48 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           OracleQueryTx.t(),
           Wallet.pubkey(),
-          Chainstate.account(),
+          Account.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          Oracle.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, account_state, fee, _nonce, block_height, registered_oracles) do
+  def preprocess_check(tx, _sender, account_state, fee, _nonce, block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        throw({:error, "No oracle registered with that address"})
+        {:error, "#{__MODULE__}: No oracle registered with the address:
+         #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        throw({:error, "Invalid query data"})
+        {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        throw({:error, "Query fee lower than the one required by the oracle"})
+        {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
+         lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok
     end
   end
 
-  @spec deduct_fee(Chainstate.account(), non_neg_integer()) :: Chainstate.account()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)
@@ -224,7 +216,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()

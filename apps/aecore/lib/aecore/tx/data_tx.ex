@@ -4,13 +4,13 @@ defmodule Aecore.Tx.DataTx do
   """
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aeutil.Bits
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -51,24 +51,15 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @doc """
-  Checks whether the fee is above 0. If it is, it runs the transaction type
-  validation checks. Otherwise we return error.
+  Checks whether the fee is above 0.
   """
-  @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{sender: sender, type: type, payload: payload, fee: fee}) do
-    cond do
-      fee <= 0 ->
-        Logger.error("Fee not enough")
-        false
-
-      !Wallet.key_size_valid?(sender) ->
-        Logger.error("Wrong sender key size")
-        false
-
-      true ->
-        payload
-        |> type.init()
-        |> type.is_valid?()
+  @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{type: type, payload: payload, fee: fee}) do
+    if fee > 0 do
+      child_tx = type.init(payload)
+      {:ok, child_tx}
+    else
+      {:error, "#{__MODULE__}: Fee not enough: #{inspect(fee)}"}
     end
   end
 
@@ -76,47 +67,95 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(DataTx.t(), Chainstate.chainstate(), non_neg_integer()) ::
-          Chainstate.chainstate()
-  def process_chainstate!(%DataTx{} = tx, chainstate, block_height) do
+  @spec process_chainstate(DataTx.t(), ChainState.t(), non_neg_integer()) :: Chainstate.t()
+  def process_chainstate(%DataTx{} = tx, chainstate, block_height) do
     accounts_state_tree = chainstate.accounts
 
-    tx_type_state =
-      if tx.type == SpendTx do
-        %{}
-      else
-        Map.get(chainstate, tx.type.get_chain_state_name(), %{})
-      end
+    tx_type_state = get_tx_type_state(chainstate, tx.type)
 
-    if !nonce_valid?(accounts_state_tree, tx) do
-      throw({:error, "Nonce is too small"})
+    case tx.payload
+         |> tx.type.init()
+         |> tx.type.process_chainstate(
+           tx.sender,
+           tx.fee,
+           tx.nonce,
+           block_height,
+           accounts_state_tree,
+           tx_type_state
+         ) do
+      {:error, reason} ->
+        {:error, reason}
+
+      {new_accounts_state_tree, new_tx_type_state} ->
+        new_chainstate =
+          if tx.type == SpendTx do
+            chainstate
+          else
+            Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
+          end
+
+        {:ok, Map.put(new_chainstate, :accounts, new_accounts_state_tree)}
     end
-
-    {new_accounts_state_tree, new_tx_type_state} =
-      tx.payload
-      |> tx.type.init()
-      |> tx.type.process_chainstate!(
-        tx.sender,
-        tx.fee,
-        tx.nonce,
-        block_height,
-        accounts_state_tree,
-        tx_type_state
-      )
-
-    new_chainstate =
-      if tx.type == SpendTx do
-        chainstate
-      else
-        Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
-      end
-
-    Map.put(new_chainstate, :accounts, new_accounts_state_tree)
   end
 
-  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
-  def nonce_valid?(accounts_state, tx) do
-    tx.nonce > Account.nonce(accounts_state, tx.sender)
+  @doc """
+  Gets the given transaction type state,
+  if there is any stored in the chainstate
+  """
+  @spec get_tx_type_state(Chainstate.t(), atom()) :: map()
+  def get_tx_type_state(chainstate, tx_type) do
+    type = tx_type.get_chain_state_name()
+    Map.get(chainstate, type, %{})
+  end
+
+  @spec validate_sender(Wallet.pubkey(), Chainstate.t()) :: :ok | {:error, String.t()}
+  def validate_sender(sender, %{accounts: account}) do
+    with :ok <- Wallet.key_size_valid?(sender),
+         {:ok, _account_key} <- AccountStateTree.get(account, sender) do
+      :ok
+    else
+      :none ->
+        {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
+
+      err ->
+        err
+    end
+  end
+
+  @spec validate_nonce(Account.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate_nonce(accounts_state, tx) do
+    if tx.nonce > Account.nonce(accounts_state, tx.sender) do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Nonce is too small: #{inspect(tx.nonce)}"}
+    end
+  end
+
+  @spec preprocess_check(DataTx.t(), Chainstate.t(), non_neg_integer()) ::
+          :ok | {:error, String.t()}
+  def preprocess_check(
+        %DataTx{
+          type: type,
+          payload: payload,
+          sender: sender,
+          fee: fee,
+          nonce: nonce
+        } = tx,
+        %{accounts: accounts} = chainstate,
+        block_height
+      ) do
+    sender_account_state = Account.get_account_state(accounts, sender)
+    tx_type_state = get_tx_type_state(chainstate, tx.type)
+
+    type.preprocess_check(
+      payload,
+      sender,
+      sender_account_state,
+      fee,
+      nonce,
+      block_height,
+      tx_type_state
+    )
   end
 
   @spec serialize(DataTx.t()) :: map()
