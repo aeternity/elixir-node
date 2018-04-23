@@ -8,6 +8,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Naming
+  alias Aeutil.Hash
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -49,9 +50,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Checks commitment hash byte size
   """
   @spec validate(NamePreClaimTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NamePreClaimTx{commitment: _commitment}) do
-    # TODO validate commitment byte size
-    :ok
+  def validate(%NamePreClaimTx{commitment: commitment}) do
+    if byte_size(commitment) == Hash.get_hash_bytes_size() do
+      :ok
+    else
+      {:error,
+       "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}
+    end
   end
 
   @spec get_chain_state_name :: Naming.chain_state_name()

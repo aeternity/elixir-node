@@ -8,6 +8,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Naming
+  alias Aeutil.Hash
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.AccountStateTree
@@ -51,13 +52,17 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Checks target and hash byte sizes
   """
   @spec validate(NameTransferTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NameTransferTx{
-        hash: _hash,
-        target: _target
-      }) do
-    # TODO validate hash byte size
-    # TODO validate target pubkey byte size
-    :ok
+  def validate(%NameTransferTx{hash: hash, target: target}) do
+    with true <- byte_size(hash) == Hash.get_hash_bytes_size(),
+         :ok <- Wallet.key_size_valid?(target) do
+      :ok
+    else
+      false ->
+        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
+
+      err ->
+        err
+    end
   end
 
   @spec get_chain_state_name :: Naming.chain_state_name()

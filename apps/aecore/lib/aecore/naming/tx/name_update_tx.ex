@@ -8,6 +8,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Naming
+  alias Aeutil.Hash
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -62,22 +63,25 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   """
   @spec validate(NameUpdateTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameUpdateTx{
-        hash: _hash,
+        hash: hash,
         expire_by: _expire_by,
         client_ttl: client_ttl,
         pointers: _pointers
       }) do
-    # TODO validate hash byte size
-    # TODO check pointers format
-    if client_ttl > Naming.get_client_ttl_limit() do
-      {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
-    else
-      :ok
+    cond do
+      client_ttl > Naming.get_client_ttl_limit() ->
+        {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
+
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
+        {:error, "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(hash))}"}
+
+      true ->
+        :ok
     end
   end
 
   @spec get_chain_state_name :: Naming.chain_state_name()
-  def get_chain_state_name,do: :naming
+  def get_chain_state_name, do: :naming
 
   @doc """
   Changes the account state (balance) of the sender and receiver.

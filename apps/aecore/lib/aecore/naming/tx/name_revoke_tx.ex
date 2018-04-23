@@ -8,6 +8,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Naming.Naming
+  alias Aeutil.Hash
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -49,11 +50,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Checks name hash byte size
   """
   @spec validate(NameRevokeTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NameRevokeTx{
-        hash: _hash
-      }) do
-    # TODO validate hash byte size
-    :ok
+  def validate(%NameRevokeTx{hash: hash}) do
+    if byte_size(hash) == Hash.get_hash_bytes_size() do
+      :ok
+    else
+      {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
+    end
   end
 
   @spec get_chain_state_name :: Naming.chain_state_name()
