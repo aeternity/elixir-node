@@ -41,9 +41,9 @@ defmodule AecoreChainstateTest do
       Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2)
 
     init_accounts = %{
-      wallet.a_pub_key => %Account{balance: 3, nonce: 100},
-      wallet.b_pub_key => %Account{balance: 5, nonce: 1},
-      wallet.c_pub_key => %Account{balance: 4, nonce: 1}
+      wallet.a_pub_key => %Account{balance: 3, nonce: 100, last_updated: 0},
+      wallet.b_pub_key => %Account{balance: 5, nonce: 1, last_updated: 0},
+      wallet.c_pub_key => %Account{balance: 4, nonce: 1, last_updated: 0}
     }
 
     accounts_chainstate =
@@ -52,31 +52,36 @@ defmodule AecoreChainstateTest do
       end)
 
     chain_state =
-      apply_txs_on_state!([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate}, 1)
+      apply_txs_on_state([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate}, 1)
 
-    assert {6, 100} ==
+    assert {6, 100, 1} ==
              {
                Account.balance(chain_state.accounts, wallet.a_pub_key),
-               Account.nonce(chain_state.accounts, wallet.a_pub_key)
+               Account.nonce(chain_state.accounts, wallet.a_pub_key),
+               Account.last_updated(chain_state.accounts, wallet.a_pub_key)
              }
 
-    assert {3, 2} ==
+    assert {3, 2, 1} ==
              {
                Account.balance(chain_state.accounts, wallet.b_pub_key),
-               Account.nonce(chain_state.accounts, wallet.b_pub_key)
+               Account.nonce(chain_state.accounts, wallet.b_pub_key),
+               Account.last_updated(chain_state.accounts, wallet.b_pub_key)
              }
 
-    assert {1, 2} ==
+    assert {1, 2, 1} ==
              {
                Account.balance(chain_state.accounts, wallet.c_pub_key),
-               Account.nonce(chain_state.accounts, wallet.c_pub_key)
+               Account.nonce(chain_state.accounts, wallet.c_pub_key),
+               Account.last_updated(chain_state.accounts, wallet.c_pub_key)
              }
   end
 
-  def apply_txs_on_state!(txs, chainstate, block_height) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
-      Chainstate.apply_transaction_on_state!(tx, chainstate, block_height)
+  def apply_txs_on_state(txs, chainstate, block_height) do
+    Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
+      case Chainstate.apply_transaction_on_state(tx, chainstate, block_height) do
+        {:ok, new_state} -> {:cont, new_state}
+        {:error, _reason} -> {:halt, :error}
+      end
     end)
   end
 end

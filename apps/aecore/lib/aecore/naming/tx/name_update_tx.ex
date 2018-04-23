@@ -60,8 +60,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec is_valid?(NameUpdateTx.t()) :: boolean()
-  def is_valid?(%NameUpdateTx{
+  @spec validate(NameUpdateTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NameUpdateTx{
         hash: _hash,
         expire_by: _expire_by,
         client_ttl: client_ttl,
@@ -69,9 +69,11 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       }) do
     # TODO validate hash byte size
     # TODO check pointers format
-    valid_pointers_format = true
-    valid_client_ttl = client_ttl <= Naming.get_client_ttl_limit()
-    valid_client_ttl && valid_pointers_format
+    if client_ttl > Naming.get_client_ttl_limit() do
+      {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
+    else
+      :ok
+    end
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -80,35 +82,25 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
-          NameUpdateTx.t(),
-          binary(),
+  @spec process_chainstate(
+          SpendTx.t(),
+          Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          ChainState.account(),
+          non_neg_integer(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(
         %NameUpdateTx{} = tx,
         sender,
         fee,
         nonce,
-        block_height,
+        _block_height,
         accounts,
         naming_state
       ) do
     sender_account_state = Account.get_account_state(accounts, sender)
-
-    preprocess_check!(
-      tx,
-      sender_account_state,
-      sender,
-      fee,
-      nonce,
-      block_height,
-      naming_state
-    )
 
     new_senderount_state =
       sender_account_state
@@ -135,36 +127,37 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   Checks whether all the data is valid according to the NameUpdateTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
-          NameUpdateTx.t(),
-          ChainState.account(),
+  @spec preprocess_check(
+          SpendTx.t(),
           Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check!(tx, account_state, sender, fee, nonce, block_height, naming_state) do
+          tx_type_state
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(tx, sender, account_state, fee, _nonce, block_height, naming_state) do
     claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
       claim == nil ->
-        throw({:error, "Name has not been claimed"})
+        {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       claim.owner != sender ->
-        throw({:error, "Sender is not claim owner"})
+        {:error,
+         "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
       tx.expire_by <= block_height ->
-        throw({:error, "Name expiration is now or in the past"})
+        {:error,
+         "#{__MODULE__}: Name expiration is now or in the past: #{inspect(tx.expire_by)}, #{
+           inspect(block_height)
+         }"}
 
       claim.status == :revoked ->
-        throw({:error, "Claim is revoked"})
+        {:error, "#{__MODULE__}: Claim is revoked: #{inspect(claim.status)}"}
 
       true ->
         :ok

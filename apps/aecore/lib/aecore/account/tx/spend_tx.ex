@@ -6,9 +6,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   @behaviour Aecore.Tx.Transaction
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -46,6 +45,9 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
+  @spec get_chain_state_name() :: :none
+  def get_chain_state_name, do: :none
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
@@ -54,15 +56,17 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{amount: amount}) do
-    # TODO validate sender/receiver pubkey byte size
-
-    if amount >= 0 do
-      true
+  @spec validate(SpendTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{amount: amount, receiver: receiver}) do
+    with true <- amount >= 0,
+         :ok <- Wallet.key_size_valid?(receiver) do
+      :ok
     else
-      Logger.error("The amount cannot be a negative number")
-      false
+      false ->
+        {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
+
+      err ->
+        err
     end
   end
 
@@ -74,13 +78,10 @@ defmodule Aecore.Account.Tx.SpendTx do
     Account.transaction_in(account_state, tx.amount)
   end
 
-  @spec get_chain_state_name() :: Account.chain_state_name()
-  def get_chain_state_name(), do: :accounts
-
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
+  @spec process_chainstate(
           SpendTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -88,19 +89,9 @@ defmodule Aecore.Account.Tx.SpendTx do
           non_neg_integer(),
           AccountStateTree.tree(),
           tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
-
-    preprocess_check!(
-      tx,
-      sender_account_state,
-      sender,
-      fee,
-      nonce,
-      block_height,
-      %{}
-    )
 
     new_sender_account_state =
       sender_account_state
@@ -118,32 +109,25 @@ defmodule Aecore.Account.Tx.SpendTx do
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
+  @spec preprocess_check(
           SpendTx.t(),
-          AccountStateTree.tree(),
           Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(
-        tx,
-        sender_account_state,
-        _sender,
-        fee,
-        _nonce,
-        _block_height,
-        %{}
-      ) do
-    if sender_account_state.balance - (fee + tx.amount) >= 0 do
+  def preprocess_check(tx, _sender, account_state, fee, _nonce, _block_height, %{}) do
+    if account_state.balance - (fee + tx.amount) >= 0 do
       :ok
     else
-      throw({:error, "Negative balance"})
+      {:error,
+       "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - (fee + tx.amount))}"}
     end
   end
 
-  @spec deduct_fee(Chainstate.accounts_state(), non_neg_integer()) :: Account.t()
+  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
   def deduct_fee(account_state, fee) do
     new_balance = account_state.balance - fee
     Map.put(account_state, :balance, new_balance)

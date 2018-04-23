@@ -33,13 +33,16 @@ defmodule Aecore.Tx.SignedTx do
     key == nil && signature == nil
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%SignedTx{data: data} = tx) do
+  @doc """
+  Checks weather the signature is correct.
+  """
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx) do
     if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
-      DataTx.is_valid?(data)
+      :ok
     else
-      Logger.error("Can't verify the signature with the following public key: #{data.sender}")
-      false
+      {:error, "#{__MODULE__}: Can't verify the signature
+      with the following public key: #{inspect(data.sender)}"}
     end
   end
 
@@ -56,15 +59,24 @@ defmodule Aecore.Tx.SignedTx do
   @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
   def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
     signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
-    {:ok, %SignedTx{data: tx, signature: signature}}
+
+    if byte_size(signature) <= get_sign_max_size() do
+      {:ok, %SignedTx{data: tx, signature: signature}}
+    else
+      {:error, "Wrong signature size"}
+    end
   end
 
   def sign_tx(%DataTx{} = _tx, priv_key) do
-    {:error, "Wrong key size: #{priv_key}"}
+    {:error, "#{__MODULE__}: Wrong key size: #{inspect(priv_key)}"}
   end
 
   def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
+    {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
+  end
+
+  def get_sign_max_size do
+    Application.get_env(:aecore, :signed_tx)[:sign_max_size]
   end
 
   @spec hash_tx(SignedTx.t()) :: binary()
@@ -85,8 +97,8 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_root(bin) do
@@ -97,7 +109,23 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode_root(_) do
+  def base58c_decode_root(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
+  end
+
+  def base58c_encode_signature(bin) do
+    if bin == nil do
+      nil
+    else
+      Bits.encode58c("sg", bin)
+    end
+  end
+
+  def base58c_decode_signature(<<"sg$", payload::binary>>) do
+    Bits.decode58(payload)
+  end
+
+  def base58c_decode_signature(_) do
     {:error, "Wrong data"}
   end
 end

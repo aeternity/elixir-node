@@ -50,34 +50,39 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Checks name format
   """
-  @spec is_valid?(NameClaimTx.t()) :: boolean()
-  def is_valid?(%NameClaimTx{name: name, name_salt: name_salt}) do
-    name_valid =
-      case NameUtil.normalize_and_validate_name(name) do
-        {:ok, _} -> true
-        {:error, _} -> false
-      end
+  @spec validate(NameClaimTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NameClaimTx{name: name, name_salt: name_salt}) do
+    validate_name = NameUtil.normalize_and_validate_name(name)
 
-    name_salt_valid = byte_size(name_salt) == Naming.get_name_salt_byte_size()
-    name_valid && name_salt_valid
+    cond do
+      validate_name |> elem(0) == :error ->
+        {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
+
+      byte_size(name_salt) != Naming.get_name_salt_byte_size() ->
+        {:error,
+         "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+
+      true ->
+        :ok
+    end
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
   def get_chain_state_name(), do: :naming
 
   @doc """
-  Changes the account state (balance) of the sender and receiver.
+  Claims a name for one account after it was pre-claimed.
   """
-  @spec process_chainstate!(
-          NameClaimTx.t(),
-          binary(),
+  @spec process_chainstate(
+          SpendTx.t(),
+          Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          ChainState.account(),
+          non_neg_integer(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(
         %NameClaimTx{} = tx,
         sender,
         fee,
@@ -87,16 +92,6 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         naming_state
       ) do
     sender_account_state = Account.get_account_state(accounts, sender)
-
-    preprocess_check!(
-      tx,
-      sender_account_state,
-      sender,
-      fee,
-      nonce,
-      block_height,
-      naming_state
-    )
 
     new_senderount_state =
       sender_account_state
@@ -121,16 +116,16 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Checks whether all the data is valid according to the NameClaimTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
-          NameClaimTx.t(),
-          ChainState.account(),
+  @spec preprocess_check(
+          SpendTx.t(),
           Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check!(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
+          non_neg_integer(),
+          tx_type_state
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, naming_state) do
     pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
     pre_claim = Map.get(naming_state, pre_claim_commitment)
 
@@ -139,19 +134,19 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
       pre_claim == nil ->
-        throw({:error, "Name has not been pre-claimed"})
+        {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
       pre_claim.owner != sender ->
-        throw({:error, "Sender is not pre-claim owner"})
+        {:error,
+         "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
+           inspect(sender)
+         }"}
 
       claim != nil ->
-        throw({:error, "Name has aleady been claimed"})
+        {:error, "#{__MODULE__}: Name has aleady been claimed: #{inspect(claim)}"}
 
       true ->
         :ok

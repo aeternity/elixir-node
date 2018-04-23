@@ -117,13 +117,13 @@ defmodule Aehttpserver.Web.BlockController do
   def post_block(conn, _params) do
     block = Serialization.block(conn.body_params, :deserialize)
 
-    try do
-      BlockValidation.single_validate_block!(block)
-      block_hash = BlockValidation.block_header_hash(block.header)
-      Sync.add_block_to_state(block_hash, block)
-      Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-      json(conn, "successful operation")
-    catch
+    case BlockValidation.single_validate_block(block) do
+      :ok ->
+        block_hash = BlockValidation.block_header_hash(block.header)
+        Sync.add_block_to_state(block_hash, block)
+        Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
+        json(conn, "successful operation")
+
       {:error, _message} ->
         HTTPUtil.json_not_found(conn, "Block or header validation error")
     end

@@ -10,7 +10,6 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Structures.OracleExtendTx
   alias Aecore.Structures.OracleQueryTx
@@ -43,7 +42,7 @@ defmodule Aecore.Tx.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types()) :: boolean()
+  @callback validate(tx_types()) :: :ok | {:error, String.t()}
 
   @doc "The name for state chain entry to be passed for processing"
   @callback get_chain_state_name() :: Chainstate.chain_state_types()
@@ -53,7 +52,7 @@ defmodule Aecore.Tx.Transaction do
   Make necessary changes to the account_state and tx_type_state of
   the transaction (Transaction type-specific chainstate)
   """
-  @callback process_chainstate!(
+  @callback process_chainstate(
               tx_types(),
               Wallet.pubkey(),
               fee :: non_neg_integer(),
@@ -69,7 +68,7 @@ defmodule Aecore.Tx.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->
            {:error, "Negative balance"}
@@ -89,15 +88,15 @@ defmodule Aecore.Tx.Transaction do
            :ok
       end
   """
-  @callback preprocess_check!(
+  @callback preprocess_check(
               tx_types(),
-              Chainstate.account(),
               Wallet.pubkey(),
+              Account.t(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
+  @callback deduct_fee(Account.t(), fee :: non_neg_integer()) :: Account.t()
 end

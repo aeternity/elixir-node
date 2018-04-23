@@ -54,7 +54,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert SignedTx.is_valid?(signed_tx)
+    assert :ok = SignedTx.validate(signed_tx)
     signature = signed_tx.signature
     message = Serialization.pack_binary(signed_tx.data)
     assert true = Signing.verify(message, signature, sender)
@@ -71,7 +71,8 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
-    assert false == SignedTx.is_valid?(signed_tx)
+    assert {:error, "#{SpendTx}: The amount cannot be a negative number: -5"} ==
+             SpendTx.validate(signed_tx.data.payload)
   end
 
   test "coinbase tx invalid", tx do
@@ -141,6 +142,35 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
     assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 100
+  end
+
+  test "sender pub_key is too small", tx do
+    # Use private as public key for sender to get error that sender key is not 33 bytes
+    sender = Wallet.get_private_key()
+    refute byte_size(sender) == 33
+    amount = 100
+    fee = 50
+
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: tx.receiver, amount: amount}
+
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert {:error, _reason} = Wallet.key_size_valid?(data_tx.sender)
+  end
+
+  test "receiver pub_key is too small", tx do
+    sender = Wallet.get_public_key()
+    amount = 100
+    fee = 50
+
+    # Use private as public key for receiver to get error that receiver key is not 33 bytes
+    receiver = Wallet.get_private_key("M/0")
+    refute byte_size(receiver) == 33
+    :ok = Miner.mine_sync_block_to_chain()
+    payload = %{receiver: receiver, amount: amount}
+
+    data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
+    assert {:error, _reason} = Wallet.key_size_valid?(data_tx.payload.receiver)
   end
 
   test "sum of amount and fee more than balance", tx do

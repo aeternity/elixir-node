@@ -48,28 +48,28 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @doc """
   Checks commitment hash byte size
   """
-  @spec is_valid?(NamePreClaimTx.t()) :: boolean()
-  def is_valid?(%NamePreClaimTx{commitment: _commitment}) do
+  @spec validate(NamePreClaimTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NamePreClaimTx{commitment: _commitment}) do
     # TODO validate commitment byte size
-    true
+    :ok
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
   def get_chain_state_name(), do: :naming
 
   @doc """
-  Changes the account state (balance) of the sender and receiver.
+  Pre claims a name for one account.
   """
-  @spec process_chainstate!(
-          NamePreClaimTx.t(),
-          binary(),
+  @spec process_chainstate(
+          SpendTx.t(),
+          Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          ChainState.account(),
+          non_neg_integer(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(
         %NamePreClaimTx{} = tx,
         sender,
         fee,
@@ -79,16 +79,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         naming_state
       ) do
     sender_account_state = Account.get_account_state(accounts, sender)
-
-    preprocess_check!(
-      tx,
-      sender_account_state,
-      sender,
-      fee,
-      nonce,
-      block_height,
-      naming_state
-    )
 
     new_senderount_state =
       sender_account_state
@@ -109,25 +99,20 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Checks whether all the data is valid according to the NamePreClaimTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
-          NamePreClaimTx.t(),
-          ChainState.account(),
+  @spec preprocess_check(
+          SpendTx.t(),
           Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check!(_tx, account_state, _sender, fee, nonce, _block_height, _naming_state) do
-    cond do
-      account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
-
-      true ->
-        :ok
+          non_neg_integer(),
+          tx_type_state
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(_tx, _sender, account_state, fee, _nonce, _block_height, _naming_state) do
+    if account_state.balance - fee >= 0 do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
     end
   end
 
@@ -139,6 +124,14 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
+    IO.inspect("tx.data.fee: #{tx.data.fee}")
+
+    IO.inspect(
+      "Application.get_env(:aecore, :tx_data)[:minimum_fee]: #{
+        Application.get_env(:aecore, :tx_data)[:minimum_fee]
+      }"
+    )
+
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

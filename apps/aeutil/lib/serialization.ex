@@ -251,7 +251,7 @@ defmodule Aeutil.Serialization do
           Map.put(new_value, :root_hash, deserialize_value(val, :root_hash))
 
         _ ->
-          Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+          Map.put(new_value, Parser.to_atom(key), deserialize_value(val, Parser.to_atom(key)))
       end
     end)
   end
@@ -301,7 +301,7 @@ defmodule Aeutil.Serialization do
         value
 
       _ ->
-        Parser.to_atom!(value)
+        Parser.to_atom(value)
     end
   end
 
@@ -313,6 +313,9 @@ defmodule Aeutil.Serialization do
   end
 
   defp serialize_txs_info_to_json([h | t], acc) do
+    tx = DataTx.init(h.type, h.payload, h.sender, h.fee, h.nonce)
+    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signature: nil})
+
     json_response_struct = %{
       tx: %{
         sender: Account.base58c_encode(h.sender),
@@ -324,8 +327,8 @@ defmodule Aeutil.Serialization do
       },
       block_height: h.block_height,
       block_hash: Header.base58c_encode(h.block_hash),
-      hash: SignedTx.base58c_encode_root(h.txs_hash),
-      signatures: [base64_binary(h.signature, :serialize)]
+      hash: DataTx.base58c_encode(tx_hash),
+      signatures: [SignedTx.base58c_encode_signature(h.signature)]
     }
 
     acc = [json_response_struct | acc]

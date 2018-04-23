@@ -50,14 +50,14 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec is_valid?(NameTransferTx.t()) :: boolean()
-  def is_valid?(%NameTransferTx{
+  @spec validate(NameTransferTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NameTransferTx{
         hash: _hash,
         target: _target
       }) do
     # TODO validate hash byte size
     # TODO validate target pubkey byte size
-    true
+    :ok
   end
 
   @spec get_chain_state_name() :: Naming.chain_state_name()
@@ -66,35 +66,25 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Changes the naming state for claim transfers.
   """
-  @spec process_chainstate!(
-          NameTransferTx.t(),
-          binary(),
+  @spec process_chainstate(
+          SpendTx.t(),
+          Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          ChainState.account(),
+          non_neg_integer(),
+          AccountStateTree.tree(),
           tx_type_state()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(
         %NameTransferTx{} = tx,
         sender,
         fee,
         nonce,
-        block_height,
+        _block_height,
         accounts,
         naming_state
       ) do
     sender_account_state = Account.get_account_state(accounts, sender)
-
-    preprocess_check!(
-      tx,
-      sender_account_state,
-      sender,
-      fee,
-      nonce,
-      block_height,
-      naming_state
-    )
 
     new_senderount_state =
       sender_account_state
@@ -114,33 +104,31 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Checks whether all the data is valid according to the NameTransferTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
-          NameTransferTx.t(),
-          ChainState.account(),
+  @spec preprocess_check(
+          SpendTx.t(),
           Wallet.pubkey(),
+          AccountStateTree.tree(),
           non_neg_integer(),
           non_neg_integer(),
-          block_height :: non_neg_integer(),
-          tx_type_state()
-        ) :: :ok | {:error, DataTx.reason()}
-  def preprocess_check!(tx, account_state, sender, fee, nonce, _block_height, naming_state) do
+          non_neg_integer(),
+          tx_type_state
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, naming_state) do
     claim = Map.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
-
-      account_state.nonce >= nonce ->
-        throw({:error, "Nonce too small"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
       claim == nil ->
-        throw({:error, "Name has not been claimed"})
+        {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       claim.owner != sender ->
-        throw({:error, "Sender is not claim owner"})
+        {:error,
+         "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
       claim.status == :revoked ->
-        throw({:error, "Claim is revoked"})
+        {:error, "#{__MODULE__}: Claim is revoked: #{inspect(claim.status)}"}
 
       true ->
         :ok
