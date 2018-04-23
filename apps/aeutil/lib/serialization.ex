@@ -313,10 +313,10 @@ defmodule Aeutil.Serialization do
   defp serialize_txs_info_to_json([], acc) do
     Enum.reverse(acc)
   end
-
+@spec rlp_encode(DataTx.t(SignedTx.t())) :: binary()
   def rlp_encode(%SignedTx{} = tx) do
     signature =
-      if tx.signature == nil do
+      if tx.data.sender == nil do
         <<0>>
       else
         tx.signature
@@ -324,178 +324,244 @@ defmodule Aeutil.Serialization do
 
     ExRLP.encode([type_to_tag(SignedTx), 1, ExRLP.encode([signature]), rlp_encode(tx.data)])
   end
-
+  @spec rlp_encode(DataTx.t(SpendTx.t())) :: binary()
   def rlp_encode(%DataTx{type: SpendTx} = tx) do
-    tx_map = nils_to_binary(tx)
 
-    list_of_formatted_data =
-      if tx_map.sender == <<0>> do
-        [
-          type_to_tag(CoinbaseTx),
-          get_version(CoinbaseTx),
-          tx_map.payload.receiver,
-          tx_map.nonce,                   # Should be Height
-          tx_map.payload.amount
-        ]
-      else
-        [
-          type_to_tag(SpendTx),
-          get_version(SpendTx),
-          tx_map.sender,
-          tx_map.payload.receiver,
-          tx_map.payload.amount,
-          tx_map.fee,
-          tx_map.nonce
-        ]
-      end
-
-    ExRLP.encode(list_of_formatted_data)
+    if tx.sender == nil do
+      [
+        type_to_tag(CoinbaseTx),
+        get_version(CoinbaseTx),
+        tx.payload.receiver, #receiver
+        # Subject to discuss/change:
+        # CoinbaseTx Should have a "height" field, currently "nonce" is being encoded
+        tx.nonce, #nonce / but should be height
+        tx.payload.amount #reward
+      ]
+    else
+      [
+        type_to_tag(SpendTx),
+        get_version(SpendTx),
+        tx.sender, # sender
+        tx.payload.receiver, #receiver
+        tx.payload.amount, #amount
+        tx.fee, # fee
+        tx.nonce # nonce
+      ]
+    end
+    |> ExRLP.encode()
   end
-
+  @spec rlp_encode(DataTx.t()) :: binary()
   def rlp_encode(%DataTx{type: CoinbaseTx} = tx) do
-    tx_map = nils_to_binary(tx)
 
-    list_of_formatted_data = [
+    [
       type_to_tag(CoinbaseTx),
       get_version(CoinbaseTx),
-      tx_map.payload.receiver, 
-      tx_map.nonce,                  # Here should be Height, but at this moment nonce is being encoded
-      tx_map.payload.amount
+      tx.payload.receiver, #receiver
+      # Subject to discuss/change:: Here should be Height, but at this moment nonce is being encoded
+      tx.nonce, # nonce / but should be height
+      tx.payload.amount #amount
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |> ExRLP.encode()
   end
-
+  @spec rlp_encode(DataTx.t(OracleRegistrationTx.t())) :: binary()
   def rlp_encode(%DataTx{type: OracleRegistrationTx} = tx) do
-    tx_map = nils_to_binary(tx)
-    ttl_type = encode_ttl_type(tx_map.payload.ttl)
+    ttl_type = encode_ttl_type(tx.payload.ttl)
 
-    list_of_formatted_data = [
+    [
       type_to_tag(OracleRegistrationTx),
       get_version(OracleRegistrationTx),
-      tx_map.sender,
-      tx_map.nonce,
-      transform_item(tx_map.payload.query_format),  # In Erlang core it is described as a UTF8 encoded String, but we have a map
-      transform_item(tx_map.payload.response_format),  # In Erlang core it is described as a UTF8 encoded String, but we have a map
-      tx_map.payload.query_fee,
-      ttl_type,
-      tx_map.payload.ttl.ttl,
-      tx_map.fee
+      tx.sender, #account
+      tx.nonce,  #nonce
+      # Subject to discuss/change:
+      # In Erlang core it is described as a UTF8 encoded String, but we have a map here
+      transform_item(tx.payload.query_format), #query_format/spec
+      # Subject to discuss/change:
+      # In Erlang core it is described as a UTF8 encoded String, but we have a map here
+      transform_item(tx.payload.response_format), #query_response/spec
+      tx.payload.query_fee, #query_fee
+      ttl_type, # ttl_type
+      tx.payload.ttl.ttl, #ttl_value
+      tx.fee #fee
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |> ExRLP.encode()
   end
-
+  @spec rlp_encode(DataTx.t(OracleQueryTx.t())) :: binary()
   def rlp_encode(%DataTx{type: OracleQueryTx} = tx) do
-    tx_map = nils_to_binary(tx)
-    ttl_type_q = encode_ttl_type(tx_map.payload.query_ttl)
-    ttl_type_r = encode_ttl_type(tx_map.payload.response_ttl)
+    ttl_type_q = encode_ttl_type(tx.payload.query_ttl)
+    ttl_type_r = encode_ttl_type(tx.payload.response_ttl)
 
-    list_of_formatted_data = [
+    [
       type_to_tag(OracleQueryTx),
       get_version(OracleQueryTx),
-      tx_map.sender,
-      tx_map.nonce,
-      tx_map.payload.oracle_address,
-      transform_item(tx_map.payload.query_data),    # In Erlang core it is described as a binary, but not encoded natively (query_data in our case is a map)
-      tx_map.payload.query_fee,
-      ttl_type_q,
-      tx_map.payload.query_ttl.ttl,
-      ttl_type_r,
-      tx_map.payload.response_ttl.ttl,
-      tx_map.fee
+      tx.sender, #sender
+      tx.nonce,  #nonce
+      tx.payload.oracle_address, #oracle
+      # Subject to discuss/change:
+      # In Erlang core query_data is described as a binary,
+      # but not encoded "natively"(query_data in our case is a map)
+      transform_item(tx.payload.query_data), #query
+      tx.payload.query_fee, #query_fee
+      ttl_type_q, #query_ttl_type
+      tx.payload.query_ttl.ttl, #query_ttl_value
+      ttl_type_r, #response_ttl_type
+      tx.payload.response_ttl.ttl, #response_ttl_value
+      tx.fee #fee
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |> ExRLP.encode()
   end
-
+  @spec rlp_encode(DataTx.t(OracleResponseTx.t())) :: binary()
   def rlp_encode(%DataTx{type: OracleResponseTx} = tx) do
-    tx_map = nils_to_binary(tx)
 
-    list_of_formatted_data = [
+    [
       type_to_tag(OracleResponseTx),
       get_version(OracleResponseTx),
-      tx_map.sender,
-      tx_map.nonce,
-      tx_map.payload.query_id,
-      transform_item(tx_map.payload.response),
-      tx_map.fee
+      tx.sender, #oracle? not confirmed
+      tx.nonce, #nonce
+      tx.payload.query_id, #query_id
+      transform_item(tx.payload.response), #response
+      tx.fee #fee
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |> ExRLP.encode()
   end
-
+  @spec rlp_encode(DataTx.t(OracleExtendTx.t())) :: binary()
   def rlp_encode(%DataTx{type: OracleExtendTx} = tx) do
-    tx_map = nils_to_binary(tx)
-    ttl_type = encode_ttl_type(tx_map.payload.ttl)
+    ttl_type = encode_ttl_type(tx.payload.ttl)
 
-    list_of_formatted_data = [
+    [
       type_to_tag(OracleExtendTx),
       get_version(OracleExtendTx),
-      tx_map.sender,
-      tx_map.nonce,
-      ttl_type,
-      tx_map.payload.ttl.ttl,
-      tx_map.fee
+      tx.sender, #oracle? not confirmed
+      tx.nonce,  #nonce
+      ttl_type,  #ttl_type
+      tx.payload.ttl.ttl, #ttl_value
+      tx.fee #fee
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |> ExRLP.encode()
   end
 
-  def rlp_encode(%Chainstate{accounts: accounts}, pkey) do
-    account_info = Account.get_account_state(accounts, pkey)
-
-    list_of_formatted_data = [
+  @spec rlp_encode(Account.t(), Wallet.pubkey()) :: binary()
+  def rlp_encode(%Account{} = account, pkey) do
+    [
       type_to_tag(Account),
       get_version(Account),
-      pkey,
-      account_info.nonce,
-      account_info.balance
+      pkey, #pubkey ,
+      account.nonce, #nonce
+      0,    #Subject : there is no "height" field in account structure
+      account.balance #balance
     ]
-
-    ExRLP.encode(list_of_formatted_data)
+    |>
+    ExRLP.encode
   end
+  @spec rlp_encode(Chainstate.t(), Wallet.pubkey(), atom()) :: binary()
+  def rlp_encode(%Chainstate{accounts: accounts}, pkey, :account_state) do
+    account_info = Account.get_account_state(accounts, pkey)
 
-  def type_to_tag(type) do
-    case type do
-      Account ->
-        10
+    [
+      type_to_tag(Account),
+      get_version(Account),
+      pkey, #pubkey
+      account_info.nonce, #should be height but atm its nonce
+      account_info.balance #balance
+    ]
+    |> ExRLP.encode()
+  end
+  def rlp_encode(
+        %Chainstate{oracles: %{registered_oracles: registered_oracles}},
+        orc_owner,
+        :oracle_state
+      ) do
+    # list_of_formatted_data =
+    # Subject to discuss field "height_included" in our structures is not being encoded , erlang" core doesnt have this field
+    case Map.get(registered_oracles, orc_owner) do
+      nil ->
+        [
+          type_to_tag(Oracle),
+          get_version(Oracle),
+          orc_owner, # owner
+          transform_item(%{}), #query_format, should be a string(but we have a map)
+          transform_item(%{}), #response_format, should be a string (but we have a map)
+          0, #query_fee
+          0, #expires
+        ]
 
-      SignedTx ->
-        11
-
-      SpendTx ->
-        12
-
-      CoinbaseTx ->
-        13
-
-      OracleRegistrationTx ->
-        22
-
-      OracleQueryTx ->
-        23
-
-      OracleResponseTx ->
-        24
-
-      OracleExtendTx ->
-        25
+      data ->
+        [
+          type_to_tag(Oracle),
+          get_version(Oracle),
+          orc_owner,  # owner
+          # Subject to discuss/change - In Erlang implementation its a UTF8 encoded string but in our case - map
+          transform_item(data.tx.query_format), #query_format, should be a string(but we have a map)
+          transform_item(data.tx.response_format), #response_format, should be a string (but we have a map)
+          data.tx.query_fee, #query_fee
+          # Subject to discuss/change - Erlang core has an integer field called expires, our case - map with ttl and its type :absolute/relative
+         # encode_ttl_type(data.tx.ttl),
+          data.tx.ttl.ttl  #"expires" doesnt exist at this moment,
+        ]
     end
+    |> ExRLP.encode()
   end
+  def rlp_encode(
+        %Chainstate{oracles: %{interaction_objects: interaction_objects}},
+        sender_address,
+        :oracle_query
+      ) do
+    case Map.get(interaction_objects, sender_address) do
+      nil ->
+        [
+          type_to_tag(OracleQuery), #type
+          get_version(OracleQuery), #ver
+          sender_address, #pubkey
+          0, #sender_nonce
+          <<0>>, # oracle_address
+          transform_item(%OracleQueryTx{}), #query
+          <<0>>, #has_response
+          transform_item(%OracleResponseTx{}), #response
+          0, #expires
+          0, #response_ttl
+          0, #fee
+        ]
 
-  def tag_to_type(tag) do
-    case tag do
-      10 -> Account
-      11 -> SignedTx
-      12 -> SpendTx
-      13 -> CoinbaseTx
-      21 -> OracleQueryTx
-      22 -> OracleRegistrationTx
-      24 -> OracleResponseTx
-      25 -> OracleExtendTx
+      data ->
+        [
+          type_to_tag(OracleQuery), #type
+          get_version(OracleQuery), #ver
+          sender_address, #pubkey
+          # Subject : We dont have sender_nonce field here,
+          data.query.oracle_address, # oracle_address
+          # Subject : Query: Equivalent here would be fully composed DataTx(OracleQueryTx) , not just OracleQueryTx
+          rlp_encode(transform_item(data.query)), #query
+          <<0>>,  # Subject: has_response field doesnt exist, will be hardcoded as <<0>>/false for now
+
+          # Subject: Response: Equivalent here would be fully composed DataTx(ResponseTx), not a map
+          rlp_encode(transform_item(data.query.response)), #response
+          data.query.query_ttl.ttl, # Subject: no field called "expires" here, should be calculated over ttl_type and ttl_value itself
+          data.query.response_ttl.ttl,
+          data.query.query_fee
+        ]
     end
+    |> ExRLP.encode()
   end
+  defp type_to_tag(Account), do: 10
+  defp type_to_tag(SignedTx), do: 11
+  defp type_to_tag(SpendTx), do: 12
+  defp type_to_tag(CoinbaseTx), do: 13
+  defp type_to_tag(Oracle), do: 20
+  defp type_to_tag(OracleQuery), do: 21
+  defp type_to_tag(OracleRegistrationTx), do: 22
+  defp type_to_tag(OracleQueryTx), do: 23
+  defp type_to_tag(OracleResponseTx), do: 24
+  defp type_to_tag(OracleExtendTx), do: 25
+
+  defp tag_to_type(10), do: Account
+  defp tag_to_type(11), do: SignedTx
+  defp tag_to_type(12), do: SpendTx
+  defp tag_to_type(13), do: CoinbaseTx
+  defp tag_to_type(20), do: Oracle
+  defp tag_to_type(21), do: OracleQuery
+  defp tag_to_type(22), do: OracleRegistrationTx
+  defp tag_to_type(23), do: OracleQueryTx
+  defp tag_to_type(24), do: OracleResponseTx
+  defp tag_to_type(25), do: OracleExtendTx
 
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
@@ -504,8 +570,9 @@ defmodule Aeutil.Serialization do
 
     case tag_to_type(tag) do
       Account ->
-        [pkey, nonce, balance] = rest_data
-        [pkey, transform_item(nonce, :int), transform_item(balance, :int)]
+        [pkey, nonce, height, balance] = rest_data
+        [pkey, transform_item(nonce, :int), transform_item(height, :int), transform_item(balance, :int)]
+         %Account{balance: transform_item(balance, :int), nonce: transform_item(nonce, :int)}
 
       SignedTx ->
         [signatures, tx_data] = rest_data
@@ -525,6 +592,18 @@ defmodule Aeutil.Serialization do
       CoinbaseTx ->
         [receiver, nonce, amount] = rest_data
         [receiver, transform_item(nonce, :int), transform_item(amount, :int)]
+
+      Oracle ->
+        [orc_owner, query_format, response_format, query_fee, ttl_type, ttl] = rest_data
+
+        [
+          orc_owner,
+          transform_item(query_format, :binary),
+          transform_item(response_format, :binary),
+          transform_item(query_fee, :int),
+          transform_item(ttl_type, :int),
+          transform_item(ttl, :int)
+        ]
 
       OracleQueryTx ->
         [
@@ -591,12 +670,11 @@ defmodule Aeutil.Serialization do
         ]
 
       _ ->
-        {:error, "Illegal serialization"}
+        Logger.error("Illegal serialization")
     end
   end
 
   #  def rlp_decode(binary,pattern) do
-
   #  end
   defp transform_item(item) do
     :erlang.term_to_binary(item)
@@ -610,11 +688,13 @@ defmodule Aeutil.Serialization do
   end
 
   defp get_version(type) do
+    # Subject to discuss: These hardcoded versions could be stored somewhere in config file.
     case type do
       Account -> 1
       SignedTx -> 1
       SpendTx -> 1
       CoinbaseTx -> 1
+      Oracle -> 1
       OracleQueryTx -> 1
       OracleRegistrationTx -> 1
       OracleResponseTx -> 1
@@ -631,18 +711,20 @@ defmodule Aeutil.Serialization do
   end
 
   @spec nils_to_binary(SignedTx.t()) :: Map.t()
-  defp nils_to_binary(tx) when is_map(tx) do
+  def nils_to_binary(tx) when is_map(tx) do
     tx = remove_struct(tx)
 
     Enum.reduce(tx, %{}, fn {k, v}, acc ->
       Map.put(
         acc,
         k,
-        case v do # Added to avoid nils from SpendTx(Coin-based), because CoinbaseTx doesnt have separate structure at this moment
+        # Subject to discuss/change:
+        # Added to avoid nils from SpendTx(Coin-based),
+        # because CoinbaseTx doesnt have separate structure at this moment
+        case v do
           %{} = v ->
             nils_to_binary(v)
-          nil ->
-            <<0>>
+
           _ ->
             v
         end

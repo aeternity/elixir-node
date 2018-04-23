@@ -93,7 +93,7 @@ defmodule Aecore.Account.Account do
       :none ->
         empty()
 
-      {:ok, account_state} ->
+      account_state ->
         account_state
     end
   end
