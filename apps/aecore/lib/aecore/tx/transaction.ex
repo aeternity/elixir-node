@@ -6,7 +6,6 @@ defmodule Aecore.Tx.Transaction do
 
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
 
   @typedoc "Arbitrary map holding all the specific elements required
@@ -26,14 +25,14 @@ defmodule Aecore.Tx.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types()) :: boolean()
+  @callback validate(tx_types()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.
   Make necessary changes to the account_state and tx_type_state of
   the transaction (Transaction type-specific chainstate)
   """
-  @callback process_chainstate!(
+  @callback process_chainstate(
               tx_types(),
               Wallet.pubkey(),
               fee :: non_neg_integer(),
@@ -49,7 +48,7 @@ defmodule Aecore.Tx.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->
            {:error, "Negative balance"}
@@ -69,15 +68,15 @@ defmodule Aecore.Tx.Transaction do
            :ok
       end
   """
-  @callback preprocess_check!(
+  @callback preprocess_check(
               tx_types(),
               Wallet.pubkey(),
-              Chainstate.account(),
+              Account.t(),
               fee :: non_neg_integer(),
               nonce :: non_neg_integer(),
               block_height :: non_neg_integer(),
               tx_type_state :: map()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(Chainstate.account(), fee :: non_neg_integer()) :: Chainstate.account()
+  @callback deduct_fee(Account.t(), fee :: non_neg_integer()) :: Account.t()
 end
