@@ -97,9 +97,17 @@ config :aecore, :pow,
     target: 0x2100FFFF
   }
 
+sync_port =
+  case System.get_env("SYNC_PORT") do
+    nil -> 4002
+    env -> String.to_integer(env)
+  end
+
 config :aecore, :peers,
   peers_target_count: 5,
-  peers_max_count: 8
+  peers_max_count: 8,
+  ranch_acceptors: 10,
+  sync_port: sync_port
 
 config :aecore, :miner, resumed_by_default: false
 
