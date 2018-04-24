@@ -368,12 +368,9 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = Chainstate.calculate_total_tokens(new_chain_state)
-
     Logger.info(fn ->
       "#{__MODULE__}: Added block ##{new_block.header.height}
-      with hash #{Header.base58c_encode(new_block_hash)},
-      total tokens: #{inspect(total_tokens)}"
+      with hash #{Header.base58c_encode(new_block_hash)}"
     end)
 
     state_update = %{
