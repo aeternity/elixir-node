@@ -22,6 +22,7 @@ defmodule Aecore.Oracle.Oracle do
 
   @type json_schema :: map()
   @type json :: any()
+  @oracles_fields [:registered_oracles, :interaction_objects]
 
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
@@ -45,6 +46,10 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
+
+  defstruct @oracles_fields
+
+  def oracles_fields, do: @oracles_fields
 
   @doc """
   Registers an oracle with the given requirements for queries and responses,
