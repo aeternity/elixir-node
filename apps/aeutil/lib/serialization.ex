@@ -17,6 +17,8 @@ defmodule Aeutil.Serialization do
   alias Aecore.Account.Account
   alias Aecore.Account.Tx.SpendTx
 
+  require Logger
+
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
@@ -315,14 +317,14 @@ defmodule Aeutil.Serialization do
   end
 @spec rlp_encode(DataTx.t(SignedTx.t())) :: binary()
   def rlp_encode(%SignedTx{} = tx) do
-    signature =
-      if tx.data.sender == nil do
-        <<0>>
-      else
-        tx.signature
+      signatures = for sig <- [tx.signature] do
+        if sig == nil do
+          ExRLP.encode(<<0>>)
+        else
+          ExRLP.encode(sig)
+        end
       end
-
-    ExRLP.encode([type_to_tag(SignedTx), 1, ExRLP.encode([signature]), rlp_encode(tx.data)])
+    ExRLP.encode([type_to_tag(SignedTx), 1, signatures, rlp_encode(tx.data)])
   end
   @spec rlp_encode(DataTx.t(SpendTx.t())) :: binary()
   def rlp_encode(%DataTx{type: SpendTx} = tx) do
@@ -446,7 +448,7 @@ defmodule Aeutil.Serialization do
       get_version(Account),
       pkey, #pubkey ,
       account.nonce, #nonce
-      0,    #Subject : there is no "height" field in account structure
+      account.last_updated,    #height
       account.balance #balance
     ]
     |>
@@ -541,6 +543,25 @@ defmodule Aeutil.Serialization do
     end
     |> ExRLP.encode()
   end
+  #  def rlp_encode(%Block{} = block) do
+  #   pow_to_binary = 
+  #     for pow <- block.header.pow_evidence
+  #       << <<pow::32>>
+  #     end
+  #    [
+  #     type_to_tag(Block),
+  #     get_version(Block),
+  #     <<block.header.version::64,
+  #     block.header.height::64,
+  #     block.header.prev_hash::binary,
+  #     block.header.txs_hash::binary,
+  #     block.header.root_hash::binary,
+  #     block.header.target::64,
+  #     pow_to_binary,
+  #    ]
+  #    |>
+  #    ExRLP.encode
+  #  end
   defp type_to_tag(Account), do: 10
   defp type_to_tag(SignedTx), do: 11
   defp type_to_tag(SpendTx), do: 12
@@ -551,6 +572,7 @@ defmodule Aeutil.Serialization do
   defp type_to_tag(OracleQueryTx), do: 23
   defp type_to_tag(OracleResponseTx), do: 24
   defp type_to_tag(OracleExtendTx), do: 25
+  defp type_to_tag(Block), do: 100
 
   defp tag_to_type(10), do: Account
   defp tag_to_type(11), do: SignedTx
@@ -562,21 +584,25 @@ defmodule Aeutil.Serialization do
   defp tag_to_type(23), do: OracleQueryTx
   defp tag_to_type(24), do: OracleResponseTx
   defp tag_to_type(25), do: OracleExtendTx
+  defp tag_to_type(100), do: Block
 
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = transform_item(tag_bin, :int)
-    _ver = transform_item(ver_bin, :int)
+    ver = transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
       Account ->
         [pkey, nonce, height, balance] = rest_data
         [pkey, transform_item(nonce, :int), transform_item(height, :int), transform_item(balance, :int)]
-         %Account{balance: transform_item(balance, :int), nonce: transform_item(nonce, :int)}
+         %Account{balance: transform_item(balance, :int), last_updated: transform_item(height, :int), nonce: transform_item(nonce, :int)}
 
       SignedTx ->
         [signatures, tx_data] = rest_data
-        [signatures, tx_data]
+        decoded_signatures = for sig <- signatures do
+            ExRLP.decode(sig)
+          end
+        %SignedTx{data: rlp_decode(tx_data) , signature: decoded_signatures}
 
       SpendTx ->
         [sender, receiver, amount, fee, nonce] = rest_data
@@ -588,11 +614,20 @@ defmodule Aeutil.Serialization do
           transform_item(fee, :int),
           transform_item(nonce, :int)
         ]
+        DataTx.init(SpendTx,%{receiver: receiver, amount: transform_item(amount, :int), version: ver},sender,transform_item(fee, :int),transform_item(nonce, :int))
 
       CoinbaseTx ->
         [receiver, nonce, amount] = rest_data
         [receiver, transform_item(nonce, :int), transform_item(amount, :int)]
-
+        %DataTx{fee: 0, nonce: transform_item(nonce, :int), payload: %SpendTx{amount: transform_item(amount, :int), receiver: receiver, version: ver}, sender: nil, type: SpendTx}
+        DataTx.init(SpendTx, %{
+          receiver: receiver,
+          amount: transform_item(amount, :int),
+          version: ver
+        }, 
+        nil,
+        0, 
+        transform_item(nonce, :int))
       Oracle ->
         [orc_owner, query_format, response_format, query_fee, ttl_type, ttl] = rest_data
 
@@ -604,6 +639,7 @@ defmodule Aeutil.Serialization do
           transform_item(ttl_type, :int),
           transform_item(ttl, :int)
         ]
+       # DataTx.init(Oracle,)
 
       OracleQueryTx ->
         [
@@ -673,7 +709,10 @@ defmodule Aeutil.Serialization do
         Logger.error("Illegal serialization")
     end
   end
-
+  def rlp_decode(binary) when is_binary(binary) do
+    ExRLP.decode binary
+  end
+ 
   #  def rlp_decode(binary,pattern) do
   #  end
   defp transform_item(item) do

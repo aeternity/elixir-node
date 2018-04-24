@@ -81,7 +81,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    Hash.hash(Serialization.pack_binary(data))
+    Hash.hash(Serialization.rlp_encode(data))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()
