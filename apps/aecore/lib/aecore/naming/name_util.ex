@@ -28,11 +28,7 @@ defmodule Aecore.Naming.NameUtil do
   end
 
   @spec normalize_name(String.t()) :: String.t()
-  def normalize_name(name),
-    do:
-      name
-      |> :idna.utf8_to_ascii()
-      |> to_string()
+  def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
 
   @spec namehash(String.t()) :: binary()
   defp namehash(name) do
@@ -58,19 +54,24 @@ defmodule Aecore.Naming.NameUtil do
     if allowed_registrar do
       validate_name_length(name)
     else
-      {:error, "name doesn't end with allowed registrar"}
+      {:error, "#{__MODULE__}: name doesn't end with allowed registrar: #{inspect(name)}"}
     end
+  end
+
+  @spec get_max_name_length :: non_neg_integer()
+  def get_max_name_length do
+    Application.get_env(:aecore, :naming)[:max_name_length]
   end
 
   @spec validate_name_length(String.t()) :: :ok | {:error, String.t()}
   defp validate_name_length(name) do
-    case String.length(name) > 0 && String.length(name) < 253 do
+    case String.length(name) > 0 && String.length(name) < get_max_name_length() do
       true ->
         labels = split_name(name)
         validate_label_length(labels)
 
       false ->
-        {:error, "name has not the correct length"}
+        {:error, "#{__MODULE__}: name has not the correct length: #{inspect(name)}"}
     end
   end
 
@@ -82,11 +83,16 @@ defmodule Aecore.Naming.NameUtil do
     :ok
   end
 
+  @spec get_max_label_length :: non_neg_integer()
+  def get_max_label_length do
+    Application.get_env(:aecore, :naming)[:max_label_length]
+  end
+
   @spec validate_label_length(list(String.t())) :: :ok | {:error, String.t()}
   defp validate_label_length([label | remainder]) do
-    case String.length(label) > 0 && String.length(label) <= 63 do
+    case String.length(label) > 0 && String.length(label) <= get_max_label_length() do
       true -> validate_label_length(remainder)
-      false -> {:error, "label has not the correct length"}
+      false -> {:error, "#{__MODULE__}: label has not the correct length: #{inspect(label)}"}
     end
   end
 end

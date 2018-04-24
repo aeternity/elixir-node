@@ -107,8 +107,8 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{commitment: Naming.create_commitment_hash(name, name_salt)}
-    spend_tx = DataTx.init(NamePreClaimTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    tx = DataTx.init(NamePreClaimTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_priv_key)
   end
 
   @doc """
@@ -135,8 +135,8 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()}
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     payload = %{name: name, name_salt: name_salt}
-    spend_tx = DataTx.init(NameClaimTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    tx = DataTx.init(NameClaimTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_priv_key)
   end
 
   @doc """
@@ -169,8 +169,8 @@ defmodule Aecore.Account.Account do
       pointers: pointers
     }
 
-    spend_tx = DataTx.init(NameUpdateTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    tx = DataTx.init(NameUpdateTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_priv_key)
   end
 
   @doc """
@@ -197,8 +197,8 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()}
   def name_transfer(sender, sender_priv_key, name, target, fee, nonce) do
     payload = %{hash: NameUtil.normalized_namehash!(name), target: target}
-    spend_tx = DataTx.init(NameTransferTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    tx = DataTx.init(NameTransferTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_priv_key)
   end
 
   @doc """
@@ -224,8 +224,8 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()}
   def name_revoke(sender, sender_priv_key, name, fee, nonce) do
     payload = %{hash: NameUtil.normalized_namehash!(name)}
-    spend_tx = DataTx.init(NameRevokeTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    tx = DataTx.init(NameRevokeTx, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_priv_key)
   end
 
   @doc """
