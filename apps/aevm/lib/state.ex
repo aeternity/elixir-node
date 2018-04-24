@@ -10,7 +10,7 @@ defmodule State do
       :storage => %{},
       :cp => 0,
       :jumpdests => [],
-      :return => nil,
+      :out => nil,
       :logs => [],
       # :return_data => return_data,
 
@@ -46,8 +46,8 @@ defmodule State do
     Map.put(state, :cp, cp)
   end
 
-  def set_return(return, state) do
-    Map.put(state, :return, return)
+  def set_out(out, state) do
+    Map.put(state, :out, out)
   end
 
   def set_logs(logs, state) do

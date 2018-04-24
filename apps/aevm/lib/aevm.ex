@@ -39,7 +39,8 @@ defmodule Aevm do
   # 0s: Stop and Arithmetic Operations
 
   def exec(OpCodes._STOP(), state) do
-    state
+    code = State.code(state)
+    State.set_cp(byte_size(code), state)
   end
 
   def exec(OpCodes._ADD(), state) do
@@ -510,6 +511,7 @@ defmodule Aevm do
   def exec(OpCodes._JUMPI(), state) do
     {position, state} = pop(state)
     {condition, state} = pop(state)
+
     jumpdests = State.jumpdests(state)
 
     if condition !== 0 do
@@ -1002,7 +1004,7 @@ defmodule Aevm do
 
     {result, state1} = Memory.get_area(from_pos, nbytes, state)
 
-    state2 = State.set_return(result, state1)
+    state2 = State.set_out(result, state1)
     code = State.code(state2)
     State.set_cp(byte_size(code), state2)
   end
