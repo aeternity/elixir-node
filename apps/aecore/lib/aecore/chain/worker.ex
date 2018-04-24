@@ -448,7 +448,7 @@ defmodule Aecore.Chain.Worker do
     chain_states = Persistence.get_all_accounts_chain_states()
 
     top_chain_state =
-      if Enum.empty?(chain_states) do
+      if Enum.empty?(Serialization.remove_struct(chain_states)) do
         state.blocks_data_map[top_hash].chain_state
       else
         chain_states
@@ -458,7 +458,7 @@ defmodule Aecore.Chain.Worker do
     blocks_info = Persistence.get_all_blocks_info()
 
     blocks_data_map =
-      if Enum.empty?(blocks_info) do
+      if Enum.empty?(Serialization.remove_struct(blocks_info)) do
         state.blocks_data_map
       else
         blocks_info
