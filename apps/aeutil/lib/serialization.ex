@@ -318,7 +318,7 @@ defmodule Aeutil.Serialization do
 @spec rlp_encode(DataTx.t(SignedTx.t())) :: binary()
   def rlp_encode(%SignedTx{} = tx) do
       signatures = for sig <- [tx.signature] do
-        if sig == nil do
+        if sig == nil do  #workaround - should be removed when CoinbaseTx will have its own structure
           ExRLP.encode(<<0>>)
         else
           ExRLP.encode(sig)
@@ -425,6 +425,22 @@ defmodule Aeutil.Serialization do
     ]
     |> ExRLP.encode()
   end
+  @spec rlp_encode(Block.t()) :: binary()
+   def rlp_encode(%Block{} = block) do
+     header_bin = header_to_binary(block.header)
+     txs =
+     for tx <- block.txs do
+       rlp_encode(tx)
+     end
+     [
+       type_to_tag(Block),
+       block.header.version,
+       header_bin,
+       txs
+     ]
+     |>
+     ExRLP.encode
+   end
   @spec rlp_encode(DataTx.t(OracleExtendTx.t())) :: binary()
   def rlp_encode(%DataTx{type: OracleExtendTx} = tx) do
     ttl_type = encode_ttl_type(tx.payload.ttl)
@@ -543,25 +559,55 @@ defmodule Aeutil.Serialization do
     end
     |> ExRLP.encode()
   end
-  #  def rlp_encode(%Block{} = block) do
-  #   pow_to_binary = 
-  #     for pow <- block.header.pow_evidence
-  #       << <<pow::32>>
-  #     end
-  #    [
-  #     type_to_tag(Block),
-  #     get_version(Block),
-  #     <<block.header.version::64,
-  #     block.header.height::64,
-  #     block.header.prev_hash::binary,
-  #     block.header.txs_hash::binary,
-  #     block.header.root_hash::binary,
-  #     block.header.target::64,
-  #     pow_to_binary,
-  #    ]
-  #    |>
-  #    ExRLP.encode
-  #  end
+  @spec header_to_binary((Header.t())) :: binary
+  def header_to_binary(%Header{} = header) do
+    pow_to_binary =
+    pow_to_binary(header.pow_evidence)
+     <<
+      header.version::64,
+      header.height::64,
+      header.prev_hash::binary-size(32),
+      header.txs_hash::binary-size(32),
+      header.root_hash::binary-size(32),
+      header.target::64,
+      pow_to_binary::binary-size(168),
+      header.nonce::64,
+      header.time::64
+    >>
+   end
+  def header_to_binary(_) do
+     :illegal_structure_serialization
+  end
+  @spec binary_to_header(binary()) :: Header.t()
+  def binary_to_header(binary) when is_binary(binary) do
+     <<version::64,
+       height::64,
+       prev_hash::binary-size(32),
+       txs_hash::binary-size(32),
+       root_hash::binary-size(32),
+       target::64,
+       pow_evidence_bin::binary-size(168),
+       nonce::64,
+       time::64
+     >> = binary
+    pow_evidence = binary_to_pow(pow_evidence_bin)
+    %Header
+     {
+      height: height,
+      nonce: nonce,
+      pow_evidence: pow_evidence,
+      prev_hash: prev_hash,
+      root_hash: root_hash,
+      target: target,
+      time: time,
+      txs_hash: txs_hash,
+      version: version
+     }
+  end
+  def binary_to_header(_) do
+     :illegal_Header_serialization
+  end
+
   defp type_to_tag(Account), do: 10
   defp type_to_tag(SignedTx), do: 11
   defp type_to_tag(SpendTx), do: 12
@@ -585,7 +631,7 @@ defmodule Aeutil.Serialization do
   defp tag_to_type(24), do: OracleResponseTx
   defp tag_to_type(25), do: OracleExtendTx
   defp tag_to_type(100), do: Block
-
+  @spec rlp_decode(binary()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = transform_item(tag_bin, :int)
@@ -595,14 +641,14 @@ defmodule Aeutil.Serialization do
       Account ->
         [pkey, nonce, height, balance] = rest_data
         [pkey, transform_item(nonce, :int), transform_item(height, :int), transform_item(balance, :int)]
-         %Account{balance: transform_item(balance, :int), last_updated: transform_item(height, :int), nonce: transform_item(nonce, :int)}
+        {:ok, %Account{balance: transform_item(balance, :int), last_updated: transform_item(height, :int), nonce: transform_item(nonce, :int)}}
 
       SignedTx ->
         [signatures, tx_data] = rest_data
         decoded_signatures = for sig <- signatures do
             ExRLP.decode(sig)
           end
-        %SignedTx{data: rlp_decode(tx_data) , signature: decoded_signatures}
+         %SignedTx{data: rlp_decode(tx_data) , signature: decoded_signatures}
 
       SpendTx ->
         [sender, receiver, amount, fee, nonce] = rest_data
@@ -614,7 +660,7 @@ defmodule Aeutil.Serialization do
           transform_item(fee, :int),
           transform_item(nonce, :int)
         ]
-        DataTx.init(SpendTx,%{receiver: receiver, amount: transform_item(amount, :int), version: ver},sender,transform_item(fee, :int),transform_item(nonce, :int))
+         DataTx.init(SpendTx,%{receiver: receiver, amount: transform_item(amount, :int), version: ver},sender,transform_item(fee, :int),transform_item(nonce, :int))
 
       CoinbaseTx ->
         [receiver, nonce, amount] = rest_data
@@ -655,7 +701,7 @@ defmodule Aeutil.Serialization do
           fee
         ] = rest_data
 
-        [
+         [
           sender,
           transform_item(nonce, :int),
           oracle_address,
@@ -697,20 +743,31 @@ defmodule Aeutil.Serialization do
       OracleExtendTx ->
         [sender, nonce, ttl_type, ttl_value, fee] = rest_data
 
-        [
+         [
           sender,
           transform_item(nonce, :int),
           transform_item(ttl_type, :binary),
           transform_item(ttl_value, :int),
           transform_item(fee, :int)
-        ]
+         ]
+      Block ->
+        [header_bin, txs] = rest_data
+        txs_list =
+          for tx <- txs do
+            rlp_decode(tx)
+          end
+
+        Block.new(%{header: binary_to_header(header_bin),txs: txs_list})
 
       _ ->
-        Logger.error("Illegal serialization")
+        {:error, :illegal_serialization}
     end
   end
   def rlp_decode(binary) when is_binary(binary) do
     ExRLP.decode binary
+  end
+  def rlp_decode(value) do
+    value
   end
  
   #  def rlp_decode(binary,pattern) do
@@ -730,6 +787,7 @@ defmodule Aeutil.Serialization do
     # Subject to discuss: These hardcoded versions could be stored somewhere in config file.
     case type do
       Account -> 1
+      Block -> 1
       SignedTx -> 1
       SpendTx -> 1
       CoinbaseTx -> 1
@@ -748,7 +806,40 @@ defmodule Aeutil.Serialization do
       :relative -> 1
     end
   end
-
+  @spec pow_to_binary(list()) :: binary()
+  def pow_to_binary(pow) when is_list(pow) do
+    if Enum.count(pow) == 42 do
+      list_of_pows =
+        for evidence <- pow do
+          <<evidence::32>>
+        end
+        serialize_pow(:binary.list_to_bin(list_of_pows),<<>>)
+    else
+      List.duplicate(0, 42)
+    end
+  end
+  defp serialize_pow(pow, acc) when pow != <<>> do
+    <<elem ::binary-size(4), rest::binary>> = pow
+    acc = acc <> elem
+    serialize_pow(rest, acc)
+  end
+  defp serialize_pow(<<>>, acc) do
+    acc
+  end
+  @spec binary_to_pow(binary()) :: list() | {:error, atom()}
+  def binary_to_pow(<<pow_bin_list::binary-size(168)>>) do
+    deserialize_pow(pow_bin_list,[])
+  end
+  def binary_to_pow(_) do
+    {:error, :illegal_PoW_serialization}
+  end
+  defp deserialize_pow(<<pow::32,rest::binary>>, acc)  do
+    acc = acc ++ [pow]
+    deserialize_pow(rest, acc)
+  end
+  defp deserialize_pow(<<>>, acc) do
+    Enum.filter(acc, fn(x) -> is_integer(x) and x >= 0 end)
+  end
   @spec nils_to_binary(SignedTx.t()) :: Map.t()
   def nils_to_binary(tx) when is_map(tx) do
     tx = remove_struct(tx)

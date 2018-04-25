@@ -71,6 +71,6 @@ defmodule AecoreTxsPoolTest do
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
     payload = %{receiver: wallet.b_pub_key, amount: -5}
     tx1 = DataTx.init(SpendTx, payload, wallet.a_pub_key, 0, nonce)
-    assert false == DataTx.is_valid?(tx1)
+    assert {:error, _} = DataTx.validate(tx1)
   end
 end

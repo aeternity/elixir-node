@@ -25,10 +25,8 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec get(tree(), Wallet.pubkey()) :: Account.t()
   def get(tree, key) do
-   case  :gb_merkle_trees.lookup(key, tree) do
-     :none -> :none
-     data -> Serialization.rlp_decode(data)
-   end
+    account_state = :gb_merkle_trees.lookup(key, tree)
+    Serialization.rlp_decode(account_state)
   end
 
   def has_key?(tree, key) do
