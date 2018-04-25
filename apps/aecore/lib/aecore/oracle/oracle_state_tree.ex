@@ -33,6 +33,60 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
+  def get_registered_oracles(trie) do
+    {:ok, value} =
+      trie
+      |> PatriciaMerkleTree.lookup(serialize_key(:registered_oracles))
+
+    deserialize_value(value)
+  end
+
+  def get_registered_oracle_by_key(trie, key) do
+    trie
+    |> get_registered_oracles()
+    |> Map.get(key)
+  end
+
+  def get_interaction_objects(trie) do
+    {:ok, value} =
+      trie
+      |> PatriciaMerkleTree.lookup(serialize_key(:interaction_objects))
+
+    deserialize_value(value)
+  end
+
+  def get_interaction_object_by_key(trie, key) do
+    trie
+    |> get_interaction_objects()
+    |> Map.get(key)
+  end
+
+  def put_registered_oracles(trie, new_oracle) do
+    updated_oracles =
+      trie
+      |> get_registered_oracles()
+      |> Map.merge(new_oracle)
+
+    oracles_serialized = serialize_value(updated_oracles)
+    key_serialized = serialize_key(:registered_oracles)
+    PatriciaMerkleTree.enter(trie, key_serialized, oracles_serialized)
+  end
+
+  def put_interaction_objects(trie, new_object) do
+    updated_iteraction_objects =
+      trie
+      |> get_interaction_objects()
+      |> Map.merge(new_object)
+
+    objects_serialized = serialize_value(updated_iteraction_objects)
+    key_serialized = serialize_key(:interaction_objects)
+    PatriciaMerkleTree.enter(trie, key_serialized, objects_serialized)
+  end
+
+  def has_key?(trie, key) do
+    PatriciaMerkleTree.lookup(trie, key) != :none
+  end
+
   defp serialize_key(key) do
     to_string(key)
   end
@@ -51,68 +105,13 @@ defmodule Aecore.Oracle.OracleStateTree do
     :erlang.binary_to_term(value)
   end
 
-  def put_registered_oracles(tree, oracle) do
-    value_serialized = Serialization.serialize_test(oracle)
-
-    Serialization.serialize_test(:registered_oracles)
-    |> :gb_merkle_trees.enter(value_serialized, tree)
-  end
-
-  def put_interaction_objects(tree, object) do
-    value_serialized = Serialization.serialize_test(object)
-
-    Serialization.serialize_test(:interaction_objects)
-    |> :gb_merkle_trees.enter(value_serialized, tree)
-  end
-
-  def get_registered_oracles(tree) do
-    value =
-      Serialization.serialize_test(:registered_oracles)
-      |> :gb_merkle_trees.lookup(tree)
-
-    case value do
-      :none -> %{}
-      _ -> Serialization.deserialize_test(value)
-    end
-  end
-
-  def get_interaction_objects(tree) do
-    value =
-      Serialization.serialize_test(:interaction_objects)
-      |> :gb_merkle_trees.lookup(tree)
-
-    case value do
-      :none -> %{}
-      _ -> Serialization.deserialize_test(value)
-    end
-  end
-
-  # def has_key?(tree, key) do
-  #   :gb_merkle_trees.lookup(key, tree) != :none
-  # end
-
   # @spec delete(tree(), Wallet.pubkey()) :: tree()
   # def delete(tree, key) do
   #   :gb_merkle_trees.delete(key, tree)
   # end
 
-  @spec balance(tree()) :: tree()
-  def balance(tree) do
-    :gb_merkle_trees.balance(tree)
-  end
-
-  @spec root_hash(tree()) :: hash()
-  def root_hash(tree) do
-    :gb_merkle_trees.root_hash(tree)
-  end
-
-  @spec reduce(tree(), any(), fun()) :: any()
-  def reduce(tree, acc, fun) do
-    :gb_merkle_trees.foldr(fun, acc, tree)
-  end
-
-  @spec size(tree()) :: non_neg_integer()
-  def size(tree) do
-    :gb_merkle_trees.size(tree)
-  end
+  # @spec root_hash(tree()) :: hash()
+  # def root_hash(tree) do
+  #   :gb_merkle_trees.root_hash(tree)
+  # end
 end

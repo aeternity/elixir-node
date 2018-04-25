@@ -7,6 +7,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -225,17 +226,18 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_oracles(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
-                                                                         %{
-                                                                           tx: tx,
-                                                                           height_included:
-                                                                             height_included
-                                                                         }},
-                                                                        acc ->
+    registered_oracles = OracleStateTree.get_registered_oracles(chain_state.oracles)
+
+    Enum.reduce(registered_oracles, chain_state, fn {address,
+                                                     %{
+                                                       tx: tx,
+                                                       height_included: height_included
+                                                     }},
+                                                    acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         acc
-        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        |> elem(1)
+        # |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
+        # |> elem(1)
       else
         acc
       end
@@ -246,7 +248,7 @@ defmodule Aecore.Oracle.Oracle do
         chain_state,
         block_height
       ) do
-    interaction_objects = chain_state.oracles.interaction_objects
+    interaction_objects = OracleStateTree.get_interaction_objects(chain_state.oracles)
 
     Enum.reduce(interaction_objects, chain_state, fn {query_id,
                                                       %{
@@ -284,13 +286,15 @@ defmodule Aecore.Oracle.Oracle do
             [:accounts, query_sender, :balance],
             &(&1 + query.query_fee)
           )
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
+
+        # |> pop_in([:oracles, :interaction_objects, query_id])
+        # |> elem(1)
 
         response_has_expired ->
           acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
+
+        # |> pop_in([:oracles, :interaction_objects, query_id])
+        # |> elem(1)
 
         true ->
           acc
