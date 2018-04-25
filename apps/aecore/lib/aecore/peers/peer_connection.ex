@@ -21,9 +21,13 @@ defmodule Aecore.Peers.PeerConnection do
 
   def accept_init(ref, socket, :ranch_tcp, opts) do
     :ok = :proc_lib.init_ack({:ok, self()})
+    IO.puts("1")
     {:ok, {host, _port}} = :inet.peername(socket)
+    IO.puts("2")
     host_bin = host |> :inet.ntoa() |> :binary.list_to_bin()
+    IO.puts("3")
     genesis_hash = Block.genesis_hash()
+    IO.puts("4")
     version = <<@p2p_protocol_vsn::64>>
     state =
       Map.merge(opts, %{role: :responder, host: host_bin, version: version, genesis: genesis_hash})

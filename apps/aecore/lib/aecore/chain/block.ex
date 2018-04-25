@@ -2,9 +2,9 @@ defmodule Aecore.Chain.Block do
   @moduledoc """
   Structure of the block
   """
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.BlockValidation
 
   @type t :: %Block{

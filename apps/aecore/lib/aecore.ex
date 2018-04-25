@@ -8,10 +8,6 @@ defmodule Aecore do
   import Supervisor.Spec
 
   def start(_type, _args) do
-    {:ok, _} = :ranch.start_listener(:peer_pool, 100,
-        :ranch_tcp, [{:port, 3015}],
-        Aecore.Peers.PeerConnection, []
-)
     children = [
       Aecore.Persistence.Worker.Supervisor,
       Aecore.Chain.Worker.Supervisor,

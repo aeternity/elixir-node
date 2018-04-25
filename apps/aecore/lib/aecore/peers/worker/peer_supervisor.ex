@@ -17,18 +17,18 @@ defmodule Aecore.Peers.Worker.PeerSupervisor do
     children = [
       PeerConnectionSupervisor,
       Peers,
-      # :ranch.child_spec(
-      #   :peer_pool,
-      #   num_of_acceptors(),
-      #   :ranch_tcp,
-      #   [port: sync_port()],
-      #   PeerConnection,
-      #   %{
-      #     port: sync_port(),
-      #     privkey: privkey,
-      #     pubkey: pubkey
-      #   }
-      # )
+      :ranch.child_spec(
+        :peer_pool,
+        num_of_acceptors(),
+        :ranch_tcp,
+        [port: sync_port()],
+        PeerConnection,
+        %{
+          port: sync_port(),
+          privkey: privkey,
+          pubkey: pubkey
+        }
+      )
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
