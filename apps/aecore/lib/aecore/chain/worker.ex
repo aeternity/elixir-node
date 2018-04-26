@@ -24,6 +24,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
@@ -631,7 +632,7 @@ defmodule Aecore.Chain.Worker do
   defp get_persist_strategy(:to_chainstate) do
     fn
       {key = :accounts, root_hash}, acc_state ->
-        Map.put(acc_state, key, Aeutil.PatriciaMerkleTree.new(key, root_hash))
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
       # TODO
       # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
