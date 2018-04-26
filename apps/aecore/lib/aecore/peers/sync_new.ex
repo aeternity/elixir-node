@@ -5,6 +5,10 @@ defmodule Aecore.Peers.SyncNew do
 
   use GenServer
 
+  alias Aecore.Chain.Header
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Persistence.Worker, as: Persistence
+
   require Logger
 
   @typedoc "Structure of a peer to sync with"
@@ -60,7 +64,16 @@ defmodule Aecore.Peers.SyncNew do
 
   ## INNER FUNCTIONS ##
 
-  def handle_cast({:start_sync, peer_id, remote_hash, remote_difficulty}, _from, state) do
+  def handle_cast({:start_sync, peer_id, remote_hash}, _from, state) do
+    case sync_in_progress?(peer_id) do
+      false ->
+        do_start_sync(peer_id, remote_hash)
+
+      true ->
+        Lagger.info("#{__MODULE__}: sync is already in progress with #{inspect(peer_id)}")
+    end
+
+    {:noreply, state}
   end
 
   def handle_call(
@@ -138,5 +151,84 @@ defmodule Aecore.Peers.SyncNew do
       end
 
     {new_peer?, Enum.sort_by(new_pool, fn peer -> peer.difficulty end)}
+  end
+
+  ## TODO: Fix the return value
+  @spec do_start_sync(String.t(), binary()) :: String.t()
+  def do_start_sync(peer_id, remote_hash) do
+    case get_header_by_hash(peer_id, remote_hash) do
+      {:ok, remote_header} ->
+        remote_height = remote_header.height
+        local_height = Chain.top_height()
+        {:ok, genesis_block} = Chain.get_block_by_height(0)
+        min_agreed_hash = genesis_block.header.height
+        max_agreed_height = min(local_height, remote_height)
+
+        {agreed_height, agreed_hash} =
+          agree_on_height(
+            peer_id,
+            remote_header,
+            remote_height,
+            max_agreed_height,
+            max_agreed_height,
+            0,
+            min_agreed_hash
+          )
+
+        case new_header?(peer_id, remote_header, agreed_height, agreed_hash) do
+          false ->
+            # Already syncing with this peer
+            :ok
+
+          true ->
+            # TODO: pool_result = fill_pool(peer_id, agreed_hash)
+            # TODO: fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
+            :ok
+        end
+
+      {:error, reason} ->
+        Logger.error("#{__MODULE__}: Fetching top block from
+        #{inspect(peer_id)} failed with: #{inspect(reason)} ")
+    end
+  end
+
+  @spec agree_on_height(
+          String.t(),
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary()
+        )
+  def agree_on_height(_peer_id, _r_header, _r_height, _l_height, max, min, agreed_hash)
+      when max == min do
+    {min, agreed_hash}
+  end
+
+  def agree_on_height(peer_id, r_header, r_height, l_height, max, min, agreed_hash)
+      when r_height == l_height do
+    r_hash = r_header.root_hash
+
+    case Persistence.get_block_by_hash(r_hash) do
+      {:ok, _} ->
+        # We agree on this block height
+        {r_height, r_hash}
+
+      _ ->
+        # We are on a fork
+        agree_on_height(peer_id, r_header, r_height, l_height - 1, max, mix, agreed_hash)
+    end
+  end
+
+  def agree_on_height(peer_id, r_header, r_height, l_height, max, min, agreed_hash)
+      when r_height != l_height do
+    case get_header_by_height(peer_id, l_height) do
+      {:ok, header} ->
+        agree_on_height(peer_id, header, l_height, l_height, max, mix, agreed_hash)
+
+      {:error, reason} ->
+        {min, agreed_hash}
+    end
   end
 end
