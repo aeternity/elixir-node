@@ -445,7 +445,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_accounts_chain_states()
+    chain_states = Persistence.get_all_chainstates()
 
     top_chain_state =
       if Enum.empty?(Serialization.remove_struct(chain_states)) do
