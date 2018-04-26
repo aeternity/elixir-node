@@ -4,7 +4,7 @@ defmodule State do
     bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
-    state = %{
+    %{
       :stack => [],
       :memory => %{size: 0},
       :storage => %{},
@@ -26,7 +26,9 @@ defmodule State do
       :currentDifficulty => Map.get(env, :currentDifficulty),
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
-      :currentTimestamp => Map.get(env, :currentTimestamp)
+      :currentTimestamp => Map.get(env, :currentTimestamp),
+
+      :pre => pre
     }
   end
 
@@ -134,6 +136,27 @@ defmodule State do
     Map.get(state, :currentTimestamp)
   end
 
+  def get_balance(address, state) do
+    pre = Map.get(state, :pre)
+    account = Map.get(pre, address, %{})
+    Map.get(account, :balance, 0)
+  end
+
+  def get_ext_code_size(address, state) do
+    pre = Map.get(state, :pre)
+    account = Map.get(pre, address, %{})
+    code = Map.get(account, :code, <<>>)
+
+    byte_size(code)
+  end
+
+  def get_code(address, state) do
+    pre = Map.get(state, :pre)
+    account = Map.get(pre, address, %{})
+    
+    Map.get(account, :code, <<>>)
+  end
+
   # def return_data(state) do
   #   Map.get(state, :return_data)
   # end
@@ -143,8 +166,9 @@ defmodule State do
     Map.put(state, :cp, cp + 1)
   end
 
-  defp bytecode_to_bin(bytecode) do
+  def bytecode_to_bin(bytecode) do
     bytecode
+    |> String.replace("0x", "")
     |> String.to_charlist()
     |> Enum.chunk_every(2)
     |> Enum.reduce([], fn x, acc ->

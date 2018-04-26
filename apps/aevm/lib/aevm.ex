@@ -39,7 +39,8 @@ defmodule Aevm do
   # 0s: Stop and Arithmetic Operations
 
   def exec(OpCodes._STOP(), state) do
-    state
+    code = State.code(state)
+    State.set_cp(byte_size(code), state)
   end
 
   def exec(OpCodes._ADD(), state) do
@@ -331,7 +332,11 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._BALANCE(), state) do
-    # TODO
+    {address, state} = pop(state)
+
+    result = State.get_balance(address, state)
+
+    push(result, state)
   end
 
   def exec(OpCodes._ORIGIN(), state) do
@@ -393,11 +398,23 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._EXTCODESIZE(), state) do
-    # TODO
+    {address, state} = pop(state)
+
+    ext_code_size = State.get_ext_code_size(address, state)
+
+    push(ext_code_size, state)
   end
 
   def exec(OpCodes._EXTCODECOPY(), state) do
-    # TODO
+    # TODO: test
+    {address, state1} = pop(state)
+    {nbytes, state2} = pop(state1)
+    {from_code_pos, state3} = pop(state2)
+    {to_code_pos, state4} = pop(state3)
+
+    code = State.get_code(address, state)
+    code_bytes = copy_bytes(from_code_pos, to_code_pos, code)
+    Memory.write_area(nbytes, code_bytes, state4)
   end
 
   def exec(OpCodes._RETURNDATASIZE(), state) do
