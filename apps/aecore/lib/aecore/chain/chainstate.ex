@@ -30,14 +30,17 @@ defmodule Aecore.Chain.Chainstate do
   def init do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
-      :oracles => OracleStateTree.init_empty1()
-      #   %{registered_oracles: %{}, interaction_objects: %{}}
+      :oracles => OracleStateTree.init_empty()
     }
   end
 
   @spec calculate_and_validate_chain_state(list(), Chainstate.t(), non_neg_integer()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height) do
+    IO.puts("*****")
+    IO.inspect(chainstate)
+    IO.puts("*****")
+
     updated_chainstate =
       Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
         case apply_transaction_on_state(tx, chainstate, block_height) do

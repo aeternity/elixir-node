@@ -235,9 +235,8 @@ defmodule Aecore.Oracle.Oracle do
                                                      }},
                                                     acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
-        acc
-        # |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        # |> elem(1)
+        updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
+        %{acc | oracles: updated_oracles}
       else
         acc
       end
@@ -287,12 +286,17 @@ defmodule Aecore.Oracle.Oracle do
             &(&1 + query.query_fee)
           )
 
+          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
+          %{acc | oracles: updated_oracles}
+
         # |> pop_in([:oracles, :interaction_objects, query_id])
         # |> elem(1)
 
         response_has_expired ->
-          acc
+          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
+          %{acc | oracles: updated_oracles}
 
+        # acc
         # |> pop_in([:oracles, :interaction_objects, query_id])
         # |> elem(1)
 

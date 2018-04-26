@@ -24,6 +24,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Oracle.OracleStateTree
 
   require Logger
 
@@ -421,7 +422,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    registered_oracles = OracleStateTree.get_registered_oracles(oracle_tree)
     {:reply, registered_oracles, state}
   end
 
@@ -430,7 +432,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    interaction_objects = OracleStateTree.get_interaction_objects(oracle_tree)
     {:reply, interaction_objects, state}
   end
 

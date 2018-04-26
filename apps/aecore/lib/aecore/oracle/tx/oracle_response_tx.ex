@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Oracle.OracleStateTree
 
   @type payload :: %{
           query_id: binary(),
@@ -57,8 +58,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           AccountStateTree.tree(),
-          Oracle.t()
-        ) :: {AccountStateTree.tree(), Oracle.t()}
+          OracleStateTree.oracle_state()
+        ) :: {AccountStateTree.tree(), OracleStateTree.oracle_state()}
   def process_chainstate(
         %OracleResponseTx{} = tx,
         sender,
@@ -66,8 +67,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         nonce,
         block_height,
         accounts,
-        %{interaction_objects: interaction_objects} = oracle_state
+        oracles
       ) do
+    interaction_objects = OracleStateTree.get_interaction_objects(oracles)
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
 
@@ -87,12 +89,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           response_height_included: block_height
       })
 
-    updated_oracle_state = %{
-      oracle_state
-      | interaction_objects: updated_interaction_objects
-    }
+    updated_oracles_chainstate =
+      OracleStateTree.put_interaction_objects(oracles, updated_interaction_objects)
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {updated_accounts_chainstate, updated_oracles_chainstate}
   end
 
   @spec preprocess_check(
@@ -102,12 +102,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Oracle.t()
+          OracleStateTree.oracle_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, %{
-        registered_oracles: registered_oracles,
-        interaction_objects: interaction_objects
-      }) do
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, oracle_tree) do
+    registered_oracles = OracleStateTree.get_registered_oracles(oracle_tree)
+    interaction_objects = OracleStateTree.get_interaction_objects(oracle_tree)
+
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
