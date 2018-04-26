@@ -174,7 +174,8 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block_by_height(non_neg_integer(), binary() | nil) :: Block.t() | {:error, binary()}
+  @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
+          {:ok, Block.t()} | {:error, binary()}
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
