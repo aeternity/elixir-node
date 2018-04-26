@@ -13,6 +13,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
@@ -302,4 +304,118 @@ defmodule Aecore.Oracle.Oracle do
         ttl > 0
     end
   end
+
+  def rlp_encode(
+        %Chainstate{oracles: %{registered_oracles: registered_oracles}},
+        orc_owner,
+        :oracle_state
+      ) do
+    # list_of_formatted_data =
+    # Subject to discuss field "height_included" in our structures is not being encoded , erlang" core doesnt have this field
+    case Map.get(registered_oracles, orc_owner) do
+      nil ->
+        [
+          type_to_tag(Oracle),
+          get_version(Oracle),
+          orc_owner, # owner
+          Serialization.transform_item(%{}), #query_format, should be a string(but we have a map)
+          Serialization.transform_item(%{}), #response_format, should be a string (but we have a map)
+          0, #query_fee
+          0, #expires
+        ]
+
+      data ->
+        [
+          type_to_tag(Oracle),
+          get_version(Oracle),
+          orc_owner,  # owner
+          # Subject to discuss/change - In Erlang implementation its a UTF8 encoded string but in our case - map
+          Serialization.transform_item(data.tx.query_format), #query_format, should be a string(but we have a map)
+          Serialization.transform_item(data.tx.response_format), #response_format, should be a string (but we have a map)
+          data.tx.query_fee, #query_fee
+          # Subject to discuss/change - Erlang core has an integer field called expires, our case - map with ttl and its type :absolute/relative
+         # encode_ttl_type(data.tx.ttl),
+          data.tx.ttl.ttl  #"expires" doesnt exist at this moment,
+        ]
+    end
+    |> ExRLP.encode()
+  end
+  def rlp_encode(
+        %Chainstate{oracles: %{interaction_objects: interaction_objects}},
+        sender_address,
+        :oracle_query
+      ) do
+    case Map.get(interaction_objects, sender_address) do
+      nil ->
+        [
+          type_to_tag(OracleQuery), #type
+          get_version(OracleQuery), #ver
+          sender_address, #pubkey
+          0, #sender_nonce
+          <<0>>, # oracle_address
+          Serialization.transform_item(%OracleQueryTx{}), #query
+          <<0>>, #has_response
+          Serialization.transform_item(%OracleResponseTx{}), #response
+          0, #expires
+          0, #response_ttl
+          0, #fee
+        ]
+
+      data ->
+        [
+          type_to_tag(OracleQuery), #type
+          get_version(OracleQuery), #ver
+          sender_address, #pubkey
+          # Subject : We dont have sender_nonce field here,
+          data.query.oracle_address, # oracle_address
+          # Subject : Query: Equivalent here would be fully composed DataTx(OracleQueryTx) , not just OracleQueryTx
+          DataTx.rlp_encode(Serialization.transform_item(data.query)), #query
+          <<0>>,  # Subject: has_response field doesnt exist, will be hardcoded as <<0>>/false for now
+          # Subject: Response: Equivalent here would be fully composed DataTx(ResponseTx), not a map
+          DataTx.rlp_encode(Serialization.transform_item(data.query.response)), #response
+          data.query.query_ttl.ttl, # Subject: no field called "expires" here, should be calculated over ttl_type and ttl_value itself
+          data.query.response_ttl.ttl,
+          data.query.query_fee
+        ]
+    end
+    |> ExRLP.encode()
+  end
+  def rlp_encode(_) do
+    :invalid_oracle_struct
+  end
+  @spec rlp_decode(binary()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
+  def rlp_decode(values) when is_binary(values) do
+    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
+    tag = Serialization.transform_item(tag_bin, :int)
+    ver = Serialization.transform_item(ver_bin, :int)
+    case type_to_tag(tag) do
+        Oracle ->
+          [orc_owner, query_format, response_format, query_fee, ttl_type, ttl] = rest_data
+
+        [
+          orc_owner,
+          Serialization.transform_item(query_format, :binary),
+          Serialization.transform_item(response_format, :binary),
+          Serialization.transform_item(query_fee, :int),
+          Serialization.transform_item(ttl_type, :int),
+          Serialization.transform_item(ttl, :int)
+        ]
+       OracleQuery ->
+        [sender_address,oracle_address,query_data,has_response, query_response, expires,response_ttl,query_fee] = rest_data
+        
+    end
+    
+  end
+
+  @spec type_to_tag(atom()) :: integer 
+  defp type_to_tag(Oracle), do: 20
+  defp type_to_tag(OracleQuery), do: 21
+
+  @spec tag_to_type(integer()) :: atom() 
+  defp tag_to_type(20), do: Oracle
+  defp tag_to_type(21), do: OracleQuery
+
+  defp get_version(Oracle), do: 1
+  defp get_version(OracleQuery), do: 1
+
 end

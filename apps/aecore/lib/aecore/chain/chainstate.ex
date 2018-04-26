@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Tx.SpendTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -167,4 +168,36 @@ defmodule Aecore.Chain.Chainstate do
   def base58c_decode(bin) do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
+  
+  @spec rlp_encode(Chainstate.t(), Wallet.pubkey()) :: atom()  
+  def rlp_encode(%Chainstate{accounts: accounts}, pkey) do
+    account_info = Account.get_account_state(accounts, pkey)
+
+    [
+      type_to_tag(Account),
+      get_version(Account),
+      pkey, #pubkey
+      account_info.nonce, #should be height but atm its nonce
+      account_info.balance #balance
+    ]
+    |> ExRLP.encode()
+  end
+  def rlp_encode(_) do
+    :invalid_account_structure
+  end
+  @spec rlp_decode(binary()) :: binary() | atom()
+  def rlp_decode(values) when is_binary(values) do
+    Account.rlp_decode(values)
+  end
+  def rlp_decode(:none) do
+    :none
+  end
+  def rlp_decode(_) do
+    :invalid_serialization
+  end
+
+  defp type_to_tag(Account), do: 10
+  defp tag_to_type(10), do: Account
+  defp get_version(Account), do: 1
+  
 end

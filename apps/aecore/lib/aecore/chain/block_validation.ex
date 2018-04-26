@@ -13,6 +13,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Difficulty
   alias Aeutil.Serialization
   alias Aeutil.Hash
+  alias Aecore.Tx.DataTx
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
@@ -150,7 +151,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = Serialization.rlp_encode(transaction.data)
+          transaction_data_bin = DataTx.rlp_encode(transaction.data)
           {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 

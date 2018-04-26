@@ -115,7 +115,7 @@ defmodule Aecore.Tx.Pool.Worker do
       key =
         tx.type
         |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
-        |> Serialization.rlp_encode()
+        |> DataTx.rlp_encode()
 
       hashed_key = Hash.hash(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)

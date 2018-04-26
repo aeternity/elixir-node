@@ -24,6 +24,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -522,7 +523,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.rlp_encode(filtered_tx)
+          tx_bin = SignedTx.rlp_encode(filtered_tx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)
