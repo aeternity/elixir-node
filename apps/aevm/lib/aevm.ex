@@ -47,7 +47,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = op1 + op2
+    result = (op1 + op2) &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -56,7 +56,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = op1 * op2
+    result = (op1 * op2) &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -65,7 +65,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = op1 - op2
+    result = (op1 - op2) &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -81,7 +81,9 @@ defmodule Aevm do
         Integer.floor_div(op1, op2)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._SDIV(), state) do
@@ -95,7 +97,9 @@ defmodule Aevm do
         sdiv(op1, op2)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._MOD(), state) do
@@ -109,7 +113,9 @@ defmodule Aevm do
         rem(op1, op2)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._SMOD(), state) do
@@ -123,7 +129,9 @@ defmodule Aevm do
         smod(op1, op2)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._ADDMOD(), state) do
@@ -138,7 +146,9 @@ defmodule Aevm do
         rem(op1 + op2, op3)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._MULMOD(), state) do
@@ -153,14 +163,16 @@ defmodule Aevm do
         rem(op1 * op2, op3)
       end
 
-    push(result, state)
+    masked = result &&& AevmConst.mask256()
+
+    push(masked, state)
   end
 
   def exec(OpCodes._EXP(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = round(:math.pow(op1, op2))
+    result = round(:math.pow(op1, op2)) &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -507,7 +519,6 @@ defmodule Aevm do
   def exec(OpCodes._SSTORE(), state) do
     {key, state} = pop(state)
     {value, state} = pop(state)
-
     Storage.sstore(key, value, state)
   end
 
@@ -527,6 +538,7 @@ defmodule Aevm do
   def exec(OpCodes._JUMPI(), state) do
     {position, state} = pop(state)
     {condition, state} = pop(state)
+
     jumpdests = State.jumpdests(state)
 
     if condition !== 0 do
@@ -1019,7 +1031,7 @@ defmodule Aevm do
 
     {result, state1} = Memory.get_area(from_pos, nbytes, state)
 
-    state2 = State.set_return(result, state1)
+    state2 = State.set_out(result, state1)
     code = State.code(state2)
     State.set_cp(byte_size(code), state2)
   end
@@ -1061,14 +1073,14 @@ defmodule Aevm do
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
-    Bitwise.band(Integer.floor_div(svalue1, svalue2), AevmConst.mask256())
+    Integer.floor_div(svalue1, svalue2) &&& AevmConst.mask256()
   end
 
   defp smod(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
     result = rem(rem(svalue1, svalue2 + svalue2), svalue2)
-    Bitwise.band(result, AevmConst.mask256())
+    result &&& AevmConst.mask256()
   end
 
   defp signed(value) do
@@ -1079,7 +1091,7 @@ defmodule Aevm do
   defp byte(byte, value) when byte < 32 do
     byte_pos = 256 - 8 * (byte + 1)
     mask = 255
-    Bitwise.band(Bitwise.bsr(value, byte_pos), mask)
+    value >>> byte_pos &&& mask
   end
 
   defp push(value, state) do
