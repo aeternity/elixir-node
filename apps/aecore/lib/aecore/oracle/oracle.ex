@@ -255,10 +255,10 @@ defmodule Aecore.Oracle.Oracle do
           |> pop_in([:oracles, :interaction_objects, query_id])
           |> elem(1)
 
-        if !has_response do
-          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
-        else
+        if has_response do
           updated_state
+        else
+          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
         end
       else
         acc
