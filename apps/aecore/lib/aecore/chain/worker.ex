@@ -634,8 +634,14 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
-      # TODO
-      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      ## TODO
+      ## This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      ## Use this when the oracles are ready:
+      ##
+      ## ```
+      ## {key, root_hash}, acc_state ->
+      ## Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+      ## ```
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
     end
@@ -646,8 +652,14 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 
-      # TODO
-      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      ## TODO
+      ## This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      ## Use this when the oracles are ready:
+      ##
+      ## ```
+      ## {key, root_hash}, acc_state ->
+      ## Map.put(acc_state, key, value.root_hash)
+      ## ```
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
     end
