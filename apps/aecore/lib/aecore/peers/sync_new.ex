@@ -76,6 +76,11 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.call(__MODULE__, {:forward_tx, tx, peer_id})
   end
 
+  @spec fetch_next(String.t(), non_neg_integer(), binary(), any()) :: tuple()
+  def fetch_next(peer_id, height_in, hash_in, result) do
+    GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
+  end
+
   ## INNER FUNCTIONS ##
 
   def handle_cast({:start_sync, peer_id, remote_hash}, _from, state) do
@@ -144,6 +149,74 @@ defmodule Aecore.Peers.SyncNew do
 
   def handle_call({:forward_tx, tx, peer_id}, _from, state) do
     {:no_reply, do_forward_tx(tx, peer_id), state}
+  end
+
+  def handle_call({:fetch_next, peer_id, height_in, hash_in, result}, _, state) do
+    hash_pool =
+      case result do
+        {:ok, block} ->
+          block_height = block.header.height
+          block_hash = block.header.hash
+
+          List.keyreplace(
+            state.hash_pool,
+            {block_height, block_hash},
+            1,
+            {{block_height, block_hash}, %{block: block}}
+          )
+
+        _ ->
+          state.hash_pool
+      end
+
+    Logger.info("#{__MODULE__}: fetch next from Hashpool")
+
+    case update_chain_from_pool(height_in, hash_in, hash_pool) do # TODO: write this func
+      {:error, reason} ->
+        Logger.info("#{__MODULE__}: Chain update failed", reason)
+        {:reply, {:error, :sync_stopped}, %{state | hash_pool: hash_pool}}
+
+      {:ok, new_height, new_hash, []} ->
+        Logger.debug("Got all the blocks from Hashpool")
+
+        case Enum.find(state.sync_pool, false, fn peer -> Map.get(peer, :id) == peer_id end) do
+          false ->
+            ## abort sync
+            {:reply, {:error, :sync_stopped}, %{state | hash_pool: []}}
+
+          %{to: to_height} = peer when to_height <= new_height ->
+            new_sync_pool =
+              Enum.reject(state.sync_pool, fn peers -> Map.get(peer, :id) == peer_id end)
+
+            {:reply, :done, %{state | hash_pool: [], sync_pool: new_sync_pool}}
+
+          peer ->
+            # TODO: Figure out what :fill_pool should do and where it is handled
+            {:reply, {:fill_pool, new_height, new_hash}, %{state | hash_pool: []}}
+        end
+
+      {:ok, new_height, new_hash, new_hash_pool} ->
+        Logger.debug("Updated Hashpool")
+
+        sliced_hash_pool =
+          for {{height, hash}, %{peer_id: id}} <- new_hash_pool do
+            {height, hash}
+          end
+
+        case sliced_hash_pool do
+          [] ->
+            ## We have all blocks
+            {:reply, {:insert, new_height, new_hash}, %{state | hash_pool: new_hash_pool}}
+
+          pick_from_hashes ->
+            random = :rand.uniform(length(pick_from_hashes))
+            {pick_height, pick_hash} = Enum.fetch(pick_from_hashes, random)
+
+            # TODO: Figure out what :fetch should do and where it is handled
+            {:reply, {:fetch, new_height, new_hash, pick_hash},
+             %{state | hash_pool: new_hash_pool}}
+        end
+    end
   end
 
   @spec insert_header(sync_peer(), sync_pool()) :: {true | false, sync_pool()}
