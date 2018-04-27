@@ -84,7 +84,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       Map.put(interaction_objects, tx.query_id, %{
         interaction_object
         | response: tx.response,
-          response_height_included: block_height
+          expires: interaction_object.expires + interaction_object.response_ttl,
+          has_response: true
       })
 
     updated_oracle_state = %{
@@ -116,7 +117,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
-        registered_oracles[sender].tx.response_format,
+        registered_oracles[sender].response_format,
         tx.response
       ) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}

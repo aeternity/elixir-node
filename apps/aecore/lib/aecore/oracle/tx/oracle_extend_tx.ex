@@ -10,6 +10,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Account.AccountStateTree
 
   @type payload :: %{
           ttl: non_neg_integer()
@@ -59,16 +60,16 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ) do
     new_sender_account_state =
       accounts
-      |> Map.get(sender, Account.empty())
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
     updated_oracle_state =
       update_in(
         oracle_state,
-        [:registered_oracles, sender, :tx, Access.key(:ttl), :ttl],
+        [:registered_oracles, sender, :expires],
         &(&1 + tx.ttl)
       )
 

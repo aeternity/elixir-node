@@ -101,8 +101,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     updated_registered_oracles =
       Map.put_new(registered_oracles, sender, %{
-        tx: tx,
-        height_included: block_height
+        owner: sender,
+        query_format: tx.query_format,
+        response_format: tx.response_format,
+        query_fee: tx.query_fee,
+        expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
       })
 
     updated_oracle_state = %{

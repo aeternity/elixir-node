@@ -83,11 +83,14 @@ defmodule AecoreOracleTest do
     assert Chain.oracle_interaction_objects()
            |> Map.values()
            |> Enum.map(fn object -> object.response end)
-           |> Enum.all?(fn response -> response == nil end)
+           |> Enum.all?(fn response -> response == :undefined end)
 
     oracle_respond(:valid)
+    Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
     # Check for last_updated
+    oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
+    assert oracle.expires == 10
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 

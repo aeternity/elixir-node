@@ -109,11 +109,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     updated_interaction_objects =
       Map.put(interaction_objects, interaction_object_id, %{
-        query: tx,
-        query_height_included: block_height,
-        query_sender: sender,
-        response: nil,
-        response_height_included: nil
+        sender_address: sender,
+        sender_nonce: nonce,
+        oracle_address: tx.oracle_address,
+        query: tx.query_data,
+        has_response: false,
+        response: :undefined,
+        expires: Oracle.calculate_absolute_ttl(tx.query_ttl, block_height),
+        response_ttl: tx.response_ttl.ttl,
+        fee: tx.query_fee
       })
 
     updated_oracle_state = %{
@@ -148,12 +152,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
          #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
-        registered_oracles[tx.oracle_address].tx.query_format,
+        registered_oracles[tx.oracle_address].query_format,
         tx.query_data
       ) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
-      tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
+      tx.query_fee < registered_oracles[tx.oracle_address].query_fee ->
         {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
          lower than the one required by the oracle"}
 
@@ -179,8 +183,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
-    tx_query_fee_is_met =
-      tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].tx.query_fee
+    tx_query_fee_is_met = tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].query_fee
 
     tx_fee_is_met =
       case tx.query_ttl do
