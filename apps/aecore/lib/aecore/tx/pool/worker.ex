@@ -65,19 +65,19 @@ defmodule Aecore.Tx.Pool.Worker do
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     cond do
-      !SignedTx.is_valid?(tx) ->
-        Logger.error("Invalid transaction")
+      :ok != SignedTx.validate(tx) ->
+        Logger.error("#{__MODULE__}: Invalid transaction: #{inspect(tx)}")
         {:reply, :error, tx_pool}
 
       !is_minimum_fee_met?(tx, :pool) ->
-        Logger.error("Fee is too low")
+        Logger.error("#{__MODULE__}: Fee: #{tx.data.fee} is too low")
         {:reply, :error, tx_pool}
 
       true ->
         updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
 
         if tx_pool == updated_pool do
-          Logger.info("Transaction is already in pool")
+          Logger.info("#{__MODULE__}: Transaction is already in pool")
         else
           # Broadcasting notifications for new transaction in a pool(per account and every)
           Notify.broadcast_new_transaction_in_the_pool(tx)

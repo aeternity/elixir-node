@@ -10,6 +10,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
@@ -38,9 +39,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
     cond do
       ttl <= 0 ->
-        Logger.error("Invalid ttl")
-        false
-
+        {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
+ 
       length(senders) != 1 ->
         Logger.error("Invalid senders number")
         false
@@ -98,10 +98,10 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Account isn't a registered operator"})
+        {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok

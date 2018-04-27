@@ -26,14 +26,14 @@ defmodule Aecore.Tx.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback is_valid?(tx_types(), DataTx.t()) :: boolean()
+  @callback validate(tx_types()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.
   Make necessary changes to the account_state and tx_type_state of
   the transaction (Transaction type-specific chainstate)
   """
-  @callback process_chainstate!(
+  @callback process_chainstate(
               tx_types(),
               DataTx.t(),
               block_height :: non_neg_integer(),
@@ -45,14 +45,35 @@ defmodule Aecore.Tx.Transaction do
   Default preprocess_check implementation for deduction of the fee.
   You may add as many as you need additional checks
   depending on your transaction specifications.
+
+  ## Example
+      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
+        cond do
+          account_state.balance - (tx.amount + fee) < 0 ->
+           {:error, "Negative balance"}
+
+        account_state.nonce >= nonce ->
+           {:error, "Nonce too small"}
+
+        1-st_additional_check_required_by_your_tx_functionality ->
+          {:error, reason}
+
+        . . .
+
+        n-th_additional_checks_required_by_your_tx_functionality ->
+           {:error, reason}
+
+          true ->
+           :ok
+      end
   """
-  @callback preprocess_check!(
+  @callback preprocess_check(
               ChainState.accounts(),
               tx_type_state(),
               block_height :: non_neg_integer(),
               SpendTx.t(),
               tx_types()
-            ) :: :ok
+            ) :: :ok | {:error, reason}
 
   @callback deduct_fee(
               ChainState.accounts(),

@@ -10,13 +10,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -130,25 +127,25 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         throw({:error, "Negative balance"})
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Sender isn't a registered operator"})
+        {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        throw({:error, "Invalid response data"})
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        throw({:error, "No query with that ID"})
+        {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
       interaction_objects[tx.query_id].response != nil ->
-        throw({:error, "Query already answered"})
+        {:error, "#{__MODULE__}: Query already answered"}
 
       interaction_objects[tx.query_id].query.oracle_address != sender ->
-        throw({:error, "Query references a different oracle"})
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

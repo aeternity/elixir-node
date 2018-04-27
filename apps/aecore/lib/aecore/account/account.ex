@@ -142,7 +142,7 @@ defmodule Aecore.Account.Account do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 end

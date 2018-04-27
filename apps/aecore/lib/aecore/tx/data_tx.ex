@@ -96,8 +96,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @doc """
-  Checks whether the fee is above 0. If it is, it runs the transaction type
-  validation checks. Otherwise we return error.
+  Checks whether the fee is above 0.
   """
   @spec is_valid?(DataTx.t()) :: boolean()
   def is_valid?(%DataTx{fee: fee, type: type} = tx) do

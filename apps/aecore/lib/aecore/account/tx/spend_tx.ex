@@ -9,6 +9,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -46,8 +47,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @callback get_chain_state_name :: atom() | nil
-  def get_chain_state_name, do: nil
+  @spec get_chain_state_name() :: :none
+  def get_chain_state_name, do: :none
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do

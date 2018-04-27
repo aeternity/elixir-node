@@ -60,7 +60,7 @@ defmodule Aecore.Miner.Worker do
     if Peers.chain_synced?() do
       GenServer.call(__MODULE__, {:mining, :start})
     else
-      Logger.error("Can't start miner, chain not yet synced")
+      Logger.error("#{__MODULE__}: Can't start miner, chain not yet synced")
     end
   end
 
@@ -120,12 +120,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def handle_call(any, _from, state) do
-    Logger.info("[Miner] handle call any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle call any: #{inspect(any)}")
     {:reply, :ok, state}
   end
 
   def handle_cast(any, state) do
-    Logger.info("[Miner] handle cast any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle cast any: #{inspect(any)}")
     {:noreply, state}
   end
 
@@ -138,12 +138,12 @@ defmodule Aecore.Miner.Worker do
   end
 
   def handle_info(:timeout, state) do
-    Logger.info("[Miner] Mining was resumed by default")
+    Logger.info("#{__MODULE__}: Mining was resumed by default")
     {:noreply, mining(%{state | miner_state: :running, block_candidate: candidate()})}
   end
 
   def handle_info(any, state) do
-    Logger.info("[Miner] handle info any: #{inspect(any)}")
+    Logger.info("#{__MODULE__}: handle info any: #{inspect(any)}")
     {:noreply, state}
   end
 
@@ -151,7 +151,7 @@ defmodule Aecore.Miner.Worker do
 
   defp mining(%{miner_state: :running, job: job} = state)
        when job != {} do
-    Logger.error("[Miner] Miner is still working")
+    Logger.error("#{__MODULE__}: Miner is still working")
     state
   end
 
@@ -207,11 +207,9 @@ defmodule Aecore.Miner.Worker do
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
 
   defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
-    Logger.info(fn ->
-      "Mined block ##{cblock.header.height}, difficulty target #{cblock.header.target}, nonce #{
-        cblock.header.nonce
-      }"
-    end)
+    Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},
+        difficulty target #{cblock.header.target},
+        nonce #{cblock.header.nonce}" end)
 
     cblock = %{cblock | header: miner_header}
     Chain.add_block(cblock)
@@ -223,31 +221,30 @@ defmodule Aecore.Miner.Worker do
   def candidate do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
-    chain_state = Chain.chain_state(top_block_hash)
+    {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
     candidate_height = top_block.header.height + 1
 
-    try do
-      blocks_for_difficulty_calculation =
-        Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+    blocks_for_difficulty_calculation =
+      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
 
-      timestamp = System.system_time(:milliseconds)
+    timestamp = System.system_time(:milliseconds)
 
-      difficulty =
-        Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
+    difficulty =
+      Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
 
-      txs_list = get_pool_values()
-      ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
+    txs_list = get_pool_values()
+    ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
 
-      valid_txs_by_chainstate =
-        Chainstate.filter_invalid_txs(ordered_txs_list, chain_state, candidate_height)
+    valid_txs_by_chainstate =
+      Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
 
-      valid_txs_by_fee =
-        filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
+    valid_txs_by_fee =
+      filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
-      pubkey = Wallet.get_public_key()
+    pubkey = Wallet.get_public_key()
 
-      total_fees = calculate_total_fees(valid_txs_by_fee)
+    total_fees = calculate_total_fees(valid_txs_by_fee)
 
       valid_txs = [
         Account.create_coinbase_tx(
@@ -257,12 +254,7 @@ defmodule Aecore.Miner.Worker do
         | valid_txs_by_fee
       ]
 
-      create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
-    catch
-      message ->
-        Logger.error(fn -> "Failed to mine block: #{Kernel.inspect(message)}" end)
-        {:error, message}
-    end
+    create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
   end
 
   def calculate_total_fees(txs) do
@@ -294,8 +286,8 @@ defmodule Aecore.Miner.Worker do
   defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp) do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
-    new_chain_state =
-      Chainstate.calculate_and_validate_chain_state!(
+    {:ok, new_chain_state} =
+      Chainstate.calculate_and_validate_chain_state(
         valid_txs,
         chain_state,
         top_block.header.height + 1

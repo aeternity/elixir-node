@@ -103,7 +103,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
+    {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   def get_sign_max_size do
@@ -128,8 +128,8 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_root(bin) do
@@ -140,8 +140,8 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode_root(_) do
-    {:error, "Wrong data"}
+  def base58c_decode_root(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_signature(bin) do

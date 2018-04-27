@@ -4,16 +4,14 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   and functions associated with those transactions.
   """
 
+  @behaviour Aecore.Tx.Transaction
+
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -71,12 +69,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       try do
         JsonSchema.resolve(query_format)
         JsonSchema.resolve(response_format)
-        true
+        :ok
       rescue
         e ->
-          Logger.error("Invalid query or response format definition - " <> inspect(e))
-
-          false
+          {:error, "#{__MODULE__}: Invalid query or response format definition - #{inspect(e)}"}
       end
 
     cond do
@@ -149,13 +145,13 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Account is already an oracle"})
+        {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

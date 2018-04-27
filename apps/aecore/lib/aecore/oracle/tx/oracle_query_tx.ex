@@ -17,10 +17,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
 
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
-
   @type id :: binary()
 
   @type payload :: %{
@@ -172,22 +168,24 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         throw({:error, "Negative balance"})
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        throw({:error, "No oracle registered with that address"})
+        {:error, "#{__MODULE__}: No oracle registered with the address:
+         #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
         registered_oracles[tx.oracle_address].tx.query_format,
         tx.query_data
       ) ->
-        throw({:error, "Invalid query data"})
+        {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
       tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        throw({:error, "Query fee lower than the one required by the oracle"})
+        {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
+         lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok
@@ -250,7 +248,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
