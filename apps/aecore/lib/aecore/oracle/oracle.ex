@@ -16,6 +16,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Account.Account
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -280,25 +282,21 @@ defmodule Aecore.Oracle.Oracle do
 
       cond do
         query_has_expired ->
-          acc
-          |> update_in(
-            [:accounts, query_sender, :balance],
-            &(&1 + query.query_fee)
-          )
+          account_state = Account.get_account_state(acc.accounts, query_sender)
+          new_balance = account_state.balance + query.query_fee
+          updated_account_state = %{account_state | balance: new_balance}
+
+          updated_account_tree =
+            AccountStateTree.put(acc.accounts, query_sender, updated_account_state)
+
+          acc = %{acc | accounts: updated_account_tree}
 
           updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
           %{acc | oracles: updated_oracles}
-
-        # |> pop_in([:oracles, :interaction_objects, query_id])
-        # |> elem(1)
 
         response_has_expired ->
           updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
           %{acc | oracles: updated_oracles}
-
-        # acc
-        # |> pop_in([:oracles, :interaction_objects, query_id])
-        # |> elem(1)
 
         true ->
           acc

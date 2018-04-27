@@ -123,10 +123,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     to_string(key)
   end
 
-  # defp deserialize_key(key) do
-  #   String.to_atom(key)
-  # end
-
   defp serialize_value(value) do
     # Must be done using RPL encoding when is done GH-335
     :erlang.term_to_binary(value)
