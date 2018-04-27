@@ -91,6 +91,7 @@ defmodule AecoreOracleTest do
     # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
     assert oracle.expires == 10
+
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 

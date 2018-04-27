@@ -64,7 +64,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         sender,
         fee,
         nonce,
-        block_height,
+        _block_height,
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state
       ) do
