@@ -21,8 +21,12 @@ defmodule Aecore.Peers.SyncNew do
           pid: binary()
         }
 
+  @type peer_id_map :: %{peer: String.t()}
+
   @typedoc "List of all the syncing peers"
   @type sync_pool :: list(sync_peer())
+
+  @type hash_pool :: {{non_neg_integer(), non_neg_integer()}, Block.t() | peer_id_map()}
 
   defstruct difficulty: nil,
             from: nil,
@@ -67,6 +71,16 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
   end
 
+  @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
+  def forward_block(block, peer_id) do
+    GenServer.call(__MODULE__, {:forward_block, block, peer_id})
+  end
+
+  @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
+  def forward_tx(tx, peer_id) do
+    GenServer.call(__MODULE__, {:forward_tx, tx, peer_id})
+  end
+
   ## INNER FUNCTIONS ##
 
   def handle_cast({:start_sync, peer_id, remote_hash}, _from, state) do
@@ -75,7 +89,7 @@ defmodule Aecore.Peers.SyncNew do
         do_start_sync(peer_id, remote_hash)
 
       true ->
-        Lagger.info("#{__MODULE__}: sync is already in progress with #{inspect(peer_id)}")
+        Logger.info("#{__MODULE__}: sync is already in progress with #{inspect(peer_id)}")
     end
 
     {:noreply, state}
@@ -117,7 +131,24 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   def handle_call({:sync_in_progress, peer_id}, _from, %{sync_pool: pool} = state) do
-    {:no_reply, {Map.has_key?(pool, peer_id), peer_id}, state}
+    result =
+      case Enum.find(list, false, fn peer -> Map.get(peer, :id) == peer_id end) do
+        false ->
+          false
+
+        peer ->
+          {true, peer}
+      end
+
+    {:no_reply, result, state}
+  end
+
+  def handle_call({:forward_block, block, peer_id}, _from, state) do
+    {:no_reply, do_forward_block(block, peer_id), state}
+  end
+
+  def handle_call({:forward_tx, tx, peer_id}, _from, state) do
+    {:no_reply, do_forward_tx(tx, peer_id), state}
   end
 
   def handle_call({:fetch_next, peer_id, height_in, hash_in, result}, _, state) do
@@ -172,17 +203,17 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   @spec insert_header(sync_peer(), sync_pool()) :: {true | false, sync_pool()}
-  def insert_header(
-        %{
-          difficulty: difficulty,
-          from: agreed_height,
-          to: height,
-          hash: hash,
-          peer: peer_id,
-          pid: pid
-        } = new_sync,
-        sync_pool
-      ) do
+  defp insert_header(
+         %{
+           difficulty: difficulty,
+           from: agreed_height,
+           to: height,
+           hash: hash,
+           peer: peer_id,
+           pid: pid
+         } = new_sync,
+         sync_pool
+       ) do
     {new_peer?, new_pool} =
       case Enum.find(sync_pool, false, fn peer -> Map.get(peer, :id) == peer_id end) do
         false ->
@@ -211,7 +242,7 @@ defmodule Aecore.Peers.SyncNew do
 
   ## TODO: Fix the return value
   @spec do_start_sync(String.t(), binary()) :: String.t()
-  def do_start_sync(peer_id, remote_hash) do
+  defp do_start_sync(peer_id, remote_hash) do
     case get_header_by_hash(peer_id, remote_hash) do
       {:ok, remote_header} ->
         remote_height = remote_header.height
@@ -246,13 +277,31 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
+  defp do_forward_block(block, peer_id) do
+    height = block.header.height
+
+    case sync_in_progress?(peer_id) do
+      {true, %{to: to_height}} when to_height > height + @max_diff_for_sync ->
+        Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
+
+      false ->
+        # send_block(peer_id, block) Send block through the peer module
+        :ok
+    end
+  end
+
+  defp do_forward_tx(tx, peer_id) do
+    send_tx(peer_id, tx)
+    Logger.debug("#{__MODULE__}: sent tx: #{inspect(tx)} to peer #{inspect(peer_id)}")
+  end
+
   @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary())
-  def agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash) when l_height == 0 do
+  defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash) when l_height == 0 do
     {0, agreed_hash}
   end
 
-  def agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
-      when r_height == l_height do
+  defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
+       when r_height == l_height do
     r_hash = r_header.root_hash
 
     case Persistence.get_block_by_hash(r_hash) do
@@ -266,8 +315,8 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  def agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
-      when r_height != l_height do
+  defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
+       when r_height != l_height do
     case get_header_by_height(peer_id, l_height) do
       {:ok, header} ->
         agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
