@@ -9,7 +9,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -58,43 +57,39 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%SpendTx{receiver: receiver} = tx, data_tx) do
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       tx.amount < 0 ->
-        Logger.error("The amount cannot be a negative number")
-        false
+        {:error, "The amount cannot be a negative number"}
 
       tx.version != get_tx_version() ->
-        Logger.error("Invalid version")
-        false
+        {:error, "Invalid version"}
 
       !Wallet.key_size_valid?(receiver) ->
-        Logger.error("Wrong receiver key size")
-        false
+        {:error, "Wrong receiver key size"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
+  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.main_sender(data_tx)
 
     new_accounts =
@@ -106,25 +101,25 @@ defmodule Aecore.Account.Tx.SpendTx do
         Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 
-    {new_accounts, %{}}
+    {:ok, {new_accounts, %{}}}
   end
 
   @doc """
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
           DataTx.t()
-        ) :: :ok
-  def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
     if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
-      throw({:error, "Negative balance"})
+      {:error, "Negative balance"}
     else
       :ok
     end

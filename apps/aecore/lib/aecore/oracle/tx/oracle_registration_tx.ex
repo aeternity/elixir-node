@@ -10,7 +10,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
 
   @type payload :: %{
@@ -54,8 +53,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
-  @spec is_valid?(OracleRegistrationTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(
+  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(
         %OracleRegistrationTx{
           query_format: query_format,
           response_format: response_format,
@@ -69,41 +68,38 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       try do
         JsonSchema.resolve(query_format)
         JsonSchema.resolve(response_format)
-        :ok
+        true
       rescue
-        e ->
-          {:error, "#{__MODULE__}: Invalid query or response format definition - #{inspect(e)}"}
+        _ ->
+          false
       end
 
     cond do
       ttl <= 0 ->
-        Logger.error("Invalid ttl")
-        false
+        {:error, "Invalid ttl"}
 
       !formats_valid ->
-        false
+        {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
       !Oracle.ttl_is_valid?(ttl) ->
-        Logger.error("Invald ttl")
-        false
+        {:error, "Invald ttl"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+  def process_chainstate(
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state,
         block_height,
@@ -120,17 +116,17 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       | registered_oracles: updated_registered_oracles
     }
 
-    {accounts, updated_oracle_state}
+    {:ok, {accounts, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: :ok
-  def preprocess_check!(
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
         block_height,
@@ -142,7 +138,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}

@@ -64,68 +64,64 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   @doc """
   Checks transactions internal contents validity
   """
-  @spec is_valid?(CoinbaseTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%CoinbaseTx{amount: amount, receiver: receiver}, data_tx) do
+  @spec validate(CoinbaseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%CoinbaseTx{amount: amount, receiver: receiver}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       amount < 0 ->
-        Logger.error("Value cannot be a negative number")
-        false
+        {:error, "Value cannot be a negative number"}
 
       DataTx.fee(data_tx) != 0 ->
-        Logger.error("Fee has to be 0")
-        false
+        {:error, "Fee has to be 0"}
 
       !Wallet.key_size_valid?(receiver) ->
-        Logger.error("Wrong receiver key size")
-        false
+        {:error, "Wrong receiver key size"}
 
       !Enum.empty?(senders) ->
-        Logger.error("Invalid senders size")
-        false
+        {:error, "Invalid senders size"}
 
       true ->
-        true
+        :ok
     end
   end
 
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.accounts(),
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do
+  def process_chainstate(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
       |> AccountStateTree.update(tx.receiver, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 
-    {new_accounts_state, %{}}
+    {:ok, {new_accounts_state, %{}}}
   end
 
-  def process_chainstate!(_accounts, %{}, _block_height, _tx, _data_tx) do
-    throw({:error, "Invalid coinbase tx"})
+  def process_chainstate(_accounts, %{}, _block_height, _tx, _data_tx) do
+    {:error, "Invalid coinbase tx"}
   end
 
   @doc """
   Checks whether all the data is valid according to the CoinbaseTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
           DataTx.t()
         ) :: :ok
-  def preprocess_check!(_accounts, %{}, _block_height, _tx, _data_tx) do
+  def preprocess_check(_accounts, %{}, _block_height, _tx, _data_tx) do
     :ok
   end
 

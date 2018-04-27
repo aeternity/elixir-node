@@ -10,8 +10,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
@@ -42,21 +40,19 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{query_id: query_id}, data_tx) do
+  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "Invalid senders number"}
 
       byte_size(query_id) != get_query_id_size() ->
-        Logger.error("Wrong query_id size")
-        false
+        {:error, "Wrong query_id size"}
 
       true ->
-        true
+        :ok
     end
   end
 
@@ -65,14 +61,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
-          tx_type_state(),
+          Oracle.oracles(),
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+  def process_chainstate(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
@@ -102,17 +98,17 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_state, updated_oracle_state}
+    {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-        ) :: :ok
-  def preprocess_check!(
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles, interaction_objects: interaction_objects},
         _block_height,
@@ -124,7 +120,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}

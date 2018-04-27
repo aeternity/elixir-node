@@ -26,7 +26,7 @@ defmodule Aecore.Tx.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback validate(tx_types()) :: :ok | {:error, String.t()}
+  @callback validate(tx_types(), DataTx.t()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.

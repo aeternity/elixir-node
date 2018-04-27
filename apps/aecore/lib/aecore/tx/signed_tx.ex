@@ -45,15 +45,24 @@ defmodule Aecore.Tx.SignedTx do
     data.type == CoinbaseTx
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%SignedTx{data: data} = tx) do
-    signatures_valid?(tx) && DataTx.is_valid?(data)
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx) do
+    if signatures_valid?(tx) do
+      DataTx.validate(data)
+    else
+      {:error, "Signatures invalid"}
+    end
   end
 
-  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
+  @spec process_chainstate(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
           ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %SignedTx{data: data}) do
-    DataTx.process_chainstate!(chainstate, block_height, data)
+  def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
+    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
+      DataTx.process_chainstate(chainstate, block_height, data)
+    else
+      err ->
+        err
+    end
   end
 
   @doc """

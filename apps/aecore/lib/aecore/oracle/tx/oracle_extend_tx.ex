@@ -10,7 +10,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
@@ -33,31 +32,30 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec is_valid?(OracleExtendTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleExtendTx{ttl: ttl}, data_tx) do
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: boolean()
+  def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       ttl <= 0 ->
         {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
- 
+
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "Invalid senders number"}
 
       true ->
         true
     end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+  def process_chainstate(
         accounts,
         oracle_state,
         _block_height,
@@ -73,17 +71,17 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         &(&1 + tx.ttl)
       )
 
-    {accounts, updated_oracle_state}
+    {:ok, {accounts, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok
-  def preprocess_check!(
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
         _block_height,
@@ -95,7 +93,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}

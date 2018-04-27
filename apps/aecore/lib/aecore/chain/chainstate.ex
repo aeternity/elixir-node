@@ -36,7 +36,7 @@ defmodule Aecore.Chain.Chainstate do
   def calculate_and_validate_chain_state(txs, chainstate, block_height) do
     updated_chainstate =
       Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
-        case apply_transaction_on_state(tx, chainstate, block_height) do
+        case apply_transaction_on_state(chainstate, block_height, tx) do
           {:ok, updated_chainstate} ->
             {:cont, updated_chainstate}
 
@@ -57,14 +57,16 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
-  @spec apply_transaction_on_state!(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           Chainstate.t()
-  def apply_transaction_on_state!(chainstate, block_height, tx) do
-    if !SignedTx.is_valid?(tx) do
-      throw({:error, "Invalid transaction"})
-    end
+  def apply_transaction_on_state(chainstate, block_height, tx) do
+    case SignedTx.validate(tx) do
+      :ok ->
+        SignedTx.process_chainstate(chainstate, block_height, tx)
 
-    SignedTx.process_chainstate!(chainstate, block_height, tx)
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -82,7 +84,7 @@ defmodule Aecore.Chain.Chainstate do
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, updated_chainstate} ->
-        case apply_transaction_on_state(tx, chainstate, block_height) do
+        case apply_transaction_on_state(chainstate, block_height, tx) do
           {:ok, updated_chainstate} ->
             {[tx | valid_txs_list], updated_chainstate}
 

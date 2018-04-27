@@ -246,13 +246,13 @@ defmodule Aecore.Miner.Worker do
 
     total_fees = calculate_total_fees(valid_txs_by_fee)
 
-      valid_txs = [
-        Account.create_coinbase_tx(
-          pubkey,
-          @coinbase_transaction_amount + total_fees
-        )
-        | valid_txs_by_fee
-      ]
+    valid_txs = [
+      Account.create_coinbase_tx(
+        pubkey,
+        @coinbase_transaction_amount + total_fees
+      )
+      | valid_txs_by_fee
+    ]
 
     create_block(top_block, chain_state, difficulty, valid_txs, timestamp)
   end

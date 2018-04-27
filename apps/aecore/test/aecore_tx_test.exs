@@ -71,8 +71,7 @@ defmodule AecoreTxTest do
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
-    assert {:error, "#{SpendTx}: The amount cannot be a negative number: -5"} ==
-             SpendTx.validate(signed_tx.data.payload)
+    {:error, _} = SpendTx.validate(signed_tx.data.payload, signed_tx.data)
   end
 
   test "coinbase tx invalid", tx do
@@ -155,7 +154,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: tx.receiver, amount: amount}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
-    assert DataTx.is_valid?(data_tx) == false
+    {:error, _} = DataTx.validate(data_tx)
   end
 
   test "receiver pub_key is too small", tx do
@@ -170,7 +169,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: receiver, amount: amount}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
-    assert DataTx.is_valid?(data_tx) == false
+    {:error, _} = DataTx.validate(data_tx)
   end
 
   test "sum of amount and fee more than balance", tx do

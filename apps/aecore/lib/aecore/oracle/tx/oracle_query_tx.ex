@@ -12,7 +12,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
@@ -67,8 +66,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     }
   end
 
-  @spec is_valid?(OracleQueryTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(
+  @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(
         %OracleQueryTx{
           query_ttl: query_ttl,
           response_ttl: response_ttl,
@@ -80,38 +79,33 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
-        Logger.error("Invalid query ttl")
-        false
+        {:error, "Invalid query ttl"}
 
       !Oracle.ttl_is_valid?(response_ttl) ->
-        Logger.error("Invalid response ttl")
-        false
+        {:error, "Invalid response ttl"}
 
       !match?(%{type: :relative}, response_ttl) ->
-        Logger.error("Invalid ttl type")
-        false
+        {:error, "Invalid ttl type"}
 
       !Wallet.key_size_valid?(oracle_address) ->
-        Logger.error("oracle_adddress size invalid")
-        false
+        {:error, "oracle_adddress size invalid"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
-          tx_type_state(),
+          Oracle.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+  def process_chainstate(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
@@ -143,17 +137,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_state, updated_oracle_state}
+    {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
         ) :: :ok
-  def preprocess_check!(
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
         block_height,
@@ -165,7 +159,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - tx.query_fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}

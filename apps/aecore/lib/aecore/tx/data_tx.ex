@@ -98,25 +98,20 @@ defmodule Aecore.Tx.DataTx do
   @doc """
   Checks whether the fee is above 0.
   """
-  @spec is_valid?(DataTx.t()) :: boolean()
-  def is_valid?(%DataTx{fee: fee, type: type} = tx) do
+  @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{fee: fee, type: type} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
-        Logger.error("Invalid tx type=#{type}")
-        false
+        {:error, "Invalid tx type=#{type}"}
 
       fee < 0 ->
-        Logger.error("Negative fee")
-        false
+        {:error, "Negative fee"}
 
       !senders_pubkeys_size_valid?(tx.senders) ->
-        false
-
-      !payload_valid?(tx) ->
-        false
+        {:error, "Invalid senders pubkey size"}
 
       true ->
-        true
+        payload_validate(tx)
     end
   end
 
@@ -124,15 +119,13 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
-          ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %DataTx{fee: fee} = tx) do
+  @spec process_chainstate(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
+          {:ok, ChainState.chainstate()} | {:error, String.t()}
+  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
-
-    :ok = tx.type.preprocess_check!(accounts_state, tx_type_state, block_height, payload, tx)
 
     nonce_accounts_state =
       if Enum.empty?(tx.senders) do
@@ -143,27 +136,51 @@ defmodule Aecore.Tx.DataTx do
         end)
       end
 
-    {new_accounts_state, new_tx_type_state} =
-      nonce_accounts_state
-      |> tx.type.deduct_fee(payload, block_height, tx, fee)
-      |> tx.type.process_chainstate!(
-        tx_type_state,
-        block_height,
-        payload,
-        tx
-      )
+    with {:ok, {new_accounts_state, new_tx_type_state}} <-
+           nonce_accounts_state
+           |> tx.type.deduct_fee(payload, block_height, tx, fee)
+           |> tx.type.process_chainstate(
+             tx_type_state,
+             block_height,
+             payload,
+             tx
+           ) do
+      new_chainstate =
+        if tx.type.get_chain_state_name() == nil do
+          %{chainstate | accounts: new_accounts_state}
+        else
+          %{chainstate | accounts: new_accounts_state}
+          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+        end
 
-    if tx.type.get_chain_state_name() == nil do
-      %{chainstate | accounts: new_accounts_state}
+      {:ok, new_chainstate}
     else
-      %{chainstate | accounts: new_accounts_state}
-      |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+      err ->
+        err
     end
   end
 
-  @spec nonce_valid?(ChainState.accounts(), DataTx.t()) :: boolean()
-  def nonce_valid?(accounts_state, tx) do
-    tx.nonce > Account.nonce(accounts_state, tx.sender)
+  @spec preprocess_check(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
+          :ok | {:error, String.t()}
+  def preprocess_check(chainstate, block_height, tx) do
+    accounts_state = chainstate.accounts
+    payload = payload(tx)
+    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+
+    with :ok <- tx.type.preprocess_check(accounts_state,
+                                         tx_type_state,
+                                         block_height,
+                                         payload,
+                                         tx) do
+      if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
+        :ok
+      else
+        {:error, "Too small nonce"}
+      end
+    else
+      err ->
+        err
+    end
   end
 
   @spec serialize(DataTx.t()) :: map()
@@ -224,17 +241,16 @@ defmodule Aecore.Tx.DataTx do
     end)
   end
 
-  defp payload_valid?(%DataTx{type: type, payload: payload} = data_tx) do
+  defp payload_validate(%DataTx{type: type, payload: payload} = data_tx) do
     payload
     |> type.init()
-    |> type.is_valid?(data_tx)
+    |> type.validate(data_tx)
   end
 
   defp senders_pubkeys_size_valid?([sender | rest]) do
     if Wallet.key_size_valid?(sender) do
       senders_pubkeys_size_valid?(rest)
     else
-      Logger.error("Invalid sender size")
       false
     end
   end
