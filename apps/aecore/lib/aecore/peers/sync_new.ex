@@ -170,8 +170,6 @@ defmodule Aecore.Peers.SyncNew do
             remote_header,
             remote_height,
             max_agreed_height,
-            max_agreed_height,
-            0,
             min_agreed_hash
           )
 
@@ -192,21 +190,12 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  @spec agree_on_height(
-          String.t(),
-          binary(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          binary()
-        )
-  def agree_on_height(_peer_id, _r_header, _r_height, _l_height, max, min, agreed_hash)
-      when max == min do
-    {min, agreed_hash}
+  @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary())
+  def agree_on_height(_peer_id, _r_header, _r_height, _l_height, agreed_hash) when l_height == 0 do
+    {0, agreed_hash}
   end
 
-  def agree_on_height(peer_id, r_header, r_height, l_height, max, min, agreed_hash)
+  def agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
       when r_height == l_height do
     r_hash = r_header.root_hash
 
@@ -217,18 +206,18 @@ defmodule Aecore.Peers.SyncNew do
 
       _ ->
         # We are on a fork
-        agree_on_height(peer_id, r_header, r_height, l_height - 1, max, mix, agreed_hash)
+        agree_on_height(peer_id, r_header, r_height, l_height - 1, agreed_hash)
     end
   end
 
-  def agree_on_height(peer_id, r_header, r_height, l_height, max, min, agreed_hash)
+  def agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
       when r_height != l_height do
     case get_header_by_height(peer_id, l_height) do
       {:ok, header} ->
-        agree_on_height(peer_id, header, l_height, l_height, max, mix, agreed_hash)
+        agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
 
       {:error, reason} ->
-        {min, agreed_hash}
+        {0, agreed_hash}
     end
   end
 end
