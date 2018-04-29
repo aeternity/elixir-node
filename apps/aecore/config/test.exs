@@ -37,6 +37,7 @@ persistence_path =
 config :aecore, :persistence, path: persistence_path |> Path.absname() |> Path.join("//")
 
 config :aecore, :pow,
+  new_candidate_nonce_count: 10,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
   max_target_change: 0,
