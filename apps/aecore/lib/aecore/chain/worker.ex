@@ -9,10 +9,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.Pool.Worker, as: Pool
