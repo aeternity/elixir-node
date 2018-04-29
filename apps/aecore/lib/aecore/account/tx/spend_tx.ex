@@ -63,16 +63,16 @@ defmodule Aecore.Account.Tx.SpendTx do
 
     cond do
       tx.amount < 0 ->
-        {:error, "The amount cannot be a negative number"}
+        {:error, "#{__MODULE__}: The amount cannot be a negative number"}
 
       tx.version != get_tx_version() ->
-        {:error, "Invalid version"}
+        {:error, "#{__MODULE__}: Invalid version"}
 
       !Wallet.key_size_valid?(receiver) ->
-        {:error, "Wrong receiver key size"}
+        {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       length(senders) != 1 ->
-        {:error, "Invalid senders number"}
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
         :ok
@@ -119,7 +119,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
     if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
-      {:error, "Negative balance"}
+      {:error, "#{__MODULE__}: Negative balance"}
     else
       :ok
     end

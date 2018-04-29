@@ -46,10 +46,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     cond do
       length(senders) != 1 ->
-        {:error, "Invalid senders number"}
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       byte_size(query_id) != get_query_id_size() ->
-        {:error, "Wrong query_id size"}
+        {:error, "#{__MODULE__}: Wrong query_id size"}
 
       true ->
         :ok
@@ -120,7 +120,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}

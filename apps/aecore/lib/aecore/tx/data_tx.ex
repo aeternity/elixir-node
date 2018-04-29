@@ -102,13 +102,13 @@ defmodule Aecore.Tx.DataTx do
   def validate(%DataTx{fee: fee, type: type} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
-        {:error, "Invalid tx type=#{type}"}
+        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
 
       fee < 0 ->
-        {:error, "Negative fee"}
+        {:error, "#{__MODULE__}: Negative fee"}
 
       !senders_pubkeys_size_valid?(tx.senders) ->
-        {:error, "Invalid senders pubkey size"}
+        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
 
       true ->
         payload_validate(tx)
@@ -175,7 +175,7 @@ defmodule Aecore.Tx.DataTx do
       if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
         :ok
       else
-        {:error, "Too small nonce"}
+        {:error, "#{__MODULE__}: Too small nonce"}
       end
     else
       err ->
@@ -224,7 +224,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec standard_deduct_fee(

@@ -50,7 +50,7 @@ defmodule Aecore.Tx.SignedTx do
     if signatures_valid?(tx) do
       DataTx.validate(data)
     else
-      {:error, "Signatures invalid"}
+      {:error, "#{__MODULE__}: Signatures invalid"}
     end
   end
 
@@ -107,7 +107,7 @@ defmodule Aecore.Tx.SignedTx do
     if success do
       {:ok, %SignedTx{data: data, signatures: new_sigs}}
     else
-      {:error, "Not in senders"}
+      {:error, "#{__MODULE__}: Not in senders"}
     end
   end
 
@@ -166,7 +166,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   def base58c_decode_signature(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec serialize(SignedTx.t()) :: map()

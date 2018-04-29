@@ -79,19 +79,19 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
-        {:error, "Invalid query ttl"}
+        {:error, "#{__MODULE__}: Invalid query ttl"}
 
       !Oracle.ttl_is_valid?(response_ttl) ->
-        {:error, "Invalid response ttl"}
+        {:error, "#{__MODULE__}: Invalid response ttl"}
 
       !match?(%{type: :relative}, response_ttl) ->
-        {:error, "Invalid ttl type"}
+        {:error, "#{__MODULE__}: Invalid ttl type"}
 
       !Wallet.key_size_valid?(oracle_address) ->
-        {:error, "oracle_adddress size invalid"}
+        {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
-        {:error, "Invalid senders number"}
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
         :ok
@@ -159,7 +159,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - tx.query_fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}

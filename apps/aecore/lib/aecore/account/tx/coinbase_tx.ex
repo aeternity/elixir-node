@@ -70,16 +70,16 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
 
     cond do
       amount < 0 ->
-        {:error, "Value cannot be a negative number"}
+        {:error, "#{__MODULE__}: Value cannot be a negative number"}
 
       DataTx.fee(data_tx) != 0 ->
-        {:error, "Fee has to be 0"}
+        {:error, "#{__MODULE__}: Fee has to be 0"}
 
       !Wallet.key_size_valid?(receiver) ->
-        {:error, "Wrong receiver key size"}
+        {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       !Enum.empty?(senders) ->
-        {:error, "Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size"}
 
       true ->
         :ok
@@ -107,7 +107,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   end
 
   def process_chainstate(_accounts, %{}, _block_height, _tx, _data_tx) do
-    {:error, "Invalid coinbase tx"}
+    {:error, "#{__MODULE__}: Invalid coinbase tx"}
   end
 
   @doc """

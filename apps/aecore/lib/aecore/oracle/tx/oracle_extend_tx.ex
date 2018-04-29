@@ -41,7 +41,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
 
       length(senders) != 1 ->
-        {:error, "Invalid senders number"}
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
         true
@@ -93,7 +93,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}

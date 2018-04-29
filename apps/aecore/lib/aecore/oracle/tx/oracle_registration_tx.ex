@@ -76,16 +76,16 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     cond do
       ttl <= 0 ->
-        {:error, "Invalid ttl"}
+        {:error, "#{__MODULE__}: Invalid ttl"}
 
       !formats_valid ->
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
       !Oracle.ttl_is_valid?(ttl) ->
-        {:error, "Invald ttl"}
+        {:error, "#{__MODULE__}: Invald ttl"}
 
       length(senders) != 1 ->
-        {:error, "Invalid senders number"}
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
         :ok
@@ -138,7 +138,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "Negative balance"}
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
