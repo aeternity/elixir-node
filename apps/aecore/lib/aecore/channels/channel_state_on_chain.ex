@@ -11,11 +11,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   alias Aecore.Channel.Worker, as: Channel
 
   @type t :: %ChannelStateOnChain{
-          initiator_pubkey: Wallet.pubkey(),
-          responder_pubkey: Wallet.pubkey(),
-          initiator_amount: integer(),
-          responder_amount: integer(),
-          lock_period: non_neg_integer()
+    initiator_pubkey: Wallet.pubkey(),
+    responder_pubkey: Wallet.pubkey(),
+    initiator_amount: integer(),
+    responder_amount: integer(),
+    lock_period: non_neg_integer(),
+    closes_at: integer(),
+    sequence: integer()
   }
 
   @type channels :: map() #TODO binary -> t()
@@ -31,7 +33,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :responder_pubkey,
     :initiator_amount,
     :responder_amount,
-    :lock_period
+    :lock_period,
+    :closes_at,
+    :sequence
   ]
 
   use ExConstructor
@@ -43,7 +47,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       responder_pubkey: responder_pubkey,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      lock_period: lock_period
+      lock_period: lock_period,
+      closes_at: -1,
+      sequence: -1
     }
   end
+
 end
