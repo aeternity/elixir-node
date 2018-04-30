@@ -15,7 +15,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
-  alias Aecore.Account.Tx.SpendTx
 
   require Logger
 

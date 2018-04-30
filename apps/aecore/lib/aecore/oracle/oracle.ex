@@ -15,6 +15,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Account.Account
   alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
+  alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
@@ -305,117 +306,135 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def rlp_encode(
-        %Chainstate{oracles: %{registered_oracles: registered_oracles}},
-        orc_owner,
-        :oracle_state
-      ) do
-    # list_of_formatted_data =
-    # Subject to discuss field "height_included" in our structures is not being encoded , erlang" core doesnt have this field
-    case Map.get(registered_oracles, orc_owner) do
-      nil ->
-        [
-          type_to_tag(Oracle),
-          get_version(Oracle),
-          orc_owner, # owner
-          Serialization.transform_item(%{}), #query_format, should be a string(but we have a map)
-          Serialization.transform_item(%{}), #response_format, should be a string (but we have a map)
-          0, #query_fee
-          0, #expires
-        ]
-
-      data ->
-        [
-          type_to_tag(Oracle),
-          get_version(Oracle),
-          orc_owner,  # owner
-          # Subject to discuss/change - In Erlang implementation its a UTF8 encoded string but in our case - map
-          Serialization.transform_item(data.tx.query_format), #query_format, should be a string(but we have a map)
-          Serialization.transform_item(data.tx.response_format), #response_format, should be a string (but we have a map)
-          data.tx.query_fee, #query_fee
-          # Subject to discuss/change - Erlang core has an integer field called expires, our case - map with ttl and its type :absolute/relative
-         # encode_ttl_type(data.tx.ttl),
-          data.tx.ttl.ttl  #"expires" doesnt exist at this moment,
-        ]
-    end
+  @spec rlp_encode(map(), atom()) :: binary()
+  def rlp_encode(registered_oracle, :registered_oracles) do
+    [
+      type_to_tag(Oracle),
+      get_version(Oracle),
+      # owner
+      registered_oracle.owner,
+      # query_format, currently is a map
+      Poison.encode!(registered_oracle.query_format),
+      # response_format, currently is a map
+      Poison.encode!(registered_oracle.response_format),
+      # query_fee
+      registered_oracle.query_fee,
+      # expires
+      registered_oracle.expires
+    ]
     |> ExRLP.encode()
   end
-  def rlp_encode(
-        %Chainstate{oracles: %{interaction_objects: interaction_objects}},
-        sender_address,
-        :oracle_query
-      ) do
-    case Map.get(interaction_objects, sender_address) do
-      nil ->
-        [
-          type_to_tag(OracleQuery), #type
-          get_version(OracleQuery), #ver
-          sender_address, #pubkey
-          0, #sender_nonce
-          <<0>>, # oracle_address
-          Serialization.transform_item(%OracleQueryTx{}), #query
-          <<0>>, #has_response
-          Serialization.transform_item(%OracleResponseTx{}), #response
-          0, #expires
-          0, #response_ttl
-          0, #fee
-        ]
 
-      data ->
-        [
-          type_to_tag(OracleQuery), #type
-          get_version(OracleQuery), #ver
-          sender_address, #pubkey
-          # Subject : We dont have sender_nonce field here,
-          data.query.oracle_address, # oracle_address
-          # Subject : Query: Equivalent here would be fully composed DataTx(OracleQueryTx) , not just OracleQueryTx
-          DataTx.rlp_encode(Serialization.transform_item(data.query)), #query
-          <<0>>,  # Subject: has_response field doesnt exist, will be hardcoded as <<0>>/false for now
-          # Subject: Response: Equivalent here would be fully composed DataTx(ResponseTx), not a map
-          DataTx.rlp_encode(Serialization.transform_item(data.query.response)), #response
-          data.query.query_ttl.ttl, # Subject: no field called "expires" here, should be calculated over ttl_type and ttl_value itself
-          data.query.response_ttl.ttl,
-          data.query.query_fee
-        ]
-    end
+  def rlp_encode(interaction_object, :interaction_objects) do
+    has_response =
+      case interaction_object.has_response do
+        true -> 1
+        false -> 0
+      end
+
+    response =
+      case interaction_object.response do
+        :undefined -> Parser.to_string(:undefined)
+        %DataTx{type: OracleResponseTx} = data -> data
+      end
+
+    [
+      # type
+      type_to_tag(OracleQuery),
+      # ver
+      get_version(OracleQuery),
+      # pubkey
+      interaction_object.sender_address,
+      # sender_nonce
+      interaction_object.sender_nonce,
+      # oracle_address
+      interaction_object.oracle_address,
+      # query
+      Poison.encode!(interaction_object.query),
+      # has_response
+      has_response,
+      DataTx.rlp_encode(response),
+      # Subject: no field called "expires" here, should be calculated over ttl_type and ttl_value itself
+      interaction_object.expires,
+      interaction_object.response_ttl,
+      interaction_object.fee
+    ]
     |> ExRLP.encode()
   end
+
   def rlp_encode(_) do
-    :invalid_oracle_struct
+    {:error, "Invalid Oracle struct"}
   end
+
   @spec rlp_decode(binary()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
     ver = Serialization.transform_item(ver_bin, :int)
-    case type_to_tag(tag) do
-        Oracle ->
-          [orc_owner, query_format, response_format, query_fee, ttl_type, ttl] = rest_data
 
+    case tag_to_type(tag) do
+      Oracle ->
+        [orc_owner, query_format, response_format, query_fee, expires] = rest_data
+
+        %{
+          owner: orc_owner,
+          # Poison encodings might be changed in future
+          query_format: Poison.decode!(query_format),
+          response_format: Poison.decode!(response_format),
+          query_fee: Serialization.transform_item(query_fee, :int),
+          expires: Serialization.transform_item(expires, :int)
+        }
+
+      OracleQuery ->
         [
-          orc_owner,
-          Serialization.transform_item(query_format, :binary),
-          Serialization.transform_item(response_format, :binary),
-          Serialization.transform_item(query_fee, :int),
-          Serialization.transform_item(ttl_type, :int),
-          Serialization.transform_item(ttl, :int)
-        ]
-       OracleQuery ->
-        [sender_address,oracle_address,query_data,has_response, query_response, expires,response_ttl,query_fee] = rest_data
-        
+          sender_address,
+          sender_nonce,
+          oracle_address,
+          query,
+          has_response,
+          response,
+          expires,
+          response_ttl,
+          fee
+        ] = rest_data
+
+        has_response =
+          case Serialization.transform_item(has_response, :int) do
+            1 -> true
+            0 -> false
+          end
+
+        response =
+          case ExRLP.decode(response) do
+            [] -> DataTx.rlp_decode(response)
+            data -> String.to_atom(data)
+          end
+
+        %{
+          expires: Serialization.transform_item(expires, :int),
+          fee: Serialization.transform_item(fee, :int),
+          has_response: has_response,
+          oracle_address: oracle_address,
+          query: Poison.decode!(query),
+          response: response,
+          response_ttl: Serialization.transform_item(response_ttl, :int),
+          sender_address: sender_address,
+          sender_nonce: Serialization.transform_item(sender_nonce, :int)
+        }
+
+      _ ->
+        {:error, "Illegal oracle serialization"}
     end
-    
   end
 
-  @spec type_to_tag(atom()) :: integer 
+  @spec type_to_tag(atom()) :: integer
   defp type_to_tag(Oracle), do: 20
   defp type_to_tag(OracleQuery), do: 21
 
-  @spec tag_to_type(integer()) :: atom() 
+  @spec tag_to_type(integer()) :: atom()
   defp tag_to_type(20), do: Oracle
   defp tag_to_type(21), do: OracleQuery
 
   defp get_version(Oracle), do: 1
   defp get_version(OracleQuery), do: 1
-
 end

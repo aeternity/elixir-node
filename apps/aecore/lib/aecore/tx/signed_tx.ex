@@ -128,18 +128,27 @@ defmodule Aecore.Tx.SignedTx do
   def base58c_decode_signature(_) do
     {:error, "Wrong data"}
   end
-  
+
   @spec rlp_encode(DataTx.t(SignedTx.t())) :: binary() | atom()
   def rlp_encode(%SignedTx{} = tx) do
-      signatures = for sig <- [tx.signature] do
-        if sig == nil do  #workaround - should be removed when CoinbaseTx will have its own structure
+    signatures =
+      for sig <- [tx.signature] do
+        # workaround - should be removed when CoinbaseTx will have its own structure
+        if sig == nil do
           ExRLP.encode(<<0>>)
         else
           ExRLP.encode(sig)
         end
       end
-    ExRLP.encode([type_to_tag(SignedTx), get_version(SignedTx), signatures, DataTx.rlp_encode(tx.data)])
+
+    ExRLP.encode([
+      type_to_tag(SignedTx),
+      get_version(SignedTx),
+      signatures,
+      DataTx.rlp_encode(tx.data)
+    ])
   end
+
   def rlp_encode(_) do
     :invalid_signedtx
   end
@@ -149,31 +158,36 @@ defmodule Aecore.Tx.SignedTx do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
     ver = Serialization.transform_item(ver_bin, :int)
+
     case tag_to_type(tag) do
-      SignedTx -> 
-    [signatures, tx_data] = rest_data
-    decoded_signatures = 
-      for sig <- signatures do
-        ExRLP.decode(sig)
-      end
-    %SignedTx{data: rlp_decode(tx_data) , signature: decoded_signatures}
-    _ -> :invalid_serialization
+      SignedTx ->
+        [signatures, tx_data] = rest_data
+
+        decoded_signatures =
+          for sig <- signatures do
+            ExRLP.decode(sig)
+          end
+
+        %SignedTx{data: DataTx.rlp_decode(tx_data), signature: decoded_signatures}
+
+      _ ->
+        :invalid_serialization
     end
   end
+
   def rlp_decode(_) do
     :invalid_serialization
   end
-   
+
   @spec type_to_tag(atom()) :: integer() | atom()
   defp type_to_tag(SignedTx), do: 11
   defp type_to_tag(_), do: :unknown_type
-  
+
   @spec tag_to_type(integer()) :: SignedTx | atom()
   defp tag_to_type(11), do: SignedTx
   defp tag_to_type(_), do: :unknown_tag
-  
+
   @spec get_version(SignedTx) :: integer() | atom()
   defp get_version(SignedTx), do: 1
   defp get_version(_), do: :unknown_struct_version
-
 end

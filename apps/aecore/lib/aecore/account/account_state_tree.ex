@@ -26,10 +26,12 @@ defmodule Aecore.Account.AccountStateTree do
   @spec get(tree(), Wallet.pubkey()) :: Account.t()
   def get(tree, key) do
     account_state = :gb_merkle_trees.lookup(key, tree)
-    case account_state do 
+
+    case account_state do
       :none -> :none
-       data -> Chainstate.rlp_decode(data)
+      data -> Chainstate.rlp_decode(data)
     end
+
     # Chainstate.rlp_decode(account_state)
   end
 
