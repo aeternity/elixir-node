@@ -7,6 +7,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -15,6 +16,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Account.Account
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -22,6 +25,7 @@ defmodule Aecore.Oracle.Oracle do
 
   @type json_schema :: map()
   @type json :: any()
+  @oracles_fields [:registered_oracles, :interaction_objects]
 
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
@@ -45,6 +49,10 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
+
+  defstruct @oracles_fields
+
+  def oracles_fields, do: @oracles_fields
 
   @doc """
   Registers an oracle with the given requirements for queries and responses,
@@ -220,17 +228,17 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_oracles(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
-                                                                         %{
-                                                                           tx: tx,
-                                                                           height_included:
-                                                                             height_included
-                                                                         }},
-                                                                        acc ->
+    registered_oracles = OracleStateTree.get_registered_oracles(chain_state.oracles)
+
+    Enum.reduce(registered_oracles, chain_state, fn {address,
+                                                     %{
+                                                       tx: tx,
+                                                       height_included: height_included
+                                                     }},
+                                                    acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
-        acc
-        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        |> elem(1)
+        updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
+        %{acc | oracles: updated_oracles}
       else
         acc
       end
@@ -241,7 +249,7 @@ defmodule Aecore.Oracle.Oracle do
         chain_state,
         block_height
       ) do
-    interaction_objects = chain_state.oracles.interaction_objects
+    interaction_objects = OracleStateTree.get_interaction_objects(chain_state.oracles)
 
     Enum.reduce(interaction_objects, chain_state, fn {query_id,
                                                       %{
@@ -274,18 +282,21 @@ defmodule Aecore.Oracle.Oracle do
 
       cond do
         query_has_expired ->
-          acc
-          |> update_in(
-            [:accounts, query_sender, :balance],
-            &(&1 + query.query_fee)
-          )
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
+          account_state = Account.get_account_state(acc.accounts, query_sender)
+          new_balance = account_state.balance + query.query_fee
+          updated_account_state = %{account_state | balance: new_balance}
+
+          updated_account_tree =
+            AccountStateTree.put(acc.accounts, query_sender, updated_account_state)
+
+          acc = %{acc | accounts: updated_account_tree}
+
+          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
+          %{acc | oracles: updated_oracles}
 
         response_has_expired ->
-          acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
+          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
+          %{acc | oracles: updated_oracles}
 
         true ->
           acc

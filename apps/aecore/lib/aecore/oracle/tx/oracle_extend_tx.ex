@@ -7,9 +7,10 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Account.AccountStateTree
 
   @type payload :: %{
           ttl: non_neg_integer()
@@ -46,8 +47,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           AccountStateTree.tree(),
-          Oracle.registered_oracles()
-        ) :: {AccountStateTree.tree(), Oracle.registered_oracles()}
+          OracleStateTree.oracle_state()
+        ) :: {AccountStateTree.tree(), OracleStateTree.oracle_state()}
   def process_chainstate(
         %OracleExtendTx{} = tx,
         sender,
@@ -55,24 +56,29 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         nonce,
         _block_height,
         accounts,
-        oracle_state
+        oracles
       ) do
     new_sender_account_state =
       accounts
-      |> Map.get(sender, Account.empty())
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = Map.put(accounts, sender, new_sender_account_state)
+    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
-    updated_oracle_state =
+    registered_oracles = OracleStateTree.get_registered_oracles(oracles)
+
+    updated_registered_oracle =
       update_in(
-        oracle_state,
-        [:registered_oracles, sender, :tx, Access.key(:ttl), :ttl],
+        registered_oracles,
+        [sender, :tx, Access.key(:ttl), :ttl],
         &(&1 + tx.ttl)
       )
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    updated_oracle_chainstate =
+      OracleStateTree.put_registered_oracles(oracles, updated_registered_oracle)
+
+    {updated_accounts_chainstate, updated_oracle_chainstate}
   end
 
   @spec preprocess_check(
@@ -82,11 +88,11 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Oracle.registered_oracles()
+          OracleStateTree.oracle_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, %{
-        registered_oracles: registered_oracles
-      }) do
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, oracles) do
+    registered_oracles = OracleStateTree.get_registered_oracles(oracles)
+
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}

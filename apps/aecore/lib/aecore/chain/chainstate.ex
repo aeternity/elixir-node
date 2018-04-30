@@ -12,12 +12,13 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.OracleStateTree
 
   require Logger
 
   @type t :: %Chainstate{
           accounts: AccountStateTree.accounts_state(),
-          oracles: Oracle.t()
+          oracles: OracleStateTree.oracle_state()
         }
 
   defstruct [
@@ -29,7 +30,7 @@ defmodule Aecore.Chain.Chainstate do
   def init do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
-      :oracles => %{registered_oracles: %{}, interaction_objects: %{}}
+      :oracles => OracleStateTree.init_empty()
     }
   end
 

@@ -25,6 +25,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aeutil.PatriciaMerkleTree
+  alias Aecore.Oracle.OracleStateTree
 
   require Logger
 
@@ -422,7 +423,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    registered_oracles = OracleStateTree.get_registered_oracles(oracle_tree)
     {:reply, registered_oracles, state}
   end
 
@@ -431,7 +433,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    interaction_objects = OracleStateTree.get_interaction_objects(oracle_tree)
     {:reply, interaction_objects, state}
   end
 
@@ -630,38 +633,14 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp get_persist_strategy(:to_chainstate) do
-    fn
-      {key = :accounts, root_hash}, acc_state ->
-        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
-
-      ## TODO
-      ## This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
-      ## Use this when the oracles are ready:
-      ##
-      ## ```
-      ## {key, root_hash}, acc_state ->
-      ## Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
-      ## ```
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+    fn {key, root_hash}, acc_state ->
+      Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
     end
   end
 
   defp get_persist_strategy(:from_chainstate) do
-    fn
-      {key = :accounts, value}, acc_state ->
-        Map.put(acc_state, key, value.root_hash)
-
-      ## TODO
-      ## This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
-      ## Use this when the oracles are ready:
-      ##
-      ## ```
-      ## {key, root_hash}, acc_state ->
-      ## Map.put(acc_state, key, value.root_hash)
-      ## ```
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+    fn {key, value}, acc_state ->
+      Map.put(acc_state, key, value.root_hash)
     end
   end
 end
