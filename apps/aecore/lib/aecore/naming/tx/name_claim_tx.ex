@@ -100,8 +100,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_senderount_state)
 
-    pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
-    claim_hash = NameUtil.normalized_namehash!(tx.name)
+    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
     claim = Naming.create_claim(claim_hash, tx.name, sender, block_height)
 
     updated_naming_chainstate =
@@ -126,10 +126,10 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           tx_type_state
         ) :: :ok | {:error, String.t()}
   def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, naming_state) do
-    pre_claim_commitment = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     pre_claim = Map.get(naming_state, pre_claim_commitment)
 
-    claim_hash = NameUtil.normalized_namehash!(tx.name)
+    {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
     claim = Map.get(naming_state, claim_hash)
 
     cond do

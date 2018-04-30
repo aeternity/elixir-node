@@ -9,11 +9,11 @@ defmodule Aecore.Naming.NameUtil do
 
   @name_registrars [@split_name_symbol <> "aet", @split_name_symbol <> "test"]
 
-  @spec normalized_namehash!(String.t()) :: binary()
-  def normalized_namehash!(name) do
+  @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
+  def normalized_namehash(name) do
     case normalize_and_validate_name(name) do
-      {:ok, normalized_name} -> namehash(normalized_name)
-      {:error, error} -> throw(error)
+      {:ok, normalized_name} -> {:ok, namehash(normalized_name)}
+      err -> err
     end
   end
 
@@ -78,14 +78,14 @@ defmodule Aecore.Naming.NameUtil do
   @spec split_name(String.t()) :: [String.t()]
   defp split_name(name), do: String.split(name, @split_name_symbol)
 
-  @spec validate_label_length([]) :: :ok
-  defp validate_label_length([]) do
-    :ok
-  end
-
   @spec get_max_label_length :: non_neg_integer()
   def get_max_label_length do
     Application.get_env(:aecore, :naming)[:max_label_length]
+  end
+
+  @spec validate_label_length([]) :: :ok
+  defp validate_label_length([]) do
+    :ok
   end
 
   @spec validate_label_length(list(String.t())) :: :ok | {:error, String.t()}

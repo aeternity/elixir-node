@@ -36,7 +36,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
@@ -46,7 +49,7 @@ defmodule AecoreNamingTest do
     naming_state_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
-    assert first_name_claim.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
@@ -59,7 +62,7 @@ defmodule AecoreNamingTest do
     naming_state_update = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
-    assert first_name_update.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
@@ -74,7 +77,7 @@ defmodule AecoreNamingTest do
     naming_state_transfer = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
-    assert first_name_transfer.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
@@ -96,7 +99,7 @@ defmodule AecoreNamingTest do
     naming_state_revoke = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_revoke)
     [first_name_revoke] = naming_state_revoke
-    assert first_name_revoke.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :revoked
@@ -121,7 +124,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<2::256>>, 5)
@@ -144,7 +150,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     claim_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
@@ -171,7 +180,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
@@ -181,7 +193,7 @@ defmodule AecoreNamingTest do
     naming_state_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
-    assert first_name_claim.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
@@ -200,7 +212,7 @@ defmodule AecoreNamingTest do
     naming_state_update = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
-    assert first_name_update.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
@@ -216,7 +228,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
@@ -226,7 +241,7 @@ defmodule AecoreNamingTest do
     naming_state_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
-    assert first_name_claim.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
@@ -239,7 +254,7 @@ defmodule AecoreNamingTest do
     naming_state_update = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
-    assert first_name_update.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
@@ -268,7 +283,7 @@ defmodule AecoreNamingTest do
     naming_state_transfer = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
-    assert first_name_transfer.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == Wallet.get_public_key()
     assert first_name_transfer.status == :claimed
@@ -284,7 +299,10 @@ defmodule AecoreNamingTest do
     naming_state_pre_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_pre_claim)
     [first_name_pre_claim] = naming_state_pre_claim
-    assert first_name_pre_claim.hash == Naming.create_commitment_hash("test.aet", <<1::256>>)
+
+    assert {:ok, first_name_pre_claim.hash} ==
+             Naming.create_commitment_hash("test.aet", <<1::256>>)
+
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
@@ -294,7 +312,7 @@ defmodule AecoreNamingTest do
     naming_state_claim = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
-    assert first_name_claim.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
@@ -307,7 +325,7 @@ defmodule AecoreNamingTest do
     naming_state_update = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
-    assert first_name_update.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
@@ -322,7 +340,7 @@ defmodule AecoreNamingTest do
     naming_state_transfer = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
-    assert first_name_transfer.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
@@ -346,7 +364,7 @@ defmodule AecoreNamingTest do
     naming_state_revoke = Map.values(Chain.chain_state().naming)
     assert 1 == Enum.count(naming_state_revoke)
     [first_name_revoke] = naming_state_revoke
-    assert first_name_revoke.hash == NameUtil.normalized_namehash!("test.aet")
+    assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
     assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :claimed

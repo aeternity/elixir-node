@@ -79,8 +79,7 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()}
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
     payload = %{receiver: receiver, amount: amount}
-    spend_tx = DataTx.init(SpendTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(spend_tx, sender_priv_key)
+    build_tx(payload, SpendTx, sender, sender_priv_key, fee, nonce)
   end
 
   @doc """
@@ -106,9 +105,14 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
-    payload = %{commitment: Naming.create_commitment_hash(name, name_salt)}
-    tx = DataTx.init(NamePreClaimTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_priv_key)
+    case Naming.create_commitment_hash(name, name_salt) do
+      {:ok, commitment} ->
+        payload = %{commitment: commitment}
+        build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce)
+
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -134,9 +138,14 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
-    payload = %{name: name, name_salt: name_salt}
-    tx = DataTx.init(NameClaimTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_priv_key)
+    case NameUtil.normalized_namehash(name) do
+      {:ok, _} ->
+        payload = %{name: name, name_salt: name_salt}
+        build_tx(payload, NameClaimTx, sender, sender_priv_key, fee, nonce)
+
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -162,15 +171,20 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
-    payload = %{
-      hash: NameUtil.normalized_namehash!(name),
-      expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
-      client_ttl: 86400,
-      pointers: pointers
-    }
+    case NameUtil.normalized_namehash(name) do
+      {:ok, namehash} ->
+        payload = %{
+          hash: namehash,
+          expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
+          client_ttl: 86400,
+          pointers: pointers
+        }
 
-    tx = DataTx.init(NameUpdateTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_priv_key)
+        build_tx(payload, NameUpdateTx, sender, sender_priv_key, fee, nonce)
+
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -196,9 +210,14 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def name_transfer(sender, sender_priv_key, name, target, fee, nonce) do
-    payload = %{hash: NameUtil.normalized_namehash!(name), target: target}
-    tx = DataTx.init(NameTransferTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_priv_key)
+    case NameUtil.normalized_namehash(name) do
+      {:ok, namehash} ->
+        payload = %{hash: namehash, target: target}
+        build_tx(payload, NameTransferTx, sender, sender_priv_key, fee, nonce)
+
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -213,7 +232,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NameTransferTx from the given sender keys
+  Build a NameRevokeTx from the given sender keys
   """
   @spec name_revoke(
           Wallet.pubkey(),
@@ -223,9 +242,27 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()}
   def name_revoke(sender, sender_priv_key, name, fee, nonce) do
-    payload = %{hash: NameUtil.normalized_namehash!(name)}
-    tx = DataTx.init(NameRevokeTx, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_priv_key)
+    case NameUtil.normalized_namehash(name) do
+      {:ok, namehash} ->
+        payload = %{hash: namehash}
+        build_tx(payload, NameRevokeTx, sender, sender_priv_key, fee, nonce)
+
+      err ->
+        err
+    end
+  end
+
+  @spec build_tx(
+          DataTx.paload(),
+          DataTx.tx_types(),
+          binary(),
+          binary(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
+  def build_tx(payload, tx_type, sender, sender_prv, fee, nonce) do
+    tx = DataTx.init(tx_type, payload, sender, fee, nonce)
+    SignedTx.sign_tx(tx, sender_prv)
   end
 
   @doc """

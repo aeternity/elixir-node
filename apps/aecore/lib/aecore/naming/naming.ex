@@ -97,9 +97,16 @@ defmodule Aecore.Naming.Naming do
       :pointers => []
     }
 
-  @spec create_commitment_hash(String.t(), Naming.salt()) :: binary()
+  @spec create_commitment_hash(String.t(), Naming.salt()) ::
+          {:ok, binary()} | {:error, String.t()}
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
-    Hash.hash(NameUtil.normalized_namehash!(name) <> name_salt)
+    case NameUtil.normalized_namehash(name) do
+      {:ok, hash} ->
+        {:ok, Hash.hash(hash <> name_salt)}
+
+      err ->
+        err
+    end
   end
 
   @spec get_claim_expire_by_relative_limit() :: non_neg_integer()
