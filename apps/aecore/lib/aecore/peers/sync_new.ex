@@ -7,6 +7,7 @@ defmodule Aecore.Peers.SyncNew do
 
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
 
   require Logger
@@ -27,6 +28,8 @@ defmodule Aecore.Peers.SyncNew do
   @type sync_pool :: list(sync_peer())
 
   @type hash_pool :: {{non_neg_integer(), non_neg_integer()}, Block.t() | peer_id_map()}
+
+  @max_adds 20
 
   defstruct difficulty: nil,
             from: nil,
@@ -167,6 +170,8 @@ defmodule Aecore.Peers.SyncNew do
           state.hash_pool
       end
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
+
+    # TODO: write this func
     case update_chain_from_pool(height_in, hash_in, hash_pool) do
       {:error, reason} ->
         Logger.info("#{__MODULE__}: Chain update failed", reason)
@@ -200,6 +205,49 @@ defmodule Aecore.Peers.SyncNew do
             {:reply, {:fetch, new_height, new_hash, pick_hash}, %{state | hash_pool: new_hash_pool}}
         end
     end
+  end
+
+  @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
+  defp update_chain_from_pool(agreed_height, agreed_hash, hash_pool) do
+    case split_hash_pool(agreed_height + 1, agreed_hash, hash_pool, [], 0) do
+      {_, _, [], rest, n_added} when rest != [] and n_added < @max_adds ->
+        {:error, {:stuck_at, agreed_height + 1}}
+
+      {new_agreed_height, new_agreed_hash, same, rest, _} ->
+        {:ok, new_agreed_height, new_agreed_hash, same ++ rest}
+    end
+  end
+
+  @spec split_hash_pool(non_neg_integer(), list(), any(), non_neg_integer()) :: tuple()
+  defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
+       when h < height do
+    split_hash_pool(height, prev_hash, same, n_added)
+  end
+
+  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} | hash_pool], same, n_added)
+       when h == height and n_added < @max_ads do
+    case Map.get(map, :block) do
+      nil ->
+        split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
+
+      block ->
+        hash = BlockValidation.block_header_hash(block.header)
+
+        case block.header.prev_hash do
+          prev_hash ->
+            case Chain.add_block(block) do
+              :ok ->
+                split_hash_pool(h + 1, hash, hash_pool, [], n_added + 1)
+
+              {:error, _} ->
+                split_hash_pool(height, prev_hash, hash_pool, same, n_added)
+            end
+        end
+    end
+  end
+
+  defp split_hash_pool(height, prev_hash, hash_pool, same, n_added) do
+    {height - 1, prev_hash, same, hash_pool, n_added}
   end
 
   @spec insert_header(sync_peer(), sync_pool()) :: {true | false, sync_pool()}
@@ -296,7 +344,8 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary())
-  defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash) when l_height == 0 do
+  defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
+       when l_height == 0 do
     {0, agreed_hash}
   end
 
