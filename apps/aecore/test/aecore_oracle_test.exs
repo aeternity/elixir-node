@@ -15,6 +15,7 @@ defmodule AecoreOracleTest do
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
   end
@@ -69,7 +70,9 @@ defmodule AecoreOracleTest do
     query_oracle(:invalid, :query_fee)
     query_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.oracle_interaction_objects()) == true
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()

@@ -6,6 +6,8 @@ defmodule Aeutil.Scientific do
 
   use Bitwise
 
+  @highest_target_int 0xFFFF000000000000000000000000000000000000000000000000000000000000
+
   @spec scientific_to_integer(integer) :: integer()
   def scientific_to_integer(scientific) do
     {exp, significand} = break_scientific(scientific)
@@ -57,6 +59,17 @@ defmodule Aeutil.Scientific do
       _ -> {-exp, significand - 0x800000}
     end
   end
+
+  ## The Difficulty is calculated from the Target and is used in Sync.
+  ## Difficulty is used to select the winning fork of new blocks:
+  ## the difficulty of chain of blocks is the sum of the diffculty of each block.
+
+  @spec target_to_difficulty(non_neg_integer()) :: float()
+  def target_to_difficulty(target) do
+    @highest_target_int / scientific_to_integer(target)
+  end
+
+  ## Internal Functions
 
   @spec int_to_sci(integer(), integer()) :: tuple()
   defp int_to_sci(integer, exp) when integer > 0x7FFFFF do

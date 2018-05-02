@@ -18,59 +18,62 @@ defmodule Aecore.Chain.BlockValidation do
 
   @type tree :: :gb_merkle_trees.tree()
 
-  @spec calculate_and_validate_block!(
+  @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
           Chainstate.chainstate(),
           list(Block.t())
-        ) :: {:error, term()} | Chainstate.chainstate()
-
-  def calculate_and_validate_block!(
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def calculate_and_validate_block(
         new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
       ) do
-    single_validate_block!(new_block)
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
-    new_chain_state =
-      Chainstate.calculate_and_validate_chain_state!(
-        new_block.txs,
-        old_chain_state,
-        new_block.header.height
-      )
+    case single_validate_block(new_block) do
+      :ok ->
+        {:ok, new_chain_state} =
+          Chainstate.calculate_and_validate_chain_state(
+            new_block.txs,
+            old_chain_state,
+            new_block.header.height
+          )
 
-    root_hash = Chainstate.calculate_root_hash(new_chain_state)
+        root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-    target =
-      Difficulty.calculate_next_difficulty(
-        new_block.header.time,
-        blocks_for_target_calculation
-      )
+        target =
+          Difficulty.calculate_next_difficulty(
+            new_block.header.time,
+            blocks_for_target_calculation
+          )
 
-    cond do
-      # do not check previous block hash for genesis block, there is none
-      !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
-        throw({:error, "Incorrect previous hash"})
+        cond do
+          # do not check previous block height for genesis block, there is none
+          !(is_genesis || check_correct_height?(new_block, previous_block)) ->
+            {:error, "#{__MODULE__}: Incorrect height"}
 
-      # do not check previous block height for genesis block, there is none
-      !(is_genesis || check_correct_height?(new_block, previous_block)) ->
-        throw({:error, "Incorrect height"})
+          !valid_header_time?(new_block) ->
+            {:error, "#{__MODULE__}: Invalid header time"}
 
-      new_block.header.root_hash != root_hash ->
-        throw({:error, "Root hash not matching"})
+          new_block.header.root_hash != root_hash ->
+            {:error, "#{__MODULE__}: Root hash not matching"}
 
-      target != new_block.header.target ->
-        throw({:error, "Invalid block target"})
+          target != new_block.header.target ->
+            {:error, "#{__MODULE__}: Invalid block target"}
 
-      true ->
-        new_chain_state
+          true ->
+            {:ok, new_chain_state}
+        end
+
+      err ->
+        err
     end
   end
 
-  @spec single_validate_block!(Block.t()) :: {:error, term()} | :ok
-  def single_validate_block!(block) do
+  @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
+  def single_validate_block(block) do
     coinbase_transactions_sum = sum_coinbase_transactions(block)
     total_fees = Miner.calculate_total_fees(block.txs)
     server = self()
@@ -90,28 +93,26 @@ defmodule Aecore.Chain.BlockValidation do
 
     cond do
       block.header.txs_hash != calculate_txs_hash(block.txs) ->
-        throw({:error, "Root hash of transactions does not match the one in header"})
+        {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
-        throw({:error, "One or more transactions not valid"})
+        {:error, "#{__MODULE__}: One or more transactions not valid"}
 
       coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
-        throw(
-          {:error,
-           "Sum of coinbase transactions amounts exceeds the maximum coinbase transactions amount"}
-        )
+        {:error, "#{__MODULE__}: Sum of coinbase transactions amounts exceeds
+             the maximum coinbase transactions amount"}
 
       block.header.version != Block.current_block_version() ->
-        throw({:error, "Invalid block version"})
+        {:error, "#{__MODULE__}: Invalid block version"}
 
       block_txs_count > max_txs_for_block ->
-        throw({:error, "Too many transactions"})
+        {:error, "#{__MODULE__}: Too many transactions"}
 
       !valid_header_time?(block) ->
-        throw({:error, "Invalid header time"})
+        {:error, "#{__MODULE__}: Invalid header time"}
 
       !is_target_met ->
-        throw({:error, "Header hash doesnt meet the target"})
+        {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
         :ok
@@ -128,7 +129,7 @@ defmodule Aecore.Chain.BlockValidation do
   def validate_block_transactions(block) do
     block.txs
     |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || SignedTx.is_valid?(tx)
+      SignedTx.is_coinbase?(tx) || :ok == SignedTx.validate(tx)
     end)
   end
 
@@ -178,12 +179,6 @@ defmodule Aecore.Chain.BlockValidation do
       end
     end)
     |> Enum.sum()
-  end
-
-  @spec check_prev_hash?(Block.t(), Block.t()) :: boolean()
-  defp check_prev_hash?(new_block, previous_block) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
-    new_block.header.prev_hash == prev_block_header_hash
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()

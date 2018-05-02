@@ -4,17 +4,14 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   and functions associated with those transactions.
   """
 
+  @behaviour Aecore.Tx.Transaction
+
   alias __MODULE__
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Oracle
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -57,8 +54,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
-  @spec is_valid?(OracleRegistrationTx.t()) :: boolean()
-  def is_valid?(%OracleRegistrationTx{
+  @spec validate(OracleRegistrationTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleRegistrationTx{
         query_format: query_format,
         response_format: response_format,
         ttl: ttl
@@ -67,27 +64,25 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       try do
         JsonSchema.resolve(query_format)
         JsonSchema.resolve(response_format)
-        true
+        :ok
       rescue
         e ->
-          Logger.error("Invalid query or response format definition - " <> inspect(e))
-
-          false
+          {:error, "#{__MODULE__}: Invalid query or response format definition - #{inspect(e)}"}
       end
 
     Oracle.ttl_is_valid?(ttl) && formats_valid
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.accounts_state(),
-          tx_type_state()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
-  def process_chainstate!(
+          AccountStateTree.tree(),
+          Oracle.t()
+        ) :: {AccountStateTree.tree(), Oracle.t()}
+  def process_chainstate(
         %OracleRegistrationTx{} = tx,
         sender,
         fee,
@@ -96,15 +91,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state
       ) do
-    preprocess_check!(
-      tx,
-      sender,
-      Account.get_account_state(accounts, sender),
-      fee,
-      block_height,
-      registered_oracles
-    )
-
     new_sender_account_state =
       accounts
       |> Account.get_account_state(sender)
@@ -127,27 +113,30 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     {updated_accounts_chainstate, updated_oracle_state}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           OracleRegistrationTx.t(),
           Wallet.pubkey(),
           Account.t(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          non_neg_integer(),
+          Oracle.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, sender, account_state, fee, block_height, registered_oracles) do
+  def preprocess_check(tx, sender, account_state, fee, _nonce, block_height, %{
+        registered_oracles: registered_oracles
+      }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Account is already an oracle"})
+        {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

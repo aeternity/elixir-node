@@ -45,6 +45,9 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
+  @spec get_chain_state_name() :: :none
+  def get_chain_state_name, do: :none
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
     %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
@@ -53,19 +56,17 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t()) :: boolean()
-  def is_valid?(%SpendTx{receiver: receiver, amount: amount}) do
-    cond do
-      amount < 0 ->
-        Logger.error("The amount cannot be a negative number")
-        false
+  @spec validate(SpendTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{amount: amount, receiver: receiver}) do
+    with true <- amount >= 0,
+         :ok <- Wallet.key_size_valid?(receiver) do
+      :ok
+    else
+      false ->
+        {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
 
-      !Wallet.key_size_valid?(receiver) ->
-        Logger.error("Wrong receiver key size")
-        false
-
-      true ->
-        true
+      err ->
+        err
     end
   end
 
@@ -80,7 +81,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
+  @spec process_chainstate(
           SpendTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -88,33 +89,27 @@ defmodule Aecore.Account.Tx.SpendTx do
           non_neg_integer(),
           AccountStateTree.tree(),
           tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()} | {:error, String.t()}
-  def process_chainstate!(%SpendTx{} = tx, sender, fee, nonce, block_height, accounts, %{}) do
+        ) :: {AccountStateTree.tree(), tx_type_state()}
+  def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
     sender_account_state = Account.get_account_state(accounts, sender)
 
-    case preprocess_check!(tx, sender, sender_account_state, fee, block_height, nonce, %{}) do
-      :ok ->
-        new_sender_account_state =
-          sender_account_state
-          |> deduct_fee(fee)
-          |> Account.transaction_out(tx.amount * -1, nonce)
+    new_sender_account_state =
+      sender_account_state
+      |> deduct_fee(fee)
+      |> Account.transaction_out(tx.amount * -1, nonce)
 
-        new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
-        receiver = Account.get_account_state(accounts, tx.receiver)
-        new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
+    new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
+    receiver = Account.get_account_state(accounts, tx.receiver)
+    new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
 
-        {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
-
-      {:error, _reason} = err ->
-        throw(err)
-    end
+    {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
   end
 
   @doc """
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
+  @spec preprocess_check(
           SpendTx.t(),
           Wallet.pubkey(),
           Account.t(),
@@ -123,11 +118,12 @@ defmodule Aecore.Account.Tx.SpendTx do
           non_neg_integer(),
           tx_type_state
         ) :: :ok | {:error, String.t()}
-  def preprocess_check!(tx, _sender, sender_account_state, fee, _block_height, _nonce, %{}) do
-    if sender_account_state.balance - (fee + tx.amount) >= 0 do
+  def preprocess_check(tx, _sender, account_state, fee, _nonce, _block_height, %{}) do
+    if account_state.balance - (fee + tx.amount) >= 0 do
       :ok
     else
-      throw({:error, "Negative balance"})
+      {:error,
+       "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - (fee + tx.amount))}"}
     end
   end
 

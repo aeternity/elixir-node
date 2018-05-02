@@ -4,17 +4,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   and functions associated with those transactions.
   """
 
+  @behaviour Aecore.Tx.Transaction
+
   alias __MODULE__
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -43,9 +40,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{query_id: query_id}) do
-    byte_size(query_id) == get_query_id_size()
+  @spec validate(OracleResponseTx.t()) :: :ok
+  def validate(%OracleResponseTx{}) do
+    :ok
   end
 
   @spec get_query_id_size :: non_neg_integer()
@@ -53,16 +50,16 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           OracleResponseTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.accounts_state(),
-          tx_type_state()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
-  def process_chainstate!(
+          AccountStateTree.tree(),
+          Oracle.t()
+        ) :: {AccountStateTree.tree(), Oracle.t()}
+  def process_chainstate(
         %OracleResponseTx{} = tx,
         sender,
         fee,
@@ -71,15 +68,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state
       ) do
-    preprocess_check(
-      tx,
-      sender,
-      Account.get_account_state(accounts, sender),
-      fee,
-      block_height,
-      oracle_state
-    )
-
     interaction_object = interaction_objects[tx.query_id]
     query_fee = interaction_object.query.query_fee
 
@@ -113,36 +101,37 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           Account.t(),
           non_neg_integer(),
           non_neg_integer(),
-          tx_type_state()
+          non_neg_integer(),
+          Oracle.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _block_height, %{
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, %{
         registered_oracles: registered_oracles,
         interaction_objects: interaction_objects
       }) do
     cond do
       account_state.balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Sender isn't a registered operator"})
+        {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
         registered_oracles[sender].tx.response_format,
         tx.response
       ) ->
-        throw({:error, "Invalid response data"})
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        throw({:error, "No query with that ID"})
+        {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
       interaction_objects[tx.query_id].response != nil ->
-        throw({:error, "Query already answered"})
+        {:error, "#{__MODULE__}: Query already answered"}
 
       interaction_objects[tx.query_id].query.oracle_address != sender ->
-        throw({:error, "Query references a different oracle"})
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok
