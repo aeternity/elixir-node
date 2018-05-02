@@ -178,13 +178,14 @@ defmodule Aecore.Chain.Chainstate do
       get_version(Account),
       pkey,
       account_info.nonce,
+      account_info.last_updated,
       account_info.balance
     ]
     |> ExRLP.encode()
   end
 
   def rlp_encode(_) do
-    {:error, :invalid_serialization}
+    {:error, "Invalid account chainstate structure"}
   end
 
   @spec rlp_decode(binary()) :: binary() | atom()

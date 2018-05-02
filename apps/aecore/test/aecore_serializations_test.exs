@@ -6,6 +6,7 @@ defmodule AecoreSerializationTest do
   """
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleExtendTx
@@ -64,14 +65,16 @@ defmodule AecoreSerializationTest do
     assert deserialized_spendtx = spendtx
   end
 
-  # @tag RLP_test
-  # test "Account chain-state serialization" do  TODO : Found a bug in account chainstate serializations
-  #   {account, pkey} = create_data(Account)
-  #   serialized_acc_info = Chainstate.rlp_encode(account, pkey)
-  #   IO.inspect serialized_acc_info
-  #   deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
-  #   assert account = deserialized_acc_info
-  # end
+  @tag RLP_test
+  # TODO : Found a bug in account chainstate serializations
+  test "Account chain-state serialization" do
+    {account, pkey} = create_data(Account)
+    serialized_acc_info = Chainstate.rlp_encode(account, pkey)
+    # IO.inspect serialized_acc_info
+    deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
+    assert account = deserialized_acc_info
+  end
+
   @tag RLP_test
   test "Block serialization", setup do
     # currently, serialization is being tested with genesis block only
@@ -82,9 +85,17 @@ defmodule AecoreSerializationTest do
   end
 
   test "Oracle interaction objects serialization", setup do
+    oracle_query_chainstate = create_data(OracleQuery)
+    serialized_orc = Oracle.rlp_encode(oracle_query_chainstate, :interaction_object)
+    deserialized_orc = Oracle.rlp_decode(serialized_orc)
+    assert oracle_registered_chainstate = deserialized_orc
   end
 
   test "Registered oracles serialization", setup do
+    oracle_registered_chainstate = create_data(Oracle)
+    serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate, :registered_oracle)
+    deserialized_orc = Oracle.rlp_decode(serialized_orc)
+    assert oracle_registered_chainstate = deserialized_orc
   end
 
   def create_data(data_type) do
@@ -128,7 +139,7 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
           query: %{"currency" => "USD"},
-          response: "undefined",
+          response: :undefined,
           response_ttl: <<131, 109, 0, 0, 0, 1, 5>>,
           sender_address:
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,

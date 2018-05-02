@@ -307,7 +307,7 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @spec rlp_encode(map(), atom()) :: binary()
-  def rlp_encode(registered_oracle, :registered_oracles) do
+  def rlp_encode(registered_oracle, :registered_oracle) do
     [
       type_to_tag(Oracle),
       get_version(Oracle),
@@ -325,7 +325,7 @@ defmodule Aecore.Oracle.Oracle do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(interaction_object, :interaction_objects) do
+  def rlp_encode(interaction_object, :interaction_object) do
     has_response =
       case interaction_object.has_response do
         true -> 1
