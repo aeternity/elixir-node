@@ -79,9 +79,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(
         %NameClaimTx{} = tx,
         sender,
@@ -91,10 +91,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         accounts,
         naming_state
       ) do
-    sender_account_state = Account.get_account_state(accounts, sender)
-
     new_senderount_state =
-      sender_account_state
+      accounts
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee)
       |> Account.transaction_out_nonce_update(nonce)
 
@@ -119,7 +118,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec preprocess_check(
           NameClaimTx.t(),
           Wallet.pubkey(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),

@@ -87,14 +87,13 @@ defmodule Aecore.Account.Tx.SpendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
-    sender_account_state = Account.get_account_state(accounts, sender)
-
     new_sender_account_state =
-      sender_account_state
+      accounts
+      |> Account.get_account_state(sender)
       |> deduct_fee(fee)
       |> Account.transaction_out(tx.amount * -1, nonce)
 
@@ -112,7 +111,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec preprocess_check(
           SpendTx.t(),
           Wallet.pubkey(),
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
