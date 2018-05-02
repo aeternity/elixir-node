@@ -28,6 +28,8 @@ defmodule Aecore.Tx.Pool.Worker do
 
   require Logger
 
+  @type tx_pool :: map()
+
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -46,12 +48,12 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, {:remove_transaction, tx})
   end
 
-  @spec get_pool() :: map()
+  @spec get_pool() :: tx_pool()
   def get_pool do
     GenServer.call(__MODULE__, :get_pool)
   end
 
-  @spec get_and_empty_pool() :: map()
+  @spec get_and_empty_pool() :: tx_pool()
   def get_and_empty_pool do
     GenServer.call(__MODULE__, :get_and_empty_pool)
   end

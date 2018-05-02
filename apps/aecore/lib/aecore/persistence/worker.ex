@@ -30,7 +30,7 @@ defmodule Aecore.Persistence.Worker do
   every value is the data that we want to persist
   The purpose of this function is to write many tasks to disk once
   """
-  @spec batch_write(map()) :: atom()
+  @spec batch_write(map()) :: :ok
   def batch_write(operations) do
     GenServer.call(__MODULE__, {:batch_write, operations})
   end

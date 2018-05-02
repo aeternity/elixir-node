@@ -134,7 +134,7 @@ defmodule Aecore.Tx.DataTx do
   Gets the given transaction type state,
   if there is any stored in the chainstate
   """
-  @spec get_tx_type_state(Chainstate.t(), atom()) :: map()
+  @spec get_tx_type_state(Chainstate.t(), tx_type :: atom()) :: map()
   def get_tx_type_state(chainstate, tx_type) do
     type = tx_type.get_chain_state_name()
     Map.get(chainstate, type, %{})

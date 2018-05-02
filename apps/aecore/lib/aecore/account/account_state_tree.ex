@@ -48,7 +48,7 @@ defmodule Aecore.Account.AccountStateTree do
     :gb_merkle_trees.root_hash(tree)
   end
 
-  @spec reduce(tree(), any(), fun()) :: any()
+  @spec reduce(tree(), integer(), fun()) :: integer()
   def reduce(tree, acc, fun) do
     :gb_merkle_trees.foldr(fun, acc, tree)
   end

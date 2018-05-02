@@ -19,6 +19,8 @@ defmodule Aeutil.Serialization do
 
   @type hash_types :: :chainstate | :header | :txs
 
+  @type value :: list() | map() | atom() | binary()
+
   @type raw_data :: %{
           block_hash: binary(),
           block_height: non_neg_integer(),
@@ -141,7 +143,7 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of serializing a strucure
   """
-  @spec serialize_value(any()) :: any()
+  @spec serialize_value(value()) :: value()
   def serialize_value(value), do: serialize_value(value, "")
 
   @doc """
@@ -225,7 +227,7 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of deserializing a strucure
   """
-  @spec deserialize_value(any()) :: any()
+  @spec deserialize_value(value()) :: value()
   def deserialize_value(value), do: deserialize_value(value, :other)
 
   @doc """
