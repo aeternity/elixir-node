@@ -5,15 +5,32 @@ defmodule Aecore.Tx.Transaction do
   """
 
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
-
+  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleResponseTx
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t()
+  @type tx_types ::
+          SpendTx.t()
+          | OracleExtendTx.t()
+          | OracleQueryTx.t()
+          | OracleRegistrationTx.t()
+          | OracleResponseTx.t()
+          | NamePreClaimTx.t()
+          | NameClaimTx.t()
+          | NameUpdateTx.t()
+          | NameTransferTx.t()
+          | NameRevokeTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -26,6 +43,9 @@ defmodule Aecore.Tx.Transaction do
   @callback init(payload()) :: tx_types()
 
   @callback validate(tx_types()) :: :ok | {:error, String.t()}
+
+  @doc "The name for state chain entry to be passed for processing"
+  @callback get_chain_state_name() :: Chainstate.chain_state_types()
 
   @doc """
   Default function for executing a given transaction type.

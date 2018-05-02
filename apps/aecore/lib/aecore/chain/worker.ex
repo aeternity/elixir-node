@@ -26,6 +26,11 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.AccountStateTree
   alias Aeutil.PatriciaMerkleTree
   alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -451,8 +456,10 @@ defmodule Aecore.Chain.Worker do
 
     chain_states = Persistence.get_all_chainstates()
 
+    is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
+
     top_chain_state =
-      if Enum.empty?(Serialization.remove_struct(chain_states)) do
+      if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
         struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
@@ -461,8 +468,10 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
+
     blocks_data_map =
-      if Enum.empty?(Serialization.remove_struct(blocks_info)) do
+      if is_empty_block_info do
         state.blocks_data_map
       else
         blocks_info
@@ -503,6 +512,27 @@ defmodule Aecore.Chain.Worker do
 
           OracleQueryTx ->
             [tx.data.sender, tx.data.payload.oracle_address]
+
+          OracleResponseTx ->
+            tx.data.sender
+
+          OracleExtendTx ->
+            tx.data.sender
+
+          NamePreClaimTx ->
+            tx.data.sender
+
+          NameClaimTx ->
+            tx.data.sender
+
+          NameUpdateTx ->
+            tx.data.sender
+
+          NameTransferTx ->
+            [tx.data.sender, tx.data.payload.target]
+
+          NameRevokeTx ->
+            tx.data.sender
 
           _ ->
             tx.data.sender
@@ -633,14 +663,28 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp get_persist_strategy(:to_chainstate) do
-    fn {key, root_hash}, acc_state ->
-      Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+    fn
+      {key = :accounts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :oracles, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
     end
   end
 
   defp get_persist_strategy(:from_chainstate) do
-    fn {key, value}, acc_state ->
-      Map.put(acc_state, key, value.root_hash)
+    fn
+      {key = :accounts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :oracles, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
     end
   end
 end
