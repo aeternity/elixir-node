@@ -58,9 +58,10 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         accounts,
         oracle_state
       ) do
+    sender_account_state = Account.get_account_state(accounts, sender, Account.empty())
+
     new_sender_account_state =
-      accounts
-      |> Map.get(sender, Account.empty())
+      sender_account_state
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 

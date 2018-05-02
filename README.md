@@ -286,3 +286,13 @@ the log can be found in the source folder under:`apps/aecore/logs`
   Extends the TTL of an oracle with the address that matches the address of the node.
 
 All transactions have to be mined in order to take effect.
+
+#### **Naming usage**
+
+Names will follow IDNA2008 normalization and have a maximum length of 253 characters, while each label is allowed to be 63 characters maximum. Names must end with `.aet` or `.test`.
+
+ * `NamePreClaim` a name, to register your interest in claiming it, while not announcing what name, a private binary salt is chosen. `Account.pre_claim(name, salt, fee)`
+ * `NameClaim` is possible after one block to publicly claim the name by setting the owner `Account.claim(name, salt, fee)`. Claims expire after 50000 blocks, if not renewed using update.
+ * `NameUpdate` updates associated pointers to one registered name, while updating the expiry. `Account.name_update(name, pointers, fee)`
+ * `NameTransfer` transfers one account claim to a different owner. `Account.name_transfer(name, target, fee)`
+ * `NameRevoke` revokes one name claim, will result in deletion after 2016 blocks. `Account.name_revoke(name, fee)`
