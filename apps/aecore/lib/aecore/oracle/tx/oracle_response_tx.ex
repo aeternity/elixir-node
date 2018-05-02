@@ -57,9 +57,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
-          OracleStateTree.oracle_state()
-        ) :: {AccountStateTree.tree(), OracleStateTree.oracle_state()}
+          AccountStateTree.accounts_state(),
+          OracleStateTree.oracles_state()
+        ) :: {AccountStateTree.accounts_state(), OracleStateTree.oracles_state()}
   def process_chainstate(
         %OracleResponseTx{} = tx,
         sender,
@@ -102,11 +102,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          OracleStateTree.oracle_state()
+          OracleStateTree.oracles_state()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, oracle_tree) do
-    registered_oracles = OracleStateTree.get_registered_oracles(oracle_tree)
-    interaction_objects = OracleStateTree.get_interaction_objects(oracle_tree)
+  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, oracles_tree) do
+    registered_oracles = OracleStateTree.get_registered_oracles(oracles_tree)
+    interaction_objects = OracleStateTree.get_interaction_objects(oracles_tree)
 
     cond do
       account_state.balance - fee < 0 ->

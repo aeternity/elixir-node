@@ -46,9 +46,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
-          OracleStateTree.oracle_state()
-        ) :: {AccountStateTree.tree(), OracleStateTree.oracle_state()}
+          AccountStateTree.accounts_state(),
+          OracleStateTree.oracles_state()
+        ) :: {AccountStateTree.accounts_state(), OracleStateTree.oracles_state()}
   def process_chainstate(
         %OracleExtendTx{} = tx,
         sender,
@@ -88,7 +88,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          OracleStateTree.oracle_state()
+          OracleStateTree.oracles_state()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, oracles) do
     registered_oracles = OracleStateTree.get_registered_oracles(oracles)

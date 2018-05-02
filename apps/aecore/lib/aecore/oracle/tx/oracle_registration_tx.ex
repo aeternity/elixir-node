@@ -80,9 +80,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          AccountStateTree.tree(),
-          OracleStateTree.oracle_state()
-        ) :: {AccountStateTree.tree(), Oracle.t()}
+          AccountStateTree.accounts_state(),
+          OracleStateTree.oracles_state()
+        ) :: {AccountStateTree.accounts_state(), OracleStateTree.oracles_state()}
   def process_chainstate(
         %OracleRegistrationTx{} = tx,
         sender,
@@ -90,7 +90,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         nonce,
         block_height,
         accounts,
-        registered_oracles
+        oracles
       ) do
     new_sender_account_state =
       accounts
@@ -101,7 +101,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
 
     updated_oracle_chainstate =
-      OracleStateTree.put_registered_oracles(registered_oracles, %{
+      OracleStateTree.put_registered_oracles(oracles, %{
         sender => %{
           tx: tx,
           height_included: block_height
