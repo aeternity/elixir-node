@@ -87,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          SpendTx.t(),
+          NameUpdateTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -132,7 +132,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          SpendTx.t(),
+          NameUpdateTx.t(),
           Wallet.pubkey(),
           AccountStateTree.tree(),
           non_neg_integer(),

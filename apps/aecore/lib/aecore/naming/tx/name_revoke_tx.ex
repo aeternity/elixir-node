@@ -63,7 +63,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Revokes a previously claimed name for one account
   """
   @spec process_chainstate(
-          SpendTx.t(),
+          NameRevokeTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -107,7 +107,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          SpendTx.t(),
+          NameRevokeTx.t(),
           Wallet.pubkey(),
           AccountStateTree.tree(),
           non_neg_integer(),

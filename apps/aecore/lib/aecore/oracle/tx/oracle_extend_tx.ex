@@ -11,8 +11,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
 
-  require Logger
-
   @type payload :: %{
           ttl: non_neg_integer()
         }

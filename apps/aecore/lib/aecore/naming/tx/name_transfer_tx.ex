@@ -72,7 +72,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Changes the naming state for claim transfers.
   """
   @spec process_chainstate(
-          SpendTx.t(),
+          NameTransferTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -110,7 +110,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          SpendTx.t(),
+          NameTransferTx.t(),
           Wallet.pubkey(),
           AccountStateTree.tree(),
           non_neg_integer(),

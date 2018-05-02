@@ -66,7 +66,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Pre claims a name for one account.
   """
   @spec process_chainstate(
-          SpendTx.t(),
+          NamePreClaimTx.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -105,7 +105,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          SpendTx.t(),
+          NamePreClaimTx.t(),
           Wallet.pubkey(),
           AccountStateTree.tree(),
           non_neg_integer(),

@@ -285,10 +285,8 @@ defmodule Aecore.Account.Account do
   end
 
   @spec transaction_out_nonce_update(ChainState.account(), integer()) :: ChainState.account()
-  def transaction_out_nonce_update(account_state, nonce) do
-    account_state
-    |> Map.put(:nonce, nonce)
-  end
+  def transaction_out_nonce_update(account_state, nonce),
+    do: Map.put(account_state, :nonce, nonce)
 
   @spec get_account_state(AccountStateTree.tree(), Wallet.pubkey()) :: Account.t()
   def get_account_state(tree, key) do
