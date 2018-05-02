@@ -86,6 +86,11 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
   end
 
+  @spec update_hash_pool(list()) :: list()
+  def update_hash_pool(hashes) do
+    GenServer.call(__MODULE__, {:update_hash_pool, hashes})
+  end
+
   ## INNER FUNCTIONS ##
 
   def handle_cast({:start_sync, peer_id, remote_hash}, _from, state) do
@@ -174,6 +179,12 @@ defmodule Aecore.Peers.SyncNew do
           state.hash_pool
       end
 
+    def handle_call({:update_hash_pool, hashes}, _, state) do
+      hash_pool = merge(state.hash_pool, hashes)
+      Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
+      {:reply, :ok, %{state | hash_pool: hash_pool}}
+    end
+
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
     # TODO: write this func
@@ -260,6 +271,9 @@ defmodule Aecore.Peers.SyncNew do
               {:error, _} ->
                 split_hash_pool(height, prev_hash, hash_pool, same, n_added)
             end
+
+          _ ->
+            split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
         end
     end
   end
@@ -381,6 +395,40 @@ defmodule Aecore.Peers.SyncNew do
 
       {:error, reason} ->
         {0, agreed_hash}
+    end
+  end
+
+  defp fetch_more(peer_id, _, _, :done) do
+    delete_from_pool(peer_id)
+  end
+
+  defp fetch_more(peer_id, last_height, _, {:error, error}) do
+    Logger.info("Abort sync at height ~p Error ~p ", [last_height, error])
+    delete_from_pool(peer_id)
+  end
+
+  defp fetch_more(peer_id, last_height, header_hash, result) do
+    ## We need to supply the Hash, because locally we might have a shorter,
+    ## but locally more difficult fork
+    case fetch_next(peer_id, last_height, header_hash, result) do
+      {:fetch, new_height, new_hash, hash} ->
+        case do_fetch_block(hash, peer_id) do
+          {ok, _, new_block} ->
+            fetch_more(peer_id, new_height, new_hash, {:ok, new_block})
+
+          {error, _} = error ->
+            fetch_more(peer_id, new_height, new_hash, error)
+        end
+
+      {:insert, new_height, new_hash} ->
+        fetch_more(peer_id, new_height, new_hash, :no_result)
+
+      {:fill_pool, agreed_height, agreed_hash} ->
+        pool_result = fill_pool(peer_id, agreed_hash)
+        fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
+
+      other ->
+        fetch_more(peer_id, last_height, header_hash, other)
     end
   end
 
