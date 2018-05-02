@@ -29,6 +29,8 @@ defmodule Aecore.Peers.SyncNew do
 
   @type hash_pool :: {{non_neg_integer(), non_neg_integer()}, Block.t() | peer_id_map()}
 
+  @max_headers_per_chunk 100
+  @max_diff_for_sync 50
   @max_adds 20
 
   defstruct difficulty: nil,
@@ -250,6 +252,10 @@ defmodule Aecore.Peers.SyncNew do
     {height - 1, prev_hash, same, hash_pool, n_added}
   end
 
+  # Tries to add new peer to the peer_pool.
+  # If we have it already, we get either the local or the remote info
+  # from the peer with highest from_height.
+  # After that we merge the new_sync_peer data with the old one, updating it.
   @spec insert_header(sync_peer(), sync_pool()) :: {true | false, sync_pool()}
   defp insert_header(
          %{
@@ -289,6 +295,9 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   ## TODO: Fix the return value
+  # Here we initiate the actual sync of the Peers. We get the remote Peer values,
+  # then we agree on some height, and check weather we agree on it, if not we go lower,
+  # until we agree on some height. This might be even the Gensis block!
   @spec do_start_sync(String.t(), binary()) :: String.t()
   defp do_start_sync(peer_id, remote_hash) do
     case get_header_by_hash(peer_id, remote_hash) do
@@ -314,7 +323,7 @@ defmodule Aecore.Peers.SyncNew do
             :ok
 
           true ->
-            # TODO: pool_result = fill_pool(peer_id, agreed_hash)
+            pool_result = fill_pool(peer_id, agreed_hash)
             # TODO: fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
             :ok
         end
@@ -325,24 +334,8 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  defp do_forward_block(block, peer_id) do
-    height = block.header.height
-
-    case sync_in_progress?(peer_id) do
-      {true, %{to: to_height}} when to_height > height + @max_diff_for_sync ->
-        Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
-
-      false ->
-        # send_block(peer_id, block) Send block through the peer module
-        :ok
-    end
-  end
-
-  defp do_forward_tx(tx, peer_id) do
-    send_tx(peer_id, tx)
-    Logger.debug("#{__MODULE__}: sent tx: #{inspect(tx)} to peer #{inspect(peer_id)}")
-  end
-
+  # With this func we try to agree on block height on which we agree and could sync.
+  # In other words a common block.
   @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary())
   defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
        when l_height == 0 do
@@ -372,6 +365,135 @@ defmodule Aecore.Peers.SyncNew do
 
       {:error, reason} ->
         {0, agreed_hash}
+    end
+  end
+
+  # Send our block to the Remote Peer
+  defp do_forward_block(block, peer_id) do
+    height = block.header.height
+
+    case sync_in_progress?(peer_id) do
+      {true, %{to: to_height}} when to_height > height + @max_diff_for_sync ->
+        Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
+
+      false ->
+        # send_block(peer_id, block) Send block through the peer module
+        :ok
+    end
+  end
+
+  # Send a transaction to the Remote Peer
+  defp do_forward_tx(tx, peer_id) do
+    send_tx(peer_id, tx)
+    Logger.debug("#{__MODULE__}: sent tx: #{inspect(tx)} to peer #{inspect(peer_id)}")
+  end
+
+  # Merges the local Hashes with the Remote Peer hashes
+  # So it takes the data from where the height is higher
+  defp merge([], new_hashes), do: new_hashes
+  defp merge(old_hashes, []), do: old_hashes
+
+  defp merge([{{h_1, hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
+       when h1 < h2 do
+    merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
+  end
+
+  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, hash_2}, _} | new_hashes])
+       when h1 > h2 do
+    merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
+  end
+
+  defp merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes]) do
+    pick_same({{h_2, hash_2}, map_2}, old_hashes, new_hashes)
+  end
+
+  defp pick_same({{h, hash_2}, map_2}, [{{h, hash_1}, map_1} | old_hashes], new_hashes) do
+    case hash_1 == hash_2 do
+      true ->
+        [
+          {{h, hash_1}, Map.merge(map_1, map_2)}
+          | pick_same({{h, hash_2}, map2}, old_hashes, new_hashes)
+        ]
+
+      false ->
+        [{{h, hash_1}, map_1} | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)]
+    end
+  end
+
+  defp pick_same(_, old_hashes, new_hashes), do: merge(old_hashes, new_hashes)
+
+  defp fill_pool(peer_id, agreed_hash) do
+    ## TODO: Create this func!
+    case get_n_successors(peer_id, agreed_hash, @max_headers_per_chunk) do
+      {:ok, []} ->
+        ## TODO: Create this func!
+        delete_from_pool(peer_id)
+        :done
+
+      {:ok, chunk_hashes} ->
+        hash_pool =
+          for chunk <- chunk_hashes do
+            {chunk, %{peer: peer_id}}
+          end
+
+        ## TODO: Create this func!
+        update_hash_pool(hash_pool)
+        {:filled_pool, length(chunk_hashes) - 1}
+
+      err ->
+        Logger.debug("#{__MODULE__}: Abort sync with: #{inspect(err)}")
+        ## TODO: Create this func!
+        delete_from_pool(peer_id)
+        {:error, :sync_abort}
+    end
+  end
+
+  # Check if we already have this block locally, is so
+  # take it from the chain
+  defp do_fetch_block(hash, peer_id) do
+    case Chain.get_block(hash) do
+      {:ok, block} ->
+        Logger.debug("#{__MODULE__}: We already have this block!")
+        {:ok, false, block}
+
+      {:error, _} ->
+        do_fetch_block_ext(hash, peer_id)
+    end
+  end
+
+  # If we don't have the block locally, take it from the Remote Peer
+  defp do_fetch_block_ext(hash, peer_id) do
+    case Peers.get_block(peer_id, hash) do
+      {:ok, block} ->
+        case block.header.hash === hash do
+          true ->
+            Logger.debug(
+              "#{__MODULE__}: Block #{inspect(block)} fetched from #{inspect(peer_id)}"
+            )
+
+            {:ok, true, block}
+
+          false ->
+            {:error, :hash_mismatch}
+        end
+
+      err ->
+        Logger.debug("#{__MODULE__}: Failed to fetch the block from #{inspect(peer_id)}")
+        err
+    end
+  end
+
+  # Try to fetch the pool of transactions
+  # from the Remote Peer we are connected to
+  defp do_fetch_mempool(peer_id) do
+    case Peers.get_mempool(peer_id) do
+      {:ok, txs} ->
+        Logger.debug("#{__MODULE__}: Mempool received from #{inspect(peer_id)}")
+        Pool.add_transactions(txs)
+
+      err ->
+        Logger.debug("#{__MODULE__}: Error fetching the mempool from #{inspect(peer_id)}")
+        err
     end
   end
 end
