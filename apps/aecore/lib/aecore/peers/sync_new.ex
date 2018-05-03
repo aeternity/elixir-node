@@ -58,6 +58,16 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash, remote_difficulty})
   end
 
+  @spec fetch_mempool(String.t()) :: :ok | {:error, String.t()}
+  def fetch_mempool(peer_id) do
+    GenServer.cast(__MODULE__, {:fetch_mempool, peer_id})
+  end
+
+  @spec schedule_ping(String.t()) :: :ok | {:error, String.t()}
+  def schedule_ping(peer_id) do
+    GenServer.cast(__MODULE__, {:schedule_ping, peer_id})
+  end
+
   @doc """
   Checks weather the sync is in progress
   """
@@ -107,6 +117,17 @@ defmodule Aecore.Peers.SyncNew do
         Logger.info("#{__MODULE__}: sync is already in progress with #{inspect(peer_id)}")
     end
 
+    :jobs.enqueue(:sync_jobs, {:ping, peer_id})
+    {:noreply, state}
+  end
+
+  def handle_cast({:fetch_mempool, peer_id}, _, state) do
+    :jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_id})
+    {:noreply, state}
+  end
+
+  def handle_cast({:schedule_ping, peer_id}, _, state) do
+    :jobs.enqueue(:sync_jobs, {:schedule_ping, peer_id})
     {:noreply, state}
   end
 
@@ -190,7 +211,6 @@ defmodule Aecore.Peers.SyncNew do
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
-    # TODO: write this func
     case update_chain_from_pool(height_in, hash_in, hash_pool) do
       {:error, reason} ->
         Logger.info("#{__MODULE__}: Chain update failed", reason)
@@ -344,7 +364,7 @@ defmodule Aecore.Peers.SyncNew do
 
           true ->
             pool_result = fill_pool(peer_id, agreed_hash)
-            # TODO: fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
+            fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
             :ok
         end
 
@@ -419,6 +439,36 @@ defmodule Aecore.Peers.SyncNew do
 
       other ->
         fetch_more(peer_id, last_height, header_hash, other)
+    end
+  end
+
+  def sync_worker() do
+    result = :jobs.dequeue(:sync_jobs, 1)
+    process_job(result)
+  end
+
+  defp process_job([{_t, job}]) do
+    case job do
+      {:forward, %{block: block}, peer_id} ->
+        do_forward_block(block, peer_id)
+
+      {:forward, %{tx: tx}, peer_id} ->
+        do_forward_tx(tx, peer_id)
+
+      {:start_sync, peer_id, remote_hash} ->
+        case sync_in_progress?(peer_id) do
+          false -> do_start_sync(peer_id, remote_hash)
+          _ -> Logger.info("Sync already in progress")
+        end
+
+      {:fetch_mempool, peer_id} ->
+        do_fetch_mempool(peer_id)
+
+      {:ping, peer_id} ->
+        ping_peer(peer_id)
+
+      _other ->
+        Logger.debug("Unknown job")
     end
   end
 

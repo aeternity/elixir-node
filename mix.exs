@@ -63,7 +63,8 @@ defmodule EpochElixir.Mixfile do
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:ranch,
-       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
+       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
+      {:jobs, "~> 0.7.1", override: true}
     ]
   end
 end
