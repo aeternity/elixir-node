@@ -25,6 +25,11 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.SignedTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -448,8 +453,10 @@ defmodule Aecore.Chain.Worker do
 
     chain_states = Persistence.get_all_accounts_chain_states()
 
+    is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
+
     top_chain_state =
-      if Enum.empty?(Serialization.remove_struct(chain_states)) do
+      if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
         chain_states
@@ -458,8 +465,10 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
+
     blocks_data_map =
-      if Enum.empty?(Serialization.remove_struct(blocks_info)) do
+      if is_empty_block_info do
         state.blocks_data_map
       else
         blocks_info
@@ -500,6 +509,27 @@ defmodule Aecore.Chain.Worker do
 
           OracleQueryTx ->
             [tx.data.sender, tx.data.payload.oracle_address]
+
+          OracleResponseTx ->
+            tx.data.sender
+
+          OracleExtendTx ->
+            tx.data.sender
+
+          NamePreClaimTx ->
+            tx.data.sender
+
+          NameClaimTx ->
+            tx.data.sender
+
+          NameUpdateTx ->
+            tx.data.sender
+
+          NameTransferTx ->
+            [tx.data.sender, tx.data.payload.target]
+
+          NameRevokeTx ->
+            tx.data.sender
 
           _ ->
             tx.data.sender

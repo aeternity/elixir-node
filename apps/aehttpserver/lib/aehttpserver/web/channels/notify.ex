@@ -5,6 +5,7 @@ defmodule Aehttpserver.Web.Notify do
 
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.Serialization
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Account.Account
@@ -35,7 +36,7 @@ defmodule Aehttpserver.Web.Notify do
 
   def broadcast_tx(tx, is_to_sender) do
     if is_to_sender do
-      if tx.data.sender != nil do
+      if Map.has_key?(tx.data, :sender) && tx.data.sender != nil do
         Endpoint.broadcast!(
           "room:notifications",
           "new_tx:" <> Account.base58c_encode(tx.data.sender),
@@ -55,6 +56,13 @@ defmodule Aehttpserver.Web.Notify do
           Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
+            %{"body" => Serialization.tx(tx, :serialize)}
+          )
+
+        %NameTransferTx{} ->
+          Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.target),
             %{"body" => Serialization.tx(tx, :serialize)}
           )
 

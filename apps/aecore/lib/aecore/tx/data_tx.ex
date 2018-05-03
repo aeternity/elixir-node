@@ -2,7 +2,11 @@ defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
@@ -14,22 +18,36 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Oracle 
 
   require Logger
 
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
-          SpendTx.t()
-          | CoinbaseTx.t()
-          | OracleRegistrationTx.t()
-          | OracleQueryTx.t()
-          | OracleResponseTx.t()
-          | OracleExtendTx.t()
+          SpendTx
+          | OracleExtendTx
+          | OracleRegistrationTx
+          | OracleResponseTx
+          | OracleResponseTx
+          | NamePreClaimTx
+          | NameClaimTx
+          | NameUpdateTx
+          | NameTransferTx
+          | NameRevokeTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
-  @type payload :: SpendTx.t()
+  @type payload ::
+          SpendTx.t()
+          | OracleExtendTx.t()
+          | OracleQueryTx.t()
+          | OracleRegistrationTx.t()
+          | OracleResponseTx.t()
+          | NamePreClaimTx.t()
+          | NameClaimTx.t()
+          | NameUpdateTx.t()
+          | NameTransferTx.t()
+          | NameRevokeTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
