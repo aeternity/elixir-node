@@ -14,6 +14,8 @@ before_install:
   - cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && cd ..
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
   - source $HOME/.cargo/env
+
+before_script:
   - mix dialyzer --plt
 
 script:
