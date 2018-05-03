@@ -19,7 +19,6 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Oracle 
 
   require Logger
 
@@ -367,7 +366,72 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(data) when is_binary(data) do
+  def rlp_encode(%DataTx{type: NamePreClaimTx} = tx) do
+    [
+      type_to_tag(NamePreClaimTx),
+      get_version(NamePreClaimTx),
+      tx.sender,
+      tx.nonce,
+      tx.payload.commitment,
+      tx.fee
+    ]
+    |> ExRLP.encode()
+  end
+
+  def rlp_encode(%DataTx{type: NameClaimTx} = tx) do
+    [
+      type_to_tag(NameClaimTx),
+      get_version(NameClaimTx),
+      tx.sender,
+      tx.nonce,
+      tx.payload.name,
+      tx.payload.name_salt,
+      tx.fee
+    ]
+    |> ExRLP.encode()
+  end
+
+  def rlp_encode(%DataTx{type: NameUpdateTx} = tx) do
+    [
+      type_to_tag(NameUpdateTx),
+      get_version(NameUpdateTx),
+      tx.sender,
+      tx.nonce,
+      tx.payload.hash,
+      tx.payload.expire_by,
+      tx.payload.pointers,
+      tx.payload.client_ttl,
+      tx.fee
+    ]
+    |> ExRLP.encode()
+  end
+
+  def rlp_encode(%DataTx{type: NameRevokeTx} = tx) do
+    [
+      type_to_tag(NameRevokeTx),
+      get_version(NameRevokeTx),
+      tx.sender,
+      tx.nonce,
+      tx.payload.hash,
+      tx.fee
+    ]
+    |> ExRLP.encode()
+  end
+
+  def rlp_encode(%DataTx{type: NameTransferTx} = tx) do
+    [
+      type_to_tag(NameTransferTx),
+      get_version(NameTransferTx),
+      tx.sender,
+      tx.nonce,
+      tx.payload.hash,
+      tx.payload.target,
+      tx.fee
+    ]
+    |> ExRLP.encode()
+  end
+
+  def rlp_encode(data) when is_binary(data) or is_integer(data) do
     ExRLP.encode(data)
   end
 
@@ -409,18 +473,6 @@ defmodule Aecore.Tx.DataTx do
           Serialization.transform_item(nonce, :int),
           Serialization.transform_item(amount, :int)
         ]
-
-        %DataTx{
-          fee: 0,
-          nonce: Serialization.transform_item(nonce, :int),
-          payload: %SpendTx{
-            amount: Serialization.transform_item(amount, :int),
-            receiver: receiver,
-            version: ver
-          },
-          sender: nil,
-          type: SpendTx
-        }
 
         DataTx.init(
           SpendTx,
@@ -498,6 +550,72 @@ defmodule Aecore.Tx.DataTx do
           Serialization.transform_item(fee, :int)
         ]
 
+      NamePreClaimTx ->
+        [sender, nonce, commitment, fee] = rest_data
+        payload = %NamePreClaimTx{commitment: commitment}
+
+        DataTx.init(
+          NamePreClaimTx,
+          payload,
+          sender,
+          Serialization.transform_item(fee, :int),
+          Serialization.transform_item(nonce, :int)
+        )
+
+      NameClaimTx ->
+        [sender, nonce, name, name_salt, fee] = rest_data
+        payload = %NameClaimTx{name: name, name_salt: name_salt}
+
+        DataTx.init(
+          NameClaimTx,
+          payload,
+          sender,
+          Serialization.transform_item(fee, :int),
+          Serialization.transform_item(nonce, :int)
+        )
+
+      NameUpdateTx ->
+        [sender, nonce, hash, name_ttl, pointers, ttl, fee] = rest_data
+
+        payload = %NameUpdateTx{
+          client_ttl: Serialization.transform_item(ttl, :int),
+          expire_by: Serialization.transform_item(name_ttl, :int),
+          hash: hash,
+          pointers: pointers
+        }
+
+        DataTx.init(
+          NameUpdateTx,
+          payload,
+          sender,
+          Serialization.transform_item(fee, :int),
+          Serialization.transform_item(nonce, :int)
+        )
+
+      NameRevokeTx ->
+        [sender, nonce, hash, fee] = rest_data
+        payload = %NameRevokeTx{hash: hash}
+
+        DataTx.init(
+          NameRevokeTx,
+          payload,
+          sender,
+          Serialization.transform_item(fee, :int),
+          Serialization.transform_item(nonce, :int)
+        )
+
+      NameTransferTx ->
+        [sender, nonce, hash, recipient, fee] = rest_data
+        payload = %NameTransferTx{hash: hash, target: recipient}
+
+        DataTx.init(
+          NameTransferTx,
+          payload,
+          sender,
+          Serialization.transform_item(fee, :int),
+          Serialization.transform_item(nonce, :int)
+        )
+
       _ ->
         {:error, "Illegal DataTx serialization"}
     end
@@ -514,6 +632,16 @@ defmodule Aecore.Tx.DataTx do
   defp type_to_tag(OracleQueryTx), do: 23
   defp type_to_tag(OracleResponseTx), do: 24
   defp type_to_tag(OracleExtendTx), do: 25
+  # TODO look for this structure
+  defp type_to_tag(NameName), do: 30
+  # TODO look for this structure
+  defp type_to_tag(NameCommitment), do: 31
+  defp type_to_tag(NameClaimTx), do: 32
+  defp type_to_tag(NamePreClaimTx), do: 33
+  defp type_to_tag(NameUpdateTx), do: 34
+  defp type_to_tag(NameRevokeTx), do: 35
+  defp type_to_tag(NameTransferTx), do: 36
+
   defp type_to_tag(_), do: :unknown_type
 
   @spec tag_to_type(integer()) :: tx_types() | atom()
@@ -523,6 +651,15 @@ defmodule Aecore.Tx.DataTx do
   defp tag_to_type(23), do: OracleQueryTx
   defp tag_to_type(24), do: OracleResponseTx
   defp tag_to_type(25), do: OracleExtendTx
+  # TODO look for this structure
+  defp tag_to_type(30), do: NameName
+  # TODO look for this structure
+  defp tag_to_type(31), do: NameCommitment
+  defp tag_to_type(32), do: NameClaimTx
+  defp tag_to_type(33), do: NamePreClaimTx
+  defp tag_to_type(34), do: NameUpdateTx
+  defp tag_to_type(35), do: NameRevokeTx
+  defp tag_to_type(36), do: NameTransferTx
   defp tag_to_type(_), do: :unknown_tag
 
   @spec get_version(tx_types()) :: integer() | atom()
@@ -532,5 +669,15 @@ defmodule Aecore.Tx.DataTx do
   defp get_version(OracleQueryTx), do: 1
   defp get_version(OracleResponseTx), do: 1
   defp get_version(OracleExtendTx), do: 1
+  # TODO look for this structure
+  defp get_version(NameName), do: 1
+  # TODO look for this structure
+  defp get_version(NameCommitment), do: 1
+  defp get_version(NameClaimTx), do: 1
+  defp get_version(NamePreClaimTx), do: 1
+  defp get_version(NameUpdateTx), do: 1
+  defp get_version(NameRevokeTx), do: 1
+  defp get_version(NameTransferTx), do: 1
+
   defp get_version(_), do: :unknown_struct_version
 end

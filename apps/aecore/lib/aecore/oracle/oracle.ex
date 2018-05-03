@@ -71,7 +71,6 @@ defmodule Aecore.Oracle.Oracle do
         fee,
         Chain.lowest_valid_nonce()
       )
-     IO.inspect tx_data 
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
     Pool.add_transaction(tx)

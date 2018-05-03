@@ -52,7 +52,7 @@ defmodule AecoreSerializationTest do
     assert deserialized_signedtx = signedtx
   end
 
-  @tag RLP_test
+  @tag :rlp_test
   test "DataTx(SpendTx) serialization", setup do
     Miner.mine_sync_block_to_chain()
     spendtx = create_data(SpendTx)
@@ -65,17 +65,15 @@ defmodule AecoreSerializationTest do
     assert deserialized_spendtx = spendtx
   end
 
-  @tag RLP_test
-  # TODO : Found a bug in account chainstate serializations
+  @tag :rlp_test
   test "Account chain-state serialization" do
     {account, pkey} = create_data(Account)
     serialized_acc_info = Chainstate.rlp_encode(account, pkey)
-    # IO.inspect serialized_acc_info
     deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
     assert account = deserialized_acc_info
   end
 
-  @tag RLP_test
+  @tag :rlp_test
   test "Block serialization", setup do
     # currently, serialization is being tested with genesis block only
     block = create_data(Block)
@@ -96,6 +94,28 @@ defmodule AecoreSerializationTest do
     serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate, :registered_oracle)
     deserialized_orc = Oracle.rlp_decode(serialized_orc)
     assert oracle_registered_chainstate = deserialized_orc
+  end
+
+  test "Naming System TX's serialization", setup do
+    naming_pre_claim_tx = create_data(NameClaimTx)
+    serialized_preclaim_tx = DataTx.rlp_encode(naming_pre_claim_tx)
+    deserialized_preclaim_tx = DataTx.rlp_decode(serialized_preclaim_tx)
+    assert naming_pre_claim_tx = deserialized_preclaim_tx
+
+    naming_claim_tx = create_data(NameClaimTx)
+    serialized_claim_tx = DataTx.rlp_encode(naming_claim_tx)
+    deserialized_claim_tx = DataTx.rlp_decode(serialized_claim_tx)
+    assert naming_claim_tx = deserialized_claim_tx
+
+    naming_update_tx = create_data(NameUpdateTx)
+    serialized_update_tx = DataTx.rlp_encode(naming_update_tx)
+    deserialized_update_tx = DataTx.rlp_decode(serialized_update_tx)
+    assert naming_update_tx = deserialized_update_tx
+
+    naming_transfer_tx = create_data(NameTransferTx)
+    serialized_transfer_tx = DataTx.rlp_encode(naming_transfer_tx)
+    deserialized_transfer_tx = DataTx.rlp_decode(naming_transfer_tx)
+    assert naming_transfer_tx = deserialized_transfer_tx
   end
 
   def create_data(data_type) do
@@ -165,39 +185,88 @@ defmodule AecoreSerializationTest do
          },
          <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236, 181,
            172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>}
+
+      NamePreClaimTx ->
+        %Aecore.Tx.DataTx{
+          fee: 5,
+          nonce: 1,
+          payload: %Aecore.Naming.Tx.NamePreClaimTx{
+            commitment:
+              <<1, 168, 130, 92, 49, 3, 219, 12, 26, 208, 240, 226, 92, 7, 216, 30, 22, 168, 99,
+                121, 127, 147, 123, 47, 116, 13, 204, 240, 229, 180, 128, 222>>
+          },
+          sender:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          type: Aecore.Naming.Tx.NamePreClaimTx
+        }
+
+      NameClaimTx ->
+        %Aecore.Tx.DataTx{
+          fee: 5,
+          nonce: 2,
+          payload: %Aecore.Naming.Tx.NameClaimTx{
+            name: "test.aet",
+            name_salt:
+              <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 1>>
+          },
+          sender:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          type: Aecore.Naming.Tx.NameClaimTx
+        }
+
+      NameUpdateTx ->
+        %Aecore.Tx.DataTx{
+          fee: 5,
+          nonce: 3,
+          payload: %Aecore.Naming.Tx.NameUpdateTx{
+            client_ttl: 86400,
+            expire_by: 50003,
+            hash:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            pointers: "{\"test\": 2}"
+          },
+          sender:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          type: Aecore.Naming.Tx.NameUpdateTx
+        }
+
+      NameTransferTx ->
+        %Aecore.Tx.DataTx{
+          fee: 5,
+          nonce: 4,
+          payload: %Aecore.Naming.Tx.NameTransferTx{
+            hash:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            target:
+              <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240,
+                209, 81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
+          },
+          sender:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          type: Aecore.Naming.Tx.NameTransferTx
+        }
+
+      NameRevokeTx ->
+        %Aecore.Tx.DataTx{
+          fee: 5,
+          nonce: 1,
+          payload: %Aecore.Naming.Tx.NameRevokeTx{
+            hash:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>
+          },
+          sender:
+            <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
+              81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>,
+          type: Aecore.Naming.Tx.NameRevokeTx
+        }
     end
   end
-
-  #  def deserialized_data(data_type) do
-  #    case data_type do
-  #       #SpendTx -> DataTx.init(tx_type, ,)  
-  #       SignedTx -> {:ok, signed_tx} = Account.spend(Aecore.Wallet.Worker.get_public_key("M/0/1"), 100,20)
-  #       signed_tx
-  #       #Oracle -> TODO: add all commented cases when PR about oracle adjustment is accepted and merged
-  #       #OracleQuery -> 
-  #       #OracleExtendTx ->
-  #       #OracleRegisterTx -> 
-  #       #OracleQueryTx ->
-  #       Block -> Chain.top_block
-  #       Account -> {Chain.chain_state , Aecore.Wallet.Worker.get_public_key("M/0/1")}
-  #       CoinbaseTx -> 
-  #         %Aecore.Tx.SignedTx{
-  #           data: %Aecore.Tx.DataTx{
-  #           fee: 0,
-  #           nonce: 0,
-  #           payload: %Aecore.Account.Tx.SpendTx{
-  #           amount: 100,
-  #           receiver: <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236,
-  #           138, 35, 63, 33, 4, 236, 181, 172, 160, 156, 141, 129, 143, 104,
-  #           133, 128, 109, 199, 73, 102>>,
-  #           version: 1
-  #           },
-  #           sender: nil,
-  #           type: Aecore.Account.Tx.SpendTx
-  #       }, 
-  #       signature: [<<0>>] # [<<0>>] is added because of lack of coinbase tx as separate type 
-  #   }
-
-  #    end
-  #  end
 end
