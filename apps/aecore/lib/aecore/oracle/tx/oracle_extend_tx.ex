@@ -64,21 +64,15 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       |> deduct_fee(fee)
       |> Map.put(:nonce, nonce)
 
-    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
+    updated_registered_oracles =
+      oracles
+      |> OracleStateTree.get_registered_oracles()
+      |> update_in([sender, :tx, Access.key(:ttl), :ttl], &(&1 + tx.ttl))
 
-    registered_oracles = OracleStateTree.get_registered_oracles(oracles)
-
-    updated_registered_oracle =
-      update_in(
-        registered_oracles,
-        [sender, :tx, Access.key(:ttl), :ttl],
-        &(&1 + tx.ttl)
-      )
-
-    updated_oracle_chainstate =
-      OracleStateTree.put_registered_oracles(oracles, updated_registered_oracle)
-
-    {updated_accounts_chainstate, updated_oracle_chainstate}
+    {
+      AccountStateTree.put(accounts, sender, new_sender_account_state),
+      OracleStateTree.put_registered_oracles(oracles, updated_registered_oracles)
+    }
   end
 
   @spec preprocess_check(

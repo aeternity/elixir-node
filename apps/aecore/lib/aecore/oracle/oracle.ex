@@ -228,14 +228,14 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_oracles(chain_state, block_height) do
-    registered_oracles = OracleStateTree.get_registered_oracles(chain_state.oracles)
-
-    Enum.reduce(registered_oracles, chain_state, fn {address,
-                                                     %{
-                                                       tx: tx,
-                                                       height_included: height_included
-                                                     }},
-                                                    acc ->
+    chain_state.oracles
+    |> OracleStateTree.get_registered_oracles()
+    |> Enum.reduce(chain_state, fn {address,
+                                    %{
+                                      tx: tx,
+                                      height_included: height_included
+                                    }},
+                                   acc ->
       if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
         updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
         %{acc | oracles: updated_oracles}
