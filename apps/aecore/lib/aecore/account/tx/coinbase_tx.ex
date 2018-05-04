@@ -70,7 +70,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
 
     cond do
       amount < 0 ->
-        {:error, "#{__MODULE__}: Value cannot be a negative number"}
+        {:error, "#{__MODULE__}: Amount cannot be a negative number"}
 
       DataTx.fee(data_tx) != 0 ->
         {:error, "#{__MODULE__}: Fee has to be 0"}

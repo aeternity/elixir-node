@@ -111,7 +111,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  def sign_tx(tx, _priv_key) do
+  def sign_tx(tx, _pub_key, _priv_key) do
     {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
@@ -173,11 +173,11 @@ defmodule Aecore.Tx.SignedTx do
   def serialize(%SignedTx{} = tx) do
     signatures_length = length(tx.signatures)
 
-    cond do
-      signatures_length == 0 ->
+    case signatures_length do
+      0 ->
         %{"data" => DataTx.serialize(tx.data)}
 
-      signatures_length == 1 ->
+      1 ->
         signature_serialized =
           tx.signatures
           |> Enum.at(0)
@@ -185,7 +185,7 @@ defmodule Aecore.Tx.SignedTx do
 
         %{"data" => DataTx.serialize(tx.data), "signature" => signature_serialized}
 
-      true ->
+      _ ->
         %{
           "data" => DataTx.serialize(tx.data),
           "signature" => Serialization.serialize_value(:signature)
