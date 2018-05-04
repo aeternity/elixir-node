@@ -17,10 +17,10 @@ before_install:
 
 script:
   - mix compile --warnings-as-errors
+  - mix dialyzer  
   - mix credo list
   - mix format --check-formatted
   - mix coveralls -u
-  - mix dialyzer
 
 cache:
   directories:
