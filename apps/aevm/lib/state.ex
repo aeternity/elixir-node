@@ -10,7 +10,7 @@ defmodule State do
       :storage => %{},
       :cp => 0,
       :jumpdests => [],
-      :out => nil,
+      :out => <<>>,
       :logs => [],
       # :return_data => return_data,
 
@@ -27,7 +27,7 @@ defmodule State do
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
-
+      
       :pre => pre
     }
   end
@@ -58,6 +58,10 @@ defmodule State do
 
   def set_gas(gas, state) do
     Map.put(state, :gas, gas)
+  end
+
+  def set_selfdestruct(value, state) do
+    Map.put_new(state, :selfdestruct, value)
   end
 
   def stack(state) do
@@ -153,7 +157,7 @@ defmodule State do
   def get_code(address, state) do
     pre = Map.get(state, :pre)
     account = Map.get(pre, address, %{})
-    
+
     Map.get(account, :code, <<>>)
   end
 
