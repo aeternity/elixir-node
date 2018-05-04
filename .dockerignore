@@ -1,8 +1,6 @@
 # Git
 .git
 
-# The directory Mix will write compiled artifacts to.
-/_build
 
 # If you run "mix test --cover", coverage assets end up here.
 /cover
