@@ -120,7 +120,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.pack_binary(header)
+    block_header_bin = Header.rlp_encode(header)
     Hash.hash(block_header_bin)
   end
 

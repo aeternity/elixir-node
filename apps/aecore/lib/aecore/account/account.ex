@@ -390,14 +390,16 @@ defmodule Aecore.Account.Account do
            nonce: Serialization.transform_item(nonce, :int)
          }}
 
+      # , pkey}
+
       _ ->
-        {:error, :invalid_serialization}
+        {:error, "Invalid account serialization"}
     end
   end
 
-  def rlp_decode(:none) do
-    :none
-  end
+  # def rlp_decode(:none) do
+  #   :none
+  # end
 
   def rlp_decode(_) do
     {:error, :illegal_serialization}

@@ -51,7 +51,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp hash_header(%{header: header} = builder) do
-    header = %{header | pow_evidence: nil}
+    header = %{header | pow_evidence: List.duplicate(0, 42)}
     hash = :base64.encode_to_string(BlockValidation.block_header_hash(header))
     {:ok, %{builder | hash: hash}}
   end

@@ -22,6 +22,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
+  alias Aecore.Naming.Naming
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -39,7 +40,7 @@ defmodule AecoreSerializationTest do
     end)
   end
 
-  @tag RLP_test
+  @tag :rlp_test
   test "SignedTx with DataTx inside serialization", setup do
     Miner.mine_sync_block_to_chain()
     signedtx = create_data(SignedTx)
@@ -75,27 +76,30 @@ defmodule AecoreSerializationTest do
 
   @tag :rlp_test
   test "Block serialization", setup do
-    # currently, serialization is being tested with genesis block only
+    # currently, serialization is being tested with genesis block only, will be changed after PR regarding #228 is merged.
     block = create_data(Block)
     serialized_block = Header.rlp_encode(block)
     deserialized_block = Header.rlp_decode(serialized_block)
     assert deserialized_block = block
   end
 
+  @tag :rlp_test
   test "Oracle interaction objects serialization", setup do
     oracle_query_chainstate = create_data(OracleQuery)
-    serialized_orc = Oracle.rlp_encode(oracle_query_chainstate, :interaction_object)
-    deserialized_orc = Oracle.rlp_decode(serialized_orc)
-    assert oracle_registered_chainstate = deserialized_orc
+    serialized_orc_obj = Oracle.rlp_encode(oracle_query_chainstate, :interaction_object)
+    {:ok, deserialized_orc_obj} = Oracle.rlp_decode(serialized_orc_obj)
+    assert oracle_query_chainstate = deserialized_orc_obj
   end
 
+  @tag :rlp_test
   test "Registered oracles serialization", setup do
     oracle_registered_chainstate = create_data(Oracle)
     serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate, :registered_oracle)
-    deserialized_orc = Oracle.rlp_decode(serialized_orc)
+    {:ok, deserialized_orc} = Oracle.rlp_decode(serialized_orc)
     assert oracle_registered_chainstate = deserialized_orc
   end
 
+  @tag :rlp_test
   test "Naming System TX's serialization", setup do
     naming_pre_claim_tx = create_data(NameClaimTx)
     serialized_preclaim_tx = DataTx.rlp_encode(naming_pre_claim_tx)
@@ -114,8 +118,21 @@ defmodule AecoreSerializationTest do
 
     naming_transfer_tx = create_data(NameTransferTx)
     serialized_transfer_tx = DataTx.rlp_encode(naming_transfer_tx)
-    deserialized_transfer_tx = DataTx.rlp_decode(naming_transfer_tx)
+    deserialized_transfer_tx = DataTx.rlp_decode(serialized_transfer_tx)
     assert naming_transfer_tx = deserialized_transfer_tx
+  end
+
+  @tag :rlp_test
+  test "Naming System chainstate structures serialization", setup do
+    name_state = create_data(Name)
+    serialized_name_state = Naming.rlp_encode(name_state, :name)
+    {:ok, deserialized_name_state} = Naming.rlp_decode(serialized_name_state)
+    assert deserialized_name_state = name_state
+
+    name_commitment = create_data(NameCommitment)
+    serialized_name_commitment = Naming.rlp_encode(name_commitment, :name_commitment)
+    {:ok, deserialized_name_commitment} = Naming.rlp_decode(serialized_name_commitment)
+    assert deserialized_name_commitment = name_commitment
   end
 
   def create_data(data_type) do
@@ -266,6 +283,32 @@ defmodule AecoreSerializationTest do
             <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
               81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>,
           type: Aecore.Naming.Tx.NameRevokeTx
+        }
+
+      Name ->
+        %{
+          expires: 50003,
+          hash:
+            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+          owner:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          pointers: [],
+          status: :claimed,
+          ttl: 86400
+        }
+
+      NameCommitment ->
+        %{
+          hash:
+            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+          owner:
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          created: 8500,
+          expires: 86400
         }
     end
   end

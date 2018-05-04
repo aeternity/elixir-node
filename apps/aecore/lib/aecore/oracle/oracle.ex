@@ -307,7 +307,7 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @spec rlp_encode(map(), atom()) :: binary()
-  def rlp_encode(registered_oracle, :registered_oracle) do
+  def rlp_encode(%{} = registered_oracle, :registered_oracle) do
     [
       type_to_tag(Oracle),
       get_version(Oracle),
@@ -325,7 +325,7 @@ defmodule Aecore.Oracle.Oracle do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(interaction_object, :interaction_object) do
+  def rlp_encode(%{} = interaction_object, :interaction_object) do
     has_response =
       case interaction_object.has_response do
         true -> 1
@@ -376,14 +376,15 @@ defmodule Aecore.Oracle.Oracle do
       Oracle ->
         [orc_owner, query_format, response_format, query_fee, expires] = rest_data
 
-        %{
-          owner: orc_owner,
-          # Poison encodings might be changed in future
-          query_format: Poison.decode!(query_format),
-          response_format: Poison.decode!(response_format),
-          query_fee: Serialization.transform_item(query_fee, :int),
-          expires: Serialization.transform_item(expires, :int)
-        }
+        {:ok,
+         %{
+           owner: orc_owner,
+           # Poison encodings might be changed in future
+           query_format: Poison.decode!(query_format),
+           response_format: Poison.decode!(response_format),
+           query_fee: Serialization.transform_item(query_fee, :int),
+           expires: Serialization.transform_item(expires, :int)
+         }}
 
       OracleQuery ->
         [
@@ -410,20 +411,21 @@ defmodule Aecore.Oracle.Oracle do
             data -> String.to_atom(data)
           end
 
-        %{
-          expires: Serialization.transform_item(expires, :int),
-          fee: Serialization.transform_item(fee, :int),
-          has_response: has_response,
-          oracle_address: oracle_address,
-          query: Poison.decode!(query),
-          response: response,
-          response_ttl: Serialization.transform_item(response_ttl, :int),
-          sender_address: sender_address,
-          sender_nonce: Serialization.transform_item(sender_nonce, :int)
-        }
+        {:ok,
+         %{
+           expires: Serialization.transform_item(expires, :int),
+           fee: Serialization.transform_item(fee, :int),
+           has_response: has_response,
+           oracle_address: oracle_address,
+           query: Poison.decode!(query),
+           response: response,
+           response_ttl: Serialization.transform_item(response_ttl, :int),
+           sender_address: sender_address,
+           sender_nonce: Serialization.transform_item(sender_nonce, :int)
+         }}
 
       _ ->
-        {:error, "Illegal oracle serialization"}
+        {:error, "Illegal Registered oracle state / Oracle interaction object serialization"}
     end
   end
 

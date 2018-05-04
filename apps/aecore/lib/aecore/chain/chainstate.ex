@@ -224,12 +224,12 @@ defmodule Aecore.Chain.Chainstate do
   #         {:error, :invalid_serialization}
   #     end
   #   end
-  def rlp_decode(:none) do
-    :none
-  end
+  # def rlp_decode(:none) do
+  #   :none
+  # end
 
   def rlp_decode(_) do
-    :invalid_serialization
+    {:error, "Invalid_serialization"}
   end
 
   defp type_to_tag(Account), do: 10
