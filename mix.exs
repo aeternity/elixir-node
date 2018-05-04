@@ -60,7 +60,7 @@ defmodule EpochElixir.Mixfile do
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
-      {:jobs, "~> 0.7.1", override: true}
+      {:jobs, "~> 0.7.1"}
     ]
   end
 end

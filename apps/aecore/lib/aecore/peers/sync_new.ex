@@ -136,17 +136,15 @@ defmodule Aecore.Peers.SyncNew do
 
     {is_new, new_pool} =
       insert_header(
-        SyncNew.new(
-          %{
-            difficulty: difficulty,
-            from: agreed_height,
-            to: height,
-            hash: hash,
-            peer: peer_id,
-            pid: pid
-          },
-          pool
-        )
+        SyncNew.new(%{
+          difficulty: difficulty,
+          from: agreed_height,
+          to: height,
+          hash: hash,
+          peer: peer_id,
+          pid: pid
+        }),
+        pool
       )
 
     case is_new do
@@ -163,7 +161,7 @@ defmodule Aecore.Peers.SyncNew do
 
   def handle_call({:sync_in_progress, peer_id}, _from, %{sync_pool: pool} = state) do
     result =
-      case Enum.find(list, false, fn peer -> Map.get(peer, :id) == peer_id end) do
+      case Enum.find(pool, false, fn peer -> Map.get(peer, :id) == peer_id end) do
         false ->
           false
 
@@ -199,12 +197,6 @@ defmodule Aecore.Peers.SyncNew do
         _ ->
           state.hash_pool
       end
-
-    def handle_call({:update_hash_pool, hashes}, _, state) do
-      hash_pool = merge(state.hash_pool, hashes)
-      Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
-      {:reply, :ok, %{state | hash_pool: hash_pool}}
-    end
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
@@ -256,6 +248,12 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
+  def handle_call({:update_hash_pool, hashes}, _, state) do
+    hash_pool = merge(state.hash_pool, hashes)
+    Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
+    {:reply, :ok, %{state | hash_pool: hash_pool}}
+  end
+
   @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
   defp update_chain_from_pool(agreed_height, agreed_hash, hash_pool) do
     case split_hash_pool(agreed_height + 1, agreed_hash, hash_pool, [], 0) do
@@ -267,13 +265,13 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  @spec split_hash_pool(non_neg_integer(), list(), any(), non_neg_integer()) :: tuple()
+  @spec split_hash_pool(non_neg_integer(), binary(), list(), any(), non_neg_integer()) :: tuple()
   defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
        when h < height do
-    split_hash_pool(height, prev_hash, same, n_added)
+    split_hash_pool(height, prev_hash, hash_pool, same, n_added)
   end
 
-  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} | hash_pool], same, n_added)
+  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
        when h == height and n_added < @max_ads do
     case Map.get(map, :block) do
       nil ->
@@ -325,7 +323,7 @@ defmodule Aecore.Peers.SyncNew do
 
         old_sync ->
           new_sync1 =
-            case old_sync.from > from do
+            case old_sync.from > new_sync.from do
               true ->
                 old_sync
 
@@ -334,7 +332,7 @@ defmodule Aecore.Peers.SyncNew do
             end
 
           max_diff = max(difficulty, old_sync.difficulty)
-          max_to = max(to, old_sync.to)
+          max_to = max(new_sync.to, old_sync.to)
           new_sync2 = %{new_sync1 | difficulty: max_diff, to: max_to}
           new_pool = List.delete(sync_pool, old_sync)
 
@@ -350,7 +348,8 @@ defmodule Aecore.Peers.SyncNew do
   # until we agree on some height. This might be even the Gensis block!
   @spec do_start_sync(String.t(), binary()) :: String.t()
   defp do_start_sync(peer_id, remote_hash) do
-    case get_header_by_hash(peer_id, remote_hash) do
+    ## TODO: get_header_by_hash(peer_id, remote_hash) do
+    case 1 == 1 do
       {:ok, remote_header} ->
         remote_height = remote_header.height
         local_height = Chain.top_height()
@@ -386,7 +385,8 @@ defmodule Aecore.Peers.SyncNew do
 
   # With this func we try to agree on block height on which we agree and could sync.
   # In other words a common block.
-  @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary())
+  @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
+          tuple()
   defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
        when l_height == 0 do
     {0, agreed_hash}
@@ -409,7 +409,8 @@ defmodule Aecore.Peers.SyncNew do
 
   defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
        when r_height != l_height do
-    case get_header_by_height(peer_id, l_height) do
+    ## TODO:  get_header_by_height(peer_id, l_height) do
+    case 1 == 1 do
       {:ok, header} ->
         agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
 
@@ -419,12 +420,13 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   defp fetch_more(peer_id, _, _, :done) do
-    delete_from_pool(peer_id)
+    :ok
+    ## TODO: delete_from_pool(peer_id)
   end
 
   defp fetch_more(peer_id, last_height, _, {:error, error}) do
     Logger.info("Abort sync at height ~p Error ~p ", [last_height, error])
-    delete_from_pool(peer_id)
+    ## TODO: delete_from_pool(peer_id)
   end
 
   defp fetch_more(peer_id, last_height, header_hash, result) do
@@ -475,7 +477,8 @@ defmodule Aecore.Peers.SyncNew do
         do_fetch_mempool(peer_id)
 
       {:ping, peer_id} ->
-        ping_peer(peer_id)
+        ## TODO: ping_peer(peer_id)
+        :ok
 
       _other ->
         Logger.debug("Unknown job")
@@ -498,7 +501,7 @@ defmodule Aecore.Peers.SyncNew do
 
   # Send a transaction to the Remote Peer
   defp do_forward_tx(tx, peer_id) do
-    send_tx(peer_id, tx)
+    ## TODO: send_tx(peer_id, tx)
     Logger.debug("#{__MODULE__}: sent tx: #{inspect(tx)} to peer #{inspect(peer_id)}")
   end
 
@@ -508,12 +511,12 @@ defmodule Aecore.Peers.SyncNew do
   defp merge(old_hashes, []), do: old_hashes
 
   defp merge([{{h_1, hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
-       when h1 < h2 do
+       when h_1 < h_2 do
     merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
   end
 
   defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, hash_2}, _} | new_hashes])
-       when h1 > h2 do
+       when h_1 > h_2 do
     merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
   end
 
@@ -526,7 +529,7 @@ defmodule Aecore.Peers.SyncNew do
       true ->
         [
           {{h, hash_1}, Map.merge(map_1, map_2)}
-          | pick_same({{h, hash_2}, map2}, old_hashes, new_hashes)
+          | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)
         ]
 
       false ->
@@ -538,10 +541,11 @@ defmodule Aecore.Peers.SyncNew do
 
   defp fill_pool(peer_id, agreed_hash) do
     ## TODO: Create this func!
-    case get_n_successors(peer_id, agreed_hash, @max_headers_per_chunk) do
+    ## TODO: get_n_successors(peer_id, agreed_hash, @max_headers_per_chunk) do
+    case 1 == 1 do
       {:ok, []} ->
         ## TODO: Create this func!
-        delete_from_pool(peer_id)
+        ## TODO: delete_from_pool(peer_id)
         :done
 
       {:ok, chunk_hashes} ->
@@ -557,7 +561,7 @@ defmodule Aecore.Peers.SyncNew do
       err ->
         Logger.debug("#{__MODULE__}: Abort sync with: #{inspect(err)}")
         ## TODO: Create this func!
-        delete_from_pool(peer_id)
+        ## TODO: delete_from_pool(peer_id)
         {:error, :sync_abort}
     end
   end
