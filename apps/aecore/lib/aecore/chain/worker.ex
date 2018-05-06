@@ -24,11 +24,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -509,26 +505,8 @@ defmodule Aecore.Chain.Worker do
           OracleQueryTx ->
             [tx.data.payload.oracle_address | tx.data.senders]
 
-          OracleResponseTx ->
-            tx.data.sender
-
-          OracleExtendTx ->
-            tx.data.sender
-
-          NamePreClaimTx ->
-            tx.data.sender
-
-          NameClaimTx ->
-            tx.data.sender
-
-          NameUpdateTx ->
-            tx.data.sender
-
           NameTransferTx ->
-            [tx.data.sender, tx.data.payload.target]
-
-          NameRevokeTx ->
-            tx.data.sender
+            [tx.data.payload.target | tx.data.senders]
 
           _ ->
             tx.data.senders

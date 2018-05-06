@@ -75,7 +75,12 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Oracle.Tx.OracleExtendTx,
       Aecore.Oracle.Tx.OracleQueryTx,
       Aecore.Oracle.Tx.OracleRegistrationTx,
-      Aecore.Oracle.Tx.OracleResponseTx
+      Aecore.Oracle.Tx.OracleResponseTx,
+      Aecore.Naming.Tx.NameClaimTx,
+      Aecore.Naming.Tx.NamePreClaimTx,
+      Aecore.Naming.Tx.NameRevokeTx,
+      Aecore.Naming.Tx.NameTransferTx,
+      Aecore.Naming.Tx.NameUpdateTx
     ]
   end
 
