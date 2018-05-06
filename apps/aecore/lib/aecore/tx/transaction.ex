@@ -10,7 +10,6 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
