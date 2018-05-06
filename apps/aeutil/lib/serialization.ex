@@ -9,6 +9,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
@@ -173,6 +174,9 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_encode(value)
 
+      :target ->
+        Account.base58c_encode(value)
+
       :oracle_address ->
         Account.base58c_encode(value)
 
@@ -187,6 +191,15 @@ defmodule Aeutil.Serialization do
 
       :proof ->
         base64_binary(value, :serialize)
+
+      :commitment ->
+        Naming.base58c_encode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :serialize)
+
+      :hash ->
+        Naming.base58c_encode_hash(value)
 
       _ ->
         value
@@ -263,6 +276,9 @@ defmodule Aeutil.Serialization do
       :query_id ->
         OracleQueryTx.base58c_decode(value)
 
+      :target ->
+        Account.base58c_decode(value)
+
       :signature ->
         base64_binary(value, :deserialize)
 
@@ -271,6 +287,18 @@ defmodule Aeutil.Serialization do
 
       :proof ->
         base64_binary(value, :deserialize)
+
+      :commitment ->
+        Naming.base58c_decode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :deserialize)
+
+      :hash ->
+        Naming.base58c_decode_hash(value)
+
+      :name ->
+        value
 
       _ ->
         Parser.to_atom(value)

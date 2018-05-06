@@ -5,14 +5,32 @@ defmodule Aecore.Tx.Transaction do
   """
 
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Account.Account
-
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
-  @type tx_types :: SpendTx.t()
+  @type tx_types ::
+          SpendTx.t()
+          | OracleExtendTx.t()
+          | OracleQueryTx.t()
+          | OracleRegistrationTx.t()
+          | OracleResponseTx.t()
+          | NamePreClaimTx.t()
+          | NameClaimTx.t()
+          | NameUpdateTx.t()
+          | NameTransferTx.t()
+          | NameRevokeTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -22,7 +40,8 @@ defmodule Aecore.Tx.Transaction do
 
   # Callbacks
 
-  @callback get_chain_state_name() :: atom() | nil
+  @doc "The name for state chain entry to be passed for processing"
+  @callback get_chain_state_name() :: Chainstate.chain_state_types() | nil
 
   @callback init(payload()) :: tx_types()
 
@@ -47,7 +66,7 @@ defmodule Aecore.Tx.Transaction do
   depending on your transaction specifications.
 
   ## Example
-      def preprocess_check!(tx, account_state, fee, nonce, %{} = tx_type_state) do
+      def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->
            {:error, "Negative balance"}

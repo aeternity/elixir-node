@@ -36,10 +36,12 @@ defmodule Aehttpserver.Web.Notify do
 
   def broadcast_tx(tx, is_to_sender) do
     if is_to_sender do
-      for sender <- tx.data.senders do
-        Endpoint.broadcast!("room:notifications", "new_tx:" <> Account.base58c_encode(sender), %{
-          "body" => SignedTx.serialize(tx)
-        })
+      if Map.has_key?(tx.data, :sender) && tx.data.sender != nil do
+        Endpoint.broadcast!(
+          "room:notifications",
+          "new_tx:" <> Account.base58c_encode(tx.data.sender),
+          %{"body" => SignedTx.serialize(tx)}
+        )
       end
     else
       case tx.data.payload do
@@ -54,6 +56,13 @@ defmodule Aehttpserver.Web.Notify do
           Endpoint.broadcast!(
             "room:notifications",
             "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
+            %{"body" => SignedTx.serialize(tx)}
+          )
+
+        %NameTransferTx{} ->
+          Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.target),
             %{"body" => SignedTx.serialize(tx)}
           )
 
