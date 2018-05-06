@@ -24,8 +24,10 @@ defmodule AecoreOracleTest do
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == true
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
@@ -66,6 +68,7 @@ defmodule AecoreOracleTest do
     Chain.clear_state()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
     query_oracle(:invalid, :address)
     query_oracle(:invalid, :query_data)
