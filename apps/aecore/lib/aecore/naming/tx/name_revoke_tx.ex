@@ -9,8 +9,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Naming.Naming
   alias Aeutil.Hash
-  alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -47,12 +47,19 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @doc """
   Checks name hash byte size
   """
-  @spec validate(NameRevokeTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NameRevokeTx{hash: hash}) do
-    if byte_size(hash) == Hash.get_hash_bytes_size() do
-      :ok
-    else
-      {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
+  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NameRevokeTx{hash: hash}, data_tx) do
+    senders = DataTx.senders(data_tx)
+
+    cond do
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
+        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders number"}
+
+      true ->
+        :ok
     end
   end
 
@@ -63,32 +70,19 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Revokes a previously claimed name for one account
   """
   @spec process_chainstate(
-          NameRevokeTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
           AccountStateTree.tree(),
-          tx_type_state()
+          tx_type_state(),
+          non_neg_integer(),
+          NameRevokeTx.t(),
+          DataTx.t()
         ) :: {AccountStateTree.tree(), tx_type_state()}
   def process_chainstate(
-        %NameRevokeTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        naming_state
+        naming_state,
+        block_height,
+        %NameRevokeTx{} = tx,
+        _data_tx
       ) do
-    sender_account_state = Account.get_account_state(accounts, sender)
-
-    new_senderount_state =
-      sender_account_state
-      |> deduct_fee(fee)
-      |> Account.transaction_out_nonce_update(nonce)
-
-    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_senderount_state)
-
     claim_to_update = Map.get(naming_state, tx.hash)
 
     claim = %{
@@ -99,7 +93,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
     updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
 
-    {updated_accounts_chainstate, updated_naming_chainstate}
+    {:ok, {accounts, updated_naming_chainstate}}
   end
 
   @doc """
@@ -107,15 +101,22 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
+          ChainState.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
           NameRevokeTx.t(),
-          Wallet.pubkey(),
-          AccountStateTree.tree(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, naming_state) do
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check(
+        accounts,
+        naming_state,
+        _block_height,
+        tx,
+        data_tx
+      ) do
+    sender = DataTx.main_sender(data_tx)
+    fee = DataTx.fee(data_tx)
+    account_state = AccountStateTree.get(accounts, sender)
     claim = Map.get(naming_state, tx.hash)
 
     cond do
@@ -137,10 +138,15 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), tx_type_state()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          NameCaimTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
