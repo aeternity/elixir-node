@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
