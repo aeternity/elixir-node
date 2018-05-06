@@ -148,6 +148,7 @@ defmodule MultipleTransactionsTest do
   @tag :multiple_transaction
   test "in one block, miner collects all the fees from the transactions", setup do
     Chain.clear_state()
+    Pool.get_and_empty_pool()
 
     account = setup.account
     account2 = setup.account2

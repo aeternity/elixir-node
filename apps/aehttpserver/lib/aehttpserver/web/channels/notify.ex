@@ -9,6 +9,7 @@ defmodule Aehttpserver.Web.Notify do
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Account.Account
+  alias Aecore.Naming.Tx.NameTransferTx
 
   def broadcast_new_transaction_in_the_pool(tx) do
     broadcast_tx(tx, true)
