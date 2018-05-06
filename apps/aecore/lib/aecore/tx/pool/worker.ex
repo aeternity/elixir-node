@@ -20,6 +20,11 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -66,7 +71,8 @@ defmodule Aecore.Tx.Pool.Worker do
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     cond do
       :ok != SignedTx.validate(tx) ->
-        Logger.error("#{__MODULE__}: Invalid transaction: #{inspect(tx)}")
+        {:error, reason} = SignedTx.validate(tx)
+        Logger.error("#{__MODULE__}: Transaction invalid - #{reason}: #{inspect(tx)}")
         {:reply, :error, tx_pool}
 
       !is_minimum_fee_met?(tx, :pool) ->
@@ -152,6 +158,21 @@ defmodule Aecore.Tx.Pool.Worker do
 
       %OracleExtendTx{} ->
         tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
+
+      %NameClaimTx{} ->
+        NameClaimTx.is_minimum_fee_met?(tx)
+
+      %NamePreClaimTx{} ->
+        NamePreClaimTx.is_minimum_fee_met?(tx)
+
+      %NameRevokeTx{} ->
+        NameRevokeTx.is_minimum_fee_met?(tx)
+
+      %NameTransferTx{} ->
+        NameTransferTx.is_minimum_fee_met?(tx)
+
+      %NameUpdateTx{} ->
+        NameUpdateTx.is_minimum_fee_met?(tx)
     end
   end
 

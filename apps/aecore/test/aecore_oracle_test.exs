@@ -22,18 +22,24 @@ defmodule AecoreOracleTest do
 
   @tag timeout: 120_000
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
+    Pool.get_and_empty_pool()
+    Miner.mine_sync_block_to_chain()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
+    assert %{} == Pool.get_and_empty_pool()
     # Check for last_updated
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
+    assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pub_key)
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
 
+    assert %{} == Pool.get_and_empty_pool()
     # Check for last_updated
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
@@ -41,6 +47,7 @@ defmodule AecoreOracleTest do
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
 
+    assert %{} == Pool.get_and_empty_pool()
     # Check for last_updated
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
@@ -52,16 +59,11 @@ defmodule AecoreOracleTest do
 
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
-
     register_oracle(:invalid, :format)
     register_oracle(:invalid, :ttl)
-
     Miner.mine_sync_block_to_chain()
-
     assert Enum.empty?(Chain.registered_oracles()) == true
-
     Chain.clear_state()
-
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()

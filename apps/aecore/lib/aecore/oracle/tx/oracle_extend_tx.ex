@@ -7,10 +7,11 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.AccountStateTree
+
+  require Logger
 
   @type payload :: %{
           ttl: non_neg_integer()
@@ -31,40 +32,37 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(OracleExtendTx.t()) :: :ok | {:error, String.t()}
-  def validate(%OracleExtendTx{ttl: ttl}) do
-    if ttl > 0 do
-      :ok
-    else
-      {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: boolean()
+  def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
+    senders = DataTx.senders(data_tx)
+
+    cond do
+      ttl <= 0 ->
+        {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders number"}
+
+      true ->
+        true
     end
   end
 
   @spec process_chainstate(
+          ChainState.account(),
+          Oracle.oracles(),
+          non_neg_integer(),
           OracleExtendTx.t(),
-          binary(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          AccountStateTree.tree(),
-          Oracle.registered_oracles()
-        ) :: {AccountStateTree.tree(), Oracle.registered_oracles()}
+          DataTx.t()
+        ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate(
-        %OracleExtendTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        _block_height,
         accounts,
-        oracle_state
+        oracle_state,
+        _block_height,
+        %OracleExtendTx{} = tx,
+        data_tx
       ) do
-    new_sender_account_state =
-      accounts
-      |> Account.get_account_state(sender)
-      |> deduct_fee(fee)
-      |> Map.put(:nonce, nonce)
-
-    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
+    sender = DataTx.main_sender(data_tx)
 
     updated_oracle_state =
       update_in(
@@ -73,24 +71,29 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         &(&1 + tx.ttl)
       )
 
-    {updated_accounts_chainstate, updated_oracle_state}
+    {:ok, {accounts, updated_oracle_state}}
   end
 
   @spec preprocess_check(
+          ChainState.accounts(),
+          Oracle.oracles(),
+          non_neg_integer(),
           OracleExtendTx.t(),
-          Wallet.pubkey(),
-          Account.t(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          Oracle.registered_oracles()
-        ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, %{
-        registered_oracles: registered_oracles
-      }) do
+          DataTx.t()
+        ) :: :ok
+  def preprocess_check(
+        accounts,
+        %{registered_oracles: registered_oracles},
+        _block_height,
+        tx,
+        data_tx
+      ) do
+    sender = DataTx.main_sender(data_tx)
+    fee = DataTx.fee(data_tx)
+
     cond do
-      account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
+      AccountStateTree.get(accounts, sender).balance - fee < 0 ->
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
@@ -103,10 +106,15 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     end
   end
 
-  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          OracleExtendTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()

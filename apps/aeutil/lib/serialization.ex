@@ -9,6 +9,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
@@ -31,12 +32,14 @@ defmodule Aeutil.Serialization do
         }
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
-    serialized_block = serialize_value(block)
-    Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
+    serialized_header = serialize_value(block.header)
+    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
+
+    Map.put(serialized_header, "transactions", serialized_txs)
   end
 
   def block(block, :deserialize) do
-    txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
+    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
       block
@@ -45,20 +48,6 @@ defmodule Aeutil.Serialization do
       |> Header.new()
 
     Block.new(header: built_header, txs: txs)
-  end
-
-  @spec tx(map(), :serialize | :deserialize) :: SignedTx.t()
-  def tx(tx, :serialize) do
-    serialize_value(tx)
-  end
-
-  def tx(tx, :deserialize) do
-    tx_data = tx["data"]
-
-    data = DataTx.deserialize(tx_data)
-
-    signature = base64_binary(tx["signature"], :deserialize)
-    %SignedTx{data: data, signature: signature}
   end
 
   @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
@@ -179,7 +168,13 @@ defmodule Aeutil.Serialization do
       :sender ->
         Account.base58c_encode(value)
 
+      :senders ->
+        Account.base58c_encode(value)
+
       :receiver ->
+        Account.base58c_encode(value)
+
+      :target ->
         Account.base58c_encode(value)
 
       :oracle_address ->
@@ -191,8 +186,20 @@ defmodule Aeutil.Serialization do
       :signature ->
         base64_binary(value, :serialize)
 
+      :signatures ->
+        base64_binary(value, :deserialize)
+
       :proof ->
         base64_binary(value, :serialize)
+
+      :commitment ->
+        Naming.base58c_encode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :serialize)
+
+      :hash ->
+        Naming.base58c_encode_hash(value)
 
       _ ->
         value
@@ -254,6 +261,9 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_decode_root(value)
 
+      :senders ->
+        Account.base58c_decode(value)
+
       :sender ->
         Account.base58c_decode(value)
 
@@ -266,11 +276,29 @@ defmodule Aeutil.Serialization do
       :query_id ->
         OracleQueryTx.base58c_decode(value)
 
+      :target ->
+        Account.base58c_decode(value)
+
       :signature ->
+        base64_binary(value, :deserialize)
+
+      :signatures ->
         base64_binary(value, :deserialize)
 
       :proof ->
         base64_binary(value, :deserialize)
+
+      :commitment ->
+        Naming.base58c_decode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :deserialize)
+
+      :hash ->
+        Naming.base58c_decode_hash(value)
+
+      :name ->
+        value
 
       _ ->
         Parser.to_atom(value)
@@ -286,7 +314,7 @@ defmodule Aeutil.Serialization do
 
   defp serialize_txs_info_to_json([h | t], acc) do
     tx = DataTx.init(h.type, h.payload, h.sender, h.fee, h.nonce)
-    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signature: nil})
+    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
 
     json_response_struct = %{
       tx: %{
