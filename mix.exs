@@ -10,14 +10,7 @@ defmodule EpochElixir.Mixfile do
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      dialyzer: [
-        paths: [
-          "_build/dev/lib/aecore/ebin",
-          "_build/dev/lib/aehttpclient/ebin",
-          "_build/dev/lib/aehttpserver/ebin",
-          "_build/dev/lib/aeutil/ebin"
-        ]
-      ],
+
       test_coverage: [
         tool: ExCoveralls
       ],
