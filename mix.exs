@@ -12,7 +12,10 @@ defmodule EpochElixir.Mixfile do
       deps: deps(),
       dialyzer: [
         paths: [
-          "_build/dev"
+          "_build/test/lib/aecore",
+          "_build/test/lib/aehttpclient",
+          "_build/test/lib/aehttpserver",
+          "_build/test/lib/aeutil"
         ]
       ],
       test_coverage: [
