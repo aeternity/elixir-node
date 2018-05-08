@@ -57,7 +57,7 @@ defmodule Aehttpclient.Client do
 
   @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
-    data = Serialization.tx(tx, :serialize)
+    data = SignedTx.serialize(tx)
     post_to_peers("tx", data, peers)
   end
 
@@ -131,7 +131,7 @@ defmodule Aehttpclient.Client do
     response =
       body
       |> Poison.decode!()
-      |> Enum.map(fn tx -> Serialization.tx(tx, :deserialize) end)
+      |> Enum.map(fn tx -> SignedTx.deserialize(tx) end)
 
     {:ok, response}
   end

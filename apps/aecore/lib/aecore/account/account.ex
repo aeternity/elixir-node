@@ -19,6 +19,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.Tx.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -55,6 +56,30 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
+  Return the balance for a given key.
+  """
+  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def balance(tree, key) do
+    AccountStateTree.get(tree, key).balance
+  end
+
+  @doc """
+  Return the nonce for a given key.
+  """
+  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def nonce(tree, key) do
+    AccountStateTree.get(tree, key).nonce
+  end
+
+  @doc """
+  Return the last_updated for a given key.
+  """
+  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  def last_updated(tree, key) do
+    AccountStateTree.get(tree, key).last_updated
+  end
+
+  @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
@@ -63,6 +88,13 @@ defmodule Aecore.Account.Account do
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce)
+  end
+
+  @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
+  def create_coinbase_tx(to_acc, value) do
+    payload = CoinbaseTx.create(to_acc, value)
+    data = DataTx.init(CoinbaseTx, payload, [], 0, 0)
+    SignedTx.create(data)
   end
 
   @doc """
@@ -261,71 +293,31 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce)
-    SignedTx.sign_tx(tx, sender_prv)
+    SignedTx.sign_tx(tx, sender, sender_prv)
   end
 
   @doc """
-  Adds balance to a given address (public key)
+  Adds balance to a given Account state and updates last update block.
   """
-  @spec transaction_in(Account.t(), integer()) :: Account.t()
-  def transaction_in(account_state, amount) do
+  @spec apply_transfer!(ChainState.account(), non_neg_integer(), integer()) ::
+          ChainState.account()
+  def apply_transfer!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
-    Map.put(account_state, :balance, new_balance)
-  end
 
-  @doc """
-  Deducts balance from a given address (public key)
-  """
-  @spec transaction_out(Account.t(), integer(), integer()) :: Account.t()
-  def transaction_out(account_state, amount, nonce) do
-    account_state
-    |> transaction_out_nonce_update(nonce)
-    |> transaction_in(amount)
-  end
-
-  @spec transaction_out_nonce_update(ChainState.account(), integer()) :: ChainState.account()
-  def transaction_out_nonce_update(account_state, nonce),
-    do: Map.put(account_state, :nonce, nonce)
-
-  @spec get_account_state(AccountStateTree.tree(), Wallet.pubkey()) :: Account.t()
-  def get_account_state(tree, key) do
-    case AccountStateTree.get(tree, key) do
-      :none ->
-        empty()
-
-      {:ok, account_state} ->
-        account_state
+    if new_balance < 0 do
+      throw({:error, "#{__MODULE__}: Negative balance"})
     end
+
+    %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
-  @doc """
-  Return the balance for a given key.
-  """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def balance(tree, key) do
-    get_account_state(tree, key).balance
-  end
+  @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
+  def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
+    if current_nonce >= new_nonce do
+      throw({:error, "#{__MODULE__}: Invalid nonce"})
+    end
 
-  @doc """
-  Return the nonce for a given key.
-  """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def nonce(tree, key) do
-    get_account_state(tree, key).nonce
-  end
-
-  @doc """
-  Return the last_updated for a given key.
-  """
-  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def last_updated(tree, key) do
-    get_account_state(tree, key).last_updated
-  end
-
-  def last_updated(tree, key, block_height) do
-    state = Account.get_account_state(tree, key)
-    updated_state = %{state | last_updated: block_height}
-    AccountStateTree.put(tree, key, updated_state)
+    %Account{account_state | nonce: new_nonce}
   end
 
   def base58c_encode(bin) do

@@ -5,13 +5,11 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Naming.Naming
 
   require Logger
@@ -42,7 +40,7 @@ defmodule Aecore.Chain.Chainstate do
   def calculate_and_validate_chain_state(txs, chainstate, block_height) do
     updated_chainstate =
       Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
-        case apply_transaction_on_state(tx, chainstate, block_height) do
+        case apply_transaction_on_state(chainstate, block_height, tx) do
           {:ok, updated_chainstate} ->
             {:cont, updated_chainstate}
 
@@ -63,66 +61,16 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
-  @spec apply_transaction_on_state(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           Chainstate.t()
-  def apply_transaction_on_state(
-        %{data: %{sender: nil, payload: %{receiver: receiver}} = data, signature: nil},
-        %{accounts: accounts} = chainstate,
-        block_height
-      ) do
-    receiver_state = Account.get_account_state(accounts, receiver)
-    new_receiver_state = SignedTx.reward(data, receiver_state)
-    updated_receiver_state = %{new_receiver_state | last_updated: block_height}
+  def apply_transaction_on_state(chainstate, block_height, tx) do
+    case SignedTx.validate(tx) do
+      :ok ->
+        SignedTx.process_chainstate(chainstate, block_height, tx)
 
-    new_accounts_state =
-      AccountStateTree.put(chainstate.accounts, data.payload.receiver, updated_receiver_state)
-
-    {:ok, Map.put(chainstate, :accounts, new_accounts_state)}
-  end
-
-  def apply_transaction_on_state(
-        %{data: %{sender: sender, type: tx_type} = data} = tx,
-        %{accounts: accounts} = chainstate,
-        block_height
-      )
-      when is_binary(sender) do
-    with :ok <- SignedTx.validate(tx),
-         {:ok, child_tx} <- DataTx.validate(data),
-         new_chainstate = apply_last_updated(data, chainstate, block_height),
-         :ok <- tx_type.validate(child_tx),
-         :ok <- DataTx.validate_sender(sender, new_chainstate),
-         :ok <- DataTx.validate_nonce(accounts, data),
-         :ok <- DataTx.preprocess_check(data, new_chainstate, block_height),
-         {:ok, updated_chainstate} <-
-           DataTx.process_chainstate(data, new_chainstate, block_height) do
-      {:ok, updated_chainstate}
-    else
-      err -> err
+      err ->
+        err
     end
-  end
-
-  def apply_transaction_on_state(tx, _chainstate, _block_height) do
-    {:error, "#{__MODULE__}: Invalid transaction: #{inspect(tx)}"}
-  end
-
-  def apply_last_updated(
-        %{payload: child_tx, sender: sender},
-        chainstate,
-        block_height
-      ) do
-    updated_accounts_state_tree =
-      child_tx
-      |> case do
-        %SpendTx{} ->
-          chainstate.accounts
-          |> Account.last_updated(child_tx.receiver, block_height)
-
-        _ ->
-          chainstate.accounts
-      end
-      |> Account.last_updated(sender, block_height)
-
-    %{chainstate | accounts: updated_accounts_state_tree}
   end
 
   @doc """
@@ -140,7 +88,7 @@ defmodule Aecore.Chain.Chainstate do
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, updated_chainstate} ->
-        case apply_transaction_on_state(tx, chainstate, block_height) do
+        case apply_transaction_on_state(chainstate, block_height, tx) do
           {:ok, updated_chainstate} ->
             {[tx | valid_txs_list], updated_chainstate}
 
