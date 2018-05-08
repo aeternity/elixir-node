@@ -70,8 +70,8 @@ defmodule Mix.Tasks.Compile.Make do
   @moduledoc "Compiles helper in c_src"
 
   def run(_) do
-    File.mkdir("apps/aecore/priv/cuckoo/bin")
-    File.mkdir("apps/aecore/priv/cuckoo/lib")
+    File.mkdir_p("apps/aecore/priv/cuckoo/bin")
+    File.mkdir_p("apps/aecore/priv/cuckoo/lib")
     File.cd(Path.absname("apps/aecore/src/cuckoo/"))
     {result, _error_code} = System.cmd("make", ["all"], stderr_to_stdout: true)
     Mix.shell().info(result)
