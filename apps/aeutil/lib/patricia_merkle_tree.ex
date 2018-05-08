@@ -9,6 +9,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.DB.ExternalDB
+  alias MerklePatriciaTree.Trie.Inspector
 
   alias Aecore.Persistence.Worker, as: Persistence
 
@@ -94,4 +95,10 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec delete(Trie.t(), Trie.key()) :: Trie.t()
   def delete(trie, key), do: Trie.delete(trie, key)
+
+  @doc """
+  Prviding pretty print of a trie in the shell.
+  """
+  @spec print_trie(Trie.t()) :: Trie.t()
+  def print_trie(trie), do: Inspector.inspect_trie(trie)
 end
