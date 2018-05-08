@@ -115,6 +115,18 @@ defmodule Aecore.Chain.Worker do
       {:error, :invalid_hash}
   end
 
+  @spec get_headers_forward(binary(), non_neg_integer()) ::
+          {:ok, list(Header.t())} | {:error, atom()}
+  def get_headers_forward(starting_header, count) do
+    case get_header(starting_header) do
+      {:ok, header} ->
+        get_headers_forward([], header.height, count)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
   @spec get_header(binary()) :: Block.t() | {:error, atom()}
   def get_header(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
@@ -562,6 +574,20 @@ defmodule Aecore.Chain.Worker do
 
   defp number_of_blocks_in_memory do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
+  end
+
+  defp get_headers_forward(headers, next_header_height, count) when count > 0 do
+    case get_header_by_height(next_header_height) do
+      {:ok, header} ->
+        get_headers_forward([header | headers], header.height + 1, count - 1)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
+    {:ok, headers}
   end
 
   defp get_block_info_by_height(height, chain_hash) do

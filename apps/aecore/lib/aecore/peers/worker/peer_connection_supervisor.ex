@@ -1,6 +1,6 @@
 defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
   @moduledoc """
-  Supervisor responsible for all of the worker modules in his folder
+  Supervises the individual peer connection GenServer processes
   """
 
   use Supervisor
