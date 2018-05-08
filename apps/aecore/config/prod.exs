@@ -47,7 +47,7 @@ new_candidate_nonce_count =
 config :aecore, :pow,
   new_candidate_nonce_count: new_candidate_nonce_count,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
-  params: {"./mean", "-t 5", 28},
+  params: {"./mean28s-generic", "-t 5", 28},
   max_target_change: 1,
   genesis_header: %{
     height: 0,
