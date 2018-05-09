@@ -39,15 +39,14 @@ defmodule Aevm do
   # 0s: Stop and Arithmetic Operations
 
   def exec(OpCodes._STOP(), state) do
-    code = State.code(state)
-    State.set_cp(byte_size(code), state)
+    stop_exec(state)
   end
 
   def exec(OpCodes._ADD(), state) do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = (op1 + op2) &&& AevmConst.mask256()
+    result = op1 + op2 &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -56,7 +55,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = (op1 * op2) &&& AevmConst.mask256()
+    result = op1 * op2 &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -65,7 +64,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = (op1 - op2) &&& AevmConst.mask256()
+    result = op1 - op2 &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -418,7 +417,6 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._EXTCODECOPY(), state) do
-    # TODO: test
     {address, state1} = pop(state)
     {nbytes, state2} = pop(state1)
     {from_code_pos, state3} = pop(state2)
@@ -1032,25 +1030,24 @@ defmodule Aevm do
     {result, state1} = Memory.get_area(from_pos, nbytes, state)
 
     state2 = State.set_out(result, state1)
-    code = State.code(state2)
-    State.set_cp(byte_size(code), state2)
+    stop_exec(state2)
   end
 
   def exec(OpCodes._DELEGATECALL(), state) do
     # TODO
   end
 
-  def exec(OpCodes._CALLBLACKBOX(), state) do
-    # TODO
-  end
+  # def exec(OpCodes._CALLBLACKBOX(), state) do
+  #   # TODO
+  # end
 
-  def exec(OpCodes._STATICCALL(), state) do
-    # TODO
-  end
+  # def exec(OpCodes._STATICCALL(), state) do
+  #   # TODO
+  # end
 
-  def exec(OpCodes._REVERT(), state) do
-    # TODO
-  end
+  # def exec(OpCodes._REVERT(), state) do
+  #   # TODO
+  # end
 
   def exec(OpCodes._INVALID(), state) do
     # TODO
@@ -1059,7 +1056,13 @@ defmodule Aevm do
   # Halt Execution, Mark for deletion
 
   def exec(OpCodes._SUICIDE(), state) do
-    # TODO
+    {value, state1} = pop(state)
+    state2 = State.set_selfdestruct(value, state1)
+
+    # mem_gas_cost = Gas.memory_gas_cost(state1, state)
+    # State.set_gas()
+
+    stop_exec(state2)
   end
 
   def exec([], state) do
@@ -1069,6 +1072,11 @@ defmodule Aevm do
   #
   # Util functions
   #
+
+  defp stop_exec(state) do
+    code = State.code(state)
+    State.set_cp(byte_size(code), state)
+  end
 
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
