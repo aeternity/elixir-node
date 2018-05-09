@@ -97,10 +97,22 @@ defmodule Aecore.Peers.PeerConnection do
   def get_mempool(pid) when is_pid(pid),
     do: send_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
 
+  @spec send_new_block(Block.t(), pid()) :: :ok | :error
+  def send_new_block(block, pid),
+    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
+
+  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
+  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
+
   def handle_call({:send_msg, msg}, from, %{status: {:connected, socket}} = state) do
     :ok = :enoise.send(socket, msg)
     updated_state = Map.put(state, :request, from)
     {:noreply, updated_state}
+  end
+
+  def handle_call({:send_msg_no_response, msg}, _from, %{status: {:connected, socket}} = state) do
+    res = :enoise.send(socket, msg)
+    {:reply, res, state}
   end
 
   def handle_call(:clear_request, _from, state) do
@@ -169,6 +181,12 @@ defmodule Aecore.Peers.PeerConnection do
 
       @get_mempool ->
         spawn(fn -> handle_get_mempool(self) end)
+
+      @block ->
+        handle_new_block(deserialized_payload)
+
+      @tx ->
+        handle_new_tx(deserialized_payload)
     end
 
     {:noreply, state}
@@ -188,7 +206,7 @@ defmodule Aecore.Peers.PeerConnection do
       best_hash: Chain.top_block_hash(),
       difficulty: top_block.header.target,
       share: 32,
-      peers: [],
+      peers: Peers.all_peers(),
       port: Supervisor.sync_port()
     }
 
@@ -213,6 +231,11 @@ defmodule Aecore.Peers.PeerConnection do
   defp send_msg(id, payload, pid) do
     msg = <<id::16, payload::binary>>
     GenServer.call(pid, {:send_msg, msg})
+  end
+
+  defp send_msg_no_response(id, payload, pid) do
+    msg = <<id::16, payload::binary>>
+    GenServer.call(pid, {:send_msg_no_response, msg})
   end
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
@@ -288,6 +311,16 @@ defmodule Aecore.Peers.PeerConnection do
   defp handle_get_mempool(pid) do
     pool = Pool.get_pool()
     send_response({:ok, pool}, @mempool, pid)
+  end
+
+  defp handle_new_block(payload) do
+    block = payload.block
+    Chain.add_block(block)
+  end
+
+  defp handle_new_tx(payload) do
+    tx = payload.tx
+    Pool.add_transaction(tx)
   end
 
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do

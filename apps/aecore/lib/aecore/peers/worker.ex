@@ -27,6 +27,10 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :state)
   end
 
+  def all_peers do
+    GenServer.call(__MODULE__, :all_peers)
+  end
+
   def add_peer(conn_info) do
     GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
@@ -45,6 +49,11 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call(:state, _from, state) do
     {:reply, state, state}
+  end
+
+  def handle_call(:all_peers, _from, %{peers: peers} = state) do
+    all_peers = Map.values(peers)
+    {:reply, all_peers, state}
   end
 
   def handle_call(
