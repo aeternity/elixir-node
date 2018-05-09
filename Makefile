@@ -1,3 +1,6 @@
+
+export AEVM_EXTERNAL_TEST_DIR=aevm_external
+
 #
 #Miltiple nodes
 #
@@ -117,3 +120,11 @@ killall:
 	dev2-start, dev2-stop, dev2-attach, dev2-clean \
 	dev3-start, dev3-stop, dev3-attach, dev3-clean \
  	killall \
+
+	#
+	# AEVM
+	#
+aevm-test-deps: $(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests
+
+$(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests:
+	@git clone https://github.com/ethereum/tests.git $(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests
