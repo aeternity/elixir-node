@@ -35,7 +35,7 @@ defmodule Aecore.Peers.SyncNew do
 
   @max_headers_per_chunk 100
   @max_diff_for_sync 50
-  @max_adds 20
+  @max_ads 20
 
   defstruct difficulty: nil,
             from: nil,
@@ -98,11 +98,6 @@ defmodule Aecore.Peers.SyncNew do
   @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
   def forward_tx(tx, peer_id) do
     GenServer.call(__MODULE__, {:forward_tx, tx, peer_id})
-  end
-
-  @spec fetch_next(String.t(), non_neg_integer(), binary(), any()) :: tuple()
-  def fetch_next(peer_id, height_in, hash_in, result) do
-    GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
   end
 
   @spec update_hash_pool(list()) :: list()
@@ -186,11 +181,11 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   def handle_call({:forward_block, block, peer_id}, _from, state) do
-    {:no_reply, do_forward_block(block, peer_id), state}
+    {:reply, do_forward_block(block, peer_id), state}
   end
 
   def handle_call({:forward_tx, tx, peer_id}, _from, state) do
-    {:no_reply, do_forward_tx(tx, peer_id), state}
+    {:reply, do_forward_tx(tx, peer_id), state}
   end
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
@@ -496,7 +491,7 @@ defmodule Aecore.Peers.SyncNew do
         do_fetch_mempool(peer_id)
 
       {:ping, peer_id} ->
-        ## TODO: ping_peer(peer_id)
+        PeerConnection.ping_peer(peer_id)
         :ok
 
       _other ->
@@ -513,14 +508,14 @@ defmodule Aecore.Peers.SyncNew do
         Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
 
       false ->
-        # send_block(peer_id, block) Send block through the peer module
+        PeerConnection.send_new_block(block, peer_id) ##Send block through the peer module
         :ok
     end
   end
 
   # Send a transaction to the Remote Peer
   defp do_forward_tx(tx, peer_id) do
-    ## TODO: send_tx(peer_id, tx)
+    PeerConnection.send_new_tx(tx, peer_id)
     Logger.debug("#{__MODULE__}: sent tx: #{inspect(tx)} to peer #{inspect(peer_id)}")
   end
 
@@ -559,9 +554,8 @@ defmodule Aecore.Peers.SyncNew do
   defp pick_same(_, old_hashes, new_hashes), do: merge(old_hashes, new_hashes)
 
   defp fill_pool(peer_id, agreed_hash) do
-    ## TODO: Create this func!
-    ## TODO: get_n_successors(peer_id, agreed_hash, @max_headers_per_chunk) do
-    case 1 == 1 do
+
+    case PeerConnection.get_n_successors(agreed_hash, @max_headers_per_chunk, peer_id) do
       {:ok, []} ->
         delete_from_pool(peer_id)
         :done
