@@ -47,6 +47,11 @@ defmodule Aecore.Peers.Worker do
     {:reply, state, state}
   end
 
+  def handle_call(:all_peers, _from, %{peers: peers} = state) do
+    all_peers = Map.values(peers)
+    {:reply, all_peers, state}
+  end
+
   def handle_call(
         {:add_peer, %{pubkey: pubkey} = peer_info},
         _from,
