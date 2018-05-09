@@ -5,6 +5,7 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.BlockValidation
 
   @type t :: %Block{
           header: Header.t(),
@@ -25,6 +26,10 @@ defmodule Aecore.Chain.Block do
   defp genesis_header do
     header = Application.get_env(:aecore, :pow)[:genesis_header]
     struct(Header, header)
+  end
+
+  def genesis_hash do
+    BlockValidation.block_header_hash(genesis_header())
   end
 
   @spec genesis_block() :: Block.t()

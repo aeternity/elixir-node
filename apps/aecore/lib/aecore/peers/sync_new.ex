@@ -9,6 +9,7 @@ defmodule Aecore.Peers.SyncNew do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Peers.PeerConnection
 
   require Logger
 
@@ -24,10 +25,13 @@ defmodule Aecore.Peers.SyncNew do
 
   @type peer_id_map :: %{peer: String.t()}
 
+  @type block_map :: %{block: Block.t()}
+
   @typedoc "List of all the syncing peers"
   @type sync_pool :: list(sync_peer())
 
-  @type hash_pool :: {{non_neg_integer(), non_neg_integer()}, Block.t() | peer_id_map()}
+  @typedoc "List of tuples of block height and block hash connected to a given block or peer"
+  @type hash_pool :: list({{non_neg_integer(), non_neg_integer()}, block_map() | peer_id_map()})
 
   @max_headers_per_chunk 100
   @max_diff_for_sync 50
@@ -81,6 +85,11 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.call(__MODULE__, {:new_header, self(), peer_id, header, agreed_height, hash})
   end
 
+  @spec fetch_next(String.t(), non_neg_integer(), binary(), any()) :: tuple()
+  def fetch_next(peer_id, height_in, hash_in, result) do
+    GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
+  end
+
   @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
   def forward_block(block, peer_id) do
     GenServer.call(__MODULE__, {:forward_block, block, peer_id})
@@ -101,6 +110,10 @@ defmodule Aecore.Peers.SyncNew do
     GenServer.call(__MODULE__, {:update_hash_pool, hashes})
   end
 
+  def delete_from_pool(peer_id) do
+    GenServer.cast(__MODULE__, {:delete_from_pool, peer_id})
+  end
+
   ## INNER FUNCTIONS ##
 
   def handle_cast({:start_sync, peer_id, remote_hash}, _from, state) do
@@ -116,12 +129,12 @@ defmodule Aecore.Peers.SyncNew do
     {:noreply, state}
   end
 
-  def handle_cast({:fetch_mempool, peer_id}, _, state) do
+  def handle_cast({:fetch_mempool, peer_id}, _from, state) do
     :jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_id})
     {:noreply, state}
   end
 
-  def handle_cast({:schedule_ping, peer_id}, _, state) do
+  def handle_cast({:schedule_ping, peer_id}, _from, state) do
     :jobs.enqueue(:sync_jobs, {:schedule_ping, peer_id})
     {:noreply, state}
   end
@@ -180,7 +193,17 @@ defmodule Aecore.Peers.SyncNew do
     {:no_reply, do_forward_tx(tx, peer_id), state}
   end
 
-  def handle_call({:fetch_next, peer_id, height_in, hash_in, result}, _, state) do
+  def handle_call({:update_hash_pool, hashes}, _from, state) do
+    hash_pool = merge(state.hash_pool, hashes)
+    Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
+    {:reply, :ok, %{state | hash_pool: hash_pool}}
+  end
+
+  def handle_cast({:delete_from_pool, peer_id}, _from, %{sync_pool: pool} = state) do
+    {:noreply, %{state | senc_pool: List.delete(pool, peer_id)}}
+  end
+
+  def handle_call({:fetch_next, peer_id, height_in, hash_in, result}, _from, state) do
     hash_pool =
       case result do
         {:ok, block} ->
@@ -188,9 +211,9 @@ defmodule Aecore.Peers.SyncNew do
           block_hash = block.header.hash
 
           List.keyreplace(
-            state.hash_pool,
             {block_height, block_hash},
             1,
+            state.hash_pool,
             {{block_height, block_hash}, %{block: block}}
           )
 
@@ -213,14 +236,13 @@ defmodule Aecore.Peers.SyncNew do
             ## abort sync
             {:reply, {:error, :sync_stopped}, %{state | hash_pool: []}}
 
-          %{to: to_height} = peer when to_height <= new_height ->
+          %{to: to} = peer when to <= new_height ->
             new_sync_pool =
               Enum.reject(state.sync_pool, fn peers -> Map.get(peer, :id) == peer_id end)
 
             {:reply, :done, %{state | hash_pool: [], sync_pool: new_sync_pool}}
 
           peer ->
-            # TODO: Figure out what :fill_pool should do and where it is handled
             {:reply, {:fill_pool, new_height, new_hash}, %{state | hash_pool: []}}
         end
 
@@ -241,14 +263,13 @@ defmodule Aecore.Peers.SyncNew do
             random = :rand.uniform(length(pick_from_hashes))
             {pick_height, pick_hash} = Enum.fetch(pick_from_hashes, random)
 
-            # TODO: Figure out what :fetch should do and where it is handled
             {:reply, {:fetch, new_height, new_hash, pick_hash},
              %{state | hash_pool: new_hash_pool}}
         end
     end
   end
 
-  def handle_call({:update_hash_pool, hashes}, _, state) do
+  def handle_call({:update_hash_pool, hashes}, _from, state) do
     hash_pool = merge(state.hash_pool, hashes)
     Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
     {:reply, :ok, %{state | hash_pool: hash_pool}}
@@ -348,8 +369,7 @@ defmodule Aecore.Peers.SyncNew do
   # until we agree on some height. This might be even the Gensis block!
   @spec do_start_sync(String.t(), binary()) :: String.t()
   defp do_start_sync(peer_id, remote_hash) do
-    ## TODO: get_header_by_hash(peer_id, remote_hash) do
-    case 1 == 1 do
+    case PeerConnection.get_header_by_hash(peer_id, remote_hash) do
       {:ok, remote_header} ->
         remote_height = remote_header.height
         local_height = Chain.top_height()
@@ -409,8 +429,7 @@ defmodule Aecore.Peers.SyncNew do
 
   defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
        when r_height != l_height do
-    ## TODO:  get_header_by_height(peer_id, l_height) do
-    case 1 == 1 do
+    case PeerConnection.get_header_by_height(peer_id, l_height) do
       {:ok, header} ->
         agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
 
@@ -420,13 +439,13 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   defp fetch_more(peer_id, _, _, :done) do
-    :ok
-    ## TODO: delete_from_pool(peer_id)
+    ## Chain sync done
+    delete_from_pool(peer_id)
   end
 
   defp fetch_more(peer_id, last_height, _, {:error, error}) do
     Logger.info("Abort sync at height ~p Error ~p ", [last_height, error])
-    ## TODO: delete_from_pool(peer_id)
+    delete_from_pool(peer_id)
   end
 
   defp fetch_more(peer_id, last_height, header_hash, result) do
@@ -435,10 +454,10 @@ defmodule Aecore.Peers.SyncNew do
     case fetch_next(peer_id, last_height, header_hash, result) do
       {:fetch, new_height, new_hash, hash} ->
         case do_fetch_block(hash, peer_id) do
-          {ok, _, new_block} ->
+          {:ok, _, new_block} ->
             fetch_more(peer_id, new_height, new_hash, {:ok, new_block})
 
-          {error, _} = error ->
+          {:error, _} = error ->
             fetch_more(peer_id, new_height, new_hash, error)
         end
 
@@ -510,12 +529,12 @@ defmodule Aecore.Peers.SyncNew do
   defp merge([], new_hashes), do: new_hashes
   defp merge(old_hashes, []), do: old_hashes
 
-  defp merge([{{h_1, hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
+  defp merge([{{h_1, _hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
        when h_1 < h_2 do
     merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
   end
 
-  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, hash_2}, _} | new_hashes])
+  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, _hash_2}, _} | new_hashes])
        when h_1 > h_2 do
     merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
   end
@@ -544,8 +563,7 @@ defmodule Aecore.Peers.SyncNew do
     ## TODO: get_n_successors(peer_id, agreed_hash, @max_headers_per_chunk) do
     case 1 == 1 do
       {:ok, []} ->
-        ## TODO: Create this func!
-        ## TODO: delete_from_pool(peer_id)
+        delete_from_pool(peer_id)
         :done
 
       {:ok, chunk_hashes} ->
@@ -554,14 +572,12 @@ defmodule Aecore.Peers.SyncNew do
             {chunk, %{peer: peer_id}}
           end
 
-        ## TODO: Create this func!
         update_hash_pool(hash_pool)
         {:filled_pool, length(chunk_hashes) - 1}
 
       err ->
         Logger.debug("#{__MODULE__}: Abort sync with: #{inspect(err)}")
-        ## TODO: Create this func!
-        ## TODO: delete_from_pool(peer_id)
+        delete_from_pool(peer_id)
         {:error, :sync_abort}
     end
   end
