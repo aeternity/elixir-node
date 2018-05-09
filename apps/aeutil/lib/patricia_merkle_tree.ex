@@ -97,7 +97,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   def delete(trie, key), do: Trie.delete(trie, key)
 
   @doc """
-  Prviding pretty print of a trie in the shell.
+  Providing pretty print of a trie in the shell.
   """
   @spec print_trie(Trie.t()) :: Trie.t()
   def print_trie(trie), do: Inspector.inspect_trie(trie)
