@@ -162,8 +162,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
-    referenced_query_response_ttl =
-      Chain.oracle_interaction_objects()[tx.query_id].response_ttl
+    referenced_query_response_ttl = Chain.oracle_interaction_objects()[tx.query_id].response_ttl
 
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end

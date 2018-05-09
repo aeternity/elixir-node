@@ -68,8 +68,8 @@ defmodule AecoreOracleTest do
     Chain.clear_state()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
-    assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == false
     query_oracle(:invalid, :address)
     query_oracle(:invalid, :query_data)
     query_oracle(:invalid, :query_fee)
@@ -92,6 +92,7 @@ defmodule AecoreOracleTest do
 
     oracle_respond(:valid)
     Oracle.extend(3, 10)
+    Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
     # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
