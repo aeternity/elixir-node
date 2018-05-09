@@ -257,11 +257,11 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec standard_deduct_fee(
-          AccountStateTree.t(),
-          DataTx.t(),
+          AccountStateTree.accounts_state(),
           non_neg_integer(),
+          DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Account.t()
   def standard_deduct_fee(accounts, block_height, data_tx, fee) do
     sender = DataTx.main_sender(data_tx)
 

@@ -109,7 +109,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          ChainState.account(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
