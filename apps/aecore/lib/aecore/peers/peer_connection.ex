@@ -99,15 +99,20 @@ defmodule Aecore.Peers.PeerConnection do
 
   @spec send_new_block(Block.t(), pid()) :: :ok | :error
   def send_new_block(block, pid),
-    do: send_msg(@block, :erlang.term_to_binary(%{block: block}), pid)
+    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
 
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid), do: send_msg(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
+  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
 
   def handle_call({:send_msg, msg}, from, %{status: {:connected, socket}} = state) do
     :ok = :enoise.send(socket, msg)
     updated_state = Map.put(state, :request, from)
     {:noreply, updated_state}
+  end
+
+  def handle_call({:send_msg_no_response, msg}, _from, %{status: {:connected, socket}} = state) do
+    res = :enoise.send(socket, msg)
+    {:reply, res, state}
   end
 
   def handle_call(:clear_request, _from, state) do
@@ -226,6 +231,11 @@ defmodule Aecore.Peers.PeerConnection do
   defp send_msg(id, payload, pid) do
     msg = <<id::16, payload::binary>>
     GenServer.call(pid, {:send_msg, msg})
+  end
+
+  defp send_msg_no_response(id, payload, pid) do
+    msg = <<id::16, payload::binary>>
+    GenServer.call(pid, {:send_msg_no_response, msg})
   end
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
