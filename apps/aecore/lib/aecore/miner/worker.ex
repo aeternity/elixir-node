@@ -23,7 +23,6 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2_147_483_647
   @coinbase_transaction_amount 100
-  @new_candidate_nonce_count 500
 
   def start_link(_args) do
     GenServer.start_link(
@@ -163,7 +162,7 @@ defmodule Aecore.Miner.Worker do
     nonce = next_nonce(cblock.header.nonce)
 
     cblock =
-      case rem(nonce, @new_candidate_nonce_count) do
+      case rem(nonce, Application.get_env(:aecore, :pow)[:new_candidate_nonce_count]) do
         0 -> candidate()
         _ -> cblock
       end

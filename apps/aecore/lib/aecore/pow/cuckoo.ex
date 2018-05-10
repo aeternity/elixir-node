@@ -65,7 +65,7 @@ defmodule Aecore.Pow.Cuckoo do
 
     cmd =
       case process do
-        :generate -> [exe, size, " -h ", hash, " -n ", nonce]
+        :generate -> [exe, " -h ", hash, " -n ", nonce]
         :verify -> ["./verify", size, " -h ", hash, " -n ", nonce]
       end
 
