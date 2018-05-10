@@ -10,6 +10,7 @@ defmodule Aecore.Peers.SyncNew do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
+  alias Aecore.Peers.Worker, as: Peers
 
   require Logger
 
@@ -157,8 +158,7 @@ defmodule Aecore.Peers.SyncNew do
 
     case is_new do
       true ->
-        # do something with process
-        :ok
+        Process.monitor(pid)
 
       false ->
         :ok
@@ -496,6 +496,14 @@ defmodule Aecore.Peers.SyncNew do
 
       _other ->
         Logger.debug("Unknown job")
+    end
+  end
+
+  @spec enqueue(atom(), map()) :: list()
+  defp enqueue(opts, msg) do
+    peers = Peers.get_random(2)
+    for peer <- peers do
+      :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})
     end
   end
 
