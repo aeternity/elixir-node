@@ -72,9 +72,10 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
   @tag :patricia_merkle_tree
   test "Get all keys and their size" do
-    t = PatriciaMerkleTree.new(:test_trie)
-    |> PatriciaMerkleTree.enter("111", "v1")
-    |> PatriciaMerkleTree.enter("112", "v2")
+    t =
+      PatriciaMerkleTree.new(:test_trie)
+      |> PatriciaMerkleTree.enter("111", "v1")
+      |> PatriciaMerkleTree.enter("112", "v2")
 
     assert ["111", "112"] = PatriciaMerkleTree.all_keys(t)
     assert 2 = PatriciaMerkleTree.trie_size(t)

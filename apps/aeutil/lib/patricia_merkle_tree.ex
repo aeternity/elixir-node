@@ -107,5 +107,4 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec trie_size(Trie.t()) :: integer()
   def trie_size(trie), do: length(all_keys(trie))
-
 end
