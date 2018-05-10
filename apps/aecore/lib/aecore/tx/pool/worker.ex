@@ -71,7 +71,8 @@ defmodule Aecore.Tx.Pool.Worker do
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
     cond do
       :ok != SignedTx.validate(tx) ->
-        Logger.error("#{__MODULE__}: Invalid transaction signature: #{inspect(tx)}")
+        {:error, reason} = SignedTx.validate(tx)
+        Logger.error("#{__MODULE__}: Transaction invalid - #{reason}: #{inspect(tx)}")
         {:reply, :error, tx_pool}
 
       !is_minimum_fee_met?(tx, :pool) ->
@@ -203,11 +204,11 @@ defmodule Aecore.Tx.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if tx.data.sender == address or tx.data.payload.receiver == address do
+      if Enum.any?(tx.data.senders,fn x -> x == address end) or tx.data.payload.receiver == address do
         [
           tx.data
           |> Map.from_struct()
-          |> Map.put_new(:signature, tx.signature)
+          |> Map.put_new(:signatures, tx.signatures)
           | user_txs
         ]
       else

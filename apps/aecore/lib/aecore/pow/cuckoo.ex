@@ -12,7 +12,6 @@ defmodule Aecore.Pow.Cuckoo do
   require Logger
 
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
   alias Aeutil.Hash
 
@@ -20,7 +19,7 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{target: target, pow_evidence: soln} = header) do
+  def verify(%{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
       process(:verify, header)
     else

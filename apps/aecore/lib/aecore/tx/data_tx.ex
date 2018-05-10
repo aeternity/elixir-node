@@ -10,15 +10,15 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
-  alias Aeutil.Parser
   alias Aeutil.Bits
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Account.Tx.CoinbaseTx
 
   require Logger
 
@@ -55,7 +55,7 @@ defmodule Aecore.Tx.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          sender: binary(),
+          senders: list(binary()),
           fee: non_neg_integer(),
           nonce: non_neg_integer()
         }
@@ -66,28 +66,86 @@ defmodule Aecore.Tx.DataTx do
   ## Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
-  - sender: The public address of the account originating the transaction
+  - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
-  - nonce: A random integer generated on initialisation of a transaction (must be unique!)
+  - nonce: An integer bigger then current nonce of main sender Account. (see senders)
   """
-  defstruct [:type, :payload, :sender, :fee, :nonce]
+  defstruct [:type, :payload, :senders, :fee, :nonce]
   use ExConstructor
 
-  @spec init(tx_types(), payload(), binary(), integer(), integer()) :: DataTx.t()
-  def init(type, payload, sender, fee, nonce) do
-    %DataTx{type: type, payload: type.init(payload), sender: sender, fee: fee, nonce: nonce}
+  def valid_types do
+    [
+      Aecore.Account.Tx.SpendTx,
+      Aecore.Account.Tx.CoinbaseTx,
+      Aecore.Oracle.Tx.OracleExtendTx,
+      Aecore.Oracle.Tx.OracleQueryTx,
+      Aecore.Oracle.Tx.OracleRegistrationTx,
+      Aecore.Oracle.Tx.OracleResponseTx,
+      Aecore.Naming.Tx.NameClaimTx,
+      Aecore.Naming.Tx.NamePreClaimTx,
+      Aecore.Naming.Tx.NameRevokeTx,
+      Aecore.Naming.Tx.NameTransferTx,
+      Aecore.Naming.Tx.NameUpdateTx
+    ]
+  end
+
+  @spec init(tx_types(), payload(), list(binary()) | binary(), non_neg_integer(), integer()) ::
+          DataTx.t()
+  def init(type, payload, senders, fee, nonce) when is_list(senders) do
+    %DataTx{type: type, payload: type.init(payload), senders: senders, nonce: nonce, fee: fee}
+  end
+
+  def init(type, payload, sender, fee, nonce) when is_binary(sender) do
+    %DataTx{type: type, payload: type.init(payload), senders: [sender], nonce: nonce, fee: fee}
+  end
+
+  @spec fee(DataTx.t()) :: non_neg_integer()
+  def fee(%DataTx{fee: fee}) do
+    fee
+  end
+
+  @spec senders(DataTx.t()) :: list(binary())
+  def senders(%DataTx{senders: senders}) do
+    senders
+  end
+
+  @spec main_sender(DataTx.t()) :: binary() | nil
+  def main_sender(tx) do
+    List.first(senders(tx))
+  end
+
+  @spec nonce(DataTx.t()) :: non_neg_integer()
+  def nonce(%DataTx{nonce: nonce}) do
+    nonce
+  end
+
+  @spec payload(DataTx.t()) :: map()
+  def payload(%DataTx{payload: payload, type: type}) do
+    if Enum.member?(valid_types(), type) do
+      type.init(payload)
+    else
+      Logger.error("Call to DataTx payload with invalid transaction type")
+      %{}
+    end
   end
 
   @doc """
   Checks whether the fee is above 0.
   """
   @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%DataTx{type: type, payload: payload, fee: fee}) do
-    if fee > 0 do
-      child_tx = type.init(payload)
-      {:ok, child_tx}
-    else
-      {:error, "#{__MODULE__}: Fee not enough: #{inspect(fee)}"}
+  def validate(%DataTx{fee: fee, type: type} = tx) do
+    cond do
+      !Enum.member?(valid_types(), type) ->
+        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
+
+      fee < 0 ->
+        {:error, "#{__MODULE__}: Negative fee"}
+
+      !senders_pubkeys_size_valid?(tx.senders) ->
+        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
+
+      true ->
+        payload_validate(tx)
     end
   end
 
@@ -95,110 +153,96 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(DataTx.t(), ChainState.t(), non_neg_integer()) :: Chainstate.t()
-  def process_chainstate(%DataTx{} = tx, chainstate, block_height) do
-    accounts_state_tree = chainstate.accounts
+  @spec process_chainstate(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
+          {:ok, ChainState.chainstate()} | {:error, String.t()}
+  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
+    accounts_state = chainstate.accounts
+    payload = payload(tx)
 
-    tx_type_state = get_tx_type_state(chainstate, tx.type)
+    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    case tx.payload
-         |> tx.type.init()
-         |> tx.type.process_chainstate(
-           tx.sender,
-           tx.fee,
-           tx.nonce,
-           block_height,
-           accounts_state_tree,
-           tx_type_state
-         ) do
-      {:error, reason} ->
-        {:error, reason}
+    nonce_accounts_state =
+      if Enum.empty?(tx.senders) do
+        accounts_state
+      else
+        AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
+          Account.apply_nonce!(acc, tx.nonce)
+        end)
+      end
 
-      {new_accounts_state_tree, new_tx_type_state} ->
-        new_chainstate =
-          if tx.type == SpendTx do
-            chainstate
-          else
-            Map.put(chainstate, tx.type.get_chain_state_name(), new_tx_type_state)
-          end
+    with {:ok, {new_accounts_state, new_tx_type_state}} <-
+           nonce_accounts_state
+           |> tx.type.deduct_fee(payload, block_height, tx, fee)
+           |> tx.type.process_chainstate(
+             tx_type_state,
+             block_height,
+             payload,
+             tx
+           ) do
+      new_chainstate =
+        if tx.type.get_chain_state_name() == nil do
+          %{chainstate | accounts: new_accounts_state}
+        else
+          %{chainstate | accounts: new_accounts_state}
+          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+        end
 
-        {:ok, Map.put(new_chainstate, :accounts, new_accounts_state_tree)}
-    end
-  end
-
-  @doc """
-  Gets the given transaction type state,
-  if there is any stored in the chainstate
-  """
-  @spec get_tx_type_state(Chainstate.t(), atom()) :: map()
-  def get_tx_type_state(chainstate, tx_type) do
-    type = tx_type.get_chain_state_name()
-    Map.get(chainstate, type, %{})
-  end
-
-  @spec validate_sender(Wallet.pubkey(), Chainstate.t()) :: :ok | {:error, String.t()}
-  def validate_sender(sender, %{accounts: account}) do
-    with :ok <- Wallet.key_size_valid?(sender),
-         {:ok, _account_key} <- AccountStateTree.get(account, sender) do
-      :ok
+      {:ok, new_chainstate}
     else
-      :none ->
-        {:error, "#{__MODULE__}: The senders key: #{inspect(sender)} doesn't exist"}
-
       err ->
         err
     end
   end
 
-  @spec validate_nonce(Account.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate_nonce(accounts_state, tx) do
-    if tx.nonce > Account.nonce(accounts_state, tx.sender) do
-      :ok
-    else
-      {:error, "#{__MODULE__}: Nonce is too small: #{inspect(tx.nonce)}"}
-    end
-  end
-
-  @spec preprocess_check(DataTx.t(), Chainstate.t(), non_neg_integer()) ::
+  @spec preprocess_check(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(
-        %DataTx{
-          type: type,
-          payload: payload,
-          sender: sender,
-          fee: fee,
-          nonce: nonce
-        } = tx,
-        %{accounts: accounts} = chainstate,
-        block_height
-      ) do
-    sender_account_state = Account.get_account_state(accounts, sender)
-    tx_type_state = get_tx_type_state(chainstate, tx.type)
+  def preprocess_check(chainstate, block_height, tx) do
+    accounts_state = chainstate.accounts
+    payload = payload(tx)
+    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    type.preprocess_check(
-      payload,
-      sender,
-      sender_account_state,
-      fee,
-      nonce,
-      block_height,
-      tx_type_state
-    )
+    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
+      if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
+        :ok
+      else
+        {:error, "#{__MODULE__}: Too small nonce"}
+      end
+    else
+      err ->
+        err
+    end
   end
 
   @spec serialize(DataTx.t()) :: map()
   def serialize(%DataTx{} = tx) do
-    tx
-    |> Map.from_struct()
-    |> Enum.reduce(%{}, fn {key, value}, new_tx ->
-      Map.put(new_tx, Parser.to_string!(key), Serialization.serialize_value(value))
-    end)
+    map_without_senders = %{
+      "type" => Serialization.serialize_value(tx.type),
+      "payload" => Serialization.serialize_value(tx.payload),
+      "fee" => Serialization.serialize_value(tx.fee),
+      "nonce" => Serialization.serialize_value(tx.nonce)
+    }
+
+    if length(tx.senders) == 1 do
+      Map.put(
+        map_without_senders,
+        "sender",
+        Serialization.serialize_value(main_sender(tx), :sender)
+      )
+    else
+      Map.put(map_without_senders, "senders", Serialization.serialize_value(tx.senders, :sender))
+    end
   end
 
-  @spec deserialize(payload()) :: DataTx.t()
-  def deserialize(%{} = tx) do
-    data_tx = Serialization.deserialize_value(tx)
-    init(data_tx.type, data_tx.payload, data_tx.sender, data_tx.fee, data_tx.nonce)
+  @spec deserialize(map()) :: DataTx.t()
+  def deserialize(%{} = data_tx) do
+    senders =
+      if data_tx.sender != nil do
+        [data_tx.sender]
+      else
+        data_tx.senders
+      end
+
+    init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
 
   def base58c_encode(bin) do
@@ -210,30 +254,48 @@ defmodule Aecore.Tx.DataTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
+  end
+
+  @spec standard_deduct_fee(
+          AccountStateTree.t(),
+          DataTx.t(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def standard_deduct_fee(accounts, block_height, data_tx, fee) do
+    sender = DataTx.main_sender(data_tx)
+
+    AccountStateTree.update(accounts, sender, fn acc ->
+      Account.apply_transfer!(acc, block_height, fee * -1)
+    end)
+  end
+
+  defp payload_validate(%DataTx{type: type, payload: payload} = data_tx) do
+    payload
+    |> type.init()
+    |> type.validate(data_tx)
+  end
+
+  defp senders_pubkeys_size_valid?([sender | rest]) do
+    if Wallet.key_size_valid?(sender) do
+      senders_pubkeys_size_valid?(rest)
+    else
+      false
+    end
+  end
+
+  defp senders_pubkeys_size_valid?([]) do
+    true
   end
 
   @spec rlp_encode(DataTx.t()) :: binary() | {:error, String.t()}
   def rlp_encode(%DataTx{type: SpendTx} = tx) do
-    if tx.sender == nil do
-      [
-        type_to_tag(CoinbaseTx),
-        get_version(CoinbaseTx),
-        # receiver
-        tx.payload.receiver,
-        # Subject to discuss/change:
-        # CoinbaseTx Should have a "height" field, currently "nonce" is being encoded
-        # nonce / but should be height
-        tx.nonce,
-        # reward
-        tx.payload.amount
-      ]
-    else
       [
         type_to_tag(SpendTx),
         get_version(SpendTx),
         # sender
-        tx.sender,
+        tx.senders,
         # receiver
         tx.payload.receiver,
         # amount
@@ -243,7 +305,6 @@ defmodule Aecore.Tx.DataTx do
         # nonce
         tx.nonce
       ]
-    end
     |> ExRLP.encode()
   end
 
@@ -271,7 +332,7 @@ defmodule Aecore.Tx.DataTx do
       type_to_tag(OracleRegistrationTx),
       get_version(OracleRegistrationTx),
       # account
-      tx.sender,
+      tx.senders,
       # nonce
       tx.nonce,
       # Subject to discuss/change:
@@ -301,8 +362,8 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(OracleQueryTx),
       get_version(OracleQueryTx),
-      # sender
-      tx.sender,
+      # senders
+      tx.senders,
       # nonce
       tx.nonce,
       # oracle
@@ -333,7 +394,7 @@ defmodule Aecore.Tx.DataTx do
       type_to_tag(OracleResponseTx),
       get_version(OracleResponseTx),
       # oracle? not confirmed
-      tx.sender,
+      tx.senders,
       # nonce
       tx.nonce,
       # query_id
@@ -353,7 +414,7 @@ defmodule Aecore.Tx.DataTx do
       type_to_tag(OracleExtendTx),
       get_version(OracleExtendTx),
       # oracle? not confirmed
-      tx.sender,
+      tx.senders,
       # nonce
       tx.nonce,
       # ttl_type
@@ -370,7 +431,7 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(NamePreClaimTx),
       get_version(NamePreClaimTx),
-      tx.sender,
+      tx.senders,
       tx.nonce,
       tx.payload.commitment,
       tx.fee
@@ -382,7 +443,7 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(NameClaimTx),
       get_version(NameClaimTx),
-      tx.sender,
+      tx.senders,
       tx.nonce,
       tx.payload.name,
       tx.payload.name_salt,
@@ -395,7 +456,7 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(NameUpdateTx),
       get_version(NameUpdateTx),
-      tx.sender,
+      tx.senders,
       tx.nonce,
       tx.payload.hash,
       tx.payload.expire_by,
@@ -410,7 +471,7 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(NameRevokeTx),
       get_version(NameRevokeTx),
-      tx.sender,
+      tx.senders,
       tx.nonce,
       tx.payload.hash,
       tx.fee
@@ -422,7 +483,7 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(NameTransferTx),
       get_version(NameTransferTx),
-      tx.sender,
+      tx.senders,
       tx.nonce,
       tx.payload.hash,
       tx.payload.target,
@@ -435,7 +496,7 @@ defmodule Aecore.Tx.DataTx do
     ExRLP.encode(data)
   end
 
-  def rlp_encode(_) do
+  def rlp_encode(tx) do
     {:error, "Invalid Data"}
   end
 
@@ -447,10 +508,10 @@ defmodule Aecore.Tx.DataTx do
 
     case tag_to_type(tag) do
       SpendTx ->
-        [sender, receiver, amount, fee, nonce] = rest_data
+        [senders, receiver, amount, fee, nonce] = rest_data
 
         [
-          sender,
+          senders,
           receiver,
           Serialization.transform_item(amount, :int),
           Serialization.transform_item(fee, :int),
@@ -460,7 +521,7 @@ defmodule Aecore.Tx.DataTx do
         DataTx.init(
           SpendTx,
           %{receiver: receiver, amount: Serialization.transform_item(amount, :int), version: ver},
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )
@@ -488,7 +549,7 @@ defmodule Aecore.Tx.DataTx do
 
       OracleQueryTx ->
         [
-          sender,
+          senders,
           nonce,
           oracle_address,
           query_data,
@@ -501,7 +562,7 @@ defmodule Aecore.Tx.DataTx do
         ] = rest_data
 
         [
-          sender,
+          senders,
           Serialization.transform_item(nonce, :int),
           oracle_address,
           query_data,
@@ -514,11 +575,11 @@ defmodule Aecore.Tx.DataTx do
         ]
 
       OracleRegistrationTx ->
-        [sender, nonce, query_format, response_format, query_fee, ttl_type, ttl_value, fee] =
+        [senders, nonce, query_format, response_format, query_fee, ttl_type, ttl_value, fee] =
           rest_data
 
         [
-          sender,
+          senders,
           Serialization.transform_item(nonce, :int),
           Serialization.transform_item(query_format, :binary),
           Serialization.transform_item(response_format, :binary),
@@ -529,10 +590,10 @@ defmodule Aecore.Tx.DataTx do
         ]
 
       OracleResponseTx ->
-        [sender, nonce, query_id, response, fee] = rest_data
+        [senders, nonce, query_id, response, fee] = rest_data
 
         [
-          sender,
+          senders,
           Serialization.transform_item(nonce, :int),
           Serialization.transform_item(query_id, :binary),
           Serialization.transform_item(response, :binary),
@@ -540,10 +601,10 @@ defmodule Aecore.Tx.DataTx do
         ]
 
       OracleExtendTx ->
-        [sender, nonce, ttl_type, ttl_value, fee] = rest_data
+        [senders, nonce, ttl_type, ttl_value, fee] = rest_data
 
         [
-          sender,
+          senders,
           Serialization.transform_item(nonce, :int),
           Serialization.transform_item(ttl_type, :binary),
           Serialization.transform_item(ttl_value, :int),
@@ -551,31 +612,31 @@ defmodule Aecore.Tx.DataTx do
         ]
 
       NamePreClaimTx ->
-        [sender, nonce, commitment, fee] = rest_data
+        [senders, nonce, commitment, fee] = rest_data
         payload = %NamePreClaimTx{commitment: commitment}
 
         DataTx.init(
           NamePreClaimTx,
           payload,
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )
 
       NameClaimTx ->
-        [sender, nonce, name, name_salt, fee] = rest_data
+        [senders, nonce, name, name_salt, fee] = rest_data
         payload = %NameClaimTx{name: name, name_salt: name_salt}
 
         DataTx.init(
           NameClaimTx,
           payload,
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )
 
       NameUpdateTx ->
-        [sender, nonce, hash, name_ttl, pointers, ttl, fee] = rest_data
+        [senders, nonce, hash, name_ttl, pointers, ttl, fee] = rest_data
 
         payload = %NameUpdateTx{
           client_ttl: Serialization.transform_item(ttl, :int),
@@ -587,31 +648,31 @@ defmodule Aecore.Tx.DataTx do
         DataTx.init(
           NameUpdateTx,
           payload,
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )
 
       NameRevokeTx ->
-        [sender, nonce, hash, fee] = rest_data
+        [senders, nonce, hash, fee] = rest_data
         payload = %NameRevokeTx{hash: hash}
 
         DataTx.init(
           NameRevokeTx,
           payload,
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )
 
       NameTransferTx ->
-        [sender, nonce, hash, recipient, fee] = rest_data
+        [senders, nonce, hash, recipient, fee] = rest_data
         payload = %NameTransferTx{hash: hash, target: recipient}
 
         DataTx.init(
           NameTransferTx,
           payload,
-          sender,
+          senders,
           Serialization.transform_item(fee, :int),
           Serialization.transform_item(nonce, :int)
         )

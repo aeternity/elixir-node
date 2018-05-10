@@ -36,12 +36,14 @@ defmodule Aeutil.Serialization do
         }
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
   def block(block, :serialize) do
-    serialized_block = serialize_value(block)
-    Map.put(serialized_block["header"], "transactions", serialized_block["txs"])
+    serialized_header = serialize_value(block.header)
+    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
+
+    Map.put(serialized_header, "transactions", serialized_txs)
   end
 
   def block(block, :deserialize) do
-    txs = Enum.map(block["transactions"], fn tx -> tx(tx, :deserialize) end)
+    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
       block
@@ -50,20 +52,6 @@ defmodule Aeutil.Serialization do
       |> Header.new()
 
     Block.new(header: built_header, txs: txs)
-  end
-
-  @spec tx(map(), :serialize | :deserialize) :: SignedTx.t()
-  def tx(tx, :serialize) do
-    serialize_value(tx)
-  end
-
-  def tx(tx, :deserialize) do
-    tx_data = tx["data"]
-
-    data = DataTx.deserialize(tx_data)
-
-    signature = base64_binary(tx["signature"], :deserialize)
-    %SignedTx{data: data, signature: signature}
   end
 
   @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
@@ -184,6 +172,9 @@ defmodule Aeutil.Serialization do
       :sender ->
         Account.base58c_encode(value)
 
+      :senders ->
+        Account.base58c_encode(value)
+
       :receiver ->
         Account.base58c_encode(value)
 
@@ -198,6 +189,9 @@ defmodule Aeutil.Serialization do
 
       :signature ->
         base64_binary(value, :serialize)
+
+      :signatures ->
+        base64_binary(value, :deserialize)
 
       :proof ->
         base64_binary(value, :serialize)
@@ -271,6 +265,9 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_decode_root(value)
 
+      :senders ->
+        Account.base58c_decode(value)
+
       :sender ->
         Account.base58c_decode(value)
 
@@ -287,6 +284,9 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :signature ->
+        base64_binary(value, :deserialize)
+
+      :signatures ->
         base64_binary(value, :deserialize)
 
       :proof ->
@@ -317,12 +317,16 @@ defmodule Aeutil.Serialization do
   end
 
   defp serialize_txs_info_to_json([h | t], acc) do
-    tx = DataTx.init(h.type, h.payload, h.sender, h.fee, h.nonce)
-    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signature: nil})
+    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce)
+    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
+    senders_list = 
+      for sender <- h.senders do
+        Account.base58c_encode sender
+      end
 
     json_response_struct = %{
       tx: %{
-        sender: Account.base58c_encode(h.sender),
+        sender: senders_list,
         recipient: Account.base58c_encode(h.payload.receiver),
         amount: h.payload.amount,
         fee: h.fee,
@@ -332,7 +336,7 @@ defmodule Aeutil.Serialization do
       block_height: h.block_height,
       block_hash: Header.base58c_encode(h.block_hash),
       hash: DataTx.base58c_encode(tx_hash),
-      signatures: [SignedTx.base58c_encode_signature(h.signature)]
+      signatures: for sig <- h.signatures do SignedTx.base58c_encode_signature sig end
     }
 
     acc = [json_response_struct | acc]

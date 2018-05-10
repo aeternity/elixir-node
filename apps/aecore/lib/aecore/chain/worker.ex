@@ -29,7 +29,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -505,34 +504,16 @@ defmodule Aecore.Chain.Worker do
       |> Enum.map(fn tx ->
         case tx.data.type do
           SpendTx ->
-            [tx.data.sender, tx.data.payload.receiver]
+            [tx.data.payload.receiver | tx.data.senders]
 
           OracleQueryTx ->
-            [tx.data.sender, tx.data.payload.oracle_address]
-
-          OracleResponseTx ->
-            tx.data.sender
-
-          OracleExtendTx ->
-            tx.data.sender
-
-          NamePreClaimTx ->
-            tx.data.sender
-
-          NameClaimTx ->
-            tx.data.sender
-
-          NameUpdateTx ->
-            tx.data.sender
+            [tx.data.payload.oracle_address | tx.data.senders]
 
           NameTransferTx ->
-            [tx.data.sender, tx.data.payload.target]
-
-          NameRevokeTx ->
-            tx.data.sender
+            [tx.data.payload.target | tx.data.senders]
 
           _ ->
-            tx.data.sender
+            tx.data.senders
         end
       end)
       |> List.flatten()
@@ -546,10 +527,10 @@ defmodule Aecore.Chain.Worker do
         |> Enum.filter(fn tx ->
           case tx.data.type do
             SpendTx ->
-              tx.data.sender == account || tx.data.payload.receiver == account
+              tx.data.senders == [account] || tx.data.payload.receiver == account
 
             _ ->
-              tx.data.sender == account
+              tx.data.senders == [account]
           end
         end)
         |> Enum.map(fn filtered_tx ->

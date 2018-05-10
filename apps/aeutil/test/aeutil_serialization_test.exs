@@ -53,11 +53,11 @@ defmodule AeutilSerializationTest do
               amount: 100,
               version: 1
             },
-            sender: sender,
+            senders: [sender],
             nonce: 743_183_534_114,
             fee: 40
           },
-          signature: <<1, 2, 3>>
+          signatures: [<<1, 2, 3>>]
         }
       ]
     }

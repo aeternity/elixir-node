@@ -5,6 +5,8 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
+  alias Aecore.Tx.DataTx
 
   @type t :: %Block{
           header: Header.t(),

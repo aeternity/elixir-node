@@ -25,14 +25,19 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec get(tree(), Wallet.pubkey()) :: Account.t()
   def get(tree, key) do
-    account_state = :gb_merkle_trees.lookup(key, tree)
+    case :gb_merkle_trees.lookup(key, tree) do
+      :none ->
+        Account.empty()
 
-    case account_state do
-      :none -> :none
-      data -> Chainstate.rlp_decode(data)
+      account_state ->
+        {:ok, acc} = Chainstate.rlp_decode(account_state)
+        acc
     end
+  end
 
-    # Chainstate.rlp_decode(account_state)
+  @spec update(tree(), Wallet.pubkey(), (Account.t() -> Account.t())) :: tree()
+  def update(tree, key, fun) do
+    put(tree, key, fun.(get(tree, key)))
   end
 
   def has_key?(tree, key) do
