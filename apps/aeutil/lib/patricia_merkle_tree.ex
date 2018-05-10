@@ -9,6 +9,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.DB.ExternalDB
+  alias MerklePatriciaTree.Trie.Inspector
 
   alias Aecore.Persistence.Worker, as: Persistence
 
@@ -86,7 +87,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec verify_proof(Trie.t(), Trie.key(), Trie.value(), Trie.t()) :: boolean
   def verify_proof(trie, key, value, proof) do
-    Proof.verify_proof(key, value, trie.root_hash, proof.db)
+    Proof.verify_proof(key, value, trie.root_hash, proof)
   end
 
   @doc """
@@ -94,4 +95,17 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec delete(Trie.t(), Trie.key()) :: Trie.t()
   def delete(trie, key), do: Trie.delete(trie, key)
+
+  @doc """
+  Retrieving all keys of a given trie
+  """
+  @spec all_keys(Trie.t()) :: list(Trie.key())
+  def all_keys(trie), do: Inspector.all_keys(trie)
+
+  @doc """
+  Count all keys of a given trie
+  """
+  @spec trie_size(Trie.t()) :: integer()
+  def trie_size(trie), do: length(all_keys(trie))
+
 end
