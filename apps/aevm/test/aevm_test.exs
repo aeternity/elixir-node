@@ -1,11 +1,50 @@
 defmodule AevmTest do
   use ExUnit.Case
   use ExUnit.Parameterized
+
+  alias Aevm
+
   doctest Aevm
 
+  # defp validate_storage(storage_test, state) do
+  #
+  # end
+
+  defp validate_out(out_test, out_state) do
+    hex_out_state = "0x" <> Base.encode16(out_state)
+    assert out_test == out_state
+  end
+
+  defp validate_out(_out_test, _out_state) do
+    true
+  end
+
+  defp validate_gas(gas_test, gas_state) do
+    assert gas_test == gas_state
+  end
+
+  defp validate_gas(_gas_test, _gas_state) do
+    :ok
+  end
+
+  defp extract_and_validate(json_map, config_name) do
+    exec_values = Map.get(json_map, config_name) |> Map.get(:exec)
+    env_values = Map.get(json_map, config_name) |> Map.get(:env)
+    pre_values = Map.get(json_map, config_name) |> Map.get(:pre)
+
+    state = Aevm.loop(State.init_vm(exec_values, env_values, pre_values))
+
+    gas_test = Map.get(json_map, config_name).gas
+    out_test = Map.get(json_map, config_name).out
+
+    # validate_storage()
+    validate_gas(gas_test, state.gas)
+    validate_out(out_test, state.out)
+  end
+
   test_with_params "vmArithmeticTest1", fn config_name ->
-    # TODO
-    load_test_config(:vmArithmeticTest, config_name)
+    json_map = load_test_config(:vmArithmeticTest, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:add0},
@@ -207,8 +246,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmBitwiseLogicOperation1", fn config_name ->
-    # TODO:
-    load_test_config(:vmBitwiseLogicOperation, config_name)
+    json_map = load_test_config(:vmBitwiseLogicOperation, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:and0},
@@ -275,8 +314,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmBlockInfoTest1", fn config_name ->
-    # TODO:
-    load_test_config(:vmBlockInfoTest, config_name)
+    json_map = load_test_config(:vmBlockInfoTest, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:blockhash257Block},
@@ -295,8 +334,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmEnvironmentalInfo1", fn config_name ->
-    # TODO:
-    load_test_config(:vmEnvironmentalInfo, config_name)
+    json_map = load_test_config(:vmEnvironmentalInfo, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:ExtCodeSizeAddressInputTooBigLeftMyAddress},
@@ -355,8 +394,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmIOandFlowOperations1", fn config_name ->
-    # TODO:
-    load_test_config(:vmIOandFlowOperations, config_name)
+    json_map = load_test_config(:vmIOandFlowOperations, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:BlockNumberDynamicJump0_AfterJumpdest},
@@ -508,8 +547,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmLogTest1", fn config_name ->
-    # TODO:
-    load_test_config(:vmLogTest, config_name)
+    json_map = load_test_config(:vmLogTest, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:log0_emptyMem},
@@ -562,8 +601,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmPerformance1", fn config_name ->
-    # TODO:
-    load_test_config(:vmPerformance, config_name)
+    json_map = load_test_config(:vmPerformance, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:ackermann31},
@@ -588,8 +627,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmPushDupSwapTest1", fn config_name ->
-    # TODO:
-    load_test_config(:vmPushDupSwapTest, config_name)
+    json_map = load_test_config(:vmPushDupSwapTest, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:dup1},
@@ -670,8 +709,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmRandomTest1", fn config_name ->
-    # TODO:
-    load_test_config(:vmRandomTest, config_name)
+    json_map = load_test_config(:vmRandomTest, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:"201503102037PYTHON"},
@@ -693,8 +732,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmSha3Test1", fn config_name ->
-    # TODO:
-    load_test_config(:vmSha3Test, config_name)
+    json_map = load_test_config(:vmSha3Test, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:sha3_0},
@@ -719,8 +758,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmSystemOperations1", fn config_name ->
-    # TODO:
-    load_test_config(:vmSystemOperations, config_name)
+    json_map = load_test_config(:vmSystemOperations, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:ABAcalls0},
@@ -763,8 +802,8 @@ defmodule AevmTest do
   end
 
   test_with_params "vmTests1", fn config_name ->
-    # TODO:
-    load_test_config(:vmTests, config_name)
+    json_map = load_test_config(:vmTests, config_name)
+    extract_and_validate(json_map, config_name)
   end do
     [
       {:arith},
@@ -772,10 +811,6 @@ defmodule AevmTest do
       {:mktx},
       {:suicide}
     ]
-  end
-
-  test "a" do
-    load_test_config(:vmEnvironmentalInfo, :caller)
   end
 
   defp load_test_config(config_folder_atom, config_name_atom) do
