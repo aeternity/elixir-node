@@ -11,6 +11,7 @@ defmodule Aecore.Peers.SyncNew do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Events
 
   require Logger
 
@@ -36,7 +37,7 @@ defmodule Aecore.Peers.SyncNew do
 
   @max_headers_per_chunk 100
   @max_diff_for_sync 50
-  @max_ads 20
+  @max_adds 20
 
   defstruct difficulty: nil,
             from: nil,
@@ -52,6 +53,9 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   def init(state) do
+    Events.subscribe(:block_created)
+    Events.subscribe(:tx_created)
+    Events.subscribe(:top_changed)
     {:ok, state}
   end
 
@@ -264,10 +268,25 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  def handle_call({:update_hash_pool, hashes}, _from, state) do
-    hash_pool = merge(state.hash_pool, hashes)
-    Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
-    {:reply, :ok, %{state | hash_pool: hash_pool}}
+  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+    case event do
+      :block_created -> enqueue(:forward, %{status: :created, block: info})
+      :tx_created -> enqueue(:forward, %{status: :created, tx: info})
+      :top_changed -> enqueue(:forward, %{status: :top_changed, block: info})
+      :tx_received -> enqueue(:forward, %{status: :received, tx: info})
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    Logger.info("Worker stopped with reason: ~p", [reason])
+    new_state = Enum.filter(state, fn x -> x.pid == pid end)
+    {:noreply, new_state}
+  end
+
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
@@ -288,7 +307,7 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
-       when h == height and n_added < @max_ads do
+       when h == height and n_added < @max_adds do
     case Map.get(map, :block) do
       nil ->
         split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
@@ -502,6 +521,7 @@ defmodule Aecore.Peers.SyncNew do
   @spec enqueue(atom(), map()) :: list()
   defp enqueue(opts, msg) do
     peers = Peers.get_random(2)
+
     for peer <- peers do
       :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})
     end
@@ -516,7 +536,8 @@ defmodule Aecore.Peers.SyncNew do
         Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
 
       false ->
-        PeerConnection.send_new_block(block, peer_id) ##Send block through the peer module
+        ## Send block through the peer module
+        PeerConnection.send_new_block(block, peer_id)
         :ok
     end
   end
@@ -562,7 +583,6 @@ defmodule Aecore.Peers.SyncNew do
   defp pick_same(_, old_hashes, new_hashes), do: merge(old_hashes, new_hashes)
 
   defp fill_pool(peer_id, agreed_hash) do
-
     case PeerConnection.get_n_successors(agreed_hash, @max_headers_per_chunk, peer_id) do
       {:ok, []} ->
         delete_from_pool(peer_id)

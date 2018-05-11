@@ -24,6 +24,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Peers.Events
 
   require Logger
 
@@ -408,6 +409,8 @@ defmodule Aecore.Chain.Worker do
 
       ## We send the block to others only if it extends the longest chain
       Peers.broadcast_block(new_block)
+      Events.publish(:block_created, new_block)
+      Events.publish(:top_changed, new_block)
 
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)

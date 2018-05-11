@@ -24,6 +24,7 @@
   "exleveldb": {:hex, :exleveldb, "0.13.1", "7f82ef6ae75bdcbea4e7aaa297601e7adea3631525114412fa7548d83b70bbca", [:mix], [{:eleveldb, "~> 2.2.20", [hex: :eleveldb, repo: "hexpm", optional: false]}], "hexpm"},
   "gb_merkle_trees": {:git, "https://github.com/aeternity/gb_merkle_trees.git", "4db7aad81944e2d12981a2ecd23dd59e32ab1651", [ref: "4db7aad"]},
   "gen_state_machine": {:hex, :gen_state_machine, "2.0.1", "85efd5a0376929c3a4246dd943e17564a2908c7ddd7acd242d84594e785d83f8", [:mix], [], "hexpm"},
+  "gproc": {:hex, :gproc, "0.6.1", "4579663e5677970758a05d8f65d13c3e9814ec707ad51d8dcef7294eda1a730c", [:rebar3], [], "hexpm"},
   "hackney": {:hex, :hackney, "1.11.0", "4951ee019df102492dabba66a09e305f61919a8a183a7860236c0fde586134b6", [:rebar3], [{:certifi, "2.0.0", [hex: :certifi, repo: "hexpm", optional: false]}, {:idna, "5.1.0", [hex: :idna, repo: "hexpm", optional: false]}, {:metrics, "1.0.1", [hex: :metrics, repo: "hexpm", optional: false]}, {:mimerl, "1.0.2", [hex: :mimerl, repo: "hexpm", optional: false]}, {:ssl_verify_fun, "1.1.1", [hex: :ssl_verify_fun, repo: "hexpm", optional: false]}], "hexpm"},
   "hex_prefix": {:hex, :hex_prefix, "0.1.0", "e96b5cbb6ad8493196ce193726240023f5ce0ae0753118a19a5b43e2db0267ca", [:mix], [], "hexpm"},
   "httpoison": {:hex, :httpoison, "1.0.0", "1f02f827148d945d40b24f0b0a89afe40bfe037171a6cf70f2486976d86921cd", [:mix], [{:hackney, "~> 1.8", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm"},
