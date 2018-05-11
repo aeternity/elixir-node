@@ -536,7 +536,7 @@ defmodule Aecore.Peers.SyncNew do
         Logger.debug("#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead")
 
       false ->
-        ##Send block through the peer module
+        ## Send block through the peer module
         PeerConnection.send_new_block(block, peer_id)
         Logger.debug("#{__MODULE__}: sent block: #{inspect(block)} to peer #{inspect(peer_id)}")
     end

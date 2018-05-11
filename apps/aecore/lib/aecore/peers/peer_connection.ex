@@ -136,7 +136,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def handle_call({:send_msg_no_response, msg}, _from, %{status: {:connected, socket}} = state) do
     res = :enoise.send(socket, msg)
-    IO.inspect "Handle call send_msg_no_response"
+    IO.inspect("Handle call send_msg_no_response")
     {:reply, res, state}
   end
 
@@ -342,7 +342,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp handle_new_block(payload) do
-    IO.inspect "New Block incomming"
+    IO.inspect("New Block incomming")
     block = payload.block
     Chain.add_block(block)
   end

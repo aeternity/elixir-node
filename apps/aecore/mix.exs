@@ -35,7 +35,10 @@ defmodule Aecore.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger, :rox, :exconstructor, :ranch, :jobs], mod: {Aecore, []}]
+    [
+      extra_applications: [:logger, :rox, :exconstructor, :ranch, :jobs, :gproc],
+      mod: {Aecore, []}
+    ]
   end
 
   # Dependencies can be Hex packages:
@@ -58,7 +61,8 @@ defmodule Aecore.Mixfile do
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:exexec, "~> 0.1"},
-      {:jobs, "~> 0.7.1"}
+      {:jobs, "~> 0.7.1"},
+      {:gproc, "~> 0.6.1"}
     ]
   end
 end
