@@ -505,6 +505,7 @@ defmodule Aecore.Tx.DataTx do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
     ver = Serialization.transform_item(ver_bin, :int)
+    IO.inspect tag
 
     case tag_to_type(tag) do
       SpendTx ->
@@ -536,13 +537,13 @@ defmodule Aecore.Tx.DataTx do
         ]
 
         DataTx.init(
-          SpendTx,
+          CoinbaseTx,
           %{
             receiver: receiver,
             amount: Serialization.transform_item(amount, :int),
             version: ver
           },
-          nil,
+          [],
           0,
           Serialization.transform_item(nonce, :int)
         )
@@ -677,7 +678,7 @@ defmodule Aecore.Tx.DataTx do
           Serialization.transform_item(nonce, :int)
         )
 
-      _ ->
+      data ->
         {:error, "Illegal DataTx serialization"}
     end
   end
@@ -703,7 +704,7 @@ defmodule Aecore.Tx.DataTx do
   defp type_to_tag(NameRevokeTx), do: 35
   defp type_to_tag(NameTransferTx), do: 36
 
-  defp type_to_tag(_), do: :unknown_type
+  defp type_to_tag(type), do: {:error ,"Unknown TX Type: #{type}"}
 
   @spec tag_to_type(integer()) :: tx_types() | atom()
   defp tag_to_type(12), do: SpendTx
@@ -721,7 +722,7 @@ defmodule Aecore.Tx.DataTx do
   defp tag_to_type(34), do: NameUpdateTx
   defp tag_to_type(35), do: NameRevokeTx
   defp tag_to_type(36), do: NameTransferTx
-  defp tag_to_type(_), do: :unknown_tag
+  defp tag_to_type(tag), do: {:error, "Unknown TX Tag: #{inspect(tag)}"}
 
   @spec get_version(tx_types()) :: integer() | atom()
   defp get_version(SpendTx), do: 1

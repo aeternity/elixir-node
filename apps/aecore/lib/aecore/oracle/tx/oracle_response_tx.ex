@@ -78,7 +78,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     sender = DataTx.main_sender(data_tx)
 
     interaction_object = interaction_objects[tx.query_id]
-    query_fee = interaction_object.query.query_fee
+    query_fee = interaction_object.fee
 
     updated_accounts_state =
       accounts
@@ -90,7 +90,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       Map.put(interaction_objects, tx.query_id, %{
         interaction_object
         | response: tx.response,
-          response_height_included: block_height
+          expires: interaction_object.expires + interaction_object.response_ttl,
+          has_response: true
       })
 
     updated_oracle_state = %{
@@ -126,7 +127,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
-        registered_oracles[sender].tx.response_format,
+        registered_oracles[sender].response_format,
         tx.response
       ) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
@@ -134,10 +135,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       !Map.has_key?(interaction_objects, tx.query_id) ->
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
-      interaction_objects[tx.query_id].response != nil ->
+      interaction_objects[tx.query_id].response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      interaction_objects[tx.query_id].query.oracle_address != sender ->
+      interaction_objects[tx.query_id].oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
@@ -161,8 +162,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
-    referenced_query_response_ttl =
-      Chain.oracle_interaction_objects()[tx.query_id].query.response_ttl.ttl
+    referenced_query_response_ttl = Chain.oracle_interaction_objects()[tx.query_id].response_ttl
 
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end

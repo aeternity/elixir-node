@@ -7,17 +7,13 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
-
-  require Logger
+  alias Aecore.Account.Tx.SpendTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -309,7 +305,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def deserialize_value(value, _), do: value
+def deserialize_value(value, _), do: value
 
   @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
   def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
@@ -375,7 +371,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def encode_ttl_type(%{type: type}) do
+  def encode_ttl_type(type) do
     case type do
       :absolute -> 0
       :relative -> 1

@@ -239,27 +239,18 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec rlp_encode(SignedTx.t()) :: binary() | atom()
   def rlp_encode(%SignedTx{} = tx) do
-    signatures =
-      for sig <- [tx.signatures] do
-        # workaround - should be removed when CoinbaseTx will have its own structure
-        if sig == nil do
-          ExRLP.encode(<<0>>)
-        else
-          ExRLP.encode(sig)
-        end
-      end
-
-    ExRLP.encode([
+    [
       type_to_tag(SignedTx),
       get_version(SignedTx),
-      signatures,
+      tx.signatures,
       DataTx.rlp_encode(tx.data)
-    ])
+    ]
+    |>
+    ExRLP.encode()
   end
 
   def rlp_encode(tx) do
-    IO. inspect tx
-    {:error, "Invalid SignedTx data"}
+    {:error, "Invalid SignedTx data #{inspect(tx)}"}
   end
 
   @spec rlp_decode(binary()) :: SignedTx.t() | atom()
@@ -272,12 +263,7 @@ defmodule Aecore.Tx.SignedTx do
       SignedTx ->
         [signatures, tx_data] = rest_data
 
-        decoded_signatures =
-          for sig <- signatures do
-            ExRLP.decode(sig)
-          end
-
-        %SignedTx{data: DataTx.rlp_decode(tx_data), signatures: decoded_signatures}
+        %SignedTx{data: DataTx.rlp_decode(tx_data), signatures: signatures}
 
       _ ->
       {:error, "Illegal SignedTx serialization"}

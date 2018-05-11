@@ -23,6 +23,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
   alias Aecore.Naming.Naming
+  alias Aecore.Account.AccountStateTree
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -69,9 +70,10 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Account chain-state serialization" do
     {account, pkey} = create_data(Account)
+    #account_state = AccountStateTree.get(account.accounts , pkey)
     serialized_acc_info = Chainstate.rlp_encode(account, pkey)
     deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
-    assert account = deserialized_acc_info
+    assert account_state = deserialized_acc_info
   end
 
   @tag :rlp_test

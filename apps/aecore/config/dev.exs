@@ -38,9 +38,16 @@ config :aecore, :persistence,
   path: Path.absname(persistence_path),
   write_options: [sync: true, disable_wal: false]
 
+new_candidate_nonce_count =
+  case System.get_env("NEW_CANDIDATE_NONCE_COUNT") do
+    nil -> 10
+    env -> env
+  end
+
 config :aecore, :pow,
+  new_candidate_nonce_count: new_candidate_nonce_count,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
-  params: {"./lean", "-t 5", 16},
+  params: {"./lean16", "-t 5", 16},
   max_target_change: 1,
   genesis_header: %{
     height: 0,
@@ -102,12 +109,6 @@ config :aecore, :peers,
   peers_max_count: 8
 
 config :aecore, :miner, resumed_by_default: false
-
-bytes_per_token =
-  case System.get_env("BYTES_PER_TOKEN") do
-    nil -> 100
-    env -> String.to_integer(env)
-  end
 
 config :aecore, :tx_data,
   minimum_fee: 10,
