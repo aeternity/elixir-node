@@ -224,13 +224,14 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp ping(%{status: {:connected, socket}, genesis: genesis_hash}) do
     top_block = Chain.top_block()
+    peers = Enum.map(Peers.all_peers(), fn peer -> Map.delete(peer, :connection) end)
 
     ping_object = %{
       genesis_hash: genesis_hash,
       best_hash: Chain.top_block_hash(),
       difficulty: top_block.header.target,
       share: 32,
-      peers: Peers.all_peers(),
+      peers: peers,
       port: Supervisor.sync_port()
     }
 
