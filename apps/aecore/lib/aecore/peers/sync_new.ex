@@ -10,6 +10,8 @@ defmodule Aecore.Peers.SyncNew do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Events
 
   require Logger
 
@@ -51,6 +53,9 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   def init(state) do
+    Events.subscribe(:block_created)
+    Events.subscribe(:tx_created)
+    Events.subscribe(:top_changed)
     {:ok, state}
   end
 
@@ -157,8 +162,7 @@ defmodule Aecore.Peers.SyncNew do
 
     case is_new do
       true ->
-        # do something with process
-        :ok
+        Process.monitor(pid)
 
       false ->
         :ok
@@ -264,10 +268,25 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
-  def handle_call({:update_hash_pool, hashes}, _from, state) do
-    hash_pool = merge(state.hash_pool, hashes)
-    Logger.debug("Hash pool now contains ~p hashes", [length(HashPool)])
-    {:reply, :ok, %{state | hash_pool: hash_pool}}
+  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+    case event do
+      :block_created -> enqueue(:forward, %{status: :created, block: info})
+      :tx_created -> enqueue(:forward, %{status: :created, tx: info})
+      :top_changed -> enqueue(:forward, %{status: :top_changed, block: info})
+      :tx_received -> enqueue(:forward, %{status: :received, tx: info})
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    Logger.info("Worker stopped with reason: ~p", [reason])
+    new_state = Enum.filter(state, fn x -> x.pid == pid end)
+    {:noreply, new_state}
+  end
+
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
@@ -499,6 +518,15 @@ defmodule Aecore.Peers.SyncNew do
     end
   end
 
+  @spec enqueue(atom(), map()) :: list()
+  defp enqueue(opts, msg) do
+    peers = Peers.get_random(2)
+
+    for peer <- peers do
+      :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})
+    end
+  end
+
   # Send our block to the Remote Peer
   defp do_forward_block(block, peer_id) do
     height = block.header.height
@@ -555,7 +583,6 @@ defmodule Aecore.Peers.SyncNew do
   defp pick_same(_, old_hashes, new_hashes), do: merge(old_hashes, new_hashes)
 
   defp fill_pool(peer_id, agreed_hash) do
-
     case PeerConnection.get_n_successors(agreed_hash, @max_headers_per_chunk, peer_id) do
       {:ok, []} ->
         delete_from_pool(peer_id)

@@ -20,6 +20,7 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
+  alias Aecore.Peers.Events
 
   require Logger
 
@@ -83,6 +84,7 @@ defmodule Aecore.Tx.Pool.Worker do
           Notify.broadcast_new_transaction_in_the_pool(tx)
 
           Peers.broadcast_tx(tx)
+          Events.publish(:tx_created, tx)
         end
 
         {:reply, :ok, updated_pool}

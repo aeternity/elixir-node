@@ -47,6 +47,10 @@ defmodule Aecore.Peers.Worker do
     GenServer.cast(__MODULE__, {:try_connect, peer_info})
   end
 
+  def get_random(number) do
+    GenServer.call(__MODULE__, {:get_random, number})
+  end
+
   def handle_call(:state, _from, state) do
     {:reply, state, state}
   end
@@ -93,10 +97,23 @@ defmodule Aecore.Peers.Worker do
       Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
       {:noreply, state}
     end
-
-    # else
-    #  Logger.error("Can't add ourself")
-    #  {:noreply, state}
-    # end
   end
+
+  def handle_call({:get_random, number}, _from, %{peers: peers} = state) do
+    random = Enum.take_random(peers, number)
+    {:reply, random, state}
+  end
+
+  def peer_id(peer_id) when is_binary(peer_id) do
+    peer_id
+  end
+
+  def peer_id(%{pubkey: peer_id}) do
+    peer_id
+  end
+
+  # else
+  #  Logger.error("Can't add ourself")
+  #  {:noreply, state}
+  # end
 end
