@@ -410,7 +410,6 @@ defmodule Aecore.Chain.Worker do
       ## We send the block to others only if it extends the longest chain
       if !Enum.empty?(Peers.all_peers) do
         for peer <- Peers.all_peers do
-          IO.inspect "Peer height: #{inspect(peer.height)}"
           IO.inspect "Sending a block to peer: #{inspect(peer.port)}"
           PeerCon.send_new_block(new_block, peer.connection)
         end
