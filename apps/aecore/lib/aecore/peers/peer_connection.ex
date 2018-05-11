@@ -208,7 +208,7 @@ defmodule Aecore.Peers.PeerConnection do
         spawn(fn -> handle_get_mempool(self) end)
 
       @block ->
-        handle_new_block(deserialized_payload)
+        spawn(fn -> handle_new_block(deserialized_payload) end)
 
       @tx ->
         handle_new_tx(deserialized_payload)

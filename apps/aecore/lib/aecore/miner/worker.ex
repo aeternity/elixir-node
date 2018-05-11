@@ -59,11 +59,7 @@ defmodule Aecore.Miner.Worker do
 
   @spec resume() :: :ok
   def resume do
-    if Peers.chain_synced?() do
-      GenServer.call(__MODULE__, {:mining, :start})
-    else
-      Logger.error("#{__MODULE__}: Can't start miner, chain not yet synced")
-    end
+    GenServer.call(__MODULE__, {:mining, :start})
   end
 
   @spec suspend() :: :ok
