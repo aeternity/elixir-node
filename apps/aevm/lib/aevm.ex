@@ -171,7 +171,7 @@ defmodule Aevm do
     {op1, state} = pop(state)
     {op2, state} = pop(state)
 
-    result = round(:math.pow(op1, op2)) &&& AevmConst.mask256()
+    result = exp(op1, op2)
 
     push(result, state)
   end
@@ -320,7 +320,7 @@ defmodule Aevm do
 
     result = byte(byte, value)
 
-    push(state, result)
+    push(result, state)
   end
 
   # 20s: SHA3
@@ -1078,10 +1078,13 @@ defmodule Aevm do
     State.set_cp(byte_size(code), state)
   end
 
+  defp sdiv(value1, 0), do: 0
+  defp sdiv(0, -1), do: AevmConst.neg2to255()
+
   defp sdiv(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
-    Integer.floor_div(svalue1, svalue2) &&& AevmConst.mask256()
+    div(svalue1, svalue2) &&& AevmConst.mask256()
   end
 
   defp smod(value1, value2) do
@@ -1089,6 +1092,25 @@ defmodule Aevm do
     <<svalue2::integer-signed-256>> = <<value2::integer-unsigned-256>>
     result = rem(rem(svalue1, svalue2 + svalue2), svalue2)
     result &&& AevmConst.mask256()
+  end
+
+  def pow(op1, op2) when is_integer(op1) and is_integer(op2) and op2 >= 0, do: pow(1, op1, op2)
+
+  def pow(n, _, 0), do: n
+  def pow(n, op1, 1), do: op1 * n
+
+  def pow(n, op1, op2) do
+    square = op1 * op1 &&& AevmConst.mask256()
+    exp = op2 >>> 1
+
+    case op2 &&& 1 do
+      0 -> pow(n, square, exp)
+      _ -> pow(op1 * n, square, exp)
+    end
+  end
+
+  def exp(op1, op2) do
+    pow(op1, op2) &&& AevmConst.mask256()
   end
 
   defp signed(value) do
@@ -1101,6 +1123,8 @@ defmodule Aevm do
     mask = 255
     value >>> byte_pos &&& mask
   end
+
+  defp byte(_, _), do: 0
 
   defp push(value, state) do
     Stack.push(value, state)
