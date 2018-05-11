@@ -52,7 +52,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call(:all_peers, _from, %{peers: peers} = state) do
-    all_peers = Map.values(peers)
+    all_peers = peers |> Map.values() |> Enum.map(fn peer -> Map.delete(peer, :connection) end)
     {:reply, all_peers, state}
   end
 

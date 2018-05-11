@@ -79,23 +79,24 @@ defmodule Aecore.Peers.PeerConnection do
 
   @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
   def get_header_by_hash(hash, pid),
-    do: send_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
+    do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
 
   @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
   def get_header_by_height(height, pid),
-    do: send_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
+    do: send_request_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
 
   @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
   def get_n_successors(hash, n, pid),
-    do: send_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
+    do: send_request_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
 
   @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid), do: send_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
+  def get_block(hash, pid),
+    do: send_request_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
 
   @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
   def get_mempool(pid) when is_pid(pid),
-    do: send_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
+    do: send_request_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
 
   @spec send_new_block(Block.t(), pid()) :: :ok | :error
   def send_new_block(block, pid),
@@ -104,9 +105,32 @@ defmodule Aecore.Peers.PeerConnection do
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
   def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
 
-  def handle_call({:send_msg, msg}, from, %{status: {:connected, socket}} = state) do
+  def handle_call(
+        {:send_request_msg, <<type::16, _::binary>> = msg},
+        from,
+        %{status: {:connected, socket}} = state
+      ) do
     :ok = :enoise.send(socket, msg)
-    updated_state = Map.put(state, :request, from)
+
+    response_type =
+      case type do
+        @get_header_by_hash ->
+          @header
+
+        @get_header_by_height ->
+          @header
+
+        @get_n_successors ->
+          @header_hashes
+
+        @get_block ->
+          @block
+
+        @get_mempool ->
+          @mempool
+      end
+
+    updated_state = Map.put(state, :requests, %{response_type => from})
     {:noreply, updated_state}
   end
 
@@ -115,8 +139,8 @@ defmodule Aecore.Peers.PeerConnection do
     {:reply, res, state}
   end
 
-  def handle_call(:clear_request, _from, state) do
-    updated_state = Map.delete(state, :request)
+  def handle_call({:clear_request, type}, _from, state) do
+    updated_state = state |> pop_in([:requests, type]) |> elem(1)
     {:reply, :ok, updated_state}
   end
 
@@ -162,7 +186,7 @@ defmodule Aecore.Peers.PeerConnection do
 
     case type do
       @p2p_response ->
-        spawn(fn -> handle_response(deserialized_payload, self, state.request) end)
+        spawn(fn -> handle_response(deserialized_payload, self, state.requests) end)
 
       @ping ->
         handle_ping(deserialized_payload, self, state)
@@ -225,12 +249,12 @@ defmodule Aecore.Peers.PeerConnection do
           %{result: false, type: type, reason: reason, object: nil}
       end
 
-    send_msg(@p2p_response, :erlang.term_to_binary(payload), pid)
+    send_msg_no_response(@p2p_response, :erlang.term_to_binary(payload), pid)
   end
 
-  defp send_msg(id, payload, pid) do
+  defp send_request_msg(id, payload, pid) do
     msg = <<id::16, payload::binary>>
-    GenServer.call(pid, {:send_msg, msg})
+    GenServer.call(pid, {:send_request_msg, msg})
   end
 
   defp send_msg_no_response(id, payload, pid) do
@@ -248,8 +272,9 @@ defmodule Aecore.Peers.PeerConnection do
     end
   end
 
-  defp handle_response(payload, parent, from) do
+  defp handle_response(payload, parent, requests) do
     result = payload.result
+    type = payload.type
 
     reply =
       case result do
@@ -260,13 +285,13 @@ defmodule Aecore.Peers.PeerConnection do
           {:error, payload.reason}
       end
 
-    clear_request(parent)
+    GenServer.reply(requests[type], reply)
 
-    GenServer.reply(from, reply)
+    clear_request(parent, type)
   end
 
-  defp clear_request(pid) do
-    GenServer.call(pid, :clear_request)
+  defp clear_request(pid, type) do
+    GenServer.call(pid, {:clear_request, type})
   end
 
   defp handle_get_header_by_hash(payload, pid) do
