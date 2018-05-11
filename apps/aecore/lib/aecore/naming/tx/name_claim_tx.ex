@@ -5,12 +5,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Naming
-  alias Aecore.Account.Account
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -50,9 +50,10 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Checks name format
   """
-  @spec validate(NameClaimTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NameClaimTx{name: name, name_salt: name_salt}) do
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
+    senders = DataTx.senders(data_tx)
 
     cond do
       validate_name |> elem(0) == :error ->
@@ -61,6 +62,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       byte_size(name_salt) != Naming.get_name_salt_byte_size() ->
         {:error,
          "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
         :ok
@@ -74,30 +78,20 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Claims a name for one account after it was pre-claimed.
   """
   @spec process_chainstate(
+          Chainstate.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
           NameClaimTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          AccountStateTree.accounts_state(),
-          tx_type_state()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+          DataTx.t()
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
-        %NameClaimTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        naming_state
+        naming_state,
+        block_height,
+        %NameClaimTx{} = tx,
+        data_tx
       ) do
-    new_senderount_state =
-      accounts
-      |> Account.get_account_state(sender)
-      |> deduct_fee(fee)
-      |> Account.transaction_out_nonce_update(nonce)
-
-    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_senderount_state)
+    sender = DataTx.main_sender(data_tx)
 
     {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
@@ -108,7 +102,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       |> Map.delete(pre_claim_commitment)
       |> Map.put(claim_hash, claim)
 
-    {updated_accounts_chainstate, updated_naming_chainstate}
+    {:ok, {accounts, updated_naming_chainstate}}
   end
 
   @doc """
@@ -116,15 +110,23 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
+          Chainstate.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
           NameClaimTx.t(),
-          Wallet.pubkey(),
-          AccountStateTree.accounts_state(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state
+          DataTx.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, _block_height, naming_state) do
+  def preprocess_check(
+        accounts,
+        naming_state,
+        _block_height,
+        tx,
+        data_tx
+      ) do
+    sender = DataTx.main_sender(data_tx)
+    fee = DataTx.fee(data_tx)
+    account_state = AccountStateTree.get(accounts, sender)
+
     {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     pre_claim = Map.get(naming_state, pre_claim_commitment)
 
@@ -152,10 +154,15 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     end
   end
 
-  @spec deduct_fee(ChainState.account(), tx_type_state()) :: ChainState.account()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(
+          Chainstate.accounts(),
+          non_neg_integer(),
+          NameCaimTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: Chainstate.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

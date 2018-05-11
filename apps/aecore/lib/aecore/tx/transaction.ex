@@ -10,11 +10,10 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Structures.OracleExtendTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -40,12 +39,12 @@ defmodule Aecore.Tx.Transaction do
 
   # Callbacks
 
+  @doc "The name for state chain entry to be passed for processing"
+  @callback get_chain_state_name() :: Chainstate.chain_state_types() | nil
+
   @callback init(payload()) :: tx_types()
 
-  @callback validate(tx_types()) :: :ok | {:error, String.t()}
-
-  @doc "The name for state chain entry to be passed for processing"
-  @callback get_chain_state_name() :: Chainstate.chain_state_types()
+  @callback validate(tx_types(), DataTx.t()) :: :ok | {:error, String.t()}
 
   @doc """
   Default function for executing a given transaction type.
@@ -54,11 +53,9 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback process_chainstate(
               tx_types(),
-              Wallet.pubkey(),
-              fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
+              DataTx.t(),
               block_height :: non_neg_integer(),
-              Account.t(),
+              ChainState.account(),
               tx_type_state()
             ) :: {Account.t(), tx_type_state()}
 
@@ -89,14 +86,18 @@ defmodule Aecore.Tx.Transaction do
       end
   """
   @callback preprocess_check(
-              tx_types(),
-              Wallet.pubkey(),
-              Account.t(),
-              fee :: non_neg_integer(),
-              nonce :: non_neg_integer(),
+              ChainState.accounts(),
+              tx_type_state(),
               block_height :: non_neg_integer(),
-              tx_type_state :: map()
+              SpendTx.t(),
+              tx_types()
             ) :: :ok | {:error, reason}
 
-  @callback deduct_fee(Account.t(), fee :: non_neg_integer()) :: Account.t()
+  @callback deduct_fee(
+              ChainState.accounts(),
+              non_neg_integer(),
+              tx_types(),
+              DataTx.t(),
+              non_neg_integer()
+            ) :: ChainState.account()
 end

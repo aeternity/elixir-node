@@ -77,7 +77,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -105,7 +105,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -129,7 +129,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -148,7 +148,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 

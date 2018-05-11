@@ -26,11 +26,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.AccountStateTree
   alias Aeutil.PatriciaMerkleTree
   alias Aecore.Oracle.OracleStateTree
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -276,7 +272,23 @@ defmodule Aecore.Chain.Worker do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
+  @spec get_accounts_chainstate() :: Chainstate.accounts()
+  def get_accounts_chainstate do
+    GenServer.call(__MODULE__, {:get_chainstate, :accounts})
+  end
+
+  @spec get_oracles_chainstate() :: Chainstate.oracles()
+  def get_oracles_chainstate do
+    GenServer.call(__MODULE__, {:get_chainstate, :oracles})
+  end
+
   ## Server side
+
+  def handle_call({:get_chainstate, type}, _from, state) when is_atom(type) do
+    root_hash = Persistence.get_chainstates()[type]
+    chainstate = transfrom_chainstate(:to_chainstate, %{type => root_hash})
+    {:reply, chainstate[type], state}
+  end
 
   def handle_call(:clear_state, _from, _state) do
     {:ok, new_state, _} = init(:empty)
@@ -454,7 +466,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_chainstates()
+    chain_states = Persistence.get_chainstates()
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -508,34 +520,16 @@ defmodule Aecore.Chain.Worker do
       |> Enum.map(fn tx ->
         case tx.data.type do
           SpendTx ->
-            [tx.data.sender, tx.data.payload.receiver]
+            [tx.data.payload.receiver | tx.data.senders]
 
           OracleQueryTx ->
-            [tx.data.sender, tx.data.payload.oracle_address]
-
-          OracleResponseTx ->
-            tx.data.sender
-
-          OracleExtendTx ->
-            tx.data.sender
-
-          NamePreClaimTx ->
-            tx.data.sender
-
-          NameClaimTx ->
-            tx.data.sender
-
-          NameUpdateTx ->
-            tx.data.sender
+            [tx.data.payload.oracle_address | tx.data.senders]
 
           NameTransferTx ->
-            [tx.data.sender, tx.data.payload.target]
-
-          NameRevokeTx ->
-            tx.data.sender
+            [tx.data.payload.target | tx.data.senders]
 
           _ ->
-            tx.data.sender
+            tx.data.senders
         end
       end)
       |> List.flatten()
@@ -549,10 +543,10 @@ defmodule Aecore.Chain.Worker do
         |> Enum.filter(fn tx ->
           case tx.data.type do
             SpendTx ->
-              tx.data.sender == account || tx.data.payload.receiver == account
+              tx.data.senders == [account] || tx.data.payload.receiver == account
 
             _ ->
-              tx.data.sender == account
+              tx.data.senders == [account]
           end
         end)
         |> Enum.map(fn filtered_tx ->

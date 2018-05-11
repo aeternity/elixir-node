@@ -88,6 +88,11 @@ defmodule Aecore.Oracle.OracleStateTree do
     PatriciaMerkleTree.lookup(trie, key) != :none
   end
 
+  @spec root_hash(oracles_state()) :: hash()
+  def root_hash(trie) do
+    PatriciaMerkleTree.root_hash(trie)
+  end
+
   defp init_static_oracle_key(trie) do
     Enum.reduce(Oracle.oracles_fields(), trie, fn oracle_key, acc_trie ->
       serialized_key = serialize_key(oracle_key)

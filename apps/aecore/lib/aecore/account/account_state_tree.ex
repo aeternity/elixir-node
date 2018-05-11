@@ -17,7 +17,7 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
   def put(trie, key, value) do
-    serialized = Serialization.serialize_term(value)
+    serialized = serialize(value)
     PatriciaMerkleTree.enter(trie, key, serialized)
   end
 
@@ -25,7 +25,14 @@ defmodule Aecore.Account.AccountStateTree do
   def get(trie, key) do
     trie
     |> PatriciaMerkleTree.lookup(key)
-    |> Serialization.deserialize_term()
+    |> deserialize()
+    |> retutn_emty_if_account_doesnot_exist()
+  end
+
+  @spec update(accounts_state(), Wallet.pubkey(), (Account.t() -> Account.t())) ::
+          accounts_state()
+  def update(tree, key, fun) do
+    put(tree, key, fun.(get(tree, key)))
   end
 
   @spec has_key?(accounts_state(), Wallet.pubkey()) :: boolean()
@@ -37,4 +44,12 @@ defmodule Aecore.Account.AccountStateTree do
   def root_hash(trie) do
     PatriciaMerkleTree.root_hash(trie)
   end
+
+  def retutn_emty_if_account_doesnot_exist(:none), do: Account.empty()
+  def retutn_emty_if_account_doesnot_exist(%Account{} = account), do: account
+
+  defp serialize(term), do: term |> :erlang.term_to_binary()
+  defp deserialize(:none), do: :none
+  defp deserialize({:ok, binary}), do: deserialize(binary)
+  defp deserialize(binary), do: binary |> :erlang.binary_to_term()
 end
