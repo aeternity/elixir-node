@@ -26,7 +26,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   In the case of SpendTx we don't have a subdomain chainstate."
   @type tx_type_state() :: %{}
 
-  @typedoc "Structure of the ChannelOpen Transaction type"
+  @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
     initiator_amount: non_neg_integer(),
     responder_amount: non_neg_integer(),
@@ -67,7 +67,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         {:error, "Locktime cannot be negative"}
 
       length(senders) != 2 ->
-        {:error, "Invalid from_accs size"}
+        {:error, "Invalid senders size"}
 
       true ->
         :ok

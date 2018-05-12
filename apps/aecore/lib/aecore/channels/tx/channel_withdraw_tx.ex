@@ -1,40 +1,45 @@
-defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
+defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Channel.Tx.ChannelWithdrawTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Wallet.Worker, as: Wallet 
 
   require Logger
 
-  @typedoc "Expected structure for the ChannelCloseSolo Transaction"
+  @typedoc "Expected structure for the ChannelWithdraw Transaction"
   @type payload :: %{
-    state: ChannelStateOffChain.t()
+    channel_id: binary(),
+    amount: non_neg_integer(),
+    receiver: Wallet.pubkey(),
+    party: :initiator | :receiver
   }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @typedoc "Structure that holds specific transaction info in the chainstate."
+  @type tx_type_state() :: ChannelStateOnChain.channels()
 
-  @typedoc "Structure of the ChannelCloseSolo Transaction type"
-  @type t :: %ChannelCloseSoloTx{
-    state: ChannelStateOffChain.T()
+  @typedoc "Structure of the ChannelWithdraw Transaction type"
+    channel_id: binary(),
+    amount: non_neg_integer(),
+    receiver: Wallet.pubkey(),
+    party: :initiator | :receiver
   }
 
   @doc """
-  Definition of Aecore ChannelCloseSoloTx structure
+  Definition of Aecore ChannelWithdrawTx structure
 
   ## Parameters
-  - state - the state to start close operation with
+  TODO
   """
   defstruct [:state]
   use ExConstructor
@@ -43,23 +48,26 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{state: state} = _payload) do
-    %ChannelCloseSoloTx{state: state}
+  def init(%{channel_id: channel_id, amount: amount, receiver: receiver} = _payload) do
+    %ChannelWithdrawTx{channel_id: channel_id, amount: amount, receiver: receiver}
   end
 
   @doc """
   Checks transactions internal contents validity
   """
-  @spec validate(ChannelSoloCloseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSoloCloseTx{} = tx, data_tx) do
+  @spec validate(ChannelWithdrawTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%ChannelWithdrawTx{} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
     
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "Channel cannot have negative total balance"}
+      tx.amount < 0 ->
+        {:error, "Cannot withdraw negative amount"}
 
-      length(senders) != 1 ->
+      length(senders) != 2 ->
         {:error, "Invalid senders size"}
+
+      tx.party != :initiator && tx.party != :receiver ->
+        {:error, "Wrong party"}
 
       true ->
         :ok
@@ -67,27 +75,30 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  TODO
   """
   @spec process_chainstate(
           ChainState.account(),
           ChannelStateOnChain.channels(),
           non_neg_integer(),
-          ChannelCloseMutalTx.t(),
+          ChannelWithdrawTx.t(),
           DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
     accounts,
     channels,
     block_height,
-    %ChannelCloseMutalTx{state: state} = tx,
+    %ChannelWithdrawTx{} = tx,
     data_tx
   ) do
-    channel_id = ChannelStateOffChain.id(state)
     
     #ChannelOffChainState.validate
 
-    new_channels = Map.update!(channels, channel_id, fn channel ->
-      ChannelStateOnChain.apply_offchain(channel, block_height, state)
+    new_channels = Map.update!(channels, tx.channel_id, fn channel ->
+      ChannelStateOnChain.apply_withdraw(channel, tx.party, tx.amount)
+    end)
+
+    new_accounts = AccountStateTree.update(accounts, tx.receiver, fn acc ->
+      Account.apply_transfer!(acc, block_height, tx.amount)
     end)
 
     {:ok, {new_accounts, new_channels}}
@@ -108,22 +119,21 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     accounts,
     channels,
     _block_height,
-    %ChannelCloseSoloTx{state: state} = tx,
+    %ChannelWithdrawTx{} = tx,
     data_tx
   ) do
-    sender = DataTx.main_sender(data_tx)
-    channel_id = ChannelStateOffChain.id(state)
-    channel = Map.get(channels, channel_id)
+    senders = DataTx.main_sender(data_tx)
+    channel = Map.get(channels, tx.channel_id)
 
     cond do
-      AccountStateTree.get(accounts, main_sender).balance - fee < 0 ->
-        {:error, "Negative sender balance"}
-
       channel == nil ->
         {:error, "Channel doesn't exist (already closed?)"}
 
+      senders != ChannelStateOnChain.pubkeys(channel) ->
+        {:error, "Wrong senders"}
+
       true ->
-        ChannelStateOnChain.validate_offchain(channel, state)
+        ChannelStateOnChain.validate_withdraw(channel, tx.party, tx.amount)
     end
   end
 
@@ -136,6 +146,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+    #TODO proper fee deduction
   end
 
 end

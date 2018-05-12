@@ -41,13 +41,13 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   def transfer(%ChannelStateOffChain{transfer: transfer}) do transfer end
 
-  def validate(%ChannelStateOffChain{signatures: [initiator_sig, responder_sig]}) do
+  def validate(%ChannelStateOffChain{signatures: [initiator_sig, responder_sig]},
+               [initiator_pubkey, responder_pubkey]) do
     :ok #TODO validate signatures
   end
 
-  def validate(%ChannelStateOffChain{}) do
+  def validate(%ChannelStateOffChain{}, _) do
     {:error, "Invalid signatures count"}
   end
-
 
 end

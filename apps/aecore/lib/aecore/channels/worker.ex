@@ -20,7 +20,8 @@ defmodule Aecore.Channel.Worker do
 
   ## Server side
 
-  def handle_call({:new_channel, address}, _from, state) do
-    {:reply, :ok, state}
-  end
+  def handle_call({:import_channel, channel_id, channel_state}, _from, state) do
+    {:reply, :ok, Map.put?(state, channel_id, channel_state)}
+  end 
+
 end
