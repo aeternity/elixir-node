@@ -193,6 +193,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
+  @spec deserialize(map()) :: SignedTx.t()
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)
