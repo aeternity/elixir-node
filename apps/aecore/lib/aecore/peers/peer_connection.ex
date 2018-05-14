@@ -117,14 +117,14 @@ defmodule Aecore.Peers.PeerConnection do
   def send_new_block(block, pid) do
     @block
     |> pack_msg(%{block: block})
-    |> send_request_msg(pid)
+    |> send_msg_no_response(pid)
   end
 
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
   def send_new_tx(tx, pid) do
     @block
     |> pack_msg(%{tx: tx})
-    |> send_request_msg(pid)
+    |> send_msg_no_response(pid)
   end
 
   def handle_call(
@@ -272,7 +272,9 @@ defmodule Aecore.Peers.PeerConnection do
           %{result: false, type: type, reason: reason, object: nil}
       end
 
-    send_msg_no_response(@p2p_response, :erlang.term_to_binary(payload), pid)
+    @p2p_response
+    |> pack_msg(payload)
+    |> send_msg_no_response(pid)
   end
 
   defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
