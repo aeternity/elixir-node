@@ -305,7 +305,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-def deserialize_value(value, _), do: value
+  def deserialize_value(value, _), do: value
 
   @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
   def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
@@ -315,9 +315,10 @@ def deserialize_value(value, _), do: value
   defp serialize_txs_info_to_json([h | t], acc) do
     tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce)
     tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
-    senders_list = 
+
+    senders_list =
       for sender <- h.senders do
-        Account.base58c_encode sender
+        Account.base58c_encode(sender)
       end
 
     json_response_struct = %{
@@ -332,7 +333,10 @@ def deserialize_value(value, _), do: value
       block_height: h.block_height,
       block_hash: Header.base58c_encode(h.block_hash),
       hash: DataTx.base58c_encode(tx_hash),
-      signatures: for sig <- h.signatures do SignedTx.base58c_encode_signature sig end
+      signatures:
+        for sig <- h.signatures do
+          SignedTx.base58c_encode_signature(sig)
+        end
     }
 
     acc = [json_response_struct | acc]
@@ -371,10 +375,8 @@ def deserialize_value(value, _), do: value
     end
   end
 
-  def encode_ttl_type(type) do
-    case type do
-      :absolute -> 0
-      :relative -> 1
-    end
-  end
+  def encode_ttl_type(%{ttl: _ttl, type: :absolute}), do: 1
+  def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
+  def decode_ttl_type(1), do: :absolute
+  def decode_ttl_type(0), do: :relative
 end

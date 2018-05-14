@@ -309,6 +309,7 @@ defmodule Aecore.Account.Account do
     if new_balance < 0 do
       throw({:error, "#{__MODULE__}: Negative balance"})
     end
+
     %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
@@ -339,7 +340,6 @@ defmodule Aecore.Account.Account do
 
   @spec rlp_encode(Account.t(), Wallet.pubkey()) :: binary()
   def rlp_encode(%Account{} = account, pkey) when is_binary(pkey) do
-  
     [
       type_to_tag(Account),
       get_version(Account),
@@ -374,6 +374,7 @@ defmodule Aecore.Account.Account do
           Serialization.transform_item(height, :int),
           Serialization.transform_item(balance, :int)
         ]
+
         {:ok,
          %Account{
            balance: Serialization.transform_item(balance, :int),

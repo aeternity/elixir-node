@@ -91,7 +91,7 @@ defmodule Aecore.Account.Tx.SpendTx do
         ) :: {ChainState.accounts(), tx_type_state()}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.main_sender(data_tx)
-    
+
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -132,7 +132,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t(),
           non_neg_integer()
         ) :: ChainState.account()
-  def deduct_fee(accounts, _payload , block_height, data_tx, fee) do
+  def deduct_fee(accounts, _payload, block_height, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 

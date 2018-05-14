@@ -67,11 +67,11 @@ defmodule AecoreTxTest do
 
   #     payload = %{receiver: tx.receiver, amount: amount}
   #     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-#     priv_key = Wallet.get_private_key()
-#     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+  #     priv_key = Wallet.get_private_key()
+  #     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
-#     {:error, _} = SpendTx.validate(signed_tx.data.payload, signed_tx.data)
-#   end
+  #     {:error, _} = SpendTx.validate(signed_tx.data.payload, signed_tx.data)
+  #   end
 
   #     assert {:error, "#{SpendTx}: The amount cannot be a negative number: -5"} ==
   #              SpendTx.validate(signed_tx.data.payload)

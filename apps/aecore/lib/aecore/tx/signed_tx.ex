@@ -199,6 +199,9 @@ defmodule Aecore.Tx.SignedTx do
     data = DataTx.deserialize(signed_tx.data)
 
     cond do
+      signed_tx.signature != nil ->
+        create(data, [signed_tx.signature])
+
       signed_tx.signatures != nil ->
         create(data, signed_tx.signatures)
 
@@ -245,8 +248,7 @@ defmodule Aecore.Tx.SignedTx do
       tx.signatures,
       DataTx.rlp_encode(tx.data)
     ]
-    |>
-    ExRLP.encode()
+    |> ExRLP.encode()
   end
 
   def rlp_encode(tx) do
@@ -266,7 +268,7 @@ defmodule Aecore.Tx.SignedTx do
         %SignedTx{data: DataTx.rlp_decode(tx_data), signatures: signatures}
 
       _ ->
-      {:error, "Illegal SignedTx serialization"}
+        {:error, "Illegal SignedTx serialization"}
     end
   end
 

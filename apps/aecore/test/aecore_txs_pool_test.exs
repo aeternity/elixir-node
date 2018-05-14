@@ -67,7 +67,15 @@ defmodule AecoreTxsPoolTest do
   test "fail negative ammount in  transaction", wallet do
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
-    assert {:error,
-    "Elixir.Aecore.Account.Tx.SpendTx: The amount cannot be a negative number"} = DataTx.validate(DataTx.init(SpendTx,%{receiver: wallet.b_pub_key, amount: -5} , wallet.a_pub_key, 10, nonce))
+    assert {:error, "Elixir.Aecore.Account.Tx.SpendTx: The amount cannot be a negative number"} =
+             DataTx.validate(
+               DataTx.init(
+                 SpendTx,
+                 %{receiver: wallet.b_pub_key, amount: -5},
+                 wallet.a_pub_key,
+                 10,
+                 nonce
+               )
+             )
   end
 end

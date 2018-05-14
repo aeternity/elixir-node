@@ -204,7 +204,8 @@ defmodule Aecore.Tx.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if Enum.any?(tx.data.senders,fn x -> x == address end) or tx.data.payload.receiver == address do
+      if Enum.any?(tx.data.senders, fn x -> x == address end) or
+           tx.data.payload.receiver == address do
         [
           tx.data
           |> Map.from_struct()

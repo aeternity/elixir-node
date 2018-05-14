@@ -284,15 +284,10 @@ defmodule Aecore.Oracle.Oracle do
     [
       type_to_tag(Oracle),
       get_version(Oracle),
-      # owner
       registered_oracle.owner,
-      # query_format, currently is a map
-      Poison.encode!(registered_oracle.query_format),
-      # response_format, currently is a map
-      Poison.encode!(registered_oracle.response_format),
-      # query_fee
+      Serialization.transform_item(registered_oracle.query_format),
+      Serialization.transform_item(registered_oracle.response_format),
       registered_oracle.query_fee,
-      # expires
       registered_oracle.expires
     ]
     |> ExRLP.encode()
@@ -312,22 +307,14 @@ defmodule Aecore.Oracle.Oracle do
       end
 
     [
-      # type
       type_to_tag(OracleQuery),
-      # ver
       get_version(OracleQuery),
-      # pubkey
       interaction_object.sender_address,
-      # sender_nonce
       interaction_object.sender_nonce,
-      # oracle_address
       interaction_object.oracle_address,
-      # query
-      Poison.encode!(interaction_object.query),
-      # has_response
+      Serialization.transform_item(interaction_object.query),
       has_response,
       DataTx.rlp_encode(response),
-      # Subject: no field called "expires" here, should be calculated over ttl_type and ttl_value itself
       interaction_object.expires,
       interaction_object.response_ttl,
       interaction_object.fee
@@ -352,9 +339,8 @@ defmodule Aecore.Oracle.Oracle do
         {:ok,
          %{
            owner: orc_owner,
-           # Poison encodings might be changed in future
-           query_format: Poison.decode!(query_format),
-           response_format: Poison.decode!(response_format),
+           query_format: Serialization.transform_item(query_format, :binary),
+           response_format: Serialization.transform_item(response_format, :binary),
            query_fee: Serialization.transform_item(query_fee, :int),
            expires: Serialization.transform_item(expires, :int)
          }}
@@ -390,7 +376,7 @@ defmodule Aecore.Oracle.Oracle do
            fee: Serialization.transform_item(fee, :int),
            has_response: has_response,
            oracle_address: oracle_address,
-           query: Poison.decode!(query),
+           query: Serialization.transform_item(query, :binary),
            response: response,
            response_ttl: Serialization.transform_item(response_ttl, :int),
            sender_address: sender_address,

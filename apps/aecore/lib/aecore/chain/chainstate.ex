@@ -125,10 +125,10 @@ defmodule Aecore.Chain.Chainstate do
   @spec rlp_encode(Chainstate.t(), Wallet.pubkey()) :: atom()
   def rlp_encode(%Chainstate{accounts: accounts}, pkey) do
     account_info =
-    case AccountStateTree.get(accounts, pkey) do
-      :none -> Account.empty()
-      %Account{} = account_state ->  account_state
-    end
+      case AccountStateTree.get(accounts, pkey) do
+        :none -> Account.empty()
+        %Account{} = account_state -> account_state
+      end
 
     [
       type_to_tag(Account),

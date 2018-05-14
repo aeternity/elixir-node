@@ -66,11 +66,18 @@ defmodule AecoreSerializationTest do
 
     assert deserialized_spendtx = spendtx
   end
+  @tag :rlp_test
+  test "DataTx(CoinbaseTx) serialization", setup do
+    Miner.mine_sync_block_to_chain()
+    coinbasetx = create_data(CoinbaseTx).data
+    serialized_coinbasetx = DataTx.rlp_encode(coinbasetx)
+    deserialized_spendtx = DataTx.rlp_decode(serialized_coinbasetx)
+    assert deserialized_spendtx == coinbasetx
+  end
 
   @tag :rlp_test
   test "Account chain-state serialization" do
     {account, pkey} = create_data(Account)
-    #account_state = AccountStateTree.get(account.accounts , pkey)
     serialized_acc_info = Chainstate.rlp_encode(account, pkey)
     deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
     assert account_state = deserialized_acc_info
@@ -148,6 +155,9 @@ defmodule AecoreSerializationTest do
           Chain.lowest_valid_nonce()
         )
 
+      CoinbaseTx ->
+        List.last(Chain.top_block().txs)
+
       SignedTx ->
         {:ok, signed_tx} = Account.spend(Aecore.Wallet.Worker.get_public_key("M/0/1"), 100, 20)
         signed_tx
@@ -216,7 +226,8 @@ defmodule AecoreSerializationTest do
           },
           senders: [
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>],
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+          ],
           type: Aecore.Naming.Tx.NamePreClaimTx
         }
 
@@ -232,7 +243,8 @@ defmodule AecoreSerializationTest do
           },
           senders: [
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>],
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+          ],
           type: Aecore.Naming.Tx.NameClaimTx
         }
 
@@ -248,8 +260,10 @@ defmodule AecoreSerializationTest do
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
             pointers: "{\"test\": 2}"
           },
-          senders: [<<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>],
+          senders: [
+            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+          ],
           type: Aecore.Naming.Tx.NameUpdateTx
         }
 
@@ -267,7 +281,8 @@ defmodule AecoreSerializationTest do
           },
           senders: [
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>],
+              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+          ],
           type: Aecore.Naming.Tx.NameTransferTx
         }
 
@@ -282,7 +297,8 @@ defmodule AecoreSerializationTest do
           },
           senders: [
             <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
-              81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>],
+              81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
+          ],
           type: Aecore.Naming.Tx.NameRevokeTx
         }
 
