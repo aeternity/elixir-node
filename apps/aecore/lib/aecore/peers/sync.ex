@@ -18,6 +18,9 @@ defmodule Aecore.Peers.Sync do
 
   @peers_target_count Application.get_env(:aecore, :peers)[:peers_target_count]
 
+  @type peer_blocks :: map()
+  @type peer_block_tasks :: map()
+
   def start_link(_args) do
     GenServer.start_link(
       __MODULE__,
@@ -30,7 +33,7 @@ defmodule Aecore.Peers.Sync do
     {:ok, state}
   end
 
-  @spec get_peer_blocks() :: map()
+  @spec get_peer_blocks() :: peer_blocks()
   def get_peer_blocks do
     GenServer.call(__MODULE__, :get_peer_blocks)
   end
@@ -45,7 +48,7 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:remove_running_task, peer_uri})
   end
 
-  @spec get_running_tasks() :: map()
+  @spec get_running_tasks() :: peer_block_tasks()
   def get_running_tasks do
     GenServer.call(__MODULE__, :get_running_tasks)
   end
