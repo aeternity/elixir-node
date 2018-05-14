@@ -78,32 +78,54 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_hash(hash, pid),
-    do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
+  def get_header_by_hash(hash, pid) do
+    @get_header_by_hash
+    |> pack_msg(%{hash: hash})
+    |> send_request_msg(pid)
+  end
 
   @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid),
-    do: send_request_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
+  def get_header_by_height(height, pid) do
+    @get_header_by_height
+    |> pack_msg(%{height: height})
+    |> send_request_msg(pid)
+  end
 
   @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid),
-    do: send_request_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
+  def get_n_successors(hash, n, pid) do
+    @get_n_successors
+    |> pack_msg(%{hash: hash, n: n})
+    |> send_request_msg(pid)
+  end
 
   @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid),
-    do: send_request_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
+  def get_block(hash, pid) do
+    @get_block
+    |> pack_msg(%{hash: hash})
+    |> send_request_msg(pid)
+  end
 
   @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
-  def get_mempool(pid) when is_pid(pid),
-    do: send_request_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
+  def get_mempool(pid) when is_pid(pid) do
+    @get_mempool
+    |> pack_msg(<<>>)
+    |> send_request_msg(pid)
+  end
 
   @spec send_new_block(Block.t(), pid()) :: :ok | :error
-  def send_new_block(block, pid),
-    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
+  def send_new_block(block, pid) do
+    @block
+    |> pack_msg(%{block: block})
+    |> send_request_msg(pid)
+  end
 
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
+  def send_new_tx(tx, pid) do
+    @block
+    |> pack_msg(%{tx: tx})
+    |> send_request_msg(pid)
+  end
 
   def handle_call(
         {:send_request_msg, <<type::16, _::binary>> = msg},
@@ -207,10 +229,10 @@ defmodule Aecore.Peers.PeerConnection do
         spawn(fn -> handle_get_mempool(self) end)
 
       @block ->
-        handle_new_block(deserialized_payload)
+        spawn(fn -> handle_new_block(deserialized_payload) end)
 
       @tx ->
-        handle_new_tx(deserialized_payload)
+        spawn(fn -> handle_new_tx(deserialized_payload) end)
     end
 
     {:noreply, state}
@@ -253,15 +275,11 @@ defmodule Aecore.Peers.PeerConnection do
     send_msg_no_response(@p2p_response, :erlang.term_to_binary(payload), pid)
   end
 
-  defp send_request_msg(id, payload, pid) do
-    msg = <<id::16, payload::binary>>
-    GenServer.call(pid, {:send_request_msg, msg})
-  end
+  defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
 
-  defp send_msg_no_response(id, payload, pid) do
-    msg = <<id::16, payload::binary>>
-    GenServer.call(pid, {:send_msg_no_response, msg})
-  end
+  defp send_msg_no_response(msg, pid), do: GenServer.call(pid, {:send_msg_no_response, msg})
+
+  defp pack_msg(type, payload), do: <<type::16, :erlang.term_to_binary(payload)::binary>>
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
     # initial ping
