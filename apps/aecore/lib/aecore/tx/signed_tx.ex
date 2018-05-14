@@ -193,16 +193,15 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec deserialize(map()) :: DataTx.t()
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)
 
     cond do
-      signed_tx.signature != nil ->
+      Map.has_key?(signed_tx, :signature) && signed_tx.signature != nil ->
         create(data, [signed_tx.signature])
 
-      signed_tx.signatures != nil ->
+      Map.has_key?(signed_tx, :signatures) && signed_tx.signatures != nil ->
         create(data, signed_tx.signatures)
 
       true ->
