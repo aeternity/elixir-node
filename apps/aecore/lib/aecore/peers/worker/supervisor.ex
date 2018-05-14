@@ -2,6 +2,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   use Supervisor
 
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Peers.SyncNew, as: Sync
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
@@ -18,6 +19,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
          178, 240, 121, 189, 167, 220, 203, 43, 66, 247, 136, 56>>}
 
     children = [
+      Sync,
       PeerConnectionSupervisor,
       Peers,
       :ranch.child_spec(

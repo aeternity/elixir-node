@@ -7,7 +7,7 @@ defmodule Aecore.Peers.Events do
 
   @spec subscribe(atom()) :: true
   def subscribe(event) do
-    :grpoc_ps.subscribe(:l, event)
+    :gproc_ps.subscribe(:l, event)
   end
 
   @spec unsubscribe(atom()) :: true

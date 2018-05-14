@@ -109,9 +109,10 @@ defmodule Aecore.Peers.PeerConnection do
         {:send_request_msg, <<type::16, _::binary>> = msg},
         from,
         %{status: {:connected, socket}} = state
-      ) do
+  ) do
+    IO.inspect("bef send to enoise")
     :ok = :enoise.send(socket, msg)
-
+    IO.inspect("after send to enoise")
     response_type =
       case type do
         @get_header_by_hash ->
@@ -282,6 +283,7 @@ defmodule Aecore.Peers.PeerConnection do
     reply =
       case result do
         true ->
+          IO.inspect("Payload object: #{inspect(payload.object)}")
           {:ok, payload.object}
 
         false ->
@@ -318,14 +320,16 @@ defmodule Aecore.Peers.PeerConnection do
         {:ok, headers} ->
           header_hashes =
             Enum.map(headers, fn header ->
-              %{height: header.height, header: BlockValidation.block_header_hash(header)}
+              {header.height, BlockValidation.block_header_hash(header)}
             end)
 
-          {:ok, header_hashes}
+          {:ok, Enunm.reverse(header_hashes)}
 
         {:error, reason} ->
           {:error, reason}
       end
+
+    IO.inspect(result)
 
     send_response(result, @header_hashes, pid)
   end
