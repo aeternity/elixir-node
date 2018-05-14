@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
@@ -67,7 +67,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     updated_oracle_state =
       update_in(
         oracle_state,
-        [:registered_oracles, sender, :tx, Access.key(:ttl), :ttl],
+        [:registered_oracles, sender, :expires],
         &(&1 + tx.ttl)
       )
 
