@@ -93,12 +93,12 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
+          AccountsStateTree.accounts_state(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+        ) :: {:ok, {AccountsStateTree.accounts_state(), Oracle.oracles()}}
   def process_chainstate(
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state,
@@ -126,7 +126,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
+          AccountsStateTree.accounts_state(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
