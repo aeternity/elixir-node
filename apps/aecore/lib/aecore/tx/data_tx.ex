@@ -21,6 +21,7 @@ defmodule Aecore.Tx.DataTx do
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
           SpendTx
+          | CoinbaseTx
           | OracleExtendTx
           | OracleRegistrationTx
           | OracleResponseTx
@@ -34,6 +35,7 @@ defmodule Aecore.Tx.DataTx do
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
           SpendTx.t()
+          | CoinbaseTx.t()
           | OracleExtendTx.t()
           | OracleQueryTx.t()
           | OracleRegistrationTx.t()
@@ -168,7 +170,7 @@ defmodule Aecore.Tx.DataTx do
 
     with {:ok, {new_accounts_state, new_tx_type_state}} <-
            nonce_accounts_state
-           |> tx.type.deduct_fee(payload, block_height, tx, fee)
+           |> tx.type.deduct_fee(block_height, payload, tx, fee)
            |> tx.type.process_chainstate(
              tx_type_state,
              block_height,
@@ -176,7 +178,7 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == nil do
+        if tx.type.get_chain_state_name() == :none do
           %{chainstate | accounts: new_accounts_state}
         else
           %{chainstate | accounts: new_accounts_state}

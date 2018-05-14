@@ -82,7 +82,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),

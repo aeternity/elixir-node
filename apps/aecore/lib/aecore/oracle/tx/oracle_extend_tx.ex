@@ -23,6 +23,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           ttl: non_neg_integer()
         }
 
+  @type reason :: String.t()
+
   defstruct [:ttl]
   use ExConstructor
 
@@ -34,7 +36,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(OracleExtendTx.t(), DataTx.t()) :: boolean()
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -46,7 +48,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 

@@ -69,17 +69,9 @@ defmodule Aecore.Tx.Pool.Worker do
   end
 
   def handle_call({:add_transaction, tx}, _from, tx_pool) do
-    cond do
-      :ok != SignedTx.validate(tx) ->
-        {:error, reason} = SignedTx.validate(tx)
-        Logger.error("#{__MODULE__}: Transaction invalid - #{reason}: #{inspect(tx)}")
-        {:reply, :error, tx_pool}
-
-      !is_minimum_fee_met?(tx, :pool) ->
-        Logger.error("#{__MODULE__}: Fee: #{tx.data.fee} is too low")
-        {:reply, :error, tx_pool}
-
-      true ->
+    {reply, new_pool} =
+      with :ok <- SignedTx.validate(tx),
+           {:fee, true} <- {:fee, is_minimum_fee_met?(tx, :pool)} do
         updated_pool = Map.put_new(tx_pool, SignedTx.hash_tx(tx), tx)
 
         if tx_pool == updated_pool do
@@ -91,8 +83,18 @@ defmodule Aecore.Tx.Pool.Worker do
           Peers.broadcast_tx(tx)
         end
 
-        {:reply, :ok, updated_pool}
-    end
+        {:ok, updated_pool}
+      else
+        {:fee, false} ->
+          Logger.error("#{__MODULE__}: Fee: #{tx.data.fee} is too low")
+          {:error, tx_pool}
+
+        {:error, reason} ->
+          Logger.error("#{__MODULE__}: Transaction invalid - #{reason}: #{inspect(tx)}")
+          {:error, tx_pool}
+      end
+
+    {:reply, reply, new_pool}
   end
 
   def handle_call({:remove_transaction, tx}, _from, tx_pool) do
