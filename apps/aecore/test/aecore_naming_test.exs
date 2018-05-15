@@ -82,7 +82,7 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5)
+    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 
@@ -342,7 +342,7 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5)
+    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 

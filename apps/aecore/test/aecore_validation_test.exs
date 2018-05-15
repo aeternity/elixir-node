@@ -123,8 +123,11 @@ defmodule AecoreValidationTest do
     priv_key = Wallet.get_private_key()
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
 
-    {:ok, signed_tx1} = Account.spend(sender, priv_key, ctx.receiver, amount, fee, nonce + 1)
-    {:ok, signed_tx2} = Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2)
+    {:ok, signed_tx1} =
+      Account.spend(sender, priv_key, ctx.receiver, amount, fee, nonce + 1, <<"payload">>)
+
+    {:ok, signed_tx2} =
+      Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
     block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
 
@@ -140,7 +143,9 @@ defmodule AecoreValidationTest do
     fee = 10
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223)
+
+    {:ok, signed_tx} =
+      Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
 
     Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())

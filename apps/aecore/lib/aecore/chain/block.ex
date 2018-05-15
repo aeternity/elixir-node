@@ -66,6 +66,7 @@ defmodule Aecore.Chain.Block do
     case tag_to_type(tag) do
       Block ->
         [header_bin, txs] = rest_data
+
         txs_list =
           for tx <- txs do
             SignedTx.rlp_decode(tx)

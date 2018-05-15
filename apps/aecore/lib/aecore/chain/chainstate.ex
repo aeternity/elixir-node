@@ -133,7 +133,7 @@ defmodule Aecore.Chain.Chainstate do
     [
       type_to_tag(Account),
       get_version(Account),
-      pkey,
+      account_info.pubkey,
       account_info.nonce,
       account_info.last_updated,
       account_info.balance
@@ -142,7 +142,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   def rlp_encode(_) do
-    {:error, "Invalid account chainstate structure"}
+    {:error, "Invalid Account structure"}
   end
 
   @spec rlp_decode(binary()) :: binary() | atom()
@@ -151,7 +151,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   def rlp_decode(_) do
-    {:error, "Invalid_serialization"}
+    {:error, "Invalid Account structure serialization"}
   end
 
   defp type_to_tag(Account), do: 10

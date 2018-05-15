@@ -66,6 +66,7 @@ defmodule AecoreSerializationTest do
 
     assert deserialized_spendtx = spendtx
   end
+
   @tag :rlp_test
   test "DataTx(CoinbaseTx) serialization", setup do
     Miner.mine_sync_block_to_chain()
@@ -149,7 +150,7 @@ defmodule AecoreSerializationTest do
       SpendTx ->
         DataTx.init(
           data_type,
-          %{amount: 100, receiver: <<1, 2, 3>>, version: 1},
+          %{amount: 100, receiver: <<1, 2, 3>>, version: 1, payload: <<"payload">>},
           Wallet.get_public_key(),
           100,
           Chain.lowest_valid_nonce()
@@ -159,7 +160,9 @@ defmodule AecoreSerializationTest do
         List.last(Chain.top_block().txs)
 
       SignedTx ->
-        {:ok, signed_tx} = Account.spend(Aecore.Wallet.Worker.get_public_key("M/0/1"), 100, 20)
+        {:ok, signed_tx} =
+          Account.spend(Aecore.Wallet.Worker.get_public_key("M/0/1"), 100, 20, <<"payload">>)
+
         signed_tx
 
       Oracle ->

@@ -294,17 +294,12 @@ defmodule Aecore.Tx.DataTx do
     [
       type_to_tag(SpendTx),
       get_version(SpendTx),
-      # sender
       tx.senders,
-      # receiver
       tx.payload.receiver,
-      # amount
       tx.payload.amount,
-      # fee
       tx.fee,
-      # nonce
-      tx.nonce
-      # Difference with Epoch - we dont have field called "payload"
+      tx.nonce,
+      tx.payload.payload
     ]
     |> ExRLP.encode()
   end
@@ -385,7 +380,6 @@ defmodule Aecore.Tx.DataTx do
       get_version(OracleExtendTx),
       tx.senders,
       tx.nonce,
-      # ttl_type field doesnt exist in OracleExtendTx
       tx.payload.ttl,
       tx.fee
     ]
@@ -477,10 +471,15 @@ defmodule Aecore.Tx.DataTx do
     ExRLP.decode(data)
   end
 
-  defp decode(SpendTx, [senders, receiver, amount, fee, nonce] = rest_data) do
+  defp decode(SpendTx, [senders, receiver, amount, fee, nonce, payload] = rest_data) do
     DataTx.init(
       SpendTx,
-      %{receiver: receiver, amount: Serialization.transform_item(amount, :int), version: 1},
+      %{
+        receiver: receiver,
+        amount: Serialization.transform_item(amount, :int),
+        version: 1,
+        payload: payload
+      },
       senders,
       Serialization.transform_item(fee, :int),
       Serialization.transform_item(nonce, :int)

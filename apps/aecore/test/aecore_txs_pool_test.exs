@@ -46,10 +46,26 @@ defmodule AecoreTxsPoolTest do
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
     {:ok, signed_tx1} =
-      Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, 5, 10, nonce1)
+      Account.spend(
+        wallet.a_pub_key,
+        wallet.priv_key,
+        wallet.b_pub_key,
+        5,
+        10,
+        nonce1,
+        <<"payload">>
+      )
 
     {:ok, signed_tx2} =
-      Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, 5, 10, nonce1 + 1)
+      Account.spend(
+        wallet.a_pub_key,
+        wallet.priv_key,
+        wallet.b_pub_key,
+        5,
+        10,
+        nonce1 + 1,
+        <<"payload">>
+      )
 
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -71,7 +87,7 @@ defmodule AecoreTxsPoolTest do
              DataTx.validate(
                DataTx.init(
                  SpendTx,
-                 %{receiver: wallet.b_pub_key, amount: -5},
+                 %{receiver: wallet.b_pub_key, amount: -5, version: 1, payload: <<"payload">>},
                  wallet.a_pub_key,
                  10,
                  nonce

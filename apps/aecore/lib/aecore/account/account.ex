@@ -26,13 +26,15 @@ defmodule Aecore.Account.Account do
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer()
+          last_updated: non_neg_integer(),
+          pubkey: Wallet.pubkey()
         }
 
   @type account_payload :: %{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer()
+          last_updated: non_neg_integer(),
+          pubkey: Wallet.pubkey()
         }
 
   @type chain_state_name :: :accounts
@@ -44,16 +46,17 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :last_updated]
+  defstruct [:balance, :nonce, :last_updated, :pubkey]
 
-  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0}
+  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0, pubkey: <<>>}
 
   @spec new(account_payload()) :: Account.t()
-  def new(%{balance: balance, nonce: nonce, last_updated: last_updated}) do
+  def new(%{balance: balance, nonce: nonce, last_updated: last_updated, pubkey: pubkey}) do
     %Account{
       balance: balance,
       nonce: nonce,
-      last_updated: last_updated
+      last_updated: last_updated,
+      pubkey: pubkey
     }
   end
 
@@ -84,12 +87,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
-  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def spend(receiver, amount, fee) do
+  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary()) ::
+          {:ok, SignedTx.t()}
+  def spend(receiver, amount, fee, payload) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    spend(sender, sender_priv_key, receiver, amount, fee, nonce)
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload)
   end
 
   @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
@@ -108,10 +112,17 @@ defmodule Aecore.Account.Account do
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer()
+          non_neg_integer(),
+          binary()
         ) :: {:ok, SignedTx.t()}
-  def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
-    payload = %{receiver: receiver, amount: amount}
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl) do
+    payload = %{
+      receiver: receiver,
+      amount: amount,
+      payload: pl,
+      version: SpendTx.get_tx_version()
+    }
+
     build_tx(payload, SpendTx, sender, sender_priv_key, fee, nonce)
   end
 
@@ -286,7 +297,7 @@ defmodule Aecore.Account.Account do
   end
 
   @spec build_tx(
-          DataTx.paload(),
+          DataTx.payload(),
           DataTx.tx_types(),
           binary(),
           binary(),
@@ -338,13 +349,15 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(Account.t(), Wallet.pubkey()) :: binary()
-  def rlp_encode(%Account{} = account, pkey) when is_binary(pkey) do
+  # @spec rlp_decode
+
+  @spec rlp_encode(Account.t()) :: binary()
+  def rlp_encode(%Account{} = account) do
     [
       type_to_tag(Account),
       get_version(Account),
       # pubkey ,
-      pkey,
+      account.pubkey,
       # nonce
       account.nonce,
       # height
@@ -377,6 +390,7 @@ defmodule Aecore.Account.Account do
 
         {:ok,
          %Account{
+           pubkey: pkey,
            balance: Serialization.transform_item(balance, :int),
            last_updated: Serialization.transform_item(height, :int),
            nonce: Serialization.transform_item(nonce, :int)

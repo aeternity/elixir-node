@@ -17,7 +17,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   @type payload :: %{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          version: non_neg_integer()
+          version: non_neg_integer(),
+          payload: binary()
         }
 
   @typedoc "Reason for the error"
@@ -31,7 +32,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   @type t :: %SpendTx{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          version: non_neg_integer()
+          version: non_neg_integer(),
+          payload: binary()
         }
 
   @doc """
@@ -42,7 +44,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   - amount: The amount of tokens send through the transaction
   - version: States whats the version of the Spend Transaction
   """
-  defstruct [:receiver, :amount, :version]
+  defstruct [:receiver, :amount, :version, :payload]
 
   # Callbacks
 
@@ -50,8 +52,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_chain_state_name, do: :none
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount}) do
-    %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
+  def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
+    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: get_tx_version()}
   end
 
   @doc """
@@ -73,6 +75,9 @@ defmodule Aecore.Account.Tx.SpendTx do
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
+
+      !is_binary(tx.payload) ->
+        {:error, "#{__MODULE__}: Invalid payload "}
 
       true ->
         :ok
