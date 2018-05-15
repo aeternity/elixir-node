@@ -17,6 +17,7 @@ defmodule Aecore.Peers.PeerConnection do
   @p2p_protocol_vsn 2
   @noise_timeout 5000
 
+  @msg_fragment 0
   @p2p_response 100
   @ping 1
   @get_header_by_hash 3
@@ -29,6 +30,10 @@ defmodule Aecore.Peers.PeerConnection do
   @tx 9
   @get_mempool 13
   @mempool 14
+
+  @max_packet_size 0x1ff
+  @fragment_size @max_packet_size - 6
+
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
@@ -201,8 +206,10 @@ defmodule Aecore.Peers.PeerConnection do
         {:stop, :normal, state}
     end
   end
+  def handle_info({:noise, _, <<@msg_fragment::16, n::16, m::16, fragment::binary()>>}, state), do: handle_fragment(state, n, m, fragment)
 
   def handle_info({:noise, _, <<type::16, payload::binary()>>}, state) do
+    IO.inspect(:erlang.binary_to_term(payload))
     deserialized_payload = :erlang.binary_to_term(payload)
     self = self()
 
@@ -279,9 +286,40 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
 
+  defp send_msg_no_response(msg,pid) when byte_size(msg) > @max_packet_size - 2 do
+    number_of_chunks = div((@fragment_size + byte_size(msg)),@fragment_size)
+    send_chunks(pid, 1, number_of_chunks, msg)
+  end
+
   defp send_msg_no_response(msg, pid), do: GenServer.call(pid, {:send_msg_no_response, msg})
 
+  defp send_chunks(pid,n,m,msg) when n == m do
+    send_msg_no_response(<<@msg_fragment::16,n::16,m::16,msg::binary()>>, pid)
+  end
+
+  defp send_chunks(pid, n,m,<<chunk::@fragment_size,rest::bits()>>) do
+    binary_chunk = <<chunk::@fragment_size>>
+    send_msg_no_response(<<@msg_fragment::16,n::16,m::16,binary_chunk::bits>>, pid)
+    send_chunks(pid,n+1,m,rest)
+  end
+
   defp pack_msg(type, payload), do: <<type::16, :erlang.term_to_binary(payload)::binary>>
+
+  defp handle_fragment(state,1,m,fragment) do
+    {:noreply,Map.put(state,:fragments, [fragment])}
+  end
+
+  defp handle_fragment(%{fragments: fragments} = state,n,m,fragment) when n == m do
+    msg = [fragment | fragments] |> Enum.reverse() |> :erlang.list_to_binary()
+    send(self(), {:noise,:unused,msg})
+    {:noreply,Map.delete(state, :fragments)}
+  end
+
+  defp handle_fragment(%{fragments: fragments} = state,n,m,fragment) do
+    {:noreply,%{state | fragments: [fragment | fragments]}}
+  end
+
+
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
     # initial ping
