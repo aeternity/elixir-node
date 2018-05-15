@@ -11,7 +11,7 @@ defmodule Gas do
       gas_after = curr_gas - gas_cost
       State.set_gas(gas_after, state)
     else
-      throw({"out_of_gas", state})
+      throw({:error, "out_of_gas", state})
     end
   end
 

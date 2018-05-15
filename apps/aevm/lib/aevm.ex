@@ -15,7 +15,7 @@ defmodule Aevm do
     code = State.code(state)
 
     if cp >= byte_size(code) do
-      state
+      {:ok, state}
     else
       op_code = get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
@@ -428,6 +428,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATASIZE(), state) do
+    #TODO: test
     # Not sure what "output data from the previous call from the current env" means
     # return_data = State.return_data(state)
     # value = byte_size(return_data)
@@ -529,7 +530,7 @@ defmodule Aevm do
       state1 = Gas.update_gas(jumpdest_cost, state)
       State.set_cp(position, state1)
     else
-      throw({"invalid_jump_dest", state})
+      throw({:error, "invalid_jump_dest, #{position}", state})
     end
   end
 
@@ -545,7 +546,7 @@ defmodule Aevm do
         state1 = Gas.update_gas(jumpdest_cost, state)
         State.set_cp(position, state1)
       else
-        throw({"invalid_jump_dest", state})
+        throw({:error, "invalid_jump_dest, #{position}", state})
       end
     else
       state
@@ -1078,7 +1079,7 @@ defmodule Aevm do
     State.set_cp(byte_size(code), state)
   end
 
-  defp sdiv(value1, 0), do: 0
+  defp sdiv(_value1, 0), do: 0
   defp sdiv(0, -1), do: AevmConst.neg2to255()
 
   defp sdiv(value1, value2) do
@@ -1230,9 +1231,14 @@ defmodule Aevm do
   end
 
   defp signextend(op1, op2) do
+    #TODO: maybe check the calc again
     extend_to = 256 - 8 * (op1 + 1 &&& 255) &&& 255
     <<_::size(extend_to), sign_bit::size(1), trunc_val::bits>> = <<op2::integer-unsigned-256>>
-    pad = for _ <- 1..extend_to, into: <<>>, do: <<sign_bit::1>>
+    pad = if extend_to == 0 do
+      <<>>
+    else
+      for _ <- 1..extend_to, into: <<>>, do: <<sign_bit::1>>
+    end
     <<val::integer-unsigned-256>> = <<pad::bits, sign_bit::1, trunc_val::bits>>
     val
   end

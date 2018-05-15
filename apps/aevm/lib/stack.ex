@@ -9,7 +9,7 @@ defmodule Stack do
     if length(stack) < 1024 do
       State.set_stack([arg | stack], state)
     else
-      throw({"out_of_stack", stack})
+      throw({:error, "out_of_stack", stack})
     end
   end
 
@@ -18,7 +18,7 @@ defmodule Stack do
 
     case stack do
       [arg | stack] -> {arg, State.set_stack(stack, state)}
-      [] -> throw({"emtpy_stack", stack})
+      [] -> throw({:error, "emtpy_stack", stack})
     end
   end
 
@@ -26,10 +26,10 @@ defmodule Stack do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do
-      throw({"empty stack", stack})
+      throw({:error, "empty stack", stack})
     else
       case Enum.at(stack, index) do
-        nil -> throw({"stack_too_small", stack})
+        nil -> throw({:error, "stack_too_small", stack})
         _ -> Enum.at(stack, index)
       end
     end
@@ -39,11 +39,11 @@ defmodule Stack do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do
-      throw({"empty stack", stack})
+      throw({:error, "empty stack", stack})
     else
       case length(stack) < index do
         true ->
-          throw({"stack_too_small_for_dup", stack})
+          throw({:error, "stack_too_small_for_dup", stack})
 
         false ->
           value = Enum.at(stack, index - 1)
@@ -56,13 +56,13 @@ defmodule Stack do
     stack = State.stack(state)
 
     if Enum.empty?(stack) do
-      throw({"empty stack", stack})
+      throw({:error, "empty stack", stack})
     else
       [top | rest] = stack
 
       case length(rest) < index do
         true ->
-          throw({"stack_too_small_for_swap", stack})
+          throw({:error, "stack_too_small_for_swap", stack})
 
         false ->
           index_elem = Enum.at(rest, index - 1)
