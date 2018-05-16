@@ -87,7 +87,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec verify_proof(Trie.t(), Trie.key(), Trie.value(), Trie.t()) :: boolean
   def verify_proof(trie, key, value, proof) do
-    Proof.verify_proof(key, value, trie.root_hash, proof.db)
+    Proof.verify_proof(key, value, trie.root_hash, proof)
   end
 
   @doc """
