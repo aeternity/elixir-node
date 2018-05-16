@@ -164,9 +164,6 @@ defmodule Aecore.Tx.DataTx do
     payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
-    IO.inspect("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-    IO.inspect(block_height)
-    IO.inspect("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
     nonce_accounts_state =
       if Enum.empty?(tx.senders) do
