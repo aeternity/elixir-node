@@ -309,7 +309,7 @@ defmodule Aevm do
   def exec(OpCodes._NOT(), state) do
     {op1, state} = pop(state)
 
-    result = bnot(op1)
+    result = bnot(op1) &&& AevmConst.mask256()
 
     push(result, state)
   end
@@ -428,7 +428,7 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._RETURNDATASIZE(), state) do
-    #TODO: test
+    # TODO: test
     # Not sure what "output data from the previous call from the current env" means
     # return_data = State.return_data(state)
     # value = byte_size(return_data)
@@ -450,6 +450,24 @@ defmodule Aevm do
 
   def exec(OpCodes._BLOCKHASH(), state) do
     # TODO
+    # Get the hash of one of the 256 most
+    # recent complete blocks.
+    # µ's[0] ≡ P(IHp, µs[0], 0)
+    # where P is the hash of a block of a particular number,
+    # up to a maximum age.
+    # 0 is left on the stack if the looked for block number
+    # is greater than the current block number
+    # or more than 256 blocks behind the current block.
+    #               0 if n > Hi ∨ a = 256 ∨ h = 0
+    # P(h, n, a) ≡  h if n = Hi
+    #               P(Hp, n, a + 1) otherwise
+    # and we assert the header H can be determined as
+    # its hash is the parent hash
+    # in the block following it.
+    {nth_block, state1} = pop(state)
+    hash = State.calculate_blockhash(nth_block, 0, state1)
+
+    push(hash, state1)
   end
 
   def exec(OpCodes._COINBASE(), state) do
@@ -565,7 +583,8 @@ defmodule Aevm do
   end
 
   def exec(OpCodes._GAS(), state) do
-    gas = State.gas(state)
+    gas_cost = Gas.op_gas_cost(OpCodes._GAS())
+    gas = State.gas(state) - gas_cost
     push(gas, state)
   end
 
@@ -1183,7 +1202,7 @@ defmodule Aevm do
     value
   end
 
-  defp sha3_hash(data) when is_binary(data) do
+  def sha3_hash(data) when is_binary(data) do
     :sha3.hash(256, data)
   end
 
@@ -1231,14 +1250,17 @@ defmodule Aevm do
   end
 
   defp signextend(op1, op2) do
-    #TODO: maybe check the calc again
+    # TODO: maybe check the calc again
     extend_to = 256 - 8 * (op1 + 1 &&& 255) &&& 255
     <<_::size(extend_to), sign_bit::size(1), trunc_val::bits>> = <<op2::integer-unsigned-256>>
-    pad = if extend_to == 0 do
-      <<>>
-    else
-      for _ <- 1..extend_to, into: <<>>, do: <<sign_bit::1>>
-    end
+
+    pad =
+      if extend_to == 0 do
+        <<>>
+      else
+        for _ <- 1..extend_to, into: <<>>, do: <<sign_bit::1>>
+      end
+
     <<val::integer-unsigned-256>> = <<pad::bits, sign_bit::1, trunc_val::bits>>
     val
   end

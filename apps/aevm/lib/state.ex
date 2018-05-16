@@ -27,7 +27,7 @@ defmodule State do
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
-      
+
       :pre => pre
     }
   end
@@ -168,6 +168,30 @@ defmodule State do
   def inc_cp(state) do
     cp = Map.get(state, :cp)
     Map.put(state, :cp, cp + 1)
+  end
+
+  def calculate_blockhash(nth_block, _a, state) do
+    #TODO: h -> header, maybe needs refactoring for an actual blockchain
+    currentNumber = currentNumber(state)
+
+    cond do
+      nth_block >= currentNumber ->
+        0
+
+      _a == 256 ->
+        0
+
+      # h == 0 -> 0
+
+      currentNumber - 256 > nth_block ->
+        0
+
+      true ->
+        bin_nth_block = <<nth_block::256>>
+        hash = Aevm.sha3_hash(bin_nth_block)
+        <<value::integer-unsigned-256>> = hash
+        value
+    end
   end
 
   def bytecode_to_bin(bytecode) do
