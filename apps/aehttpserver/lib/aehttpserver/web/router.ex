@@ -20,7 +20,7 @@ defmodule Aehttpserver.Web.Router do
     get("/block-by-height", BlockController, :block_by_height)
     get("/block-by-hash", BlockController, :block_by_hash)
     post("/block", BlockController, :post_block)
-    post("/tx", NewTxController, :post_tx)
+    post("/tx", NewTxController, :new_tx)
     get("/peer/key", InfoController, :public_key)
 
     get("/info", InfoController, :info)
