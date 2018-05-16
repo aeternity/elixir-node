@@ -176,7 +176,7 @@ defmodule Aecore.Tx.DataTx do
 
     with {:ok, {new_accounts_state, new_tx_type_state}} <-
            nonce_accounts_state
-           |> tx.type.deduct_fee(payload, block_height, tx, fee)
+           |> tx.type.deduct_fee(block_height, payload, tx, fee)
            |> tx.type.process_chainstate(
              tx_type_state,
              block_height,
