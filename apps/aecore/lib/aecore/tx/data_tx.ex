@@ -238,14 +238,11 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec deserialize(map()) :: DataTx.t()
-  def deserialize(%{} = data_tx) do
-    senders =
-      if data_tx.sender != nil do
-        [data_tx.sender]
-      else
-        data_tx.senders
-      end
+  def deserialize(%{sender: sender} = data_tx) do
+    init(data_tx.type, data_tx.payload, [sender], data_tx.fee, data_tx.nonce)
+  end
 
+  def deserialize(%{senders: senders} = data_tx) do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
 
