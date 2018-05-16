@@ -96,7 +96,7 @@ defmodule AecoreOracleTest do
     Miner.mine_sync_block_to_chain()
     # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
-    assert oracle.expires == 10
+    assert oracle.expires == 15
 
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
@@ -191,7 +191,7 @@ defmodule AecoreOracleTest do
   def get_ttl(validity) do
     case validity do
       :valid ->
-        %{ttl: 5, type: :relative}
+        %{ttl: 10, type: :relative}
 
       :invalid ->
         %{ttl: 1, type: :absolute}
