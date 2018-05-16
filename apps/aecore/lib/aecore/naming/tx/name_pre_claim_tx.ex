@@ -73,12 +73,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Pre claims a name for one account.
   """
   @spec process_chainstate(
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(
         accounts,
         naming_state,

@@ -70,12 +70,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Revokes a previously claimed name for one account
   """
   @spec process_chainstate(
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(
         accounts,
         naming_state,
@@ -101,7 +101,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),

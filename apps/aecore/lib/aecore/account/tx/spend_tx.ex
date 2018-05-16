@@ -26,7 +26,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @type tx_type_state() :: map()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
@@ -88,12 +88,12 @@ defmodule Aecore.Account.Tx.SpendTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          ChainState.account(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), tx_type_state()}
+        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.main_sender(data_tx)
 
@@ -114,7 +114,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          ChainState.account(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),

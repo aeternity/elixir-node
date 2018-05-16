@@ -77,12 +77,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Changes the naming state for claim transfers.
   """
   @spec process_chainstate(
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameTransferTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(
         accounts,
         naming_state,
@@ -102,7 +102,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameTransferTx.t(),

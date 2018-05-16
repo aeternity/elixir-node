@@ -10,6 +10,10 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -258,11 +262,11 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec standard_deduct_fee(
-          AccountStateTree.t(),
-          DataTx.t(),
+          AccountStateTree.accounts_state(),
           non_neg_integer(),
+          DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Account.t()
   def standard_deduct_fee(accounts, block_height, data_tx, fee) do
     sender = DataTx.main_sender(data_tx)
 
