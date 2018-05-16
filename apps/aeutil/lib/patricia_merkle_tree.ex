@@ -97,8 +97,10 @@ defmodule Aeutil.PatriciaMerkleTree do
   def delete(trie, key), do: Trie.delete(trie, key)
 
   @doc """
-  Providing pretty print of a trie in the shell.
+  Providing pretty print of a given trie in the shell.
+  Depending on the atom it can print structure or key value pairs
   """
-  @spec print_trie(Trie.t()) :: Trie.t()
-  def print_trie(trie), do: Inspector.inspect_trie(trie)
+  @spec print_trie(:as_struct | :as_pair, Trie.t()) :: Trie.t()
+  def print_trie(:as_struct, trie), do: Inspector.inspect_trie(trie)
+  def print_trie(:as_pair, trie), do: Inspector.all_values(trie)
 end
