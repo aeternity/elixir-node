@@ -121,7 +121,8 @@ defmodule AecoreCuckooTest do
             payload: %SpendTx{
               amount: 100,
               receiver: receiver,
-              version: 1
+              version: 1,
+              payload: <<"payload">>
             },
             senders: [],
             type: SpendTx

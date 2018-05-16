@@ -25,9 +25,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
 
   require Logger

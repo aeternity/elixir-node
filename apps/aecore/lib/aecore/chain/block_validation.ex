@@ -11,7 +11,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
-  alias Aeutil.Serialization
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
 
