@@ -366,23 +366,6 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  defp get_version(type) do
-    # Subject to discuss: These hardcoded versions could be stored somewhere in config file.
-    case type do
-      Account -> 1
-      Block -> 1
-      SignedTx -> 1
-      SpendTx -> 1
-      CoinbaseTx -> 1
-      Oracle -> 1
-      OracleQueryTx -> 1
-      OracleRegistrationTx -> 1
-      OracleResponseTx -> 1
-      OracleExtendTx -> 1
-      _ -> {:error, "Unknown structure type"}
-    end
-  end
-
   def encode_ttl_type(%{ttl: _ttl, type: :absolute}), do: 1
   def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
   def decode_ttl_type(1), do: :absolute
