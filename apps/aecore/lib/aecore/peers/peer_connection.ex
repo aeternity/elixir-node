@@ -31,12 +31,14 @@ defmodule Aecore.Peers.PeerConnection do
   @mempool 14
 
   def start_link(ref, socket, transport, opts) do
+    IO.inspect "Another start link called"
     args = [ref, socket, transport, opts]
     {:ok, pid} = :proc_lib.start_link(__MODULE__, :accept_init, args)
     {:ok, pid}
   end
 
   def start_link(conn_info) do
+    IO.inspect "PeerConnection is started"
     GenServer.start_link(__MODULE__, conn_info)
   end
 
@@ -77,6 +79,14 @@ defmodule Aecore.Peers.PeerConnection do
     {:ok, updated_con_info, 0}
   end
 
+  def state do
+    GenServer.call(__MODULE__, :state)
+  end
+
+  def handle_call(:state, _from, state) do
+    {:reply, state, state}
+  end
+
   @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
   def get_header_by_hash(hash, pid),
     do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
@@ -110,9 +120,9 @@ defmodule Aecore.Peers.PeerConnection do
         from,
         %{status: {:connected, socket}} = state
   ) do
-    IO.inspect("bef send to enoise")
+    IO.inspect("#{__MODULE__}: bef send to enoise")
     :ok = :enoise.send(socket, msg)
-    IO.inspect("after send to enoise")
+    IO.inspect("#{__MODULE__}: after send to enoise")
     response_type =
       case type do
         @get_header_by_hash ->
@@ -220,6 +230,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def handle_info({:tcp_closed, _}, state) do
     Logger.info("Connection interrupted by peer - #{inspect(state)}")
+
     Peers.remove_peer(state.r_pubkey)
     {:stop, :normal, state}
   end

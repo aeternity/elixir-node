@@ -36,7 +36,7 @@ defmodule Aecore.Peers.SyncNew do
   @typedoc "List of tuples of block height and block hash connected to a given block or peer"
   @type hash_pool :: list({{non_neg_integer(), non_neg_integer()}, block_map() | peer_id_map()})
 
-  @max_headers_per_chunk 3
+  @max_headers_per_chunk 100
   @max_diff_for_sync 50
   @max_adds 20
 
@@ -221,22 +221,22 @@ defmodule Aecore.Peers.SyncNew do
             {{block_height, block_hash}, %{block: block}}
           )
 
-         IO.inspect("Origin hash_pool : #{inspect(state.hash_pool)}")
+         #IO.inspect("Origin hash_pool : #{inspect(state.hash_pool)}")
 
          IO.inspect "Added block to hash_pool list"
-         IO.inspect list
+         #IO.inspect list
          list
 
         _ ->
           state.hash_pool
       end
 
-    IO.inspect(hash_pool)
+    #IO.inspect(hash_pool)
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
     IO.inspect "Inside fetch_next"
-    IO.inspect "Height_in: #{hash_in}"
+    #IO.inspect "Height_in: #{hash_in}"
 
     case update_chain_from_pool(height_in, hash_in, hash_pool) do
       {:error, reason} ->
@@ -266,7 +266,7 @@ defmodule Aecore.Peers.SyncNew do
         Logger.debug("Updated Hashpool")
 
         IO.inspect "new_hash_pool"
-        IO.inspect new_hash_pool
+        #IO.inspect new_hash_pool
 
         sliced_hash_pool =
           for {{height, hash}, %{peer: id}} <- new_hash_pool do
@@ -275,7 +275,7 @@ defmodule Aecore.Peers.SyncNew do
 
         IO.inspect "################################"
         IO.inspect "Sliced hash pool"
-        IO.inspect sliced_hash_pool
+        #IO.inspect sliced_hash_pool
 
         case sliced_hash_pool do
           [] ->
@@ -286,7 +286,7 @@ defmodule Aecore.Peers.SyncNew do
             {pick_height, pick_hash} = Enum.random(pick_from_hashes)
 
             IO.inspect "Pick hash"
-            IO.inspect pick_hash
+            #IO.inspect pick_hash
 
             {:reply, {:fetch, new_height, new_hash, pick_hash},
              %{state | hash_pool: new_hash_pool}}
@@ -476,17 +476,19 @@ defmodule Aecore.Peers.SyncNew do
   @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
           tuple()
   defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
-       when l_height == 0 do
+  when l_height == 0 do
+    IO.inspect "We agree on GENESIS"
     {0, agreed_hash}
   end
 
   defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
        when r_height == l_height do
-    r_hash = r_header.root_hash
+    r_hash = BlockValidation.block_header_hash(r_header)
 
     case Persistence.get_block_by_hash(r_hash) do
       {:ok, _} ->
         # We agree on this block height
+        IO.inspect "We agree on this block height: #{r_height}"
         {r_height, r_hash}
 
       _ ->
@@ -497,11 +499,12 @@ defmodule Aecore.Peers.SyncNew do
 
   defp agree_on_height(peer_id, r_header, r_height, l_height, agreed_hash)
        when r_height != l_height do
-    case PeerConnection.get_header_by_height(peer_id, l_height) do
+    case PeerConnection.get_header_by_height(l_height, peer_id) do
       {:ok, header} ->
         agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
 
       {:error, reason} ->
+        IO.inspect "------------------------------------- ERROR REASON agree_on_height"
         {0, agreed_hash}
     end
   end
@@ -658,7 +661,7 @@ defmodule Aecore.Peers.SyncNew do
         {:filled_pool, length(chunk_hashes) - 1}
 
       err ->
-        Logger.debug("#{__MODULE__}: Abort sync with: #{inspect(err)}")
+        IO.inspect("#{__MODULE__}: Abort sync with: #{inspect(err)}")
         delete_from_pool(peer_id)
         {:error, :sync_abort}
     end
@@ -668,7 +671,7 @@ defmodule Aecore.Peers.SyncNew do
   # take it from the chain
   defp do_fetch_block(hash, peer_id) do
     IO.inspect "Do fetch block"
-    IO.inspect hash
+    #IO.inspect hash
     case Chain.get_block(hash) do
       {:ok, block} ->
         Logger.debug("#{__MODULE__}: We already have this block!")

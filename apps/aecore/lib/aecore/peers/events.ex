@@ -1,4 +1,5 @@
 defmodule Aecore.Peers.Events do
+
   @spec publish(atom(), any()) :: :ok
   def publish(event, info) do
     data = %{sender: self(), time: :os.timestamp(), info: info}

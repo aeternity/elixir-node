@@ -122,7 +122,9 @@ defmodule Aecore.Chain.Worker do
   def get_headers_forward(starting_header, count) do
     case get_header(starting_header) do
       {:ok, header} ->
-        get_headers_forward([], header.height, count)
+        {:ok, starting_block} = Chain.get_block(starting_header)
+        blocks_to_forward = min(Chain.top_height() - starting_block.header.height + 1, count)
+        get_headers_forward([], header.height, blocks_to_forward)
 
       {:error, reason} ->
         {:error, reason}
@@ -418,8 +420,8 @@ defmodule Aecore.Chain.Worker do
         "List of peers is empty"
       end
 
-      Events.publish(:block_created, new_block)
-      Events.publish(:top_changed, new_block)
+#      Events.publish(:block_created, new_block)
+#      Events.publish(:top_changed, new_block)
 
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)

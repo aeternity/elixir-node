@@ -108,7 +108,7 @@ defmodule Aecore.Peers.Worker do
     peer_id
   end
 
-  def peer_id(%{pubkey: peer_id}) do
+  def peer_id({_, %{connection: peer_id}}) do
     peer_id
   end
 

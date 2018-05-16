@@ -6,6 +6,7 @@ defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
   use Supervisor
 
   alias Aecore.Peers.PeerConnection
+  alias Aecore.Peers.Worker, as: Peers
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -14,8 +15,14 @@ defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
   def start_peer_connection(conn_info) do
     Supervisor.start_child(
       __MODULE__,
-      Supervisor.child_spec({PeerConnection, conn_info}, id: :peer_connection)
+      Supervisor.child_spec({PeerConnection, conn_info}, id: conn_info.r_pubkey)
     )
+  end
+
+  def stop_peer_connection(peer_pubkey) do
+    Supervisor.terminate_child(__MODULE__, peer_pubkey)
+    Supervisor.delete_child(__MODULE__, peer_pubkey)
+    Peers.remove_peer(peer_pubkey)
   end
 
   def init(:ok) do
