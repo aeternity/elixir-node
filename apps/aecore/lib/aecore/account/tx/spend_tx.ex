@@ -24,7 +24,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @type tx_type_state() :: map()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{

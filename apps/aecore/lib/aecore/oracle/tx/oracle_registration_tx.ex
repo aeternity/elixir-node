@@ -110,11 +110,12 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     sender = DataTx.main_sender(data_tx)
 
     updated_oracle_chainstate =
-      OracleStateTree.put_registered_oracles(oracles, %{
-        sender => %{
-          tx: tx,
-          height_included: block_height
-        }
+      OracleStateTree.put_new_registered_oracle(oracles, sender, %{
+        owner: sender,
+        query_format: tx.query_format,
+        response_format: tx.response_format,
+        query_fee: tx.query_fee,
+        expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
       })
 
     {:ok, {accounts, updated_oracle_chainstate}}

@@ -23,8 +23,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           ttl: non_neg_integer()
         }
 
-  @type reason :: String.t()
-
   defstruct [:ttl]
   use ExConstructor
 
@@ -36,7 +34,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -68,13 +66,17 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
+    test =
+      oracles
+      |> OracleStateTree.get_registered_oracles()
+
     updated_registered_oracles =
       oracles
       |> OracleStateTree.get_registered_oracles()
-      |> update_in([sender, :tx, Access.key(:ttl), :ttl], &(&1 + tx.ttl))
+      |> update_in([sender, :expires], &(&1 + tx.ttl))
 
     updated_oracle_state =
-      OracleStateTree.put_registered_oracles(oracles, updated_registered_oracles)
+      OracleStateTree.put_registered_oracle(oracles, updated_registered_oracles)
 
     {:ok, {accounts, updated_oracle_state}}
   end

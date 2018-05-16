@@ -31,6 +31,7 @@ defmodule Aecore.Chain.Worker do
   require Logger
 
   @type txs_index :: %{binary() => [{binary(), binary()}]}
+  @type reason :: atom()
 
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
@@ -95,7 +96,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, reason()}
   def get_header_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_header(decoded_hash)
@@ -118,7 +119,7 @@ defmodule Aecore.Chain.Worker do
       {:error, :invalid_hash}
   end
 
-  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  @spec get_header(binary()) :: Block.t() | {:error, reason()}
   def get_header(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
       {:error, _reason} ->
@@ -135,7 +136,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil) do
       {:error, :chain_too_short} -> {:error, :chain_too_short}

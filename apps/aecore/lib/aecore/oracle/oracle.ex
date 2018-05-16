@@ -227,16 +227,15 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def remove_expired_oracles(chain_state, block_height) do
-    chain_state.oracles
+  def remove_expired_oracles(chainstate, block_height) do
+    chainstate.oracles
     |> OracleStateTree.get_registered_oracles()
-    |> Enum.reduce(chain_state, fn {address,
-                                    %{
-                                      tx: tx,
-                                      height_included: height_included
-                                    }},
-                                   acc ->
-      if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
+    |> Enum.reduce(chainstate, fn {address,
+                                   %{
+                                     expires: expiry_height
+                                   }},
+                                  acc ->
+      if expiry_height <= block_height do
         updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
         %{acc | oracles: updated_oracles}
       else
@@ -245,61 +244,37 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  def remove_expired_interaction_objects(
-        chain_state,
-        block_height
-      ) do
-    interaction_objects = OracleStateTree.get_interaction_objects(chain_state.oracles)
+  def remove_expired_interaction_objects(chainstate, block_height) do
+    chainstate.oracles
+    |> OracleStateTree.get_interaction_objects()
+    |> Enum.reduce(chainstate, fn {query_id,
+                                   %{
+                                     sender_address: sender_address,
+                                     has_response: has_response,
+                                     expires: expires,
+                                     fee: fee
+                                   }},
+                                  acc ->
+      if expires <= block_height do
+        new_oracles_state =
+          acc.oracles
+          |> OracleStateTree.delete_interaction_object(query_id)
 
-    Enum.reduce(interaction_objects, chain_state, fn {query_id,
-                                                      %{
-                                                        query: query,
-                                                        query_sender: query_sender,
-                                                        response: response,
-                                                        query_height_included:
-                                                          query_height_included,
-                                                        response_height_included:
-                                                          response_height_included
-                                                      }},
-                                                     acc ->
-      query_absolute_ttl =
-        calculate_absolute_ttl(
-          query.query_ttl,
-          query_height_included
-        )
+        new_chainstate = %{acc | oracles: new_oracles_state}
 
-      query_has_expired = query_absolute_ttl <= block_height && response == nil
-
-      response_has_expired =
-        if response != nil do
-          response_absolute_ttl =
-            calculate_absolute_ttl(query.query_ttl, response_height_included)
-
-          response_absolute_ttl <= block_height
+        if has_response do
+          new_chainstate
         else
-          false
+          new_accounts_state =
+            new_chainstate.accounts
+            |> AccountStateTree.update(sender_address, fn account ->
+              Account.apply_transfer!(account, block_height, fee)
+            end)
+
+          %{new_chainstate | accounts: new_accounts_state}
         end
-
-      cond do
-        query_has_expired ->
-          account_state = Account.get_account_state(acc.accounts, query_sender)
-          new_balance = account_state.balance + query.query_fee
-          updated_account_state = %{account_state | balance: new_balance}
-
-          updated_account_tree =
-            AccountStateTree.put(acc.accounts, query_sender, updated_account_state)
-
-          acc = %{acc | accounts: updated_account_tree}
-
-          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
-          %{acc | oracles: updated_oracles}
-
-        response_has_expired ->
-          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
-          %{acc | oracles: updated_oracles}
-
-        true ->
-          acc
+      else
+        acc
       end
     end)
   end

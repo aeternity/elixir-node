@@ -90,14 +90,14 @@ defmodule Aecore.Chain.Chainstate do
   @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, updated_chainstate} ->
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate} ->
         case apply_transaction_on_state(chainstate, block_height, tx) do
           {:ok, updated_chainstate} ->
             {[tx | valid_txs_list], updated_chainstate}
 
           {:error, reason} ->
             Logger.error(reason)
-            {valid_txs_list, updated_chainstate}
+            {valid_txs_list, chainstate}
         end
       end)
 

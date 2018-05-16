@@ -35,8 +35,8 @@ defmodule Aecore.Oracle.OracleStateTree do
     deserialize_value(value)
   end
 
-  @spec put_registered_oracles(oracles_state(), OracleRegistrationTx.t()) :: oracles_state()
-  def put_registered_oracles(trie, new_oracle) do
+  @spec put_registered_oracle(oracles_state(), OracleRegistrationTx.t()) :: oracles_state()
+  def put_registered_oracle(trie, new_oracle) do
     updated_oracles =
       trie
       |> get_registered_oracles()
@@ -47,8 +47,8 @@ defmodule Aecore.Oracle.OracleStateTree do
     PatriciaMerkleTree.enter(trie, key_serialized, oracles_serialized)
   end
 
-  @spec put_interaction_objects(oracles_state(), Oracle.interaction_objects()) :: oracles_state()
-  def put_interaction_objects(trie, new_object) do
+  @spec put_interaction_object(oracles_state(), Oracle.interaction_objects()) :: oracles_state()
+  def put_interaction_object(trie, new_object) do
     updated_iteraction_objects =
       trie
       |> get_interaction_objects()
@@ -57,6 +57,17 @@ defmodule Aecore.Oracle.OracleStateTree do
     objects_serialized = serialize_value(updated_iteraction_objects)
     key_serialized = serialize_key(:interaction_objects)
     PatriciaMerkleTree.enter(trie, key_serialized, objects_serialized)
+  end
+
+  @spec put_new_registered_oracle(oracles_state(), Wallet.pubkey(), OracleRegistrationTx.t()) ::
+          oracles_state()
+  def put_new_registered_oracle(trie, key, new_oracle) do
+    updated_registered_oracles =
+      trie
+      |> get_registered_oracles
+      |> Map.put_new(key, new_oracle)
+
+    put_registered_oracle(trie, updated_registered_oracles)
   end
 
   @spec delete_registered_oracle(oracles_state(), Wallet.pubkey()) :: oracles_state()

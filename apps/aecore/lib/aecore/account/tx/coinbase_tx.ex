@@ -131,7 +131,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
           CoinbaseTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.accounts()
+        ) :: AccountStateTree.accounts_state()
   def deduct_fee(accounts, _block_height, _tx, _data_tx, _fee) do
     accounts
   end
