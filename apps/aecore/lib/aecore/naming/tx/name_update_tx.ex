@@ -177,7 +177,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           DataTx.t(),
           non_neg_integer()
         ) :: ChainState.account()
-  def deduct_fee(accounts, _payload, block_height, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
