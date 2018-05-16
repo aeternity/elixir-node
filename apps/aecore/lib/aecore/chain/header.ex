@@ -191,12 +191,16 @@ defmodule Aecore.Chain.Header do
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    acc = acc ++ [pow]
+    acc = [pow | acc]
     deserialize_pow(rest, acc)
   end
 
   defp deserialize_pow(<<>>, acc) do
-    Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)
+    if Enum.count(Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)) == 42 do
+      Enum.reverse(acc)
+    else
+      {:error, "Illegal PoW serialization"}
+    end
   end
 
   defp type_to_tag(Block), do: 100

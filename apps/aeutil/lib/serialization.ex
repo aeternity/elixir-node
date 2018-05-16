@@ -303,6 +303,9 @@ defmodule Aeutil.Serialization do
       :name ->
         value
 
+      :payload ->
+        value
+
       _ ->
         Parser.to_atom(value)
     end
@@ -350,14 +353,15 @@ defmodule Aeutil.Serialization do
     Enum.reverse(acc)
   end
 
+  # Should be changed after some adjustments in oracle structures
   def transform_item(item) do
-    :erlang.term_to_binary(item)
+    Poison.encode!(item)
   end
 
   def transform_item(item, type) do
     case type do
       :int -> :binary.decode_unsigned(item)
-      :binary -> :erlang.binary_to_term(item)
+      :binary -> Poison.decode!(item)
     end
   end
 

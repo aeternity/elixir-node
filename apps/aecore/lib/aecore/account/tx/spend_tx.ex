@@ -53,7 +53,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: get_tx_version()}
+    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: version}
   end
 
   @doc """
