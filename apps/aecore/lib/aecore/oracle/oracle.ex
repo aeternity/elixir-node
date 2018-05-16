@@ -13,7 +13,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
@@ -330,7 +329,7 @@ defmodule Aecore.Oracle.Oracle do
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
-    ver = Serialization.transform_item(ver_bin, :int)
+    _ver = Serialization.transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
       Oracle ->

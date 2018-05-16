@@ -84,7 +84,7 @@ defmodule Aecore.Naming.Naming do
     }
 
   @spec create_claim(binary(), String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
-  def create_claim(hash, name, owner, height),
+  def create_claim(hash, _name, owner, height),
     do: %{
       :hash => hash,
       :owner => owner,
@@ -190,7 +190,7 @@ defmodule Aecore.Naming.Naming do
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
-    ver = Serialization.transform_item(ver_bin, :int)
+    _ver = Serialization.transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
       Name ->

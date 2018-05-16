@@ -6,7 +6,6 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
-  alias Aecore.Tx.DataTx
 
   @type t :: %Block{
           header: Header.t(),
@@ -61,7 +60,7 @@ defmodule Aecore.Chain.Block do
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
-    ver = Serialization.transform_item(ver_bin, :int)
+    _ver = Serialization.transform_item(ver_bin, :int)
 
     case tag_to_type(tag) do
       Block ->

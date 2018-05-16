@@ -465,7 +465,7 @@ defmodule Aecore.Tx.DataTx do
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
-    ver = Serialization.transform_item(ver_bin, :int)
+    _ver = Serialization.transform_item(ver_bin, :int)
     decode(tag_to_type(tag), rest_data)
   end
 
@@ -473,7 +473,7 @@ defmodule Aecore.Tx.DataTx do
     ExRLP.decode(data)
   end
 
-  defp decode(SpendTx, [senders, receiver, amount, fee, nonce, payload] = rest_data) do
+  defp decode(SpendTx, [senders, receiver, amount, fee, nonce, payload]) do
     DataTx.init(
       SpendTx,
       %{
@@ -488,7 +488,7 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(CoinbaseTx, [receiver, nonce, amount] = rest_data) do
+  defp decode(CoinbaseTx, [receiver, nonce, amount]) do
     DataTx.init(
       CoinbaseTx,
       %{
@@ -501,21 +501,18 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(
-         OracleQueryTx,
-         [
-           senders,
-           nonce,
-           oracle_address,
-           query_data,
-           query_fee,
-           query_ttl_type,
-           query_ttl_value,
-           response_ttl_type,
-           response_ttl_value,
-           fee
-         ] = rest_data
-       ) do
+  defp decode(OracleQueryTx, [
+         senders,
+         nonce,
+         oracle_address,
+         query_data,
+         query_fee,
+         query_ttl_type,
+         query_ttl_value,
+         response_ttl_type,
+         response_ttl_value,
+         fee
+       ]) do
     q_ttl_type =
       query_ttl_type
       |> Serialization.transform_item(:int)
@@ -546,11 +543,16 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(
-         OracleRegistrationTx,
-         [senders, nonce, query_format, response_format, query_fee, ttl_type, ttl_value, fee] =
-           rest_data
-       ) do
+  defp decode(OracleRegistrationTx, [
+         senders,
+         nonce,
+         query_format,
+         response_format,
+         query_fee,
+         ttl_type,
+         ttl_value,
+         fee
+       ]) do
     ttl_t =
       ttl_type
       |> Serialization.transform_item(:int)
@@ -572,9 +574,7 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(OracleResponseTx, [senders, nonce, query_id, response, fee] = rest_data) do
-    [senders, nonce, query_id, response, fee] = rest_data
-
+  defp decode(OracleResponseTx, [senders, nonce, query_id, response, fee]) do
     payload = %{
       query_id: Serialization.transform_item(query_id, :binary),
       response: Serialization.transform_item(response, :binary)
@@ -589,13 +589,7 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(OracleExtendTx, [senders, nonce, ttl_value, fee] = rest_data) do
-    [senders, nonce, ttl_value, fee] = rest_data
-
-    # ttl_t =
-    #   ttl_type
-    #   |> Serialization.transform_item(:int)
-    #   |> Serialization.decode_ttl_type()
+  defp decode(OracleExtendTx, [senders, nonce, ttl_value, fee]) do
     payload = %{
       ttl: Serialization.transform_item(ttl_value, :int)
     }
@@ -609,7 +603,7 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NamePreClaimTx, [senders, nonce, commitment, fee] = rest_data) do
+  defp decode(NamePreClaimTx, [senders, nonce, commitment, fee]) do
     payload = %NamePreClaimTx{commitment: commitment}
 
     DataTx.init(
@@ -674,7 +668,7 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(_) do
+  defp decode(_, _) do
     {:error, "Unknown DataTx structure"}
   end
 

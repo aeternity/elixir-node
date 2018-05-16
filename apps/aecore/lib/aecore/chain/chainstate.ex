@@ -10,8 +10,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
-  alias Aecore.Account.Tx.SpendTx
-  alias Aeutil.Serialization
   alias Aecore.Naming.Naming
 
   require Logger
@@ -160,8 +158,6 @@ defmodule Aecore.Chain.Chainstate do
 
   @spec type_to_tag(atom()) :: non_neg_integer()
   defp type_to_tag(Account), do: 10
-  @spec tag_to_type(non_neg_integer) :: atom()
-  defp tag_to_type(10), do: Account
   @spec get_version(atom()) :: non_neg_integer
   defp get_version(Account), do: 1
 end
