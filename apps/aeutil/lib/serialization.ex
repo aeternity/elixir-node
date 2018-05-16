@@ -14,6 +14,7 @@ defmodule Aeutil.Serialization do
   alias Aeutil.Parser
   alias Aecore.Account.Account
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.DataTx
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 

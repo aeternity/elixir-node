@@ -350,18 +350,14 @@ defmodule Aecore.Account.Account do
 
   # @spec rlp_decode
 
-  @spec rlp_encode(Account.t()) :: binary()
+  @spec rlp_encode(Account.t()) :: binary() | {:error, String.t()}
   def rlp_encode(%Account{} = account) do
     [
       type_to_tag(Account),
       get_version(Account),
-      # pubkey ,
       account.pubkey,
-      # nonce
       account.nonce,
-      # height
       account.last_updated,
-      # balance
       account.balance
     ]
     |> ExRLP.encode()
@@ -371,6 +367,7 @@ defmodule Aecore.Account.Account do
     {:error, "Invalid Account structure"}
   end
 
+  @spec rlp_decode(binary()) :: {:ok, Account.t()} | {:error, String.t()}
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
@@ -395,8 +392,6 @@ defmodule Aecore.Account.Account do
            nonce: Serialization.transform_item(nonce, :int)
          }}
 
-      # , pkey}
-
       _ ->
         {:error, "Illegal Account serialization"}
     end
@@ -406,7 +401,10 @@ defmodule Aecore.Account.Account do
     {:error, "Invalid Account serialization"}
   end
 
+  @spec type_to_tag(atom()) :: non_neg_integer()
   defp type_to_tag(Account), do: 10
+  @spec tag_to_type(non_neg_integer) :: atom()
   defp tag_to_type(10), do: Account
+  @spec get_version(atom()) :: non_neg_integer()
   defp get_version(Account), do: 1
 end

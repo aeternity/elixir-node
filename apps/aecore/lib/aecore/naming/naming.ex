@@ -156,6 +156,7 @@ defmodule Aecore.Naming.Naming do
     {:error, "Wrong data"}
   end
 
+  @spec rlp_encode(map, :name | :name_commitment) :: binary() | {:error, String.t()}
   def rlp_encode(%{} = naming_state, :name) do
     [
       type_to_tag(Name),
@@ -225,10 +226,13 @@ defmodule Aecore.Naming.Naming do
     {:error, "Invalid Naming serialization"}
   end
 
+  @spec type_to_tag(atom()) :: non_neg_integer
   defp type_to_tag(Name), do: 30
   defp type_to_tag(NameCommitment), do: 31
+  @spec tag_to_type(non_neg_integer) :: atom()
   defp tag_to_type(30), do: Name
   defp tag_to_type(31), do: NameCommitment
+  @spec get_version(atom()) :: non_neg_integer()
   defp get_version(Name), do: 1
   defp get_version(NameCommitment), do: 1
 end

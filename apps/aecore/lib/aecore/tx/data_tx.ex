@@ -308,8 +308,6 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  # TODO: add CoinbaseTx.t() to this spec
-  @spec rlp_encode(DataTx.t()) :: binary()
   def rlp_encode(%DataTx{type: CoinbaseTx} = tx) do
     [
       type_to_tag(CoinbaseTx),
@@ -676,16 +674,18 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  @spec type_to_tag(atom()) :: integer() | atom()
+  defp decode(_) do
+    {:error, "Unknown DataTx structure"}
+  end
+
+  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
   defp type_to_tag(SpendTx), do: 12
   defp type_to_tag(CoinbaseTx), do: 13
   defp type_to_tag(OracleRegistrationTx), do: 22
   defp type_to_tag(OracleQueryTx), do: 23
   defp type_to_tag(OracleResponseTx), do: 24
   defp type_to_tag(OracleExtendTx), do: 25
-  # TODO look for this structure
   defp type_to_tag(NameName), do: 30
-  # TODO look for this structure
   defp type_to_tag(NameCommitment), do: 31
   defp type_to_tag(NameClaimTx), do: 32
   defp type_to_tag(NamePreClaimTx), do: 33
@@ -695,16 +695,14 @@ defmodule Aecore.Tx.DataTx do
 
   defp type_to_tag(type), do: {:error, "Unknown TX Type: #{type}"}
 
-  @spec tag_to_type(integer()) :: tx_types() | atom()
+  @spec tag_to_type(non_neg_integer()) :: tx_types() | {:error, String.t()}
   defp tag_to_type(12), do: SpendTx
   defp tag_to_type(13), do: CoinbaseTx
   defp tag_to_type(22), do: OracleRegistrationTx
   defp tag_to_type(23), do: OracleQueryTx
   defp tag_to_type(24), do: OracleResponseTx
   defp tag_to_type(25), do: OracleExtendTx
-  # TODO look for this structure
   defp tag_to_type(30), do: NameName
-  # TODO look for this structure
   defp tag_to_type(31), do: NameCommitment
   defp tag_to_type(32), do: NameClaimTx
   defp tag_to_type(33), do: NamePreClaimTx
@@ -713,16 +711,14 @@ defmodule Aecore.Tx.DataTx do
   defp tag_to_type(36), do: NameTransferTx
   defp tag_to_type(tag), do: {:error, "Unknown TX Tag: #{inspect(tag)}"}
 
-  @spec get_version(tx_types()) :: integer() | atom()
+  @spec get_version(tx_types()) :: non_neg_integer() | {:error, String.t()}
   defp get_version(SpendTx), do: 1
   defp get_version(CoinbaseTx), do: 1
   defp get_version(OracleRegistrationTx), do: 1
   defp get_version(OracleQueryTx), do: 1
   defp get_version(OracleResponseTx), do: 1
   defp get_version(OracleExtendTx), do: 1
-  # TODO look for this structure
   defp get_version(NameName), do: 1
-  # TODO look for this structure
   defp get_version(NameCommitment), do: 1
   defp get_version(NameClaimTx), do: 1
   defp get_version(NamePreClaimTx), do: 1

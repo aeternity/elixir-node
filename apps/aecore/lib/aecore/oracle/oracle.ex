@@ -279,7 +279,7 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  @spec rlp_encode(map(), atom()) :: binary()
+  @spec rlp_encode(map(), :registered_oracle | :interaction_object) :: binary()
   def rlp_encode(%{} = registered_oracle, :registered_oracle) do
     [
       type_to_tag(Oracle),

@@ -122,7 +122,11 @@ defmodule Aecore.Chain.Chainstate do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(Chainstate.t(), Wallet.pubkey()) :: atom()
+  # Optional function to ease the development:
+  # takes given chainstate and a public key for the specific account and returns:
+  # empty structure if for a given key the value isn't found in a tree
+  # or an account record if a key was found in a given chainstate
+  @spec rlp_encode(Chainstate.t(), Wallet.pubkey()) :: binary()
   def rlp_encode(%Chainstate{accounts: accounts}, pkey) do
     account_info =
       case AccountStateTree.get(accounts, pkey) do
@@ -154,7 +158,10 @@ defmodule Aecore.Chain.Chainstate do
     {:error, "Invalid Account structure serialization"}
   end
 
+  @spec type_to_tag(atom()) :: non_neg_integer()
   defp type_to_tag(Account), do: 10
+  @spec tag_to_type(non_neg_integer) :: atom()
   defp tag_to_type(10), do: Account
+  @spec get_version(atom()) :: non_neg_integer
   defp get_version(Account), do: 1
 end

@@ -56,7 +56,6 @@ defmodule AecoreOracleTest do
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
-
     assert nil != interaction_object.response
     Chain.clear_state()
 

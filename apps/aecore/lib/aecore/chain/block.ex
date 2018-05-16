@@ -83,10 +83,12 @@ defmodule Aecore.Chain.Block do
     {:error, "Illegal block serialization"}
   end
 
+  @spec type_to_tag(atom()) :: non_neg_integer
   defp type_to_tag(Block) do
     100
   end
 
+  @spec tag_to_type(non_neg_integer()) :: atom()
   defp tag_to_type(100) do
     Block
   end

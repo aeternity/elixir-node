@@ -132,7 +132,7 @@ defmodule Aecore.Chain.Header do
     {:error, "Illegal structure serialization"}
   end
 
-  @spec binary_to_header(binary()) :: Header.t()
+  @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
   def binary_to_header(binary) when is_binary(binary) do
     <<version::64, height::64, prev_hash::binary-size(32), txs_hash::binary-size(32),
       root_hash::binary-size(32), target::64, pow_evidence_bin::binary-size(168), nonce::64,
@@ -157,7 +157,7 @@ defmodule Aecore.Chain.Header do
     {:error, "Illegal header binary serialization"}
   end
 
-  @spec pow_to_binary(list()) :: binary()
+  @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
   def pow_to_binary(pow) when is_list(pow) do
     if Enum.count(pow) == 42 do
       list_of_pows =
@@ -171,6 +171,7 @@ defmodule Aecore.Chain.Header do
     end
   end
 
+  @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
   defp serialize_pow(pow, acc) when pow != <<>> do
     <<elem::binary-size(4), rest::binary>> = pow
     acc = acc <> elem
@@ -203,6 +204,8 @@ defmodule Aecore.Chain.Header do
     end
   end
 
+  @spec type_to_tag(atom()) :: non_neg_integer()
   defp type_to_tag(Block), do: 100
+  @spec tag_to_type(non_neg_integer) :: atom()
   defp tag_to_type(100), do: Block
 end
