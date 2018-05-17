@@ -69,48 +69,6 @@ defmodule Aecore.Chain.Header do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(Header.t()) :: binary() | {:error, String.t()}
-  def rlp_encode(%Header{} = header) do
-    header_bin = header_to_binary(header)
-
-    [
-      type_to_tag(Block),
-      header.version,
-      header_bin
-    ]
-    |> ExRLP.encode()
-  end
-
-  def rlp_encode(_) do
-    {:error, "Invalid header struct"}
-  end
-
-  @spec rlp_decode(binary()) :: Block.t() | atom()
-  def rlp_decode(values) when is_binary(values) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
-    tag = Serialization.transform_item(tag_bin, :int)
-    _ver = Serialization.transform_item(ver_bin, :int)
-
-    case tag_to_type(tag) do
-      Block ->
-        [header_bin, txs] = rest_data
-
-        txs_list =
-          for tx <- txs do
-            DataTx.rlp_decode(tx)
-          end
-
-        Block.new(%{header: binary_to_header(header_bin), txs: txs_list})
-
-      _ ->
-        {:error, "Invalid block serialization"}
-    end
-  end
-
-  def rlp_decode(_) do
-    {:error, "Invalid block serialization"}
-  end
-
   @spec header_to_binary(Header.t()) :: binary
   def header_to_binary(%Header{} = header) do
     pow_to_binary = pow_to_binary(header.pow_evidence)
@@ -203,9 +161,4 @@ defmodule Aecore.Chain.Header do
       {:error, "Illegal PoW serialization"}
     end
   end
-
-  @spec type_to_tag(atom()) :: non_neg_integer()
-  defp type_to_tag(Block), do: 100
-  @spec tag_to_type(non_neg_integer) :: atom()
-  defp tag_to_type(100), do: Block
 end

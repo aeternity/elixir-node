@@ -272,8 +272,8 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  def rlp_decode(_) do
-    {:error, "Invalid SignedTx serialization"}
+  def rlp_decode(tx) do
+    {:error, "Invalid SignedTx serialization : #{inspect(tx)}"}
   end
 
   @spec type_to_tag(atom()) :: integer() | atom()

@@ -324,8 +324,8 @@ defmodule Aecore.Tx.DataTx do
       get_version(OracleRegistrationTx),
       tx.senders,
       tx.nonce,
-      Serialization.transform_item(tx.payload.query_format),
-      Serialization.transform_item(tx.payload.response_format),
+      "$æx" <> Serialization.transform_item(tx.payload.query_format),
+      "$æx" <> Serialization.transform_item(tx.payload.response_format),
       tx.payload.query_fee,
       ttl_type,
       tx.payload.ttl.ttl,
@@ -344,7 +344,7 @@ defmodule Aecore.Tx.DataTx do
       tx.senders,
       tx.nonce,
       tx.payload.oracle_address,
-      Serialization.transform_item(tx.payload.query_data),
+      "$æx" <> Serialization.transform_item(tx.payload.query_data),
       tx.payload.query_fee,
       ttl_type_q,
       tx.payload.query_ttl.ttl,
@@ -366,7 +366,7 @@ defmodule Aecore.Tx.DataTx do
       # query_id
       tx.payload.query_id,
       # response
-      Serialization.transform_item(tx.payload.response),
+      "$æx" <> Serialization.transform_item(tx.payload.response),
       # fee
       tx.fee
     ]
@@ -555,9 +555,13 @@ defmodule Aecore.Tx.DataTx do
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
+    q_format = decode_format(query_format)
+
+    r_format = decode_format(response_format)
+
     payload = %{
-      query_format: Serialization.transform_item(query_format, :binary),
-      response_format: Serialization.transform_item(response_format, :binary),
+      query_format: q_format,
+      response_format: r_format,
       ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_t},
       query_fee: Serialization.transform_item(query_fee, :int)
     }
@@ -572,9 +576,12 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(OracleResponseTx, [senders, nonce, query_id, response, fee]) do
+    q_id = decode_format(query_id)
+    resp = decode_format(response)
+
     payload = %{
-      query_id: Serialization.transform_item(query_id, :binary),
-      response: Serialization.transform_item(response, :binary)
+      query_id: q_id,
+      response: resp
     }
 
     DataTx.init(
@@ -718,4 +725,21 @@ defmodule Aecore.Tx.DataTx do
   defp get_version(NameTransferTx), do: 1
 
   defp get_version(ver), do: {:error, "Unknown Struct version: #{inspect(ver)}"}
+
+  # Optional function-workaround:
+  # As we have differences in value types in some fields,
+  # which means that we encode these fields different apart from what Epoch does,
+  # we need to recognize the origins of this value.
+  # My proposal is (until the problem is solved) to add
+  # specific prefix to the data before encodings, for example, "$æx"
+  # this prefix will allow us to know, how the data should be handled.
+  # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
+  @spec decode_format(binary()) :: binary()
+  defp decode_format(<<"$æx", binary::binary>>) do
+    Serialization.transform_item(binary, :binary)
+  end
+
+  defp decode_format(binary) when is_binary(binary) do
+    binary
+  end
 end

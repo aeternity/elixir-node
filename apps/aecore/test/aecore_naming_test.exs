@@ -27,7 +27,7 @@ defmodule AecoreNamingTest do
     end)
   end
 
-  @tag :naming_test
+  @tag :naming
   test "test naming workflow", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -51,6 +51,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -63,6 +64,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -77,6 +79,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
@@ -98,12 +101,13 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_revoke)
     [first_name_revoke] = naming_state_revoke
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :revoked
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
   end
 
-  @tag :naming_test
+  @tag :naming
   test "not pre-claimed name not claimable", setup do
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -113,7 +117,7 @@ defmodule AecoreNamingTest do
     assert Enum.empty?(naming_state)
   end
 
-  @tag :naming_test
+  @tag :naming
   test "name not claimable with incorrect salt", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -140,7 +144,7 @@ defmodule AecoreNamingTest do
     assert !Map.has_key?(first_name_claim, :name)
   end
 
-  @tag :naming_test
+  @tag :naming
   test "name not claimable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -171,7 +175,7 @@ defmodule AecoreNamingTest do
     assert !Map.has_key?(first_name_claim, :name)
   end
 
-  @tag :naming_test
+  @tag :naming
   test "name not updatable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -195,6 +199,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -213,12 +218,13 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == []
   end
 
-  @tag :naming_test
+  @tag :naming
   test "name not transferable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -242,6 +248,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -254,6 +261,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -282,12 +290,13 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == Wallet.get_public_key()
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
   end
 
-  @tag :naming_test
+  @tag :naming
   test "name not revokable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -311,6 +320,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_claim)
     [first_name_claim] = naming_state_claim
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -323,6 +333,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_update)
     [first_name_update] = naming_state_update
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -337,6 +348,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_transfer)
     [first_name_transfer] = naming_state_transfer
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
@@ -360,6 +372,7 @@ defmodule AecoreNamingTest do
     assert 1 == Enum.count(naming_state_revoke)
     [first_name_revoke] = naming_state_revoke
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :claimed
     assert first_name_revoke.pointers == ["{\"test\": 2}"]

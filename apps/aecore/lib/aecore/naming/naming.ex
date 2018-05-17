@@ -68,14 +68,16 @@ defmodule Aecore.Naming.Naming do
 
   @spec create_claim(
           binary(),
+          String.t(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           list()
         ) :: claim()
-  def create_claim(hash, owner, expire_by, client_ttl, pointers),
+  def create_claim(hash, name, owner, expire_by, client_ttl, pointers),
     do: %{
       :hash => hash,
+      :name => name,
       :owner => owner,
       :expires => expire_by,
       :status => :claimed,
@@ -84,9 +86,10 @@ defmodule Aecore.Naming.Naming do
     }
 
   @spec create_claim(binary(), String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
-  def create_claim(hash, _name, owner, height),
+  def create_claim(hash, name, owner, height),
     do: %{
       :hash => hash,
+      :name => name,
       :owner => owner,
       :expires => height + @claim_expire_by_relative_limit,
       :status => :claimed,
@@ -183,8 +186,8 @@ defmodule Aecore.Naming.Naming do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(_) do
-    {:error, "Invalid Naming state / Name Commitment structure"}
+  def rlp_encode(term) do
+    {:error, "Invalid Naming state / Name Commitment structure : #{inspect(term)}"}
   end
 
   def rlp_decode(values) when is_binary(values) do
@@ -222,8 +225,8 @@ defmodule Aecore.Naming.Naming do
     end
   end
 
-  def rlp_decode(_) do
-    {:error, "Invalid Naming serialization"}
+  def rlp_decode(term) do
+    {:error, "Invalid Naming serialization: #{inspect(term)}"}
   end
 
   @spec type_to_tag(atom()) :: non_neg_integer

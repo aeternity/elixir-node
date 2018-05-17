@@ -86,10 +86,9 @@ defmodule AecoreSerializationTest do
 
   @tag :rlp_test
   test "Block serialization", setup do
-    # currently, serialization is being tested with genesis block only, will be changed after PR regarding #228 is merged.
     block = create_data(Block)
-    serialized_block = Header.rlp_encode(block)
-    deserialized_block = Header.rlp_decode(serialized_block)
+    serialized_block = Block.rlp_encode(block)
+    deserialized_block = Block.rlp_decode(serialized_block)
     assert deserialized_block = block
   end
 
@@ -200,7 +199,8 @@ defmodule AecoreSerializationTest do
         }
 
       Block ->
-        Block.genesis_block()
+        Miner.mine_sync_block_to_chain()
+        Chain.top_block()
 
       Account ->
         {%Aecore.Chain.Chainstate{
