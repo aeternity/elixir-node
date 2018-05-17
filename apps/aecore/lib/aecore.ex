@@ -15,6 +15,7 @@ defmodule Aecore do
       Aecore.Tx.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
       Aecore.Wallet.Worker.Supervisor,
+      Aecore.Channel.Worker.Supervisor,
       supervisor(Exexec, [], function: :start)
     ]
 

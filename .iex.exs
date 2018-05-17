@@ -12,6 +12,9 @@ alias Aecore.Account.Tx.SpendTx
 alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
 alias Aecore.Wallet.Worker, as: Wallet
+alias Aecore.Channel.Worker, as: Channel
+alias Aecore.Channel.{ChannelStatePeer, ChannelStateOffChain, ChannelStateOnChain}
+alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseSoloTx, ChannelCloseMutalTx}
 
 alias Aehttpclient.Client
 

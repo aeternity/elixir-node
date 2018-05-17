@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @behaviour Aecore.Tx.Transaction
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
 
@@ -54,11 +54,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       responder_amount: responder_amount}
   end
 
+  def channel_id(%ChannelCloseMutalTx{channel_id: channel_id}) do channel_id end 
+  
+  def initiator_amount(%ChannelCloseMutalTx{initiator_amount: initiator_amount}) do initiator_amount end
+
+  def responder_amount(%ChannelCloseMutalTx{responder_amount: responder_amount}) do responder_amount end
+
   @doc """
   Checks transactions internal contents validity
   """
-  @spec validate(ChannelMutalCloseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelMutalCloseTx{} = tx, data_tx) do
+  @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
     
     cond do
@@ -85,7 +91,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def process_chainstate(
     accounts,
     channels,
-    _block_height,
+    block_height,
     %ChannelCloseMutalTx{channel_id: channel_id} = tx,
     data_tx
   ) do
@@ -95,13 +101,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
-        Account.apply_transfer!(tx.initiator_amount)
+        Account.apply_transfer!(acc, block_height, tx.initiator_amount)
       end)
       |> AccountStateTree.update(responder_pubkey, fn acc ->
-        Account.apply_transfer!(tx.responder_amount)
+        Account.apply_transfer!(acc, block_height, tx.responder_amount)
       end)
 
-    new_channels = Map.remove(channels, channel_id)
+    new_channels = Map.pop(channels, channel_id)
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -128,7 +134,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     nonce = DataTx.nonce(data_tx)
     fee = DataTx.fee(data_tx)
 
-    channel = Map.get(channels, channel_id)
+    channel = Map.get(channels, tx.channel_id)
 
     #FIXME fee division
     cond do

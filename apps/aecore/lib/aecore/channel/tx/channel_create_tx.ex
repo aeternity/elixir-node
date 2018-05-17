@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @behaviour Aecore.Tx.Transaction
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
 
@@ -86,7 +86,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def process_chainstate(
     accounts,
     channels,
-    _block_height,
+    block_height,
     %ChannelCreateTx{} = tx,
     data_tx
   ) do
@@ -96,10 +96,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
-        Account.apply_transfer!(tx.initiator_amount * -1)
+        Account.apply_transfer!(acc, block_height, tx.initiator_amount * -1)
       end)
       |> AccountStateTree.update(responder_pubkey, fn acc ->
-        Account.apply_transfer!(tx.responder_amount * -1)
+        Account.apply_transfer!(acc, block_height, tx.responder_amount * -1)
       end)
 
     channel = ChannelStateOnChain.create(initiator_pubkey, responder_pubkey, tx.initiator_amount, tx.responder_amount, tx.lock_time)

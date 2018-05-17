@@ -8,7 +8,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Tx.DataTx
 
   @type t :: %ChannelStateOnChain{
     initiator_pubkey: Wallet.pubkey(),
@@ -38,7 +40,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :sequence,
     :slash_close,
     :slash_sequence,
-    :slash_transfer
+    :slash_initiator,
+    :slash_responder
   ]
 
   use ExConstructor
@@ -52,25 +55,34 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       responder_amount: responder_amount,
       lock_period: lock_period,
       slash_close: -1,
-      slash_sequence: -1,
-      slash_transfer: 0
+      slash_sequence: -1
     }
+  end
+
+  def id(data_tx) do
+    nonce = DataTx.nonce(data_tx)
+    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+    id(initiator_pubkey, responder_pubkey, nonce)
+  end
+
+  def id(initiator_pubkey, responder_pubkey, nonce) do
+    <<123>> #FIXME
   end
 
   def amounts(%ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount}) do [initiator_amount, responder_amount] end
 
   def pubkeys(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey}) do [initiator_pubkey, responder_pubkey] end
 
-  def is_active(%ChannelStateOnChain{sequence: -1}) do
+  def active?(%ChannelStateOnChain{sequence: -1}) do
     true
   end
 
-  def is_active(%ChannelStateOnChain{}) do
+  def active?(%ChannelStateOnChain{}) do
     false
   end
 
-  def is_settled(%ChannelStateOnChain{slash_close: slash_close}, block_height) do
-    block_height >= slash_close
+  def settled?(%ChannelStateOnChain{slash_close: slash_close} = channel, block_height) do
+    block_height >= slash_close && (!active?(channel))
   end
 
   def validate_offchain(%ChannelStateOnChain{} = channel, offchain_state) do
@@ -86,8 +98,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def apply_offchain(%ChannelStateOnChain{} = channel, block_height, offchain_state) do
     %ChannelStateOnChain{
       channel | slash_close: block_height + channel.lock_period,
-              | slash_sequence: ChannelStateOffChain.sequence(offchain_state),
-              | slash_transfer: ChannelStateOffChain.transfer(offchain_state)}
+              slash_sequence: ChannelStateOffChain.sequence(offchain_state),
+              slash_initiator: ChannelStateOffChain.initiator_amount(offchain_state),
+              slash_responder: ChannelStateOffChain.responder_amount(offchain_state)}
   end
 
   def validate_withdraw(%ChannelStateOnChain{initiator_amount: initiator_amount} = channel, :initiator, amount) do
