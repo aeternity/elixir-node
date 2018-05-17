@@ -5,8 +5,6 @@ defmodule Aecore.Chain.Header do
 
   alias Aecore.Chain.Header
   alias Aeutil.Bits
-  alias Aecore.Chain.Block
-  alias Aeutil.Serialization
 
   @type t :: %Header{
           height: non_neg_integer(),

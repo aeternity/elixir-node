@@ -589,7 +589,7 @@ defmodule Aecore.Tx.DataTx do
       payload,
       senders,
       Serialization.transform_item(fee, :int),
-      Serialization.transform(nonce, :int)
+      Serialization.transform_item(nonce, :int)
     )
   end
 

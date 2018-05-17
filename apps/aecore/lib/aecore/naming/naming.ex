@@ -68,7 +68,7 @@ defmodule Aecore.Naming.Naming do
 
   @spec create_claim(
           binary(),
-          String.t(),
+          binary(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -85,7 +85,7 @@ defmodule Aecore.Naming.Naming do
       :pointers => pointers
     }
 
-  @spec create_claim(binary(), String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
+  @spec create_claim(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
   def create_claim(hash, name, owner, height),
     do: %{
       :hash => hash,
