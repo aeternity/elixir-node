@@ -520,9 +520,11 @@ defmodule Aecore.Tx.DataTx do
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
+    q_data = decode_format(query_data)
+
     payload = %{
       oracle_address: oracle_address,
-      query_data: query_data,
+      query_data: q_data,
       query_fee: Serialization.transform_item(query_fee, :int),
       query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: q_ttl_type},
       response_ttl: %{
