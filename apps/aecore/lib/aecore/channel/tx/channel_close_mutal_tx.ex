@@ -96,7 +96,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     data_tx
   ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
 
     new_accounts =
       accounts
@@ -107,7 +106,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         Account.apply_transfer!(acc, block_height, tx.responder_amount)
       end)
 
-    new_channels = Map.pop(channels, channel_id)
+    new_channels = Map.drop(channels, [channel_id])
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -131,9 +130,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     data_tx
   ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
     fee = DataTx.fee(data_tx)
-
     channel = Map.get(channels, tx.channel_id)
 
     #FIXME fee division
@@ -147,7 +144,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       channel == nil ->
         {:error, "Channel doesn't exist (already closed?)"}
 
-      channel.initator_amount + channel.responder_amount != tx.initiator_amount + tx.responder_amount ->
+      channel.initiator_amount + channel.responder_amount != tx.initiator_amount + tx.responder_amount ->
         {:error, "Wrong total balance"}
 
       true ->

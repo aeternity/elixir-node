@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @behaviour Aecore.Tx.Transaction
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
@@ -47,6 +47,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     %ChannelCloseSoloTx{state: state}
   end
 
+  def create(state) do
+    %ChannelCloseSoloTx{state: state}
+  end
+
+  def sequence(%ChannelCloseSoloTx{state: state}) do
+    ChannelStateOffChain.sequence(state)
+  end
+
+  def channel_id(%ChannelCloseSoloTx{state: state}) do
+    ChannelStateOffChain.id(state)
+  end
+
   @doc """
   Checks transactions internal contents validity
   """
@@ -79,13 +91,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     accounts,
     channels,
     block_height,
-    %ChannelCloseSoloTx{state: state} = tx,
-    data_tx
+    %ChannelCloseSoloTx{state: state},
+    _data_tx
   ) do
     channel_id = ChannelStateOffChain.id(state)
     
-    #ChannelOffChainState.validate
-
     new_channels = Map.update!(channels, channel_id, fn channel ->
       ChannelStateOnChain.apply_offchain(channel, block_height, state)
     end)
@@ -108,7 +118,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     accounts,
     channels,
     _block_height,
-    %ChannelCloseSoloTx{state: state} = tx,
+    %ChannelCloseSoloTx{state: state},
     data_tx
   ) do
     sender = DataTx.main_sender(data_tx)

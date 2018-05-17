@@ -50,7 +50,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Checks transactions internal contents validity
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSettleTx{} = tx, data_tx) do
+  def validate(%ChannelSettleTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
     
     cond do
@@ -89,7 +89,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         Account.apply_transfer!(acc, block_height, channel.responder_amount)
       end)
 
-    new_channels = Map.pop(channels, channel_id)
+    new_channels = Map.drop(channels, [channel_id])
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -118,7 +118,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     channel = Map.get(channels, channel_id)
 
     cond do
-      AccountStateTree.get(accounts, sender).balance < 0 ->
+      AccountStateTree.get(accounts, sender).balance < fee ->
         {:error, "Negative sender balance"}
 
       channel == nil ->

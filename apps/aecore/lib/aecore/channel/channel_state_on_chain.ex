@@ -6,11 +6,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   require Logger
 
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
-  alias Aecore.Channel.Worker, as: Channel
   alias Aecore.Tx.DataTx
+  alias Aeutil.Hash
 
   @type t :: %ChannelStateOnChain{
     initiator_pubkey: Wallet.pubkey(),
@@ -66,7 +65,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   def id(initiator_pubkey, responder_pubkey, nonce) do
-    <<123>> #FIXME
+    bin = <<initiator_pubkey, nonce, responder_pubkey>>
+    Hash.hash_blake2b(bin)
   end
 
   def amounts(%ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount}) do [initiator_amount, responder_amount] end
@@ -103,7 +103,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
               slash_responder: ChannelStateOffChain.responder_amount(offchain_state)}
   end
 
-  def validate_withdraw(%ChannelStateOnChain{initiator_amount: initiator_amount} = channel, :initiator, amount) do
+  def validate_withdraw(%ChannelStateOnChain{initiator_amount: initiator_amount}, :initiator, amount) do
     if amount <= initiator_amount do
       :ok
     else
@@ -111,7 +111,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
-  def validate_withdraw(%ChannelStateOnChain{responder_amount: responder_amount} = channel, :responder, amount) do
+  def validate_withdraw(%ChannelStateOnChain{responder_amount: responder_amount}, :responder, amount) do
     if amount <= responder_amount do
       :ok
     else
@@ -131,7 +131,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{channel | responder_amount: responder_amount - amount}
   end
 
-  def validate_deposit(%ChannelStateOnChain{} = channel, :initiator, amount) do
+  def validate_deposit(%ChannelStateOnChain{}, :initiator, amount) do
     if amount > 0 do
       :ok
     else
@@ -139,7 +139,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
-  def validate_deposit(%ChannelStateOnChain{} = channel, :responder, amount) do
+  def validate_deposit(%ChannelStateOnChain{}, :responder, amount) do
     if amount > 0 do
       :ok
     else

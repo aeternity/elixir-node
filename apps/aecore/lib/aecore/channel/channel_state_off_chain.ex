@@ -66,7 +66,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     {:error, "Invalid signatures count"}
   end
 
-  def validate_update(prev_state, new_state, [initiator_pubkey, responder_pubkey], role) do
+  def validate_half_update(prev_state, new_state, [initiator_pubkey, responder_pubkey], role) do
     cond do
       new_state.sequence <= prev_state.sequence ->
         {:error, "Invalid sequence"}
@@ -92,6 +92,23 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
       true ->
         :ok
+    end
+  end
+
+  def validate_full_update(prev_state, new_state, pubkeys) do
+    cond do
+      new_state.sequence <= prev_state.sequence ->
+        {:error, "Invalid sequence"}
+
+      new_state.channel_id != prev_state.channel_id ->
+        {:error, "Different channel id"}
+        
+      prev_state.initiator_amount + prev_state.responder_amount 
+      != new_state.initiator_amount + new_state.responder_amount ->
+        {:error, "Invalid new total amount"}
+
+      true ->
+        validate(new_state, pubkeys)
     end
   end
 
@@ -136,7 +153,6 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     %ChannelStateOffChain{state | signatures: [initiator_sig, responder_sig]}
   end
 
-  #TODO validation
   def transfer(%ChannelStateOffChain{} = state, :initiator, amount) do
     transfer_amount(state, amount)
   end

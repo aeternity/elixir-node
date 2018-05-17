@@ -11,19 +11,22 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Naming.Naming
+  alias Aecore.Channels.Worker, as: Channels
 
   require Logger
 
   @type t :: %Chainstate{
           accounts: AccountStateTree.accounts_state(),
           oracles: Oracle.t(),
-          naming: Naming.state()
+          naming: Naming.state(),
+          channels: Channels.channels_onchain()
         }
 
   defstruct [
     :accounts,
     :oracles,
-    :naming
+    :naming,
+    :channels
   ]
 
   @spec init :: Chainstate.t()
@@ -31,7 +34,8 @@ defmodule Aecore.Chain.Chainstate do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
       :oracles => %{registered_oracles: %{}, interaction_objects: %{}},
-      :naming => Naming.init_empty()
+      :naming => Naming.init_empty(),
+      :channels => %{}
     }
   end
 

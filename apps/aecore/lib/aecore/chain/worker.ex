@@ -25,6 +25,9 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx}
+  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
@@ -253,6 +256,11 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
+  @spec channels() :: Channel.channels_onchain()
+  def channels do
+    GenServer.call(__MODULE__, :channels)
+  end
+
   @spec chain_state() :: %{
           :accounts => Chainstate.accounts(),
           :oracles => Oracle.t()
@@ -342,6 +350,7 @@ defmodule Aecore.Chain.Worker do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
+    Enum.each(new_block.txs, fn tx -> new_tx_notify(tx) end)
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
@@ -436,6 +445,15 @@ defmodule Aecore.Chain.Worker do
     {:reply, interaction_objects, state}
   end
 
+  def handle_call(
+        :channels,
+        _from,
+        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
+      ) do
+    channels = blocks_data_map[top_hash].chain_state.channels
+    {:reply, channels, state}
+  end
+
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
     {:reply, blocks_data_map, state}
   end
@@ -478,6 +496,19 @@ defmodule Aecore.Chain.Worker do
 
     {:noreply,
      %{state | blocks_data_map: blocks_data_map, top_hash: top_hash, top_height: top_height}}
+  end
+
+  def new_tx_notify(tx) do
+    case DataTx.payload(SignedTx.data_tx(tx)) do
+      %ChannelCreateTx{} ->
+        Channel.opened(tx)
+      %ChannelCloseMutalTx{} ->
+        Channel.closed(tx)
+      %ChannelCloseSoloTx{} ->
+        :ok #TODO Channel.slashed(tx)
+      _ ->
+        :ok
+    end
   end
 
   defp remove_old_block_data_from_map(block_map, top_hash) do

@@ -6,7 +6,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Channel.{ChannelStateOffChain, ChannelStateOnChain, ChannelStatePeer}
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx}
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx}
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
 
@@ -32,11 +32,23 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :channel_reserve
   ]
 
+  require Logger
+
   use ExConstructor
+
+  def role(%ChannelStatePeer{role: role}) do role end
+
+  def state(%ChannelStatePeer{highest_signed_state: state}) do state end
+
+  def id(peer_state) do
+    peer_state
+    |>state()
+    |>ChannelStateOffChain.id()
+  end
 
   def from_state(state, initiator_pubkey, responder_pubkey, channel_reserve, role) do
     %ChannelStatePeer{
-      fsm_state: :opened,
+      fsm_state: :open,
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
       role: role,
@@ -44,6 +56,26 @@ defmodule Aecore.Channel.ChannelStatePeer do
       highest_signed_state: state,
       channel_reserve: channel_reserve
     }
+  end
+
+  def from_open(open_tx, channel_reserve, role) do
+    data_tx = SignedTx.data_tx(open_tx)
+    open_tx = DataTx.payload(data_tx)
+    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+    id = ChannelStateOnChain.id(data_tx)
+    state = ChannelStateOffChain.create(
+      id,
+      0,
+      ChannelCreateTx.initiator_amount(open_tx),
+      ChannelCreateTx.responder_amount(open_tx)
+    )
+    from_state(state, initiator_pubkey, responder_pubkey, channel_reserve, role)
+  end
+
+  def from_open_and_state(open_tx, state, channel_reserve, role) do
+    data_tx = SignedTx.data_tx(open_tx)
+    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+    from_state(state, initiator_pubkey, responder_pubkey, channel_reserve, role)
   end
 
   def initialize(temporary_id, 
@@ -74,44 +106,76 @@ defmodule Aecore.Channel.ChannelStatePeer do
                   [initiator_pubkey, responder_pubkey],
                   fee,
                   nonce)
-    {:ok, half_signed_open_tx} = SignedTx.sign_tx(open_tx_data, initiator_pubkey, priv_key)
+
     new_peer_state = %ChannelStatePeer{peer_state |
       fsm_state: :helf_signed,
-      highest_state: zero_state,
-      highest_signed_state: zero_state #TODO Zero state should be considered signed
-    }
-
-    {:ok, new_peer_state, id, half_signed_open_tx}
-  end
-
-  def sign_open(%ChannelStatePeer{fsm_state: :initialized, role: :responder} = peer_state, half_signed_open_tx, priv_key) do
-    #TODO validation
-    initiator_pubkey = peer_state.initiator_pubkey
-    responder_pubkey = peer_state.responder_pubkey
-    nonce =
-      half_signed_open_tx
-      |> SignedTx.data_tx()
-      |> DataTx.nonce()
-    id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
-    initiator_amount = ChannelStateOffChain.initiator_amount(peer_state.highest_state)
-    responder_amount = ChannelStateOffChain.responder_amount(peer_state.highest_state)
-
-    zero_state = ChannelStateOffChain.create(id, 0, initiator_amount, responder_amount)
-    {:ok, fully_signed_open_tx} = SignedTx.sign_tx(half_signed_open_tx, responder_pubkey, priv_key)
-    new_peer_state = %ChannelStatePeer{peer_state |
-      fsm_state: :signed,
       highest_state: zero_state,
       highest_signed_state: zero_state
     }
 
-    {:ok, new_peer_state, id, fully_signed_open_tx}
+    with {:ok, half_signed_open_tx} <- SignedTx.sign_tx(open_tx_data, initiator_pubkey, priv_key) do
+      {:ok, new_peer_state, id, half_signed_open_tx}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def create_open(%ChannelStatePeer{}) do
+    {:error, "Invalid call"}
+  end
+
+  def sign_open(%ChannelStatePeer{fsm_state: :initialized, role: :responder, highest_state: our_state} = peer_state, half_signed_open_tx, priv_key) do
+    initiator_pubkey = peer_state.initiator_pubkey
+    responder_pubkey = peer_state.responder_pubkey
+    data_tx = SignedTx.data_tx(half_signed_open_tx)
+    nonce = DataTx.nonce(data_tx)
+    open_payload = DataTx.payload(data_tx)
+
+    id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
+    initiator_amount = ChannelStateOffChain.initiator_amount(our_state)
+    responder_amount = ChannelStateOffChain.responder_amount(our_state)
+
+    cond do
+      ChannelCreateTx.initiator_amount(open_payload) != initiator_amount ->
+        {:error, "Wrong initiator amount"}
+      
+      ChannelCreateTx.responder_amount(open_payload) != responder_amount ->
+        {:error, "Wrong responder amount"}
+
+      DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
+        {:error, "Wrong peers"}
+
+      true ->
+        zero_state = ChannelStateOffChain.create(id, 0, initiator_amount, responder_amount)
+        {:ok, fully_signed_open_tx} = SignedTx.sign_tx(half_signed_open_tx, responder_pubkey, priv_key)
+        new_peer_state = %ChannelStatePeer{peer_state |
+          fsm_state: :signed,
+          highest_state: zero_state,
+          highest_signed_state: zero_state
+        }
+        {:ok, new_peer_state, id, fully_signed_open_tx}
+    end
+  end
+
+  def sign_open(%ChannelStatePeer{}) do
+    {:error, "Invalid call"}
   end
 
   def opened(%ChannelStatePeer{fsm_state: :signed} = peer_state) do
-    %ChannelStatePeer{peer_state | fsm_state: :opened}
+    %ChannelStatePeer{peer_state | fsm_state: :open}
   end
 
-  def transfer(%ChannelStatePeer{fsm_state: :opened, highest_state: highest_state, role: role} = peer_state, amount, priv_key) do
+  def opened(%ChannelStatePeer{fsm_state: :half_signed} = peer_state) do
+    %ChannelStatePeer{peer_state | fsm_state: :open}
+  end
+
+  def opened(%ChannelStatePeer{} = state) do
+    Logger.warn("Unexpected 'opened' call")
+    state
+  end
+
+  def transfer(%ChannelStatePeer{fsm_state: :open, highest_state: highest_state, role: role} = peer_state, amount, priv_key) do
     {:ok, new_state} = ChannelStateOffChain.transfer(highest_state, role, amount)
     new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key) 
 
@@ -123,39 +187,67 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:ok, new_peer_state, new_state_signed}
   end
 
-  def recv_state(%ChannelStatePeer{fsm_state: :opened, highest_signed_state: prev_state} = peer_state, new_state, priv_key) do
-    pubkeys = [peer_state.initiator_pubkey, peer_state.responder_pubkey]
-    with :ok <- ChannelStateOffChain.validate_update(prev_state, new_state, pubkeys, peer_state.role) do
-      signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
-      new_peer_state = %ChannelStatePeer{peer_state |
-        highest_signed_state: signed_new_state,
-        highest_state: signed_new_state
-      }
+  def transfer(%ChannelStatePeer{} = state) do
+    {:error, "Can't transfer now; channel state is #{state.fsm_state}"}
+  end
 
-      {:ok, new_peer_state, signed_new_state}
+  def recv_state(%ChannelStatePeer{fsm_state: :open} = peer_state, new_state, priv_key) do
+    with {:ok, new_peer_state, nil} <- recv_full_state(peer_state, new_state) do
+      {:ok, new_peer_state, nil}
+    else
+      {:error, _reason} ->
+        recv_half_state(peer_state, new_state, priv_key)
+    end
+  end
+
+  def recv_state(%ChannelStatePeer{fsm_state: :update} = peer_state, new_state, _priv_key) do
+    recv_full_state(peer_state, new_state)
+  end
+
+  def recv_state(%ChannelStatePeer{} = state) do
+    {:error, "Can't receive state now; channel state is #{state.fsm_state}"}
+  end
+
+  defp recv_full_state(%ChannelStatePeer{highest_signed_state: highest_signed_state, highest_state: highest_state} = peer_state, new_state) do
+    pubkeys = [peer_state.initiator_pubkey, peer_state.responder_pubkey]
+
+    with :ok <- ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
+      if ChannelStateOffChain.sequence(highest_state) <= ChannelStateOffChain.sequence(new_state) do
+        {:ok, %ChannelStatePeer{peer_state |
+          fsm_state: :open,
+          highest_signed_state: new_state,
+          highest_state: new_state
+        }, nil}
+      else
+        {:ok, %ChannelStatePeer{peer_state |
+          highest_signed_state: new_state
+        }, nil}
+      end
     else
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  def recv_state(%ChannelStatePeer{fsm_state: :update, highest_state: prev_state} = peer_state, new_state, _priv_key) do
-    initiator_pubkey = peer_state.initiator_pubkey
-    responder_pubkey = peer_state.responder_pubkey
+  defp recv_half_state(%ChannelStatePeer{highest_signed_state: prev_state} = peer_state, new_state, priv_key) do
+    pubkeys = [peer_state.initiator_pubkey, peer_state.responder_pubkey]
 
-    cond do
-      !ChannelStateOffChain.equal?(prev_state, new_state) ->
-        {:error, "received state is different then it should be"}
+    with :ok <- ChannelStateOffChain.validate_half_update(prev_state, new_state, pubkeys, peer_state.role) do
+      signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
+      new_peer_state = %ChannelStatePeer{peer_state |
+        highest_signed_state: signed_new_state,
+        highest_state: signed_new_state
+      }
       
-      !ChannelStateOffChain.validate(new_state, [initiator_pubkey, responder_pubkey])->
-        {:error, "received state is invalid"}
-
-      true ->
-        {:ok, %ChannelStatePeer{peer_state |
-          fsm_state: :opened,
-          highest_signed_state: new_state,
-          highest_state: new_state
-        }, nil}
+      with :ok <- ChannelStateOffChain.validate(signed_new_state, pubkeys) do
+        {:ok, new_peer_state, signed_new_state}
+      else
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -175,13 +267,17 @@ defmodule Aecore.Channel.ChannelStatePeer do
         fee,
         nonce
       )
-    {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, my_pubkey(state), priv_key)
+    {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, my_pubkey(peer_state), priv_key)
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
     
     {:ok, new_peer_state, close_signed_tx}
   end
 
-  def recv_close_tx(%ChannelStatePeer{fsm_state: :opened, highest_signed_state: state} = peer_state, half_signed_tx, priv_key) do
+  def close(%ChannelStatePeer{} = state) do
+    {:error, "Can't close now; channel state is #{state.fsm_state}"}
+  end
+
+  def recv_close_tx(%ChannelStatePeer{fsm_state: :open, highest_signed_state: state} = peer_state, half_signed_tx, priv_key) do
     initiator_pubkey = peer_state.initiator_pubkey
     responder_pubkey = peer_state.responder_pubkey
     data_tx = SignedTx.data_tx(half_signed_tx)
@@ -207,15 +303,48 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
+  def recv_close_tx(%ChannelStatePeer{} = state) do
+    {:error, "Can't receive close tx now; channel state is #{state.fsm_state}"}
+  end
+
   def closed(%ChannelStatePeer{} = peer_state) do
     %ChannelStatePeer{peer_state | fsm_state: :closed}
+  end
+
+  def slash(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, fee, nonce, priv_key) do
+    new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+    
+    data = DataTx.init(
+      ChannelCloseSoloTx,
+      %{state: our_state},
+      my_pubkey(peer_state),
+      fee,
+      nonce)
+
+    {:ok, our_slash_tx} = SignedTx.sign_tx(data, my_pubkey(peer_state), priv_key)
+    {:ok, new_peer_state, our_slash_tx}
+  end
+
+  def slashed(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, slash_tx, fee, nonce, priv_key) do
+    slash_sequence =
+      slash_tx
+      |> SignedTx.data_tx()
+      |> DataTx.payload()
+      |> ChannelCloseSoloTx.sequence()
+
+    if slash_sequence < ChannelStateOffChain.sequence(our_state) do
+      slash(peer_state, fee, nonce, priv_key)
+    else
+      new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+      {:ok, new_peer_state, nil}
+    end
   end
 
   def my_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
     pubkey
   end
 
-  def my_pubkey(%ChannelStatePeer{role: :repsonder, responder_pubkey: pubkey}) do
+  def my_pubkey(%ChannelStatePeer{role: :responder, responder_pubkey: pubkey}) do
     pubkey
   end
 

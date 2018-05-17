@@ -52,6 +52,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     %ChannelCreateTx{initiator_amount: initiator_amount, responder_amount: responder_amount, locktime: locktime}
   end
 
+  def initiator_amount(%ChannelCreateTx{initiator_amount: initiator_amount}) do initiator_amount end 
+  
+  def responder_amount(%ChannelCreateTx{responder_amount: responder_amount}) do responder_amount end 
+
   @doc """
   Checks transactions internal contents validity
   """
@@ -102,8 +106,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         Account.apply_transfer!(acc, block_height, tx.responder_amount * -1)
       end)
 
-    channel = ChannelStateOnChain.create(initiator_pubkey, responder_pubkey, tx.initiator_amount, tx.responder_amount, tx.lock_time)
-    channel_id = get_id(initiator_pubkey, responder_pubkey, nonce)
+    channel = ChannelStateOnChain.create(initiator_pubkey, responder_pubkey, tx.initiator_amount, tx.responder_amount, tx.locktime)
+    channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     new_channels = Map.put(channels, channel_id, channel)
 
@@ -139,7 +143,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       AccountStateTree.get(accounts, responder_pubkey).balance - tx.responder_amount < 0 ->
         {:error, "Negative responder balance"}
 
-      Map.has_key?(channels, get_id(initiator_pubkey, responder_pubkey, nonce)) ->
+      Map.has_key?(channels, ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)) ->
         {:error, "Channel already exists"}
 
       true ->
@@ -158,7 +162,4 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  defp get_id(initiator_pubkey, responder_pubkey, nonce) do
-    <<123>> #TODO implement
-  end
 end

@@ -89,7 +89,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     channels,
     block_height,
     %ChannelWithdrawTx{} = tx,
-    data_tx
+    _data_tx
   ) do
     
     #ChannelOffChainState.validate
@@ -117,7 +117,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           DataTx.t()) 
   :: :ok
   def preprocess_check(
-    accounts,
+    _accounts,
     channels,
     _block_height,
     %ChannelWithdrawTx{} = tx,
