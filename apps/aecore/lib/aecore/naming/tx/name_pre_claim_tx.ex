@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -23,7 +23,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NamePreClaimTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %NamePreClaimTx{
@@ -92,7 +92,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
     commitment = Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
 
-    updated_naming_chainstate = Map.put(naming_state, tx.commitment, commitment)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment, commitment)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end

@@ -8,14 +8,14 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
 
   require Logger
 
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: OracleStateTree.oracles_state()
-  @type naming :: Naming.state()
+  @type naming :: NamingStateTree.namings_state()
 
   @type t :: %Chainstate{
           accounts: accounts(),
@@ -34,7 +34,7 @@ defmodule Aecore.Chain.Chainstate do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
       :oracles => OracleStateTree.init_empty(),
-      :naming => Naming.init_empty()
+      :naming => NamingStateTree.init_empty()
     }
   end
 

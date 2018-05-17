@@ -658,28 +658,14 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp get_persist_strategy(:to_chainstate) do
-    fn
-      {key = :accounts, root_hash}, acc_state ->
-        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
-
-      {key = :oracles, root_hash}, acc_state ->
-        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
-
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+    fn {key, root_hash}, acc_state ->
+      Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
     end
   end
 
   defp get_persist_strategy(:from_chainstate) do
-    fn
-      {key = :accounts, value}, acc_state ->
-        Map.put(acc_state, key, value.root_hash)
-
-      {key = :oracles, value}, acc_state ->
-        Map.put(acc_state, key, value.root_hash)
-
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+    fn {key, value}, acc_state ->
+      Map.put(acc_state, key, value.root_hash)
     end
   end
 end
