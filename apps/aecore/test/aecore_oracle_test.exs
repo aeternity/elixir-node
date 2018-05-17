@@ -94,9 +94,9 @@ defmodule AecoreOracleTest do
     Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+    IO.inspect(Chain.registered_oracles())
     # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
-    IO.inspect({oracle,"----", Chain.registered_oracles})
     assert oracle.expires == 15
 
     assert Chain.top_height() ==
