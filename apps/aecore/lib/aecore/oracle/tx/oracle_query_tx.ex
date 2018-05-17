@@ -12,14 +12,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type id :: binary()
 
@@ -71,8 +66,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     }
   end
 
-  @spec is_valid?(OracleQueryTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(
+  @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(
         %OracleQueryTx{
           query_ttl: query_ttl,
           response_ttl: response_ttl,
@@ -84,38 +79,33 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
-        Logger.error("Invalid query ttl")
-        false
+        {:error, "#{__MODULE__}: Invalid query ttl"}
 
       !Oracle.ttl_is_valid?(response_ttl) ->
-        Logger.error("Invalid response ttl")
-        false
+        {:error, "#{__MODULE__}: Invalid response ttl"}
 
       !match?(%{type: :relative}, response_ttl) ->
-        Logger.error("Invalid ttl type")
-        false
+        {:error, "#{__MODULE__}: Invalid ttl type"}
 
       !Wallet.key_size_valid?(oracle_address) ->
-        Logger.error("oracle_adddress size invalid")
-        false
+        {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
-          tx_type_state(),
+          Oracle.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+  def process_chainstate(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
@@ -135,11 +125,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     updated_interaction_objects =
       Map.put(interaction_objects, interaction_object_id, %{
-        query: tx,
-        query_height_included: block_height,
-        query_sender: sender,
-        response: nil,
-        response_height_included: nil
+        sender_address: sender,
+        sender_nonce: nonce,
+        oracle_address: tx.oracle_address,
+        query: tx.query_data,
+        has_response: false,
+        response: :undefined,
+        expires: Oracle.calculate_absolute_ttl(tx.query_ttl, block_height),
+        response_ttl: tx.response_ttl.ttl,
+        fee: tx.query_fee
       })
 
     updated_oracle_state = %{
@@ -147,17 +141,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_state, updated_oracle_state}
+    {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
         ) :: :ok
-  def preprocess_check!(
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
         block_height,
@@ -169,25 +163,27 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - tx.query_fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        throw({:error, "Invalid transaction TTL"})
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
       !Map.has_key?(registered_oracles, tx.oracle_address) ->
-        throw({:error, "No oracle registered with that address"})
+        {:error, "#{__MODULE__}: No oracle registered with the address:
+         #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
-        registered_oracles[tx.oracle_address].tx.query_format,
+        registered_oracles[tx.oracle_address].query_format,
         tx.query_data
       ) ->
-        throw({:error, "Invalid query data"})
+        {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
-      tx.query_fee < registered_oracles[tx.oracle_address].tx.query_fee ->
-        throw({:error, "Query fee lower than the one required by the oracle"})
+      tx.query_fee < registered_oracles[tx.oracle_address].query_fee ->
+        {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
+         lower than the one required by the oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok
@@ -213,8 +209,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
-    tx_query_fee_is_met =
-      tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].tx.query_fee
+    tx_query_fee_is_met = tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].query_fee
 
     tx_fee_is_met =
       case tx.query_ttl do
@@ -250,7 +245,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   def base58c_decode(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()

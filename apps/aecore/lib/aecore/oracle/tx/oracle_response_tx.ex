@@ -10,13 +10,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-
-  require Logger
-
-  @type tx_type_state :: Chainstate.oracles()
 
   @type payload :: %{
           query_id: binary(),
@@ -45,21 +40,19 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec is_valid?(OracleResponseTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleResponseTx{query_id: query_id}, data_tx) do
+  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       byte_size(query_id) != get_query_id_size() ->
-        Logger.error("Wrong query_id size")
-        false
+        {:error, "#{__MODULE__}: Wrong query_id size"}
 
       true ->
-        true
+        :ok
     end
   end
 
@@ -68,14 +61,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
-          tx_type_state(),
+          Oracle.oracles(),
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+  def process_chainstate(
         accounts,
         %{interaction_objects: interaction_objects} = oracle_state,
         block_height,
@@ -85,7 +78,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     sender = DataTx.main_sender(data_tx)
 
     interaction_object = interaction_objects[tx.query_id]
-    query_fee = interaction_object.query.query_fee
+    query_fee = interaction_object.fee
 
     updated_accounts_state =
       accounts
@@ -97,7 +90,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       Map.put(interaction_objects, tx.query_id, %{
         interaction_object
         | response: tx.response,
-          response_height_included: block_height
+          expires: interaction_object.expires + interaction_object.response_ttl,
+          has_response: true
       })
 
     updated_oracle_state = %{
@@ -105,17 +99,17 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       | interaction_objects: updated_interaction_objects
     }
 
-    {updated_accounts_state, updated_oracle_state}
+    {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-        ) :: :ok
-  def preprocess_check!(
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles, interaction_objects: interaction_objects},
         _block_height,
@@ -127,28 +121,28 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Sender isn't a registered operator"})
+        {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
-        registered_oracles[sender].tx.response_format,
+        registered_oracles[sender].response_format,
         tx.response
       ) ->
-        throw({:error, "Invalid response data"})
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !Map.has_key?(interaction_objects, tx.query_id) ->
-        throw({:error, "No query with that ID"})
+        {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
-      interaction_objects[tx.query_id].response != nil ->
-        throw({:error, "Query already answered"})
+      interaction_objects[tx.query_id].response != :undefined ->
+        {:error, "#{__MODULE__}: Query already answered"}
 
-      interaction_objects[tx.query_id].query.oracle_address != sender ->
-        throw({:error, "Query references a different oracle"})
+      interaction_objects[tx.query_id].oracle_address != sender ->
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
-        throw({:error, "Fee too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok
@@ -168,8 +162,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
-    referenced_query_response_ttl =
-      Chain.oracle_interaction_objects()[tx.query_id].query.response_ttl.ttl
+    referenced_query_response_ttl = Chain.oracle_interaction_objects()[tx.query_id].response_ttl
 
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end

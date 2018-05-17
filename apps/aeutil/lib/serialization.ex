@@ -9,6 +9,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
@@ -17,6 +18,8 @@ defmodule Aeutil.Serialization do
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
+
+  @type value :: list() | map() | atom() | binary()
 
   @type raw_data :: %{
           block_hash: binary(),
@@ -29,7 +32,7 @@ defmodule Aeutil.Serialization do
           txs_hash: binary(),
           type: atom()
         }
-  @spec block(Block.t() | map(), :serialize | :deserialize) :: map | Block.t()
+  @spec block(Block.t() | map(), :serialize | :deserialize) :: map() | Block.t()
   def block(block, :serialize) do
     serialized_header = serialize_value(block.header)
     serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
@@ -95,7 +98,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec pack_binary(term()) :: map()
+  @spec pack_binary(term()) :: binary()
   def pack_binary(term) do
     term
     |> remove_struct()
@@ -106,11 +109,11 @@ defmodule Aeutil.Serialization do
   Loops through a structure are simplifies it. Removes all the strucutured maps
   """
   @spec remove_struct(list()) :: list()
-  @spec remove_struct(map()) :: map()
   def remove_struct(term) when is_list(term) do
     for elem <- term, do: remove_struct(elem)
   end
 
+  @spec remove_struct(map()) :: map()
   def remove_struct(term) when is_map(term) do
     if Map.has_key?(term, :__struct__) do
       term
@@ -128,7 +131,7 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of serializing a strucure
   """
-  @spec serialize_value(any()) :: any()
+  @spec serialize_value(value()) :: value()
   def serialize_value(value), do: serialize_value(value, "")
 
   @doc """
@@ -173,6 +176,9 @@ defmodule Aeutil.Serialization do
       :receiver ->
         Account.base58c_encode(value)
 
+      :target ->
+        Account.base58c_encode(value)
+
       :oracle_address ->
         Account.base58c_encode(value)
 
@@ -187,6 +193,15 @@ defmodule Aeutil.Serialization do
 
       :proof ->
         base64_binary(value, :serialize)
+
+      :commitment ->
+        Naming.base58c_encode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :serialize)
+
+      :hash ->
+        Naming.base58c_encode_hash(value)
 
       _ ->
         value
@@ -206,22 +221,22 @@ defmodule Aeutil.Serialization do
   @doc """
   Initializing function to the recursive functionality of deserializing a strucure
   """
-  @spec deserialize_value(any()) :: any()
-  def deserialize_value(value), do: deserialize_value(value, "")
+  @spec deserialize_value(value()) :: value()
+  def deserialize_value(value), do: deserialize_value(value, :other)
 
   @doc """
   Loops recursively through a given serialized structure, converts the keys to atoms
   and decodes the encoded binary values
   """
-  @spec deserialize_value(list()) :: list()
-  @spec deserialize_value(map()) :: map()
-  @spec deserialize_value(binary()) :: binary() | atom()
+  @spec deserialize_value(nil, atom()) :: nil
   def deserialize_value(nil, _), do: nil
 
+  @spec deserialize_value(list(), atom()) :: list()
   def deserialize_value(value, type) when is_list(value) do
     for elem <- value, do: deserialize_value(elem, type)
   end
 
+  @spec deserialize_value(map(), atom()) :: map()
   def deserialize_value(value, _) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, val}, new_value ->
       case key do
@@ -232,11 +247,12 @@ defmodule Aeutil.Serialization do
           Map.put(new_value, :root_hash, deserialize_value(val, :root_hash))
 
         _ ->
-          Map.put(new_value, Parser.to_atom!(key), deserialize_value(val, Parser.to_atom!(key)))
+          Map.put(new_value, Parser.to_atom(key), deserialize_value(val, Parser.to_atom(key)))
       end
     end)
   end
 
+  @spec deserialize_value(binary(), atom()) :: binary() | atom()
   def deserialize_value(value, type) when is_binary(value) do
     case type do
       :root_hash ->
@@ -263,6 +279,9 @@ defmodule Aeutil.Serialization do
       :query_id ->
         OracleQueryTx.base58c_decode(value)
 
+      :target ->
+        Account.base58c_decode(value)
+
       :signature ->
         base64_binary(value, :deserialize)
 
@@ -272,8 +291,20 @@ defmodule Aeutil.Serialization do
       :proof ->
         base64_binary(value, :deserialize)
 
+      :commitment ->
+        Naming.base58c_decode_commitment(value)
+
+      :name_salt ->
+        base64_binary(value, :deserialize)
+
+      :hash ->
+        Naming.base58c_decode_hash(value)
+
+      :name ->
+        value
+
       _ ->
-        Parser.to_atom!(value)
+        Parser.to_atom(value)
     end
   end
 

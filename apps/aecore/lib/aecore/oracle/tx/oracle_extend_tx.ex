@@ -32,32 +32,30 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec is_valid?(OracleExtendTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%OracleExtendTx{ttl: ttl}, data_tx) do
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       ttl <= 0 ->
-        Logger.error("Invalid ttl")
-        false
+        {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
-  @spec process_chainstate!(
+  @spec process_chainstate(
           ChainState.account(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
         ) :: {ChainState.accounts(), Oracle.oracles()}
-  def process_chainstate!(
+  def process_chainstate(
         accounts,
         oracle_state,
         _block_height,
@@ -69,21 +67,21 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     updated_oracle_state =
       update_in(
         oracle_state,
-        [:registered_oracles, sender, :tx, Access.key(:ttl), :ttl],
+        [:registered_oracles, sender, :expires],
         &(&1 + tx.ttl)
       )
 
-    {accounts, updated_oracle_state}
+    {:ok, {accounts, updated_oracle_state}}
   end
 
-  @spec preprocess_check!(
+  @spec preprocess_check(
           ChainState.accounts(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok
-  def preprocess_check!(
+  def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
         _block_height,
@@ -95,13 +93,13 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        throw({:error, "Negative balance"})
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Map.has_key?(registered_oracles, sender) ->
-        throw({:error, "Account isn't a registered operator"})
+        {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
-        throw({:error, "Fee is too low"})
+        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok

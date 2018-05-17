@@ -27,12 +27,15 @@ defmodule Aecore.Wallet.Worker do
   end
 
   def init(state) do
-    :ok =
-      get_aewallet_dir()
-      |> File.mkdir()
-      |> has_wallet(get_aewallet_dir())
+    case get_aewallet_dir()
+         |> File.mkdir()
+         |> has_wallet(get_aewallet_dir()) do
+      :ok ->
+        {:ok, state}
 
-    {:ok, state}
+      {:error, reason} ->
+        {:stop, "Failed due to #{reason} error.."}
+    end
   end
 
   @doc """
@@ -99,6 +102,13 @@ defmodule Aecore.Wallet.Worker do
   @spec get_private_key(String.t(), String.t(), opts()) :: binary()
   def get_private_key(derivation_path, password, network) do
     GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
+  end
+
+  @spec to_public_key(privkey()) :: pubkey()
+  def to_public_key(priv_key) when byte_size(priv_key) == 32 do
+    priv_key
+    |> KeyPair.generate_pub_key()
+    |> KeyPair.compress()
   end
 
   ## Server Callbacks
@@ -195,8 +205,9 @@ defmodule Aecore.Wallet.Worker do
     end
   end
 
+  @spec has_wallet(tuple(), String.t()) :: {:error, String.t()}
   defp has_wallet({:error, reason}, _path) do
-    throw("Failed due to #{reason} error..")
+    {:error, reason}
   end
 
   @spec create_wallet(String.t()) :: :ok

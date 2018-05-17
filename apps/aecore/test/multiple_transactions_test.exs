@@ -50,10 +50,7 @@ defmodule MultipleTransactionsTest do
     {account4_pub_key, _account4_priv_key} = account4
 
     :ok = Miner.mine_sync_block_to_chain()
-    Pool.get_and_empty_pool()
-
     :ok = Miner.mine_sync_block_to_chain()
-    Pool.get_and_empty_pool()
 
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
 
@@ -63,6 +60,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
     assert %{} == Pool.get_and_empty_pool()
+    assert 100 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
     signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)
@@ -150,6 +148,7 @@ defmodule MultipleTransactionsTest do
   @tag :multiple_transaction
   test "in one block, miner collects all the fees from the transactions", setup do
     Chain.clear_state()
+    Pool.get_and_empty_pool()
 
     account = setup.account
     account2 = setup.account2

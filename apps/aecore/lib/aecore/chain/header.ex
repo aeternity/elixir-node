@@ -40,7 +40,7 @@ defmodule Aecore.Chain.Header do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: Header
+        ) :: Header.t()
 
   def create(height, prev_hash, txs_hash, root_hash, target, nonce, version, time) do
     %Header{
@@ -63,7 +63,7 @@ defmodule Aecore.Chain.Header do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 end

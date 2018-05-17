@@ -30,7 +30,7 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Find a nonce
   """
-  @spec generate(map()) :: {:ok, map()}
+  @spec generate(map()) :: {:ok, map()} | error :: term()
   def generate(%{} = header), do: process(:generate, header)
 
   ### =============================================================================
@@ -65,7 +65,7 @@ defmodule Aecore.Pow.Cuckoo do
 
     cmd =
       case process do
-        :generate -> [exe, size, " -h ", hash, " -n ", nonce]
+        :generate -> [exe, " -h ", hash, " -n ", nonce]
         :verify -> ["./verify", size, " -h ", hash, " -n ", nonce]
       end
 
@@ -127,7 +127,7 @@ defmodule Aecore.Pow.Cuckoo do
         wait_for_result(process, msg <> buff)
 
       {:stderr, _os_pid, msg} ->
-        Logger.error("[Cuckoo] stderr: #{inspect(msg)}")
+        Logger.error("#{__MODULE__}: stderr: #{inspect(msg)}")
         {:error, :miner_was_stopped}
 
       {:EXIT, _pid, :shutdown} ->
@@ -138,7 +138,7 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
 
       any ->
-        Logger.error("[Cuckoo] Unexpeted error : #{inspect(any)}")
+        Logger.error("#{__MODULE__}: Unexpeted error : #{inspect(any)}")
         exit(:kill)
     end
   end
@@ -160,7 +160,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_response(%{error: error} = builder) when error != nil do
-    Logger.error("[Cuckoo] Unexpected error: #{inspect(error)}")
+    Logger.error("#{__MODULE__}: Unexpected error: #{inspect(error)}")
     {:error, %{builder | error: error}}
   end
 

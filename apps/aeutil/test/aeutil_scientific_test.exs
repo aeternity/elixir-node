@@ -16,4 +16,8 @@ defmodule AeutilScientificTest do
     assert 256 == Scientific.scientific_to_integer(0x02010000)
     assert 257 == Scientific.scientific_to_integer(0x02010100)
   end
+
+  test "target to difficulty" do
+    assert 1.0 == Scientific.target_to_difficulty(553_713_663)
+  end
 end

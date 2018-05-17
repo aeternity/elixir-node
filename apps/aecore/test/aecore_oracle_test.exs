@@ -15,6 +15,7 @@ defmodule AecoreOracleTest do
     on_exit(fn ->
       Persistence.delete_all_blocks()
       Chain.clear_state()
+      Pool.get_and_empty_pool()
       :ok
     end)
   end
@@ -23,8 +24,10 @@ defmodule AecoreOracleTest do
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == true
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
@@ -66,12 +69,15 @@ defmodule AecoreOracleTest do
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Chain.registered_oracles()) == false
     query_oracle(:invalid, :address)
     query_oracle(:invalid, :query_data)
     query_oracle(:invalid, :query_fee)
     query_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.oracle_interaction_objects()) == true
+
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
@@ -82,11 +88,26 @@ defmodule AecoreOracleTest do
     assert Chain.oracle_interaction_objects()
            |> Map.values()
            |> Enum.map(fn object -> object.response end)
-           |> Enum.all?(fn response -> response == nil end)
+           |> Enum.all?(fn response -> response == :undefined end)
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
+
+    assert Chain.oracle_interaction_objects()
+           |> Map.values()
+           |> Enum.map(fn object -> object.response end)
+           |> Enum.all?(fn response -> response != :undefined end)
+
+    Chain.clear_state()
+    register_oracle(:valid)
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Oracle.extend(3, 10)
+    Miner.mine_sync_block_to_chain()
     # Check for last_updated
+    oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
+    assert oracle.expires == 15
+
     assert Chain.top_height() ==
              Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
@@ -180,7 +201,7 @@ defmodule AecoreOracleTest do
   def get_ttl(validity) do
     case validity do
       :valid ->
-        %{ttl: 5, type: :relative}
+        %{ttl: 10, type: :relative}
 
       :invalid ->
         %{ttl: 1, type: :absolute}

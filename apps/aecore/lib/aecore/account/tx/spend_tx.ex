@@ -25,7 +25,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @type tx_type_state() :: map()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
@@ -46,8 +46,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @callback get_chain_state_name :: atom() | nil
-  def get_chain_state_name, do: nil
+  @spec get_chain_state_name() :: :none
+  def get_chain_state_name, do: :none
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{receiver: receiver, amount: amount}) do
@@ -57,43 +57,39 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec is_valid?(SpendTx.t(), DataTx.t()) :: boolean()
-  def is_valid?(%SpendTx{receiver: receiver} = tx, data_tx) do
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       tx.amount < 0 ->
-        Logger.error("The amount cannot be a negative number")
-        false
+        {:error, "#{__MODULE__}: The amount cannot be a negative number"}
 
       tx.version != get_tx_version() ->
-        Logger.error("Invalid version")
-        false
+        {:error, "#{__MODULE__}: Invalid version"}
 
       !Wallet.key_size_valid?(receiver) ->
-        Logger.error("Wrong receiver key size")
-        false
+        {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       length(senders) != 1 ->
-        Logger.error("Invalid senders number")
-        false
+        {:error, "#{__MODULE__}: Invalid senders number"}
 
       true ->
-        true
+        :ok
     end
   end
 
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
-  @spec process_chainstate!(
-          ChainState.account(),
+  @spec process_chainstate(
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), tx_type_state()}
-  def process_chainstate!(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
+        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.main_sender(data_tx)
 
     new_accounts =
@@ -105,25 +101,25 @@ defmodule Aecore.Account.Tx.SpendTx do
         Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 
-    {new_accounts, %{}}
+    {:ok, {new_accounts, %{}}}
   end
 
   @doc """
   Checks whether all the data is valid according to the SpendTx requirements,
   before the transaction is executed.
   """
-  @spec preprocess_check!(
-          ChainState.accounts(),
+  @spec preprocess_check(
+          ChainState.account(),
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
           DataTx.t()
-        ) :: :ok
-  def preprocess_check!(accounts, %{}, _block_height, tx, data_tx) do
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
     if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
-      throw({:error, "Negative balance"})
+      {:error, "#{__MODULE__}: Negative balance"}
     else
       :ok
     end

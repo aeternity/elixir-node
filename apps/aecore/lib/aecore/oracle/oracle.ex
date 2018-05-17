@@ -39,7 +39,7 @@ defmodule Aecore.Oracle.Oracle do
           }
         }
 
-  @type oracles :: %{
+  @type t :: %{
           registered_oracles: registered_oracles(),
           interaction_objects: interaction_objects()
         }
@@ -153,7 +153,7 @@ defmodule Aecore.Oracle.Oracle do
         true
 
       {:error, [{message, _}]} ->
-        Logger.error(fn -> message end)
+        Logger.error(fn -> "#{__MODULE__}: " <> message end)
         false
     end
   end
@@ -185,7 +185,7 @@ defmodule Aecore.Oracle.Oracle do
         response_ttl_is_valid =
           case tx.response_ttl do
             %{type: :absolute} ->
-              Logger.error("Response TTL has to be relative")
+              Logger.error("#{__MODULE__}: Response TTL has to be relative")
               false
 
             %{type: :relative} ->
@@ -214,7 +214,7 @@ defmodule Aecore.Oracle.Oracle do
         ttl > 0
 
       _ ->
-        Logger.error("Invalid TTL definition")
+        Logger.error("#{__MODULE__}: Invalid TTL definition")
         false
     end
   end
@@ -222,12 +222,10 @@ defmodule Aecore.Oracle.Oracle do
   def remove_expired_oracles(chain_state, block_height) do
     Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
                                                                          %{
-                                                                           tx: tx,
-                                                                           height_included:
-                                                                             height_included
+                                                                           expires: expiry_height
                                                                          }},
                                                                         acc ->
-      if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
+      if expiry_height <= block_height do
         acc
         |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
         |> elem(1)
@@ -245,50 +243,25 @@ defmodule Aecore.Oracle.Oracle do
 
     Enum.reduce(interaction_objects, chain_state, fn {query_id,
                                                       %{
-                                                        query: query,
-                                                        query_sender: query_sender,
-                                                        response: response,
-                                                        query_height_included:
-                                                          query_height_included,
-                                                        response_height_included:
-                                                          response_height_included
+                                                        sender_address: sender_address,
+                                                        has_response: has_response,
+                                                        expires: expires,
+                                                        fee: fee
                                                       }},
                                                      acc ->
-      query_absolute_ttl =
-        calculate_absolute_ttl(
-          query.query_ttl,
-          query_height_included
-        )
+      if expires <= block_height do
+        updated_state =
+          acc
+          |> pop_in([:oracles, :interaction_objects, query_id])
+          |> elem(1)
 
-      query_has_expired = query_absolute_ttl <= block_height && response == nil
-
-      response_has_expired =
-        if response != nil do
-          response_absolute_ttl =
-            calculate_absolute_ttl(query.query_ttl, response_height_included)
-
-          response_absolute_ttl <= block_height
+        if has_response do
+          updated_state
         else
-          false
+          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
         end
-
-      cond do
-        query_has_expired ->
-          acc
-          |> update_in(
-            [:accounts, query_sender, :balance],
-            &(&1 + query.query_fee)
-          )
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
-
-        response_has_expired ->
-          acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
-
-        true ->
-          acc
+      else
+        acc
       end
     end)
   end

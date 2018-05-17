@@ -155,11 +155,13 @@ defmodule Aecore.Peers.Worker do
 
   def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
     if Map.has_key?(peers, uri) do
-      Logger.info(fn -> "Removed #{uri} from the peer list" end)
+      Logger.info(fn -> "#{__MODULE__}: Removed #{uri} from the peer list" end)
       {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
     else
-      Logger.error(fn -> "#{uri} is not in the peer list" end)
-      {:reply, {:error, "Peer not found"}, %{state | peers: peers}}
+      Logger.error(fn -> "#{__MODULE__}: #{uri} is not in the peer list" end)
+
+      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} not found"},
+       %{state | peers: peers}}
     end
   end
 
@@ -200,7 +202,7 @@ defmodule Aecore.Peers.Worker do
 
     if removed_peers_count > 0 do
       Logger.info(fn ->
-        "#{removed_peers_count} peers were removed after the check"
+        "#{__MODULE__}: #{removed_peers_count} peers were removed after the check"
       end)
     end
 
@@ -222,7 +224,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast(any, state) do
-    Logger.info("[Peers] Unhandled cast message:  #{inspect(any)}")
+    Logger.info("#{__MODULE__}: Unhandled cast message:  #{inspect(any)}")
     {:noreply, state}
   end
 
@@ -238,20 +240,20 @@ defmodule Aecore.Peers.Worker do
 
     if state_has_uri do
       Logger.debug(fn ->
-        "Skipped adding #{uri}, already known"
+        "#{__MODULE__}: Skipped adding #{uri}, already known"
       end)
 
-      {:reply, {:error, "Peer already known"}, state}
+      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} already known"}, state}
     else
       case check_peer(uri, get_peer_nonce()) do
         {:ok, info} ->
           cond do
             Map.has_key?(peers, info.peer_nonce) ->
               Logger.debug(fn ->
-                "Skipped adding #{uri}, same nonce already present"
+                "#{__MODULE__}: Skipped adding #{uri}, same nonce already present"
               end)
 
-              {:reply, {:error, "Peer already known"}, state}
+              {:reply, {:error, "#{__MODULE__}: Peer already known"}, state}
 
             should_a_peer_be_added?(map_size(peers)) ->
               peers_update1 = trim_peers(peers)
@@ -262,13 +264,13 @@ defmodule Aecore.Peers.Worker do
                   latest_block: info.current_block_hash
                 })
 
-              Logger.info(fn -> "Added #{uri} to the peer list" end)
+              Logger.info(fn -> "#{__MODULE__}: Added #{uri} to the peer list" end)
               Sync.ask_peers_for_unknown_blocks(updated_peers)
               Sync.add_unknown_peer_pool_txs(updated_peers)
               {:reply, :ok, %{state | peers: updated_peers}}
 
             true ->
-              Logger.debug(fn -> "Max peers reached. #{uri} not added" end)
+              Logger.debug(fn -> "#{__MODULE__}: Max peers reached. #{uri} not added" end)
               {:reply, :ok, state}
           end
 
@@ -276,7 +278,7 @@ defmodule Aecore.Peers.Worker do
           {:reply, :ok, state}
 
         {:error, reason} ->
-          Logger.error(fn -> "Failed to add peer. reason=#{reason}" end)
+          Logger.error(fn -> "#{__MODULE__}: Failed to add peer. reason=#{reason}" end)
           {:reply, {:error, reason}, state}
       end
     end
@@ -285,7 +287,7 @@ defmodule Aecore.Peers.Worker do
   defp trim_peers(peers) do
     if map_size(peers) >= @peers_max_count do
       random_peer = Enum.random(Map.keys(peers))
-      Logger.debug(fn -> "Max peers reached. #{random_peer} removed" end)
+      Logger.debug(fn -> "#{__MODULE__}: Max peers reached. #{random_peer} removed" end)
       Map.delete(peers, random_peer)
     else
       peers
@@ -306,17 +308,17 @@ defmodule Aecore.Peers.Worker do
             {:error, "Equal peer nonces"}
 
           binary_genesis_hash != genesis_block_header_hash() ->
-            {:error, "Genesis header hash not valid"}
+            {:error, "#{__MODULE__}: Genesis header hash not valid"}
 
           !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
-            {:error, "Peer is not an aehttpserver"}
+            {:error, "#{__MODULE__}: Peer is not an aehttpserver"}
 
           true ->
             {:ok, info}
         end
 
       _error ->
-        {:error, "Request error"}
+        {:error, "#{__MODULE__}: Request error"}
     end
   end
 

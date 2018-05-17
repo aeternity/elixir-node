@@ -45,15 +45,24 @@ defmodule Aecore.Tx.SignedTx do
     data.type == CoinbaseTx
   end
 
-  @spec is_valid?(SignedTx.t()) :: boolean()
-  def is_valid?(%SignedTx{data: data} = tx) do
-    signatures_valid?(tx) && DataTx.is_valid?(data)
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx) do
+    if signatures_valid?(tx) do
+      DataTx.validate(data)
+    else
+      {:error, "#{__MODULE__}: Signatures invalid"}
+    end
   end
 
-  @spec process_chainstate!(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
+  @spec process_chainstate(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
           ChainState.chainstate()
-  def process_chainstate!(chainstate, block_height, %SignedTx{data: data}) do
-    DataTx.process_chainstate!(chainstate, block_height, data)
+  def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
+    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
+      DataTx.process_chainstate(chainstate, block_height, data)
+    else
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -98,12 +107,12 @@ defmodule Aecore.Tx.SignedTx do
     if success do
       {:ok, %SignedTx{data: data, signatures: new_sigs}}
     else
-      {:error, "Not in senders"}
+      {:error, "#{__MODULE__}: Not in senders"}
     end
   end
 
-  def sign_tx(tx, _priv_key) do
-    {:error, "Wrong Transaction data structure: #{inspect(tx)}"}
+  def sign_tx(tx, _pub_key, _priv_key) do
+    {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
   def get_sign_max_size do
@@ -128,8 +137,8 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_root(bin) do
@@ -140,8 +149,8 @@ defmodule Aecore.Tx.SignedTx do
     Bits.decode58(payload)
   end
 
-  def base58c_decode_root(_) do
-    {:error, "Wrong data"}
+  def base58c_decode_root(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
   def base58c_encode_signature(bin) do
@@ -157,18 +166,18 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   def base58c_decode_signature(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
   end
 
   @spec serialize(SignedTx.t()) :: map()
   def serialize(%SignedTx{} = tx) do
     signatures_length = length(tx.signatures)
 
-    cond do
-      signatures_length == 0 ->
+    case signatures_length do
+      0 ->
         %{"data" => DataTx.serialize(tx.data)}
 
-      signatures_length == 1 ->
+      1 ->
         signature_serialized =
           tx.signatures
           |> Enum.at(0)
@@ -176,7 +185,7 @@ defmodule Aecore.Tx.SignedTx do
 
         %{"data" => DataTx.serialize(tx.data), "signature" => signature_serialized}
 
-      true ->
+      _ ->
         %{
           "data" => DataTx.serialize(tx.data),
           "signature" => Serialization.serialize_value(:signature)
@@ -184,16 +193,16 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec deserialize(map()) :: DataTx.t()
+  @spec deserialize(map()) :: SignedTx.t()
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)
 
     cond do
-      signed_tx.signature != nil ->
+      Map.has_key?(signed_tx, :signature) && signed_tx.signature != nil ->
         create(data, [signed_tx.signature])
 
-      signed_tx.signatures != nil ->
+      Map.has_key?(signed_tx, :signatures) && signed_tx.signatures != nil ->
         create(data, signed_tx.signatures)
 
       true ->

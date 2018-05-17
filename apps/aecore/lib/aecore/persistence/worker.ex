@@ -30,7 +30,7 @@ defmodule Aecore.Persistence.Worker do
   every value is the data that we want to persist
   The purpose of this function is to write many tasks to disk once
   """
-  @spec batch_write(map()) :: atom()
+  @spec batch_write(map()) :: :ok
   def batch_write(operations) do
     GenServer.call(__MODULE__, {:batch_write, operations})
   end
@@ -53,7 +53,8 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
   end
 
-  def add_block_by_hash(_block), do: {:error, "bad block structure"}
+  def add_block_by_hash(block),
+    do: {:error, "#{__MODULE__}: Bad block structure: #{inspect(block)}"}
 
   @spec get_block_by_hash(String.t()) ::
           {:ok, block :: Block.t()} | :not_found | {:error, reason :: term()}
@@ -61,7 +62,7 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:get_block_by_hash, hash})
   end
 
-  def get_block_by_hash(_hash), do: {:error, "bad hash value"}
+  def get_block_by_hash(hash), do: {:error, "#{__MODULE__}: Bad hash value: #{inspect(hash)}"}
 
   @doc """
   Retrieving last 'num' blocks from db. If have less than 'num' blocks,
@@ -255,9 +256,9 @@ defmodule Aecore.Persistence.Worker do
         |> Rox.stream()
         |> Enum.into([])
       else
-        Enum.reduce(Rox.stream(blocks_family), [], fn {_hash, %{header: %{height: height}}} =
-                                                        record,
-                                                      acc ->
+        blocks_family
+        |> Rox.stream()
+        |> Enum.reduce([], fn {_hash, %{header: %{height: height}}} = record, acc ->
           if threshold < height do
             [record | acc]
           else

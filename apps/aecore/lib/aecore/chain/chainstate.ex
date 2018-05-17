@@ -10,46 +10,67 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
+  alias Aecore.Naming.Naming
 
   require Logger
 
   @type t :: %Chainstate{
           accounts: AccountStateTree.accounts_state(),
-          oracles: Oracle.oracles()
+          oracles: Oracle.t(),
+          naming: Naming.state()
         }
 
   defstruct [
     :accounts,
-    :oracles
+    :oracles,
+    :naming
   ]
 
   @spec init :: Chainstate.t()
   def init do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
-      :oracles => %{registered_oracles: %{}, interaction_objects: %{}}
+      :oracles => %{registered_oracles: %{}, interaction_objects: %{}},
+      :naming => Naming.init_empty()
     }
   end
 
-  @spec calculate_and_validate_chain_state!(list(), Chainstate.t(), non_neg_integer()) ::
-          Chainstate.t()
-  def calculate_and_validate_chain_state!(txs, chainstate, block_height) do
-    txs
-    |> Enum.reduce(chainstate, fn tx, chainstate ->
-      apply_transaction_on_state!(chainstate, block_height, tx)
-    end)
-    |> Oracle.remove_expired_oracles(block_height)
-    |> Oracle.remove_expired_interaction_objects(block_height)
+  @spec calculate_and_validate_chain_state(list(), Chainstate.t(), non_neg_integer()) ::
+          {:ok, Chainstate.t()} | {:error, String.t()}
+  def calculate_and_validate_chain_state(txs, chainstate, block_height) do
+    updated_chainstate =
+      Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
+        case apply_transaction_on_state(chainstate, block_height, tx) do
+          {:ok, updated_chainstate} ->
+            {:cont, updated_chainstate}
+
+          {:error, reason} ->
+            {:halt, reason}
+        end
+      end)
+
+    case updated_chainstate do
+      %Chainstate{} = new_chainstate ->
+        {:ok,
+         new_chainstate
+         |> Oracle.remove_expired_oracles(block_height)
+         |> Oracle.remove_expired_interaction_objects(block_height)}
+
+      error ->
+        {:error, error}
+    end
   end
 
-  @spec apply_transaction_on_state!(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           Chainstate.t()
-  def apply_transaction_on_state!(chainstate, block_height, tx) do
-    if !SignedTx.is_valid?(tx) do
-      throw({:error, "Invalid transaction"})
-    end
+  def apply_transaction_on_state(chainstate, block_height, tx) do
+    case SignedTx.validate(tx) do
+      :ok ->
+        SignedTx.process_chainstate(chainstate, block_height, tx)
 
-    SignedTx.process_chainstate!(chainstate, block_height, tx)
+      err ->
+        err
+    end
   end
 
   @doc """
@@ -60,27 +81,24 @@ defmodule Aecore.Chain.Chainstate do
     AccountStateTree.root_hash(chainstate.accounts)
   end
 
-  def filter_invalid_txs(txs_list, chainstate, block_height) do
-    {valid_txs_list, _} =
-      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate_acc} ->
-        {valid_chainstate, updated_chainstate} = validate_tx(tx, chainstate_acc, block_height)
+  @doc """
+  Goes through all the transactions and only picks the valid ones
+  """
+  @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
+  def get_valid_txs(txs_list, chainstate, block_height) do
+    {txs_list, _} =
+      List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate} ->
+        case apply_transaction_on_state(chainstate, block_height, tx) do
+          {:ok, updated_chainstate} ->
+            {[tx | valid_txs_list], updated_chainstate}
 
-        if valid_chainstate do
-          {[tx | valid_txs_list], updated_chainstate}
-        else
-          {valid_txs_list, chainstate_acc}
+          {:error, reason} ->
+            Logger.error(reason)
+            {valid_txs_list, chainstate}
         end
       end)
 
-    Enum.reverse(valid_txs_list)
-  end
-
-  @spec validate_tx(SignedTx.t(), Chainstate.t(), non_neg_integer()) ::
-          {boolean(), Chainstate.t()}
-  defp validate_tx(tx, chainstate, block_height) do
-    {true, apply_transaction_on_state!(chainstate, block_height, tx)}
-  catch
-    {:error, _} -> {false, chainstate}
+    Enum.reverse(txs_list)
   end
 
   @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
@@ -98,7 +116,7 @@ defmodule Aecore.Chain.Chainstate do
     Bits.decode58(payload)
   end
 
-  def base58c_decode(_) do
-    {:error, "Wrong data"}
+  def base58c_decode(bin) do
+    {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 end
