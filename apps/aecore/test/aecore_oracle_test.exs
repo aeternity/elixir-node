@@ -91,8 +91,18 @@ defmodule AecoreOracleTest do
            |> Enum.all?(fn response -> response == :undefined end)
 
     oracle_respond(:valid)
-    Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
+
+    assert Chain.oracle_interaction_objects()
+           |> Map.values()
+           |> Enum.map(fn object -> object.response end)
+           |> Enum.all?(fn response -> response != :undefined end)
+
+    Chain.clear_state()
+    register_oracle(:valid)
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
     # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
