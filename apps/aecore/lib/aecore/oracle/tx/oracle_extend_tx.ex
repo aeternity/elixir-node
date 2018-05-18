@@ -66,10 +66,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    test =
-      oracles
-      |> OracleStateTree.get_registered_oracles()
-
     updated_registered_oracles =
       oracles
       |> OracleStateTree.get_registered_oracles()
