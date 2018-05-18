@@ -1,6 +1,7 @@
 defmodule Aecore.Peers.Worker do
   use GenServer
 
+  alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
 
   require Logger
@@ -9,10 +10,10 @@ defmodule Aecore.Peers.Worker do
     peers = %{}
 
     {privkey, pubkey} =
-      {<<64, 250, 58, 12, 14, 91, 253, 253, 19, 225, 68, 114, 136, 0, 231, 210, 81, 246, 43, 30,
-         182, 47, 62, 86, 106, 135, 77, 93, 215, 185, 127, 73>>,
-       <<88, 147, 90, 185, 185, 105, 41, 59, 173, 111, 179, 5, 135, 38, 11, 2, 84, 47, 133, 118,
-         178, 240, 121, 189, 167, 220, 203, 43, 66, 247, 136, 56>>}
+    {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129,
+     67, 86, 101, 117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
+     <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221,
+     142, 210, 81, 18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}
@@ -86,13 +87,15 @@ defmodule Aecore.Peers.Worker do
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
       ) do
     # if peer_info.pubkey != pubkey do
-    if !Map.has_key?(peers, peer_info.pubkey) do
+    if !Map.has_key?(peers, peer_info.port) do
       conn_info =
         Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
       {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
-
-      {:noreply, state}
+      IO.inspect peers
+      new_peers = Map.put_new(peers, peer_info.pubkey, peer_info)
+      IO.inspect new_peers
+      {:noreply, %{state | peers: new_peers}}
     else
       Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
       {:noreply, state}

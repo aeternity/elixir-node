@@ -31,18 +31,20 @@ defmodule Aecore.Peers.PeerConnection do
   @mempool 14
 
   def start_link(ref, socket, transport, opts) do
-    IO.inspect "Another start link called"
+    IO.inspect("Another start link called")
     args = [ref, socket, transport, opts]
     {:ok, pid} = :proc_lib.start_link(__MODULE__, :accept_init, args)
     {:ok, pid}
   end
 
   def start_link(conn_info) do
-    IO.inspect "PeerConnection is started"
+    IO.inspect "PeerConnection is called"
+    IO.inspect conn_info
     GenServer.start_link(__MODULE__, conn_info)
   end
 
   def accept_init(ref, socket, :ranch_tcp, opts) do
+    IO.inspect "Accept init"
     :ok = :proc_lib.init_ack({:ok, self()})
     {:ok, {host, _}} = :inet.peername(socket)
     host_bin = host |> :inet.ntoa() |> :binary.list_to_bin()
@@ -67,6 +69,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def init(conn_info) do
+    IO.inspect "Peer connection init"
     genesis_hash = Block.genesis_hash()
 
     updated_con_info =
@@ -119,10 +122,11 @@ defmodule Aecore.Peers.PeerConnection do
         {:send_request_msg, <<type::16, _::binary>> = msg},
         from,
         %{status: {:connected, socket}} = state
-  ) do
+      ) do
     IO.inspect("#{__MODULE__}: bef send to enoise")
     :ok = :enoise.send(socket, msg)
     IO.inspect("#{__MODULE__}: after send to enoise")
+
     response_type =
       case type do
         @get_header_by_hash ->
@@ -167,27 +171,34 @@ defmodule Aecore.Peers.PeerConnection do
           host: host,
           port: port
         } = state
-      ) do
+  ) do
+    IO.inspect "Gen TCP connect"
     case :gen_tcp.connect(host, port, [:binary, reuseaddr: true, active: false]) do
       {:ok, socket} ->
+        IO.inspect "Inside socket"
         noise_opts = noise_opts(privkey, pubkey, r_pubkey, genesis, version)
 
         :inet.setopts(socket, active: true)
 
         case :enoise.connect(socket, noise_opts) do
-          {:ok, noise_socket, _} ->
+          {:ok, noise_socket, status} ->
+            IO.inspect "Enoise connect"
+            IO.inspect status
+
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
             :ok = ping(new_state)
             Peers.add_peer(peer)
             {:noreply, new_state}
 
-          {:error, _reason} ->
+          {:error, reason} ->
+            IO.inspect ":enoise.connect ERROR: #{inspect(reason)}"
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        IO.inspect ":get_tcp.connect ERROR: #{inspect(reason)}"
         {:stop, :normal, state}
     end
   end
@@ -222,7 +233,7 @@ defmodule Aecore.Peers.PeerConnection do
         spawn(fn -> handle_new_block(deserialized_payload) end)
 
       @tx ->
-        handle_new_tx(deserialized_payload)
+        spawn(fn -> handle_new_tx(deserialized_payload) end)
     end
 
     {:noreply, state}
@@ -312,6 +323,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_hash(payload, pid) do
     hash = payload.hash
+    IO.inspect hash
     result = Chain.get_header(hash)
     send_response(result, @header, pid)
   end
@@ -334,7 +346,7 @@ defmodule Aecore.Peers.PeerConnection do
               {header.height, BlockValidation.block_header_hash(header)}
             end)
 
-          {:ok, Enunm.reverse(header_hashes)}
+          {:ok, Enum.reverse(header_hashes)}
 
         {:error, reason} ->
           {:error, reason}
@@ -368,21 +380,27 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
-    [
+    opts = [
       noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
       s: :enoise_keypair.new(:dh25519, privkey, pubkey),
       rs: :enoise_keypair.new(:dh25519, r_pubkey),
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
+  #  IO.inspect "noise_opts"
+  #  IO.inspect opts
+  #  opts
   end
 
   defp noise_opts(privkey, pubkey, genesis_hash, version) do
-    [
+    opts = [
       noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
       s: :enoise_keypair.new(:dh25519, privkey, pubkey),
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
+   # IO.inspect "noise_opts"
+   # IO.inspect opts
+   # opts
   end
 end

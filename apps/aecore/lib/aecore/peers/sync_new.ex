@@ -214,29 +214,30 @@ defmodule Aecore.Peers.SyncNew do
           block_height = block.header.height
           block_hash = BlockValidation.block_header_hash(block.header)
 
-         list = List.keyreplace(
-            state.hash_pool,
-            {block_height, block_hash},
-            0,
-            {{block_height, block_hash}, %{block: block}}
-          )
+          list =
+            List.keyreplace(
+              state.hash_pool,
+              {block_height, block_hash},
+              0,
+              {{block_height, block_hash}, %{block: block}}
+            )
 
-         #IO.inspect("Origin hash_pool : #{inspect(state.hash_pool)}")
+          # IO.inspect("Origin hash_pool : #{inspect(state.hash_pool)}")
 
-         IO.inspect "Added block to hash_pool list"
-         #IO.inspect list
-         list
+          IO.inspect("Added block to hash_pool list")
+          # IO.inspect list
+          list
 
         _ ->
           state.hash_pool
       end
 
-    #IO.inspect(hash_pool)
+    # IO.inspect(hash_pool)
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
-    IO.inspect "Inside fetch_next"
-    #IO.inspect "Height_in: #{hash_in}"
+    IO.inspect("Inside fetch_next")
+    # IO.inspect "Height_in: #{hash_in}"
 
     case update_chain_from_pool(height_in, hash_in, hash_pool) do
       {:error, reason} ->
@@ -262,20 +263,20 @@ defmodule Aecore.Peers.SyncNew do
         end
 
       {:ok, new_height, new_hash, new_hash_pool} ->
-        IO.inspect "Updated Hashpool"
+        IO.inspect("Updated Hashpool")
         Logger.debug("Updated Hashpool")
 
-        IO.inspect "new_hash_pool"
-        #IO.inspect new_hash_pool
+        IO.inspect("new_hash_pool")
+        # IO.inspect new_hash_pool
 
         sliced_hash_pool =
           for {{height, hash}, %{peer: id}} <- new_hash_pool do
             {height, hash}
           end
 
-        IO.inspect "################################"
-        IO.inspect "Sliced hash pool"
-        #IO.inspect sliced_hash_pool
+        IO.inspect("################################")
+        IO.inspect("Sliced hash pool")
+        # IO.inspect sliced_hash_pool
 
         case sliced_hash_pool do
           [] ->
@@ -285,8 +286,8 @@ defmodule Aecore.Peers.SyncNew do
           pick_from_hashes ->
             {pick_height, pick_hash} = Enum.random(pick_from_hashes)
 
-            IO.inspect "Pick hash"
-            #IO.inspect pick_hash
+            IO.inspect("Pick hash")
+            # IO.inspect pick_hash
 
             {:reply, {:fetch, new_height, new_hash, pick_hash},
              %{state | hash_pool: new_hash_pool}}
@@ -327,32 +328,33 @@ defmodule Aecore.Peers.SyncNew do
 
   @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
   defp update_chain_from_pool(agreed_height, agreed_hash, hash_pool) do
-    #IO.inspect("update_chain_from_pool is called")
+    # IO.inspect("update_chain_from_pool is called")
 
-    #IO.inspect "Agreed height: #{agreed_height}"
-    #IO.inspect "Agreed hash: #{inspect(agreed_hash)}"
-    #IO.inspect "Hash pool: #{inspect(hash_pool)}"
+    # IO.inspect "Agreed height: #{agreed_height}"
+    # IO.inspect "Agreed hash: #{inspect(agreed_hash)}"
+    # IO.inspect "Hash pool: #{inspect(hash_pool)}"
     case split_hash_pool(agreed_height + 1, agreed_hash, hash_pool, [], 0) do
       {_, _, [], rest, n_added} when rest != [] and n_added < @max_adds ->
-        IO.inspect "update_chain_from_pool -> error result: {:stuck_at, #{agreed_height + 1}}"
+        IO.inspect("update_chain_from_pool -> error result: {:stuck_at, #{agreed_height + 1}}")
         {:error, {:stuck_at, agreed_height + 1}}
 
       {new_agreed_height, new_agreed_hash, same, rest, _} ->
-        IO.inspect "update_chain_from_pool -> correct result"
+        IO.inspect("update_chain_from_pool -> correct result")
         {:ok, new_agreed_height, new_agreed_hash, same ++ rest}
     end
   end
 
   @spec split_hash_pool(non_neg_integer(), binary(), list(), any(), non_neg_integer()) :: tuple()
   defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
-  when h < height do
-    IO.inspect "split_hash_pool_1"
+       when h < height do
+    IO.inspect("split_hash_pool_1")
     split_hash_pool(height, prev_hash, hash_pool, same, n_added)
   end
 
   defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
-  when h == height and n_added < @max_adds do
-    IO.inspect "split_hash_pool_2"
+       when h == height and n_added < @max_adds do
+    IO.inspect("split_hash_pool_2")
+
     case Map.get(map, :block) do
       nil ->
         split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
@@ -377,7 +379,7 @@ defmodule Aecore.Peers.SyncNew do
   end
 
   defp split_hash_pool(height, prev_hash, hash_pool, same, n_added) do
-    IO.inspect "split_hash_pool_3"
+    IO.inspect("split_hash_pool_3")
     {height - 1, prev_hash, same, hash_pool, n_added}
   end
 
@@ -476,8 +478,8 @@ defmodule Aecore.Peers.SyncNew do
   @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
           tuple()
   defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
-  when l_height == 0 do
-    IO.inspect "We agree on GENESIS"
+       when l_height == 0 do
+    IO.inspect("We agree on GENESIS")
     {0, agreed_hash}
   end
 
@@ -488,7 +490,7 @@ defmodule Aecore.Peers.SyncNew do
     case Persistence.get_block_by_hash(r_hash) do
       {:ok, _} ->
         # We agree on this block height
-        IO.inspect "We agree on this block height: #{r_height}"
+        IO.inspect("We agree on this block height: #{r_height}")
         {r_height, r_hash}
 
       _ ->
@@ -504,7 +506,7 @@ defmodule Aecore.Peers.SyncNew do
         agree_on_height(peer_id, header, l_height, l_height, agreed_hash)
 
       {:error, reason} ->
-        IO.inspect "------------------------------------- ERROR REASON agree_on_height"
+        IO.inspect("------------------------------------- ERROR REASON agree_on_height")
         {0, agreed_hash}
     end
   end
@@ -651,7 +653,8 @@ defmodule Aecore.Peers.SyncNew do
         :done
 
       {:ok, chunk_hashes} ->
-        IO.inspect "Fill pool: #{inspect(chunk_hashes)}"
+        IO.inspect("Fill pool: #{inspect(chunk_hashes)}")
+
         hash_pool =
           for chunk <- chunk_hashes do
             {chunk, %{peer: peer_id}}
@@ -670,8 +673,8 @@ defmodule Aecore.Peers.SyncNew do
   # Check if we already have this block locally, is so
   # take it from the chain
   defp do_fetch_block(hash, peer_id) do
-    IO.inspect "Do fetch block"
-    #IO.inspect hash
+    IO.inspect("Do fetch block")
+    # IO.inspect hash
     case Chain.get_block(hash) do
       {:ok, block} ->
         Logger.debug("#{__MODULE__}: We already have this block!")
