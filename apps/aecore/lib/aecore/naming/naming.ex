@@ -190,6 +190,7 @@ defmodule Aecore.Naming.Naming do
     {:error, "Invalid Naming state / Name Commitment structure : #{inspect(term)}"}
   end
 
+  @spec rlp_decode(binary()) :: {:ok, map()} | {:error, String.t()}
   def rlp_decode(values) when is_binary(values) do
     [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
     tag = Serialization.transform_item(tag_bin, :int)
@@ -220,8 +221,8 @@ defmodule Aecore.Naming.Naming do
            expires: Serialization.transform_item(expires, :int)
          }}
 
-      _ ->
-        {:error, "Invalid Name state / Name Commitment serialization"}
+      data ->
+        {:error, "Invalid Name state / Name Commitment serialization: #{inspect(data)}"}
     end
   end
 

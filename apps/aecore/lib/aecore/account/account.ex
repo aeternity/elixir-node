@@ -348,8 +348,6 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  # @spec rlp_decode
-
   @spec rlp_encode(Account.t()) :: binary() | {:error, String.t()}
   def rlp_encode(%Account{} = account) do
     [

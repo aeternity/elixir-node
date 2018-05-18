@@ -60,23 +60,20 @@ defmodule AecoreTxTest do
     assert true = Signing.verify(message, signature, sender)
   end
 
-  #   test "negative tx invalid", tx do
-  #     sender = Wallet.get_public_key()
-  #     amount = -5
-  #     fee = 1
+  @tag :test_test
+  test "negative DataTx invalid", tx do
+    sender = Wallet.get_public_key()
+    amount = -5
+    fee = 1
 
-  #     payload = %{receiver: tx.receiver, amount: amount}
-  #     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-  #     priv_key = Wallet.get_private_key()
-  #     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"some payload">>}
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
+    priv_key = Wallet.get_private_key()
 
-  #     {:error, _} = SpendTx.validate(signed_tx.data.payload, signed_tx.data)
-  #   end
+    assert {:error, "#{SpendTx}: The amount cannot be a negative number"} ==
+             DataTx.validate(tx_data)
+  end
 
-  #     assert {:error, "#{SpendTx}: The amount cannot be a negative number: -5"} ==
-  #              SpendTx.validate(signed_tx.data.payload)
-  # end
-  # This test cant be tested because RLP doesnt allow to encode negative integers , therefore this test should be removed/replaced.
   test "coinbase tx invalid", tx do
     sender = Wallet.get_public_key()
     amount = 5
