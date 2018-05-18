@@ -4,7 +4,6 @@ defmodule Aecore.Account.AccountStateTree do
   """
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
 
   @type accounts_state :: Trie.t()
@@ -26,7 +25,7 @@ defmodule Aecore.Account.AccountStateTree do
     trie
     |> PatriciaMerkleTree.lookup(key)
     |> deserialize()
-    |> retutn_emty_if_account_doesnot_exist()
+    |> fallback_empty_account()
   end
 
   @spec update(accounts_state(), Wallet.pubkey(), (Account.t() -> Account.t())) ::
@@ -45,8 +44,9 @@ defmodule Aecore.Account.AccountStateTree do
     PatriciaMerkleTree.root_hash(trie)
   end
 
-  def retutn_emty_if_account_doesnot_exist(:none), do: Account.empty()
-  def retutn_emty_if_account_doesnot_exist(%Account{} = account), do: account
+  @spec fallback_empty_account(Account.t() | :none) :: Account.t()
+  def fallback_empty_account(:none), do: Account.empty()
+  def fallback_empty_account(%Account{} = account), do: account
 
   defp serialize(term), do: term |> :erlang.term_to_binary()
   defp deserialize(:none), do: :none
