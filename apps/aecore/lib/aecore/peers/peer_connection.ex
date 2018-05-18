@@ -219,10 +219,12 @@ defmodule Aecore.Peers.PeerConnection do
 
     case type do
       @p2p_response ->
-        spawn(fn -> handle_response(deserialized_payload, self, state.requests) end)
+        spawn(fn ->
+          handle_response(deserialized_payload, self, Map.get(state, :requests, :empty))
+        end)
 
       @ping ->
-        handle_ping(deserialized_payload, self, state)
+        spawn(fn -> handle_ping(deserialized_payload, self, state) end)
 
       @get_header_by_hash ->
         spawn(fn -> handle_get_header_by_hash(deserialized_payload, self) end)
@@ -364,7 +366,7 @@ defmodule Aecore.Peers.PeerConnection do
       end)
 
       {:ok, pool} = get_mempool(conn_pid)
-      Enum.each(pool, fn _hash, tx -> Pool.add_transaction(tx) end)
+      Enum.each(pool, fn {_hash, tx} -> Pool.add_transaction(tx) end)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -374,22 +376,22 @@ defmodule Aecore.Peers.PeerConnection do
     result = payload.result
     type = payload.type
 
-    reply =
-      case result do
-        true ->
-          if type == @ping do
-            handle_ping_msg(payload.object, parent)
-          end
+    if type == @ping do
+      handle_ping_msg(payload.object, parent)
+    else
+      reply =
+        case result do
+          true ->
+            {:ok, payload.object}
 
-          {:ok, payload.object}
+          false ->
+            {:error, payload.reason}
+        end
 
-        false ->
-          {:error, payload.reason}
-      end
+      GenServer.reply(requests[type], reply)
 
-    GenServer.reply(requests[type], reply)
-
-    clear_request(parent, type)
+      clear_request(parent, type)
+    end
   end
 
   defp clear_request(pid, type) do

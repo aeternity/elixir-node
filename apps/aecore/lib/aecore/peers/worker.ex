@@ -81,7 +81,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call({:get_random, count}, _from, %{peers: peers} = state) do
-    random_peers = peers |> Enum.take_random(count) |> Map.values() |> prepare_peers()
+    random_peers = peers |> Map.values() |> Enum.take_random(count) |> prepare_peers()
     {:reply, random_peers, state}
   end
 
