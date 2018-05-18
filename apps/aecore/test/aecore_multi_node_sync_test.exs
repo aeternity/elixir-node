@@ -34,6 +34,7 @@ defmodule MultiNodeSyncTest do
 
       test \"run_sync\" do
         Peers.add_peer(\"localhost:4000\")
+        Miner.mine_sync_block_to_chain()
         :timer.sleep(5000)
         {:ok, tx} = Account.spend(Wallet.get_public_key(\"M/0\"), 100, 10)
         Pool.add_transaction(tx)
