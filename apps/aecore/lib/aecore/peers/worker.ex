@@ -39,6 +39,14 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:remove_peer, pubkey})
   end
 
+  def get_random(count) do
+    GenServer.call(__MODULE__, {:get_random, count})
+  end
+
+  def get_random(count, exclude) do
+    GenServer.call(__MODULE__, {:get_random, count, exclude})
+  end
+
   def have_peer?(peer_pubkey) do
     GenServer.call(__MODULE__, {:have_peer?, peer_pubkey})
   end
@@ -52,7 +60,7 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call(:all_peers, _from, %{peers: peers} = state) do
-    all_peers = Map.values(peers)
+    all_peers = peers |> Map.values() |> prepare_peers()
     {:reply, all_peers, state}
   end
 
@@ -70,6 +78,23 @@ defmodule Aecore.Peers.Worker do
     updated_peers = Map.delete(peers, pubkey)
     updated_state = %{state | peers: updated_peers}
     {:reply, :ok, updated_state}
+  end
+
+  def handle_call({:get_random, count}, _from, %{peers: peers} = state) do
+    random_peers = peers |> Enum.take_random(count) |> Map.values() |> prepare_peers()
+    {:reply, random_peers, state}
+  end
+
+  def handle_call({:get_random, count, exclude}, _from, %{peers: peers} = state) do
+    filtered_peers =
+      peers
+      |> Map.values()
+      |> Enum.filter(fn peer ->
+        !Enum.any?(exclude, fn to_be_excluded -> peer.pubkey == to_be_excluded end)
+      end)
+
+    random_peers = filtered_peers |> Enum.take_random(count) |> prepare_peers()
+    {:reply, random_peers, state}
   end
 
   def handle_call({:have_peer?, peer_pubkey}, _from, %{peers: peers} = state) do
@@ -98,5 +123,9 @@ defmodule Aecore.Peers.Worker do
     #  Logger.error("Can't add ourself")
     #  {:noreply, state}
     # end
+  end
+
+  defp prepare_peers(peers) do
+    Enum.map(peers, fn peer -> Map.delete(peer, :connection) end)
   end
 end

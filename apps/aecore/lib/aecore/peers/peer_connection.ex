@@ -31,9 +31,11 @@ defmodule Aecore.Peers.PeerConnection do
   @get_mempool 13
   @mempool 14
 
-  @max_packet_size 0x1ff
+  @max_packet_size 0x1FF
   @fragment_size @max_packet_size - 6
   @fragment_size_bytes @fragment_size * 8
+
+  @peer_share_count 32
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
@@ -253,19 +255,8 @@ defmodule Aecore.Peers.PeerConnection do
     {:stop, :normal, state}
   end
 
-  defp ping(%{status: {:connected, socket}, genesis: genesis_hash}) do
-    top_block = Chain.top_block()
-    peers = Enum.map(Peers.all_peers(), fn peer -> Map.delete(peer, :connection) end)
-
-    ping_object = %{
-      genesis_hash: genesis_hash,
-      best_hash: Chain.top_block_hash(),
-      difficulty: top_block.header.target,
-      share: 32,
-      peers: peers,
-      port: Supervisor.sync_port()
-    }
-
+  defp ping(%{status: {:connected, socket}}) do
+    ping_object = local_ping_object()
     serialized_ping_object = :erlang.term_to_binary(ping_object)
     msg = <<@ping::16, serialized_ping_object::binary()>>
     :enoise.send(socket, msg)
@@ -318,17 +309,64 @@ defmodule Aecore.Peers.PeerConnection do
     {:noreply, Map.delete(state, :fragments)}
   end
 
-  defp handle_fragment(%{fragments: fragments} = state, n, _m, fragment) when n == length(fragments) + 1 do
+  defp handle_fragment(%{fragments: fragments} = state, n, _m, fragment)
+       when n == length(fragments) + 1 do
     {:noreply, %{state | fragments: [fragment | fragments]}}
   end
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
-    # initial ping
+    %{
+      peers: peers,
+      port: port
+    } = payload
+
     if !Peers.have_peer?(r_pubkey) do
-      peer = %{pubkey: r_pubkey, port: payload.port, host: host, connection: conn_pid}
+      peer = %{pubkey: r_pubkey, port: port, host: host, connection: conn_pid}
       Peers.add_peer(peer)
+    end
+
+    handle_ping_msg(payload, conn_pid)
+
+    exclude = Enum.map(peers, fn peer -> peer.pubkey end)
+    response_ping = local_ping_object(exclude)
+
+    send_response({:ok, response_ping}, @ping, conn_pid)
+  end
+
+  defp handle_ping_msg(
+         %{
+           genesis_hash: genesis_hash,
+           best_hash: best_hash,
+           difficulty: difficulty,
+           peers: peers
+         },
+         conn_pid
+       ) do
+    if Block.genesis_hash() == genesis_hash do
+      cond do
+        best_hash == Chain.top_block_hash() ->
+          # don't sync - same top block
+          :ok
+
+        local_top_difficulty() > difficulty ->
+          # don't sync - our difficulty is higher
+          :ok
+
+        true ->
+          # start sync
+          :ok
+      end
+
+      Enum.each(peers, fn peer ->
+        if !Peers.have_peer?(peer.pubkey) do
+          Peers.add_peer(peer)
+        end
+      end)
+
+      {:ok, pool} = get_mempool(conn_pid)
+      Enum.each(pool, fn _hash, tx -> Pool.add_transaction(tx) end)
     else
-      :ok
+      Logger.info("Genesis hash mismatch")
     end
   end
 
@@ -339,6 +377,10 @@ defmodule Aecore.Peers.PeerConnection do
     reply =
       case result do
         true ->
+          if type == @ping do
+            handle_ping_msg(payload.object, parent)
+          end
+
           {:ok, payload.object}
 
         false ->
@@ -407,6 +449,33 @@ defmodule Aecore.Peers.PeerConnection do
   defp handle_new_tx(payload) do
     tx = payload.tx
     Pool.add_transaction(tx)
+  end
+
+  defp local_top_difficulty do
+    top_block = Chain.top_block()
+    top_block.header.target
+  end
+
+  defp local_ping_object do
+    peers = Peers.get_random(@peer_share_count)
+
+    ping_object(peers)
+  end
+
+  defp local_ping_object(exclude) do
+    peers = Peers.get_random(@peer_share_count, exclude)
+
+    ping_object(peers)
+  end
+
+  defp ping_object(peers) do
+    %{
+      genesis_hash: Block.genesis_hash(),
+      best_hash: Chain.top_block_hash(),
+      difficulty: local_top_difficulty(),
+      peers: peers,
+      port: Supervisor.sync_port()
+    }
   end
 
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
