@@ -375,13 +375,6 @@ defmodule Aecore.Account.Account do
       Account ->
         [pkey, nonce, height, balance] = rest_data
 
-        [
-          pkey,
-          Serialization.transform_item(nonce, :int),
-          Serialization.transform_item(height, :int),
-          Serialization.transform_item(balance, :int)
-        ]
-
         {:ok,
          %Account{
            pubkey: pkey,
