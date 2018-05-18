@@ -1,7 +1,6 @@
 defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
-  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -18,7 +17,9 @@ defmodule MultiNodeSyncTest do
     str = "defmodule MultiNodeSyncTest do
       use ExUnit.Case
 
-      alias Aeutil.Serialization
+      alias Aecore.Account.Account
+      alias Aecore.Tx.Pool.Worker, as: Pool
+      alias Aecore.Wallet.Worker, as: Wallet
       alias Aecore.Peers.Worker, as: Peers
       alias Aecore.Miner.Worker, as: Miner
       alias Aecore.Chain.Worker, as: Chain
@@ -34,8 +35,9 @@ defmodule MultiNodeSyncTest do
       test \"run_sync\" do
         Peers.add_peer(\"localhost:4000\")
         :timer.sleep(5000)
+        {:ok, tx} = Account.spend(Wallet.get_public_key(\"M/0\"), 100, 10)
+        Pool.add_transaction(tx)
         Miner.mine_sync_block_to_chain()
-        :timer.sleep(5000)
         path = \"block.txt\"
         binary = :erlang.term_to_binary(Chain.top_block())
         File.write(path, binary)
