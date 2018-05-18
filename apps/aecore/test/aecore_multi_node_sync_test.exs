@@ -1,6 +1,7 @@
 defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
+  alias Aeutil.Serialization
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -18,6 +19,7 @@ defmodule MultiNodeSyncTest do
     str = "defmodule MultiNodeSyncTest do
       use ExUnit.Case
 
+      alias Aeutil.Serialization
       alias Aecore.Peers.Worker, as: Peers
       alias Aecore.Miner.Worker, as: Miner
       alias Aecore.Chain.Worker, as: Chain
@@ -35,8 +37,9 @@ defmodule MultiNodeSyncTest do
         :timer.sleep(5000)
         Miner.mine_sync_block_to_chain()
         :timer.sleep(5000)
-        IO.puts \"Second node:\"
-        IO.inspect Chain.top_block()
+        path = \"block.txt\"
+        binary = :erlang.term_to_binary(Chain.top_block())
+        File.write(path, binary)
       end
     end"
     System.cmd("cp", ["-R", "../../../elixir-node", "../../../elixir-node2"])
@@ -52,10 +55,10 @@ defmodule MultiNodeSyncTest do
 
     Miner.mine_sync_block_to_chain
     System.cmd "mix", ["test"], cd: "../../../elixir-node2", into: IO.stream(:stdio, :line)
-    IO.puts "First node:"
-    IO.inspect Chain.top_block()
+    {:ok, top_block_binary} = File.read "../../../elixir-node2/apps/aecore/block.txt"
+    top_block = :erlang.binary_to_term(top_block_binary)
+
+    assert Chain.top_block() == top_block
     System.cmd "rm", ["-rf", "../../../elixir-node2"]
   end
-
-
 end
