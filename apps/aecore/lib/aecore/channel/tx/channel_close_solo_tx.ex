@@ -63,13 +63,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Checks transactions internal contents validity
   """
   @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelCloseSoloTx{} = tx, data_tx) do
+  def validate(%ChannelCloseSoloTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
     
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "Channel cannot have negative total balance"}
-
       length(senders) != 1 ->
         {:error, "Invalid senders size"}
 
@@ -97,7 +94,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     channel_id = ChannelStateOffChain.id(state)
     
     new_channels = Map.update!(channels, channel_id, fn channel ->
-      ChannelStateOnChain.apply_offchain(channel, block_height, state)
+      ChannelStateOnChain.apply_slashing(channel, block_height, state)
     end)
 
     {:ok, {accounts, new_channels}}
@@ -135,7 +132,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         {:error, "Channel doesn't exist (already closed?)"}
 
       true ->
-        ChannelStateOnChain.validate_offchain(channel, state)
+        ChannelStateOnChain.validate_slashing(channel, state)
     end
   end
 

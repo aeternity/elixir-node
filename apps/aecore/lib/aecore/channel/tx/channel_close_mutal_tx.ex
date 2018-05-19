@@ -133,12 +133,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     fee = DataTx.fee(data_tx)
     channel = Map.get(channels, tx.channel_id)
 
-    #FIXME fee division
     cond do
-      AccountStateTree.get(accounts, initiator_pubkey).balance - fee/2 + tx.initiator_amount < 0 ->
+      AccountStateTree.get(accounts, initiator_pubkey).balance - ((fee+1)/2) + tx.initiator_amount < 0 ->
         {:error, "Negative initiator balance"}
 
-      AccountStateTree.get(accounts, responder_pubkey).balance - fee/2 + tx.responder_amount < 0 ->
+      AccountStateTree.get(accounts, responder_pubkey).balance - (fee/2) + tx.responder_amount < 0 ->
         {:error, "Negative responder balance"}
 
       channel == nil ->
@@ -160,8 +159,15 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           non_neg_integer()
   ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
-    #FIXME fee division
-    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+
+    accounts
+    |> AccountStateTree.update(initiator_pubkey, fn acc ->
+      Account.apply_transfer!(acc, block_height, -1 * div((fee + 1), 2))
+    end)
+    |> AccountStateTree.update(responder_pubkey, fn acc ->
+      Account.apply_transfer!(acc, block_height, -1 * div(fee, 2))
+    end)
   end
 
 end

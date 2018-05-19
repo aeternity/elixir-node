@@ -86,9 +86,9 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Naming.Tx.NameTransferTx,
       Aecore.Naming.Tx.NameUpdateTx,
       Aecore.Channel.Tx.ChannelCreateTx,
-      Aecore.Channel.Tx.ChannelWithdrawTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
-      Aecore.Channel.Tx.ChannelCloseMutalTx
+      Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelSettleTx
     ]
   end
 

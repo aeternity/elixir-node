@@ -189,7 +189,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :serialize)
 
       :signatures ->
-        base64_binary(value, :deserialize)
+        base64_binary(value, :serialize)
 
       :proof ->
         base64_binary(value, :serialize)

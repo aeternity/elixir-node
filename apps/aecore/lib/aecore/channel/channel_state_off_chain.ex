@@ -49,6 +49,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   
   def responder_amount(%ChannelStateOffChain{responder_amount: responder_amount}) do responder_amount end
 
+  def total_amount(%ChannelStateOffChain{} = state) do
+    initiator_amount(state) + responder_amount(state)
+  end
+
   def validate(%ChannelStateOffChain{signatures: [_, _]} = state, [initiator_pubkey, responder_pubkey]) do
     cond do
       !valid_initiator?(state, initiator_pubkey) ->
@@ -112,12 +116,20 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     end
   end
 
+  def valid_initiator?(%ChannelStateOffChain{signatures: [nil, _]}, _) do
+    false
+  end
+
   def valid_initiator?(%ChannelStateOffChain{signatures: [initiator_sig, _]} = state, initiator_pubkey) do
     binary_form = signing_form(state)
     Signing.verify(binary_form, initiator_sig, initiator_pubkey)
   end
 
   def valid_initiator?(%ChannelStateOffChain{}, _) do
+    false
+  end
+
+  def valid_responder?(%ChannelStateOffChain{signatures: [_, nil]}, _) do
     false
   end
 
@@ -137,7 +149,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     && state1.sequence == state2.sequence
   end
 
-  def sign(%ChannelStateOffChain{signatures: [nil, responder_sig]} = state, :initiator, priv_key) do
+  def sign(%ChannelStateOffChain{signatures: [_, responder_sig]} = state, :initiator, priv_key) do
     initiator_sig =
       state
       |> signing_form()
@@ -145,7 +157,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     %ChannelStateOffChain{state | signatures: [initiator_sig, responder_sig]}
   end
 
-  def sign(%ChannelStateOffChain{signatures: [initiator_sig, nil]} = state, :responder, priv_key) do
+  def sign(%ChannelStateOffChain{signatures: [initiator_sig, _]} = state, :responder, priv_key) do
     responder_sig =
       state
       |> signing_form()
@@ -162,10 +174,11 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   defp transfer_amount(%ChannelStateOffChain{initiator_amount: initiator_amount, responder_amount: responder_amount, sequence: sequence} = state, amount) do
-    new_state = %ChannelStateOffChain{state | 
+    new_state = %ChannelStateOffChain{state |
       initiator_amount: initiator_amount - amount,
       responder_amount: responder_amount + amount,
-      sequence: sequence + 1
+      sequence: sequence + 1,
+      signatures: [nil, nil]
     }
     {:ok, new_state}
   end

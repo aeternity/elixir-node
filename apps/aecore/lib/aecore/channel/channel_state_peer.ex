@@ -6,7 +6,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Channel.{ChannelStateOffChain, ChannelStateOnChain, ChannelStatePeer}
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx}
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSettleTx}
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
 
@@ -39,6 +39,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   def role(%ChannelStatePeer{role: role}) do role end
 
   def state(%ChannelStatePeer{highest_signed_state: state}) do state end
+  
+  def fsm_state(%ChannelStatePeer{fsm_state: fsm_state}) do fsm_state end
 
   def id(peer_state) do
     peer_state
@@ -108,7 +110,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
                   nonce)
 
     new_peer_state = %ChannelStatePeer{peer_state |
-      fsm_state: :helf_signed,
+      fsm_state: :half_signed,
       highest_state: zero_state,
       highest_signed_state: zero_state
     }
@@ -177,14 +179,21 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   def transfer(%ChannelStatePeer{fsm_state: :open, highest_state: highest_state, role: role} = peer_state, amount, priv_key) do
     {:ok, new_state} = ChannelStateOffChain.transfer(highest_state, role, amount)
-    new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key) 
+    if ChannelStateOffChain.initiator_amount(new_state) < peer_state.channel_reserve
+    || ChannelStateOffChain.responder_amount(new_state) < peer_state.channel_reserve
+    do
+      {:error, "Too big transfer"}
+    else
 
-    new_peer_state = %ChannelStatePeer{peer_state |
-      fsm_state: :update,
-      highest_state: new_state_signed
-    }
+      new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key) 
 
-    {:ok, new_peer_state, new_state_signed}
+      new_peer_state = %ChannelStatePeer{peer_state |
+        fsm_state: :update,
+        highest_state: new_state_signed
+      }
+
+      {:ok, new_peer_state, new_state_signed}
+    end
   end
 
   def transfer(%ChannelStatePeer{} = state) do
@@ -338,6 +347,23 @@ defmodule Aecore.Channel.ChannelStatePeer do
       new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
       {:ok, new_peer_state, nil}
     end
+  end
+
+  def settle(%ChannelStatePeer{fsm_state: :closing} = peer_state, fee, nonce, priv_key) do
+    data = DataTx.init(
+      ChannelSettleTx,
+      %{channel_id: id(peer_state)},
+      ChannelStatePeer.my_pubkey(peer_state),
+      fee,
+      nonce
+    )
+    SignedTx.sign_tx(data, ChannelStatePeer.my_pubkey(peer_state), priv_key)
+  end
+
+  def settled(%ChannelStatePeer{} = peer_state) do
+    %ChannelStatePeer{peer_state | 
+      fsm_state: :closed
+    }
   end
 
   def my_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do

@@ -17,17 +17,23 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     initiator_amount: integer(),
     responder_amount: integer(),
     lock_period: non_neg_integer(),
-    closes_at: integer(),
-    sequence: integer()
+    slash_close: integer(),
+    slash_sequence: integer()
   }
 
-  @type channels :: map() #TODO binary -> t()
+  @type channels :: %{binary() => t()}
 
   @doc """
   Definition of State Channel OnChain structure
 
   ## Parameters
-  TODO
+  - initiator_pubkey
+  - responder_pubkey
+  - initiator_amount - amount deposited by initiator or from last withdraw/deposit state or from slashing
+  - responder_amount - amount deposited by responder or from last withdraw/deposit state or from slashing
+  - lock_period - time before slashing is settled
+  - slash_close - when != -1: block height when slashing is settled
+  - slash_sequence - when != -1: sequence or slashing
   """
   defstruct [
     :initiator_pubkey,
@@ -35,12 +41,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :initiator_amount,
     :responder_amount,
     :lock_period,
-    :closes_at,
-    :sequence,
     :slash_close,
-    :slash_sequence,
-    :slash_initiator,
-    :slash_responder
+    :slash_sequence
   ]
 
   use ExConstructor
@@ -54,7 +56,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       responder_amount: responder_amount,
       lock_period: lock_period,
       slash_close: -1,
-      slash_sequence: -1
+      slash_sequence: -1,
     }
   end
 
@@ -65,15 +67,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   def id(initiator_pubkey, responder_pubkey, nonce) do
-    bin = <<initiator_pubkey, nonce, responder_pubkey>>
-    Hash.hash_blake2b(bin)
+    binary_data =
+      initiator_pubkey <> <<nonce :: size(64)>> <> responder_pubkey
+
+    Hash.hash_blake2b(binary_data)
   end
 
   def amounts(%ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount}) do [initiator_amount, responder_amount] end
 
   def pubkeys(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey}) do [initiator_pubkey, responder_pubkey] end
 
-  def active?(%ChannelStateOnChain{sequence: -1}) do
+  def active?(%ChannelStateOnChain{slash_sequence: -1}) do
     true
   end
 
@@ -85,22 +89,26 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     block_height >= slash_close && (!active?(channel))
   end
 
-  def validate_offchain(%ChannelStateOnChain{} = channel, offchain_state) do
+  def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
     cond do
-      channel.sequence >= ChannelStateOffChain.sequence(offchain_state) ->
+      channel.slash_sequence >= ChannelStateOffChain.sequence(offchain_state) ->
         {:error, "Offchain state is too old"}
+
+      channel.initiator_amount + channel.responder_amount != ChannelStateOffChain.total_amount(offchain_state) ->
+        {:error, "Invalid total amount"}
 
       true ->
         ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
     end
   end
 
-  def apply_offchain(%ChannelStateOnChain{} = channel, block_height, offchain_state) do
-    %ChannelStateOnChain{
-      channel | slash_close: block_height + channel.lock_period,
-              slash_sequence: ChannelStateOffChain.sequence(offchain_state),
-              slash_initiator: ChannelStateOffChain.initiator_amount(offchain_state),
-              slash_responder: ChannelStateOffChain.responder_amount(offchain_state)}
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, offchain_state) do
+    %ChannelStateOnChain{channel |
+      slash_close: block_height + channel.lock_period,
+      slash_sequence: ChannelStateOffChain.sequence(offchain_state),
+      initiator_amount: ChannelStateOffChain.initiator_amount(offchain_state),
+      responder_amount: ChannelStateOffChain.responder_amount(offchain_state)
+    }
   end
 
   def validate_withdraw(%ChannelStateOnChain{initiator_amount: initiator_amount}, :initiator, amount) do

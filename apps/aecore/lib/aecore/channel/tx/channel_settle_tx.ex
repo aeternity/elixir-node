@@ -46,6 +46,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     %ChannelSettleTx{channel_id: channel_id}
   end
 
+  def channel_id(%ChannelSettleTx{channel_id: channel_id}) do channel_id end
+
   @doc """
   Checks transactions internal contents validity
   """
@@ -124,7 +126,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       channel == nil ->
         {:error, "Channel doesn't exist (already closed?)"}
 
-      ChannelStateOnChain.settled?(channel, block_height) ->
+      !ChannelStateOnChain.settled?(channel, block_height) ->
         {:error, "Channel isn't settled"}
 
       true ->

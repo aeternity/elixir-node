@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
-  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCloseSoloTx}
+  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSettleTx}
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -152,12 +152,29 @@ defmodule Aecore.Channel.Worker do
     GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, priv_key})
   end
 
+  def settle(channel_id, fee, nonce, priv_key) do
+    with {:ok, peer_state} <- get_channel(channel_id) do
+      ChannelStatePeer.settle(peer_state, fee, nonce, priv_key)
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def settled(settle_tx) do
+    GenServer.call(__MODULE__, {:settled, settle_tx})
+  end
+
   @doc """
   Returns map of all ChannelStatePeer objects.
   """
   @spec get_all_channels() :: %{binary() => ChannelStatePeer.t()}
   def get_all_channels() do
     GenServer.call(__MODULE__, :get_all_channels)
+  end
+
+  def get_channel(channel_id) do
+    GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
   
   ## Server side
@@ -186,15 +203,18 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:sign_open, temporary_id, open_tx, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
-    {:ok, new_peer_state, id, signed_open_tx} = ChannelStatePeer.sign_open(peer_state, open_tx, priv_key)
-    Pool.add_transaction(signed_open_tx)
+    with {:ok, new_peer_state, id, signed_open_tx} <- ChannelStatePeer.sign_open(peer_state, open_tx, priv_key),
+         :ok <- Pool.add_transaction(signed_open_tx) do
+      new_state =
+        state
+        |>Map.drop([temporary_id])
+        |>Map.put(id, new_peer_state)
 
-    new_state =
-      state
-      |>Map.drop([temporary_id])
-      |>Map.put(id, new_peer_state)
-
-    {:reply, {:ok, id, signed_open_tx}, new_state}
+      {:reply, {:ok, id, signed_open_tx}, new_state}
+    else
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   def handle_call({:opened, open_tx}, _from, state) do
@@ -211,10 +231,13 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:transfer, id, amount, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
-
-    {:ok, new_peer_state, offchain_state} = ChannelStatePeer.transfer(peer_state, amount, priv_key)
-
-    {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+    
+    with {:ok, new_peer_state, offchain_state} <- ChannelStatePeer.transfer(peer_state, amount, priv_key) do
+      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+    else
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   def handle_call({:recv_state, recv_state, priv_key}, _from, state) do
@@ -273,9 +296,13 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:slash, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
     
-    {:ok, new_peer_state, tx} = ChannelStatePeer.slash(peer_state, fee, nonce, priv_key)
-    Pool.add_transaction(tx)
-    {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
+         :ok <- Pool.add_transaction(tx) do
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   def handle_call({:slashed, slash_tx, fee, nonce, priv_key}, _from, state) do
@@ -289,15 +316,45 @@ defmodule Aecore.Channel.Worker do
       peer_state = Map.get(state, channel_id)
       {:ok, new_peer_state, tx} = ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, priv_key)
       if tx != nil do
-        Pool.add_transaction(tx)
+        case Pool.add_transaction(tx) do
+          :ok ->
+            {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
+      else  
+        {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
       end
-      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:reply, {:error, "Unknown channel"}, state}
     end
-    {:reply, {:error, "Unknown channel"}, state}
+  end
+
+  def handle_call({:settled, settle_tx}, _from, state) do
+    channel_id = 
+      settle_tx
+      |> SignedTx.data_tx()
+      |> DataTx.payload()
+      |> ChannelSettleTx.channel_id()
+
+    if Map.has_key?(state, channel_id) do
+      new_peer_state = ChannelStatePeer.settled(Map.get(state, channel_id))
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:reply, :ok, state}
+    end
   end
 
   def handle_call(:get_all_channels, _from, state) do
     {:reply, state, state}
+  end
+
+  def handle_call({:get_channel, channel_id}, _from, state) do
+    if Map.has_key?(state, channel_id) do
+      {:reply, {:ok, Map.get(state, channel_id)}, state}
+    else
+      {:reply, {:error, "No such channel"}, state}
+    end
   end
 
 end
