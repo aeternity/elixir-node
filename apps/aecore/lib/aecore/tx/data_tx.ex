@@ -88,6 +88,7 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelSlashTx,
       Aecore.Channel.Tx.ChannelSettleTx
     ]
   end

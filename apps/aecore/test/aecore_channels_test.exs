@@ -133,7 +133,7 @@ defmodule AecoreChannelTest do
 
     assert ChannelStateOnChain.active?(Map.get(Chain.channels(), id)) == false
 
-    assert :ok == call_s1({:slashed, tx, 10, 2, ctx.sk1})
+    assert :ok == call_s1({:slashed, tx, 10, 2, ctx.pk1, ctx.sk1})
 
     TestUtils.assert_transactions_mined
 
@@ -152,6 +152,35 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 270)
     TestUtils.assert_balance(ctx.pk2, 50 - 15 + 30)
+    assert Enum.empty?(Chain.channels()) == true
+  end
+
+  test "create channel, responder dissapears, solo close", ctx do
+    id = create_channel(ctx)
+
+    {:ok, state} = call_s1({:transfer, id, 50, ctx.sk1})
+    assert :update == get_fsm_state_s1(id)
+    #We simulate no response from other peer = transfer failed
+    
+    :ok = call_s1({:solo_close, id, 10, 2, ctx.sk1})
+
+    TestUtils.assert_transactions_mined
+
+    {:ok, s1_state} = call_s1({:get_channel, id})
+    {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
+    assert :ok == Pool.add_transaction(settle_tx)
+
+    Miner.mine_sync_block_to_chain
+    assert Enum.empty?(Pool.get_pool()) == false
+    assert Enum.empty?(Chain.channels()) == false
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10)
+    TestUtils.assert_balance(ctx.pk2, 50)
+
+    TestUtils.assert_transactions_mined
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 20 + 150)
+    TestUtils.assert_balance(ctx.pk2, 50 + 150)
     assert Enum.empty?(Chain.channels()) == true
   end
 

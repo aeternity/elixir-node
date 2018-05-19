@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
-  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSettleTx}
+  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSlashTx, ChannelSettleTx}
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -137,19 +137,27 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Slashes channel. Creates slash Tx and adds it to the pool.
+  Solo closes channel. Creates solo close Tx and adds it to the pool.
   """
-  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: :ok | error()
-  def slash(channel_id, fee, nonce, priv_key) do
-    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, priv_key})
+  @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: :ok | error()
+  def solo_close(channel_id, fee, nonce, priv_key) do
+    GenServer.call(__MODULE__, {:solo_close, channel_id, fee, nonce, priv_key})
   end
 
   @doc """
-  Notifies channel manager about mined slash transaction. If channel Manager has newer state for coresponding channel it creates a slash transaction and add it to pool.
+  Slashes channel. Creates slash Tx and adds it to the pool.
   """
-  @spec slashed(SignedTx.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: :ok | error()
-  def slashed(slash_tx, fee, nonce, priv_key) do
-    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, priv_key})
+  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) :: :ok | error()
+  def slash(channel_id, fee, nonce, pubkey, priv_key) do
+    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, pubkey, priv_key})
+  end
+
+  @doc """
+  Notifies channel manager about mined slash or solo close transaction. If channel Manager has newer state for coresponding channel it creates a slash transaction and add it to pool.
+  """
+  @spec slashed(SignedTx.t(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) :: :ok | error()
+  def slashed(slash_tx, fee, nonce, pubkey, priv_key) do
+    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pubkey, priv_key})
   end
 
   def settle(channel_id, fee, nonce, priv_key) do
@@ -214,6 +222,8 @@ defmodule Aecore.Channel.Worker do
     else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+      :error ->
+        {:reply, {:error, "Pool error"}, state}
     end
   end
 
@@ -293,34 +303,53 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slash, channel_id, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:solo_close, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
     
-    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
+    with {:ok, new_peer_state, tx} <- ChannelStatePeer.solo_close(peer_state, fee, nonce, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:error, reason} ->
         {:error, reason}
+      :error ->
+        {:error, "Pool error"}
     end
   end
 
-  def handle_call({:slashed, slash_tx, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:slash, channel_id, fee, nonce, pubkey, priv_key}, _from, state) do
+    peer_state = Map.get(state, channel_id)
+    
+    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, pubkey, priv_key),
+         :ok <- Pool.add_transaction(tx) do
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:error, reason} ->
+        {:error, reason}
+      :error ->
+        {:error, "Pool error"}
+    end
+  end
+
+  def handle_call({:slashed, slash_tx, fee, nonce, pubkey, priv_key}, _from, state) do
+    data_tx = SignedTx.data_tx(slash_tx)
     channel_id = 
-      slash_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
-      |> ChannelCloseSoloTx.channel_id()
+      case DataTx.payload(data_tx) do
+        %ChannelCloseSoloTx{} = payload ->
+          ChannelCloseSoloTx.channel_id(payload)
+        %ChannelSlashTx{} = payload ->
+          ChannelSlashTx.channel_id(payload)
+      end 
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
-      {:ok, new_peer_state, tx} = ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, priv_key)
+      {:ok, new_peer_state, tx} = ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, pubkey, priv_key)
       if tx != nil do
         case Pool.add_transaction(tx) do
           :ok ->
             {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
-          {:error, reason} ->
-            {:reply, {:error, reason}, state}
+          :error ->
+            {:reply, {:error, "Pool error"}, state}
         end
       else  
         {:reply, :ok, Map.put(state, channel_id, new_peer_state)}

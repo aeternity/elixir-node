@@ -1,10 +1,10 @@
-defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
+defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.ChainState
@@ -13,7 +13,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   require Logger
 
-  @typedoc "Expected structure for the ChannelCloseSolo Transaction"
+  @typedoc "Expected structure for the ChannelSlash Transaction"
   @type payload :: %{
     state: ChannelStateOffChain.t()
   }
@@ -25,16 +25,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   In the case of SpendTx we don't have a subdomain chainstate."
   @type tx_type_state() :: %{}
 
-  @typedoc "Structure of the ChannelCloseSolo Transaction type"
-  @type t :: %ChannelCloseSoloTx{
+  @typedoc "Structure of the ChannelSlash Transaction type"
+  @type t :: %ChannelSlashTx{
     state: ChannelStateOffChain.t()
   }
 
   @doc """
-  Definition of Aecore ChannelCloseSoloTx structure
+  Definition of Aecore ChannelSlashTx structure
 
   ## Parameters
-  - state - the state to start close operation with
+  - state - the state to slash with
   """
   defstruct [:state]
   use ExConstructor
@@ -44,31 +44,34 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{state: state} = _payload) do
-    %ChannelCloseSoloTx{state: state}
+    %ChannelSlashTx{state: state}
   end
 
   def create(state) do
-    %ChannelCloseSoloTx{state: state}
+    %ChannelSlashTx{state: state}
   end
 
-  def sequence(%ChannelCloseSoloTx{state: state}) do
+  def sequence(%ChannelSlashTx{state: state}) do
     ChannelStateOffChain.sequence(state)
   end
 
-  def channel_id(%ChannelCloseSoloTx{state: state}) do
+  def channel_id(%ChannelSlashTx{state: state}) do
     ChannelStateOffChain.id(state)
   end
 
   @doc """
   Checks transactions internal contents validity
   """
-  @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelCloseSoloTx{}, data_tx) do
+  @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%ChannelSlashTx{state: state}, data_tx) do
     senders = DataTx.senders(data_tx)
     
     cond do
       length(senders) != 1 ->
         {:error, "Invalid senders size"}
+
+      ChannelStateOffChain.sequence(state) == 0 ->
+        {:error, "Can't slash with zero state"}
 
       true ->
         :ok
@@ -82,13 +85,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChainState.account(),
           ChannelStateOnChain.channels(),
           non_neg_integer(),
-          ChannelCloseSoloTx.t(),
+          ChannelSlashTx.t(),
           DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
     accounts,
     channels,
     block_height,
-    %ChannelCloseSoloTx{state: state},
+    %ChannelSlashTx{state: state},
     _data_tx
   ) do
     channel_id = ChannelStateOffChain.id(state)
@@ -108,14 +111,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChainState.account(),
           ChannelStateOnChain.channels(),
           non_neg_integer(),
-          ChannelCloseSoloTx.t(),
+          ChannelSlashTx.t(),
           DataTx.t()) 
   :: :ok
   def preprocess_check(
     accounts,
     channels,
     _block_height,
-    %ChannelCloseSoloTx{state: state},
+    %ChannelSlashTx{state: state},
     data_tx
   ) do
     sender = DataTx.main_sender(data_tx)
@@ -131,12 +134,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       channel == nil ->
         {:error, "Channel doesn't exist (already closed?)"}
 
-      !ChannelStateOnChain.active?(channel) ->
-        {:error, "Can't solo close active channel. Use slash."}
-
-      sender != ChannelStateOnChain.initiator_pubkey(channel)
-      && sender != ChannelStateOnChain.responder_pubkey(channel) ->
-        {:error, "Sender must be a party of the channel"}
+      ChannelStateOnChain.active?(channel) ->
+        {:error, "Can't slash active channel"}
 
       true ->
         ChannelStateOnChain.validate_slashing(channel, state)

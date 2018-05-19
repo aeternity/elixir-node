@@ -75,6 +75,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   def amounts(%ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount}) do [initiator_amount, responder_amount] end
 
+  def initiator_pubkey(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey}) do initiator_pubkey end
+  
+  def responder_pubkey(%ChannelStateOnChain{responder_pubkey: responder_pubkey}) do responder_pubkey end
+
   def pubkeys(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey}) do [initiator_pubkey, responder_pubkey] end
 
   def active?(%ChannelStateOnChain{slash_sequence: -1}) do
@@ -89,6 +93,22 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     block_height >= slash_close && (!active?(channel))
   end
 
+  def validate_slashing(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{sequence: 0} = offchain_state) do
+    cond do
+      channel.slash_sequence != -1 ->
+        {:error, "Channel already slashed"}
+
+      channel.initiator_amount != ChannelStateOffChain.initiator_amount(offchain_state) ->
+        {:error, "Wrong initator amount"}
+
+      channel.responder_amount != ChannelStateOffChain.responder_amount(offchain_state) ->
+        {:error, "Wrong responder amount"}
+
+      true ->
+        :ok
+    end
+  end
+
   def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
     cond do
       channel.slash_sequence >= ChannelStateOffChain.sequence(offchain_state) ->
@@ -100,6 +120,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       true ->
         ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
     end
+  end
+
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{sequence: 0}) do
+    %ChannelStateOnChain{channel | 
+      slash_close: block_height + channel.lock_period,
+      slash_sequence: 0
+    }
   end
 
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, offchain_state) do

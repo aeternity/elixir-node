@@ -6,7 +6,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Channel.{ChannelStateOffChain, ChannelStateOnChain, ChannelStatePeer}
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSettleTx}
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSlashTx, ChannelSettleTx}
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
 
@@ -320,9 +320,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
     %ChannelStatePeer{peer_state | fsm_state: :closed}
   end
 
-  def slash(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, fee, nonce, priv_key) do
+  def solo_close(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, fee, nonce, priv_key) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
-    
+
     data = DataTx.init(
       ChannelCloseSoloTx,
       %{state: our_state},
@@ -334,15 +334,35 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:ok, new_peer_state, our_slash_tx}
   end
 
-  def slashed(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, slash_tx, fee, nonce, priv_key) do
-    slash_sequence =
+  def slash(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, fee, nonce, pubkey, priv_key) do
+    new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+    
+    data = DataTx.init(
+      ChannelSlashTx,
+      %{state: our_state},
+      pubkey,
+      fee,
+      nonce)
+
+    {:ok, our_slash_tx} = SignedTx.sign_tx(data, pubkey, priv_key)
+    {:ok, new_peer_state, our_slash_tx}
+  end
+
+  def slashed(%ChannelStatePeer{highest_signed_state: our_state} = peer_state, slash_tx, fee, nonce, pubkey, privkey) do
+    payload =
       slash_tx
       |> SignedTx.data_tx()
       |> DataTx.payload()
-      |> ChannelCloseSoloTx.sequence()
+    slash_sequence =
+      case payload do
+        %ChannelCloseSoloTx{} ->
+          ChannelCloseSoloTx.sequence(payload)
+        %ChannelSlashTx{} ->
+          ChannelSlashTx.sequence(payload)
+      end
 
     if slash_sequence < ChannelStateOffChain.sequence(our_state) do
-      slash(peer_state, fee, nonce, priv_key)
+      slash(peer_state, fee, nonce, pubkey, privkey)
     else
       new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
       {:ok, new_peer_state, nil}
