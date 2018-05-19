@@ -14,10 +14,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Expected structure for the ChannelOpen Transaction"
   @type payload :: %{
-    initiator_amount: non_neg_integer(),
-    responser_amount: non_neg_integer(),
-    locktime: non_neg_integer()
-  }
+          initiator_amount: non_neg_integer(),
+          responser_amount: non_neg_integer(),
+          locktime: non_neg_integer()
+        }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -28,10 +28,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
-    initiator_amount: non_neg_integer(),
-    responder_amount: non_neg_integer(),
-    locktime: non_neg_integer()
-  }
+          initiator_amount: non_neg_integer(),
+          responder_amount: non_neg_integer(),
+          locktime: non_neg_integer()
+        }
 
   @doc """
   Definition of Aecore ChannelCreateTx structure
@@ -48,13 +48,27 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{initiator_amount: initiator_amount, responder_amount: responder_amount, locktime: locktime} = _payload) do
-    %ChannelCreateTx{initiator_amount: initiator_amount, responder_amount: responder_amount, locktime: locktime}
+  def init(
+        %{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        } = _payload
+      ) do
+    %ChannelCreateTx{
+      initiator_amount: initiator_amount,
+      responder_amount: responder_amount,
+      locktime: locktime
+    }
   end
 
-  def initiator_amount(%ChannelCreateTx{initiator_amount: initiator_amount}) do initiator_amount end 
-  
-  def responder_amount(%ChannelCreateTx{responder_amount: responder_amount}) do responder_amount end 
+  def initiator_amount(%ChannelCreateTx{initiator_amount: initiator_amount}) do
+    initiator_amount
+  end
+
+  def responder_amount(%ChannelCreateTx{responder_amount: responder_amount}) do
+    responder_amount
+  end
 
   @doc """
   Checks transactions internal contents validity
@@ -62,7 +76,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCreateTx{} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
-    
+
     cond do
       tx.initiator_amount + tx.responder_amount < 0 ->
         {:error, "Channel cannot have negative total balance"}
@@ -86,14 +100,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+          DataTx.t()
+        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
-    accounts,
-    channels,
-    block_height,
-    %ChannelCreateTx{} = tx,
-    data_tx
-  ) do
+        accounts,
+        channels,
+        block_height,
+        %ChannelCreateTx{} = tx,
+        data_tx
+      ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     nonce = DataTx.nonce(data_tx)
 
@@ -106,7 +121,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         Account.apply_transfer!(acc, block_height, tx.responder_amount * -1)
       end)
 
-    channel = ChannelStateOnChain.create(initiator_pubkey, responder_pubkey, tx.initiator_amount, tx.responder_amount, tx.locktime)
+    channel =
+      ChannelStateOnChain.create(
+        initiator_pubkey,
+        responder_pubkey,
+        tx.initiator_amount,
+        tx.responder_amount,
+        tx.locktime
+      )
+
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     new_channels = Map.put(channels, channel_id, channel)
@@ -123,15 +146,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()) 
-  :: :ok
+          DataTx.t()
+        ) :: :ok
   def preprocess_check(
-    accounts,
-    channels,
-    _block_height,
-    %ChannelCreateTx{} = tx,
-    data_tx
-  ) do
+        accounts,
+        channels,
+        _block_height,
+        %ChannelCreateTx{} = tx,
+        data_tx
+      ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     nonce = DataTx.nonce(data_tx)
     fee = DataTx.fee(data_tx)
@@ -161,5 +184,4 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
-
 end

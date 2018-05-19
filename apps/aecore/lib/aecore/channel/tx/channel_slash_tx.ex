@@ -15,8 +15,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Expected structure for the ChannelSlash Transaction"
   @type payload :: %{
-    state: ChannelStateOffChain.t()
-  }
+          state: ChannelStateOffChain.t()
+        }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -27,8 +27,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
-    state: ChannelStateOffChain.t()
-  }
+          state: ChannelStateOffChain.t()
+        }
 
   @doc """
   Definition of Aecore ChannelSlashTx structure
@@ -65,7 +65,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelSlashTx{state: state}, data_tx) do
     senders = DataTx.senders(data_tx)
-    
+
     cond do
       length(senders) != 1 ->
         {:error, "Invalid senders size"}
@@ -86,19 +86,21 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelSlashTx.t(),
-          DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+          DataTx.t()
+        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
-    accounts,
-    channels,
-    block_height,
-    %ChannelSlashTx{state: state},
-    _data_tx
-  ) do
+        accounts,
+        channels,
+        block_height,
+        %ChannelSlashTx{state: state},
+        _data_tx
+      ) do
     channel_id = ChannelStateOffChain.id(state)
-    
-    new_channels = Map.update!(channels, channel_id, fn channel ->
-      ChannelStateOnChain.apply_slashing(channel, block_height, state)
-    end)
+
+    new_channels =
+      Map.update!(channels, channel_id, fn channel ->
+        ChannelStateOnChain.apply_slashing(channel, block_height, state)
+      end)
 
     {:ok, {accounts, new_channels}}
   end
@@ -112,15 +114,15 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelSlashTx.t(),
-          DataTx.t()) 
-  :: :ok
+          DataTx.t()
+        ) :: :ok
   def preprocess_check(
-    accounts,
-    channels,
-    _block_height,
-    %ChannelSlashTx{state: state},
-    data_tx
-  ) do
+        accounts,
+        channels,
+        _block_height,
+        %ChannelSlashTx{state: state},
+        data_tx
+      ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -148,9 +150,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-  ) :: ChainState.account()
+        ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
-
 end

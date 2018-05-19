@@ -174,7 +174,7 @@ defmodule Aecore.Tx.Pool.Worker do
         NameTransferTx.is_minimum_fee_met?(tx)
 
       %NameUpdateTx{} ->
-      NameUpdateTx.is_minimum_fee_met?(tx)
+        NameUpdateTx.is_minimum_fee_met?(tx)
 
       _ ->
         true

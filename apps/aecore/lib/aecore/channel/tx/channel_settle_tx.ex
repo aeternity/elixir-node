@@ -14,8 +14,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @typedoc "Expected structure for the ChannelSettle Transaction"
   @type payload :: %{
-    channel_id: binary(),
-  }
+          channel_id: binary()
+        }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -26,8 +26,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @typedoc "Structure of the ChannelSettle Transaction type"
   @type t :: %ChannelSettleTx{
-    channel_id: binary(),
-  }
+          channel_id: binary()
+        }
 
   @doc """
   Definition of Aecore ChannelSettle structure
@@ -46,7 +46,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     %ChannelSettleTx{channel_id: channel_id}
   end
 
-  def channel_id(%ChannelSettleTx{channel_id: channel_id}) do channel_id end
+  def channel_id(%ChannelSettleTx{channel_id: channel_id}) do
+    channel_id
+  end
 
   @doc """
   Checks transactions internal contents validity
@@ -54,13 +56,11 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelSettleTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
-    
-    cond do
-      length(senders) != 1 ->
-        {:error, "Invalid from_accs size"}
 
-      true ->
-        :ok
+    if length(senders) != 1 do
+      {:error, "Invalid from_accs size"}
+    else
+      :ok
     end
   end
 
@@ -72,14 +72,15 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelSettleTx.t(),
-          DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+          DataTx.t()
+        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
-    accounts,
-    channels,
-    block_height,
-    %ChannelSettleTx{channel_id: channel_id},
-    _data_tx
-  ) do
+        accounts,
+        channels,
+        block_height,
+        %ChannelSettleTx{channel_id: channel_id},
+        _data_tx
+      ) do
     channel = channels[channel_id]
 
     new_accounts =
@@ -105,15 +106,15 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelSettleTx.t(),
-          DataTx.t()) 
-  :: :ok
+          DataTx.t()
+        ) :: :ok
   def preprocess_check(
-    accounts,
-    channels,
-    block_height,
-    %ChannelSettleTx{channel_id: channel_id},
-    data_tx
-  ) do
+        accounts,
+        channels,
+        block_height,
+        %ChannelSettleTx{channel_id: channel_id},
+        data_tx
+      ) do
     fee = DataTx.fee(data_tx)
     sender = DataTx.main_sender(data_tx)
 
@@ -140,9 +141,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-  ) :: ChainState.account()
+        ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
-
 end

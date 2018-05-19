@@ -6,7 +6,14 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
-  alias Aecore.Channel.Tx.{ChannelCloseMutalTx, ChannelCloseSoloTx, ChannelSlashTx, ChannelSettleTx}
+
+  alias Aecore.Channel.Tx.{
+    ChannelCloseMutalTx,
+    ChannelCloseSoloTx,
+    ChannelSlashTx,
+    ChannelSettleTx
+  }
+
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -52,7 +59,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Imports channel from open tx and ChannelStateOffChain.
   """
-  @spec import_from_open_and_state(SignedTx.t(), ChannelStateOffChain.t(), non_neg_integer(), role()) :: :ok | error()
+  @spec import_from_open_and_state(
+          SignedTx.t(),
+          ChannelStateOffChain.t(),
+          non_neg_integer(),
+          role()
+        ) :: :ok | error()
   def import_from_open_and_state(open_tx, state, reserve, role) do
     peer_state = ChannelStatePeer.from_open_and_state(open_tx, state, reserve, role)
     import_channel(peer_state)
@@ -61,15 +73,30 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Initializes channel with temporary ID. This has to be called for every channel by both :initiator and :responder. 
   """
-  @spec initialize(binary(), list(Wallet.pubkey()), list(non_neg_integer()), role(), non_neg_integer()) :: :ok | error()
+  @spec initialize(
+          binary(),
+          list(Wallet.pubkey()),
+          list(non_neg_integer()),
+          role(),
+          non_neg_integer()
+        ) :: :ok | error()
   def initialize(temporary_id, pubkeys, amounts, role, channel_reserve) do
-    GenServer.call(__MODULE__, {:initialize, temporary_id, pubkeys, amounts, role, channel_reserve})
+    GenServer.call(
+      __MODULE__,
+      {:initialize, temporary_id, pubkeys, amounts, role, channel_reserve}
+    )
   end
 
   @doc """
   Creates open transaction. Can only be called once per channel by :initiator. Returns pair: generated channelID, half signed SignedTx.
   """
-  @spec create_open(binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: {:ok, binary(), SignedTx.t()} | error()
+  @spec create_open(
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Wallet.privkey()
+        ) :: {:ok, binary(), SignedTx.t()} | error()
   def create_open(temporary_id, locktime, fee, nonce, priv_key) do
     GenServer.call(__MODULE__, {:create_open, temporary_id, locktime, fee, nonce, priv_key})
   end
@@ -77,7 +104,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Signs open transaction. Can only be called once per channel by :responder. Returns fully signed SignedTx and adds it to Pool.
   """
-  @spec sign_open(binary(), SignedTx.t(), Wallet.privkey()) :: {:ok, binary(), SignedTx.t()} | error()
+  @spec sign_open(binary(), SignedTx.t(), Wallet.privkey()) ::
+          {:ok, binary(), SignedTx.t()} | error()
   def sign_open(temporary_id, open_tx, priv_key) do
     GenServer.call(__MODULE__, {:sign_open, temporary_id, open_tx, priv_key})
   end
@@ -90,7 +118,8 @@ defmodule Aecore.Channel.Worker do
     case GenServer.call(__MODULE__, {:opened, open_tx}) do
       :ok ->
         :ok
-      {:error, reason} = error->
+
+      {:error, reason} = error ->
         Logger.warn(reason)
         error
     end
@@ -99,7 +128,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Transfers amount to other peer in channel. Returns halfsigned channal offchain state. Can only be called on open channel.
   """
-  @spec transfer(binary(), non_neg_integer(), Wallet.privkey()) :: {:ok, ChannelStateOffChain.t()} | error()
+  @spec transfer(binary(), non_neg_integer(), Wallet.privkey()) ::
+          {:ok, ChannelStateOffChain.t()} | error()
   def transfer(channel_id, amount, priv_key) do
     GenServer.call(__MODULE__, {:transfer, channel_id, amount, priv_key})
   end
@@ -107,7 +137,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received channel state. If it's half signed and validates: signs it and returns it.
   """
-  @spec recv_state(ChannelStateOffChain.t(), Wallet.privkey()) :: {:ok, ChannelStateOffChain.t() | nil} | error()
+  @spec recv_state(ChannelStateOffChain.t(), Wallet.privkey()) ::
+          {:ok, ChannelStateOffChain.t() | nil} | error()
   def recv_state(recv_state, priv_key) do
     GenServer.call(__MODULE__, {:recv_state, recv_state, priv_key})
   end
@@ -115,7 +146,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Creates channel close transaction. This also blocks any new transactions from hapenning on channel.
   """
-  @spec close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: {:ok, SignedTx.t()} | error()
+  @spec close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+          {:ok, SignedTx.t()} | error()
   def close(channel_id, fee, nonce, priv_key) do
     GenServer.call(__MODULE__, {:close, channel_id, fee, nonce, priv_key})
   end
@@ -139,7 +171,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Solo closes channel. Creates solo close Tx and adds it to the pool.
   """
-  @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) :: :ok | error()
+  @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+          :ok | error()
   def solo_close(channel_id, fee, nonce, priv_key) do
     GenServer.call(__MODULE__, {:solo_close, channel_id, fee, nonce, priv_key})
   end
@@ -147,7 +180,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Slashes channel. Creates slash Tx and adds it to the pool.
   """
-  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) :: :ok | error()
+  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) ::
+          :ok | error()
   def slash(channel_id, fee, nonce, pubkey, priv_key) do
     GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, pubkey, priv_key})
   end
@@ -155,7 +189,13 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Notifies channel manager about mined slash or solo close transaction. If channel Manager has newer state for coresponding channel it creates a slash transaction and add it to pool.
   """
-  @spec slashed(SignedTx.t(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) :: :ok | error()
+  @spec slashed(
+          SignedTx.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Wallet.pubkey(),
+          Wallet.privkey()
+        ) :: :ok | error()
   def slashed(slash_tx, fee, nonce, pubkey, priv_key) do
     GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pubkey, priv_key})
   end
@@ -176,52 +216,62 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Returns map of all ChannelStatePeer objects.
   """
-  @spec get_all_channels() :: %{binary() => ChannelStatePeer.t()}
-  def get_all_channels() do
+  @spec get_all_channels :: %{binary() => ChannelStatePeer.t()}
+  def get_all_channels do
     GenServer.call(__MODULE__, :get_all_channels)
   end
 
   def get_channel(channel_id) do
     GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
-  
+
   ## Server side
   #
   def handle_call({:import_channel, channel_id, channel_state}, _from, state) do
     {:reply, :ok, Map.put(state, channel_id, channel_state)}
   end
 
-  def handle_call({:initialize, temporary_id, pubkeys, amounts, role, channel_reserve}, _from, state) do
-    peer_state = ChannelStatePeer.initialize(temporary_id, pubkeys, amounts, channel_reserve, role)
+  def handle_call(
+        {:initialize, temporary_id, pubkeys, amounts, role, channel_reserve},
+        _from,
+        state
+      ) do
+    peer_state =
+      ChannelStatePeer.initialize(temporary_id, pubkeys, amounts, channel_reserve, role)
+
     {:reply, :ok, Map.put(state, temporary_id, peer_state)}
   end
 
   def handle_call({:create_open, temporary_id, locktime, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
-    
-    {:ok, new_peer_state, new_id, open_tx} = ChannelStatePeer.create_open(peer_state, locktime, fee, nonce, priv_key)
+
+    {:ok, new_peer_state, new_id, open_tx} =
+      ChannelStatePeer.create_open(peer_state, locktime, fee, nonce, priv_key)
 
     new_state =
       state
-      |>Map.drop([temporary_id])
-      |>Map.put(new_id, new_peer_state)
+      |> Map.drop([temporary_id])
+      |> Map.put(new_id, new_peer_state)
+
     {:reply, {:ok, new_id, open_tx}, new_state}
   end
 
   def handle_call({:sign_open, temporary_id, open_tx, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
-    with {:ok, new_peer_state, id, signed_open_tx} <- ChannelStatePeer.sign_open(peer_state, open_tx, priv_key),
+    with {:ok, new_peer_state, id, signed_open_tx} <-
+           ChannelStatePeer.sign_open(peer_state, open_tx, priv_key),
          :ok <- Pool.add_transaction(signed_open_tx) do
       new_state =
         state
-        |>Map.drop([temporary_id])
-        |>Map.put(id, new_peer_state)
+        |> Map.drop([temporary_id])
+        |> Map.put(id, new_peer_state)
 
       {:reply, {:ok, id, signed_open_tx}, new_state}
     else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+
       :error ->
         {:reply, {:error, "Pool error"}, state}
     end
@@ -229,7 +279,7 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:opened, open_tx}, _from, state) do
     id = ChannelStateOnChain.id(SignedTx.data_tx(open_tx))
-    
+
     if Map.has_key?(state, id) do
       peer_state = Map.get(state, id)
       new_peer_state = ChannelStatePeer.opened(peer_state)
@@ -241,8 +291,9 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:transfer, id, amount, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
-    
-    with {:ok, new_peer_state, offchain_state} <- ChannelStatePeer.transfer(peer_state, amount, priv_key) do
+
+    with {:ok, new_peer_state, offchain_state} <-
+           ChannelStatePeer.transfer(peer_state, amount, priv_key) do
       {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
     else
       {:error, reason} ->
@@ -254,7 +305,8 @@ defmodule Aecore.Channel.Worker do
     id = ChannelStateOffChain.id(recv_state)
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, offchain_state} <- ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
+    with {:ok, new_peer_state, offchain_state} <-
+           ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
       {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
     else
       {:error, reason} ->
@@ -265,7 +317,8 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:close, id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, close_tx} <- ChannelStatePeer.close(peer_state, fee, nonce, priv_key) do
+    with {:ok, new_peer_state, close_tx} <-
+           ChannelStatePeer.close(peer_state, fee, nonce, priv_key) do
       {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
     else
       {:error, reason} ->
@@ -276,19 +329,21 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:recv_close_tx, id, close_tx, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, signed_close_tx} <- ChannelStatePeer.recv_close_tx(peer_state, close_tx, priv_key),
+    with {:ok, new_peer_state, signed_close_tx} <-
+           ChannelStatePeer.recv_close_tx(peer_state, close_tx, priv_key),
          :ok <- Pool.add_transaction(signed_close_tx) do
       {:reply, {:ok, signed_close_tx}, Map.put(state, id, new_peer_state)}
     else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+
       :error ->
         {:reply, {:error, "Transacion Pool error (Invalid recvieved tx signature?)"}, state}
     end
   end
 
-  def handle_call({:closed, close_tx}, _from, state) do 
-    id = 
+  def handle_call({:closed, close_tx}, _from, state) do
+    id =
       close_tx
       |> SignedTx.data_tx()
       |> DataTx.payload()
@@ -305,13 +360,15 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:solo_close, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
-    
-    with {:ok, new_peer_state, tx} <- ChannelStatePeer.solo_close(peer_state, fee, nonce, priv_key),
+
+    with {:ok, new_peer_state, tx} <-
+           ChannelStatePeer.solo_close(peer_state, fee, nonce, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:error, reason} ->
         {:error, reason}
+
       :error ->
         {:error, "Pool error"}
     end
@@ -319,13 +376,15 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:slash, channel_id, fee, nonce, pubkey, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
-    
-    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, pubkey, priv_key),
+
+    with {:ok, new_peer_state, tx} <-
+           ChannelStatePeer.slash(peer_state, fee, nonce, pubkey, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:error, reason} ->
         {:error, reason}
+
       :error ->
         {:error, "Pool error"}
     end
@@ -333,25 +392,31 @@ defmodule Aecore.Channel.Worker do
 
   def handle_call({:slashed, slash_tx, fee, nonce, pubkey, priv_key}, _from, state) do
     data_tx = SignedTx.data_tx(slash_tx)
-    channel_id = 
+
+    channel_id =
       case DataTx.payload(data_tx) do
         %ChannelCloseSoloTx{} = payload ->
           ChannelCloseSoloTx.channel_id(payload)
+
         %ChannelSlashTx{} = payload ->
           ChannelSlashTx.channel_id(payload)
-      end 
+      end
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
-      {:ok, new_peer_state, tx} = ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, pubkey, priv_key)
+
+      {:ok, new_peer_state, tx} =
+        ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, pubkey, priv_key)
+
       if tx != nil do
         case Pool.add_transaction(tx) do
           :ok ->
             {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+
           :error ->
             {:reply, {:error, "Pool error"}, state}
         end
-      else  
+      else
         {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
       end
     else
@@ -360,7 +425,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:settled, settle_tx}, _from, state) do
-    channel_id = 
+    channel_id =
       settle_tx
       |> SignedTx.data_tx()
       |> DataTx.payload()
@@ -385,5 +450,4 @@ defmodule Aecore.Channel.Worker do
       {:reply, {:error, "No such channel"}, state}
     end
   end
-
 end

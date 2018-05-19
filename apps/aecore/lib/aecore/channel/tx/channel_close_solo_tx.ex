@@ -15,8 +15,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
-    state: ChannelStateOffChain.t()
-  }
+          state: ChannelStateOffChain.t()
+        }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -27,8 +27,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @typedoc "Structure of the ChannelCloseSolo Transaction type"
   @type t :: %ChannelCloseSoloTx{
-    state: ChannelStateOffChain.t()
-  }
+          state: ChannelStateOffChain.t()
+        }
 
   @doc """
   Definition of Aecore ChannelCloseSoloTx structure
@@ -65,13 +65,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCloseSoloTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
-    
-    cond do
-      length(senders) != 1 ->
-        {:error, "Invalid senders size"}
 
-      true ->
-        :ok
+    if length(senders) != 1 do
+      {:error, "Invalid senders size"}
+    else
+      :ok
     end
   end
 
@@ -83,19 +81,21 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
-          DataTx.t()) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+          DataTx.t()
+        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
   def process_chainstate(
-    accounts,
-    channels,
-    block_height,
-    %ChannelCloseSoloTx{state: state},
-    _data_tx
-  ) do
+        accounts,
+        channels,
+        block_height,
+        %ChannelCloseSoloTx{state: state},
+        _data_tx
+      ) do
     channel_id = ChannelStateOffChain.id(state)
-    
-    new_channels = Map.update!(channels, channel_id, fn channel ->
-      ChannelStateOnChain.apply_slashing(channel, block_height, state)
-    end)
+
+    new_channels =
+      Map.update!(channels, channel_id, fn channel ->
+        ChannelStateOnChain.apply_slashing(channel, block_height, state)
+      end)
 
     {:ok, {accounts, new_channels}}
   end
@@ -109,15 +109,15 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelStateOnChain.channels(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
-          DataTx.t()) 
-  :: :ok
+          DataTx.t()
+        ) :: :ok
   def preprocess_check(
-    accounts,
-    channels,
-    _block_height,
-    %ChannelCloseSoloTx{state: state},
-    data_tx
-  ) do
+        accounts,
+        channels,
+        _block_height,
+        %ChannelCloseSoloTx{state: state},
+        data_tx
+      ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
@@ -134,8 +134,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "Can't solo close active channel. Use slash."}
 
-      sender != ChannelStateOnChain.initiator_pubkey(channel)
-      && sender != ChannelStateOnChain.responder_pubkey(channel) ->
+      sender != ChannelStateOnChain.initiator_pubkey(channel) &&
+          sender != ChannelStateOnChain.responder_pubkey(channel) ->
         {:error, "Sender must be a party of the channel"}
 
       true ->
@@ -149,9 +149,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-  ) :: ChainState.account()
+        ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
-
 end

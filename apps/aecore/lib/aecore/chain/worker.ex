@@ -25,7 +25,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx, ChannelCloseSoloTx}
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx}
   alias Aecore.Channel.Worker, as: Channel
   alias Aecore.Tx.{DataTx, SignedTx}
 
@@ -502,10 +502,10 @@ defmodule Aecore.Chain.Worker do
     case DataTx.payload(SignedTx.data_tx(tx)) do
       %ChannelCreateTx{} ->
         Channel.opened(tx)
+
       %ChannelCloseMutalTx{} ->
         Channel.closed(tx)
-      %ChannelCloseSoloTx{} ->
-        :ok #TODO Channel.slashed(tx)
+
       _ ->
         :ok
     end

@@ -20,12 +20,21 @@ defmodule TestUtils do
   end
 
   def spend(pk, sk, receiver, amount) do
-    {:ok, tx} = Account.spend(pk, sk, receiver, amount, 10, Account.nonce(Chain.chain_state().accounts, pk) + 1)
+    {:ok, tx} =
+      Account.spend(
+        pk,
+        sk,
+        receiver,
+        amount,
+        10,
+        Account.nonce(Chain.chain_state().accounts, pk) + 1
+      )
+
     Pool.add_transaction(tx)
   end
 
   def spend_list(pk, sk, list) do
-    spend_list(pk, sk, list, Account.nonce(Chain.chain_state().accounts, pk) +  1)
+    spend_list(pk, sk, list, Account.nonce(Chain.chain_state().accounts, pk) + 1)
   end
 
   defp spend_list(_pk, _sk, [], _) do
@@ -38,16 +47,15 @@ defmodule TestUtils do
     spend_list(pk, sk, rest, nonce + 1)
   end
 
-  def assert_transactions_mined() do
-    Miner.mine_sync_block_to_chain
+  def assert_transactions_mined do
+    Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_and_empty_pool()) == true
   end
 
-  def clean_blockchain() do
+  def clean_blockchain do
     Persistence.delete_all_blocks()
     Chain.clear_state()
     Pool.get_and_empty_pool()
     :ok
   end
-
 end
