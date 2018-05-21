@@ -10,6 +10,10 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -167,7 +171,7 @@ defmodule Aecore.Tx.DataTx do
 
     with {:ok, {new_accounts_state, new_tx_type_state}} <-
            nonce_accounts_state
-           |> tx.type.deduct_fee(payload, block_height, tx, fee)
+           |> tx.type.deduct_fee(block_height, payload, tx, fee)
            |> tx.type.process_chainstate(
              tx_type_state,
              block_height,
@@ -229,14 +233,11 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec deserialize(map()) :: DataTx.t()
-  def deserialize(%{} = data_tx) do
-    senders =
-      if data_tx.sender != nil do
-        [data_tx.sender]
-      else
-        data_tx.senders
-      end
+  def deserialize(%{sender: sender} = data_tx) do
+    init(data_tx.type, data_tx.payload, [sender], data_tx.fee, data_tx.nonce)
+  end
 
+  def deserialize(%{senders: senders} = data_tx) do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce)
   end
 
@@ -253,11 +254,11 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec standard_deduct_fee(
-          AccountStateTree.t(),
-          DataTx.t(),
+          AccountStateTree.accounts_state(),
           non_neg_integer(),
+          DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Account.t()
   def standard_deduct_fee(accounts, block_height, data_tx, fee) do
     sender = DataTx.main_sender(data_tx)
 

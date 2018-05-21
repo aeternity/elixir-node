@@ -95,12 +95,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          AccountStateTree.tree(),
+          AccountStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameUpdateTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
+        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
   def process_chainstate(
         accounts,
         naming_state,
@@ -127,7 +127,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          AccountsStateTree.accounts_state(),
           tx_type_state(),
           non_neg_integer(),
           NameUpdateTx.t(),
