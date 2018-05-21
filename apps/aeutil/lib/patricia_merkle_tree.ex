@@ -136,5 +136,5 @@ defmodule Aeutil.PatriciaMerkleTree do
   @spec print_trie(Trie.t(), :as_struct | :as_pair) :: Trie.t() | {:error, term()}
   def print_trie(trie, :as_struct), do: Inspector.inspect_trie(trie)
   def print_trie(trie, :as_pair), do: Inspector.all_values(trie)
-  def print_trie(trie, _), do: {:error, "Unknown print type"}
+  def print_trie(_, _), do: {:error, "Unknown print type"}
 end
