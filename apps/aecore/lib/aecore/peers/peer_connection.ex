@@ -31,20 +31,16 @@ defmodule Aecore.Peers.PeerConnection do
   @mempool 14
 
   def start_link(ref, socket, transport, opts) do
-    IO.inspect("Another start link called")
     args = [ref, socket, transport, opts]
     {:ok, pid} = :proc_lib.start_link(__MODULE__, :accept_init, args)
     {:ok, pid}
   end
 
   def start_link(conn_info) do
-    IO.inspect("PeerConnection is called")
-    IO.inspect(conn_info)
     GenServer.start_link(__MODULE__, conn_info)
   end
 
   def accept_init(ref, socket, :ranch_tcp, opts) do
-    IO.inspect("Accept init")
     :ok = :proc_lib.init_ack({:ok, self()})
     {:ok, {host, _}} = :inet.peername(socket)
     host_bin = host |> :inet.ntoa() |> :binary.list_to_bin()
@@ -69,7 +65,6 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def init(conn_info) do
-    IO.inspect("Peer connection init")
     genesis_hash = Block.genesis_hash()
 
     updated_con_info =
@@ -90,42 +85,12 @@ defmodule Aecore.Peers.PeerConnection do
     {:reply, state, state}
   end
 
-  @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_hash(hash, pid),
-    do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
-
-  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid),
-    do: send_request_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
-
-  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
-          {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid),
-    do: send_request_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
-
-  @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid),
-    do: send_request_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
-
-  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
-  def get_mempool(pid) when is_pid(pid),
-    do: send_request_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
-
-  @spec send_new_block(Block.t(), pid()) :: :ok | :error
-  def send_new_block(block, pid),
-    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
-
-  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
-
   def handle_call(
         {:send_request_msg, <<type::16, _::binary>> = msg},
         from,
         %{status: {:connected, socket}} = state
       ) do
-    IO.inspect("#{__MODULE__}: bef send to enoise")
     :ok = :enoise.send(socket, msg)
-    IO.inspect("#{__MODULE__}: after send to enoise")
 
     response_type =
       case type do
@@ -151,7 +116,6 @@ defmodule Aecore.Peers.PeerConnection do
 
   def handle_call({:send_msg_no_response, msg}, _from, %{status: {:connected, socket}} = state) do
     res = :enoise.send(socket, msg)
-    IO.inspect("Handle call send_msg_no_response")
     {:reply, res, state}
   end
 
@@ -172,19 +136,14 @@ defmodule Aecore.Peers.PeerConnection do
           port: port
         } = state
       ) do
-    IO.inspect("Gen TCP connect")
-
     case :gen_tcp.connect(host, port, [:binary, reuseaddr: true, active: false]) do
       {:ok, socket} ->
-        IO.inspect("Inside socket")
         noise_opts = noise_opts(privkey, pubkey, r_pubkey, genesis, version)
 
         :inet.setopts(socket, active: true)
 
         case :enoise.connect(socket, noise_opts) do
-          {:ok, noise_socket, status} ->
-            IO.inspect("Enoise connect")
-            IO.inspect(status)
+          {:ok, noise_socket, _status} ->
 
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
@@ -193,13 +152,13 @@ defmodule Aecore.Peers.PeerConnection do
             {:noreply, new_state}
 
           {:error, reason} ->
-            IO.inspect(":enoise.connect ERROR: #{inspect(reason)}")
+            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
       {:error, reason} ->
-        IO.inspect(":get_tcp.connect ERROR: #{inspect(reason)}")
+        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end
@@ -247,6 +206,34 @@ defmodule Aecore.Peers.PeerConnection do
     {:stop, :normal, state}
   end
 
+  @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_hash(hash, pid),
+    do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
+
+  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(height, pid),
+    do: send_request_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
+
+  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
+          {:ok, list(Header.t())} | {:error, term()}
+  def get_n_successors(hash, n, pid),
+    do: send_request_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
+
+  @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
+  def get_block(hash, pid),
+    do: send_request_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
+
+  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
+  def get_mempool(pid) when is_pid(pid),
+    do: send_request_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
+
+  @spec send_new_block(Block.t(), pid()) :: :ok | :error
+  def send_new_block(block, pid),
+    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
+
+  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
+  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
+
   defp ping(%{status: {:connected, socket}, genesis: genesis_hash}) do
     top_block = Chain.top_block()
     peers = Enum.map(Peers.all_peers(), fn peer -> Map.delete(peer, :connection) end)
@@ -285,7 +272,6 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp send_msg_no_response(id, payload, pid) do
     msg = <<id::16, payload::binary>>
-    IO.inspect(pid, label: "Send msg no response to pid:")
     GenServer.call(pid, {:send_msg_no_response, msg})
   end
 
@@ -306,7 +292,6 @@ defmodule Aecore.Peers.PeerConnection do
     reply =
       case result do
         true ->
-          IO.inspect("Payload object: #{inspect(payload.object)}")
           {:ok, payload.object}
 
         false ->
@@ -324,7 +309,6 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_hash(payload, pid) do
     hash = payload.hash
-    IO.inspect(hash)
     result = Chain.get_header(hash)
     send_response(result, @header, pid)
   end
@@ -353,8 +337,6 @@ defmodule Aecore.Peers.PeerConnection do
           {:error, reason}
       end
 
-    IO.inspect(result)
-
     send_response(result, @header_hashes, pid)
   end
 
@@ -370,7 +352,6 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp handle_new_block(payload) do
-    IO.inspect("New Block incomming")
     block = payload.block
     Chain.add_block(block)
   end
@@ -381,29 +362,21 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
-    opts = [
+    [
       noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
       s: :enoise_keypair.new(:dh25519, privkey, pubkey),
       rs: :enoise_keypair.new(:dh25519, r_pubkey),
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
-
-    #  IO.inspect "noise_opts"
-    #  IO.inspect opts
-    #  opts
   end
 
   defp noise_opts(privkey, pubkey, genesis_hash, version) do
-    opts = [
+    [
       noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
       s: :enoise_keypair.new(:dh25519, privkey, pubkey),
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
-
-    # IO.inspect "noise_opts"
-    # IO.inspect opts
-    # opts
   end
 end

@@ -1,7 +1,6 @@
 defmodule Aecore.Peers.Worker do
   use GenServer
 
-  alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
 
   require Logger
@@ -44,12 +43,12 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:have_peer?, peer_pubkey})
   end
 
-  def try_connect(peer_info) do
-    GenServer.cast(__MODULE__, {:try_connect, peer_info})
-  end
-
   def get_random(number) do
     GenServer.call(__MODULE__, {:get_random, number})
+  end
+
+  def try_connect(peer_info) do
+    GenServer.cast(__MODULE__, {:try_connect, peer_info})
   end
 
   def handle_call(:state, _from, state) do
@@ -82,6 +81,11 @@ defmodule Aecore.Peers.Worker do
     {:reply, have_peer, state}
   end
 
+  def handle_call({:get_random, number}, _from, %{peers: peers} = state) do
+    random = Enum.take_random(peers, number)
+    {:reply, random, state}
+  end
+
   def handle_cast(
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
@@ -92,19 +96,13 @@ defmodule Aecore.Peers.Worker do
         Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
       {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
-      IO.inspect(peers)
+
       new_peers = Map.put_new(peers, peer_info.pubkey, peer_info)
-      IO.inspect(new_peers)
       {:noreply, %{state | peers: new_peers}}
     else
       Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
       {:noreply, state}
     end
-  end
-
-  def handle_call({:get_random, number}, _from, %{peers: peers} = state) do
-    random = Enum.take_random(peers, number)
-    {:reply, random, state}
   end
 
   def peer_id(peer_id) when is_binary(peer_id) do
@@ -114,9 +112,4 @@ defmodule Aecore.Peers.Worker do
   def peer_id({_, %{connection: peer_id}}) do
     peer_id
   end
-
-  # else
-  #  Logger.error("Can't add ourself")
-  #  {:noreply, state}
-  # end
 end

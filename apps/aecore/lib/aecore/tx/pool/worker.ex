@@ -86,11 +86,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
           if !Enum.empty?(Peers.all_peers()) do
             for peer <- Peers.all_peers() do
-              IO.inspect("Sending a tx to peer: #{inspect(peer.port)}")
               PeerConn.send_new_tx(tx, peer.connection)
             end
           else
-            IO.inspect("List of peers is empty")
+            Logger.debug(fn -> "List of peers is empty" end)
           end
 
           # Events.publish(:tx_created, tx)

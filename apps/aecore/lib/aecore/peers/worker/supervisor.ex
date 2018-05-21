@@ -1,7 +1,6 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   use Supervisor
 
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Sync
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
