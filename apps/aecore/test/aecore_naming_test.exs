@@ -34,7 +34,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -49,7 +50,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
@@ -64,7 +66,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
@@ -81,7 +84,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
@@ -105,7 +109,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
@@ -134,7 +139,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -149,14 +155,16 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
 
-    # TODO -> have to fix
-    # assert first_name_claim == Wallet.get_public_key()
-    # assert !Map.has_key?(first_name_claim, :name)
+    assert {:ok, Wallet.get_public_key()} ==
+             naming_state |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
+
+    assert false == naming_state |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
   end
 
   test "name not claimable from different account", setup do
@@ -166,7 +174,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -185,13 +194,17 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
-    # TODO Have to fix
-    # assert first_name_claim.owner == Wallet.get_public_key()
-    # assert !Map.has_key?(first_name_claim, :name)
+    assert :none == first_name_claim
+
+    assert {:ok, Wallet.get_public_key()} ==
+             naming_state |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
+
+    assert false == naming_state |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
   end
 
   test "name not updatable from different account", setup do
@@ -201,7 +214,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -216,7 +230,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
@@ -237,7 +252,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
@@ -255,7 +271,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -270,7 +287,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
@@ -285,7 +303,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
@@ -316,7 +335,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
@@ -334,7 +354,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
@@ -349,7 +370,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
@@ -364,7 +386,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
@@ -381,7 +404,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
@@ -407,7 +431,8 @@ defmodule AecoreNamingTest do
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
-    # TODO: After - Get all keys and their count of a given patricia trie #373
+
+    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
     # assert 1 == Enum.count(naming_state)
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
