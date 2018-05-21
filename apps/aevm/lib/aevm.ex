@@ -1032,7 +1032,14 @@ defmodule Aevm do
   # f0s: System operations
 
   def exec(OpCodes._CREATE(), state) do
-    # TODO
+    {value, state1} = pop(state)
+    {from_pos, state2} = pop(state1)
+    {size, state3} = pop(state2)
+
+    {area, state4} = Memory.get_area(from_pos, size, state3)
+    {account, state5} = create_account(value, area, state4)
+
+    push(account, state5)
   end
 
   def exec(OpCodes._CALL(), state) do
@@ -1070,7 +1077,7 @@ defmodule Aevm do
   # end
 
   def exec(OpCodes._INVALID(), state) do
-    # TODO
+    throw({"invalid instruction", state})
   end
 
   # Halt Execution, Mark for deletion
@@ -1199,6 +1206,11 @@ defmodule Aevm do
     state1 = State.set_cp(old_cp + bytes, state)
 
     {value, state1}
+  end
+
+  defp create_account(_value, _area, state) do
+    #TODO
+    {0xDEADC0DE, state}
   end
 
   defp copy_bytes(from_byte, count, data) do

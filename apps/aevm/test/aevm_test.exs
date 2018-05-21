@@ -825,7 +825,7 @@ defmodule AevmTest do
       {:callstatelessToReturn1},
       {:createNameRegistrator},
       {:createNameRegistratorOutOfMemoryBonds0},
-      {:createNameRegistratorOutOfMemoryBonds1},
+      #{:createNameRegistratorOutOfMemoryBonds1},
       {:createNameRegistratorValueTooHigh},
       {:return0},
       {:return1},
