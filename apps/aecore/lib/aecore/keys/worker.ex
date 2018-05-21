@@ -9,6 +9,7 @@ defmodule Aecore.Keys.Worker do
   alias Aewallet.KeyPair
   alias Aecore.Keys.Wallet
   alias Aecore.Keys.Peers
+  alias Aecore.Keys.Utils
 
   @typedoc "Public key representing an account"
   @type pubkey() :: binary()
@@ -73,8 +74,8 @@ defmodule Aecore.Keys.Worker do
     pub_key =
       if derivation_path == "" do
         {:ok, pub_key} =
-          Wallet.get_aewallet_dir()
-          |> Wallet.get_file_name()
+          Wallet.aewallet_dir()
+          |> Utils.get_file_name()
           |> Aewallet.get_public_key(password, network: network)
 
         pub_key
@@ -113,8 +114,8 @@ defmodule Aecore.Keys.Worker do
     priv_key =
       if derivation_path == "" do
         {:ok, priv_key} =
-          Wallet.get_aewallet_dir()
-          |> Wallet.get_file_name()
+          Wallet.aewallet_dir()
+          |> Utils.get_file_name()
           |> Aewallet.get_private_key(password, network: network)
 
         priv_key

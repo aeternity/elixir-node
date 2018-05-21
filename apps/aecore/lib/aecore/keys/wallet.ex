@@ -4,8 +4,9 @@ defmodule Aecore.Keys.Wallet do
   """
 
   alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys.Utils
   alias Aewallet.Wallet, as: Aewallet
-  alias Aewallet.KeyPair, as: AA
+  alias Aewallet.KeyPair
 
   @typedoc "Public key representing an account"
   @type pubkey() :: binary()
@@ -24,16 +25,25 @@ defmodule Aecore.Keys.Wallet do
   """
   @spec get_wallet() :: :ok | {:error, String.t()}
   def get_wallet do
-    get_aewallet_dir()
-    |> File.mkdir()
-    |> has_wallet(get_aewallet_dir())
+    case aewallet_dir()
+         |> File.mkdir()
+         |> Utils.has_dir?(aewallet_dir()) do
+      :ok ->
+        :ok
+
+      {:error, :empty} ->
+        create_wallet(aewallet_dir())
+
+      err ->
+        err
+    end
   end
 
   @doc """
   Gets the default dir for storing the wallet
   """
-  @spec get_aewallet_dir() :: String.t()
-  def get_aewallet_dir do
+  @spec aewallet_dir() :: String.t()
+  def aewallet_dir do
     Application.get_env(:aecore, :aewallet)[:path]
   end
 
@@ -106,46 +116,23 @@ defmodule Aecore.Keys.Wallet do
   def derive_key(derivation_path, password) do
     password
     |> get_seed()
-    |> AA.generate_master_key()
-    |> AA.derive(derivation_path)
+    |> KeyPair.generate_master_key()
+    |> KeyPair.derive(derivation_path)
   end
 
   @spec get_seed(String.t()) :: binary()
   def get_seed(password) do
     {:ok, seed} =
-      get_aewallet_dir()
-      |> get_file_name()
+      aewallet_dir()
+      |> Utils.get_file_name()
       |> Aewallet.get_seed(password)
 
     seed
-  end
-
-  @spec has_wallet(:ok, String.t()) :: :ok
-  defp has_wallet(:ok, path), do: create_wallet(path)
-
-  @spec has_wallet(tuple(), String.t()) :: :ok
-  defp has_wallet({:error, :eexist}, path) do
-    case get_file_name(path) do
-      [] -> create_wallet(path)
-      [_] -> :ok
-    end
-  end
-
-  @spec has_wallet(tuple(), String.t()) :: {:error, String.t()}
-  defp has_wallet({:error, reason}, _path) do
-    {:error, reason}
   end
 
   @spec create_wallet(String.t()) :: :ok
   defp create_wallet(path) do
     {:ok, _mnemonic, _path, _wallet_type} = Aewallet.create_wallet(get_aewallet_pass(), path)
     :ok
-  end
-
-  @spec get_file_name(String.t()) :: List.t()
-  def get_file_name(path) do
-    path
-    |> Path.join("*/")
-    |> Path.wildcard()
   end
 end

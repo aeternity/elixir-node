@@ -144,7 +144,6 @@ defmodule Aecore.Peers.PeerConnection do
 
         case :enoise.connect(socket, noise_opts) do
           {:ok, noise_socket, _status} ->
-
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
             :ok = ping(new_state)
