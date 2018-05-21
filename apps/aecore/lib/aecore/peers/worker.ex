@@ -2,6 +2,7 @@ defmodule Aecore.Peers.Worker do
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Chain.Block
 
   require Logger
 
@@ -49,6 +50,10 @@ defmodule Aecore.Peers.Worker do
 
   def have_peer?(peer_pubkey) do
     GenServer.call(__MODULE__, {:have_peer?, peer_pubkey})
+  end
+
+  def broadcast_block(%Block{} = block) do
+    GenServer.cast(__MODULE__, {:broadcast_block, block})
   end
 
   def try_connect(peer_info) do
@@ -102,27 +107,31 @@ defmodule Aecore.Peers.Worker do
     {:reply, have_peer, state}
   end
 
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+    Enum.each(peers, fn peer -> PeerConnection.send_new_block(peer.connection, block) end)
+    {:noreply, state}
+  end
+
   def handle_cast(
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
       ) do
-    # if peer_info.pubkey != pubkey do
-    if !Map.has_key?(peers, peer_info.pubkey) do
-      conn_info =
-        Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
+    if peer_info.pubkey != pubkey do
+      if !Map.has_key?(peers, peer_info.pubkey) do
+        conn_info =
+          Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
-      {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
+        {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
 
-      {:noreply, state}
+        {:noreply, state}
+      else
+        Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+        {:noreply, state}
+      end
     else
-      Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+      Logger.error("Can't add ourself")
       {:noreply, state}
     end
-
-    # else
-    #  Logger.error("Can't add ourself")
-    #  {:noreply, state}
-    # end
   end
 
   defp prepare_peers(peers) do

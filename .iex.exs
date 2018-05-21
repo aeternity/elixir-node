@@ -3,7 +3,7 @@ alias Aecore.Chain.{Chainstate, BlockValidation, Difficulty, Block, Header}
 alias Aecore.Miner.Worker, as: Miner
 alias Aecore.Oracle.Oracle
 alias Aecore.Oracle.Tx.{OracleExtendTx, OracleQueryTx, OracleRegistrationTx, OracleResponseTx}
-alias Aecore.Peers.{PeerBlocksTask, Scheduler, Sync}
+alias Aecore.Peers.PeerConnection
 alias Aecore.Peers.Worker, as: Peers
 alias Aecore.Persistance.Worker, as: Persistance
 alias Aecore.Pow.{Cuckoo, Hashcash}

@@ -37,6 +37,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   @peer_share_count 32
 
+  @first_ping_timeout 30000
+
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
     {:ok, pid} = :proc_lib.start_link(__MODULE__, :accept_init, args)
@@ -64,6 +66,7 @@ defmodule Aecore.Peers.PeerConnection do
       {:ok, noise_socket, noise_state} ->
         r_pubkey = noise_state |> :enoise_hs_state.remote_keys() |> :enoise_keypair.pubkey()
         new_state = Map.merge(state, %{r_pubkey: r_pubkey, status: {:connected, noise_socket}})
+        {:ok, _} = :timer.send_after(@first_ping_timeout, self(), :first_ping_timeout)
         :gen_server.enter_loop(__MODULE__, [], new_state)
 
       {:error, _reason} ->
@@ -84,15 +87,20 @@ defmodule Aecore.Peers.PeerConnection do
     {:ok, updated_con_info, 0}
   end
 
+  @spec ping(pid()) :: :ok | :error
+  def ping(pid) when is_pid(pid) do
+    GenServer.call(pid, :ping)
+  end
+
   @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_hash(hash, pid) do
+  def get_header_by_hash(hash, pid) when is_pid(pid) do
     @get_header_by_hash
     |> pack_msg(%{hash: hash})
     |> send_request_msg(pid)
   end
 
   @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid) do
+  def get_header_by_height(height, pid) when is_pid(pid) do
     @get_header_by_height
     |> pack_msg(%{height: height})
     |> send_request_msg(pid)
@@ -100,20 +108,20 @@ defmodule Aecore.Peers.PeerConnection do
 
   @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid) do
+  def get_n_successors(hash, n, pid) when is_pid(pid) do
     @get_n_successors
     |> pack_msg(%{hash: hash, n: n})
     |> send_request_msg(pid)
   end
 
   @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid) do
+  def get_block(hash, pid) when is_pid(pid) do
     @get_block
     |> pack_msg(%{hash: hash})
     |> send_request_msg(pid)
   end
 
-  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
+  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}}
   def get_mempool(pid) when is_pid(pid) do
     @get_mempool
     |> pack_msg(<<>>)
@@ -121,17 +129,22 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   @spec send_new_block(Block.t(), pid()) :: :ok | :error
-  def send_new_block(block, pid) do
+  def send_new_block(block, pid) when is_pid(pid) do
     @block
     |> pack_msg(%{block: block})
     |> send_msg_no_response(pid)
   end
 
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid) do
+  def send_new_tx(tx, pid) when is_pid(pid) do
     @tx
     |> pack_msg(%{tx: tx})
     |> send_msg_no_response(pid)
+  end
+
+  def handle_call(:ping, _from, state) do
+    :ok = do_ping(state)
+    {:reply, :ok, state}
   end
 
   def handle_call(
@@ -174,6 +187,18 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def handle_info(
+        :first_ping_timeout,
+        %{r_pubkey: r_pubkey, status: {:connected, socket}} = state
+      ) do
+    if !Peers.have_peer?(r_pubkey) do
+      :enoise.close(socket)
+      {:stop, :normal, state}
+    else
+      {:noreply, state}
+    end
+  end
+
+  def handle_info(
         :timeout,
         %{
           genesis: genesis,
@@ -195,7 +220,7 @@ defmodule Aecore.Peers.PeerConnection do
           {:ok, noise_socket, _} ->
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
-            :ok = ping(new_state)
+            :ok = do_ping(new_state)
             Peers.add_peer(peer)
             {:noreply, new_state}
 
@@ -257,7 +282,7 @@ defmodule Aecore.Peers.PeerConnection do
     {:stop, :normal, state}
   end
 
-  defp ping(%{status: {:connected, socket}}) do
+  defp do_ping(%{status: {:connected, socket}}) do
     ping_object = local_ping_object()
     serialized_ping_object = :erlang.term_to_binary(ping_object)
     msg = <<@ping::16, serialized_ping_object::binary()>>
@@ -361,7 +386,7 @@ defmodule Aecore.Peers.PeerConnection do
 
       Enum.each(peers, fn peer ->
         if !Peers.have_peer?(peer.pubkey) do
-          Peers.add_peer(peer)
+          Peers.try_connect(peer)
         end
       end)
 
@@ -444,7 +469,6 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_new_block(payload) do
     block = payload.block
-    IO.inspect(block, limit: :infinity)
     Chain.add_block(block)
   end
 
@@ -482,11 +506,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
     [
-      noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
-      s: :enoise_keypair.new(:dh25519, privkey, pubkey),
-      rs: :enoise_keypair.new(:dh25519, r_pubkey),
-      prologue: <<version::binary(), genesis_hash::binary()>>,
-      timeout: @noise_timeout
+      {:rs, :enoise_keypair.new(:dh25519, r_pubkey)}
+      | noise_opts(privkey, pubkey, genesis_hash, version)
     ]
   end
 

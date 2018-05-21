@@ -1,7 +1,6 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   use Supervisor
 
-  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
@@ -34,7 +33,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
       )
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_all)
   end
 
   def sync_port do

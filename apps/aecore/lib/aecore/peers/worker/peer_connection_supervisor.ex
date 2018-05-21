@@ -14,7 +14,11 @@ defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
   def start_peer_connection(conn_info) do
     Supervisor.start_child(
       __MODULE__,
-      Supervisor.child_spec({PeerConnection, conn_info}, id: :peer_connection)
+      Supervisor.child_spec(
+        {PeerConnection, conn_info},
+        id: :peer_connection,
+        restart: :temporary
+      )
     )
   end
 

@@ -104,8 +104,6 @@ sync_port =
   end
 
 config :aecore, :peers,
-  peers_target_count: 5,
-  peers_max_count: 8,
   ranch_acceptors: 10,
   sync_port: sync_port
 

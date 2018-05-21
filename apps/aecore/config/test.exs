@@ -96,8 +96,8 @@ config :aecore, :pow,
   }
 
 config :aecore, :peers,
-  peers_target_count: 2,
-  peers_max_count: 4
+  ranch_acceptors: 10,
+  sync_port: 3015
 
 config :aecore, :miner, resumed_by_default: false
 
