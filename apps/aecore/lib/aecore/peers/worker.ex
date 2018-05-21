@@ -10,10 +10,10 @@ defmodule Aecore.Peers.Worker do
     peers = %{}
 
     {privkey, pubkey} =
-    {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129,
-     67, 86, 101, 117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
-     <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221,
-     142, 210, 81, 18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
+      {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129, 67, 86, 101,
+         117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
+       <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221, 142, 210, 81,
+         18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}
@@ -92,9 +92,9 @@ defmodule Aecore.Peers.Worker do
         Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
       {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
-      IO.inspect peers
+      IO.inspect(peers)
       new_peers = Map.put_new(peers, peer_info.pubkey, peer_info)
-      IO.inspect new_peers
+      IO.inspect(new_peers)
       {:noreply, %{state | peers: new_peers}}
     else
       Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)

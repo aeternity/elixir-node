@@ -49,6 +49,12 @@ aewallet_path =
     env -> env
   end
 
+peerkeys_path =
+  case System.get_env("PEER_KEYS_PATH") do
+    nil -> "apps/aecore/priv/peerkeys"
+    env -> env
+  end
+
 config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
@@ -60,6 +66,8 @@ config :aecore, :oracle_response_tx, query_id: 32
 config :aecore, :aewallet, pass: aewallet_pass
 
 config :aecore, :aewallet, path: Path.absname(aewallet_path)
+
+config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),

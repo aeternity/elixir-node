@@ -1,4 +1,4 @@
-defmodule Aecore.Peers.SyncNew do
+defmodule Aecore.Peers.Sync do
   @moduledoc """
   This module is responsible for the Sync logic between Peers to share blocks between eachother
   """

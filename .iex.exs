@@ -11,7 +11,8 @@ alias Aecore.Account.{Account, AccountStateTree}
 alias Aecore.Account.Tx.SpendTx
 alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
-alias Aecore.Wallet.Worker, as: Wallet
+alias Aecore.Keys.Wallet, as: Wallet
+alias Aecore.Keys.Peers, as: PeerKeys
 
 alias Aehttpclient.Client
 

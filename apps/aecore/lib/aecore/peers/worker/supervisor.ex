@@ -2,7 +2,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   use Supervisor
 
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Peers.SyncNew, as: Sync
+  alias Aecore.Peers.Sync
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
@@ -13,10 +13,10 @@ defmodule Aecore.Peers.Worker.Supervisor do
 
   def init(:ok) do
     {privkey, pubkey} =
-    {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129,67, 86, 101, 117,
-     95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
-     <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221, 142, 210, 81, 18,
-     248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
+      {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129, 67, 86, 101,
+         117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
+       <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221, 142, 210, 81,
+         18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
 
     children = [
       Sync,
