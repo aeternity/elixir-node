@@ -1176,9 +1176,25 @@ defmodule Aevm do
     old_cp = State.cp(state)
     code = State.code(state)
 
-    prev_bits = (old_cp + 1) * 8
+    curr_cp = old_cp + 1
+    prev_bits = curr_cp * 8
     value_size_bits = bytes * 8
-    <<_::size(prev_bits), value::size(value_size_bits), _::binary>> = code
+    code_byte_size = byte_size(code)
+
+    value =
+      cond do
+        curr_cp > code_byte_size ->
+          0
+
+        curr_cp + bytes >= code_byte_size ->
+          extend = (curr_cp + bytes - code_byte_size) * 8
+          <<_::size(prev_bits), value::size(value_size_bits)>> = <<code::binary, 0::size(extend)>>
+          value
+
+        true ->
+          <<_::size(prev_bits), value::size(value_size_bits), _::binary>> = code
+          value
+      end
 
     state1 = State.set_cp(old_cp + bytes, state)
 

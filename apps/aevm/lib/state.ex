@@ -7,7 +7,7 @@ defmodule State do
     %{
       :stack => [],
       :memory => %{size: 0},
-      :storage => %{},
+      :storage => init_storage(Map.get(exec, :address), pre),
       :cp => 0,
       :jumpdests => [],
       :out => <<>>,
@@ -208,5 +208,12 @@ defmodule State do
     |> Enum.reduce(<<>>, fn x, acc ->
       acc <> <<x::size(8)>>
     end)
+  end
+
+  def init_storage(address, pre) do
+    case Map.get(pre, address, nil) do
+      nil -> %{}
+      %{:storage => storage} -> storage
+    end
   end
 end

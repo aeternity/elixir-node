@@ -763,30 +763,31 @@ defmodule AevmTest do
     ]
   end
 
+  @tag timeout: 180000
   test_with_params "vmSha3Test1", fn config_name ->
     json_test = load_test_config(:vmSha3Test, config_name)
     IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
-      # {:sha3_0},
-      # {:sha3_1},
-      # {:sha3_2},
-      # {:sha3_3},
-      # {:sha3_4},
-      # #{:sha3_5}, TODO: binary_alloc: Cannot reallocate 4831838237 bytes of memory
+      {:sha3_0},
+      {:sha3_1},
+      {:sha3_2},
+      {:sha3_3},
+      {:sha3_4},
+      # {:sha3_5}, # above work; TODO: binary_alloc: Cannot reallocate 4831838237 bytes of memory
       # {:sha3_6},
-      # {:sha3_bigOffset},
-      # {:sha3_bigOffset2},
+      {:sha3_bigOffset},
+      {:sha3_bigOffset2},
       # {:sha3_bigSize},
-      # {:sha3_memSizeNoQuadraticCost31},
-      # {:sha3_memSizeQuadraticCost32},
-      # {:sha3_memSizeQuadraticCost32_zeroSize},
-      # {:sha3_memSizeQuadraticCost33},
-      # {:sha3_memSizeQuadraticCost63},
-      # {:sha3_memSizeQuadraticCost64},
-      # {:sha3_memSizeQuadraticCost64_2},
-      # {:sha3_memSizeQuadraticCost65}
+      {:sha3_memSizeNoQuadraticCost31},
+      {:sha3_memSizeQuadraticCost32}, # gas cost?
+      {:sha3_memSizeQuadraticCost32_zeroSize},
+      {:sha3_memSizeQuadraticCost33},
+      {:sha3_memSizeQuadraticCost63},
+      {:sha3_memSizeQuadraticCost64},
+      {:sha3_memSizeQuadraticCost64_2},
+      {:sha3_memSizeQuadraticCost65}
     ]
   end
 
@@ -808,7 +809,7 @@ defmodule AevmTest do
       {:CallRecursiveBomb3},
       {:CallToNameRegistrator0},
       {:CallToNameRegistratorNotMuchMemory0},
-      {:CallToNameRegistratorNotMuchMemory1},
+      # {:CallToNameRegistratorNotMuchMemory1}, # TODO: CALL
       {:CallToNameRegistratorOutOfGas},
       {:CallToNameRegistratorTooMuchMemory0},
       {:CallToNameRegistratorTooMuchMemory1},
@@ -841,7 +842,7 @@ defmodule AevmTest do
     extract_and_validate(json_test, config_name)
   end do
     [
-      {:arith},
+      # {:arith}, # TODO: CALL
       {:boolean},
       {:mktx},
       {:suicide}
@@ -859,18 +860,18 @@ defmodule AevmTest do
 
     json_test = Poison.decode!(config, keys: :atoms)
 
-    parse_config_value1(
+    parse_config_value(
       json_test |> Map.to_list() |> Enum.sort(),
       config_structure() |> Map.to_list() |> Enum.sort(),
       %{}
     )
   end
 
-  defp parse_config_value1([], [], result) do
+  defp parse_config_value([], [], result) do
     result
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [],
          [{:multiple_bin_int, _}],
          result
@@ -878,11 +879,11 @@ defmodule AevmTest do
     result
   end
 
-  defp parse_config_value1([{c_key, c_value}], [{:multiple_atom, s_value}], result) do
+  defp parse_config_value([{c_key, c_value}], [{:multiple_atom, s_value}], result) do
     Map.put(
       result,
       c_key,
-      parse_config_value1(
+      parse_config_value(
         c_value |> Map.to_list() |> Enum.sort(),
         s_value |> Map.to_list() |> Enum.sort(),
         %{}
@@ -890,7 +891,7 @@ defmodule AevmTest do
     )
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{:multiple_bin_int, :data_array_int}] = structure,
          result
@@ -911,10 +912,10 @@ defmodule AevmTest do
         new_c_value
       )
 
-    parse_config_value1(c_rest, structure, new_result)
+    parse_config_value(c_rest, structure, new_result)
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{:multiple_bin_int, s_value} | _] = structure,
          result
@@ -926,34 +927,34 @@ defmodule AevmTest do
       Map.put(
         result,
         new_c_key,
-        parse_config_value1(
+        parse_config_value(
           c_value |> Map.to_list() |> Enum.sort(),
           s_value |> Map.to_list() |> Enum.sort(),
           %{}
         )
       )
 
-    parse_config_value1(c_rest, structure, new_result)
+    parse_config_value(c_rest, structure, new_result)
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, _c_value} | _c_rest] = config,
          [{s_key, _s_value} | s_rest] = _structure,
          result
        )
        when c_key !== s_key do
-    parse_config_value1(config, s_rest, result)
+    parse_config_value(config, s_rest, result)
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{_, :string} | s_rest] = _structure,
          result
        ) do
-    parse_config_value1(c_rest, s_rest, Map.put(result, c_key, c_value))
+    parse_config_value(c_rest, s_rest, Map.put(result, c_key, c_value))
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{_, :bin_int} | s_rest] = _structure,
          result
@@ -970,39 +971,39 @@ defmodule AevmTest do
     {new_value, _} = Integer.parse(hex_bin, 16)
     # ----------------------------------------
 
-    parse_config_value1(
+    parse_config_value(
       c_rest,
       s_rest,
       Map.put(result, c_key, new_value)
     )
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{_, :data_hex} | s_rest] = _structure,
          result
        ) do
     <<"0x", bytecode::binary>> = c_value
-    parse_config_value1(c_rest, s_rest, Map.put(result, c_key, bytecode))
+    parse_config_value(c_rest, s_rest, Map.put(result, c_key, bytecode))
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{_, :data_array} | s_rest] = _structure,
          result
        ) do
-    parse_config_value1(
+    parse_config_value(
       c_rest,
       s_rest,
       Map.put(result, c_key, State.bytecode_to_bin(c_value))
     )
   end
 
-  defp parse_config_value1([{c_key, c_value} | c_rest], [{_, :unclear} | s_rest], result) do
-    parse_config_value1(c_rest, s_rest, Map.put(result, c_key, c_value))
+  defp parse_config_value([{c_key, c_value} | c_rest], [{_, :unclear} | s_rest], result) do
+    parse_config_value(c_rest, s_rest, Map.put(result, c_key, c_value))
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{:callcreates, c_value} | c_rest] = _config,
          [{_s_key, [s_value]} | s_rest] = _structure,
          result
@@ -1011,7 +1012,7 @@ defmodule AevmTest do
       Enum.reduce(c_value, [], fn c, acc ->
         acc ++
           [
-            parse_config_value1(
+            parse_config_value(
               c |> Map.to_list() |> Enum.sort(),
               s_value |> Map.to_list() |> Enum.sort(),
               %{}
@@ -1021,14 +1022,14 @@ defmodule AevmTest do
 
     new_result = Map.put(result, :callcreates, callcreates)
 
-    parse_config_value1(
+    parse_config_value(
       c_rest,
       s_rest,
       new_result
     )
   end
 
-  defp parse_config_value1(
+  defp parse_config_value(
          [{c_key, c_value} | c_rest] = _config,
          [{_s_key, s_value} | s_rest] = _structure,
          result
@@ -1037,14 +1038,14 @@ defmodule AevmTest do
       Map.put(
         result,
         c_key,
-        parse_config_value1(
+        parse_config_value(
           c_value |> Map.to_list() |> Enum.sort(),
           s_value |> Map.to_list() |> Enum.sort(),
           %{}
         )
       )
 
-    parse_config_value1(
+    parse_config_value(
       c_rest,
       s_rest,
       new_result
