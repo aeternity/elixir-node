@@ -30,7 +30,7 @@ defmodule Aecore.Persistence.Worker do
   every value is the data that we want to persist
   The purpose of this function is to write many tasks to disk once
   """
-  @spec batch_write(map()) :: atom()
+  @spec batch_write(map()) :: :ok
   def batch_write(operations) do
     GenServer.call(__MODULE__, {:batch_write, operations})
   end
@@ -101,13 +101,13 @@ defmodule Aecore.Persistence.Worker do
   end
 
   @spec get_account_chain_state(account :: binary()) ::
-          {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
+          {:ok, chain_state :: map()} | {:error, reason :: term()}
   def get_account_chain_state(account) do
     GenServer.call(__MODULE__, {:get_account_chain_state, account})
   end
 
   @spec get_all_accounts_chain_states() ::
-          {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
+          {:ok, chain_state :: map()} | {:error, reason :: term()}
   def get_all_accounts_chain_states do
     GenServer.call(__MODULE__, :get_all_accounts_chain_states)
   end
@@ -311,11 +311,7 @@ defmodule Aecore.Persistence.Worker do
       ) do
     {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
 
-    reply =
-      case AccountStateTree.get(chainstate.accounts, account) do
-        :none -> :not_found
-        value -> value
-      end
+    reply = {:ok, AccountStateTree.get(chainstate.accounts, account)}
 
     {:reply, reply, state}
   end

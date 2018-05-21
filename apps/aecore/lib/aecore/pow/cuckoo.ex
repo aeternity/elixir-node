@@ -12,7 +12,6 @@ defmodule Aecore.Pow.Cuckoo do
   require Logger
 
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
   alias Aeutil.Hash
 
@@ -20,7 +19,7 @@ defmodule Aecore.Pow.Cuckoo do
   Proof of Work verification (with difficulty check)
   """
   @spec verify(map()) :: boolean()
-  def verify(%Header{target: target, pow_evidence: soln} = header) do
+  def verify(%{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
       process(:verify, header)
     else
@@ -31,7 +30,7 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Find a nonce
   """
-  @spec generate(map()) :: {:ok, map()}
+  @spec generate(map()) :: {:ok, map()} | error :: term()
   def generate(%{} = header), do: process(:generate, header)
 
   ### =============================================================================
@@ -66,7 +65,7 @@ defmodule Aecore.Pow.Cuckoo do
 
     cmd =
       case process do
-        :generate -> [exe, size, " -h ", hash, " -n ", nonce]
+        :generate -> [exe, " -h ", hash, " -n ", nonce]
         :verify -> ["./verify", size, " -h ", hash, " -n ", nonce]
       end
 

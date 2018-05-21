@@ -78,7 +78,7 @@ defmodule AecoreChainstateTest do
 
   def apply_txs_on_state(txs, chainstate, block_height) do
     Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
-      case Chainstate.apply_transaction_on_state(tx, chainstate, block_height) do
+      case Chainstate.apply_transaction_on_state(chainstate, block_height, tx) do
         {:ok, new_state} -> {:cont, new_state}
         {:error, _reason} -> {:halt, :error}
       end
