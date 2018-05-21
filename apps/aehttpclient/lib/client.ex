@@ -170,8 +170,4 @@ defmodule Aehttpclient.Client do
       {"Content-Type", "application/json"}
     ])
   end
-
-  defp get_local_port do
-    Endpoint.url() |> String.split(":") |> Enum.at(-1)
-  end
 end

@@ -66,7 +66,7 @@ defmodule Aecore.Peers.PeerConnection do
       {:ok, noise_socket, noise_state} ->
         r_pubkey = noise_state |> :enoise_hs_state.remote_keys() |> :enoise_keypair.pubkey()
         new_state = Map.merge(state, %{r_pubkey: r_pubkey, status: {:connected, noise_socket}})
-        {:ok, _} = :timer.send_after(@first_ping_timeout, self(), :first_ping_timeout)
+        Process.send_after(self(), :first_ping_timeout, @first_ping_timeout)
         :gen_server.enter_loop(__MODULE__, [], new_state)
 
       {:error, _reason} ->
