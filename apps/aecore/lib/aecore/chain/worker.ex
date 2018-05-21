@@ -350,12 +350,12 @@ defmodule Aecore.Chain.Worker do
     new_refs =
       0..@max_refs
       |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-        case Enum.at(blocks_data_map[prev].refs, i) do
-          nil ->
+        with true <- blocks_data_map |> Map.keys() |> Enum.member?(prev),
+             hash <- Enum.at(blocks_data_map[prev].refs, i) do
+          [hash | acc]
+        else
+          _ ->
             acc
-
-          hash ->
-            [hash | acc]
         end
       end)
       |> Enum.reverse()
