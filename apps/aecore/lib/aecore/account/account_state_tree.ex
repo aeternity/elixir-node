@@ -4,7 +4,6 @@ defmodule Aecore.Account.AccountStateTree do
   """
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
   @type encoded_account_state :: binary()
 

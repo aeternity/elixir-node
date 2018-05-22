@@ -13,7 +13,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Difficulty
   alias Aeutil.Hash
   alias Aeutil.Serialization
-  alias Aecore.Tx.DataTx
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 

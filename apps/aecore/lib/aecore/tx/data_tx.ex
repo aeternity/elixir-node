@@ -671,56 +671,6 @@ defmodule Aecore.Tx.DataTx do
     {:error, "#{__MODULE__}: Unknown DataTx structure"}
   end
 
-  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
-  defp type_to_tag(SpendTx), do: 12
-  defp type_to_tag(CoinbaseTx), do: 13
-  defp type_to_tag(OracleRegistrationTx), do: 22
-  defp type_to_tag(OracleQueryTx), do: 23
-  defp type_to_tag(OracleResponseTx), do: 24
-  defp type_to_tag(OracleExtendTx), do: 25
-  defp type_to_tag(NameName), do: 30
-  defp type_to_tag(NameCommitment), do: 31
-  defp type_to_tag(NameClaimTx), do: 32
-  defp type_to_tag(NamePreClaimTx), do: 33
-  defp type_to_tag(NameUpdateTx), do: 34
-  defp type_to_tag(NameRevokeTx), do: 35
-  defp type_to_tag(NameTransferTx), do: 36
-
-  defp type_to_tag(type), do: {:error, "Unknown TX Type: #{type}"}
-
-  @spec tag_to_type(non_neg_integer()) :: tx_types() | {:error, String.t()}
-  defp tag_to_type(12), do: SpendTx
-  defp tag_to_type(13), do: CoinbaseTx
-  defp tag_to_type(22), do: OracleRegistrationTx
-  defp tag_to_type(23), do: OracleQueryTx
-  defp tag_to_type(24), do: OracleResponseTx
-  defp tag_to_type(25), do: OracleExtendTx
-  defp tag_to_type(30), do: NameName
-  defp tag_to_type(31), do: NameCommitment
-  defp tag_to_type(32), do: NameClaimTx
-  defp tag_to_type(33), do: NamePreClaimTx
-  defp tag_to_type(34), do: NameUpdateTx
-  defp tag_to_type(35), do: NameRevokeTx
-  defp tag_to_type(36), do: NameTransferTx
-  defp tag_to_type(tag), do: {:error, "Unknown TX Tag: #{inspect(tag)}"}
-
-  @spec get_version(tx_types()) :: non_neg_integer() | {:error, String.t()}
-  defp get_version(SpendTx), do: 1
-  defp get_version(CoinbaseTx), do: 1
-  defp get_version(OracleRegistrationTx), do: 1
-  defp get_version(OracleQueryTx), do: 1
-  defp get_version(OracleResponseTx), do: 1
-  defp get_version(OracleExtendTx), do: 1
-  defp get_version(NameName), do: 1
-  defp get_version(NameCommitment), do: 1
-  defp get_version(NameClaimTx), do: 1
-  defp get_version(NamePreClaimTx), do: 1
-  defp get_version(NameUpdateTx), do: 1
-  defp get_version(NameRevokeTx), do: 1
-  defp get_version(NameTransferTx), do: 1
-
-  defp get_version(ver), do: {:error, "Unknown Struct version: #{inspect(ver)}"}
-
   # Optional function-workaround:
   # As we have differences in value types in some fields,
   # which means that we encode these fields different apart from what Epoch does,
