@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.PeerConnection do
+  @moduledoc """
+  One instance of this handles a single connection to a peer.
+  """
+
   use GenServer
 
   alias Aecore.Chain.Block
@@ -190,11 +194,13 @@ defmodule Aecore.Peers.PeerConnection do
         :first_ping_timeout,
         %{r_pubkey: r_pubkey, status: {:connected, socket}} = state
       ) do
-    if !Peers.have_peer?(r_pubkey) do
-      :enoise.close(socket)
-      {:stop, :normal, state}
-    else
-      {:noreply, state}
+    case Peers.have_peer?(r_pubkey) do
+      true ->
+        {:noreply, state}
+
+      false ->
+        :enoise.close(socket)
+        {:stop, :normal, state}
     end
   end
 

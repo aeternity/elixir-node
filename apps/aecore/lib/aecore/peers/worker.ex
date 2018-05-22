@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Worker do
+  @moduledoc """
+  Contains peer handling functionality.
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
@@ -114,19 +118,21 @@ defmodule Aecore.Peers.Worker do
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
       ) do
     if peer_info.pubkey != pubkey do
-      if !Map.has_key?(peers, peer_info.pubkey) do
-        conn_info =
-          Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
+      case Map.has_key?(peers, peer_info.pubkey) do
+        false ->
+          conn_info =
+            Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
-        {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
+          {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
 
-        {:noreply, state}
-      else
-        Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
-        {:noreply, state}
+          {:noreply, state}
+
+        true ->
+          Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+          {:noreply, state}
       end
     else
-      Logger.error("Can't add ourself")
+      Logger.info("Can't add ourself")
       {:noreply, state}
     end
   end
