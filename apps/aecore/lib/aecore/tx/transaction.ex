@@ -4,16 +4,23 @@ defmodule Aecore.Tx.Transaction do
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
+  alias Aecore.Structures.OracleRegistrationTx
+  alias Aecore.Structures.OracleQueryTx
+  alias Aecore.Structures.OracleResponseTx
+  alias Aecore.Structures.OracleExtendTx
+  alias Aecore.Structures.SpendTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Account.Tx.CoinbaseTx
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -30,6 +37,7 @@ defmodule Aecore.Tx.Transaction do
           | NameUpdateTx.t()
           | NameTransferTx.t()
           | NameRevokeTx.t()
+          | CoinbaseTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -52,12 +60,13 @@ defmodule Aecore.Tx.Transaction do
   the transaction (Transaction type-specific chainstate)
   """
   @callback process_chainstate(
-              tx_types(),
-              DataTx.t(),
+              AccountStateTree.accounts_state(),
+              tx_type_state(),
               block_height :: non_neg_integer(),
-              ChainState.account(),
-              tx_type_state()
-            ) :: {Account.t(), tx_type_state()}
+              tx_types(),
+              DataTx.t()
+            ) ::
+              {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -86,7 +95,7 @@ defmodule Aecore.Tx.Transaction do
       end
   """
   @callback preprocess_check(
-              ChainState.accounts(),
+              AccountStateTree.accounts_state(),
               tx_type_state(),
               block_height :: non_neg_integer(),
               SpendTx.t(),
@@ -94,10 +103,10 @@ defmodule Aecore.Tx.Transaction do
             ) :: :ok | {:error, reason}
 
   @callback deduct_fee(
-              ChainState.accounts(),
+              AccountStateTree.accounts_state(),
               non_neg_integer(),
               tx_types(),
               DataTx.t(),
               non_neg_integer()
-            ) :: ChainState.account()
+            ) :: Account.t()
 end

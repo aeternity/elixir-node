@@ -4,10 +4,7 @@ defmodule AehttpclientTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aehttpclient.Client
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Header
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet

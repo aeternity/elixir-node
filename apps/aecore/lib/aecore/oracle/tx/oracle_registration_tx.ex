@@ -93,12 +93,12 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
+          AccountsStateTree.accounts_state(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+        ) :: {:ok, {AccountsStateTree.accounts_state(), Oracle.oracles()}}
   def process_chainstate(
         accounts,
         %{registered_oracles: registered_oracles} = oracle_state,
@@ -109,7 +109,13 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     sender = DataTx.main_sender(data_tx)
 
     updated_registered_oracles =
-      Map.put_new(registered_oracles, sender, %{tx: tx, height_included: block_height})
+      Map.put_new(registered_oracles, sender, %{
+        owner: sender,
+        query_format: tx.query_format,
+        response_format: tx.response_format,
+        query_fee: tx.query_fee,
+        expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
+      })
 
     updated_oracle_state = %{
       oracle_state
@@ -120,7 +126,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
+          AccountsStateTree.accounts_state(),
           Oracle.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
