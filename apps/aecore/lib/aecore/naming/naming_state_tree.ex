@@ -18,7 +18,7 @@ defmodule Aecore.Naming.NamingStateTree do
     PatriciaMerkleTree.enter(trie, key, serialized)
   end
 
-  @spec get(namings_state(), binary()) :: Naming.t()
+  @spec get(namings_state(), binary()) :: Naming.t() | :none
   def get(trie, key) do
     case PatriciaMerkleTree.lookup(trie, key) do
       {:ok, value} -> deserialize(value)
