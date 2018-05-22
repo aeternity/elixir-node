@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.PeerConnection do
+  @moduledoc """
+  Module for peer connection
+  """
+
   use GenServer
 
   alias Aecore.Chain.Block
@@ -276,11 +280,11 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
     # initial ping
-    if !Peers.have_peer?(r_pubkey) do
+    if Peers.have_peer?(r_pubkey) do
+      :ok
+    else
       peer = %{pubkey: r_pubkey, port: payload.port, host: host, connection: conn_pid}
       Peers.add_peer(peer)
-    else
-      :ok
     end
   end
 

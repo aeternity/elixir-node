@@ -21,7 +21,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
-  alias Aecore.Peers.Events
 
   require Logger
 
@@ -84,12 +83,12 @@ defmodule Aecore.Tx.Pool.Worker do
           # Broadcasting notifications for new transaction in a pool(per account and every)
           Notify.broadcast_new_transaction_in_the_pool(tx)
 
-          if !Enum.empty?(Peers.all_peers()) do
+          if Enum.empty?(Peers.all_peers()) do
+            Logger.debug(fn -> "List of peers is empty" end)
+          else
             for peer <- Peers.all_peers() do
               PeerConn.send_new_tx(tx, peer.connection)
             end
-          else
-            Logger.debug(fn -> "List of peers is empty" end)
           end
 
           # Events.publish(:tx_created, tx)

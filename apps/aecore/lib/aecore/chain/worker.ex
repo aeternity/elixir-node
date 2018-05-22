@@ -26,7 +26,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Peers.Events
 
   require Logger
 
@@ -412,12 +411,12 @@ defmodule Aecore.Chain.Worker do
       })
 
       ## We send the block to others only if it extends the longest chain
-      if !Enum.empty?(Peers.all_peers()) do
+      if Enum.empty?(Peers.all_peers()) do
+        Logger.debug(fn -> "Peer list empty" end)
+      else
         for peer <- Peers.all_peers() do
           PeerConn.send_new_block(new_block, peer.connection)
         end
-      else
-        Logger.debug(fn -> "Peer list empty" end)
       end
 
       # Broadcasting notifications for new block added to chain and new mined transaction

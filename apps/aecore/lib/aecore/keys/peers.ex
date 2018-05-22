@@ -1,4 +1,8 @@
 defmodule Aecore.Keys.Peers do
+  @moduledoc """
+    Module for working with Peer keys
+  """
+
   alias Aewallet.Cypher
   alias Aecore.Keys.Utils
   alias Aecore.Keys.Worker, as: Keys
@@ -55,10 +59,10 @@ defmodule Aecore.Keys.Peers do
   end
 
   def load_keypair do
-    case File.ls(keypair_dir) do
+    case File.ls(keypair_dir()) do
       {:ok, [file_name]} ->
         keypair =
-          keypair_dir
+          keypair_dir()
           |> Kernel.<>("/")
           |> Kernel.<>(file_name)
           |> File.read()

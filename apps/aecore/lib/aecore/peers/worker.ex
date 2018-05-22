@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Worker do
+  @moduledoc """
+    Module for peers
+  """
+
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
@@ -90,8 +94,10 @@ defmodule Aecore.Peers.Worker do
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
       ) do
-    # if peer_info.pubkey != pubkey do
-    if !Map.has_key?(peers, peer_info.port) do
+    if Map.has_key?(peers, peer_info.port) do
+      Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+      {:noreply, state}
+    else
       conn_info =
         Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
@@ -99,9 +105,6 @@ defmodule Aecore.Peers.Worker do
 
       new_peers = Map.put_new(peers, peer_info.pubkey, peer_info)
       {:noreply, %{state | peers: new_peers}}
-    else
-      Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
-      {:noreply, state}
     end
   end
 

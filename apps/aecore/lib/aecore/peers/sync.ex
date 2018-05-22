@@ -5,7 +5,6 @@ defmodule Aecore.Peers.Sync do
 
   use GenServer
 
-  alias __MODULE__
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
@@ -372,7 +371,6 @@ defmodule Aecore.Peers.Sync do
     {new_peer?, Enum.sort_by(new_pool, fn peer -> peer.difficulty end)}
   end
 
-  ## TODO: Fix the return value
   # Here we initiate the actual sync of the Peers. We get the remote Peer values,
   # then we agree on some height, and check weather we agree on it, if not we go lower,
   # until we agree on some height. This might be even the Gensis block!
@@ -480,7 +478,7 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  def sync_worker() do
+  def sync_worker do
     result = :jobs.dequeue(:sync_jobs, 1)
     process_job(result)
   end

@@ -5,7 +5,7 @@ defmodule Aecore.Keys.Wallet do
 
   alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Keys.Utils
-  alias Aewallet.Wallet, as: Aewallet
+  alias Aewallet.Wallet, as: AeternityWallet
   alias Aewallet.KeyPair
 
   @typedoc "Public key representing an account"
@@ -125,14 +125,16 @@ defmodule Aecore.Keys.Wallet do
     {:ok, seed} =
       aewallet_dir()
       |> Utils.get_file_name()
-      |> Aewallet.get_seed(password)
+      |> AeternityWallet.get_seed(password)
 
     seed
   end
 
   @spec create_wallet(String.t()) :: :ok
   defp create_wallet(path) do
-    {:ok, _mnemonic, _path, _wallet_type} = Aewallet.create_wallet(get_aewallet_pass(), path)
+    {:ok, _mnemonic, _path, _wallet_type} =
+      AeternityWallet.create_wallet(get_aewallet_pass(), path)
+
     :ok
   end
 end

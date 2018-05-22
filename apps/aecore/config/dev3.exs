@@ -17,10 +17,6 @@ config :logger, :error,
   path: Path.absname("_build/dev3/logs/#{time}error.log"),
   level: :error
 
-config :aecore, :peers,
-  peers_target_count: 3,
-  peers_max_count: 4
-
 config :aecore, :pow,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./lean", "-t 5", 16},
@@ -80,9 +76,17 @@ config :aecore, :pow,
     target: 0x2100FFFF
   }
 
+sync_port =
+  case System.get_env("SYNC_PORT") do
+    nil -> 3015
+    env -> String.to_integer(env)
+  end
+
 config :aecore, :peers,
-  peers_target_count: 3,
-  peers_max_count: 4
+  peers_target_count: 5,
+  peers_max_count: 8,
+  ranch_acceptors: 10,
+  sync_port: sync_port
 
 config :aecore, :miner, resumed_by_default: false
 

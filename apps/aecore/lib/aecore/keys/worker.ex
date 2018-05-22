@@ -5,7 +5,7 @@ defmodule Aecore.Keys.Worker do
 
   use GenServer
 
-  alias Aewallet.Wallet, as: Aewallet
+  alias Aewallet.Wallet, as: AeternityWallet
   alias Aewallet.KeyPair
   alias Aecore.Keys.Wallet
   alias Aecore.Keys.Peers
@@ -76,7 +76,7 @@ defmodule Aecore.Keys.Worker do
         {:ok, pub_key} =
           Wallet.aewallet_dir()
           |> Utils.get_file_name()
-          |> Aewallet.get_public_key(password, network: network)
+          |> AeternityWallet.get_public_key(password, network: network)
 
         pub_key
       else
@@ -116,7 +116,7 @@ defmodule Aecore.Keys.Worker do
         {:ok, priv_key} =
           Wallet.aewallet_dir()
           |> Utils.get_file_name()
-          |> Aewallet.get_private_key(password, network: network)
+          |> AeternityWallet.get_private_key(password, network: network)
 
         priv_key
       else

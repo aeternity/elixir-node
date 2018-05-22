@@ -23,7 +23,6 @@ defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
     Supervisor.terminate_child(__MODULE__, peer_pubkey)
     Supervisor.delete_child(__MODULE__, peer_pubkey)
     Peers.remove_peer(peer_pubkey)
-    # TODO: Clean the peer from the sync_pool in the Sync module
   end
 
   def init(:ok) do

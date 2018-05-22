@@ -1,4 +1,8 @@
 defmodule Aecore.Peers.Worker.Supervisor do
+  @moduledoc """
+    Supervisor for Peers and Sync
+  """
+
   use Supervisor
 
   alias Aecore.Peers.Sync
