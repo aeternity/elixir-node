@@ -159,11 +159,12 @@ defmodule Aecore.Naming.Naming do
     {:error, "Wrong data"}
   end
 
-  @spec rlp_encode(map, :name | :name_commitment) :: binary() | {:error, String.t()}
-  def rlp_encode(%{} = naming_state, :name) do
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, vsn, %{} = naming_state, :name) do
     [
-      type_to_tag(Name),
-      get_version(Name),
+      tag,
+      vsn,
       naming_state.hash,
       naming_state.owner,
       naming_state.expires,
@@ -174,10 +175,10 @@ defmodule Aecore.Naming.Naming do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%{} = name_commitment, :name_commitment) do
+  def rlp_encode(tag, vsn, %{} = name_commitment, :name_commitment) do
     [
-      type_to_tag(NameCommitment),
-      get_version(NameCommitment),
+      tag,
+      vsn,
       name_commitment.hash,
       name_commitment.owner,
       name_commitment.created,
@@ -190,53 +191,30 @@ defmodule Aecore.Naming.Naming do
     {:error, "Invalid Naming state / Name Commitment structure : #{inspect(term)}"}
   end
 
-  @spec rlp_decode(binary()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode(values) when is_binary(values) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
-    tag = Serialization.transform_item(tag_bin, :int)
-    _ver = Serialization.transform_item(ver_bin, :int)
-
-    case tag_to_type(tag) do
-      Name ->
-        [hash, owner, expires, status, ttl, pointers] = rest_data
-
-        {:ok,
-         %{
-           hash: hash,
-           owner: owner,
-           expires: Serialization.transform_item(expires, :int),
-           status: String.to_atom(status),
-           ttl: Serialization.transform_item(ttl, :int),
-           pointers: pointers
-         }}
-
-      NameCommitment ->
-        [hash, owner, created, expires] = rest_data
-
-        {:ok,
-         %{
-           hash: hash,
-           owner: owner,
-           created: Serialization.transform_item(created, :int),
-           expires: Serialization.transform_item(expires, :int)
-         }}
-
-      data ->
-        {:error, "Invalid Name state / Name Commitment serialization: #{inspect(data)}"}
-    end
+  @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
+  def rlp_decode([hash, owner, expires, status, ttl, pointers], :name) do
+    {:ok,
+     %{
+       hash: hash,
+       owner: owner,
+       expires: Serialization.transform_item(expires, :int),
+       status: String.to_atom(status),
+       ttl: Serialization.transform_item(ttl, :int),
+       pointers: pointers
+     }}
   end
 
-  def rlp_decode(term) do
-    {:error, "Invalid Naming serialization: #{inspect(term)}"}
+  def rlp_decode([hash, owner, created, expires], :name_commitment) do
+    {:ok,
+     %{
+       hash: hash,
+       owner: owner,
+       created: Serialization.transform_item(created, :int),
+       expires: Serialization.transform_item(expires, :int)
+     }}
   end
 
-  @spec type_to_tag(atom()) :: non_neg_integer
-  defp type_to_tag(Name), do: 30
-  defp type_to_tag(NameCommitment), do: 31
-  @spec tag_to_type(non_neg_integer) :: atom()
-  defp tag_to_type(30), do: Name
-  defp tag_to_type(31), do: NameCommitment
-  @spec get_version(atom()) :: non_neg_integer()
-  defp get_version(Name), do: 1
-  defp get_version(NameCommitment), do: 1
+  def rlp_decode(_) do
+    {:error, "#{__MODULE__} : Invalid Name state / Name Commitment serialization"}
+  end
 end

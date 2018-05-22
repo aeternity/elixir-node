@@ -348,11 +348,12 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(Account.t()) :: binary() | {:error, String.t()}
-  def rlp_encode(%Account{} = account) do
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), Account.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, vsn, %Account{} = account) do
     [
-      type_to_tag(Account),
-      get_version(Account),
+      tag,
+      vsn,
       account.pubkey,
       account.nonce,
       account.last_updated,
@@ -365,37 +366,18 @@ defmodule Aecore.Account.Account do
     {:error, "Invalid Account structure"}
   end
 
-  @spec rlp_decode(binary()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode(values) when is_binary(values) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
-    tag = Serialization.transform_item(tag_bin, :int)
-    _ver = Serialization.transform_item(ver_bin, :int)
-
-    case tag_to_type(tag) do
-      Account ->
-        [pkey, nonce, height, balance] = rest_data
-
-        {:ok,
-         %Account{
-           pubkey: pkey,
-           balance: Serialization.transform_item(balance, :int),
-           last_updated: Serialization.transform_item(height, :int),
-           nonce: Serialization.transform_item(nonce, :int)
-         }}
-
-      _ ->
-        {:error, "Illegal Account serialization"}
-    end
+  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def rlp_decode([pkey, nonce, height, balance]) do
+    {:ok,
+     %Account{
+       pubkey: pkey,
+       balance: Serialization.transform_item(balance, :int),
+       last_updated: Serialization.transform_item(height, :int),
+       nonce: Serialization.transform_item(nonce, :int)
+     }}
   end
 
   def rlp_decode(_) do
-    {:error, "Invalid Account serialization"}
+    {:error, "#{__MODULE__}: Invalid Account serialization"}
   end
-
-  @spec type_to_tag(atom()) :: non_neg_integer()
-  defp type_to_tag(Account), do: 10
-  @spec tag_to_type(non_neg_integer) :: atom()
-  defp tag_to_type(10), do: Account
-  @spec get_version(atom()) :: non_neg_integer()
-  defp get_version(Account), do: 1
 end

@@ -6,15 +6,25 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Naming.Tx.NameRevokeTx
+  alias Aecore.Account.Tx.CoinbaseTx
+
+  require Logger
 
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
@@ -354,6 +364,143 @@ defmodule Aeutil.Serialization do
     Enum.reverse(acc)
   end
 
+  @spec rlp_encode(Account.t() | DataTx.t() | map(), :tx | :ac | :ro | :io | :signedtx) ::
+          binary | {:error, String.t()}
+  def rlp_encode(%DataTx{} = term, :tx) do
+    with {:ok, tag} <- type_to_tag(term.type),
+         {:ok, vsn} <- get_version(term.type),
+         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+      data
+    else
+      error -> {:error, "#{__MODULE__} : Invalid DataTx serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%Account{} = term, :as) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(term.__struct__),
+         {:ok, vsn} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+      data
+    else
+      error ->
+        {:error, "#{__MODULE__} : Invalid Account state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :io) do
+    with {:ok, tag} <- type_to_tag(OracleQuery),
+         {:ok, vsn} <- get_version(OracleQuery),
+         data <- Oracle.rlp_encode(tag, vsn, term, :interaction_object) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid interaction object state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :ro) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(Oracle),
+         {:ok, vsn} <- get_version(Oracle),
+         data <- Oracle.rlp_encode(tag, vsn, term, :registered_oracle) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid registered oracle state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :ns) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(Name),
+         {:ok, vsn} <- get_version(Name),
+         data <- Naming.rlp_encode(tag, vsn, term, :name) do
+      data
+    else
+      error -> {:error, "#{__MODULE__} : Invalid naming state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :nc) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(NameCommitment),
+         {:ok, vsn} <- get_version(NameCommitment),
+         data <- Naming.rlp_encode(tag, vsn, term, :name_commitment) do
+      data
+    else
+      error ->
+        {:error, "#{__MODULE__} : Invalid name commitment state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%Block{} = term, :block) do
+    with {:ok, tag} <- type_to_tag(term.__struct__),
+         {:ok, vsn} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid interaction object states serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%SignedTx{} = term, :signedtx) do
+    with {:ok, tag} <- type_to_tag(term.__struct__),
+         {:ok, vsn} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+      data
+    else
+      error -> {:error, "#{__MODULE__} : Invalid Tx serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(error) do
+    {:error, "#{__MODULE__} : Illegal serialization attempt: #{inspect(error)}"}
+  end
+
+  def rlp_decode(binary) when is_binary(binary) do
+    [tag_bin, ver_bin | rest_data] = ExRLP.decode(binary)
+    tag = transform_item(tag_bin, :int)
+    ver = transform_item(ver_bin, :int)
+    rlp_decode(tag_to_type(tag), ver, rest_data)
+  end
+
+  def rlp_decode(data) do
+    {:error, "#{__MODULE__}: Illegal deserialization: #{inspect(data)}"}
+  end
+
+  defp rlp_decode(Block, _vsn, block_data) do
+    Block.rlp_decode(block_data)
+  end
+
+  defp rlp_decode(Name, _vsn, name_data) do
+    Naming.rlp_decode(name_data, :name)
+  end
+
+  defp rlp_decode(NameCommitment, _vsn, name_commitment) do
+    Naming.rlp_decode(name_commitment, :name_commitment)
+  end
+
+  defp rlp_decode(Oracle, _vsn, reg_orc) do
+    Oracle.rlp_decode(reg_orc, :registered_oracle)
+  end
+
+  defp rlp_decode(OracleQuery, _vsn, interaction_object) do
+    Oracle.rlp_decode(interaction_object, :interaction_object)
+  end
+
+  defp rlp_decode(Account, _vsn, account_state) do
+    Account.rlp_decode(account_state)
+  end
+
+  defp rlp_decode(SignedTx, _vsn, signedtx) do
+    SignedTx.rlp_decode(signedtx)
+  end
+
+  defp rlp_decode(payload, _vsn, datatx) do
+    DataTx.rlp_decode(payload, datatx)
+  end
+
   # Should be changed after some adjustments in oracle structures
   def transform_item(item) do
     Poison.encode!(item)
@@ -370,4 +517,66 @@ defmodule Aeutil.Serialization do
   def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
   def decode_ttl_type(1), do: :absolute
   def decode_ttl_type(0), do: :relative
+
+  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
+  def type_to_tag(Account), do: {:ok, 10}
+  def type_to_tag(SignedTx), do: {:ok, 11}
+  def type_to_tag(SpendTx), do: {:ok, 12}
+  def type_to_tag(CoinbaseTx), do: {:ok, 13}
+  def type_to_tag(OracleRegistrationTx), do: {:ok, 22}
+  def type_to_tag(OracleQueryTx), do: {:ok, 23}
+  def type_to_tag(OracleResponseTx), do: {:ok, 24}
+  def type_to_tag(OracleExtendTx), do: {:ok, 25}
+  def type_to_tag(Name), do: {:ok, 30}
+  def type_to_tag(NameCommitment), do: {:ok, 31}
+  def type_to_tag(NameClaimTx), do: {:ok, 32}
+  def type_to_tag(NamePreClaimTx), do: {:ok, 33}
+  def type_to_tag(NameUpdateTx), do: {:ok, 34}
+  def type_to_tag(NameRevokeTx), do: {:ok, 35}
+  def type_to_tag(NameTransferTx), do: {:ok, 36}
+  def type_to_tag(Oracle), do: {:ok, 20}
+  def type_to_tag(OracleQuery), do: {:ok, 21}
+  def type_to_tag(Block), do: {:ok, 100}
+  def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
+
+  @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
+  def tag_to_type(10), do: Account
+  def tag_to_type(12), do: SpendTx
+  def tag_to_type(13), do: CoinbaseTx
+  def tag_to_type(22), do: OracleRegistrationTx
+  def tag_to_type(23), do: OracleQueryTx
+  def tag_to_type(24), do: OracleResponseTx
+  def tag_to_type(25), do: OracleExtendTx
+  def tag_to_type(30), do: Name
+  def tag_to_type(31), do: NameCommitmentTx
+  def tag_to_type(32), do: NameClaimTx
+  def tag_to_type(33), do: NamePreClaimTx
+  def tag_to_type(34), do: NameUpdateTx
+  def tag_to_type(35), do: NameRevokeTx
+  def tag_to_type(36), do: NameTransferTx
+  def tag_to_type(20), do: Oracle
+  def tag_to_type(21), do: OracleQuery
+  def tag_to_type(11), do: SignedTx
+  def tag_to_type(100), do: Block
+  def tag_to_type(tag), do: {:error, "#{__MODULE__} : Unknown TX Tag: #{inspect(tag)}"}
+
+  @spec get_version(atom()) :: non_neg_integer() | {:error, String.t()}
+  def get_version(SpendTx), do: {:ok, 1}
+  def get_version(CoinbaseTx), do: {:ok, 1}
+  def get_version(OracleRegistrationTx), do: {:ok, 1}
+  def get_version(OracleQueryTx), do: {:ok, 1}
+  def get_version(OracleResponseTx), do: {:ok, 1}
+  def get_version(OracleExtendTx), do: {:ok, 1}
+  def get_version(NameName), do: {:ok, 1}
+  def get_version(NameCommitment), do: {:ok, 1}
+  def get_version(NameClaimTx), do: {:ok, 1}
+  def get_version(NamePreClaimTx), do: {:ok, 1}
+  def get_version(NameUpdateTx), do: {:ok, 1}
+  def get_version(NameRevokeTx), do: {:ok, 1}
+  def get_version(NameTransferTx), do: {:ok, 1}
+  def get_version(Account), do: {:ok, 1}
+  def get_version(Oracle), do: {:ok, 1}
+  def get_version(OracleQuery), do: {:ok, 1}
+  def get_version(SignedTx), do: {:ok, 1}
+  def get_version(ver), do: {:error, "#{__MODULE__} : Unknown Struct version: #{inspect(ver)}"}
 end

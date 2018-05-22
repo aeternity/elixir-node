@@ -27,7 +27,9 @@ defmodule AecoreOracleTest do
     Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Chain.registered_oracles()) == true
     register_oracle(:valid)
+
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
@@ -41,7 +43,6 @@ defmodule AecoreOracleTest do
 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
-
     assert %{} == Pool.get_and_empty_pool()
     # Check for last_updated
     assert Chain.top_height() ==

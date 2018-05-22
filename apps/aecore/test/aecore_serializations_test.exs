@@ -23,6 +23,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
   alias Aecore.Naming.Naming
+  alias Aeutil.Serialization
   alias Aecore.Account.AccountStateTree
 
   setup do
@@ -48,8 +49,8 @@ defmodule AecoreSerializationTest do
 
     deserialized_signedtx =
       signedtx
-      |> SignedTx.rlp_encode()
-      |> SignedTx.rlp_decode()
+      |> Serialization.rlp_encode(:signedtx)
+      |> Serialization.rlp_decode()
 
     assert deserialized_signedtx = signedtx
   end
@@ -61,8 +62,8 @@ defmodule AecoreSerializationTest do
 
     deserialized_spendtx =
       spendtx
-      |> DataTx.rlp_encode()
-      |> DataTx.rlp_decode()
+      |> Serialization.rlp_encode(:tx)
+      |> Serialization.rlp_decode()
 
     assert deserialized_spendtx = spendtx
   end
@@ -71,23 +72,15 @@ defmodule AecoreSerializationTest do
   test "DataTx(CoinbaseTx) serialization", setup do
     Miner.mine_sync_block_to_chain()
     coinbasetx = create_data(CoinbaseTx).data
-    serialized_coinbasetx = DataTx.rlp_encode(coinbasetx)
-    deserialized_spendtx = DataTx.rlp_decode(serialized_coinbasetx)
+    serialized_coinbasetx = Serialization.rlp_encode(coinbasetx, :tx)
+    deserialized_spendtx = Serialization.rlp_decode(serialized_coinbasetx)
     assert deserialized_spendtx == coinbasetx
-  end
-
-  @tag :rlp_test
-  test "Account chain-state serialization" do
-    {account, pkey} = create_data(Account)
-    serialized_acc_info = Chainstate.rlp_encode(account, pkey)
-    deserialized_acc_info = Chainstate.rlp_decode(serialized_acc_info)
-    assert account_state = deserialized_acc_info
   end
 
   @tag :rlp_test
   test "Block serialization", setup do
     block = create_data(Block)
-    serialized_block = Block.rlp_encode(block)
+    serialized_block = Serialization.rlp_encode(block, :block)
     deserialized_block = Block.rlp_decode(serialized_block)
     assert deserialized_block = block
   end
@@ -95,52 +88,52 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Oracle interaction objects serialization", setup do
     oracle_query_chainstate = create_data(OracleQuery)
-    serialized_orc_obj = Oracle.rlp_encode(oracle_query_chainstate, :interaction_object)
-    {:ok, deserialized_orc_obj} = Oracle.rlp_decode(serialized_orc_obj)
+    serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :io)
+    {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
     assert oracle_query_chainstate = deserialized_orc_obj
   end
 
   @tag :rlp_test
   test "Registered oracles serialization", setup do
     oracle_registered_chainstate = create_data(Oracle)
-    serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate, :registered_oracle)
-    {:ok, deserialized_orc} = Oracle.rlp_decode(serialized_orc)
+    serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :ro)
+    {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
     assert oracle_registered_chainstate = deserialized_orc
   end
 
   @tag :rlp_test
   test "Naming System TX's serialization", setup do
     naming_pre_claim_tx = create_data(NameClaimTx)
-    serialized_preclaim_tx = DataTx.rlp_encode(naming_pre_claim_tx)
-    deserialized_preclaim_tx = DataTx.rlp_decode(serialized_preclaim_tx)
+    serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
+    deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
     assert naming_pre_claim_tx = deserialized_preclaim_tx
 
     naming_claim_tx = create_data(NameClaimTx)
-    serialized_claim_tx = DataTx.rlp_encode(naming_claim_tx)
-    deserialized_claim_tx = DataTx.rlp_decode(serialized_claim_tx)
+    serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
+    deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
     assert naming_claim_tx = deserialized_claim_tx
 
     naming_update_tx = create_data(NameUpdateTx)
-    serialized_update_tx = DataTx.rlp_encode(naming_update_tx)
-    deserialized_update_tx = DataTx.rlp_decode(serialized_update_tx)
+    serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
+    deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
     assert naming_update_tx = deserialized_update_tx
 
     naming_transfer_tx = create_data(NameTransferTx)
-    serialized_transfer_tx = DataTx.rlp_encode(naming_transfer_tx)
-    deserialized_transfer_tx = DataTx.rlp_decode(serialized_transfer_tx)
+    serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
+    deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
     assert naming_transfer_tx = deserialized_transfer_tx
   end
 
   @tag :rlp_test
   test "Naming System chainstate structures serialization", setup do
     name_state = create_data(Name)
-    serialized_name_state = Naming.rlp_encode(name_state, :name)
-    {:ok, deserialized_name_state} = Naming.rlp_decode(serialized_name_state)
+    serialized_name_state = Serialization.rlp_encode(name_state, :ns)
+    deserialized_name_state = Serialization.rlp_decode(serialized_name_state)
     assert deserialized_name_state = name_state
 
     name_commitment = create_data(NameCommitment)
-    serialized_name_commitment = Naming.rlp_encode(name_commitment, :name_commitment)
-    {:ok, deserialized_name_commitment} = Naming.rlp_decode(serialized_name_commitment)
+    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :nc)
+    deserialized_name_commitment = Serialization.rlp_decode(serialized_name_commitment)
     assert deserialized_name_commitment = name_commitment
   end
 

@@ -5,6 +5,7 @@ defmodule Aecore.Account.AccountStateTree do
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
   @type encoded_account_state :: binary()
 
   # abstract datatype representing a merkle tree
@@ -20,7 +21,7 @@ defmodule Aecore.Account.AccountStateTree do
   @spec put(tree(), Wallet.pubkey(), Account.t()) :: tree()
   def put(tree, key, value) do
     acc = Map.put(value, :pubkey, key)
-    serialized_account_state = Account.rlp_encode(acc)
+    serialized_account_state = Serialization.rlp_encode(acc, :as)
     :gb_merkle_trees.enter(key, serialized_account_state, tree)
   end
 
@@ -31,7 +32,7 @@ defmodule Aecore.Account.AccountStateTree do
         Account.empty()
 
       account_state ->
-        {:ok, acc} = Chainstate.rlp_decode(account_state)
+        {:ok, acc} = Serialization.rlp_decode(account_state)
         acc
     end
   end

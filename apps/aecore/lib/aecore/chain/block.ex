@@ -34,17 +34,18 @@ defmodule Aecore.Chain.Block do
     %Block{header: header, txs: []}
   end
 
-  @spec rlp_encode(Block.t()) :: binary() | {:error, String.t()}
-  def rlp_encode(%Block{} = block) do
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), Block.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, _vsn, %Block{} = block) do
     header_bin = Header.header_to_binary(block.header)
 
     txs =
       for tx <- block.txs do
-        SignedTx.rlp_encode(tx)
+        Serialization.rlp_encode(tx, :signedtx)
       end
 
     [
-      type_to_tag(Block),
+      tag,
       block.header.version,
       header_bin,
       txs
@@ -56,39 +57,17 @@ defmodule Aecore.Chain.Block do
     {:error, "Invalid block or header struct"}
   end
 
-  @spec rlp_decode(binary()) :: Block.t() | {:error, String.t()}
-  def rlp_decode(values) when is_binary(values) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
-    tag = Serialization.transform_item(tag_bin, :int)
-    _ver = Serialization.transform_item(ver_bin, :int)
+  @spec rlp_decode(list()) :: Block.t() | {:error, String.t()}
+  def rlp_decode([header_bin, txs]) do
+    txs_list =
+      for tx <- txs do
+        Serialization.rlp_decode(tx)
+      end
 
-    case tag_to_type(tag) do
-      Block ->
-        [header_bin, txs] = rest_data
-
-        txs_list =
-          for tx <- txs do
-            SignedTx.rlp_decode(tx)
-          end
-
-        Block.new(%{header: Header.binary_to_header(header_bin), txs: txs_list})
-
-      _ ->
-        {:error, "Invalid block serialization"}
-    end
+    Block.new(%{header: Header.binary_to_header(header_bin), txs: txs_list})
   end
 
   def rlp_decode(_) do
-    {:error, "Illegal block serialization"}
-  end
-
-  @spec type_to_tag(atom()) :: non_neg_integer
-  defp type_to_tag(Block) do
-    100
-  end
-
-  @spec tag_to_type(non_neg_integer()) :: atom()
-  defp tag_to_type(100) do
-    Block
+    {:error, "#{__MODULE__} : Illegal block serialization"}
   end
 end

@@ -290,11 +290,16 @@ defmodule Aecore.Tx.DataTx do
     true
   end
 
-  @spec rlp_encode(DataTx.t()) :: binary() | {:error, String.t()}
-  def rlp_encode(%DataTx{type: SpendTx} = tx) do
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), DataTx.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, vsn, term) do
+    encode(tag, vsn, term)
+  end
+
+  defp encode(tag, vsn, %DataTx{type: SpendTx} = tx) when tag == 12 do
     [
-      type_to_tag(SpendTx),
-      get_version(SpendTx),
+      tag,
+      vsn,
       tx.senders,
       tx.payload.receiver,
       tx.payload.amount,
@@ -305,10 +310,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: CoinbaseTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: CoinbaseTx} = tx) when tag == 13 do
     [
-      type_to_tag(CoinbaseTx),
-      get_version(CoinbaseTx),
+      tag,
+      vsn,
       tx.payload.receiver,
       tx.nonce,
       tx.payload.amount
@@ -316,12 +321,12 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: OracleRegistrationTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: OracleRegistrationTx} = tx) when tag == 22 do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
     [
-      type_to_tag(OracleRegistrationTx),
-      get_version(OracleRegistrationTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
@@ -334,13 +339,13 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: OracleQueryTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: OracleQueryTx} = tx) when tag == 23 do
     ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
 
     [
-      type_to_tag(OracleQueryTx),
-      get_version(OracleQueryTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.oracle_address,
@@ -355,28 +360,23 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: OracleResponseTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: OracleResponseTx} = tx) when tag == 24 do
     [
-      type_to_tag(OracleResponseTx),
-      get_version(OracleResponseTx),
-      # oracle? not confirmed
+      tag,
+      vsn,
       tx.senders,
-      # nonce
       tx.nonce,
-      # query_id
       tx.payload.query_id,
-      # response
       "$æx" <> Serialization.transform_item(tx.payload.response),
-      # fee
       tx.fee
     ]
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: OracleExtendTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: OracleExtendTx} = tx) when tag == 25 do
     [
-      type_to_tag(OracleExtendTx),
-      get_version(OracleExtendTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.ttl,
@@ -385,10 +385,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: NamePreClaimTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: NamePreClaimTx} = tx) when tag == 33 do
     [
-      type_to_tag(NamePreClaimTx),
-      get_version(NamePreClaimTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.commitment,
@@ -397,10 +397,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: NameClaimTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: NameClaimTx} = tx) when tag == 32 do
     [
-      type_to_tag(NameClaimTx),
-      get_version(NameClaimTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.name,
@@ -410,10 +410,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: NameUpdateTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: NameUpdateTx} = tx) when tag == 34 do
     [
-      type_to_tag(NameUpdateTx),
-      get_version(NameUpdateTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -425,10 +425,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: NameRevokeTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: NameRevokeTx} = tx) when tag == 35 do
     [
-      type_to_tag(NameRevokeTx),
-      get_version(NameRevokeTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -437,10 +437,10 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(%DataTx{type: NameTransferTx} = tx) do
+  defp encode(tag, vsn, %DataTx{type: NameTransferTx} = tx) when tag == 36 do
     [
-      type_to_tag(NameTransferTx),
-      get_version(NameTransferTx),
+      tag,
+      vsn,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -450,20 +450,13 @@ defmodule Aecore.Tx.DataTx do
     |> ExRLP.encode()
   end
 
-  def rlp_encode(data) when is_binary(data) or is_integer(data) do
-    ExRLP.encode(data)
+  def rlp_encode(_) do
+    {:error, "#{__MODULE__} : Invalid DataTx serializations"}
   end
 
-  def rlp_encode(tx) do
-    {:error, "Invalid DataTx: #{inspect(tx)}"}
-  end
-
-  @spec rlp_decode(binary()) :: tx_types() | {:error, String.t()}
-  def rlp_decode(values) when is_binary(values) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(values)
-    tag = Serialization.transform_item(tag_bin, :int)
-    _ver = Serialization.transform_item(ver_bin, :int)
-    decode(tag_to_type(tag), rest_data)
+  @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
+  def rlp_decode(tag, values) when is_list(values) do
+    decode(tag, values)
   end
 
   def rlp_decode(data) when is_binary(data) do
@@ -675,7 +668,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(_, _) do
-    {:error, "Unknown DataTx structure"}
+    {:error, "#{__MODULE__}: Unknown DataTx structure"}
   end
 
   @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
