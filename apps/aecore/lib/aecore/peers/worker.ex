@@ -3,17 +3,14 @@ defmodule Aecore.Peers.Worker do
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Chain.Block
+  alias Aecore.Keys.Peer, as: PeerKeys
 
   require Logger
 
   def start_link(_args) do
     peers = %{}
 
-    {privkey, pubkey} =
-      {<<64, 250, 58, 12, 14, 91, 253, 253, 19, 225, 68, 114, 136, 0, 231, 210, 81, 246, 43, 30,
-         182, 47, 62, 86, 106, 135, 77, 93, 215, 185, 127, 73>>,
-       <<88, 147, 90, 185, 185, 105, 41, 59, 173, 111, 179, 5, 135, 38, 11, 2, 84, 47, 133, 118,
-         178, 240, 121, 189, 167, 220, 203, 43, 66, 247, 136, 56>>}
+    {pubkey, privkey} = PeerKeys.keypair()
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}

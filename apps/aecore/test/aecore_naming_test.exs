@@ -9,7 +9,7 @@ defmodule AecoreNamingTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
@@ -156,8 +156,8 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
-    claim_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
-    claim_pub = Aecore.Wallet.Worker.to_public_key(claim_priv)
+    claim_priv = Wallet.get_private_key("m/0/1")
+    claim_pub = Wallet.to_public_key(claim_priv)
 
     next_nonce = Account.nonce(Chain.chain_state().accounts, claim_pub) + 1
     {:ok, claim} = Account.claim(claim_pub, claim_priv, "test.aet", <<1::256>>, 5, next_nonce)
@@ -199,8 +199,8 @@ defmodule AecoreNamingTest do
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
-    update_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
-    update_pub = Aecore.Wallet.Worker.to_public_key(update_priv)
+    update_priv = Wallet.get_private_key("m/0/1")
+    update_pub = Wallet.to_public_key(update_priv)
     next_nonce = Account.nonce(Chain.chain_state().accounts, update_pub) + 1
 
     {:ok, update} =
@@ -260,12 +260,12 @@ defmodule AecoreNamingTest do
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
-    transfer_from_priv = Aecore.Wallet.Worker.get_private_key("m/0/2")
-    transfer_from_pub = Aecore.Wallet.Worker.to_public_key(transfer_from_priv)
+    transfer_from_priv = Wallet.get_private_key("m/0/2")
+    transfer_from_pub = Wallet.to_public_key(transfer_from_priv)
     next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_from_pub) + 1
 
-    transfer_to_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
-    transfer_to_pub = Aecore.Wallet.Worker.to_public_key(transfer_to_priv)
+    transfer_to_priv = Wallet.get_private_key("m/0/1")
+    transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
 
     {:ok, transfer} =
       Account.name_transfer(
@@ -331,8 +331,8 @@ defmodule AecoreNamingTest do
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
-    transfer_to_priv = Aecore.Wallet.Worker.get_private_key("m/0/1")
-    transfer_to_pub = Aecore.Wallet.Worker.to_public_key(transfer_to_priv)
+    transfer_to_priv = Wallet.get_private_key("m/0/1")
+    transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
     {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 5)
     Pool.add_transaction(transfer)
     Miner.mine_sync_block_to_chain()

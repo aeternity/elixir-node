@@ -5,7 +5,7 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
 
   require Logger

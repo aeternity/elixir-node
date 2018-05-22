@@ -49,6 +49,12 @@ aewallet_path =
     env -> env
   end
 
+peerkeys_path =
+  case System.get_env("PEER_KEYS_PATH") do
+    nil -> "apps/aecore/priv/peerkeys"
+    env -> env
+  end
+
 config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
@@ -56,6 +62,8 @@ config :aecore, :aewallet, pub_key_size: 33
 config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 32
+
+config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
 config :aecore, :naming,
   max_label_length: 63,
