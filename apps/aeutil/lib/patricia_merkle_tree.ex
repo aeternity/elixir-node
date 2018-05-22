@@ -9,6 +9,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.DB.ExternalDB
+  alias MerklePatriciaTree.Trie.Inspector
 
   alias Aecore.Persistence.Worker, as: Persistence
 
@@ -30,12 +31,12 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Create new trie with specific hash root
   """
-  @spec new(trie_name, binary) :: Trie.t()
+  @spec new(trie_name(), binary) :: Trie.t()
   def new(trie_name, root_hash) do
     Trie.new(ExternalDB.init(get_db_handlers(trie_name)), root_hash)
   end
 
-  @spec new(trie_name) :: Trie.t()
+  @spec new(trie_name()) :: Trie.t()
   defp get_db_handlers(trie_name) do
     %{put: Persistence.db_handler_put(trie_name), get: Persistence.db_handler_get(trie_name)}
   end
@@ -54,7 +55,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Retrieve value from trie and construct proof.
   """
-  @spec lookup_with_proof(Trie.key(), Trie.key()) :: :none | {:ok, Trie.value(), Trie.t()}
+  @spec lookup_with_proof(Trie.trie(), Trie.key()) :: :none | {:ok, Trie.value(), Trie.t()}
   def lookup_with_proof(trie, key) do
     case Proof.construct_proof({trie, key, new(:proof)}) do
       {nil, _proof} -> :none
@@ -86,7 +87,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec verify_proof(Trie.t(), Trie.key(), Trie.value(), Trie.t()) :: boolean
   def verify_proof(trie, key, value, proof) do
-    Proof.verify_proof(key, value, trie.root_hash, proof.db)
+    Proof.verify_proof(key, value, trie.root_hash, proof)
   end
 
   @doc """
@@ -94,4 +95,46 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec delete(Trie.t(), Trie.key()) :: Trie.t()
   def delete(trie, key), do: Trie.delete(trie, key)
+
+  @doc """
+  Providing pretty print of a given trie in the shell.
+  Depending on the atom it can print structure or key value pairs
+
+  ## Examples
+
+  If we want to print as pair
+      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:as_pair)
+      [{"111", "v1"}, {"112", "v2"}]
+
+  If we want to print the whole struct. Returns the trie as well
+      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:as_struct)
+      ~~~~~~Trie~~~
+      Node: ext (prefix: [3, 1, 3, 1, 3])
+        Node: branch (value: "")
+          [0] Node: <empty>
+          [1] Node: leaf ([]="val1")
+          [2] Node: leaf ([]="val2")
+          [3] Node: <empty>
+          [4] Node: <empty>
+          [5] Node: <empty>
+          [6] Node: <empty>
+          [7] Node: <empty>
+          [8] Node: <empty>
+          [9] Node: <empty>
+          [10] Node: <empty>
+          [11] Node: <empty>
+          [12] Node: <empty>
+          [13] Node: <empty>
+          [14] Node: <empty>
+          [15] Node: <empty>
+      ~~~/Trie/~~~
+
+  If the given type is incorrect
+      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:wrong_type)
+      {:error, "Unknown print type"}
+  """
+  @spec print_trie(Trie.t(), :as_struct | :as_pair) :: Trie.t() | {:error, term()}
+  def print_trie(trie, :as_struct), do: Inspector.inspect_trie(trie)
+  def print_trie(trie, :as_pair), do: Inspector.all_values(trie)
+  def print_trie(_, _), do: {:error, "Unknown print type"}
 end
