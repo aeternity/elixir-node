@@ -16,6 +16,7 @@ defmodule Aecore.Channel.Worker do
 
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Wallet.Worker, as: Wallet
 
   use GenServer
 
@@ -23,7 +24,9 @@ defmodule Aecore.Channel.Worker do
 
   @type role :: :initiator | :responder
 
-  # State is map channel_id -> channel_info
+  @typedoc """
+  State is map channel_id -> channel_peer_state
+  """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
   @type channels_onchain :: %{binary() => ChannelStateOnChain.t()}
@@ -39,7 +42,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channels from ChannelStatePeer object. Usefull for storage
+  Imports channels from ChannelStatePeer object. Useful for storage
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
   def import_channel(channel_state) do
@@ -126,7 +129,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Transfers amount to other peer in channel. Returns halfsigned channal offchain state. Can only be called on open channel.
+  Transfers amount to other peer in channel. Returns half-signed channel off-chain state. Can only be called on open channel.
   """
   @spec transfer(binary(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, ChannelStateOffChain.t()} | error()
@@ -144,7 +147,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Creates channel close transaction. This also blocks any new transactions from hapenning on channel.
+  Creates channel close transaction. This also blocks any new transactions from happening on channel.
   """
   @spec close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, SignedTx.t()} | error()
@@ -187,7 +190,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about mined slash or solo close transaction. If channel Manager has newer state for coresponding channel it creates a slash transaction and add it to pool.
+  Notifies channel manager about mined slash or solo close transaction. If channel Manager has newer state for corresponding channel it creates a slash transaction and add it to pool.
   """
   @spec slashed(
           SignedTx.t(),
@@ -200,15 +203,25 @@ defmodule Aecore.Channel.Worker do
     GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pubkey, priv_key})
   end
 
+  @doc """
+  Creates settle transaction and adds it to the pool
+  """
+  @spec settle(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+          :ok | :error | error()
   def settle(channel_id, fee, nonce, priv_key) do
-    with {:ok, peer_state} <- get_channel(channel_id) do
-      ChannelStatePeer.settle(peer_state, fee, nonce, priv_key)
+    with {:ok, peer_state} <- get_channel(channel_id),
+         {:ok, tx} <- ChannelStatePeer.settle(peer_state, fee, nonce, priv_key) do
+      Pool.add_transaction(tx)
     else
       {:error, reason} ->
         {:error, reason}
     end
   end
 
+  @doc """
+  Notifies channel manager about mined settle tx.
+  """
+  @spec settled(SignedTx.t()) :: :ok | error()
   def settled(settle_tx) do
     GenServer.call(__MODULE__, {:settled, settle_tx})
   end
@@ -221,6 +234,10 @@ defmodule Aecore.Channel.Worker do
     GenServer.call(__MODULE__, :get_all_channels)
   end
 
+  @doc """
+  Returns channel peer state of channel with specified id.
+  """
+  @spec get_channel(binary()) :: {:ok, ChannelStatePeer.t()} | error()
   def get_channel(channel_id) do
     GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
@@ -338,7 +355,7 @@ defmodule Aecore.Channel.Worker do
         {:reply, {:error, reason}, state}
 
       :error ->
-        {:reply, {:error, "Transacion Pool error (Invalid recvieved tx signature?)"}, state}
+        {:reply, {:error, "Transaction Pool error (Invalid received tx signature?)"}, state}
     end
   end
 

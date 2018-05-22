@@ -2,18 +2,8 @@ defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -23,29 +13,39 @@ defmodule Aecore.Tx.DataTx do
 
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
-          SpendTx
-          | OracleExtendTx
-          | OracleRegistrationTx
-          | OracleResponseTx
-          | OracleResponseTx
-          | NamePreClaimTx
-          | NameClaimTx
-          | NameUpdateTx
-          | NameTransferTx
-          | NameRevokeTx
+          Aecore.Account.Tx.SpendTx
+          | Aecore.Oracle.Tx.OracleExtendTx
+          | Aecore.Oracle.Tx.OracleRegistrationTx
+          | Aecore.Oracle.Tx.OracleResponseTx
+          | Aecore.Oracle.Tx.OracleResponseTx
+          | Aecore.Naming.Tx.NamePreClaimTx
+          | Aecore.Naming.Tx.NameClaimTx
+          | Aecore.Naming.Tx.NameUpdateTx
+          | Aecore.Naming.Tx.NameTransferTx
+          | Aecore.Naming.Tx.NameRevokeTx
+          | Aecore.Channel.Tx.ChannelCreateTx
+          | Aecore.Channel.Tx.ChannelCloseMutalTx
+          | Aecore.Channel.Tx.ChannelCloseSoloTx
+          | Aecore.Channel.Tx.ChannelSlashTx
+          | Aecore.Channel.Tx.ChannelSettleTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
-          SpendTx.t()
-          | OracleExtendTx.t()
-          | OracleQueryTx.t()
-          | OracleRegistrationTx.t()
-          | OracleResponseTx.t()
-          | NamePreClaimTx.t()
-          | NameClaimTx.t()
-          | NameUpdateTx.t()
-          | NameTransferTx.t()
-          | NameRevokeTx.t()
+          Aecore.Account.Tx.SpendTx.t()
+          | Aecore.Oracle.Tx.OracleExtendTx.t()
+          | Aecore.Oracle.Tx.OracleRegistrationTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Naming.Tx.NamePreClaimTx.t()
+          | Aecore.Naming.Tx.NameClaimTx.t()
+          | Aecore.Naming.Tx.NameUpdateTx.t()
+          | Aecore.Naming.Tx.NameTransferTx.t()
+          | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Channel.Tx.ChannelCreateTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
+          | Aecore.Channel.Tx.ChannelSlashTx.t()
+          | Aecore.Channel.Tx.ChannelSettleTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -64,7 +64,7 @@ defmodule Aecore.Tx.DataTx do
 
   ## Parameters
   - type: The type of transaction that may be added to the blockchain
-  - payload: The strcuture of the specified transaction type
+  - payload: The structure of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
   - fee: The amount of tokens given to the miner
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
@@ -108,7 +108,7 @@ defmodule Aecore.Tx.DataTx do
     fee
   end
 
-  @spec senders(DataTx.t()) :: list(binary())
+  @spec senders(DataTx.t()) :: list(Wallet.pubkey())
   def senders(%DataTx{senders: senders}) do
     senders
   end

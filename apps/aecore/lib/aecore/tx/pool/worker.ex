@@ -20,11 +20,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
 
   require Logger
 
@@ -161,23 +156,8 @@ defmodule Aecore.Tx.Pool.Worker do
       %OracleExtendTx{} ->
         tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
 
-      %NameClaimTx{} ->
-        NameClaimTx.is_minimum_fee_met?(tx)
-
-      %NamePreClaimTx{} ->
-        NamePreClaimTx.is_minimum_fee_met?(tx)
-
-      %NameRevokeTx{} ->
-        NameRevokeTx.is_minimum_fee_met?(tx)
-
-      %NameTransferTx{} ->
-        NameTransferTx.is_minimum_fee_met?(tx)
-
-      %NameUpdateTx{} ->
-        NameUpdateTx.is_minimum_fee_met?(tx)
-
       _ ->
-        true
+        tx.data.type.is_minimum_fee_met?(tx)
     end
   end
 

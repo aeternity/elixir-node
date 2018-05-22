@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Aecore structure of ChannelCloseMutalTx transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -9,6 +9,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
@@ -22,9 +23,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @typedoc "Structure that holds specific transaction info in the chainstate."
+  @type tx_type_state() :: Channel.channels_onchain()
 
   @typedoc "Structure of the ChannelMutalClose Transaction type"
   @type t :: %ChannelCloseMutalTx{
@@ -34,7 +34,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCreateTx structure
+  Definition of Aecore ChannelCloseMutalTx structure
 
   ## Parameters
   - channel_id: channel id
@@ -47,7 +47,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: ChannelCloseMutalTx.t()
   def init(
         %{
           channel_id: channel_id,
@@ -62,14 +62,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     }
   end
 
+  @spec channel_id(ChannelCloseMutalTx.t()) :: binary()
   def channel_id(%ChannelCloseMutalTx{channel_id: channel_id}) do
     channel_id
   end
 
+  @spec initiator_amount(ChannelCloseMutalTx.t()) :: non_neg_integer()
   def initiator_amount(%ChannelCloseMutalTx{initiator_amount: initiator_amount}) do
     initiator_amount
   end
 
+  @spec responder_amount(ChannelCloseMutalTx.t()) :: non_neg_integer()
   def responder_amount(%ChannelCloseMutalTx{responder_amount: responder_amount}) do
     responder_amount
   end
@@ -94,7 +97,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Changes the account state (balance) of both parties and closes channel (drops channel object from chainstate)
   """
   @spec process_chainstate(
           ChainState.account(),
@@ -127,7 +130,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
+  Checks whether all the data is valid according to the ChannelCloseMutalTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
@@ -185,5 +188,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     |> AccountStateTree.update(responder_pubkey, fn acc ->
       Account.apply_transfer!(acc, block_height, -1 * div(fee, 2))
     end)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

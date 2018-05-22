@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Aecore structure of ChannelCloseSoloTx transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -10,22 +10,22 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
-          state: ChannelStateOffChain.t()
+          state: map()
         }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @typedoc "Structure that holds specific transaction info in the chainstate."
+  @type tx_type_state() :: Channel.channels_onchain()
 
-  @typedoc "Structure of the ChannelCloseSolo Transaction type"
+  @typedoc "Structure of the ChannelCloseSoloTx Transaction type"
   @type t :: %ChannelCloseSoloTx{
           state: ChannelStateOffChain.t()
         }
@@ -42,19 +42,22 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: ChannelCloseSoloTx.t()
   def init(%{state: state} = _payload) do
-    %ChannelCloseSoloTx{state: state}
+    %ChannelCloseSoloTx{state: ChannelStateOffChain.init(state)}
   end
 
+  @spec create(ChannelStateOffChain.t()) :: ChannelCloseSoloTx.t()
   def create(state) do
     %ChannelCloseSoloTx{state: state}
   end
 
+  @spec sequence(ChannelCloseSoloTx.t()) :: non_neg_integer()
   def sequence(%ChannelCloseSoloTx{state: state}) do
     ChannelStateOffChain.sequence(state)
   end
 
+  @spec channel_id(ChannelCloseSoloTx.t()) :: binary()
   def channel_id(%ChannelCloseSoloTx{state: state}) do
     ChannelStateOffChain.id(state)
   end
@@ -74,7 +77,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Performs channel slash
   """
   @spec process_chainstate(
           ChainState.account(),
@@ -101,7 +104,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
+  Checks whether all the data is valid according to the ChannelSoloCloseTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
@@ -152,5 +155,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

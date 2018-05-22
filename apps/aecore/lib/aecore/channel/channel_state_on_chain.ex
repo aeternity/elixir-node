@@ -61,18 +61,27 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
+  @doc """
+  Generates channel id from ChannelCreateTx.
+  """
+  @spec id(DataTx.t()) :: binary()
   def id(data_tx) do
     nonce = DataTx.nonce(data_tx)
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     id(initiator_pubkey, responder_pubkey, nonce)
   end
 
+  @doc """
+  Generates channel id from detail of ChannelCreateTx.
+  """
+  @spec id(Wallet.pubkey(), Wallet.pubkey(), non_neg_integer()) :: binary()
   def id(initiator_pubkey, responder_pubkey, nonce) do
     binary_data = initiator_pubkey <> <<nonce::size(64)>> <> responder_pubkey
 
     Hash.hash_blake2b(binary_data)
   end
 
+  @spec amounts(ChannelStateOnChain.t()) :: list(non_neg_integer())
   def amounts(%ChannelStateOnChain{
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
@@ -80,14 +89,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     [initiator_amount, responder_amount]
   end
 
+  @spec initiator_pubkey(ChannelStateOnChain.t()) :: Wallet.pubkey()
   def initiator_pubkey(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey}) do
     initiator_pubkey
   end
 
+  @spec responder_pubkey(ChannelStateOnChain.t()) :: Wallet.pubkey()
   def responder_pubkey(%ChannelStateOnChain{responder_pubkey: responder_pubkey}) do
     responder_pubkey
   end
 
+  @spec pubkeys(ChannelStateOnChain.t()) :: list(Wallet.pubkey())
   def pubkeys(%ChannelStateOnChain{
         initiator_pubkey: initiator_pubkey,
         responder_pubkey: responder_pubkey
@@ -95,6 +107,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     [initiator_pubkey, responder_pubkey]
   end
 
+  @doc """
+  Returns true if channel wasn't slashed. (Closed channels should be removed from Channels state tree)
+  """
+  @spec active?(ChannelStateOnChain.t()) :: boolean()
   def active?(%ChannelStateOnChain{slash_sequence: -1}) do
     true
   end
@@ -103,10 +119,19 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     false
   end
 
+  @doc """
+  Returns true if Channel can be settled. (If Channel was slashed and current block height exceeds locktime)
+  """
+  @spec settled?(ChannelStateOnChain.t(), non_neg_integer()) :: boolean()
   def settled?(%ChannelStateOnChain{slash_close: slash_close} = channel, block_height) do
     block_height >= slash_close && !active?(channel)
   end
 
+  @doc """
+  Validates Slash and SoloCloseTx states.
+  """
+  @spec validate_slashing(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
+          :ok | {:error, binary()}
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         %ChannelStateOffChain{sequence: 0} = offchain_state
@@ -140,6 +165,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
+  @doc """
+  Executes slashing on channel. Slashing should be validated before with validate_slashing.
+  """
+  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelStateOffChain.t()) ::
+          ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
         sequence: 0
       }) do

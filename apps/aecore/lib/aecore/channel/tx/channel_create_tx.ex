@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Aecore structure of ChannelCreateTx transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -9,10 +9,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
-  @typedoc "Expected structure for the ChannelOpen Transaction"
+  @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
           initiator_amount: non_neg_integer(),
           responser_amount: non_neg_integer(),
@@ -22,9 +23,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @typedoc "Structure that holds specific transaction info in the chainstate."
+  @type tx_type_state() :: Channel.channels_onchain()
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
@@ -47,7 +47,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: ChannelCreateTx.t()
   def init(
         %{
           initiator_amount: initiator_amount,
@@ -62,10 +62,12 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     }
   end
 
+  @spec initiator_amount(ChannelCreateTx.t()) :: non_neg_integer()
   def initiator_amount(%ChannelCreateTx{initiator_amount: initiator_amount}) do
     initiator_amount
   end
 
+  @spec responder_amount(ChannelCreateTx.t()) :: non_neg_integer()
   def responder_amount(%ChannelCreateTx{responder_amount: responder_amount}) do
     responder_amount
   end
@@ -138,7 +140,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
+  Checks whether all the data is valid according to the ChannelCreateTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
@@ -183,5 +185,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

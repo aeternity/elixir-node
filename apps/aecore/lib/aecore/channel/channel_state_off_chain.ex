@@ -4,6 +4,8 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   """
 
   alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
@@ -14,6 +16,8 @@ defmodule Aecore.Channel.ChannelStateOffChain do
           responder_amount: non_neg_integer(),
           signatures: list(binary())
         }
+
+  @type error :: {:error, binary()}
 
   defstruct [
     :channel_id,
@@ -30,7 +34,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: Header
+        ) :: ChannelStateOffChain.t()
   def create(channel_id, sequence, initiator_amount, responder_amount) do
     %ChannelStateOffChain{
       channel_id: channel_id,
@@ -41,26 +45,52 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     }
   end
 
+  @spec init(map()) :: ChannelStateOffChain.t()
+  def init(%{
+        channel_id: channel_id,
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        signatures: signatures
+      }) do
+    %ChannelStateOffChain{
+      channel_id: channel_id,
+      sequence: sequence,
+      initiator_amount: initiator_amount,
+      responder_amount: responder_amount,
+      signatures: signatures
+    }
+  end
+
+  @spec id(ChannelStateOffChain.t()) :: binary()
   def id(%ChannelStateOffChain{channel_id: channel_id}) do
     channel_id
   end
 
+  @spec sequence(ChannelStateOffChain.t()) :: non_neg_integer()
   def sequence(%ChannelStateOffChain{sequence: sequence}) do
     sequence
   end
 
+  @spec initiator_amount(ChannelStateOffChain.t()) :: non_neg_integer()
   def initiator_amount(%ChannelStateOffChain{initiator_amount: initiator_amount}) do
     initiator_amount
   end
 
+  @spec responder_amount(ChannelStateOffChain.t()) :: non_neg_integer()
   def responder_amount(%ChannelStateOffChain{responder_amount: responder_amount}) do
     responder_amount
   end
 
+  @spec total_amount(ChannelStateOffChain.t()) :: non_neg_integer()
   def total_amount(%ChannelStateOffChain{} = state) do
     initiator_amount(state) + responder_amount(state)
   end
 
+  @doc """
+  Validates ChannelStateOffChain signatures. 
+  """
+  @spec validate(ChannelStateOffChain.t(), list(Wallet.pubkey())) :: :ok | error()
   def validate(%ChannelStateOffChain{signatures: [_, _]} = state, [
         initiator_pubkey,
         responder_pubkey
@@ -81,6 +111,15 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     {:error, "Invalid signatures count"}
   end
 
+  @doc """
+  Validates half signed update(new object) of ChannelStateOffChain. Updates validates if transfer is in correct direction and sequence is increasing. Role should be the role of validating peer.
+  """
+  @spec validate_half_update(
+          ChannelStateOffChain.t(),
+          ChannelStateOffChain.t(),
+          list(Wallet.pubkey()),
+          Channel.role()
+        ) :: :ok | error()
   def validate_half_update(prev_state, new_state, [initiator_pubkey, responder_pubkey], role) do
     cond do
       new_state.sequence <= prev_state.sequence ->
@@ -97,19 +136,27 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         {:error, "Invalid responder signature"}
 
       role == :initiator && prev_state.initiator_amount > new_state.initiator_amount ->
-        {:error, "Negative responder trasnfer"}
+        {:error, "Negative responder transfer"}
 
       role == :responder && !valid_initiator?(new_state, initiator_pubkey) ->
         {:error, "Invalid initiator signature"}
 
       role == :responder && prev_state.responder_amount > new_state.responder_amount ->
-        {:error, "Negative initiator trasnfer"}
+        {:error, "Negative initiator transfer"}
 
       true ->
         :ok
     end
   end
 
+  @doc """
+  Validates new fully signed ChannelStateOffChain.
+  """
+  @spec validate_full_update(
+          ChannelStateOffChain.t(),
+          ChannelStateOffChain.t(),
+          list(Wallet.pubkey())
+        ) :: :ok | error()
   def validate_full_update(prev_state, new_state, pubkeys) do
     cond do
       new_state.sequence <= prev_state.sequence ->
@@ -127,6 +174,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     end
   end
 
+  @doc """
+  Validates initiator signature
+  """
+  @spec valid_initiator?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
   def valid_initiator?(%ChannelStateOffChain{signatures: [nil, _]}, _) do
     false
   end
@@ -143,6 +194,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     false
   end
 
+  @doc """
+  Validates responder signature
+  """
+  @spec valid_responder?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
   def valid_responder?(%ChannelStateOffChain{signatures: [_, nil]}, _) do
     false
   end
@@ -159,11 +214,20 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     false
   end
 
+  @doc """
+  Checks is two states are equal. Ignores signatures.
+  """
+  @spec equal?(ChannelStateOffChain.t(), ChannelStateOffChain.t()) :: boolean()
   def equal?(state1, state2) do
     state1.channel_id == state2.channel_id && state1.initiator_amount == state2.initiator_amount &&
       state1.responder_amount == state2.responder_amount && state1.sequence == state2.sequence
   end
 
+  @doc """
+  Signs a state.
+  """
+  @spec sign(ChannelStateOffChain.t(), Channel.role(), Wallet.privkey()) ::
+          ChannelStateOffChain.t()
   def sign(%ChannelStateOffChain{signatures: [_, responder_sig]} = state, :initiator, priv_key) do
     initiator_sig =
       state
@@ -182,6 +246,11 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     %ChannelStateOffChain{state | signatures: [initiator_sig, responder_sig]}
   end
 
+  @doc """
+  Creates new state with transfer applied. Role is the peer who transfer to other peer.
+  """
+  @spec transfer(ChannelStateOffChain.t(), Channel.role(), non_neg_integer()) ::
+          ChannelStateOffChain.t()
   def transfer(%ChannelStateOffChain{} = state, :initiator, amount) do
     transfer_amount(state, amount)
   end

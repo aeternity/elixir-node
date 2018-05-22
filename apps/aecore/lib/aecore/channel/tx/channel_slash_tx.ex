@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Aecore structure of ChannelSlashTx transaction data.
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -10,20 +10,20 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
   @typedoc "Expected structure for the ChannelSlash Transaction"
   @type payload :: %{
-          state: ChannelStateOffChain.t()
+          state: map()
         }
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
 
-  @typedoc "Structure that holds specific transaction info in the chainstate.
-  In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @typedoc "Structure that holds specific transaction info in the chainstate."
+  @type tx_type_state() :: Channel.channels_onchain()
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
@@ -44,17 +44,20 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @spec init(payload()) :: SpendTx.t()
   def init(%{state: state} = _payload) do
-    %ChannelSlashTx{state: state}
+    %ChannelSlashTx{state: ChannelStateOffChain.init(state)}
   end
 
+  @spec create(ChannelStateOffChain.t()) :: ChannelSlashTx.t()
   def create(state) do
     %ChannelSlashTx{state: state}
   end
 
+  @spec sequence(ChannelSlashTx.t()) :: non_neg_integer()
   def sequence(%ChannelSlashTx{state: state}) do
     ChannelStateOffChain.sequence(state)
   end
 
+  @spec channel_id(ChannelSlashTx.t()) :: binary()
   def channel_id(%ChannelSlashTx{state: state}) do
     ChannelStateOffChain.id(state)
   end
@@ -79,7 +82,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Slashes channel.
   """
   @spec process_chainstate(
           ChainState.account(),
@@ -106,7 +109,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
+  Checks whether all the data is valid according to the ChannelSlashTx requirements,
   before the transaction is executed.
   """
   @spec preprocess_check(
@@ -147,11 +150,16 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec deduct_fee(
           ChainState.accounts(),
           non_neg_integer(),
-          ChannelCreateTx.t(),
+          ChannelSlashTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: ChainState.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 end

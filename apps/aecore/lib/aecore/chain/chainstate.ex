@@ -11,7 +11,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
   alias Aecore.Naming.Naming
-  alias Aecore.Channels.Worker, as: Channels
+  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
@@ -19,7 +19,7 @@ defmodule Aecore.Chain.Chainstate do
           accounts: AccountStateTree.accounts_state(),
           oracles: Oracle.t(),
           naming: Naming.state(),
-          channels: Channels.channels_onchain()
+          channels: Channel.channels_onchain()
         }
 
   defstruct [
