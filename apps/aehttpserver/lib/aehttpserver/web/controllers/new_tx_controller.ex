@@ -1,12 +1,12 @@
 defmodule Aehttpserver.Web.NewTxController do
   use Aehttpserver.Web, :controller
 
-  alias Aeutil.Serialization
+  alias Aecore.Tx.SignedTx
   alias Aeutil.HTTPUtil
   alias Aecore.Tx.Pool.Worker, as: Pool
 
   def new_tx(conn, _params) do
-    deserialized_tx = Serialization.tx(conn.body_params, :deserialize)
+    deserialized_tx = SignedTx.deserialize(conn.body_params)
 
     case Pool.add_transaction(deserialized_tx) do
       :error ->

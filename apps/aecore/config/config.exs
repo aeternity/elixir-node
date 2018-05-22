@@ -63,9 +63,13 @@ config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 32
 
-config :aecore, :aewallet, pass: aewallet_pass
+config :aecore, :naming,
+  max_label_length: 63,
+  max_name_length: 253
 
-config :aecore, :aewallet, path: Path.absname(aewallet_path)
+config :aecore, :aewallet,
+  pass: aewallet_pass,
+  path: Path.absname(aewallet_path)
 
 config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 

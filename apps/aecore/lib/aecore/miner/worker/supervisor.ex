@@ -5,8 +5,8 @@ defmodule Aecore.Miner.Worker.Supervisor do
 
   use Supervisor
 
-  def start_link(_args) do
-    Supervisor.start_link(__MODULE__, :ok)
+  def start_link(args) do
+    Supervisor.start_link(__MODULE__, :ok, args)
   end
 
   def init(:ok) do

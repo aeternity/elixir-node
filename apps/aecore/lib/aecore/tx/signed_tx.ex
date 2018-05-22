@@ -3,9 +3,11 @@ defmodule Aecore.Tx.SignedTx do
   Aecore structure of a signed transaction.
   """
 
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.CoinbaseTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -15,7 +17,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @type t :: %SignedTx{
           data: DataTx.t(),
-          signature: binary()
+          signatures: list(Wallet.pubkey())
         }
 
   @doc """
@@ -25,24 +27,41 @@ defmodule Aecore.Tx.SignedTx do
      - data: Aecore %SpendTx{} structure
      - signature: Signed %SpendTx{} with the private key of the sender
   """
-  defstruct [:data, :signature]
+
+  defstruct [:data, :signatures]
   use ExConstructor
 
-  @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(%{data: %{sender: key}, signature: signature}) do
-    key == nil && signature == nil
+  @spec create(DataTx.t(), list(Signature.t())) :: SignedTx.t()
+  def create(data, signatures \\ []) do
+    %SignedTx{data: data, signatures: signatures}
   end
 
-  @doc """
-  Checks weather the signature is correct.
-  """
+  def data_tx(%SignedTx{data: data}) do
+    data
+  end
+
+  @spec is_coinbase?(SignedTx.t()) :: boolean()
+  def is_coinbase?(%SignedTx{data: data}) do
+    data.type == CoinbaseTx
+  end
+
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
-    if Signing.verify(Serialization.pack_binary(data), tx.signature, data.sender) do
-      :ok
+    if signatures_valid?(tx) do
+      DataTx.validate(data)
     else
-      {:error, "#{__MODULE__}: Can't verify the signature
-      with the following public key: #{inspect(data.sender)}"}
+      {:error, "#{__MODULE__}: Signatures invalid"}
+    end
+  end
+
+  @spec process_chainstate(ChainState.chainstate(), non_neg_integer(), SignedTx.t()) ::
+          ChainState.chainstate()
+  def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
+    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
+      DataTx.process_chainstate(chainstate, block_height, data)
+    else
+      err ->
+        err
     end
   end
 
@@ -56,22 +75,43 @@ defmodule Aecore.Tx.SignedTx do
      - priv_key: The priv key to sign with
 
   """
-  @spec sign_tx(DataTx.t(), binary()) :: {:ok, SignedTx.t()}
-  def sign_tx(%DataTx{} = tx, priv_key) when byte_size(priv_key) == 32 do
-    signature = Signing.sign(Serialization.pack_binary(tx), priv_key)
 
-    if byte_size(signature) <= get_sign_max_size() do
-      {:ok, %SignedTx{data: tx, signature: signature}}
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) ::
+          {:ok, SignedTx.t()} | {:error, binary()}
+  def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
+    signatures =
+      for _ <- DataTx.senders(tx) do
+        nil
+      end
+
+    sign_tx(%SignedTx{data: tx, signatures: signatures}, pub_key, priv_key)
+  end
+
+  def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
+    new_signature =
+      data
+      |> Serialization.pack_binary()
+      |> Signing.sign(priv_key)
+
+    {success, new_sigs} =
+      sigs
+      |> Enum.zip(DataTx.senders(data))
+      |> Enum.reduce({false, []}, fn {sig, sender}, {success, acc} ->
+        if sender == pub_key do
+          {true, [new_signature | acc]}
+        else
+          {success, [sig | acc]}
+        end
+      end)
+
+    if success do
+      {:ok, %SignedTx{data: data, signatures: new_sigs}}
     else
-      {:error, "Wrong signature size"}
+      {:error, "#{__MODULE__}: Not in senders"}
     end
   end
 
-  def sign_tx(%DataTx{} = _tx, priv_key) do
-    {:error, "#{__MODULE__}: Wrong key size: #{inspect(priv_key)}"}
-  end
-
-  def sign_tx(tx, _priv_key) do
+  def sign_tx(tx, _pub_key, _priv_key) do
     {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
@@ -126,6 +166,77 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   def base58c_decode_signature(_) do
-    {:error, "Wrong data"}
+    {:error, "#{__MODULE__}: Wrong data"}
+  end
+
+  @spec serialize(SignedTx.t()) :: map()
+  def serialize(%SignedTx{} = tx) do
+    signatures_length = length(tx.signatures)
+
+    case signatures_length do
+      0 ->
+        %{"data" => DataTx.serialize(tx.data)}
+
+      1 ->
+        signature_serialized =
+          tx.signatures
+          |> Enum.at(0)
+          |> Serialization.serialize_value(:signature)
+
+        %{"data" => DataTx.serialize(tx.data), "signature" => signature_serialized}
+
+      _ ->
+        %{
+          "data" => DataTx.serialize(tx.data),
+          "signature" => Serialization.serialize_value(:signature)
+        }
+    end
+  end
+
+  @spec deserialize(map()) :: SignedTx.t()
+  def deserialize(tx) do
+    signed_tx = Serialization.deserialize_value(tx)
+    data = DataTx.deserialize(signed_tx.data)
+
+    cond do
+      Map.has_key?(signed_tx, :signature) && signed_tx.signature != nil ->
+        create(data, [signed_tx.signature])
+
+      Map.has_key?(signed_tx, :signatures) && signed_tx.signatures != nil ->
+        create(data, signed_tx.signatures)
+
+      true ->
+        create(data, [])
+    end
+  end
+
+  defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
+    if length(sigs) != length(DataTx.senders(data)) do
+      Logger.error("Wrong signature count")
+      false
+    else
+      data_binary = Serialization.pack_binary(data)
+
+      sigs
+      |> Enum.zip(DataTx.senders(data))
+      |> Enum.reduce(true, fn {sig, acc}, validity ->
+        cond do
+          sig == nil ->
+            Logger.error("Missing signature of #{acc}")
+            false
+
+          !Wallet.key_size_valid?(acc) ->
+            Logger.error("Wrong sender size")
+            false
+
+          Signing.verify(data_binary, sig, acc) ->
+            validity
+
+          true ->
+            Logger.error("Signature of #{acc} invalid")
+            false
+        end
+      end)
+    end
   end
 end

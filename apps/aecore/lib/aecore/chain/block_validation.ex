@@ -16,10 +16,12 @@ defmodule Aecore.Chain.BlockValidation do
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
+  @type tree :: :gb_merkle_trees.tree()
+
   @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
-          Chainstate.account_chainstate(),
+          Chainstate.chainstate(),
           list(Block.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(
@@ -131,19 +133,19 @@ defmodule Aecore.Chain.BlockValidation do
     end)
   end
 
-  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  @spec calculate_txs_hash([]) :: binary()
   def calculate_txs_hash(txs) when txs == [] do
     <<0::256>>
   end
 
-  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
   def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
   end
 
-  @spec build_merkle_tree(list(SignedTx.t())) :: tuple()
+  @spec build_merkle_tree(list(SignedTx.t())) :: tree()
   def build_merkle_tree(txs) do
     if Enum.empty?(txs) do
       <<0::256>>

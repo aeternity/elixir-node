@@ -18,8 +18,9 @@ config :logger, :error,
   level: :error
 
 config :aecore, :pow,
+  new_candidate_nonce_count: 10,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
-  params: {"./lean", "-t 5", 16},
+  params: {"./lean16", "-t 5", 16},
   max_target_change: 1,
   genesis_header: %{
     height: 0,
@@ -89,12 +90,6 @@ config :aecore, :peers,
   sync_port: sync_port
 
 config :aecore, :miner, resumed_by_default: false
-
-bytes_per_token =
-  case System.get_env("BYTES_PER_TOKEN") do
-    nil -> 100
-    env -> String.to_integer(env)
-  end
 
 config :aecore, :tx_data,
   minimum_fee: 10,

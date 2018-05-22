@@ -13,19 +13,16 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Pow.Cuckoo
   alias Aecore.Oracle.Oracle
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Account.Account
 
   require Logger
 
   @mersenne_prime 2_147_483_647
   @coinbase_transaction_amount 100
-  @new_candidate_nonce_count 500
 
   def start_link(_args) do
     GenServer.start_link(
@@ -161,7 +158,7 @@ defmodule Aecore.Miner.Worker do
     nonce = next_nonce(cblock.header.nonce)
 
     cblock =
-      case rem(nonce, @new_candidate_nonce_count) do
+      case rem(nonce, Application.get_env(:aecore, :pow)[:new_candidate_nonce_count]) do
         0 -> candidate()
         _ -> cblock
       end
@@ -181,6 +178,7 @@ defmodule Aecore.Miner.Worker do
     {pid, ref} =
       spawn_monitor(fn ->
         send(server, {:worker_reply, self(), work.()})
+        :ok
       end)
 
     %{state | job: {pid, ref}}
@@ -245,9 +243,9 @@ defmodule Aecore.Miner.Worker do
     total_fees = calculate_total_fees(valid_txs_by_fee)
 
     valid_txs = [
-      create_coinbase_tx(
+      Account.create_coinbase_tx(
         pubkey,
-        total_fees
+        @coinbase_transaction_amount + total_fees
       )
       | valid_txs_by_fee
     ]
@@ -259,17 +257,6 @@ defmodule Aecore.Miner.Worker do
     List.foldl(txs, 0, fn tx, acc ->
       acc + tx.data.fee
     end)
-  end
-
-  def create_coinbase_tx(receiver, total_fees) do
-    payload = %{
-      receiver: receiver,
-      amount: @coinbase_transaction_amount + total_fees
-    }
-
-    tx_data = DataTx.init(SpendTx, payload, nil, 0, 0)
-
-    %SignedTx{data: tx_data, signature: nil}
   end
 
   ## Internal

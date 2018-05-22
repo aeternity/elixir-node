@@ -405,7 +405,7 @@ defmodule Aecore.Peers.Sync do
 
       {:error, reason} ->
         Logger.error("#{__MODULE__}: Fetching top block from
-        #{inspect(peer_id)} failed with: #{inspect(reason)} ")
+                      #{inspect(peer_id)} failed with: #{inspect(reason)} ")
     end
   end
 

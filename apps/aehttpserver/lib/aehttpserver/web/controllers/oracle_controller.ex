@@ -4,8 +4,8 @@ defmodule Aehttpserver.Web.OracleController do
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Serialization
   alias Aeutil.Bits
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -33,7 +33,7 @@ defmodule Aehttpserver.Web.OracleController do
           Map.put(
             acc,
             Account.base58c_encode(address),
-            Serialization.tx(tx, :serialize)
+            SignedTx.serialize(tx)
           )
         end)
       end

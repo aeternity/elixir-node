@@ -26,10 +26,12 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Naming.Tx.NameTransferTx
 
   require Logger
 
   @type txs_index :: %{binary() => [{binary(), binary()}]}
+  @type reason :: atom()
 
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
@@ -94,7 +96,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :top_height)
   end
 
-  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, atom()}
+  @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, reason()}
   def get_header_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_header(decoded_hash)
@@ -117,21 +119,7 @@ defmodule Aecore.Chain.Worker do
       {:error, :invalid_hash}
   end
 
-  @spec get_headers_forward(binary(), non_neg_integer()) ::
-          {:ok, list(Header.t())} | {:error, atom()}
-  def get_headers_forward(starting_header, count) do
-    case get_header(starting_header) do
-      {:ok, header} ->
-        {:ok, starting_block} = Chain.get_block(starting_header)
-        blocks_to_forward = min(Chain.top_height() - starting_block.header.height + 1, count)
-        get_headers_forward([], header.height, blocks_to_forward)
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  end
-
-  @spec get_header(binary()) :: Block.t() | {:error, atom()}
+  @spec get_header(binary()) :: Block.t() | {:error, reason()}
   def get_header(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
       {:error, _reason} ->
@@ -148,7 +136,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, atom()}
+  @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil) do
       {:error, :chain_too_short} -> {:error, :chain_too_short}
@@ -470,8 +458,10 @@ defmodule Aecore.Chain.Worker do
 
     chain_states = Persistence.get_all_accounts_chain_states()
 
+    is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
+
     top_chain_state =
-      if Enum.empty?(Serialization.remove_struct(chain_states)) do
+      if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
         chain_states
@@ -480,8 +470,10 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
+
     blocks_data_map =
-      if Enum.empty?(Serialization.remove_struct(blocks_info)) do
+      if is_empty_block_info do
         state.blocks_data_map
       else
         blocks_info
@@ -518,13 +510,16 @@ defmodule Aecore.Chain.Worker do
       |> Enum.map(fn tx ->
         case tx.data.type do
           SpendTx ->
-            [tx.data.sender, tx.data.payload.receiver]
+            [tx.data.payload.receiver | tx.data.senders]
 
           OracleQueryTx ->
-            [tx.data.sender, tx.data.payload.oracle_address]
+            [tx.data.payload.oracle_address | tx.data.senders]
+
+          NameTransferTx ->
+            [tx.data.payload.target | tx.data.senders]
 
           _ ->
-            tx.data.sender
+            tx.data.senders
         end
       end)
       |> List.flatten()
@@ -538,10 +533,10 @@ defmodule Aecore.Chain.Worker do
         |> Enum.filter(fn tx ->
           case tx.data.type do
             SpendTx ->
-              tx.data.sender == account || tx.data.payload.receiver == account
+              tx.data.senders == [account] || tx.data.payload.receiver == account
 
             _ ->
-              tx.data.sender == account
+              tx.data.senders == [account]
           end
         end)
         |> Enum.map(fn filtered_tx ->
