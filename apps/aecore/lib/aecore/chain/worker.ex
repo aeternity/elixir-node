@@ -465,6 +465,11 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    if Enum.empty?(blocks_map) do
+      [block_hash] = Map.keys(state.blocks_data_map)
+      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+    end
+
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
 
     blocks_data_map =
