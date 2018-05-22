@@ -137,7 +137,7 @@ defmodule OpCodesUtil do
   def mnemonic(OpCodes._CALLBLACKBOX) do "CALLBLACKBOX" end
   def mnemonic(OpCodes._STATICCALL) do "STATICCALL" end
   def mnemonic(OpCodes._REVERT) do "REVERT" end
-  #def mnemonic(OpCodes._INVALID) do "INVALID" end
+  def mnemonic(OpCodes._INVALID) do "INVALID" end
   def mnemonic(OpCodes._SUICIDE) do "SUICIDE" end
 
   def opcode(OpCodes._STOP) do {mnemonic(OpCodes._STOP), 0, 0, GasCodes._GZERO} end
@@ -274,7 +274,7 @@ defmodule OpCodesUtil do
   def opcode(OpCodes._CALLBLACKBOX) do {mnemonic(OpCodes._CALLBLACKBOX), 7, 1, 40} end
   def opcode(OpCodes._STATICCALL) do {mnemonic(OpCodes._STATICCALL), 6, 1, 40} end
   def opcode(OpCodes._REVERT) do {mnemonic(OpCodes._REVERT), 2, 0, 0} end
-  #def opcode(OpCodes._INVALID) do {mnemonic(OpCodes._INVALID), 0, 0} end
+  def opcode(OpCodes._INVALID) do {mnemonic(OpCodes._INVALID), 0, 0, 0} end
   def opcode(OpCodes._SUICIDE) do {mnemonic(OpCodes._SUICIDE), 1, 0, GasCodes._GSELFDESTRUCT} end
 
   def op_size(op) when op >= OpCodes._PUSH1 and op <= OpCodes._PUSH32 do

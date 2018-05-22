@@ -1077,7 +1077,7 @@ defmodule Aevm do
   # end
 
   def exec(OpCodes._INVALID(), state) do
-    throw({"invalid instruction", state})
+    throw({:error, "invalid instruction", state})
   end
 
   # Halt Execution, Mark for deletion
@@ -1209,18 +1209,31 @@ defmodule Aevm do
   end
 
   defp create_account(_value, _area, state) do
-    #TODO
+    # TODO
     {0xDEADC0DE, state}
   end
 
-  defp copy_bytes(from_byte, count, data) do
-    from_bit = from_byte * 8
-    bit_count = count * 8
-    data_size_bits = byte_size(data) * 8
-    fill_bits = data_size_bits - from_bit + bit_count
-    <<_::size(from_bit), a::size(bit_count), _::binary>> = <<data::binary, 0::size(fill_bits)>>
+  defp copy_bytes(from_byte, n, bin_data) do
+    size = byte_size(bin_data)
+    bit_pos = from_byte * 8
 
-    <<a::size(bit_count)>>
+    cond do
+      from_byte + n >= size && from_byte > size ->
+        byteSize = n * 8
+        <<0::size(byteSize)>>
+
+      from_byte + n >= size ->
+        extend = (n - (size - from_byte)) * 8
+
+        <<_::size(bit_pos), copy::size(n)-binary, _::binary>> =
+          <<bin_data::binary, 0::size(extend)>>
+
+        copy
+
+      true ->
+        <<_::size(bit_pos), copy::size(n)-binary, _::binary>> = bin_data
+        copy
+    end
   end
 
   defp value_from_data(address, state) do
