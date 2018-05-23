@@ -67,7 +67,8 @@ config :aecore, :aewallet,
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
-  number_of_blocks_in_memory: 100
+  number_of_blocks_in_memory: 100,
+  write_options: [sync: true, disable_wal: false]
 
 config :logger,
   compile_time_purge_level: :info,
