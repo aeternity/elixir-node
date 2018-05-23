@@ -11,9 +11,8 @@
   "dialyxir": {:hex, :dialyxir, "0.5.1", "b331b091720fd93e878137add264bac4f644e1ddae07a70bf7062c7862c4b952", [:mix], [], "hexpm"},
   "distillery": {:hex, :distillery, "1.5.2", "eec18b2d37b55b0bcb670cf2bcf64228ed38ce8b046bb30a9b636a6f5a4c0080", [:mix], [], "hexpm"},
   "eleveldb": {:hex, :eleveldb, "2.2.20", "1fff63a5055bbf4bf821f797ef76065882b193f5e8095f95fcd9287187773b58", [:rebar3], [], "hexpm"},
+  "enacl": {:git, "https://github.com/aeternity/enacl.git", "2f50ba6289f2f2d9fef05d22a396c0bab4f64149", [ref: "2f50ba6"]},
   "enoise": {:git, "https://github.com/aeternity/enoise.git", "6d793b711854a02d56c68d9959e1525389464c87", [ref: "6d793b711854a02d56c68d9959e1525389464c87"]},
-  "enacl": {:git, "https://github.com/jlouis/enacl.git", "c8403ab198b80863479c2ab5a9ccd0a8d73a57c4", [ref: "c8403ab"]},
->>>>>>> master
   "erl_base58": {:hex, :erl_base58, "0.0.1", "37710854461d71df338e73c65776302db41c4bab4674d2ec134ed7bcfc7b5552", [:rebar3], [], "hexpm"},
   "erlexec": {:hex, :erlexec, "1.7.4", "f69091121625bc93e6dad4bb1b131e3e15bcb717ec40ec77c1de77b6823cc909", [:rebar3], [], "hexpm"},
   "ex_json_schema": {:hex, :ex_json_schema, "0.5.7", "14a1bcd716e432badb19e5f54fd0f3f0be47b34d1b5957944702be90d66a6cf6", [:mix], [], "hexpm"},

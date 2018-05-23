@@ -98,8 +98,6 @@ defmodule Aecore.Tx.Pool.Worker do
               PeerConn.send_new_tx(tx, peer.connection)
             end
           end
-
-          # Events.publish(:tx_created, tx)
         end
 
         {:reply, :ok, updated_pool}

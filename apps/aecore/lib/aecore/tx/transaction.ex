@@ -21,6 +21,7 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Account.Tx.CoinbaseTx
+
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()

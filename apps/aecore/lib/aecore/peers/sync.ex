@@ -511,7 +511,7 @@ defmodule Aecore.Peers.Sync do
 
   @spec enqueue(atom(), map()) :: list()
   defp enqueue(opts, msg) do
-    peers = Peers.get_random(2)
+    peers = Peers.get_random(3)
 
     for peer <- peers do
       :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})

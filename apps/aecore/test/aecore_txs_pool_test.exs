@@ -11,7 +11,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
 
   setup wallet do

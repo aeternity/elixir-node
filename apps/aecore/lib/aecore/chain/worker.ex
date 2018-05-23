@@ -19,7 +19,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.PeerConnection, as: PeerConn
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -117,6 +117,18 @@ defmodule Aecore.Chain.Worker do
   rescue
     _ ->
       {:error, :invalid_hash}
+  end
+
+  @spec get_headers_forward(binary(), non_neg_integer()) ::
+          {:ok, list(Header.t())} | {:error, atom()}
+  def get_headers_forward(starting_header, count) do
+    case get_header(starting_header) do
+      {:ok, header} ->
+        get_headers_forward([], header.height, count)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, reason()}

@@ -4,7 +4,7 @@ defmodule Aecore.Keys.Utils do
   """
 
   @spec has_dir?(:ok, String.t()) :: :ok
-  def has_dir?(:ok, path), do: {:error, :empty}
+  def has_dir?(:ok, _path), do: {:error, :empty}
 
   @spec has_dir?(tuple(), String.t()) :: :ok
   def has_dir?({:error, :eexist}, path) do

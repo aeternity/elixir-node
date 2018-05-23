@@ -1,4 +1,4 @@
-defmodule Aecore.Keys.Peers do
+defmodule Aecore.Keys.Peer do
   @moduledoc """
     Module for working with Peer keys
   """

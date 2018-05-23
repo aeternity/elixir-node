@@ -63,6 +63,8 @@ config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 32
 
+config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
+
 config :aecore, :naming,
   max_label_length: 63,
   max_name_length: 253

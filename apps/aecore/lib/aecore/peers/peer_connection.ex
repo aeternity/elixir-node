@@ -1,6 +1,6 @@
 defmodule Aecore.Peers.PeerConnection do
   @moduledoc """
-  Module for peer connection
+  One instance of this handles a single connection to a peer.
   """
 
   use GenServer
@@ -21,6 +21,7 @@ defmodule Aecore.Peers.PeerConnection do
   @p2p_protocol_vsn 2
   @noise_timeout 5000
 
+  @msg_fragment 0
   @p2p_response 100
   @ping 1
   @get_header_by_hash 3
@@ -33,6 +34,14 @@ defmodule Aecore.Peers.PeerConnection do
   @tx 9
   @get_mempool 13
   @mempool 14
+
+  @max_packet_size 0x1FF
+  @fragment_size @max_packet_size - 6
+  @fragment_size_bytes @fragment_size * 8
+
+  @peer_share_count 32
+
+  @first_ping_timeout 30000
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
@@ -61,6 +70,7 @@ defmodule Aecore.Peers.PeerConnection do
       {:ok, noise_socket, noise_state} ->
         r_pubkey = noise_state |> :enoise_hs_state.remote_keys() |> :enoise_keypair.pubkey()
         new_state = Map.merge(state, %{r_pubkey: r_pubkey, status: {:connected, noise_socket}})
+        Process.send_after(self(), :first_ping_timeout, @first_ping_timeout)
         :gen_server.enter_loop(__MODULE__, [], new_state)
 
       {:error, _reason} ->
@@ -81,12 +91,64 @@ defmodule Aecore.Peers.PeerConnection do
     {:ok, updated_con_info, 0}
   end
 
-  def state do
-    GenServer.call(__MODULE__, :state)
+  @spec ping(pid()) :: :ok | :error
+  def ping(pid) when is_pid(pid) do
+    GenServer.call(pid, :ping)
   end
 
-  def handle_call(:state, _from, state) do
-    {:reply, state, state}
+  @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_hash(hash, pid) when is_pid(pid) do
+    @get_header_by_hash
+    |> pack_msg(%{hash: hash})
+    |> send_request_msg(pid)
+  end
+
+  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(height, pid) when is_pid(pid) do
+    @get_header_by_height
+    |> pack_msg(%{height: height})
+    |> send_request_msg(pid)
+  end
+
+  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
+          {:ok, list(Header.t())} | {:error, term()}
+  def get_n_successors(hash, n, pid) when is_pid(pid) do
+    @get_n_successors
+    |> pack_msg(%{hash: hash, n: n})
+    |> send_request_msg(pid)
+  end
+
+  @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
+  def get_block(hash, pid) when is_pid(pid) do
+    @get_block
+    |> pack_msg(%{hash: hash})
+    |> send_request_msg(pid)
+  end
+
+  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}}
+  def get_mempool(pid) when is_pid(pid) do
+    @get_mempool
+    |> pack_msg(<<>>)
+    |> send_request_msg(pid)
+  end
+
+  @spec send_new_block(Block.t(), pid()) :: :ok | :error
+  def send_new_block(block, pid) when is_pid(pid) do
+    @block
+    |> pack_msg(%{block: block})
+    |> send_msg_no_response(pid)
+  end
+
+  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
+  def send_new_tx(tx, pid) when is_pid(pid) do
+    @tx
+    |> pack_msg(%{tx: tx})
+    |> send_msg_no_response(pid)
+  end
+
+  def handle_call(:ping, _from, state) do
+    :ok = do_ping(state)
+    {:reply, :ok, state}
   end
 
   def handle_call(
@@ -129,6 +191,20 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def handle_info(
+        :first_ping_timeout,
+        %{r_pubkey: r_pubkey, status: {:connected, socket}} = state
+      ) do
+    case Peers.have_peer?(r_pubkey) do
+      true ->
+        {:noreply, state}
+
+      false ->
+        :enoise.close(socket)
+        {:stop, :normal, state}
+    end
+  end
+
+  def handle_info(
         :timeout,
         %{
           genesis: genesis,
@@ -150,7 +226,7 @@ defmodule Aecore.Peers.PeerConnection do
           {:ok, noise_socket, _status} ->
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
-            :ok = ping(new_state)
+            :ok = do_ping(new_state)
             Peers.add_peer(peer)
             {:noreply, new_state}
 
@@ -166,16 +242,22 @@ defmodule Aecore.Peers.PeerConnection do
     end
   end
 
+  def handle_info({:noise, _, <<@msg_fragment::16, n::16, m::16, fragment::binary()>>}, state) do
+    handle_fragment(state, n, m, fragment)
+  end
+
   def handle_info({:noise, _, <<type::16, payload::binary()>>}, state) do
     deserialized_payload = :erlang.binary_to_term(payload)
     self = self()
 
     case type do
       @p2p_response ->
-        spawn(fn -> handle_response(deserialized_payload, self, state.requests) end)
+        spawn(fn ->
+          handle_response(deserialized_payload, self, Map.get(state, :requests, :empty))
+        end)
 
       @ping ->
-        handle_ping(deserialized_payload, self, state)
+        spawn(fn -> handle_ping(deserialized_payload, self, state) end)
 
       @get_header_by_hash ->
         spawn(fn -> handle_get_header_by_hash(deserialized_payload, self) end)
@@ -209,47 +291,8 @@ defmodule Aecore.Peers.PeerConnection do
     {:stop, :normal, state}
   end
 
-  @spec get_header_by_hash(binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_hash(hash, pid),
-    do: send_request_msg(@get_header_by_hash, :erlang.term_to_binary(%{hash: hash}), pid)
-
-  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid),
-    do: send_request_msg(@get_header_by_height, :erlang.term_to_binary(%{height: height}), pid)
-
-  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
-          {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid),
-    do: send_request_msg(@get_n_successors, :erlang.term_to_binary(%{hash: hash, n: n}), pid)
-
-  @spec get_block(binary(), pid()) :: {:ok, Block.t()} | {:error, term()}
-  def get_block(hash, pid),
-    do: send_request_msg(@get_block, :erlang.term_to_binary(%{hash: hash}), pid)
-
-  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}} | {:ok, %{}}
-  def get_mempool(pid) when is_pid(pid),
-    do: send_request_msg(@get_mempool, :erlang.term_to_binary(<<>>), pid)
-
-  @spec send_new_block(Block.t(), pid()) :: :ok | :error
-  def send_new_block(block, pid),
-    do: send_msg_no_response(@block, :erlang.term_to_binary(%{block: block}), pid)
-
-  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid), do: send_msg_no_response(@tx, :erlang.term_to_binary(%{tx: tx}), pid)
-
-  defp ping(%{status: {:connected, socket}, genesis: genesis_hash}) do
-    top_block = Chain.top_block()
-    peers = Enum.map(Peers.all_peers(), fn peer -> Map.delete(peer, :connection) end)
-
-    ping_object = %{
-      genesis_hash: genesis_hash,
-      best_hash: Chain.top_block_hash(),
-      difficulty: top_block.header.target,
-      share: 32,
-      peers: peers,
-      port: Supervisor.sync_port()
-    }
-
+  defp do_ping(%{status: {:connected, socket}}) do
+    ping_object = local_ping_object()
     serialized_ping_object = :erlang.term_to_binary(ping_object)
     msg = <<@ping::16, serialized_ping_object::binary()>>
     :enoise.send(socket, msg)
@@ -265,26 +308,101 @@ defmodule Aecore.Peers.PeerConnection do
           %{result: false, type: type, reason: reason, object: nil}
       end
 
-    send_msg_no_response(@p2p_response, :erlang.term_to_binary(payload), pid)
+    @p2p_response
+    |> pack_msg(payload)
+    |> send_msg_no_response(pid)
   end
 
-  defp send_request_msg(id, payload, pid) do
-    msg = <<id::16, payload::binary>>
-    GenServer.call(pid, {:send_request_msg, msg})
+  defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
+
+  defp send_msg_no_response(msg, pid) when byte_size(msg) > @max_packet_size - 2 do
+    number_of_chunks = div(@fragment_size + byte_size(msg) - 1, @fragment_size)
+    send_chunks(pid, 1, number_of_chunks, msg)
   end
 
-  defp send_msg_no_response(id, payload, pid) do
-    msg = <<id::16, payload::binary>>
-    GenServer.call(pid, {:send_msg_no_response, msg})
+  defp send_msg_no_response(msg, pid), do: GenServer.call(pid, {:send_msg_no_response, msg})
+
+  defp send_chunks(pid, n, m, msg) when n == m do
+    send_fragment(<<@msg_fragment::16, n::16, m::16, msg::binary()>>, pid)
+  end
+
+  defp send_chunks(pid, n, m, <<chunk::@fragment_size_bytes, rest::binary()>>) do
+    send_fragment(<<@msg_fragment::16, n::16, m::16, chunk::@fragment_size_bytes>>, pid)
+    send_chunks(pid, n + 1, m, rest)
+  end
+
+  defp send_fragment(fragment, pid), do: GenServer.call(pid, {:send_msg_no_response, fragment})
+
+  defp pack_msg(type, payload), do: <<type::16, :erlang.term_to_binary(payload)::binary>>
+
+  defp handle_fragment(state, 1, _m, fragment) do
+    {:noreply, Map.put(state, :fragments, [fragment])}
+  end
+
+  defp handle_fragment(%{fragments: fragments} = state, n, m, fragment) when n == m do
+    msg = [fragment | fragments] |> Enum.reverse() |> :erlang.list_to_binary()
+    send(self(), {:noise, :unused, msg})
+    {:noreply, Map.delete(state, :fragments)}
+  end
+
+  defp handle_fragment(%{fragments: fragments} = state, n, _m, fragment)
+       when n == length(fragments) + 1 do
+    {:noreply, %{state | fragments: [fragment | fragments]}}
   end
 
   defp handle_ping(payload, conn_pid, %{host: host, r_pubkey: r_pubkey}) do
-    # initial ping
-    if Peers.have_peer?(r_pubkey) do
-      :ok
-    else
-      peer = %{pubkey: r_pubkey, port: payload.port, host: host, connection: conn_pid}
+    %{
+      peers: peers,
+      port: port
+    } = payload
+
+    if !Peers.have_peer?(r_pubkey) do
+      peer = %{pubkey: r_pubkey, port: port, host: host, connection: conn_pid}
       Peers.add_peer(peer)
+    end
+
+    handle_ping_msg(payload, conn_pid)
+
+    exclude = Enum.map(peers, fn peer -> peer.pubkey end)
+    response_ping = local_ping_object(exclude)
+
+    send_response({:ok, response_ping}, @ping, conn_pid)
+  end
+
+  defp handle_ping_msg(
+         %{
+           genesis_hash: genesis_hash,
+           best_hash: best_hash,
+           difficulty: difficulty,
+           peers: peers
+         },
+         conn_pid
+       ) do
+    if Block.genesis_hash() == genesis_hash do
+      cond do
+        best_hash == Chain.top_block_hash() ->
+          # don't sync - same top block
+          :ok
+
+        local_top_difficulty() > difficulty ->
+          # don't sync - our difficulty is higher
+          :ok
+
+        true ->
+          # start sync
+          :ok
+      end
+
+      Enum.each(peers, fn peer ->
+        if !Peers.have_peer?(peer.pubkey) do
+          Peers.try_connect(peer)
+        end
+      end)
+
+      {:ok, pool} = get_mempool(conn_pid)
+      Enum.each(pool, fn {_hash, tx} -> Pool.add_transaction(tx) end)
+    else
+      Logger.info("Genesis hash mismatch")
     end
   end
 
@@ -292,18 +410,22 @@ defmodule Aecore.Peers.PeerConnection do
     result = payload.result
     type = payload.type
 
-    reply =
-      case result do
-        true ->
-          {:ok, payload.object}
+    if type == @ping do
+      handle_ping_msg(payload.object, parent)
+    else
+      reply =
+        case result do
+          true ->
+            {:ok, payload.object}
 
-        false ->
-          {:error, payload.reason}
-      end
+          false ->
+            {:error, payload.reason}
+        end
 
-    GenServer.reply(requests[type], reply)
+      GenServer.reply(requests[type], reply)
 
-    clear_request(parent, type)
+      clear_request(parent, type)
+    end
   end
 
   defp clear_request(pid, type) do
@@ -364,13 +486,37 @@ defmodule Aecore.Peers.PeerConnection do
     Pool.add_transaction(tx)
   end
 
+  defp local_top_difficulty do
+    top_block = Chain.top_block()
+    top_block.header.target
+  end
+
+  defp local_ping_object do
+    peers = Peers.get_random(@peer_share_count)
+
+    ping_object(peers)
+  end
+
+  defp local_ping_object(exclude) do
+    peers = Peers.get_random(@peer_share_count, exclude)
+
+    ping_object(peers)
+  end
+
+  defp ping_object(peers) do
+    %{
+      genesis_hash: Block.genesis_hash(),
+      best_hash: Chain.top_block_hash(),
+      difficulty: local_top_difficulty(),
+      peers: peers,
+      port: Supervisor.sync_port()
+    }
+  end
+
   defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
     [
-      noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
-      s: :enoise_keypair.new(:dh25519, privkey, pubkey),
-      rs: :enoise_keypair.new(:dh25519, r_pubkey),
-      prologue: <<version::binary(), genesis_hash::binary()>>,
-      timeout: @noise_timeout
+      {:rs, :enoise_keypair.new(:dh25519, r_pubkey)}
+      | noise_opts(privkey, pubkey, genesis_hash, version)
     ]
   end
 
