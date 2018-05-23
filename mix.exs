@@ -66,7 +66,7 @@ defmodule EpochElixir.Mixfile do
       {:ranch,
        github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
       {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"},
+      {:gproc, "~> 0.6.1"}
     ]
   end
 end
