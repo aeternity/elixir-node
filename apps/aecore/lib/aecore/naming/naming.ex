@@ -4,7 +4,7 @@ defmodule Aecore.Naming.Naming do
   """
 
   alias Aecore.Naming.Naming
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Hash
@@ -124,8 +124,7 @@ defmodule Aecore.Naming.Naming do
   @spec get_pre_claim_ttl() :: non_neg_integer()
   def get_pre_claim_ttl, do: @pre_claim_ttl
 
-  @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
-          ChainState.chainstate()
+  @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
   def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
     updated_naming_state =
       naming_state

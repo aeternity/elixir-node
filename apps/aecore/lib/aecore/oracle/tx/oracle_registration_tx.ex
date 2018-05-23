@@ -8,7 +8,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Chain.Chainstate
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
 
@@ -93,23 +94,23 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec process_chainstate(
-          AccountsStateTree.accounts_state(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: {:ok, {AccountsStateTree.accounts_state(), Oracle.oracles()}}
+        ) :: {:ok, {Chainstate.accounts(), Chainstate.oracles()}}
   def process_chainstate(
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state,
+        oracles,
         block_height,
         %OracleRegistrationTx{} = tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    updated_registered_oracles =
-      Map.put_new(registered_oracles, sender, %{
+    updated_oracle_chainstate =
+      OracleStateTree.put_new_registered_oracle(oracles, sender, %{
         owner: sender,
         query_format: tx.query_format,
         response_format: tx.response_format,
@@ -117,24 +118,19 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
       })
 
-    updated_oracle_state = %{
-      oracle_state
-      | registered_oracles: updated_registered_oracles
-    }
-
-    {:ok, {accounts, updated_oracle_state}}
+    {:ok, {accounts, updated_oracle_chainstate}}
   end
 
   @spec preprocess_check(
-          AccountsStateTree.accounts_state(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         block_height,
         tx,
         data_tx
@@ -149,7 +145,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      Map.has_key?(registered_oracles, sender) ->
+      OracleStateTree.has_key?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
@@ -161,7 +157,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t(),

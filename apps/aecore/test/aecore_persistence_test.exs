@@ -7,6 +7,7 @@ defmodule PersistenceTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
   setup persistance_state do
@@ -52,19 +53,22 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
     ## For specific account
-    assert {:ok, %{balance: _}} = Persistence.get_account_chain_state(persistance_state.account1)
+    assert %{balance: _} = get_account_state(persistance_state.account1)
 
     ## Non existant accounts are empty
     empty = Account.empty()
-    assert {:ok, empty} = Persistence.get_account_chain_state(persistance_state.account2)
-    ## For all accounts
-    all_accounts = Persistence.get_all_accounts_chain_states()
-    assert false == Enum.empty?(Map.keys(all_accounts))
+
+    assert ^empty =
+             AccountStateTree.get(Chain.get_accounts_chainstate(), persistance_state.account2)
+
+    ## For all chainstates
+    all_chainstates = Persistence.get_chainstates()
+    assert false == Enum.empty?(Map.keys(all_chainstates))
   end
 
   @tag timeout: 20_000
   @tag :persistence
-  test "Get latest two blocks from rocksdb", persistance_state do
+  test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
 
     Map.values(Persistence.get_blocks(2))
@@ -87,6 +91,16 @@ defmodule PersistenceTest do
     assert {:error, "#{Persistence}: Bad hash value: :wrong_input_type"} ==
              Persistence.get_block_by_hash(:wrong_input_type)
 
+    assert :not_found = get_account_state(persistance_state.account2)
     assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
+  end
+
+  defp get_account_state(account) do
+    empty = Account.empty()
+
+    case AccountStateTree.get(Chain.get_accounts_chainstate(), account) do
+      ^empty -> :not_found
+      value -> value
+    end
   end
 end

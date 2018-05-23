@@ -18,12 +18,14 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Chain.Chainstate
 
   require Logger
 
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
           SpendTx
+          | CoinbaseTx
           | OracleExtendTx
           | OracleRegistrationTx
           | OracleResponseTx
@@ -37,6 +39,7 @@ defmodule Aecore.Tx.DataTx do
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
           SpendTx.t()
+          | CoinbaseTx.t()
           | OracleExtendTx.t()
           | OracleQueryTx.t()
           | OracleRegistrationTx.t()
@@ -179,7 +182,7 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == nil do
+        if tx.type.get_chain_state_name() == :none do
           %{chainstate | accounts: new_accounts_state}
         else
           %{chainstate | accounts: new_accounts_state}
@@ -193,7 +196,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(ChainState.chainstate(), non_neg_integer(), DataTx.t()) ::
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do
     accounts_state = chainstate.accounts

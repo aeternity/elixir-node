@@ -8,13 +8,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Oracle.Oracle
-  alias Aeutil.Bits
-  alias Aeutil.Hash
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aeutil.{Bits, Hash}
 
   @type id :: binary()
 
@@ -99,15 +98,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {:ok, {Chainstate.accounts(), Chainstate.oracles()}}
   def process_chainstate(
         accounts,
-        %{interaction_objects: interaction_objects} = oracle_state,
+        oracles,
         block_height,
         %OracleQueryTx{} = tx,
         data_tx
@@ -123,6 +122,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
 
+    interaction_objects = OracleStateTree.get_interaction_objects(oracles)
+
     updated_interaction_objects =
       Map.put(interaction_objects, interaction_object_id, %{
         sender_address: sender,
@@ -136,30 +137,29 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         fee: tx.query_fee
       })
 
-    updated_oracle_state = %{
-      oracle_state
-      | interaction_objects: updated_interaction_objects
-    }
+    updated_oracles_state =
+      OracleStateTree.put_interaction_object(oracles, updated_interaction_objects)
 
-    {:ok, {updated_accounts_state, updated_oracle_state}}
+    {:ok, {updated_accounts_state, updated_oracles_state}}
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         block_height,
         tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
+    registered_oracles = OracleStateTree.get_registered_oracles(oracles)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - tx.query_fee < 0 ->
@@ -191,7 +191,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t(),
