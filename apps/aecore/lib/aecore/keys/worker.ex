@@ -58,8 +58,7 @@ defmodule Aecore.Keys.Worker do
 
   def handle_call(:get_peer_keys, _from, %{peer_keys: nil} = state) do
     keypair = PeerKeys.load_keypair()
-    # %{state | peer_keys: keypair}}
-    {:reply, keypair, state}
+    {:reply, keypair, %{state | peer_keys: keypair}}
   end
 
   def handle_call(:get_peer_keys, _from, %{peer_keys: keys} = state) do

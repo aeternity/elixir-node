@@ -9,7 +9,6 @@ defmodule Aehttpclient.Client do
   alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
-  alias Aehttpserver.Web.Endpoint
 
   require Logger
 
