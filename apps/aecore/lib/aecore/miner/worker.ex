@@ -15,7 +15,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
 

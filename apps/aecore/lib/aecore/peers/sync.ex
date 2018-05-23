@@ -12,6 +12,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
+  alias Aeutil.Scientific
 
   require Logger
 
@@ -151,7 +152,7 @@ defmodule Aecore.Peers.Sync do
         %{sync_pool: pool} = state
       ) do
     height = header.height
-    difficulty = Aeutil.Scientific.target_to_difficulty(header.target)
+    difficulty = Scientific.target_to_difficulty(header.target)
 
     {is_new, new_pool} =
       insert_header(

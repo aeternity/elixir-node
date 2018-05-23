@@ -6,7 +6,6 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias __MODULE__, as: Chain
   alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Oracle
