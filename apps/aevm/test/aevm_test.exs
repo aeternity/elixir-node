@@ -49,6 +49,8 @@ defmodule AevmTest do
     env_values = Map.get(spec, :env)
     pre_values = Map.get(spec, :pre)
 
+    IO.inspect("Test #{config_name} is running")
+
     try do
       {:ok, state} = Aevm.loop(State.init_vm(exec_values, env_values, pre_values))
 
@@ -58,16 +60,15 @@ defmodule AevmTest do
 
       {:ok, state}
     catch
-      {:error, _reason, state} ->
+      {:error, reason, state} ->
         validate_no_post(spec)
+        IO.inspect("Error: #{reason}")
         {:error, state}
     end
-
   end
 
   test_with_params "vmArithmeticTest1", fn config_name ->
     json_test = load_test_config(:vmArithmeticTest, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -246,7 +247,7 @@ defmodule AevmTest do
       {:signextend_BitIsNotSet},
       {:signextend_BitIsNotSetInHigherByte},
       {:signextend_BitIsSetInHigherByte},
-      #{:signextend_Overflow_dj42}, #TODO: check later
+      # {:signextend_Overflow_dj42}, #TODO: check later
       {:signextend_bigBytePlus1},
       {:signextend_bitIsSet},
       {:smod0},
@@ -271,7 +272,6 @@ defmodule AevmTest do
 
   test_with_params "vmBitwiseLogicOperation1", fn config_name ->
     json_test = load_test_config(:vmBitwiseLogicOperation, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -340,7 +340,6 @@ defmodule AevmTest do
 
   test_with_params "vmBlockInfoTest1", fn config_name ->
     json_test = load_test_config(:vmBlockInfoTest, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -361,7 +360,6 @@ defmodule AevmTest do
 
   test_with_params "vmEnvironmentalInfo1", fn config_name ->
     json_test = load_test_config(:vmEnvironmentalInfo, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -422,7 +420,6 @@ defmodule AevmTest do
 
   test_with_params "vmIOandFlowOperations1", fn config_name ->
     json_test = load_test_config(:vmIOandFlowOperations, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -576,7 +573,6 @@ defmodule AevmTest do
 
   test_with_params "vmLogTest1", fn config_name ->
     json_test = load_test_config(:vmLogTest, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -631,7 +627,6 @@ defmodule AevmTest do
 
   test_with_params "vmPerformance1", fn config_name ->
     json_test = load_test_config(:vmPerformance, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -658,7 +653,6 @@ defmodule AevmTest do
 
   test_with_params "vmPushDupSwapTest1", fn config_name ->
     json_test = load_test_config(:vmPushDupSwapTest, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -741,7 +735,6 @@ defmodule AevmTest do
 
   test_with_params "vmRandomTest1", fn config_name ->
     json_test = load_test_config(:vmRandomTest, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -763,10 +756,8 @@ defmodule AevmTest do
     ]
   end
 
-  @tag timeout: 180000
   test_with_params "vmSha3Test1", fn config_name ->
     json_test = load_test_config(:vmSha3Test, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -793,7 +784,6 @@ defmodule AevmTest do
 
   test_with_params "vmSystemOperations1", fn config_name ->
     json_test = load_test_config(:vmSystemOperations, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [
@@ -825,7 +815,7 @@ defmodule AevmTest do
       {:callstatelessToReturn1},
       {:createNameRegistrator},
       {:createNameRegistratorOutOfMemoryBonds0},
-      #{:createNameRegistratorOutOfMemoryBonds1},
+      # {:createNameRegistratorOutOfMemoryBonds1},
       {:createNameRegistratorValueTooHigh},
       {:return0},
       {:return1},
@@ -838,7 +828,6 @@ defmodule AevmTest do
 
   test_with_params "vmTests1", fn config_name ->
     json_test = load_test_config(:vmTests, config_name)
-    IO.inspect("Test #{config_name} is running")
     extract_and_validate(json_test, config_name)
   end do
     [

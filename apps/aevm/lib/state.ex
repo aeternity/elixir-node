@@ -12,7 +12,6 @@ defmodule State do
       :jumpdests => [],
       :out => <<>>,
       :logs => [],
-      # :return_data => return_data,
 
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
@@ -21,6 +20,8 @@ defmodule State do
       :code => code_bin,
       :gasPrice => Map.get(exec, :gasPrice),
       :gas => Map.get(exec, :gas),
+      :value => Map.get(exec, :value),
+      :return_data => Map.get(exec, :return_data, <<>>),
 
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
@@ -161,9 +162,9 @@ defmodule State do
     Map.get(account, :code, <<>>)
   end
 
-  # def return_data(state) do
-  #   Map.get(state, :return_data)
-  # end
+  def return_data(state) do
+    Map.get(state, :return_data)
+  end
 
   def inc_cp(state) do
     cp = Map.get(state, :cp)
