@@ -350,10 +350,10 @@ defmodule Aecore.Account.Account do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), Account.t()) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, vsn, %Account{} = account) do
+  def rlp_encode(tag, version, %Account{} = account) do
     list = [
       tag,
-      vsn,
+      version,
       account.pubkey,
       account.nonce,
       account.last_updated,
@@ -363,26 +363,26 @@ defmodule Aecore.Account.Account do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(_) do
-    {:error, "Invalid Account structure"}
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
   end
 
   @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([pkey, nonce, height, balance]) do
+  def rlp_decode([pubkey, nonce, height, balance]) do
     {:ok,
      %Account{
-       pubkey: pkey,
+       pubkey: pubkey,
        balance: Serialization.transform_item(balance, :int),
        last_updated: Serialization.transform_item(height, :int),
        nonce: Serialization.transform_item(nonce, :int)
      }}
   end
 
-  def rlp_decode(_) do
-    {:error, "#{__MODULE__}: Invalid Account serialization"}
+  def rlp_decode(data) do
+    {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
   end
 end

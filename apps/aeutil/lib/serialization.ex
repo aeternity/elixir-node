@@ -368,18 +368,18 @@ defmodule Aeutil.Serialization do
           binary | {:error, String.t()}
   def rlp_encode(%DataTx{} = term, :tx) do
     with {:ok, tag} <- type_to_tag(term.type),
-         {:ok, vsn} <- get_version(term.type),
-         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+         {:ok, version} <- get_version(term.type),
+         data <- term.__struct__.rlp_encode(tag, version, term) do
       data
     else
       error -> {:error, "#{__MODULE__} : Invalid DataTx serialization: #{inspect(error)}"}
     end
   end
 
-  def rlp_encode(%Account{} = term, :as) when is_map(term) do
+  def rlp_encode(%Account{} = term, :account_state) when is_map(term) do
     with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, vsn} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+         {:ok, version} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, version, term) do
       data
     else
       error ->
@@ -387,10 +387,10 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%{} = term, :io) do
+  def rlp_encode(%{} = term, :interaction_object) do
     with {:ok, tag} <- type_to_tag(OracleQuery),
-         {:ok, vsn} <- get_version(OracleQuery),
-         data <- Oracle.rlp_encode(tag, vsn, term, :interaction_object) do
+         {:ok, version} <- get_version(OracleQuery),
+         data <- Oracle.rlp_encode(tag, version, term, :interaction_object) do
       data
     else
       error ->
@@ -399,10 +399,10 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%{} = term, :ro) when is_map(term) do
+  def rlp_encode(%{} = term, :registered_oracle) when is_map(term) do
     with {:ok, tag} <- type_to_tag(Oracle),
-         {:ok, vsn} <- get_version(Oracle),
-         data <- Oracle.rlp_encode(tag, vsn, term, :registered_oracle) do
+         {:ok, version} <- get_version(Oracle),
+         data <- Oracle.rlp_encode(tag, version, term, :registered_oracle) do
       data
     else
       error ->
@@ -411,20 +411,20 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%{} = term, :ns) when is_map(term) do
+  def rlp_encode(%{} = term, :naming_state) when is_map(term) do
     with {:ok, tag} <- type_to_tag(Name),
-         {:ok, vsn} <- get_version(Name),
-         data <- Naming.rlp_encode(tag, vsn, term, :name) do
+         {:ok, version} <- get_version(Name),
+         data <- Naming.rlp_encode(tag, version, term, :naming_state) do
       data
     else
       error -> {:error, "#{__MODULE__} : Invalid Naming State serialization: #{inspect(error)}"}
     end
   end
 
-  def rlp_encode(%{} = term, :nc) when is_map(term) do
+  def rlp_encode(%{} = term, :name_commitment) when is_map(term) do
     with {:ok, tag} <- type_to_tag(NameCommitment),
-         {:ok, vsn} <- get_version(NameCommitment),
-         data <- Naming.rlp_encode(tag, vsn, term, :name_commitment) do
+         {:ok, version} <- get_version(NameCommitment),
+         data <- Naming.rlp_encode(tag, version, term, :name_commitment) do
       data
     else
       error ->
@@ -444,8 +444,8 @@ defmodule Aeutil.Serialization do
 
   def rlp_encode(%SignedTx{} = term, :signedtx) do
     with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, vsn} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+         {:ok, version} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, version, term) do
       data
     else
       error -> {:error, "#{__MODULE__} : Invalid Tx serialization: #{inspect(error)}"}
@@ -479,35 +479,35 @@ defmodule Aeutil.Serialization do
     {:error, "#{__MODULE__}: Illegal deserialization: #{inspect(data)}"}
   end
 
-  defp rlp_decode(Block, _vsn, block_data) do
+  defp rlp_decode(Block, _version, block_data) do
     Block.rlp_decode(block_data)
   end
 
-  defp rlp_decode(Name, _vsn, name_data) do
+  defp rlp_decode(Name, _version, name_data) do
     Naming.rlp_decode(name_data, :name)
   end
 
-  defp rlp_decode(NameCommitment, _vsn, name_commitment) do
+  defp rlp_decode(NameCommitment, _version, name_commitment) do
     Naming.rlp_decode(name_commitment, :name_commitment)
   end
 
-  defp rlp_decode(Oracle, _vsn, reg_orc) do
+  defp rlp_decode(Oracle, _version, reg_orc) do
     Oracle.rlp_decode(reg_orc, :registered_oracle)
   end
 
-  defp rlp_decode(OracleQuery, _vsn, interaction_object) do
+  defp rlp_decode(OracleQuery, _version, interaction_object) do
     Oracle.rlp_decode(interaction_object, :interaction_object)
   end
 
-  defp rlp_decode(Account, _vsn, account_state) do
+  defp rlp_decode(Account, _version, account_state) do
     Account.rlp_decode(account_state)
   end
 
-  defp rlp_decode(SignedTx, _vsn, signedtx) do
+  defp rlp_decode(SignedTx, _version, signedtx) do
     SignedTx.rlp_decode(signedtx)
   end
 
-  defp rlp_decode(payload, _vsn, datatx) do
+  defp rlp_decode(payload, _version, datatx) do
     DataTx.rlp_decode(payload, datatx)
   end
 
@@ -527,26 +527,143 @@ defmodule Aeutil.Serialization do
   def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
   def decode_ttl_type(1), do: :absolute
   def decode_ttl_type(0), do: :relative
+  @spec header_to_binary(Header.t()) :: binary
+  def header_to_binary(%Header{} = header) do
+    pow_to_binary = pow_to_binary(header.pow_evidence)
+
+    <<
+      header.version::64,
+      header.height::64,
+      header.prev_hash::binary-size(32),
+      header.txs_hash::binary-size(32),
+      header.root_hash::binary-size(32),
+      header.target::64,
+      pow_to_binary::binary-size(168),
+      header.nonce::64,
+      header.time::64
+    >>
+  end
+
+  def header_to_binary(_) do
+    {:error, "Illegal structure serialization"}
+  end
+
+  @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
+  def binary_to_header(binary) when is_binary(binary) do
+    <<version::64, height::64, prev_hash::binary-size(32), txs_hash::binary-size(32),
+      root_hash::binary-size(32), target::64, pow_evidence_bin::binary-size(168), nonce::64,
+      time::64>> = binary
+
+    pow_evidence = binary_to_pow(pow_evidence_bin)
+
+    %Header{
+      height: height,
+      nonce: nonce,
+      pow_evidence: pow_evidence,
+      prev_hash: prev_hash,
+      root_hash: root_hash,
+      target: target,
+      time: time,
+      txs_hash: txs_hash,
+      version: version
+    }
+  end
+
+  def binary_to_header(_) do
+    {:error, "Illegal header binary serialization"}
+  end
+
+  @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
+  def pow_to_binary(pow) when is_list(pow) do
+    if Enum.count(pow) == 42 do
+      list_of_pows =
+        for evidence <- pow do
+          <<evidence::32>>
+        end
+
+      serialize_pow(:binary.list_to_bin(list_of_pows), <<>>)
+    else
+      List.duplicate(0, 42)
+    end
+  end
+
+  @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
+  defp serialize_pow(pow, acc) when pow != <<>> do
+    <<elem::binary-size(4), rest::binary>> = pow
+    acc = acc <> elem
+    serialize_pow(rest, acc)
+  end
+
+  defp serialize_pow(<<>>, acc) do
+    acc
+  end
+
+  @spec binary_to_pow(binary()) :: list() | {:error, atom()}
+  def binary_to_pow(<<pow_bin_list::binary-size(168)>>) do
+    deserialize_pow(pow_bin_list, [])
+  end
+
+  def binary_to_pow(_) do
+    {:error, "Illegal PoW serialization"}
+  end
+
+  defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
+    acc = [pow | acc]
+    deserialize_pow(rest, acc)
+  end
+
+  defp deserialize_pow(<<>>, acc) do
+    if Enum.count(Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)) == 42 do
+      Enum.reverse(acc)
+    else
+      {:error, "Illegal PoW serialization"}
+    end
+  end
 
   @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
-  def type_to_tag(Account), do: {:ok, 10}
-  def type_to_tag(SignedTx), do: {:ok, 11}
-  def type_to_tag(SpendTx), do: {:ok, 12}
-  def type_to_tag(CoinbaseTx), do: {:ok, 13}
-  def type_to_tag(OracleRegistrationTx), do: {:ok, 22}
-  def type_to_tag(OracleQueryTx), do: {:ok, 23}
-  def type_to_tag(OracleResponseTx), do: {:ok, 24}
-  def type_to_tag(OracleExtendTx), do: {:ok, 25}
-  def type_to_tag(Name), do: {:ok, 30}
-  def type_to_tag(NameCommitment), do: {:ok, 31}
-  def type_to_tag(NameClaimTx), do: {:ok, 32}
-  def type_to_tag(NamePreClaimTx), do: {:ok, 33}
-  def type_to_tag(NameUpdateTx), do: {:ok, 34}
-  def type_to_tag(NameRevokeTx), do: {:ok, 35}
-  def type_to_tag(NameTransferTx), do: {:ok, 36}
-  def type_to_tag(Oracle), do: {:ok, 20}
-  def type_to_tag(OracleQuery), do: {:ok, 21}
-  def type_to_tag(Block), do: {:ok, 100}
+  def type_to_tag(Account), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:account_state]}
+  def type_to_tag(SignedTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:signed_tx]}
+  def type_to_tag(SpendTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:spend_tx]}
+  def type_to_tag(CoinbaseTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:coinbase_tx]}
+
+  def type_to_tag(OracleRegistrationTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_reg_tx]}
+
+  def type_to_tag(OracleQueryTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_tx]}
+
+  def type_to_tag(OracleResponseTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_response_tx]}
+
+  def type_to_tag(OracleExtendTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_extend_tx]}
+
+  def type_to_tag(Name), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:naming_state]}
+
+  def type_to_tag(NameCommitment),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_commitment_state]}
+
+  def type_to_tag(NameClaimTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_claim_tx]}
+
+  def type_to_tag(NamePreClaimTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_pre_claim_tx]}
+
+  def type_to_tag(NameUpdateTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_update_tx]}
+
+  def type_to_tag(NameRevokeTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_revoke_tx]}
+
+  def type_to_tag(NameTransferTx),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_transfer_tx]}
+
+  def type_to_tag(Oracle),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:registered_orc_state]}
+
+  def type_to_tag(OracleQuery),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:interaction_obj_state]}
+
+  def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
   def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
 
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}

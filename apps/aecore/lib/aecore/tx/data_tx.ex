@@ -292,14 +292,14 @@ defmodule Aecore.Tx.DataTx do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), DataTx.t()) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, vsn, term) do
-    encode(tag, vsn, term)
+  def rlp_encode(tag, version, term) do
+    encode(tag, version, term)
   end
 
-  defp encode(tag, vsn, %DataTx{type: SpendTx} = tx) when tag == 12 do
+  defp encode(tag, version, %DataTx{type: SpendTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.payload.receiver,
       tx.payload.amount,
@@ -311,14 +311,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: CoinbaseTx} = tx) when tag == 13 do
+  defp encode(tag, version, %DataTx{type: CoinbaseTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.payload.receiver,
       tx.nonce,
       tx.payload.amount
@@ -327,16 +327,16 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: OracleRegistrationTx} = tx) when tag == 22 do
+  defp encode(tag, version, %DataTx{type: OracleRegistrationTx} = tx) do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
@@ -350,17 +350,17 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: OracleQueryTx} = tx) when tag == 23 do
+  defp encode(tag, version, %DataTx{type: OracleQueryTx} = tx) do
     ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
 
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.oracle_address,
@@ -376,14 +376,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: OracleResponseTx} = tx) when tag == 24 do
+  defp encode(tag, version, %DataTx{type: OracleResponseTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.query_id,
@@ -394,14 +394,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: OracleExtendTx} = tx) when tag == 25 do
+  defp encode(tag, version, %DataTx{type: OracleExtendTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.ttl,
@@ -411,14 +411,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: NamePreClaimTx} = tx) when tag == 33 do
+  defp encode(tag, version, %DataTx{type: NamePreClaimTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.commitment,
@@ -428,14 +428,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: NameClaimTx} = tx) when tag == 32 do
+  defp encode(tag, version, %DataTx{type: NameClaimTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.name,
@@ -446,14 +446,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: NameUpdateTx} = tx) when tag == 34 do
+  defp encode(tag, version, %DataTx{type: NameUpdateTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -466,14 +466,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: NameRevokeTx} = tx) when tag == 35 do
+  defp encode(tag, version, %DataTx{type: NameRevokeTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -483,14 +483,14 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  defp encode(tag, vsn, %DataTx{type: NameTransferTx} = tx) when tag == 36 do
+  defp encode(tag, version, %DataTx{type: NameTransferTx} = tx) do
     list = [
       tag,
-      vsn,
+      version,
       tx.senders,
       tx.nonce,
       tx.payload.hash,
@@ -501,12 +501,12 @@ defmodule Aecore.Tx.DataTx do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(_) do
-    {:error, "#{__MODULE__} : Invalid DataTx serializations"}
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
   end
 
   @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}

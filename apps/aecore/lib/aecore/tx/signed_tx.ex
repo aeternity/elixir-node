@@ -242,10 +242,10 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), SignedTx.t()) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, vsn, %SignedTx{} = tx) when tag == 11 do
+  def rlp_encode(tag, version, %SignedTx{} = tx) do
     [
       tag,
-      vsn,
+      version,
       tx.signatures,
       Serialization.rlp_encode(tx.data, :tx)
     ]

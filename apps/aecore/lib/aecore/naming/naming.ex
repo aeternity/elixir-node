@@ -161,10 +161,10 @@ defmodule Aecore.Naming.Naming do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, vsn, %{} = naming_state, :name) when tag == 30 do
+  def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
     list = [
       tag,
-      vsn,
+      version,
       naming_state.hash,
       naming_state.owner,
       naming_state.expires,
@@ -176,14 +176,14 @@ defmodule Aecore.Naming.Naming do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(tag, vsn, %{} = name_commitment, :name_commitment) when tag == 31 do
+  def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
     list = [
       tag,
-      vsn,
+      version,
       name_commitment.hash,
       name_commitment.owner,
       name_commitment.created,
@@ -193,7 +193,7 @@ defmodule Aecore.Naming.Naming do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 

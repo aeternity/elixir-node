@@ -19,8 +19,8 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec put(tree(), Wallet.pubkey(), Account.t()) :: tree()
   def put(tree, key, value) do
-    acc = Map.put(value, :pubkey, key)
-    serialized_account_state = Serialization.rlp_encode(acc, :as)
+    account_state_updated = Map.put(value, :pubkey, key)
+    serialized_account_state = Serialization.rlp_encode(account_state_updated, :account_state)
     :gb_merkle_trees.enter(key, serialized_account_state, tree)
   end
 

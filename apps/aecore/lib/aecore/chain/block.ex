@@ -36,8 +36,8 @@ defmodule Aecore.Chain.Block do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), Block.t()) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, _vsn, %Block{} = block) do
-    header_bin = Header.header_to_binary(block.header)
+  def rlp_encode(tag, _version, %Block{} = block) do
+    header_bin = Serialization.header_to_binary(block.header)
 
     txs =
       for tx <- block.txs do
@@ -54,12 +54,12 @@ defmodule Aecore.Chain.Block do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(_) do
-    {:error, "Invalid block or header struct"}
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid block or header struct #{inspect(data)}"}
   end
 
   @spec rlp_decode(list()) :: Block.t() | {:error, String.t()}
@@ -69,7 +69,7 @@ defmodule Aecore.Chain.Block do
         Serialization.rlp_decode(tx)
       end
 
-    Block.new(%{header: Header.binary_to_header(header_bin), txs: txs_list})
+    Block.new(%{header: Serialization.binary_to_header(header_bin), txs: txs_list})
   end
 
   def rlp_decode(_) do

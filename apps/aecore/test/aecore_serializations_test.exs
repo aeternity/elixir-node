@@ -88,7 +88,7 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Oracle interaction objects serialization", setup do
     oracle_query_chainstate = create_data(OracleQuery)
-    serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :io)
+    serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :interaction_object)
     {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
     assert oracle_query_chainstate = deserialized_orc_obj
   end
@@ -96,7 +96,7 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Registered oracles serialization", setup do
     oracle_registered_chainstate = create_data(Oracle)
-    serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :ro)
+    serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :registered_oracle)
     {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
     assert oracle_registered_chainstate = deserialized_orc
   end
@@ -127,12 +127,12 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Naming System chainstate structures serialization", setup do
     name_state = create_data(Name)
-    serialized_name_state = Serialization.rlp_encode(name_state, :ns)
+    serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
     deserialized_name_state = Serialization.rlp_decode(serialized_name_state)
     assert deserialized_name_state = name_state
 
     name_commitment = create_data(NameCommitment)
-    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :nc)
+    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
     deserialized_name_commitment = Serialization.rlp_decode(serialized_name_commitment)
     assert deserialized_name_commitment = name_commitment
   end

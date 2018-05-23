@@ -77,7 +77,8 @@ defmodule Aecore.Account.Tx.SpendTx do
         {:error, "#{__MODULE__}: Invalid senders number"}
 
       !is_binary(tx.payload) ->
-        {:error, "#{__MODULE__}: Invalid payload "}
+        {:error,
+         "#{__MODULE__}: Invalid payload type , expected binary , got: #{inspect(tx.payload)} "}
 
       true ->
         :ok

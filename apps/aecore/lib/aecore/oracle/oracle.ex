@@ -284,10 +284,10 @@ defmodule Aecore.Oracle.Oracle do
           map(),
           :registered_oracle | :interaction_object
         ) :: binary()
-  def rlp_encode(tag, vsn, %{} = registered_oracle, :registered_oracle) when tag == 20 do
+  def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
     list = [
       tag,
-      vsn,
+      version,
       registered_oracle.owner,
       Serialization.transform_item(registered_oracle.query_format),
       Serialization.transform_item(registered_oracle.response_format),
@@ -298,11 +298,11 @@ defmodule Aecore.Oracle.Oracle do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(tag, vsn, %{} = interaction_object, :interaction_object) when tag == 21 do
+  def rlp_encode(tag, version, %{} = interaction_object, :interaction_object) do
     has_response =
       case interaction_object.has_response do
         true -> 1
@@ -317,7 +317,7 @@ defmodule Aecore.Oracle.Oracle do
 
     list = [
       tag,
-      vsn,
+      version,
       interaction_object.sender_address,
       interaction_object.sender_nonce,
       interaction_object.oracle_address,
@@ -332,12 +332,12 @@ defmodule Aecore.Oracle.Oracle do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:error, Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
-  def rlp_encode(_) do
-    {:error, "Invalid Oracle struct"}
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
   end
 
   @spec rlp_decode(list()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
