@@ -351,7 +351,7 @@ defmodule Aecore.Account.Account do
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), Account.t()) ::
           binary() | {:error, String.t()}
   def rlp_encode(tag, vsn, %Account{} = account) do
-    [
+    list = [
       tag,
       vsn,
       account.pubkey,
@@ -359,7 +359,12 @@ defmodule Aecore.Account.Account do
       account.last_updated,
       account.balance
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(_) do

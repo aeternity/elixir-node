@@ -44,13 +44,18 @@ defmodule Aecore.Chain.Block do
         Serialization.rlp_encode(tx, :signedtx)
       end
 
-    [
+    list = [
       tag,
       block.header.version,
       header_bin,
       txs
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(_) do

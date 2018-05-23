@@ -395,7 +395,7 @@ defmodule Aeutil.Serialization do
     else
       error ->
         {:error,
-         "#{__MODULE__} : Invalid interaction object state serialization: #{inspect(error)}"}
+         "#{__MODULE__} : Invalid Interaction Object state serialization: #{inspect(error)}"}
     end
   end
 
@@ -407,7 +407,7 @@ defmodule Aeutil.Serialization do
     else
       error ->
         {:error,
-         "#{__MODULE__} : Invalid registered oracle state serialization: #{inspect(error)}"}
+         "#{__MODULE__} : Invalid Registered Oracle state serialization: #{inspect(error)}"}
     end
   end
 
@@ -417,7 +417,7 @@ defmodule Aeutil.Serialization do
          data <- Naming.rlp_encode(tag, vsn, term, :name) do
       data
     else
-      error -> {:error, "#{__MODULE__} : Invalid naming state serialization: #{inspect(error)}"}
+      error -> {:error, "#{__MODULE__} : Invalid Naming State serialization: #{inspect(error)}"}
     end
   end
 
@@ -428,19 +428,17 @@ defmodule Aeutil.Serialization do
       data
     else
       error ->
-        {:error, "#{__MODULE__} : Invalid name commitment state serialization: #{inspect(error)}"}
+        {:error, "#{__MODULE__} : Invalid Name Commitment State serialization: #{inspect(error)}"}
     end
   end
 
   def rlp_encode(%Block{} = term, :block) do
     with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, vsn} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, vsn, term) do
+         data <- term.__struct__.rlp_encode(tag, 1, term) do
       data
     else
       error ->
-        {:error,
-         "#{__MODULE__} : Invalid interaction object states serialization: #{inspect(error)}"}
+        {:error, "#{__MODULE__} : Invalid Block structure serialization : #{inspect(error)}"}
     end
   end
 
@@ -459,10 +457,22 @@ defmodule Aeutil.Serialization do
   end
 
   def rlp_decode(binary) when is_binary(binary) do
-    [tag_bin, ver_bin | rest_data] = ExRLP.decode(binary)
-    tag = transform_item(tag_bin, :int)
-    ver = transform_item(ver_bin, :int)
-    rlp_decode(tag_to_type(tag), ver, rest_data)
+    result =
+      try do
+        ExRLP.decode(binary)
+      rescue
+        e -> {:error, Exception.message(e)}
+      end
+
+    case result do
+      [tag_bin, ver_bin | rest_data] ->
+        tag = transform_item(tag_bin, :int)
+        ver = transform_item(ver_bin, :int)
+        rlp_decode(tag_to_type(tag), ver, rest_data)
+
+      {:error, reason} ->
+        {:error, "#{__MODULE__}: Illegal deserialization, reason : #{reason}"}
+    end
   end
 
   def rlp_decode(data) do

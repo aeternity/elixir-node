@@ -285,7 +285,7 @@ defmodule Aecore.Oracle.Oracle do
           :registered_oracle | :interaction_object
         ) :: binary()
   def rlp_encode(tag, vsn, %{} = registered_oracle, :registered_oracle) when tag == 20 do
-    [
+    list = [
       tag,
       vsn,
       registered_oracle.owner,
@@ -294,7 +294,12 @@ defmodule Aecore.Oracle.Oracle do
       registered_oracle.query_fee,
       registered_oracle.expires
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(tag, vsn, %{} = interaction_object, :interaction_object) when tag == 21 do
@@ -310,7 +315,7 @@ defmodule Aecore.Oracle.Oracle do
         %DataTx{type: OracleResponseTx} = data -> data
       end
 
-    [
+    list = [
       tag,
       vsn,
       interaction_object.sender_address,
@@ -323,7 +328,12 @@ defmodule Aecore.Oracle.Oracle do
       interaction_object.response_ttl,
       interaction_object.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(_) do

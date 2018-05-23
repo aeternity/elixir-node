@@ -161,8 +161,8 @@ defmodule Aecore.Naming.Naming do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
           binary() | {:error, String.t()}
-  def rlp_encode(tag, vsn, %{} = naming_state, :name) do
-    [
+  def rlp_encode(tag, vsn, %{} = naming_state, :name) when tag == 30 do
+    list = [
       tag,
       vsn,
       naming_state.hash,
@@ -172,11 +172,16 @@ defmodule Aecore.Naming.Naming do
       naming_state.ttl,
       naming_state.pointers
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
-  def rlp_encode(tag, vsn, %{} = name_commitment, :name_commitment) do
-    [
+  def rlp_encode(tag, vsn, %{} = name_commitment, :name_commitment) when tag == 31 do
+    list = [
       tag,
       vsn,
       name_commitment.hash,
@@ -184,7 +189,12 @@ defmodule Aecore.Naming.Naming do
       name_commitment.created,
       name_commitment.expires
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(term) do

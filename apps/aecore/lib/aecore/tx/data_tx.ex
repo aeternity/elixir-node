@@ -297,7 +297,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, vsn, %DataTx{type: SpendTx} = tx) when tag == 12 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -307,24 +307,34 @@ defmodule Aecore.Tx.DataTx do
       tx.nonce,
       tx.payload.payload
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: CoinbaseTx} = tx) when tag == 13 do
-    [
+    list = [
       tag,
       vsn,
       tx.payload.receiver,
       tx.nonce,
       tx.payload.amount
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: OracleRegistrationTx} = tx) when tag == 22 do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -336,14 +346,19 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.ttl.ttl,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: OracleQueryTx} = tx) when tag == 23 do
     ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
 
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -357,11 +372,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.response_ttl.ttl,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: OracleResponseTx} = tx) when tag == 24 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -370,11 +390,16 @@ defmodule Aecore.Tx.DataTx do
       "$æx" <> Serialization.transform_item(tx.payload.response),
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: OracleExtendTx} = tx) when tag == 25 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -382,11 +407,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.ttl,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: NamePreClaimTx} = tx) when tag == 33 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -394,11 +424,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.commitment,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: NameClaimTx} = tx) when tag == 32 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -407,11 +442,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.name_salt,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: NameUpdateTx} = tx) when tag == 34 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -422,11 +462,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.expire_by,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: NameRevokeTx} = tx) when tag == 35 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -434,11 +479,16 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.hash,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   defp encode(tag, vsn, %DataTx{type: NameTransferTx} = tx) when tag == 36 do
-    [
+    list = [
       tag,
       vsn,
       tx.senders,
@@ -447,7 +497,12 @@ defmodule Aecore.Tx.DataTx do
       tx.payload.target,
       tx.fee
     ]
-    |> ExRLP.encode()
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, Exception.message(e)}
+    end
   end
 
   def rlp_encode(_) do
