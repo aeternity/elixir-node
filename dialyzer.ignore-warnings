@@ -206,3 +206,54 @@ The call 'Elixir.Aeutil.Serialization':block(Vblock@1::#{'__struct__':='Elixir.A
 The call maps:put('proof',Vproof@1::[any()],[map()]) will never return since it differs in the 3rd argument from the success typing arguments: (any(),any(),map())
 The call maps:put(#{#<116>(8, 1, 'integer', ['unsigned', 'big']), #<114>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<99>(8, 1, 'integer', ['unsigned', 'big']), #<116>(8, 1, 'integer', ['unsigned', 'big']), #<105>(8, 1, 'integer', ['unsigned', 'big']), #<111>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big'])}#,Vserialized_txs@1::[any()],Vserialized_header@1::binary()) will never return since it differs in the 3rd argument from the success typing arguments: (any(),any(),map())
 apps/aecore/lib/aecore/oracle/tx/oracle_extend_tx.ex:35: Invalid type specification for function 'Elixir.Aecore.Oracle.Tx.OracleExtendTx':validate/2. The success typing is (#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleExtendTx', 'ttl':=_, _=>_},#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}) -> 'ok' | {'error',<<_:64,_:_*8>>}
+:0: Unknown function 'Elixir.Aewallet.Cypher':decrypt/2
+:0: Unknown function 'Elixir.Aewallet.Cypher':encrypt/2
+:0: Unknown function 'Elixir.PeerConnection':send_new_block/2
+:0: Unknown function 'Elixir.Pool':add_transactions/1
+:0: Unknown function 'Elixir.SyncNew':new/1
+:0: Unknown function enacl:crypto_sign_ed25519_public_to_curve25519/1
+:0: Unknown function enacl:crypto_sign_ed25519_secret_to_curve25519/1
+:0: Unknown function enacl:curve25519_scalarmult_base/1
+:0: Unknown function enacl:sign_keypair/0
+:0: Unknown function enoise:accept/2
+:0: Unknown function enoise:close/1
+:0: Unknown function enoise:connect/2
+:0: Unknown function enoise:send/2
+:0: Unknown function enoise_hs_state:remote_keys/1
+:0: Unknown function enoise_keypair:new/2
+:0: Unknown function enoise_keypair:new/3
+:0: Unknown function enoise_keypair:pubkey/1
+apps/aecore/lib/aecore/keys/utils.ex:6: Overloaded contract for 'Elixir.Aecore.Keys.Utils':'has_dir?'/2 has overlapping domains; such contracts are currently unsupported and are simply ignored
+apps/aecore/lib/aecore/peers/sync.ex:377: Invalid type specification for function 'Elixir.Aecore.Peers.Sync':do_start_sync/2. The success typing is (pid(),binary()) -> 'ok' | {'error',_}
+apps/aecore/lib/aecore/peers/sync.ex:378: Function do_start_sync/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:416: Function agree_on_height/5 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:446: Function fetch_more/4 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:496: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:504: Call to missing or unexported function 'Elixir.Aecore.Peers.PeerConnection':ping_peer/1
+apps/aecore/lib/aecore/peers/sync.ex:522: Function do_forward_block/2 has no local return
+apps/aecore/lib/aecore/peers/sync.ex:526: The pattern {'true', #{'to':=Vto_height@1}} can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:531: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:581: Function fill_pool/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:604: Function do_fetch_block/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:616: Function do_fetch_block_ext/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:646: The variable Verr@1 can never match since previous clauses completely covered the type {'ok',#{binary()=>#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signatures':=[binary()]}}}
+apps/aehttpclient/lib/client.ex:75: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_peers/1. The success typing is (binary()) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aehttpclient/lib/client.ex:86: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_balance/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aehttpclient/lib/client.ex:91: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_txs/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:22: The pattern {'error', 'chain_too_short'} can never match the type {'error',binary()}
+apps/aecore/lib/aecore/peers/sync.ex:378: Invalid type specification for function 'Elixir.Aecore.Peers.Sync':do_start_sync/2. The success typing is (pid(),binary()) -> 'ok' | {'error',_}
+apps/aecore/lib/aecore/peers/sync.ex:379: Function do_start_sync/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:417: Function agree_on_height/5 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:447: Function fetch_more/4 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:497: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:505: Call to missing or unexported function 'Elixir.Aecore.Peers.PeerConnection':ping_peer/1
+apps/aecore/lib/aecore/peers/sync.ex:523: Function do_forward_block/2 has no local return
+apps/aecore/lib/aecore/peers/sync.ex:527: The pattern {'true', #{'to':=Vto_height@1}} can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:532: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:582: Function fill_pool/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:605: Function do_fetch_block/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:617: Function do_fetch_block_ext/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:647: The variable Verr@1 can never match since previous clauses completely covered the type {'ok',#{binary()=>#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signatures':=[binary()]}}}
+apps/aehttpclient/lib/client.ex:74: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_peers/1. The success typing is (binary()) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aehttpclient/lib/client.ex:85: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_balance/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aehttpclient/lib/client.ex:90: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_txs/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}

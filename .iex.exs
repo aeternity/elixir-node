@@ -14,7 +14,6 @@ alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
 alias Aecore.Keys.Wallet
 alias Aecore.Keys.Peer, as: PeerKeys
-
 alias Aehttpclient.Client
 
 alias Aeutil.Bits
