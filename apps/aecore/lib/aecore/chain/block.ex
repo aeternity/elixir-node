@@ -69,10 +69,21 @@ defmodule Aecore.Chain.Block do
         Serialization.rlp_decode(tx)
       end
 
-    Block.new(%{header: Serialization.binary_to_header(header_bin), txs: txs_list})
+    case txs_list_valid?(txs_list) do
+      true -> Block.new(%{header: Serialization.binary_to_header(header_bin), txs: txs_list})
+      false -> {:error, "#{__MODULE__} : Illegal SignedTx's serialization"}
+    end
   end
 
   def rlp_decode(_) do
     {:error, "#{__MODULE__} : Illegal block serialization"}
+  end
+
+  @spec txs_list_valid?(list()) :: boolean()
+  defp txs_list_valid?(txs_list) do
+    Enum.all?(txs_list, fn
+      {:error, _reason} -> false
+      %SignedTx{} -> true
+    end)
   end
 end
