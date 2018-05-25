@@ -278,7 +278,8 @@ defmodule Aecore.Miner.Worker do
       Chainstate.calculate_and_validate_chain_state(
         valid_txs,
         chain_state,
-        top_block.header.height + 1
+        top_block.header.height + 1,
+        miner_pubkey
       )
 
     root_hash = Chainstate.calculate_root_hash(new_chain_state)

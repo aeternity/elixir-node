@@ -36,7 +36,8 @@ defmodule Aecore.Chain.BlockValidation do
           Chainstate.calculate_and_validate_chain_state(
             new_block.txs,
             old_chain_state,
-            new_block.header.height
+            new_block.header.height,
+            new_block.header.miner
           )
 
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
