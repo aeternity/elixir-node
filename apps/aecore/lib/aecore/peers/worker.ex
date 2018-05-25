@@ -1,22 +1,20 @@
 defmodule Aecore.Peers.Worker do
   @moduledoc """
-    Module for peers
+  Contains peer handling functionality.
   """
 
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Chain.Block
+  alias Aecore.Keys.Peer, as: PeerKeys
 
   require Logger
 
   def start_link(_args) do
     peers = %{}
 
-    {privkey, pubkey} =
-      {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129, 67, 86, 101,
-         117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
-       <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221, 142, 210, 81,
-         18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
+    {pubkey, privkey} = PeerKeys.keypair()
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}
@@ -35,6 +33,10 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  def all_pids do
+    GenServer.call(__MODULE__, :all_pids)
+  end
+
   def add_peer(conn_info) do
     GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
@@ -43,12 +45,20 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:remove_peer, pubkey})
   end
 
+  def get_random(count) do
+    GenServer.call(__MODULE__, {:get_random, count})
+  end
+
+  def get_random(count, exclude) do
+    GenServer.call(__MODULE__, {:get_random, count, exclude})
+  end
+
   def have_peer?(peer_pubkey) do
     GenServer.call(__MODULE__, {:have_peer?, peer_pubkey})
   end
 
-  def get_random(number) do
-    GenServer.call(__MODULE__, {:get_random, number})
+  def broadcast_block(%Block{} = block) do
+    GenServer.cast(__MODULE__, {:broadcast_block, block})
   end
 
   def try_connect(peer_info) do
@@ -60,8 +70,13 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call(:all_peers, _from, %{peers: peers} = state) do
-    all_peers = Map.values(peers)
+    all_peers = peers |> Map.values() |> prepare_peers()
     {:reply, all_peers, state}
+  end
+
+  def handle_call(:all_pids, _from, %{peers: peers} = state) do
+    pids = for peer <- Map.values(peers), do: peer.connection
+    {:reply, pids, state}
   end
 
   def handle_call(
@@ -80,31 +95,58 @@ defmodule Aecore.Peers.Worker do
     {:reply, :ok, updated_state}
   end
 
+  def handle_call({:get_random, count}, _from, %{peers: peers} = state) do
+    random_peers =
+      peers
+      |> Map.values()
+      |> Enum.take_random(count)
+      |> prepare_peers()
+
+    {:reply, random_peers, state}
+  end
+
+  def handle_call({:get_random, count, exclude}, _from, %{peers: peers} = state) do
+    filtered_peers =
+      peers
+      |> Map.values()
+      |> Enum.filter(fn peer ->
+        !Enum.any?(exclude, fn to_be_excluded -> peer.pubkey == to_be_excluded end)
+      end)
+
+    random_peers = filtered_peers |> Enum.take_random(count) |> prepare_peers()
+    {:reply, random_peers, state}
+  end
+
   def handle_call({:have_peer?, peer_pubkey}, _from, %{peers: peers} = state) do
     have_peer = Map.has_key?(peers, peer_pubkey)
     {:reply, have_peer, state}
   end
 
-  def handle_call({:get_random, number}, _from, %{peers: peers} = state) do
-    random = Enum.take_random(peers, number)
-    {:reply, random, state}
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+    Enum.each(peers, fn peer -> PeerConnection.send_new_block(peer.connection, block) end)
+    {:noreply, state}
   end
 
   def handle_cast(
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
       ) do
-    if Map.has_key?(peers, peer_info.port) do
-      Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
-      {:noreply, state}
+    if peer_info.pubkey != pubkey do
+      case Map.has_key?(peers, peer_info.pubkey) do
+        false ->
+          conn_info =
+            Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
+
+          {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
+          {:noreply, state}
+
+        true ->
+          Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+          {:noreply, state}
+      end
     else
-      conn_info =
-        Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
-
-      {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
-
-      new_peers = Map.put_new(peers, peer_info.pubkey, peer_info)
-      {:noreply, %{state | peers: new_peers}}
+      Logger.info("Can't add ourself")
+      {:noreply, state}
     end
   end
 
@@ -114,5 +156,9 @@ defmodule Aecore.Peers.Worker do
 
   def peer_id({_, %{connection: peer_id}}) do
     peer_id
+  end
+
+  defp prepare_peers(peers) do
+    Enum.map(peers, fn peer -> Map.delete(peer, :connection) end)
   end
 end

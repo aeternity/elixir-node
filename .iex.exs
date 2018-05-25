@@ -4,7 +4,7 @@ alias Aecore.Miner.Worker, as: Miner
 alias Aecore.Oracle.Oracle
 alias Aecore.Naming.Naming
 alias Aecore.Oracle.Tx.{OracleExtendTx, OracleQueryTx, OracleRegistrationTx, OracleResponseTx}
-alias Aecore.Peers.{PeerBlocksTask, Scheduler, Sync}
+alias Aecore.Peers.{PeerConnection, Sync}
 alias Aecore.Peers.Worker, as: Peers
 alias Aecore.Persistance.Worker, as: Persistance
 alias Aecore.Pow.{Cuckoo, Hashcash}
@@ -12,8 +12,8 @@ alias Aecore.Account.{Account, AccountStateTree}
 alias Aecore.Account.Tx.SpendTx
 alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
-alias Aecore.Keys.Wallet, as: Wallet
-alias Aecore.Keys.Peers, as: PeerKeys
+alias Aecore.Keys.Wallet
+alias Aecore.Keys.Peer, as: PeerKeys
 
 alias Aehttpclient.Client
 

@@ -8,7 +8,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.CoinbaseTx
   alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 

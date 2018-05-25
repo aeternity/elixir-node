@@ -8,7 +8,7 @@ defmodule Aecore.Keys.Worker do
   alias Aewallet.Wallet, as: AeternityWallet
   alias Aewallet.KeyPair
   alias Aecore.Keys.Wallet
-  alias Aecore.Keys.Peers
+  alias Aecore.Keys.Peer, as: PeerKeys
   alias Aecore.Keys.Utils
 
   @typedoc "Public key representing an account"
@@ -31,7 +31,7 @@ defmodule Aecore.Keys.Worker do
 
   def init(state) do
     with :ok <- Wallet.get_wallet(),
-         :ok <- Peers.create_keypair() do
+         :ok <- PeerKeys.create_keypair() do
       {:ok, state}
     else
       {:error, reason} ->
@@ -39,7 +39,7 @@ defmodule Aecore.Keys.Worker do
     end
   end
 
-  @spec get_peer_keypair() :: Peers.t()
+  @spec get_peer_keypair() :: PeerKeys.t()
   def get_peer_keypair do
     GenServer.call(__MODULE__, :get_peer_keys)
   end
@@ -57,9 +57,8 @@ defmodule Aecore.Keys.Worker do
   ## Server Callbacks
 
   def handle_call(:get_peer_keys, _from, %{peer_keys: nil} = state) do
-    keypair = Peers.load_keypair()
-    # %{state | peer_keys: keypair}}
-    {:reply, keypair, state}
+    keypair = PeerKeys.load_keypair()
+    {:reply, keypair, %{state | peer_keys: keypair}}
   end
 
   def handle_call(:get_peer_keys, _from, %{peer_keys: keys} = state) do

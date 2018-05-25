@@ -12,6 +12,8 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
+  alias Aeutil.Scientific
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
 
@@ -107,12 +109,12 @@ defmodule Aecore.Peers.Sync do
 
   @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
   def forward_block(block, peer_id) do
-    GenServer.call(__MODULE__, {:forward_block, block, peer_id})
+    GenServer.cast(__MODULE__, {:forward_block, block, peer_id})
   end
 
   @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
   def forward_tx(tx, peer_id) do
-    GenServer.call(__MODULE__, {:forward_tx, tx, peer_id})
+    GenServer.cast(__MODULE__, {:forward_tx, tx, peer_id})
   end
 
   @spec update_hash_pool(list()) :: list()
@@ -151,7 +153,7 @@ defmodule Aecore.Peers.Sync do
         %{sync_pool: pool} = state
       ) do
     height = header.height
-    difficulty = Aeutil.Scientific.target_to_difficulty(header.target)
+    difficulty = Scientific.target_to_difficulty(header.target)
 
     {is_new, new_pool} =
       insert_header(
@@ -190,12 +192,14 @@ defmodule Aecore.Peers.Sync do
     {:reply, result, state}
   end
 
-  def handle_call({:forward_block, block, peer_id}, _from, state) do
-    {:reply, do_forward_block(block, peer_id), state}
+  def handle_cast({:forward_block, block, peer_id}, state) do
+    :jobs.enqueue(:sync_jobs, {:forward, %{block: block}, peer_id})
+    {:noreply, state}
   end
 
-  def handle_call({:forward_tx, tx, peer_id}, _from, state) do
-    {:reply, do_forward_tx(tx, peer_id), state}
+  def handle_cast({:forward_tx, tx, peer_id}, state) do
+    :jobs.enqueue(:sync_jobs, {:forward, %{tx: tx}, peer_id})
+    {:noreply, state}
   end
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
@@ -478,7 +482,7 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  def sync_worker do
+  def process_jobs do
     result = :jobs.dequeue(:sync_jobs, 1)
     process_job(result)
   end
@@ -523,12 +527,13 @@ defmodule Aecore.Peers.Sync do
     height = block.header.height
 
     case sync_in_progress?(peer_id) do
-      {true, %{to: to_height}} when to_height > height + @max_diff_for_sync ->
+      ## If we are syncing with this peer and it has far more blocks ignore sending
+      {true, %{to: remote_height}} when remote_height > height + @max_diff_for_sync ->
         Logger.debug(fn ->
           "#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead"
         end)
 
-      false ->
+      _ ->
         ## Send block through the peer module
         PeerConnection.send_new_block(block, peer_id)
 
@@ -638,17 +643,8 @@ defmodule Aecore.Peers.Sync do
   # Try to fetch the pool of transactions
   # from the Remote Peer we are connected to
   defp do_fetch_mempool(peer_id) do
-    case PeerConnection.get_mempool(peer_id) do
-      {:ok, txs} ->
-        Logger.debug(fn -> "#{__MODULE__}: Mempool received from #{inspect(peer_id)}" end)
-        Pool.add_transactions(txs)
-
-      err ->
-        Logger.debug(fn ->
-          "#{__MODULE__}: Error fetching the mempool from #{inspect(peer_id)}"
-        end)
-
-        err
-    end
+    {:ok, pool} = PeerConnection.get_mempool(peer_id)
+    Logger.debug(fn -> "#{__MODULE__}: Mempool received from #{inspect(peer_id)}" end)
+    Enum.each(pool, fn {_hash, tx} -> Pool.add_transaction(tx) end)
   end
 end

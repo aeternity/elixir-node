@@ -4,7 +4,7 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx, as: SpendTx
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.BlockValidation, as: BlockValidation
   alias Aecore.Tx.Pool.Worker, as: Pool

@@ -103,10 +103,8 @@ sync_port =
   end
 
 config :aecore, :peers,
-  peers_target_count: 2,
-  peers_max_count: 4,
-  sync_port: sync_port,
-  ranch_acceptors: 10
+  ranch_acceptors: 10,
+  sync_port: 3015
 
 config :aecore, :miner, resumed_by_default: false
 

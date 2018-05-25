@@ -16,10 +16,10 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.PeerConnection, as: PeerConn
+  alias Aecore.Peers.Sync
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -117,6 +117,19 @@ defmodule Aecore.Chain.Worker do
   rescue
     _ ->
       {:error, :invalid_hash}
+  end
+
+  @spec get_headers_forward(binary(), non_neg_integer()) ::
+          {:ok, list(Header.t())} | {:error, atom()}
+  def get_headers_forward(starting_header, count) do
+    case get_header(starting_header) do
+      {:ok, header} ->
+        blocks_to_get = min(top_height() - header.height, count)
+        get_headers_forward([], header.height, blocks_to_get + 1)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, reason()}
@@ -399,11 +412,12 @@ defmodule Aecore.Chain.Worker do
       })
 
       ## We send the block to others only if it extends the longest chain
-      if Enum.empty?(Peers.all_peers()) do
+      if Enum.empty?(Peers.all_pids()) do
         Logger.debug(fn -> "Peer list empty" end)
       else
-        for peer <- Peers.all_peers() do
-          PeerConn.send_new_block(new_block, peer.connection)
+        for pid <- Peers.all_pids() do
+          Sync.forward_block(new_block, pid)
+          Sync.process_jobs()
         end
       end
 

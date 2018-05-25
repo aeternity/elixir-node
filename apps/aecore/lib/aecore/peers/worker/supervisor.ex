@@ -1,6 +1,7 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   @moduledoc """
-    Supervisor for Peers and Sync
+  Supervises the Peers, PeerConnectionSupervisor and ranch acceptor
+  processes with a one_for_all strategy
   """
 
   use Supervisor
@@ -9,17 +10,14 @@ defmodule Aecore.Peers.Worker.Supervisor do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Keys.Peer, as: PeerKeys
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok)
   end
 
   def init(:ok) do
-    {privkey, pubkey} =
-      {<<160, 201, 72, 107, 212, 95, 216, 197, 145, 103, 254, 171, 105, 50, 65, 129, 67, 86, 101,
-         117, 95, 252, 60, 45, 124, 212, 113, 162, 153, 165, 216, 93>>,
-       <<154, 121, 221, 190, 251, 229, 233, 152, 87, 78, 165, 55, 76, 196, 152, 221, 142, 210, 81,
-         18, 248, 95, 199, 248, 5, 7, 103, 191, 139, 138, 249, 61>>}
+    {pubkey, privkey} = PeerKeys.keypair()
 
     children = [
       Sync,
@@ -39,7 +37,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
       )
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_all)
   end
 
   def sync_port do

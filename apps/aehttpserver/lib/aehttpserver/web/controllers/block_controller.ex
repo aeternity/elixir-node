@@ -7,7 +7,6 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
-  alias Aecore.Peers.Sync
   alias Aeutil.Serialization
 
   def block_by_height(conn, %{"height" => height}) do
@@ -112,20 +111,5 @@ defmodule Aehttpserver.Web.BlockController do
       end)
 
     json(conn, blocks_json)
-  end
-
-  def post_block(conn, _params) do
-    block = Serialization.block(conn.body_params, :deserialize)
-
-    case BlockValidation.single_validate_block(block) do
-      :ok ->
-        block_hash = BlockValidation.block_header_hash(block.header)
-        Sync.add_block_to_state(block_hash, block)
-        Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-        json(conn, "successful operation")
-
-      {:error, _message} ->
-        HTTPUtil.json_not_found(conn, "Block or header validation error")
-    end
   end
 end

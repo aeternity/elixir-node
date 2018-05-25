@@ -9,7 +9,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Naming
   alias Aeutil.Hash
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
 

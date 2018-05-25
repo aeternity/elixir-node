@@ -9,7 +9,6 @@ defmodule Aehttpclient.Client do
   alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Serialization
-  alias Aehttpserver.Web.Endpoint
 
   require Logger
 
@@ -143,7 +142,7 @@ defmodule Aehttpclient.Client do
 
   @spec get(binary(), req_kind) :: {:ok, map()} | {:error, binary()}
   defp get(uri, identifier \\ :default) do
-    case HTTPoison.get(uri, [{"peer_port", get_local_port()}, {"nonce", Peers.get_peer_nonce()}]) do
+    case HTTPoison.get(uri) do
       {:ok, %{body: body, headers: headers, status_code: 200}} ->
         handle_response(identifier, body, headers)
 
@@ -169,9 +168,5 @@ defmodule Aehttpclient.Client do
     HTTPoison.post(uri, Poison.encode!(data), [
       {"Content-Type", "application/json"}
     ])
-  end
-
-  defp get_local_port do
-    Endpoint.url() |> String.split(":") |> Enum.at(-1)
   end
 end
