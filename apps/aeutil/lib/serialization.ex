@@ -178,6 +178,9 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_encode_root(value)
 
+      :miner ->
+        Account.base58c_encode(value)
+
       :sender ->
         Account.base58c_encode(value)
 
@@ -279,6 +282,9 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :sender ->
+        Account.base58c_decode(value)
+
+      :miner ->
         Account.base58c_decode(value)
 
       :receiver ->

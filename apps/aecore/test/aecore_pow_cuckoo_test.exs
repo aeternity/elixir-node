@@ -14,7 +14,6 @@ defmodule AecoreCuckooTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Structures.CoinbaseTx
 
   setup do
     on_exit(fn ->
@@ -113,23 +112,7 @@ defmodule AecoreCuckooTest do
         txs_hash: txs_hash,
         version: 1
       },
-      txs: [
-        %SignedTx{
-          data: %DataTx{
-            fee: 0,
-            nonce: 0,
-            payload: %SpendTx{
-              amount: 100,
-              receiver: receiver,
-              version: 1,
-              payload: <<"payload">>
-            },
-            senders: [],
-            type: SpendTx
-          },
-          signatures: []
-        }
-      ]
+      txs: []
     }
   end
 end
