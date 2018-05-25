@@ -24,6 +24,8 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aeutil.PatriciaMerkleTree
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Naming.Tx.NameTransferTx
 
   require Logger
@@ -271,7 +273,23 @@ defmodule Aecore.Chain.Worker do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
+  @spec get_accounts_chainstate() :: Chainstate.accounts()
+  def get_accounts_chainstate do
+    GenServer.call(__MODULE__, {:get_chainstate, :accounts})
+  end
+
+  @spec get_oracles_chainstate() :: Chainstate.oracles()
+  def get_oracles_chainstate do
+    GenServer.call(__MODULE__, {:get_chainstate, :oracles})
+  end
+
   ## Server side
+
+  def handle_call({:get_chainstate, type}, _from, state) when is_atom(type) do
+    root_hash = Persistence.get_chainstates()[type]
+    chainstate = transfrom_chainstate(:to_chainstate, %{type => root_hash})
+    {:reply, chainstate[type], state}
+  end
 
   def handle_call(:clear_state, _from, _state) do
     {:ok, new_state, _} = init(:empty)
@@ -374,12 +392,9 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = Chainstate.calculate_total_tokens(new_chain_state)
-
     Logger.info(fn ->
       "#{__MODULE__}: Added block ##{new_block.header.height}
-      with hash #{Header.base58c_encode(new_block_hash)},
-      total tokens: #{inspect(total_tokens)}"
+      with hash #{Header.base58c_encode(new_block_hash)}"
     end)
 
     state_update = %{
@@ -390,7 +405,10 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        ## Transfrom from chain state
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
           :top_hash => new_block_hash,
@@ -427,7 +445,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    registered_oracles = OracleStateTree.get_registered_oracles(oracle_tree)
     {:reply, registered_oracles, state}
   end
 
@@ -436,7 +455,8 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
+    oracle_tree = blocks_data_map[top_hash].chain_state.oracles
+    interaction_objects = OracleStateTree.get_interaction_objects(oracle_tree)
     {:reply, interaction_objects, state}
   end
 
@@ -451,7 +471,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_accounts_chain_states()
+    chain_states = Persistence.get_chainstates()
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -459,7 +479,7 @@ defmodule Aecore.Chain.Worker do
       if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
-        chain_states
+        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
       end
 
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
@@ -641,4 +661,20 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp build_chain_state, do: Chainstate.init()
+
+  def transfrom_chainstate(strategy, chainstate) do
+    Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
+  end
+
+  defp get_persist_strategy(:to_chainstate) do
+    fn {key, root_hash}, acc_state ->
+      Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+    end
+  end
+
+  defp get_persist_strategy(:from_chainstate) do
+    fn {key, value}, acc_state ->
+      Map.put(acc_state, key, value.root_hash)
+    end
+  end
 end

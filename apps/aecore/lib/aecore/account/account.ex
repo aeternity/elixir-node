@@ -6,20 +6,12 @@ defmodule Aecore.Account.Account do
   require Logger
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.Account
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Account.Tx.{SpendTx, CoinbaseTx}
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Naming.{Naming, NameUtil}
   alias Aeutil.Bits
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Tx.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -58,7 +50,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the balance for a given key.
   """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec balance(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
     AccountStateTree.get(tree, key).balance
   end
@@ -66,7 +58,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the nonce for a given key.
   """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec nonce(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
   end
@@ -74,7 +66,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the last_updated for a given key.
   """
-  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec last_updated(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def last_updated(tree, key) do
     AccountStateTree.get(tree, key).last_updated
   end
@@ -86,7 +78,7 @@ defmodule Aecore.Account.Account do
   def spend(receiver, amount, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce)
   end
 
@@ -120,7 +112,7 @@ defmodule Aecore.Account.Account do
   def pre_claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
@@ -153,7 +145,7 @@ defmodule Aecore.Account.Account do
   def claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce)
   end
 
@@ -186,7 +178,7 @@ defmodule Aecore.Account.Account do
   def name_update(name, pointers, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     name_update(sender, sender_priv_key, name, pointers, fee, nonce)
   end
 
@@ -225,7 +217,7 @@ defmodule Aecore.Account.Account do
   def name_transfer(name, target, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce)
   end
 
@@ -258,7 +250,7 @@ defmodule Aecore.Account.Account do
   def name_revoke(name, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
-    nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
+    nonce = nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce)
   end
 
@@ -299,24 +291,23 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given Account state and updates last update block.
   """
-  @spec apply_transfer!(ChainState.account(), non_neg_integer(), integer()) ::
-          ChainState.account()
+  @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
+  def apply_transfer!(%{balance: balance}, _block_height, amount) when balance + amount < 0 do
+    throw({:error, "#{__MODULE__}: Negative balance"})
+  end
+
   def apply_transfer!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
-
-    if new_balance < 0 do
-      throw({:error, "#{__MODULE__}: Negative balance"})
-    end
-
     %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
-  @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
-  def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
-    if current_nonce >= new_nonce do
-      throw({:error, "#{__MODULE__}: Invalid nonce"})
-    end
+  @spec apply_nonce!(Account.t(), integer()) :: Account.t()
+  def apply_nonce!(%Account{nonce: current_nonce} = _account_state, new_nonce)
+      when current_nonce >= new_nonce do
+    throw({:error, "#{__MODULE__}: Invalid nonce"})
+  end
 
+  def apply_nonce!(%Account{nonce: _current_nonce} = account_state, new_nonce) do
     %Account{account_state | nonce: new_nonce}
   end
 

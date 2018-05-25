@@ -5,19 +5,22 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Naming.Naming
 
   require Logger
 
+  @type accounts :: AccountStateTree.accounts_state()
+  @type oracles :: OracleStateTree.oracles_state()
+  @type naming :: NamingStateTree.namings_state()
+
   @type t :: %Chainstate{
-          accounts: AccountStateTree.accounts_state(),
-          oracles: Oracle.t(),
-          naming: Naming.state()
+          accounts: accounts(),
+          oracles: oracles(),
+          naming: naming()
         }
 
   defstruct [
@@ -30,8 +33,8 @@ defmodule Aecore.Chain.Chainstate do
   def init do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
-      :oracles => %{registered_oracles: %{}, interaction_objects: %{}},
-      :naming => Naming.init_empty()
+      :oracles => OracleStateTree.init_empty(),
+      :naming => NamingStateTree.init_empty()
     }
   end
 
@@ -99,13 +102,6 @@ defmodule Aecore.Chain.Chainstate do
       end)
 
     Enum.reverse(txs_list)
-  end
-
-  @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
-    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + Account.balance(accounts_tree, pub_key)
-    end)
   end
 
   def base58c_encode(bin) do

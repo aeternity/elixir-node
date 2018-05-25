@@ -5,9 +5,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -22,7 +22,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameClaimTx we have the naming subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %NameClaimTx{
@@ -78,12 +78,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Claims a name for one account after it was pre-claimed.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
@@ -99,8 +99,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     updated_naming_chainstate =
       naming_state
-      |> Map.delete(pre_claim_commitment)
-      |> Map.put(claim_hash, claim)
+      |> NamingStateTree.delete(pre_claim_commitment)
+      |> NamingStateTree.put(claim_hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -110,12 +110,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -128,16 +128,16 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     account_state = AccountStateTree.get(accounts, sender)
 
     {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
-    pre_claim = Map.get(naming_state, pre_claim_commitment)
+    pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = Map.get(naming_state, claim_hash)
+    claim = NamingStateTree.get(naming_state, claim_hash)
 
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
-      pre_claim == nil ->
+      pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
       pre_claim.owner != sender ->
@@ -146,7 +146,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
            inspect(sender)
          }"}
 
-      claim != nil ->
+      claim != :none ->
         {:error, "#{__MODULE__}: Name has aleady been claimed: #{inspect(claim)}"}
 
       true ->
@@ -155,12 +155,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           NameCaimTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

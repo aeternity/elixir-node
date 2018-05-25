@@ -4,68 +4,52 @@ defmodule Aecore.Account.AccountStateTree do
   """
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aeutil.Serialization
-  @type encoded_account_state :: binary()
+  alias Aeutil.PatriciaMerkleTree
 
-  # abstract datatype representing a merkle tree
-  @type tree :: :gb_merkle_trees.tree()
-  @type accounts_state :: tree()
+  @type accounts_state :: Trie.t()
   @type hash :: binary()
 
-  @spec init_empty() :: tree()
+  @spec init_empty() :: Trie.t()
   def init_empty do
-    :gb_merkle_trees.empty()
+    PatriciaMerkleTree.new(:accounts)
   end
 
-  @spec put(tree(), Wallet.pubkey(), Account.t()) :: tree()
-  def put(tree, key, value) do
-    serialized_account_state = Serialization.account_state(value, :serialize)
-    :gb_merkle_trees.enter(key, serialized_account_state, tree)
+  @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
+  def put(trie, key, value) do
+    serialized = serialize(value)
+    PatriciaMerkleTree.enter(trie, key, serialized)
   end
 
-  @spec get(tree(), Wallet.pubkey()) :: binary() | :none | Account.t()
-  def get(tree, key) do
-    case :gb_merkle_trees.lookup(key, tree) do
-      :none ->
-        Account.empty()
-
-      account_state ->
-        {:ok, acc} = Serialization.account_state(account_state, :deserialize)
-        acc
-    end
+  @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
+  def get(trie, key) do
+    trie
+    |> PatriciaMerkleTree.lookup(key)
+    |> deserialize()
+    |> fallback_empty_account()
   end
 
-  @spec update(tree(), Wallet.pubkey(), (Account.t() -> Account.t())) :: tree()
+  @spec update(accounts_state(), Wallet.pubkey(), (Account.t() -> Account.t())) ::
+          accounts_state()
   def update(tree, key, fun) do
     put(tree, key, fun.(get(tree, key)))
   end
 
-  def has_key?(tree, key) do
-    :gb_merkle_trees.lookup(key, tree) != :none
+  @spec has_key?(accounts_state(), Wallet.pubkey()) :: boolean()
+  def has_key?(trie, key) do
+    PatriciaMerkleTree.lookup(trie, key) != :none
   end
 
-  @spec delete(tree(), Wallet.pubkey()) :: tree()
-  def delete(tree, key) do
-    :gb_merkle_trees.delete(key, tree)
+  @spec root_hash(accounts_state()) :: hash()
+  def root_hash(trie) do
+    PatriciaMerkleTree.root_hash(trie)
   end
 
-  @spec balance(tree()) :: tree()
-  def balance(tree) do
-    :gb_merkle_trees.balance(tree)
-  end
+  @spec fallback_empty_account(Account.t() | :none) :: Account.t()
+  def fallback_empty_account(:none), do: Account.empty()
+  def fallback_empty_account(%Account{} = account), do: account
 
-  @spec root_hash(tree()) :: hash()
-  def root_hash(tree) do
-    :gb_merkle_trees.root_hash(tree)
-  end
-
-  @spec reduce(tree(), integer(), fun()) :: integer()
-  def reduce(tree, acc, fun) do
-    :gb_merkle_trees.foldr(fun, acc, tree)
-  end
-
-  @spec size(tree()) :: non_neg_integer()
-  def size(tree) do
-    :gb_merkle_trees.size(tree)
-  end
+  defp serialize(term), do: term |> :erlang.term_to_binary()
+  defp deserialize(:none), do: :none
+  defp deserialize({:ok, binary}), do: deserialize(binary)
+  defp deserialize(binary), do: binary |> :erlang.binary_to_term()
 end

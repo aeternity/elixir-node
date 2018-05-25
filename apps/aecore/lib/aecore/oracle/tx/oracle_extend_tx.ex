@@ -7,9 +7,11 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
+
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -49,47 +51,49 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {:ok, {Chainstate.accounts(), Chainstate.oracles()}}
   def process_chainstate(
         accounts,
-        oracle_state,
+        oracles,
         _block_height,
         %OracleExtendTx{} = tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
 
+    updated_registered_oracles =
+      oracles
+      |> OracleStateTree.get_registered_oracles()
+      |> update_in([sender, :expires], &(&1 + tx.ttl))
+
     updated_oracle_state =
-      update_in(
-        oracle_state,
-        [:registered_oracles, sender, :expires],
-        &(&1 + tx.ttl)
-      )
+      OracleStateTree.put_registered_oracle(oracles, updated_registered_oracles)
 
     {:ok, {accounts, updated_oracle_state}}
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          Chainstate.oracles(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         _block_height,
         tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
+    registered_oracles = OracleStateTree.get_registered_oracles(oracles)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -107,12 +111,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

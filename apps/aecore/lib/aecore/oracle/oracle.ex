@@ -7,6 +7,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -15,6 +16,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Account.Account
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -22,6 +25,7 @@ defmodule Aecore.Oracle.Oracle do
 
   @type json_schema :: map()
   @type json :: any()
+  @oracles_fields [:registered_oracles, :interaction_objects]
 
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
@@ -45,6 +49,10 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
+
+  defstruct @oracles_fields
+
+  def oracles_fields, do: @oracles_fields
 
   @doc """
   Registers an oracle with the given requirements for queries and responses,
@@ -219,46 +227,51 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def remove_expired_oracles(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
-                                                                         %{
-                                                                           expires: expiry_height
-                                                                         }},
-                                                                        acc ->
+  def remove_expired_oracles(chainstate, block_height) do
+    chainstate.oracles
+    |> OracleStateTree.get_registered_oracles()
+    |> Enum.reduce(chainstate, fn {address,
+                                   %{
+                                     expires: expiry_height
+                                   }},
+                                  acc ->
       if expiry_height <= block_height do
-        acc
-        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        |> elem(1)
+        updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
+        %{acc | oracles: updated_oracles}
       else
         acc
       end
     end)
   end
 
-  def remove_expired_interaction_objects(
-        chain_state,
-        block_height
-      ) do
-    interaction_objects = chain_state.oracles.interaction_objects
-
-    Enum.reduce(interaction_objects, chain_state, fn {query_id,
-                                                      %{
-                                                        sender_address: sender_address,
-                                                        has_response: has_response,
-                                                        expires: expires,
-                                                        fee: fee
-                                                      }},
-                                                     acc ->
+  def remove_expired_interaction_objects(chainstate, block_height) do
+    chainstate.oracles
+    |> OracleStateTree.get_interaction_objects()
+    |> Enum.reduce(chainstate, fn {query_id,
+                                   %{
+                                     sender_address: sender_address,
+                                     has_response: has_response,
+                                     expires: expires,
+                                     fee: fee
+                                   }},
+                                  acc ->
       if expires <= block_height do
-        updated_state =
-          acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
+        new_oracles_state =
+          acc.oracles
+          |> OracleStateTree.delete_interaction_object(query_id)
+
+        new_chainstate = %{acc | oracles: new_oracles_state}
 
         if has_response do
-          updated_state
+          new_chainstate
         else
-          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
+          new_accounts_state =
+            new_chainstate.accounts
+            |> AccountStateTree.update(sender_address, fn account ->
+              Account.apply_transfer!(account, block_height, fee)
+            end)
+
+          %{new_chainstate | accounts: new_accounts_state}
         end
       else
         acc

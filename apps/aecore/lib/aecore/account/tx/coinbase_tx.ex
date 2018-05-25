@@ -8,6 +8,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.CoinbaseTx
   alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -45,7 +46,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
 
   # Callbacks
 
-  def get_chain_state_name, do: nil
+  def get_chain_state_name, do: :none
 
   @spec init(payload()) :: CoinbaseTx.t()
   def init(%{receiver: receiver, amount: amount} = _payload) do
@@ -89,12 +90,12 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
           DataTx.t()
-        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
@@ -114,7 +115,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
@@ -125,7 +126,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   end
 
   @spec deduct_fee(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           non_neg_integer(),
           CoinbaseTx.t(),
           DataTx.t(),
