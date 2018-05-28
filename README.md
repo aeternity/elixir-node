@@ -131,9 +131,9 @@ The DataTx strucure hold:
 
   `Peers.all_peers()`
 
-- To add peer:
+- Connect to a peer by specifying the address (host), port and peer pubkey (different from the keypair which is used for transaction signing):
 
-  `Peers.add_peer(uri)`
+  `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})`
 
 ##### Transaction Pool:
 
