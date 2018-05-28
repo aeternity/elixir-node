@@ -505,8 +505,11 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  def rlp_encode(data) do
-    {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
+  def rlp_encode(tag, version, data) do
+    {:error,
+     "#{__MODULE__} : Invalid DataTx data serialization: #{inspect(data)}, with given tag: #{
+       inspect(tag)
+     }  and version: #{inspect(version)}"}
   end
 
   @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
@@ -550,34 +553,34 @@ defmodule Aecore.Tx.DataTx do
          senders,
          nonce,
          oracle_address,
-         query_data,
+         encoded_query_data,
          query_fee,
-         query_ttl_type,
+         encoded_query_ttl_type,
          query_ttl_value,
-         response_ttl_type,
+         encoded_response_ttl_type,
          response_ttl_value,
          fee
        ]) do
-    q_ttl_type =
-      query_ttl_type
+    query_ttl_type =
+      encoded_query_ttl_type
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
-    r_ttl_type =
-      response_ttl_type
+    response_ttl_type =
+      encoded_response_ttl_type
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
-    q_data = decode_format(query_data)
+    query_data = decode_format(encoded_query_data)
 
     payload = %{
       oracle_address: oracle_address,
-      query_data: q_data,
+      query_data: query_data,
       query_fee: Serialization.transform_item(query_fee, :int),
-      query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: q_ttl_type},
+      query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: query_ttl_type},
       response_ttl: %{
         ttl: Serialization.transform_item(response_ttl_value, :int),
-        type: r_ttl_type
+        type: response_ttl_type
       }
     }
 
@@ -593,26 +596,26 @@ defmodule Aecore.Tx.DataTx do
   defp decode(OracleRegistrationTx, [
          senders,
          nonce,
-         query_format,
-         response_format,
+         encoded_query_format,
+         encoded_response_format,
          query_fee,
-         ttl_type,
+         encoded_ttl_type,
          ttl_value,
          fee
        ]) do
-    ttl_t =
-      ttl_type
+    ttl_type =
+      encoded_ttl_type
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
-    q_format = decode_format(query_format)
+    query_format = decode_format(encoded_query_format)
 
-    r_format = decode_format(response_format)
+    response_format = decode_format(encoded_response_format)
 
     payload = %{
-      query_format: q_format,
-      response_format: r_format,
-      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_t},
+      query_format: query_format,
+      response_format: response_format,
+      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_type},
       query_fee: Serialization.transform_item(query_fee, :int)
     }
 
@@ -625,13 +628,13 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(OracleResponseTx, [senders, nonce, query_id, response, fee]) do
-    q_id = decode_format(query_id)
-    resp = decode_format(response)
+  defp decode(OracleResponseTx, [senders, nonce, encoded_query_id, encoded_response, fee]) do
+    query_id = decode_format(encoded_query_id)
+    response = decode_format(encoded_response)
 
     payload = %{
-      query_id: q_id,
-      response: resp
+      query_id: query_id,
+      response: response
     }
 
     DataTx.init(
