@@ -257,3 +257,27 @@ apps/aecore/lib/aecore/peers/sync.ex:647: The variable Verr@1 can never match si
 apps/aehttpclient/lib/client.ex:74: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_peers/1. The success typing is (binary()) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
 apps/aehttpclient/lib/client.ex:85: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_balance/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
 apps/aehttpclient/lib/client.ex:90: Invalid type specification for function 'Elixir.Aehttpclient.Client':get_account_txs/1. The success typing is ({binary(),_}) -> {'error',<<_:96,_:_*32>>} | {'ok',map()}
+apps/aecore/lib/aecore/peers/sync.ex:381: Invalid type specification for function 'Elixir.Aecore.Peers.Sync':do_start_sync/2. The success typing is (pid(),binary()) -> 'ok' | {'error',_}
+apps/aecore/lib/aecore/peers/sync.ex:382: Function do_start_sync/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:420: Function agree_on_height/5 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:450: Function fetch_more/4 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:500: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:508: Call to missing or unexported function 'Elixir.Aecore.Peers.PeerConnection':ping_peer/1
+apps/aecore/lib/aecore/peers/sync.ex:526: Function do_forward_block/2 has no local return
+apps/aecore/lib/aecore/peers/sync.ex:531: The pattern {'true', #{'to':=Vremote_height@1}} can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:538: The call 'Elixir.Aecore.Peers.PeerConnection':send_new_block(Vblock@1::atom() | #{'header':=_, _=>_},Vpeer_id@1::binary()) will never return since the success typing is (any(),pid()) -> any() and the contract is ('Elixir.Aecore.Chain.Block':t(),pid()) -> 'ok' | 'error'
+apps/aecore/lib/aecore/peers/sync.ex:586: Function fill_pool/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:609: Function do_fetch_block/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:621: Function do_fetch_block_ext/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:364: Invalid type specification for function 'Elixir.Aecore.Peers.Sync':do_start_sync/2. The success typing is (pid(),binary()) -> 'ok' | {'error',_}
+apps/aecore/lib/aecore/peers/sync.ex:365: Function do_start_sync/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:403: Function agree_on_height/5 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:433: Function fetch_more/4 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:483: The pattern 'false' can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:491: Call to missing or unexported function 'Elixir.Aecore.Peers.PeerConnection':ping_peer/1
+apps/aecore/lib/aecore/peers/sync.ex:500: Function do_forward_block/2 has no local return
+apps/aecore/lib/aecore/peers/sync.ex:505: The pattern {'true', #{'to':=Vremote_height@1}} can never match the type {'false',non_neg_integer()} | {'true',non_neg_integer()}
+apps/aecore/lib/aecore/peers/sync.ex:512: The call 'Elixir.Aecore.Peers.PeerConnection':send_new_block(Vblock@1::atom() | #{'header':=_, _=>_},Vpeer_id@1::binary()) will never return since the success typing is (any(),pid()) -> any() and the contract is ('Elixir.Aecore.Chain.Block':t(),pid()) -> 'ok' | 'error'
+apps/aecore/lib/aecore/peers/sync.ex:560: Function fill_pool/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:583: Function do_fetch_block/2 will never be called
+apps/aecore/lib/aecore/peers/sync.ex:595: Function do_fetch_block_ext/2 will never be called

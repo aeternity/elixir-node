@@ -10,8 +10,6 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Events
   alias Aeutil.Scientific
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -55,10 +53,6 @@ defmodule Aecore.Peers.Sync do
   end
 
   def init(state) do
-    Events.subscribe(:block_created)
-    Events.subscribe(:tx_created)
-    Events.subscribe(:top_changed)
-
     :ok = :jobs.add_queue(:sync_jobs, [:passive])
     {:ok, state}
   end
@@ -85,6 +79,16 @@ defmodule Aecore.Peers.Sync do
     GenServer.cast(__MODULE__, {:delete_from_pool, peer_id})
   end
 
+  @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
+  def forward_block(block, peer_id) do
+    GenServer.cast(__MODULE__, {:forward_block, block, peer_id})
+  end
+
+  @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
+  def forward_tx(tx, peer_id) do
+    GenServer.cast(__MODULE__, {:forward_tx, tx, peer_id})
+  end
+
   def state do
     GenServer.call(__MODULE__, :state)
   end
@@ -105,16 +109,6 @@ defmodule Aecore.Peers.Sync do
   @spec fetch_next(String.t(), non_neg_integer(), binary(), any()) :: tuple()
   def fetch_next(peer_id, height_in, hash_in, result) do
     GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
-  end
-
-  @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_block(block, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_block, block, peer_id})
-  end
-
-  @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_tx(tx, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_tx, tx, peer_id})
   end
 
   @spec update_hash_pool(list()) :: list()
@@ -141,6 +135,16 @@ defmodule Aecore.Peers.Sync do
 
   def handle_cast({:delete_from_pool, peer_id}, %{sync_pool: pool} = state) do
     {:noreply, %{state | sync_pool: List.delete(pool, peer_id)}}
+  end
+
+  def handle_cast({:forward_block, block, peer_id}, state) do
+    :jobs.enqueue(:sync_jobs, {:forward, %{block: block}, peer_id})
+    {:noreply, state}
+  end
+
+  def handle_cast({:forward_tx, tx, peer_id}, state) do
+    :jobs.enqueue(:sync_jobs, {:forward, %{tx: tx}, peer_id})
+    {:noreply, state}
   end
 
   def handle_call(:state, _from, state) do
@@ -190,16 +194,6 @@ defmodule Aecore.Peers.Sync do
       end
 
     {:reply, result, state}
-  end
-
-  def handle_cast({:forward_block, block, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{block: block}, peer_id})
-    {:noreply, state}
-  end
-
-  def handle_cast({:forward_tx, tx, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{tx: tx}, peer_id})
-    {:noreply, state}
   end
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
@@ -269,17 +263,6 @@ defmodule Aecore.Peers.Sync do
              %{state | hash_pool: new_hash_pool}}
         end
     end
-  end
-
-  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
-    case event do
-      :block_created -> enqueue(:forward, %{status: :created, block: info})
-      :tx_created -> enqueue(:forward, %{status: :created, tx: info})
-      :top_changed -> enqueue(:forward, %{status: :top_changed, block: info})
-      :tx_received -> enqueue(:forward, %{status: :received, tx: info})
-    end
-
-    {:noreply, state}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
@@ -510,15 +493,6 @@ defmodule Aecore.Peers.Sync do
 
       _other ->
         Logger.debug(fn -> "Unknown job" end)
-    end
-  end
-
-  @spec enqueue(atom(), map()) :: list()
-  defp enqueue(opts, msg) do
-    peers = Peers.get_random(3)
-
-    for peer <- peers do
-      :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})
     end
   end
 
