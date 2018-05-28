@@ -505,13 +505,6 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  def rlp_encode(tag, version, data) do
-    {:error,
-     "#{__MODULE__} : Invalid DataTx data serialization: #{inspect(data)}, with given tag: #{
-       inspect(tag)
-     }  and version: #{inspect(version)}"}
-  end
-
   @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
   def rlp_decode(tag, values) when is_list(values) do
     decode(tag, values)
