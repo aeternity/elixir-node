@@ -27,6 +27,7 @@ defmodule AecoreNamingTest do
     end)
   end
 
+  @tag :naming
   test "test naming workflow", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -84,7 +85,7 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5)
+    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 
@@ -106,6 +107,7 @@ defmodule AecoreNamingTest do
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
   end
 
+  @tag :naming
   test "not pre-claimed name not claimable", setup do
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -115,6 +117,7 @@ defmodule AecoreNamingTest do
     assert Enum.empty?(naming_state)
   end
 
+  @tag :naming
   test "name not claimable with incorrect salt", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -141,6 +144,7 @@ defmodule AecoreNamingTest do
     assert !Map.has_key?(first_name_claim, :name)
   end
 
+  @tag :naming
   test "name not claimable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -171,6 +175,7 @@ defmodule AecoreNamingTest do
     assert !Map.has_key?(first_name_claim, :name)
   end
 
+  @tag :naming
   test "name not updatable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -219,6 +224,7 @@ defmodule AecoreNamingTest do
     assert first_name_update.pointers == []
   end
 
+  @tag :naming
   test "name not transferable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -290,6 +296,7 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
   end
 
+  @tag :naming
   test "name not revokable from different account", setup do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
@@ -347,7 +354,7 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5)
+    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Pool.add_transaction(spend)
     Miner.mine_sync_block_to_chain()
 

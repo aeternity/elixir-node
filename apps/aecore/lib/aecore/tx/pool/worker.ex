@@ -16,7 +16,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Serialization
   alias Aeutil.Hash
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
@@ -123,7 +122,7 @@ defmodule Aecore.Tx.Pool.Worker do
       key =
         tx.type
         |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
-        |> Serialization.pack_binary()
+        |> Serialization.rlp_encode(:tx)
 
       hashed_key = Hash.hash(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
@@ -206,11 +205,12 @@ defmodule Aecore.Tx.Pool.Worker do
   @spec check_address_tx(list(SignedTx.t()), String.t(), list()) :: list()
   defp check_address_tx([tx | txs], address, user_txs) do
     user_txs =
-      if tx.data.sender == address or tx.data.payload.receiver == address do
+      if Enum.any?(tx.data.senders, fn x -> x == address end) or
+           tx.data.payload.receiver == address do
         [
           tx.data
           |> Map.from_struct()
-          |> Map.put_new(:signature, tx.signature)
+          |> Map.put_new(:signatures, tx.signatures)
           | user_txs
         ]
       else
