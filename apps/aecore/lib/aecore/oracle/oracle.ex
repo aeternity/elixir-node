@@ -17,6 +17,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
+  alias Aecore.Chain.Block
 
   require Logger
 
@@ -79,7 +80,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(Account.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
+  @spec query(Wallet.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
           :ok | :error
   def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
     payload = %{

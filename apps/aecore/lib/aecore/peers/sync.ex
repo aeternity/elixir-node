@@ -13,6 +13,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
   alias Aecore.Chain.Header
+  alias Aecore.Chain.Block
 
   require Logger
 

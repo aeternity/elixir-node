@@ -13,6 +13,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Difficulty
   alias Aeutil.Hash
   alias Aeutil.Serialization
+  alias Aecore.Chain.Chainstate
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
@@ -21,7 +22,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
-          Chainstate.chainstate(),
+          Chainstate.t(),
           list(Block.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(

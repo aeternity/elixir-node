@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 

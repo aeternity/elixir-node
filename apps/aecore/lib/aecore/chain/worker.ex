@@ -79,7 +79,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :current_state)
   end
 
-  @spec top_block_chain_state() :: Chainstate.account_chainstate()
+  @spec top_block_chain_state() :: Chainstate.t()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -224,12 +224,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), Chainstate.t()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: {:ok, ChainState.account_chainstate()} | {:error, String.t()}
+  @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->

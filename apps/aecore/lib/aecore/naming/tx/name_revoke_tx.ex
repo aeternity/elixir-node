@@ -11,6 +11,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 

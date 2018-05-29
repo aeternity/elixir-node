@@ -17,6 +17,7 @@ defmodule Aecore.Chain.Chainstate do
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: Oracle.t()
   @type naming :: Naming.state()
+  @type chain_state_types :: :accounts | :oracles | :naming
 
   @type t :: %Chainstate{
           accounts: accounts(),

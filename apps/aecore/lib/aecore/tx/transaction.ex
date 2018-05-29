@@ -15,6 +15,7 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameRevokeTx
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx

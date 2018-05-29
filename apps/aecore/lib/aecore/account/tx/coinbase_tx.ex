@@ -11,6 +11,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
 
   require Logger
 
@@ -47,23 +48,15 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
 
   def get_chain_state_name, do: nil
 
-  @spec init(payload()) :: CoinbaseTx.t()
+  @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount} = _payload) do
-    %CoinbaseTx{receiver: receiver, amount: amount}
-  end
-
-  @doc """
-  Creates a rewarding CoinbaseTx for the miner that mined the block
-  """
-  @spec create(binary(), integer()) :: payload()
-  def create(receiver, amount) do
     %CoinbaseTx{receiver: receiver, amount: amount}
   end
 
   @doc """
   Checks transactions internal contents validity
   """
-  @spec validate(CoinbaseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%CoinbaseTx{amount: amount, receiver: receiver}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -89,12 +82,12 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           CoinbaseTx.t(),
           DataTx.t()
-        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, String.t()}
   def process_chainstate(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do
     new_accounts_state =
       accounts
@@ -114,10 +107,10 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          CoinbaseTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok
   def preprocess_check(_accounts, %{}, _block_height, _tx, _data_tx) do
@@ -125,12 +118,12 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
   end
 
   @spec deduct_fee(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          CoinbaseTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: AccountStateTree.accounts_state()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, _block_height, _tx, _data_tx, _fee) do
     accounts
   end
