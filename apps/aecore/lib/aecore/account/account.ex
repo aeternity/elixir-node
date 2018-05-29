@@ -87,7 +87,7 @@ defmodule Aecore.Account.Account do
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary()) ::
-          {:ok, SignedTx.t()}
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def spend(receiver, amount, fee, payload) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -97,7 +97,7 @@ defmodule Aecore.Account.Account do
 
   @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
   def create_coinbase_tx(to_acc, value) do
-    payload = CoinbaseTx.create(to_acc, value)
+    payload = %{receiver: to_acc, amount: value}
     data = DataTx.init(CoinbaseTx, payload, [], 0, 0)
     SignedTx.create(data)
   end
@@ -296,7 +296,7 @@ defmodule Aecore.Account.Account do
   end
 
   @spec build_tx(
-          DataTx.payload(),
+          map(),
           DataTx.tx_types(),
           binary(),
           binary(),
@@ -311,8 +311,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given Account state and updates last update block.
   """
-  @spec apply_transfer!(ChainState.account(), non_neg_integer(), integer()) ::
-          ChainState.account()
+  @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
   def apply_transfer!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
 
@@ -323,7 +322,7 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
-  @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
+  @spec apply_nonce!(Account.t(), integer()) :: Account.t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
       throw({:error, "#{__MODULE__}: Invalid nonce"})
