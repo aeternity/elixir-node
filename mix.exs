@@ -6,7 +6,7 @@ defmodule EpochElixir.Mixfile do
       app: :elixir_node,
       apps_path: "apps",
       version: "0.1.0",
-      elixir: "~> 1.6",
+      elixir: "~> 1.6.4",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -61,10 +61,12 @@ defmodule EpochElixir.Mixfile do
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:ex_rlp, "~> 0.2.1"},
-      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
+      {:merkle_patricia_tree,
+       git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
-      {:ranch, github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
+      {:ranch,
+       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
     ]
   end
 end
