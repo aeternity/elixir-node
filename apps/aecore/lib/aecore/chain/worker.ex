@@ -362,12 +362,16 @@ defmodule Aecore.Chain.Worker do
     new_refs =
       0..@max_refs
       |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-        case Enum.at(blocks_data_map[prev].refs, i) do
-          nil ->
+        with true <- Map.has_key?(blocks_data_map, prev),
+             {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
+          [hash | acc]
+        else
+          :error ->
             acc
 
-          hash ->
-            [hash | acc]
+          _ ->
+            Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
+            acc
         end
       end)
       |> Enum.reverse()
@@ -473,6 +477,11 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    if Enum.empty?(blocks_map) do
+      [block_hash] = Map.keys(state.blocks_data_map)
+      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+    end
+
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
 
     blocks_data_map =
@@ -543,7 +552,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.pack_binary(filtered_tx)
+          tx_bin = Serialization.rlp_encode(filtered_tx, :signedtx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)

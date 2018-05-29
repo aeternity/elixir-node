@@ -11,8 +11,8 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
-  alias Aeutil.Serialization
   alias Aeutil.Hash
+  alias Aeutil.Serialization
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
@@ -121,7 +121,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.pack_binary(header)
+    block_header_bin = Serialization.header_to_binary(header)
     Hash.hash(block_header_bin)
   end
 
@@ -152,7 +152,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = Serialization.pack_binary(transaction.data)
+          transaction_data_bin = Serialization.rlp_encode(transaction.data, :tx)
           {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 
