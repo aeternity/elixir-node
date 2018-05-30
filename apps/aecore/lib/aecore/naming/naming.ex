@@ -159,7 +159,7 @@ defmodule Aecore.Naming.Naming do
     {:error, "Wrong data"}
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :naming_state | :name_commitment) ::
           binary() | {:error, String.t()}
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
     list = [

@@ -108,7 +108,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
@@ -142,7 +142,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.

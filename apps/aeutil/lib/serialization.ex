@@ -44,7 +44,7 @@ defmodule Aeutil.Serialization do
           type: atom()
         }
 
-  @spec block(Block.t() | map(), :serialize | :deserialize) :: map() | Block.t()
+  @spec block(Block.t(), :serialize) :: map()
   def block(%Block{} = block, :serialize) do
     serialized_header = serialize_value(block.header)
     serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
@@ -52,6 +52,7 @@ defmodule Aeutil.Serialization do
     Map.put(serialized_header, "transactions", serialized_txs)
   end
 
+  @spec block(map(), :deserialize) :: Block.t()
   def block(%{} = block, :deserialize) do
     txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
 
