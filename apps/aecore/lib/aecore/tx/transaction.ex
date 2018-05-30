@@ -20,8 +20,8 @@ defmodule Aecore.Tx.Transaction do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Account.Tx.CoinbaseTx
   alias Aecore.Chain.Chainstate
+
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -38,7 +38,6 @@ defmodule Aecore.Tx.Transaction do
           | NameUpdateTx.t()
           | NameTransferTx.t()
           | NameRevokeTx.t()
-          | CoinbaseTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

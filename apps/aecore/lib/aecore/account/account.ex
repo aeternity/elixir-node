@@ -20,7 +20,6 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
-  alias Aecore.Account.Tx.CoinbaseTx
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -93,13 +92,6 @@ defmodule Aecore.Account.Account do
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload)
-  end
-
-  @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
-  def create_coinbase_tx(to_acc, value) do
-    payload = %{receiver: to_acc, amount: value}
-    data = DataTx.init(CoinbaseTx, payload, [], 0, 0)
-    SignedTx.create(data)
   end
 
   @doc """

@@ -4,11 +4,9 @@ defmodule Aecore.Chain.BlockValidation do
   """
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
   alias Aeutil.Hash
@@ -39,7 +37,8 @@ defmodule Aecore.Chain.BlockValidation do
           Chainstate.calculate_and_validate_chain_state(
             new_block.txs,
             old_chain_state,
-            new_block.header.height
+            new_block.header.height,
+            new_block.header.miner
           )
 
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
@@ -75,8 +74,6 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
   def single_validate_block(block) do
-    coinbase_transactions_sum = sum_coinbase_transactions(block)
-    total_fees = Miner.calculate_total_fees(block.txs)
     server = self()
     work = fn -> Cuckoo.verify(block.header) end
 
@@ -98,10 +95,6 @@ defmodule Aecore.Chain.BlockValidation do
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         {:error, "#{__MODULE__}: One or more transactions not valid"}
-
-      coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
-        {:error, "#{__MODULE__}: Sum of coinbase transactions amounts exceeds
-             the maximum coinbase transactions amount"}
 
       block.header.version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
@@ -128,10 +121,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || :ok == SignedTx.validate(tx)
-    end)
+    block.txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -162,24 +152,6 @@ defmodule Aecore.Chain.BlockValidation do
         :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
       end)
     end
-  end
-
-  @spec sum_coinbase_transactions(Block.t()) :: non_neg_integer()
-  defp sum_coinbase_transactions(block) do
-    txs_list_only_spend_txs =
-      Enum.filter(block.txs, fn tx ->
-        match?(%SpendTx{}, tx.data)
-      end)
-
-    txs_list_only_spend_txs
-    |> Enum.map(fn tx ->
-      if SignedTx.is_coinbase?(tx) do
-        tx.data.payload.amount
-      else
-        0
-      end
-    end)
-    |> Enum.sum()
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
