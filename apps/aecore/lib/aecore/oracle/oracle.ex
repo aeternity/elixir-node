@@ -49,6 +49,24 @@ defmodule Aecore.Oracle.Oracle do
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
+  ### getters ---------------------------------------------------------
+  def get_owner(oracle), do: oracle.owner
+  def get_query_format(oracle), do: oracle.query_format
+  def get_response_format(oracle), do: oracle.response_format
+  def get_query_fee(oracle), do: oracle.query_fee
+  def get_expires(oracle), do: oracle.expires
+  ### -----------------------------------------------------------------
+  ### setters ---------------------------------------------------------
+  def set_owner(oracle, owner), do: %{oracle | owner: owner}
+  def set_query_format(oracle, query_format), do: %{oracle | query_format: query_format}
+
+  def set_response_format(oracle, response_format),
+    do: %{oracle | response_format: response_format}
+
+  def set_query_fee(oracle, query_fee), do: %{oracle | query_fee: query_fee}
+  def set_expires(oracle, expires), do: %{oracle | expires: expires}
+  ### -----------------------------------------------------------------
+
   @doc """
   Registers an oracle with the given requirements for queries and responses,
   a fee that should be paid by queries and a TTL.
