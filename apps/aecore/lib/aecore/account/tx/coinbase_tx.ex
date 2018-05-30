@@ -85,7 +85,7 @@ defmodule Aecore.Account.Tx.CoinbaseTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          CoinbaseTx.t(),
+          t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, String.t()}
   def process_chainstate(accounts, %{}, block_height, %CoinbaseTx{} = tx, _data_tx) do

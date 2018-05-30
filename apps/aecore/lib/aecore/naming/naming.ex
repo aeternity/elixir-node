@@ -3,7 +3,6 @@ defmodule Aecore.Naming.Naming do
   Aecore naming module implementation.
   """
 
-  alias Aecore.Naming.Naming
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
   alias Aecore.Wallet.Worker, as: Wallet
@@ -98,8 +97,7 @@ defmodule Aecore.Naming.Naming do
       :pointers => []
     }
 
-  @spec create_commitment_hash(String.t(), Naming.salt()) ::
-          {:ok, binary()} | {:error, String.t()}
+  @spec create_commitment_hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
     case NameUtil.normalized_namehash(name) do
       {:ok, hash} ->

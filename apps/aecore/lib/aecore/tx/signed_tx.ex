@@ -22,14 +22,6 @@ defmodule Aecore.Tx.SignedTx do
           signatures: list(Wallet.pubkey())
         }
 
-  @doc """
-  Definition of Aecore SignedTx structure
-
-  ## Parameters
-     - data: Aecore %SpendTx{} structure
-     - signature: Signed %SpendTx{} with the private key of the sender
-  """
-
   defstruct [:data, :signatures]
   use ExConstructor
 
@@ -78,7 +70,7 @@ defmodule Aecore.Tx.SignedTx do
 
   """
 
-  @spec sign_tx(DataTx.t() | t(), binary(), binary()) :: {:ok, t()} | {:error, binary()}
+  @spec sign_tx(DataTx.t() | t(), binary(), binary()) :: {:ok, t()} | {:error, String.t()}
   def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
     signatures =
       for _ <- DataTx.senders(tx) do

@@ -12,12 +12,10 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
-  alias Aecore.Chain.Block
 
   require Logger
 
