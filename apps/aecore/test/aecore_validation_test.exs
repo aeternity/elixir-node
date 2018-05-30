@@ -120,16 +120,14 @@ defmodule AecoreValidationTest do
     amount = 5
     fee = 1
 
-    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
-    payload1 = %{receiver: ctx.receiver, amount: amount}
-    tx1 = DataTx.init(SpendTx, payload1, sender, fee, nonce + 1)
-
-    payload2 = %{receiver: ctx.receiver, amount: amount + 5}
-    tx2 = DataTx.init(SpendTx, payload2, sender, fee, nonce + 2)
-
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
+
+    {:ok, signed_tx1} =
+      Account.spend(sender, priv_key, ctx.receiver, amount, fee, nonce + 1, <<"payload">>)
+
+    {:ok, signed_tx2} =
+      Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
     block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
 
@@ -144,13 +142,13 @@ defmodule AecoreValidationTest do
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     fee = 10
 
-    payload = %{receiver: receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, nonce)
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
+
+    {:ok, signed_tx} =
+      Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
 
     Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
-    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Miner.candidate())
+    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
     new_block
   end
 

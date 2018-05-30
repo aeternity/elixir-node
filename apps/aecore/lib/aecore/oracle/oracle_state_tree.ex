@@ -4,132 +4,137 @@ defmodule Aecore.Oracle.OracleStateTree do
   """
   alias Aecore.Oracle.Oracle
   alias Aeutil.PatriciaMerkleTree
+  alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Wallet.Worker, as: Wallet
 
-  @type oracles_state :: Trie.t()
+  #  @type oracles_state :: Trie.t()
+  @type oracles_state :: %{otree: Trie.t(), ctree: Trie.t()}
   @type hash :: binary()
+
+  @dummy_val <<0>>
 
   @spec init_empty() :: oracles_state()
   def init_empty do
-    :oracles
-    |> PatriciaMerkleTree.new()
-    |> init_static_oracle_key()
+    %{otree: PatriciaMerkleTree.new(:oracles), ctree: PatriciaMerkleTree.new(:oracles_cache)}
   end
 
-  @spec get_registered_oracles(oracles_state()) :: Oracle.registered_oracles()
-  def get_registered_oracles(trie) do
-    {:ok, value} =
-      trie
-      |> PatriciaMerkleTree.lookup(serialize_key(:registered_oracles))
-
-    deserialize_value(value)
+  def prune(tree, block_height) do
+    # [{account_pubkey, expires}]
+    expired_oracles = get_expited_oracle_ids(tree, block_height - 1)
+    initialize_deletion(tree, expired_oracles)
   end
 
-  @spec get_registered_oracle_by_key(oracles_state(), Wallet.pubkey()) :: OracleRegistrationTx.t()
-  def get_registered_oracle_by_key(trie, key) do
-    registered_oracle =
-      trie
-      |> get_registered_oracles()
-      |> Map.get(key)
-
-    registered_oracle.tx
-  end
-
-  @spec get_interaction_objects(oracles_state()) :: Oracle.interaction_objects()
-  def get_interaction_objects(trie) do
-    {:ok, value} =
-      trie
-      |> PatriciaMerkleTree.lookup(serialize_key(:interaction_objects))
-
-    deserialize_value(value)
-  end
-
-  def get_interaction_object_by_key(trie, key) do
-    trie
-    |> get_interaction_objects()
-    |> Map.get(key)
-  end
-
-  @spec get_oracles_state(oracles_state()) :: Oracle.t()
-  def get_oracles_state(trie) do
-    %{
-      registered_oracles: get_registered_oracles(trie),
-      interaction_objects: get_interaction_objects(trie)
-    }
-  end
-
-  @spec put_registered_oracles(oracles_state(), OracleRegistrationTx.t()) :: oracles_state()
-  def put_registered_oracles(trie, new_oracle) do
-    updated_oracles =
-      trie
-      |> get_registered_oracles()
-      |> Map.merge(new_oracle)
-
-    oracles_serialized = serialize_value(updated_oracles)
-    key_serialized = serialize_key(:registered_oracles)
-    PatriciaMerkleTree.enter(trie, key_serialized, oracles_serialized)
-  end
-
-  def put_interaction_objects(trie, new_object) do
-    updated_iteraction_objects =
-      trie
-      |> get_interaction_objects()
-      |> Map.merge(new_object)
-
-    objects_serialized = serialize_value(updated_iteraction_objects)
-    key_serialized = serialize_key(:interaction_objects)
-    PatriciaMerkleTree.enter(trie, key_serialized, objects_serialized)
-  end
-
-  @spec delete_registered_oracle(oracles_state(), Wallet.pubkey()) :: oracles_state()
-  def delete_registered_oracle(trie, key) do
-    serialized_value =
-      trie
-      |> get_registered_oracles
-      |> Map.delete(key)
-      |> serialize_value()
-
-    serialized_key = serialize_key(:registered_oracles)
-    PatriciaMerkleTree.enter(trie, serialized_key, serialized_value)
-  end
-
-  @spec delete_interaction_object(oracles_state(), binary()) :: oracles_state()
-  def delete_interaction_object(trie, key) do
-    serialized_value =
-      trie
-      |> get_interaction_objects()
-      |> Map.delete(key)
-      |> serialize_value()
-
-    serialized_key = serialize_key(:interaction_objects)
-    PatriciaMerkleTree.enter(trie, serialized_key, serialized_value)
-  end
-
-  @spec has_key?(oracles_state(), Wallet.pubkey()) :: boolean()
-  def has_key?(trie, key) do
-    PatriciaMerkleTree.lookup(trie, key) != :none
-  end
-
-  defp init_static_oracle_key(trie) do
-    Enum.reduce(Oracle.oracles_fields(), trie, fn oracle_key, acc_trie ->
-      serialized_key = serialize_key(oracle_key)
-      serialized_value = serialize_value(%{})
-      PatriciaMerkleTree.enter(acc_trie, serialized_key, serialized_value)
+  defp initialize_deletion(tree, expired_oracles) do
+    #    expired_cache = get_expited_cache_ids(expired_oracles)
+    Enum.reduce(expired_oracles, tree, fn {account_pubkey, expires} = exp, acc_tree ->
+      new_otree = delete(acc_tree.otree, account_pubkey)
     end)
   end
 
-  defp serialize_key(key) do
-    to_string(key)
+  ### ===================================================================
+  ### Oracles API
+  ### ===================================================================
+  def enter_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :enter)
   end
 
-  defp serialize_value(value) do
-    # Must be done using RPL encoding when is done GH-335
-    :erlang.term_to_binary(value)
+  def insert_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :insert)
   end
 
-  defp deserialize_value(value) do
-    # Must be done using RPL dencoding when is done GH-335
-    :erlang.binary_to_term(value)
+  def get_oracle(tree, key) do
+    get(tree.otree, key)
+  end
+
+  def lookup_oracle?(tree, key) do
+    case PatriciaMerkleTree.lookup(tree.otree, key) do
+      {:ok, _} -> true
+      _ -> false
+    end
+  end
+
+  ### ===================================================================
+  ### Query / Interaction objects  API
+  ### ===================================================================
+
+  ### ===================================================================
+  ### Internal functions
+  ### ===================================================================
+  ### Oracles ===========================================================
+  defp add_oracle(tree, oracle, how) do
+    id = oracle.owner
+    expires = oracle.expires
+    serialized_oracle = Serialization.rlp_encode(oracle, :registered_oracle)
+
+    new_otree =
+      case how do
+        :insert -> insert(tree.otree, id, serialized_oracle)
+        :enter -> enter(tree.otree, id, serialized_oracle)
+      end
+
+    new_ctree = cache_push(tree.ctree, {:oracle, id}, expires)
+    %{otree: new_otree, ctree: new_ctree}
+  end
+
+  ### Querys ===========================================================
+
+  ### PMT ==============================================================
+
+  defp insert(tree, key, value) do
+    PatriciaMerkleTree.insert(tree, key, value)
+  end
+
+  defp enter(tree, key, value) do
+    PatriciaMerkleTree.enter(tree, key, value)
+  end
+
+  defp delete(tree, key) do
+    PatriciaMerkleTree.delete(tree, key)
+  end
+
+  defp get(tree, key) do
+    case PatriciaMerkleTree.lookup(tree, key) do
+      {:ok, rlp_encoded} ->
+        {:ok, oracle} = Serialization.rlp_decode(rlp_encoded)
+        oracle
+
+      _ ->
+        :none
+    end
+  end
+
+  ### Helper functions ================================================
+
+  defp get_expited_oracle_ids(tree, block_height) do
+    PatriciaMerkleTree.all_keys(tree.otree)
+    |> Enum.reduce([], fn account_pubkey, acc ->
+      expires = get_oracle(tree, account_pubkey).expires
+
+      if expires == block_height do
+        [{account_pubkey, expires}] ++ acc
+      else
+        acc
+      end
+    end)
+  end
+
+  defp get_expited_cache_ids(tree, block_height) do
+    for {account_pubkey, expires_at} <- expired_oracles do
+      cache_key_encode({:oracle, account_pubkey}, expires_at)
+    end
+  end
+
+  defp cache_push(ctree, key, expires) do
+    encoded = cache_key_encode(key, expires)
+    enter(ctree, encoded, @dummy_val)
+  end
+
+  defp cache_key_encode(key, expires) do
+    :sext.encode({expires, key})
+  end
+
+  defp cache_key_decode() do
+    :ok
   end
 end

@@ -53,11 +53,7 @@ defmodule Aecore.Wallet.Worker do
 
   @spec key_size_valid?(pub_key :: binary()) :: boolean()
   def key_size_valid?(pub_key) do
-    if byte_size(pub_key) == get_pub_key_size() do
-      :ok
-    else
-      {:error, "#{__MODULE__}: The key size is not correct, should be 33 bytes."}
-    end
+    byte_size(pub_key) == get_pub_key_size()
   end
 
   @doc """
@@ -106,6 +102,13 @@ defmodule Aecore.Wallet.Worker do
   @spec get_private_key(String.t(), String.t(), opts()) :: binary()
   def get_private_key(derivation_path, password, network) do
     GenServer.call(__MODULE__, {:get_priv_key, {derivation_path, password, network}})
+  end
+
+  @spec to_public_key(privkey()) :: pubkey()
+  def to_public_key(priv_key) when byte_size(priv_key) == 32 do
+    priv_key
+    |> KeyPair.generate_pub_key()
+    |> KeyPair.compress()
   end
 
   ## Server Callbacks

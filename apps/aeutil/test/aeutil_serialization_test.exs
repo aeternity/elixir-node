@@ -51,13 +51,14 @@ defmodule AeutilSerializationTest do
             payload: %SpendTx{
               receiver: receiver,
               amount: 100,
-              version: 1
+              version: 1,
+              payload: <<"some payload">>
             },
-            sender: sender,
+            senders: [sender],
             nonce: 743_183_534_114,
             fee: 40
           },
-          signature: <<1, 2, 3>>
+          signatures: [<<1, 2, 3>>]
         }
       ]
     }
@@ -74,7 +75,8 @@ defmodule AeutilSerializationTest do
             "payload" => %{
               "receiver" => "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
               "amount" => 100,
-              "version" => 1
+              "version" => 1,
+              "payload" => "some payload"
             },
             "type" => "Elixir.Aecore.Account.Tx.SpendTx"
           },

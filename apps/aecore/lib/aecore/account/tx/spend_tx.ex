@@ -4,6 +4,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
   alias Aecore.Wallet.Worker, as: Wallet
@@ -16,7 +17,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   @type payload :: %{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          version: non_neg_integer()
+          version: non_neg_integer(),
+          payload: binary()
         }
 
   @typedoc "Reason for the error"
@@ -24,13 +26,14 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: %{}
+  @type tx_type_state() :: map()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
           receiver: Wallet.pubkey(),
           amount: non_neg_integer(),
-          version: non_neg_integer()
+          version: non_neg_integer(),
+          payload: binary()
         }
 
   @doc """
@@ -41,7 +44,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   - amount: The amount of tokens send through the transaction
   - version: States whats the version of the Spend Transaction
   """
-  defstruct [:receiver, :amount, :version]
+  defstruct [:receiver, :amount, :version, :payload]
 
   # Callbacks
 
@@ -49,60 +52,62 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_chain_state_name, do: :none
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{receiver: receiver, amount: amount}) do
-    %SpendTx{receiver: receiver, amount: amount, version: get_tx_version()}
+  def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
+    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: version}
   end
 
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec validate(SpendTx.t()) :: :ok | {:error, String.t()}
-  def validate(%SpendTx{amount: amount, receiver: receiver}) do
-    with true <- amount >= 0,
-         :ok <- Wallet.key_size_valid?(receiver) do
-      :ok
-    else
-      false ->
-        {:error, "#{__MODULE__}: The amount cannot be a negative number: #{inspect(amount)}"}
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
+    senders = DataTx.senders(data_tx)
 
-      err ->
-        err
+    cond do
+      tx.amount < 0 ->
+        {:error, "#{__MODULE__}: The amount cannot be a negative number"}
+
+      tx.version != get_tx_version() ->
+        {:error, "#{__MODULE__}: Invalid version"}
+
+      !Wallet.key_size_valid?(receiver) ->
+        {:error, "#{__MODULE__}: Wrong receiver key size"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders number"}
+
+      !is_binary(tx.payload) ->
+        {:error,
+         "#{__MODULE__}: Invalid payload type , expected binary , got: #{inspect(tx.payload)} "}
+
+      true ->
+        :ok
     end
-  end
-
-  @doc """
-  Makes a rewarding SpendTx (coinbase tx) for the miner that mined the next block
-  """
-  @spec reward(SpendTx.t(), Account.t()) :: Account.t()
-  def reward(%SpendTx{} = tx, account_state) do
-    Account.transaction_in(account_state, tx.amount)
   end
 
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
+          AccountStateTree.accounts_state(),
+          tx_type_state(),
+          non_neg_integer(),
           SpendTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          AccountStateTree.tree(),
-          tx_type_state()
-        ) :: {AccountStateTree.tree(), tx_type_state()}
-  def process_chainstate(%SpendTx{} = tx, sender, fee, nonce, _block_height, accounts, %{}) do
-    sender_account_state = Account.get_account_state(accounts, sender)
+          DataTx.t()
+        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
+    sender = DataTx.main_sender(data_tx)
 
-    new_sender_account_state =
-      sender_account_state
-      |> deduct_fee(fee)
-      |> Account.transaction_out(tx.amount * -1, nonce)
+    new_accounts =
+      accounts
+      |> AccountStateTree.update(sender, fn acc ->
+        Account.apply_transfer!(acc, block_height, tx.amount * -1)
+      end)
+      |> AccountStateTree.update(tx.receiver, fn acc ->
+        Account.apply_transfer!(acc, block_height, tx.amount)
+      end)
 
-    new_accounts = AccountStateTree.put(accounts, sender, new_sender_account_state)
-    receiver = Account.get_account_state(accounts, tx.receiver)
-    new_receiver_acc_state = Account.transaction_in(receiver, tx.amount)
-
-    {AccountStateTree.put(new_accounts, tx.receiver, new_receiver_acc_state), %{}}
+    {:ok, {new_accounts, %{}}}
   end
 
   @doc """
@@ -110,27 +115,31 @@ defmodule Aecore.Account.Tx.SpendTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
+          ChainState.account(),
+          tx_type_state(),
+          non_neg_integer(),
           SpendTx.t(),
-          Wallet.pubkey(),
-          AccountStateTree.tree(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          tx_type_state
+          DataTx.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, _sender, account_state, fee, _nonce, _block_height, %{}) do
-    if account_state.balance - (fee + tx.amount) >= 0 do
-      :ok
+  def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
+    sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
+
+    if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
+      {:error, "#{__MODULE__}: Negative balance"}
     else
-      {:error,
-       "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - (fee + tx.amount))}"}
+      :ok
     end
   end
 
-  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          SpendTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

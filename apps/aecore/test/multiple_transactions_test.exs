@@ -59,10 +59,8 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(signed_tx1)
 
     :ok = Miner.mine_sync_block_to_chain()
-    Pool.get_and_empty_pool()
-
+    assert %{} == Pool.get_and_empty_pool()
     assert 100 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
-
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
     signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)
@@ -70,7 +68,7 @@ defmodule MultipleTransactionsTest do
     assert :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()
 
-    Pool.get_and_empty_pool()
+    assert %{} == Pool.get_and_empty_pool()
     last_updated_height = Chain.top_height()
 
     # Check for last_updated
@@ -127,7 +125,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    Pool.get_and_empty_pool()
+    assert %{} == Pool.get_and_empty_pool()
 
     # Check for last_updated
     assert Chain.top_height() ==
@@ -150,6 +148,7 @@ defmodule MultipleTransactionsTest do
   @tag :multiple_transaction
   test "in one block, miner collects all the fees from the transactions", setup do
     Chain.clear_state()
+    Pool.get_and_empty_pool()
 
     account = setup.account
     account2 = setup.account2
@@ -163,7 +162,7 @@ defmodule MultipleTransactionsTest do
     :ok = Miner.mine_sync_block_to_chain()
     :ok = Miner.mine_sync_block_to_chain()
 
-    Pool.get_and_empty_pool()
+    assert %{} == Pool.get_and_empty_pool()
 
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
@@ -176,7 +175,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    Pool.get_and_empty_pool()
+    assert %{} == Pool.get_and_empty_pool()
 
     # Check for last_updated
     assert Chain.top_height() ==
@@ -196,7 +195,7 @@ defmodule MultipleTransactionsTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    Pool.get_and_empty_pool()
+    assert %{} == Pool.get_and_empty_pool()
 
     miner_balance_after_mining =
       Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
@@ -209,10 +208,17 @@ defmodule MultipleTransactionsTest do
     {sender_pub_key, sender_priv_key} = sender
     {receiver_pub_key, _receiver_priv_key} = receiver
 
-    payload = %{receiver: receiver_pub_key, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender_pub_key, fee, nonce)
+    {:ok, signed_tx} =
+      Account.spend(
+        sender_pub_key,
+        sender_priv_key,
+        receiver_pub_key,
+        amount,
+        fee,
+        nonce,
+        <<"payload">>
+      )
 
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender_priv_key)
     signed_tx
   end
 end

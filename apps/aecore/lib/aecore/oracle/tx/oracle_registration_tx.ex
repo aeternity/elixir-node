@@ -7,12 +7,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Tx.DataTx
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -55,80 +53,101 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
-  @spec validate(OracleRegistrationTx.t()) :: :ok | {:error, String.t()}
-  def validate(%OracleRegistrationTx{
-        query_format: query_format,
-        response_format: response_format,
-        ttl: ttl
-      }) do
+  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(
+        %OracleRegistrationTx{
+          query_format: query_format,
+          response_format: response_format,
+          ttl: ttl
+        },
+        data_tx
+      ) do
+    senders = DataTx.senders(data_tx)
+
     formats_valid =
       try do
         JsonSchema.resolve(query_format)
         JsonSchema.resolve(response_format)
-        :ok
+        true
       rescue
-        e ->
-          {:error, "#{__MODULE__}: Invalid query or response format definition - #{inspect(e)}"}
+        _ ->
+          false
       end
 
-    Oracle.ttl_is_valid?(ttl) && formats_valid
+    cond do
+      ttl <= 0 ->
+        {:error, "#{__MODULE__}: Invalid ttl"}
+
+      !formats_valid ->
+        {:error, "#{__MODULE__}: Invalid query or response format definition"}
+
+      !Oracle.ttl_is_valid?(ttl) ->
+        {:error, "#{__MODULE__}: Invald ttl"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders number"}
+
+      true ->
+        :ok
+    end
   end
 
   @spec process_chainstate(
+          AccountsStateTree.accounts_state(),
+          Oracle.oracles(),
+          non_neg_integer(),
           OracleRegistrationTx.t(),
-          Wallet.pubkey(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          AccountStateTree.tree(),
-          OracleStateTree.oracle_state()
-        ) :: {AccountStateTree.tree(), Oracle.t()}
+          DataTx.t()
+        ) :: {:ok, {AccountsStateTree.accounts_state(), Oracle.oracles()}}
   def process_chainstate(
-        %OracleRegistrationTx{} = tx,
-        sender,
-        fee,
-        nonce,
-        block_height,
         accounts,
-        registered_oracles
+        oracles,
+        block_height,
+        %OracleRegistrationTx{} = tx,
+        data_tx
       ) do
-    new_sender_account_state =
-      accounts
-      |> Account.get_account_state(sender)
-      |> deduct_fee(fee)
-      |> Map.put(:nonce, nonce)
+    sender = DataTx.main_sender(data_tx)
 
-    updated_accounts_chainstate = AccountStateTree.put(accounts, sender, new_sender_account_state)
+    oracle = %{
+      owner: sender,
+      query_format: tx.query_format,
+      response_format: tx.response_format,
+      query_fee: tx.query_fee,
+      expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
+    }
 
-    updated_oracle_chainstate =
-      OracleStateTree.put_registered_oracles(registered_oracles, %{
-        sender => %{
-          tx: tx,
-          height_included: block_height
-        }
-      })
-
-    {updated_accounts_chainstate, updated_oracle_chainstate}
+    {:ok,
+     {
+       accounts,
+       OracleStateTree.insert_oracle(oracles, oracle)
+     }}
   end
 
   @spec preprocess_check(
+          AccountsStateTree.accounts_state(),
+          Oracle.oracles(),
+          non_neg_integer(),
           OracleRegistrationTx.t(),
-          Wallet.pubkey(),
-          Account.t(),
-          non_neg_integer(),
-          non_neg_integer(),
-          non_neg_integer(),
-          OracleStateTree.oracle_state()
+          DataTx.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(tx, sender, account_state, fee, _nonce, block_height, registered_oracles) do
+  def preprocess_check(
+        accounts,
+        oracles,
+        block_height,
+        tx,
+        data_tx
+      ) do
+    sender = DataTx.main_sender(data_tx)
+    fee = DataTx.fee(data_tx)
+
     cond do
-      account_state.balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance)}"}
+      AccountStateTree.get(accounts, sender).balance - fee < 0 ->
+        {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      OracleStateTree.has_key?(registered_oracles, sender) ->
+      OracleStateTree.lookup_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->
@@ -139,10 +158,15 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     end
   end
 
-  @spec deduct_fee(Account.t(), non_neg_integer()) :: Account.t()
-  def deduct_fee(account_state, fee) do
-    new_balance = account_state.balance - fee
-    Map.put(account_state, :balance, new_balance)
+  @spec deduct_fee(
+          ChainState.accounts(),
+          non_neg_integer(),
+          OracleExtendTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: ChainState.account()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::

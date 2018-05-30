@@ -14,10 +14,10 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
+  alias Aeutil.Serialization
+  alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
 
   require Logger
 
@@ -25,7 +25,6 @@ defmodule Aecore.Oracle.Oracle do
 
   @type json_schema :: map()
   @type json :: any()
-  @oracles_fields [:registered_oracles, :interaction_objects]
 
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
@@ -50,10 +49,6 @@ defmodule Aecore.Oracle.Oracle do
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
-  defstruct @oracles_fields
-
-  def oracles_fields, do: @oracles_fields
-
   @doc """
   Registers an oracle with the given requirements for queries and responses,
   a fee that should be paid by queries and a TTL.
@@ -77,7 +72,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -105,7 +100,13 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} =
+      SignedTx.sign_tx(
+        tx_data,
+        Wallet.get_public_key(),
+        Wallet.get_private_key()
+      )
+
     Pool.add_transaction(tx)
   end
 
@@ -129,7 +130,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -148,7 +149,7 @@ defmodule Aecore.Oracle.Oracle do
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
   end
 
@@ -227,79 +228,67 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def remove_expired_oracles(chain_state, block_height) do
-    registered_oracles = OracleStateTree.get_registered_oracles(chain_state.oracles)
+  def prune(chainstate, block_height) do
+    OracleStateTree.prune(chainstate.oracles, block_height)
+    chainstate
+  end
 
-    Enum.reduce(registered_oracles, chain_state, fn {address,
-                                                     %{
-                                                       tx: tx,
-                                                       height_included: height_included
-                                                     }},
-                                                    acc ->
-      if calculate_absolute_ttl(tx.ttl, height_included) <= block_height do
-        updated_oracles = OracleStateTree.delete_registered_oracle(acc.oracles, address)
-        %{acc | oracles: updated_oracles}
+  def remove_expired_oracles(chainstate, block_height) do
+    # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
+    #    OracleStateTree.prune(chainstate.oracles, block_height)
+    # %{chainstate | oracles: new_oracles_tree}
+    chainstate
+  end
+
+  def remove_expired_oracles1(chain_state, block_height) do
+    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
+                                                                         %{
+                                                                           expires: expiry_height
+                                                                         }},
+                                                                        acc ->
+      if expiry_height <= block_height do
+        acc
+        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
+        |> elem(1)
       else
         acc
       end
     end)
   end
 
-  def remove_expired_interaction_objects(
+  def remove_expired_interaction_objects(chainstate, block_height) do
+    # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
+    # %{chainstate | oracles: new_oracles_tree}
+    chainstate
+  end
+
+  def remove_expired_interaction_objects1(
         chain_state,
         block_height
       ) do
-    interaction_objects = OracleStateTree.get_interaction_objects(chain_state.oracles)
+    interaction_objects = chain_state.oracles.interaction_objects
 
     Enum.reduce(interaction_objects, chain_state, fn {query_id,
                                                       %{
-                                                        query: query,
-                                                        query_sender: query_sender,
-                                                        response: response,
-                                                        query_height_included:
-                                                          query_height_included,
-                                                        response_height_included:
-                                                          response_height_included
+                                                        sender_address: sender_address,
+                                                        has_response: has_response,
+                                                        expires: expires,
+                                                        fee: fee
                                                       }},
                                                      acc ->
-      query_absolute_ttl =
-        calculate_absolute_ttl(
-          query.query_ttl,
-          query_height_included
-        )
-
-      query_has_expired = query_absolute_ttl <= block_height && response == nil
-
-      response_has_expired =
-        if response != nil do
-          response_absolute_ttl =
-            calculate_absolute_ttl(query.query_ttl, response_height_included)
-
-          response_absolute_ttl <= block_height
-        else
-          false
-        end
-
-      cond do
-        query_has_expired ->
-          account_state = Account.get_account_state(acc.accounts, query_sender)
-          new_balance = account_state.balance + query.query_fee
-          updated_account_state = %{account_state | balance: new_balance}
-
-          updated_account_tree =
-            AccountStateTree.put(acc.accounts, query_sender, updated_account_state)
-
-          acc = %{acc | accounts: updated_account_tree}
-
-          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
-          %{acc | oracles: updated_oracles}
-
-        response_has_expired ->
-          updated_oracles = OracleStateTree.delete_interaction_object(acc.oracles, query_id)
-          %{acc | oracles: updated_oracles}
-
-        true ->
+      if expires <= block_height do
+        updated_state =
           acc
+          |> pop_in([:oracles, :interaction_objects, query_id])
+          |> elem(1)
+
+        if has_response do
+          updated_state
+        else
+          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
+        end
+      else
+        acc
       end
     end)
   end
@@ -312,5 +301,121 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl > 0
     end
+  end
+
+  @spec rlp_encode(
+          non_neg_integer(),
+          non_neg_integer(),
+          map(),
+          :registered_oracle | :interaction_object
+        ) :: binary()
+  def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
+    list = [
+      tag,
+      version,
+      registered_oracle.owner,
+      Serialization.transform_item(registered_oracle.query_format),
+      Serialization.transform_item(registered_oracle.response_format),
+      registered_oracle.query_fee,
+      registered_oracle.expires
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(tag, version, %{} = interaction_object, :interaction_object) do
+    has_response =
+      case interaction_object.has_response do
+        true -> 1
+        false -> 0
+      end
+
+    response =
+      case interaction_object.response do
+        :undefined -> Parser.to_string(:undefined)
+        %DataTx{type: OracleResponseTx} = data -> data
+      end
+
+    list = [
+      tag,
+      version,
+      interaction_object.sender_address,
+      interaction_object.sender_nonce,
+      interaction_object.oracle_address,
+      Serialization.transform_item(interaction_object.query),
+      has_response,
+      response,
+      interaction_object.expires,
+      interaction_object.response_ttl,
+      interaction_object.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
+  end
+
+  @spec rlp_decode(list()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
+  def rlp_decode(
+        [orc_owner, query_format, response_format, query_fee, expires],
+        :registered_oracle
+      ) do
+    {:ok,
+     %{
+       owner: orc_owner,
+       query_format: Serialization.transform_item(query_format, :binary),
+       response_format: Serialization.transform_item(response_format, :binary),
+       query_fee: Serialization.transform_item(query_fee, :int),
+       expires: Serialization.transform_item(expires, :int)
+     }}
+  end
+
+  def rlp_decode(
+        [
+          sender_address,
+          sender_nonce,
+          oracle_address,
+          query,
+          has_response,
+          response,
+          expires,
+          response_ttl,
+          fee
+        ],
+        :interaction_object
+      ) do
+    has_response =
+      case Serialization.transform_item(has_response, :int) do
+        1 -> true
+        0 -> false
+      end
+
+    {:ok,
+     %{
+       expires: Serialization.transform_item(expires, :int),
+       fee: Serialization.transform_item(fee, :int),
+       has_response: has_response,
+       oracle_address: oracle_address,
+       query: Serialization.transform_item(query, :binary),
+       response: response,
+       response_ttl: Serialization.transform_item(response_ttl, :int),
+       sender_address: sender_address,
+       sender_nonce: Serialization.transform_item(sender_nonce, :int)
+     }}
+  end
+
+  def rlp_decode(_) do
+    {:error,
+     "#{__MODULE__}Illegal Registered oracle state / Oracle interaction object serialization"}
   end
 end

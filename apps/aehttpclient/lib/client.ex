@@ -16,8 +16,6 @@ defmodule Aehttpclient.Client do
   @typedoc "Client request identifier"
   @type req_kind :: :default | :pool_txs | :acc_txs | :info | :block | :raw_blocks
 
-  @spec handle_response(req_kind(), map(), list(map())) :: {:ok, map()}
-
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
@@ -59,11 +57,11 @@ defmodule Aehttpclient.Client do
 
   @spec send_tx(SignedTx.t(), list(binary())) :: :ok
   def send_tx(tx, peers) do
-    data = Serialization.tx(tx, :serialize)
+    data = SignedTx.serialize(tx)
     post_to_peers("tx", data, peers)
   end
 
-  @spec post_to_peers(String.t(), binary(), list(String.t())) :: :ok
+  @spec post_to_peers(String.t(), SignedTx.t(), list(String.t())) :: :ok
   defp post_to_peers(uri, data, peers) do
     Enum.each(peers, fn peer ->
       post(peer, data, uri)
@@ -95,6 +93,7 @@ defmodule Aehttpclient.Client do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end
 
+  @spec handle_response(req_kind(), map() | list(), list(map())) :: {:ok, map()}
   defp handle_response(:block, body, _headers) do
     response = Poison.decode!(body)
     {:ok, response}
@@ -132,7 +131,7 @@ defmodule Aehttpclient.Client do
     response =
       body
       |> Poison.decode!()
-      |> Enum.map(fn tx -> Serialization.tx(tx, :deserialize) end)
+      |> Enum.map(fn tx -> SignedTx.deserialize(tx) end)
 
     {:ok, response}
   end
