@@ -49,6 +49,36 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
+  ### getter -----------------------------------------------------------
+  def get_sender_address(oracle_query), do: oracle_query.sender_address
+  def get_sender_nonce(oracle_query), do: oracle_query.sender_nonce
+  def get_oracle_address(oracle_query), do: oracle_query.oracle_address
+  def get_query(oracle_query), do: oracle_query.query
+  def get_response(oracle_query), do: oracle_query.response
+  def get_expires(oracle_query), do: oracle_query.expires
+  def get_response_ttl(oracle_query), do: oracle_query.response_ttl
+  def get_fee(oracle_query), do: oracle_query.fee
+  ### ------------------------------------------------------------------
+  ### setter -----------------------------------------------------------
+  def set_sender_address(oracle_query, sender_address),
+    do: %{oracle_query | sender_address: sender_address}
+
+  def set_sender_nonce(oracle_query, sender_nonce),
+    do: %{oracle_query | sender_nonce: sender_nonce}
+
+  def set_oracle_address(oracle_query, oracle_address),
+    do: %{oracle_query | oracle_address: oracle_address}
+
+  def set_query(oracle_query, query), do: %{oracle_query | query: query}
+  def set_response(oracle_query, response), do: %{oracle_query | response: response}
+  def set_expires(oracle_query, expires), do: %{oracle_query | expires: expires}
+
+  def set_response_ttl(oracle_query, response_ttl),
+    do: %{oracle_query | response_ttl: response_ttl}
+
+  def set_fee(oracle_query, fee), do: %{oracle_query | fee: fee}
+  ### ------------------------------------------------------------------
+
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
         oracle_address: oracle_address,
