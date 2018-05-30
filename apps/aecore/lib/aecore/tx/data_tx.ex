@@ -214,7 +214,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec serialize(t()) :: map()
+  @spec serialize(map()) :: map()
   def serialize(%DataTx{} = tx) do
     map_without_senders = %{
       "type" => Serialization.serialize_value(tx.type),

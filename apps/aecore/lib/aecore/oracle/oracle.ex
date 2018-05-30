@@ -341,7 +341,8 @@ defmodule Aecore.Oracle.Oracle do
     {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
+  @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
+          {:ok, map()} | {:error, String.t()}
   def rlp_decode(
         [orc_owner, query_format, response_format, query_fee, expires],
         :registered_oracle

@@ -43,15 +43,16 @@ defmodule Aeutil.Serialization do
           txs_hash: binary(),
           type: atom()
         }
+
   @spec block(Block.t() | map(), :serialize | :deserialize) :: map() | Block.t()
-  def block(block, :serialize) do
+  def block(%Block{} = block, :serialize) do
     serialized_header = serialize_value(block.header)
     serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
 
     Map.put(serialized_header, "transactions", serialized_txs)
   end
 
-  def block(block, :deserialize) do
+  def block(%{} = block, :deserialize) do
     txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
@@ -364,8 +365,17 @@ defmodule Aeutil.Serialization do
     Enum.reverse(acc)
   end
 
-  @spec rlp_encode(Account.t() | DataTx.t() | map(), :tx | :ac | :ro | :io | :signedtx) ::
-          binary | {:error, String.t()}
+  @spec rlp_encode(
+          Account.t() | DataTx.t() | map(),
+          :tx
+          | :account_state
+          | :registered_oracle
+          | :interaction_object
+          | :naming_state
+          | :name_commitment
+          | :block
+          | :signedtx
+        ) :: binary | {:error, String.t()}
   def rlp_encode(%DataTx{} = term, :tx) do
     with {:ok, tag} <- type_to_tag(term.type),
          {:ok, version} <- get_version(term.type),

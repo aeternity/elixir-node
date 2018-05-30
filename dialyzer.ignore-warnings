@@ -57,6 +57,16 @@ Function 'should_a_peer_be_added?'/1 will never be called
 Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
 Function block_by_hash/2 has no local return
 
+Overloaded contract for 'Elixir.Aecore.Naming.NameUtil':validate_label_length/1 has overlapping domains; such contracts are currently unsupported and are simply ignored
+Overloaded contract for 'Elixir.Aecore.Wallet.Worker':has_wallet/2 has overlapping domains; such contracts are currently unsupported and are simply ignored
+
+#### Wrong spec type in the function called Exexec.send
+The call 'Elixir.Exexec':send(Vospid@1::non_neg_integer(),'eof') breaks the contract (pid() | os_pid(),binary()) -> 'ok'
+
+#### We will fix this after chainstate becomes a PMT!!!  
+The call 'Elixir.Aeutil.Serialization':remove_struct(Vchain_states@1::{'error',_} | {'ok',map()}) breaks the contract ([any()]) -> [any()]; (map()) -> map() in the 1st argument
+
+
 
 
 
