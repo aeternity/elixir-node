@@ -178,7 +178,7 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec tx_ttl_is_valid?(oracle_txs_with_ttl(), non_neg_integer()) :: boolean
+  @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
       %OracleRegistrationTx{} ->

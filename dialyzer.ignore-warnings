@@ -29,48 +29,34 @@
 :0: Unknown function base58:binary_to_base58/1
 :0: Unknown function enacl:generichash/2
 :0: Unknown function sha3:hash/2
-apps/aecore/lib/aecore/account/account_state_tree.ex:21: Function put/3 has no local return
-apps/aecore/lib/aecore/account/account_state_tree.ex:40: Function update/3 has no local return
-apps/aecore/lib/aecore/account/tx/spend_tx.ex:100: Function process_chainstate/5 has no local return
-apps/aecore/lib/aecore/account/tx/spend_tx.ex:108: The created fun has no local return
-apps/aecore/lib/aecore/account/tx/spend_tx.ex:143: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/chain/worker.ex:483: The created fun has no local return
-apps/aecore/lib/aecore/naming/tx/name_claim_tx.ex:165: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/naming/tx/name_pre_claim_tx.ex:137: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/naming/tx/name_revoke_tx.ex:149: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/naming/tx/name_transfer_tx.ex:150: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/naming/tx/name_update_tx.ex:181: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_extend_tx.ex:118: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_query_tx.ex:111: Function process_chainstate/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_query_tx.ex:203: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_registration_tx.ex:173: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_response_tx.ex:74: Function process_chainstate/5 has no local return
-apps/aecore/lib/aecore/oracle/tx/oracle_response_tx.ex:162: Function deduct_fee/5 has no local return
-apps/aecore/lib/aecore/peers/sync.ex:119: The created fun has no local return
-apps/aecore/lib/aecore/peers/sync.ex:142: The created fun has no local return
-apps/aecore/lib/aecore/peers/sync.ex:292: The created fun has no local return
-apps/aecore/lib/aecore/peers/sync.ex:298: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:101: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:111: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:133: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:178: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:268: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:282: The created fun has no local return
-apps/aecore/lib/aecore/peers/worker.ex:302: Function check_peer/2 has no local return
-apps/aecore/lib/aecore/tx/data_tx.ex:264: Function standard_deduct_fee/4 has no local return
-apps/aecore/lib/aecore/tx/pool/worker.ex:118: The created fun has no local return
-apps/aehttpclient/lib/client.ex:20: Function get_info/1 has no local return
-apps/aehttpclient/lib/client.ex:25: Function get_block/1 has no local return
-apps/aehttpclient/lib/client.ex:38: Function get_raw_blocks/1 has no local return
-apps/aehttpclient/lib/client.ex:48: Function get_pool_txs/1 has no local return
-apps/aehttpclient/lib/client.ex:53: Function send_block/2 has no local return
-apps/aehttpclient/lib/client.ex:59: Function send_tx/2 has no local return
-apps/aehttpclient/lib/client.ex:76: Function get_peers/1 has no local return
-apps/aehttpclient/lib/client.ex:81: Function get_and_add_peers/1 has no local return
-apps/aehttpclient/lib/client.ex:87: Function get_account_balance/1 has no local return
-apps/aehttpclient/lib/client.ex:92: Function get_account_txs/1 has no local return
-apps/aehttpclient/lib/client.ex:145: Function get/1 has no local return
-apps/aehttpclient/lib/client.ex:145: Function get/2 has no local return
-apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:65: The created fun has no local return
-apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:110: The created fun has no local return
+:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
+:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
+:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
+Function put/3 has no local return
+Function update/3 has no local return
+Function process_chainstate/5 has no local return
+The created fun has no local return
+Function deduct_fee/5 has no local return
+Function check_peer/2 has no local return
+Function standard_deduct_fee/4 has no local return
+Function get_info/1 has no local return
+Function get_block/1 has no local return
+Function get_raw_blocks/1 has no local return
+Function get_pool_txs/1 has no local return
+Function send_block/2 has no local return
+Function send_tx/2 has no local return
+Function get_peers/1 has no local return
+Function get_and_add_peers/1 has no local return
+Function get_account_balance/1 has no local return
+Function get_account_txs/1 has no local return
+Function get/1 has no local return
+Function get/2 has no local return
+Function handle_info/2 has no local return
+Function trim_peers/1 will never be called
+Function 'should_a_peer_be_added?'/1 will never be called
+Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
+Function block_by_hash/2 has no local return
+
+
+
 
