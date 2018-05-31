@@ -5,9 +5,9 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -21,7 +21,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameRevokeTx we have the naming subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the NameRevokeTx Transaction type"
   @type t :: %NameRevokeTx{
@@ -30,7 +30,6 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @doc """
   Definition of Aecore NameRevokeTx structure
-
   ## Parameters
   - hash: hash of name to be revoked
   """
@@ -70,12 +69,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Revokes a previously claimed name for one account
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),
           DataTx.t()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
@@ -83,7 +82,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         %NameRevokeTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = Map.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
 
     claim = %{
       claim_to_update
@@ -91,7 +90,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         expires: block_height + Naming.get_revoke_expiration_ttl()
     }
 
-    updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -101,12 +100,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -117,13 +116,13 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = Map.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
-      claim == nil ->
+      claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       claim.owner != sender ->
@@ -139,7 +138,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           NameCaimTx.t(),
           DataTx.t(),
