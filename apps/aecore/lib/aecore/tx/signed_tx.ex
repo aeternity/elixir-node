@@ -7,7 +7,6 @@ defmodule Aecore.Tx.SignedTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Tx.CoinbaseTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -38,11 +37,6 @@ defmodule Aecore.Tx.SignedTx do
 
   def data_tx(%SignedTx{data: data}) do
     data
-  end
-
-  @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(%SignedTx{data: data}) do
-    data.type == CoinbaseTx
   end
 
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
