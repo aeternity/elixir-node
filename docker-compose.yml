@@ -16,10 +16,8 @@ services:
       -e "Aecore.Account.Account.spend(Aecore.Wallet.Worker.get_public_key(\"M/0\"), 20, 10, \"test1\")
         |> (fn({_, tx}) -> tx end).()
         |> Aecore.Tx.Pool.Worker.add_transaction()"
-      -e "Aecore.Account.Account.pre_claim(\"test.aet\", <<1::256>>, 10)
-          |> (fn({_, pre_claim}) -> pre_claim end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-      -e "Aecore.Miner.Worker.resume()"
+      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+      -e "IO.inspect Aecore.Chain.Worker.top_block()"
 
   elixir-node-4001:
       build: .
@@ -34,10 +32,33 @@ services:
         - elixir-node-4001-db:/elixir_node/apps/aecore/priv/rox_db_4001
       stdin_open: true
       tty: true
-      command: 
-        -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"        
-        -e "Aecore.Miner.Worker.resume()"
+      command:       
+        -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
+        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+        -e "Aecore.Account.Account.pre_claim(\"test.aet\", <<1::256>>, 10)
+          |> (fn({_, pre_claim}) -> pre_claim end).()
+          |> Aecore.Tx.Pool.Worker.add_transaction()"
+        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
 
+        -e "Aecore.Account.Account.claim(\"test.aet\", <<1::256>>, 10)
+          |> (fn({_, claim}) -> claim end).()
+          |> Aecore.Tx.Pool.Worker.add_transaction()"
+        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+        -e "IO.puts \"Naming:\"" -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
+
+        -e "Aecore.Account.Account.name_update(\"test.aet\", \"{\\"test\\":2}\", 10) 
+          |> (fn({_, update}) -> update end).()
+          |> Aecore.Tx.Pool.Worker.add_transaction()"
+        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+        -e "IO.puts \"Naming updated:\"" -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
+        
+        -e "Aecore.Wallet.Worker.get_private_key(\"m/0/1\")
+          |> Aecore.Wallet.Worker.to_public_key()
+          |> (fn transfer_to_pub -> Aecore.Account.Account.name_transfer(\"test.aet\", transfer_to_pub, 10) end).()
+          |> (fn({_, transfer_tx}) -> transfer_tx end).()
+          |> Aecore.Tx.Pool.Worker.add_transaction()"
+        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+        -e "IO.puts \"Naming new owner:\"" -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
 
   elixir-node-4002:
       build: .
