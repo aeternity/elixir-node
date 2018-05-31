@@ -4,22 +4,22 @@ defmodule Aecore.Chain.BlockValidation do
   """
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Difficulty
-  alias Aeutil.Serialization
   alias Aeutil.Hash
+  alias Aeutil.Serialization
 
   @time_validation_future_limit_ms 30 * 60 * 1000
+
+  @type tree :: :gb_merkle_trees.tree()
 
   @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
-          Chainstate.account_chainstate(),
+          Chainstate.chainstate(),
           list(Block.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(
@@ -36,7 +36,8 @@ defmodule Aecore.Chain.BlockValidation do
           Chainstate.calculate_and_validate_chain_state(
             new_block.txs,
             old_chain_state,
-            new_block.header.height
+            new_block.header.height,
+            new_block.header.miner
           )
 
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
@@ -72,8 +73,6 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
   def single_validate_block(block) do
-    coinbase_transactions_sum = sum_coinbase_transactions(block)
-    total_fees = Miner.calculate_total_fees(block.txs)
     server = self()
     work = fn -> Cuckoo.verify(block.header) end
 
@@ -96,10 +95,6 @@ defmodule Aecore.Chain.BlockValidation do
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         {:error, "#{__MODULE__}: One or more transactions not valid"}
 
-      coinbase_transactions_sum > Miner.coinbase_transaction_amount() + total_fees ->
-        {:error, "#{__MODULE__}: Sum of coinbase transactions amounts exceeds
-             the maximum coinbase transactions amount"}
-
       block.header.version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
 
@@ -119,38 +114,35 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.pack_binary(header)
+    block_header_bin = Serialization.header_to_binary(header)
     Hash.hash(block_header_bin)
   end
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) || :ok == SignedTx.validate(tx)
-    end)
+    block.txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
-  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  @spec calculate_txs_hash([]) :: binary()
   def calculate_txs_hash(txs) when txs == [] do
     <<0::256>>
   end
 
-  @spec calculate_txs_hash(list(SignedTx.t())) :: binary()
+  @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
   def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
   end
 
-  @spec build_merkle_tree(list(SignedTx.t())) :: tuple()
+  @spec build_merkle_tree(list(SignedTx.t())) :: tree()
   def build_merkle_tree(txs) do
     if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = Serialization.pack_binary(transaction.data)
+          transaction_data_bin = Serialization.rlp_encode(transaction.data, :tx)
           {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 
@@ -159,24 +151,6 @@ defmodule Aecore.Chain.BlockValidation do
         :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
       end)
     end
-  end
-
-  @spec sum_coinbase_transactions(Block.t()) :: non_neg_integer()
-  defp sum_coinbase_transactions(block) do
-    txs_list_only_spend_txs =
-      Enum.filter(block.txs, fn tx ->
-        match?(%SpendTx{}, tx.data)
-      end)
-
-    txs_list_only_spend_txs
-    |> Enum.map(fn tx ->
-      if SignedTx.is_coinbase?(tx) do
-        tx.data.payload.amount
-      else
-        0
-      end
-    end)
-    |> Enum.sum()
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()

@@ -8,6 +8,7 @@ defmodule Aecore.Account.AccountStateTree do
   alias Aeutil.PatriciaMerkleTree
 
   @type accounts_state :: Trie.t()
+
   @type hash :: binary()
 
   @spec init_empty() :: Trie.t()
@@ -17,15 +18,27 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
   def put(trie, key, value) do
-    serialized = Serialization.serialize_term(value)
-    PatriciaMerkleTree.enter(trie, key, serialized)
+    account_state_updated = Map.put(value, :pubkey, key)
+    serialized_account_state = Serialization.rlp_encode(account_state_updated, :account_state)
+    PatriciaMerkleTree.enter(trie, key, serialized_account_state)
   end
 
-  @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
+  @spec get(accounts_state(), Wallet.pubkey()) :: binary() | :none | Account.t()
   def get(trie, key) do
-    trie
-    |> PatriciaMerkleTree.lookup(key)
-    |> Serialization.deserialize_term()
+    case PatriciaMerkleTree.lookup(trie, key) do
+      :none ->
+        Account.empty()
+
+      {:ok, account_state} ->
+        {:ok, acc} = Serialization.rlp_decode(account_state)
+        acc
+    end
+  end
+
+  @spec update(accounts_state(), Wallet.pubkey(), (Account.t() -> Account.t())) ::
+          accounts_state()
+  def update(tree, key, fun) do
+    put(tree, key, fun.(get(tree, key)))
   end
 
   @spec has_key?(accounts_state(), Wallet.pubkey()) :: boolean()
