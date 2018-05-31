@@ -13,7 +13,7 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec init_empty() :: Trie.t()
   def init_empty do
-    PatriciaMerkleTree.new(:account)
+    PatriciaMerkleTree.new(:accounts)
   end
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()

@@ -25,6 +25,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
@@ -389,7 +390,10 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        ## Transfrom from chain state
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
           :top_hash => new_block_hash,
@@ -450,7 +454,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_accounts_chain_states()
+    chain_states = Persistence.get_all_chainstates()
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -458,7 +462,7 @@ defmodule Aecore.Chain.Worker do
       if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
-        chain_states
+        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
       end
 
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
@@ -640,4 +644,32 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp build_chain_state, do: Chainstate.init()
+
+  def transfrom_chainstate(strategy, chainstate) do
+    Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
+  end
+
+  defp get_persist_strategy(:to_chainstate) do
+    fn
+      {key = :accounts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
+
+  defp get_persist_strategy(:from_chainstate) do
+    fn
+      {key = :accounts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
 end
