@@ -16,7 +16,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
-  alias Aecore.Account.Account
 
   require Logger
 
