@@ -536,6 +536,9 @@ defmodule Aeutil.Serialization do
   def header_to_binary(%Header{} = header) do
     pow_to_binary = pow_to_binary(header.pow_evidence)
 
+    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
+    miner_pubkey_size = 32
+
     <<
       header.version::64,
       header.height::64,
@@ -545,19 +548,34 @@ defmodule Aeutil.Serialization do
       header.target::64,
       pow_to_binary::binary-size(168),
       header.nonce::64,
-      header.time::64
+      header.time::64,
+      # pubkey should be adjusted to 32 bytes.
+      header.miner::binary-size(miner_pubkey_size)
     >>
   end
 
   def header_to_binary(_) do
-    {:error, "Illegal structure serialization"}
+    {:error, "#{__MODULE__} : Illegal header structure serialization"}
   end
 
   @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
   def binary_to_header(binary) when is_binary(binary) do
-    <<version::64, height::64, prev_hash::binary-size(32), txs_hash::binary-size(32),
-      root_hash::binary-size(32), target::64, pow_evidence_bin::binary-size(168), nonce::64,
-      time::64>> = binary
+    # Application.get_env(:aecore, :aewallet)[:pub_key_size]
+    miner_pubkey_size = 32
+
+    <<
+      version::64,
+      height::64,
+      prev_hash::binary-size(32),
+      txs_hash::binary-size(32),
+      root_hash::binary-size(32),
+      target::64,
+      pow_evidence_bin::binary-size(168),
+      nonce::64,
+      # pubkey should be adjusted to 32 bytes.
+      time::64,
+      miner::binary-size(miner_pubkey_size)
+    >> = binary
 
     pow_evidence = binary_to_pow(pow_evidence_bin)
 
@@ -570,12 +588,13 @@ defmodule Aeutil.Serialization do
       target: target,
       time: time,
       txs_hash: txs_hash,
-      version: version
+      version: version,
+      miner: miner
     }
   end
 
   def binary_to_header(_) do
-    {:error, "Illegal header binary serialization"}
+    {:error, "#{__MODULE__} : Illegal header to binary serialization"}
   end
 
   @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
@@ -595,7 +614,7 @@ defmodule Aeutil.Serialization do
   @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
   defp serialize_pow(pow, acc) when pow != <<>> do
     <<elem::binary-size(4), rest::binary>> = pow
-    acc = acc <> elem
+    acc = elem <> acc
     serialize_pow(rest, acc)
   end
 
@@ -609,7 +628,7 @@ defmodule Aeutil.Serialization do
   end
 
   def binary_to_pow(_) do
-    {:error, "Illegal PoW serialization"}
+    {:error, "#{__MODULE__} : Illegal PoW serialization"}
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
@@ -619,9 +638,9 @@ defmodule Aeutil.Serialization do
 
   defp deserialize_pow(<<>>, acc) do
     if Enum.count(Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)) == 42 do
-      Enum.reverse(acc)
+      acc
     else
-      {:error, "Illegal PoW serialization"}
+      {:error, "#{__MODULE__} : Illegal PoW serialization"}
     end
   end
 
