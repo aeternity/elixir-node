@@ -243,15 +243,15 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec registered_oracles() :: Oracle.registered_oracles()
-  def registered_oracles do
-    GenServer.call(__MODULE__, :registered_oracles)
-  end
+  # @spec registered_oracles() :: Oracle.registered_oracles()
+  # def registered_oracles do
+  #   GenServer.call(__MODULE__, :registered_oracles)
+  # end
 
-  @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  def oracle_interaction_objects do
-    GenServer.call(__MODULE__, :oracle_interaction_objects)
-  end
+  # @spec oracle_interaction_objects() :: Oracle.interaction_objects()
+  # def oracle_interaction_objects do
+  #   GenServer.call(__MODULE__, :oracle_interaction_objects)
+  # end
 
   @spec chain_state() :: %{
           :accounts => Chainstate.accounts(),

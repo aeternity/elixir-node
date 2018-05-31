@@ -387,10 +387,10 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%{} = term, :interaction_object) do
+  def rlp_encode(%{} = term, :oracle_query) do
     with {:ok, tag} <- type_to_tag(OracleQuery),
          {:ok, version} <- get_version(OracleQuery),
-         data <- Oracle.rlp_encode(tag, version, term, :interaction_object) do
+         data <- Oracle.rlp_encode(tag, version, term, :oracle_query) do
       data
     else
       error ->
@@ -399,10 +399,10 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%{} = term, :registered_oracle) when is_map(term) do
+  def rlp_encode(%{} = term, :oracle) when is_map(term) do
     with {:ok, tag} <- type_to_tag(Oracle),
          {:ok, version} <- get_version(Oracle),
-         data <- Oracle.rlp_encode(tag, version, term, :registered_oracle) do
+         data <- Oracle.rlp_encode(tag, version, term, :oracle) do
       data
     else
       error ->
@@ -491,12 +491,12 @@ defmodule Aeutil.Serialization do
     Naming.rlp_decode(name_commitment, :name_commitment)
   end
 
-  defp rlp_decode(Oracle, _version, reg_orc) do
-    Oracle.rlp_decode(reg_orc, :registered_oracle)
+  defp rlp_decode(Oracle, _version, oracle) do
+    Oracle.rlp_decode(oracle, :oracle)
   end
 
-  defp rlp_decode(OracleQuery, _version, interaction_object) do
-    Oracle.rlp_decode(interaction_object, :interaction_object)
+  defp rlp_decode(OracleQuery, _version, oracle_query) do
+    Oracle.rlp_decode(oracle_query, :oracle_query)
   end
 
   defp rlp_decode(Account, _version, account_state) do
@@ -657,11 +657,10 @@ defmodule Aeutil.Serialization do
   def type_to_tag(NameTransferTx),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_transfer_tx]}
 
-  def type_to_tag(Oracle),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:registered_orc_state]}
+  def type_to_tag(Oracle), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_state]}
 
   def type_to_tag(OracleQuery),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:interaction_obj_state]}
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_state]}
 
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
   def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}

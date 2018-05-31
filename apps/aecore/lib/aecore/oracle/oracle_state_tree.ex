@@ -5,7 +5,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aecore.Oracle.Oracle
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx}
   alias Aecore.Wallet.Worker, as: Wallet
 
   #  @type oracles_state :: Trie.t()
@@ -20,12 +20,14 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   def prune(tree, block_height) do
-    # [{account_pubkey, expires}]
-    expired_oracles = get_expited_oracle_ids(tree, block_height - 1)
-    initialize_deletion(tree, expired_oracles)
+    # # [{account_pubkey, expires}]
+    # expired_oracles = get_expited_oracle_ids(tree, block_height - 1)
+    # initialize_deletion(tree, expired_oracles)
+    tree
   end
 
   defp initialize_deletion(tree, expired_oracles) do
+    # TODO -> Does not cover full functionality
     #    expired_cache = get_expited_cache_ids(expired_oracles)
     Enum.reduce(expired_oracles, tree, fn {account_pubkey, expires} = exp, acc_tree ->
       new_otree = delete(acc_tree.otree, account_pubkey)
@@ -48,29 +50,41 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   def lookup_oracle?(tree, key) do
-    case PatriciaMerkleTree.lookup(tree.otree, key) do
-      {:ok, _} -> true
-      _ -> false
-    end
+    lookup?(tree, key, :oracle)
   end
 
   ### ===================================================================
   ### Query / Interaction objects  API
   ### ===================================================================
+  def enter_query(tree, query) do
+    add_query(tree, query, :enter)
+  end
+
+  def insert_query(tree, query) do
+    add_query(tree, query, :insert)
+  end
+
+  def get_query(tree, key) do
+    get(tree.otree, key)
+  end
+
+  def lookup_query?(tree, key) do
+    lookup?(tree, key, :oracle_query)
+  end
 
   ### ===================================================================
   ### Internal functions
   ### ===================================================================
   ### Oracles ===========================================================
   defp add_oracle(tree, oracle, how) do
-    id = oracle.owner
-    expires = oracle.expires
-    serialized_oracle = Serialization.rlp_encode(oracle, :registered_oracle)
+    id = Oracle.get_owner(oracle)
+    expires = Oracle.get_expires(oracle)
+    serialized = Serialization.rlp_encode(oracle, :oracle)
 
     new_otree =
       case how do
-        :insert -> insert(tree.otree, id, serialized_oracle)
-        :enter -> enter(tree.otree, id, serialized_oracle)
+        :insert -> insert(tree.otree, id, serialized)
+        :enter -> enter(tree.otree, id, serialized)
       end
 
     new_ctree = cache_push(tree.ctree, {:oracle, id}, expires)
@@ -78,6 +92,33 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   ### Querys ===========================================================
+  defp add_query(tree, query, how) do
+    oracle_id = OracleQueryTx.get_oracle_address(query)
+
+    id =
+      OracleQueryTx.id(
+        OracleQueryTx.get_sender_address(query),
+        OracleQueryTx.get_sender_nonce(query),
+        oracle_id
+      )
+
+    tree_id = oracle_id <> id
+
+    expires = OracleQueryTx.get_expires(query)
+    serialized = Serialization.rlp_encode(query, :oracle_query)
+
+    new_otree =
+      case how do
+        :insert ->
+          insert(tree.otree, tree_id, serialized)
+
+        :enter ->
+          enter(tree.otree, tree_id, serialized)
+      end
+
+    new_ctree = cache_push(tree.ctree, {:query, oracle_id, id}, expires)
+    %{otree: new_otree, ctree: new_ctree}
+  end
 
   ### PMT ==============================================================
 
@@ -93,16 +134,26 @@ defmodule Aecore.Oracle.OracleStateTree do
     PatriciaMerkleTree.delete(tree, key)
   end
 
+  defp lookup?(tree, key, where) do
+    tree
+    |> which_tree(where)
+    |> get(key) !== :none
+  end
+
   defp get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
-      {:ok, rlp_encoded} ->
-        {:ok, oracle} = Serialization.rlp_decode(rlp_encoded)
-        oracle
+      {:ok, serialized} ->
+        {:ok, deserialized} = Serialization.rlp_decode(serialized)
+        deserialized
 
       _ ->
         :none
     end
   end
+
+  defp which_tree(tree, :oracle), do: tree.otree
+  defp which_tree(tree, :oracle_query), do: tree.otree
+  defp which_tree(tree, _where), do: tree.otree
 
   ### Helper functions ================================================
 
@@ -135,6 +186,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp cache_key_decode() do
-    :ok
+    :not_implemented
   end
 end

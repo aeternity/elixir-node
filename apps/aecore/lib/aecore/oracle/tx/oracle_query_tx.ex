@@ -169,14 +169,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     IO.inspect("#{inspect(io)}")
     IO.inspect("------------------------------------")
 
-    updated_interaction_objects = Map.put(oracles, interaction_object_id, io)
+    new_oracle_tree = OracleStateTree.insert_query(oracles, io)
+    # updated_interaction_objects = Map.put(oracles, interaction_object_id, io)
 
-    updated_oracle_state = %{
-      oracles
-      | interaction_objects: updated_interaction_objects
-    }
+    # updated_oracle_state = %{
+    #   oracles
+    #   | interaction_objects: updated_interaction_objects
+    # }
 
-    {:ok, {updated_accounts_state, updated_oracle_state}}
+    {:ok, {updated_accounts_state, new_oracle_tree}}
   end
 
   @spec preprocess_check(
@@ -203,7 +204,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      OracleStateTree.lookup_oracle?(oracles, tx.oracle_address) ->
+      !OracleStateTree.lookup_oracle?(oracles, tx.oracle_address) ->
         {:error, "#{__MODULE__}: No oracle registered with the address:
          #{inspect(tx.oracle_address)}"}
 
@@ -238,13 +239,19 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec get_oracle_query_fee(binary()) :: non_neg_integer()
   def get_oracle_query_fee(oracle_address) do
-    Chain.registered_oracles()[oracle_address].tx.query_fee
+    Chain.chain_state().oracles
+    |> OracleStateTree.get_oracle(oracle_address)
+    |> Oracle.get_query_fee()
   end
 
   @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
           boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
-    tx_query_fee_is_met = tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].query_fee
+    tx_query_fee_is_met =
+      tx.query_fee >=
+        Chain.chain_state().oracles
+        |> OracleStateTree.get_oracle(tx.oracle_address)
+        |> Oracle.get_query_fee()
 
     tx_fee_is_met =
       case tx.query_ttl do

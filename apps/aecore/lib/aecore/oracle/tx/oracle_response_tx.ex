@@ -42,7 +42,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   def set_response(resp_tx, response), do: %{resp_tx | response: response}
   def set_fee(resp_tx, fee), do: %{resp_tx | fee: fee}
   ### -----------------------------------------------------------------
-  
+
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,

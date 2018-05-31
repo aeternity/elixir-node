@@ -43,8 +43,8 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   @type t :: %{
-          registered_oracles: registered_oracles(),
-          interaction_objects: interaction_objects()
+          otree: registered_oracles(),
+          ctree: interaction_objects()
         }
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
@@ -252,8 +252,8 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_oracles(chainstate, block_height) do
+    # TODO:
     # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
-    #    OracleStateTree.prune(chainstate.oracles, block_height)
     # %{chainstate | oracles: new_oracles_tree}
     chainstate
   end
@@ -275,6 +275,7 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   def remove_expired_interaction_objects(chainstate, block_height) do
+    # TODO:
     # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
     # %{chainstate | oracles: new_oracles_tree}
     chainstate
@@ -325,17 +326,17 @@ defmodule Aecore.Oracle.Oracle do
           non_neg_integer(),
           non_neg_integer(),
           map(),
-          :registered_oracle | :interaction_object
+          :oracle | :oracle_query
         ) :: binary()
-  def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
+  def rlp_encode(tag, version, %{} = oracle, :oracle) do
     list = [
       tag,
       version,
-      registered_oracle.owner,
-      Serialization.transform_item(registered_oracle.query_format),
-      Serialization.transform_item(registered_oracle.response_format),
-      registered_oracle.query_fee,
-      registered_oracle.expires
+      get_owner(oracle),
+      Serialization.transform_item(get_query_format(oracle)),
+      Serialization.transform_item(get_response_format(oracle)),
+      get_query_fee(oracle),
+      get_expires(oracle)
     ]
 
     try do
@@ -345,15 +346,15 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def rlp_encode(tag, version, %{} = interaction_object, :interaction_object) do
+  def rlp_encode(tag, version, %{} = oracle_query, :oracle_query) do
     has_response =
-      case interaction_object.has_response do
+      case oracle_query.has_response do
         true -> 1
         false -> 0
       end
 
     response =
-      case interaction_object.response do
+      case oracle_query.response do
         :undefined -> Parser.to_string(:undefined)
         %DataTx{type: OracleResponseTx} = data -> data
       end
@@ -361,15 +362,15 @@ defmodule Aecore.Oracle.Oracle do
     list = [
       tag,
       version,
-      interaction_object.sender_address,
-      interaction_object.sender_nonce,
-      interaction_object.oracle_address,
-      Serialization.transform_item(interaction_object.query),
+      oracle_query.sender_address,
+      oracle_query.sender_nonce,
+      oracle_query.oracle_address,
+      Serialization.transform_item(oracle_query.query),
       has_response,
       response,
-      interaction_object.expires,
-      interaction_object.response_ttl,
-      interaction_object.fee
+      oracle_query.expires,
+      oracle_query.response_ttl,
+      oracle_query.fee
     ]
 
     try do
@@ -386,7 +387,7 @@ defmodule Aecore.Oracle.Oracle do
   @spec rlp_decode(list()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
   def rlp_decode(
         [orc_owner, query_format, response_format, query_fee, expires],
-        :registered_oracle
+        :oracle
       ) do
     {:ok,
      %{
@@ -410,7 +411,7 @@ defmodule Aecore.Oracle.Oracle do
           response_ttl,
           fee
         ],
-        :interaction_object
+        :oracle_query
       ) do
     has_response =
       case Serialization.transform_item(has_response, :int) do
@@ -418,6 +419,7 @@ defmodule Aecore.Oracle.Oracle do
         0 -> false
       end
 
+    # TODO: Structure
     {:ok,
      %{
        expires: Serialization.transform_item(expires, :int),
