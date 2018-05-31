@@ -12,7 +12,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Oracle.Oracle
   alias Aecore.Naming.Naming
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
 
   require Logger
 
