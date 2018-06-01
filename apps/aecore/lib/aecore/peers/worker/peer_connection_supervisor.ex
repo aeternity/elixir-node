@@ -6,7 +6,6 @@ defmodule Aecore.Peers.Worker.PeerConnectionSupervisor do
   use Supervisor
 
   alias Aecore.Peers.PeerConnection
-  alias Aecore.Peers.Worker, as: Peers
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok, name: __MODULE__)

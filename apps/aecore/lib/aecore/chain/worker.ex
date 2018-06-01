@@ -15,9 +15,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Sync
-  alias Aecore.Peers.Jobs
-  alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
