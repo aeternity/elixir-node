@@ -25,6 +25,7 @@ defmodule Aecore.Naming.Naming do
 
   @type claim :: %{
           hash: binary(),
+          name: binary(),
           owner: Wallet.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),

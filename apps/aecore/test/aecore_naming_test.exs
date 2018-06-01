@@ -57,7 +57,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -73,7 +72,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -91,7 +89,6 @@ defmodule AecoreNamingTest do
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
@@ -116,7 +113,6 @@ defmodule AecoreNamingTest do
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :revoked
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
@@ -241,7 +237,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -263,7 +258,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == []
@@ -299,7 +293,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -315,7 +308,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -347,7 +339,6 @@ defmodule AecoreNamingTest do
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == Wallet.get_public_key()
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
@@ -383,7 +374,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.name == "test.aet"
     assert first_name_claim.owner == Wallet.get_public_key()
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
@@ -399,7 +389,6 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.name == "test.aet"
     assert first_name_update.owner == Wallet.get_public_key()
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
@@ -417,7 +406,6 @@ defmodule AecoreNamingTest do
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.name == "test.aet"
     assert first_name_transfer.owner == transfer_to_pub
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
@@ -444,7 +432,6 @@ defmodule AecoreNamingTest do
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_revoke.name == "test.aet"
     assert first_name_revoke.owner == transfer_to_pub
     assert first_name_revoke.status == :claimed
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
