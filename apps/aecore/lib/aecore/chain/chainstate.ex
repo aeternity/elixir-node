@@ -11,7 +11,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
-  alias Aecore.Naming.Naming
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -132,13 +131,6 @@ defmodule Aecore.Chain.Chainstate do
       end)
 
     Enum.reverse(txs_list)
-  end
-
-  @spec calculate_total_tokens(Chainstate.t()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
-    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + Account.balance(accounts_tree, pub_key)
-    end)
   end
 
   def base58c_encode(bin) do
