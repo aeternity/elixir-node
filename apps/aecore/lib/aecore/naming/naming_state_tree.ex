@@ -4,6 +4,7 @@ defmodule Aecore.Naming.NamingStateTree do
   """
   alias Aecore.Naming.Naming
   alias Aeutil.PatriciaMerkleTree
+  alias Aeutil.Serialization
 
   @type namings_state() :: Trie.t()
 
@@ -21,8 +22,12 @@ defmodule Aecore.Naming.NamingStateTree do
   @spec get(namings_state(), binary()) :: Naming.t() | :none
   def get(trie, key) do
     case PatriciaMerkleTree.lookup(trie, key) do
-      {:ok, value} -> deserialize(value)
-      _ -> :none
+      {:ok, value} ->
+        {:ok, naming} = deserialize(value)
+        naming
+
+      _ ->
+        :none
     end
   end
 
@@ -31,13 +36,31 @@ defmodule Aecore.Naming.NamingStateTree do
     PatriciaMerkleTree.delete(trie, key)
   end
 
-  defp serialize(term) do
-    # Must be done using RPL encoding when is done GH-335
-    :erlang.term_to_binary(term)
+  defp serialize(
+         %{
+           hash: _hash,
+           owner: _owner,
+           created: _created,
+           expires: _expires
+         } = term
+       ) do
+    Serialization.rlp_encode(term, :name_commitment)
+  end
+
+  defp serialize(
+         %{
+           hash: _hash,
+           owner: _owner,
+           expires: _expires,
+           status: _status,
+           ttl: _ttl,
+           pointers: _pointers
+         } = term
+       ) do
+    Serialization.rlp_encode(term, :naming_state)
   end
 
   defp deserialize(binary) do
-    # Must be done using RPL dencoding when is done GH-335
-    :erlang.binary_to_term(binary)
+    Serialization.rlp_decode(binary)
   end
 end
