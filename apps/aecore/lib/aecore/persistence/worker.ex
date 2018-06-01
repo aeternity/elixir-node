@@ -9,6 +9,8 @@ defmodule Aecore.Persistence.Worker do
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Difficulty
+  alias Aeutil.Scientific
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -55,6 +57,11 @@ defmodule Aecore.Persistence.Worker do
 
   def add_block_by_hash(block),
     do: {:error, "#{__MODULE__}: Bad block structure: #{inspect(block)}"}
+
+  @spec add_total_difficulty(non_neg_integer()) :: :ok | {:error, reason :: term()}
+  def add_total_difficulty(total_difficulty) do
+    GenServer.call(__MODULE__, {:add_total_difficulty, total_difficulty})
+  end
 
   @spec get_block_by_hash(String.t()) ::
           {:ok, block :: Block.t()} | :not_found | {:error, reason :: term()}
@@ -117,6 +124,11 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_all_blocks_info)
   end
 
+  @spec get_total_difficulty() :: non_neg_integer()
+  def get_total_difficulty do
+    GenServer.call(__MODULE__, :get_total_difficulty)
+  end
+
   def delete_all_blocks do
     GenServer.call(__MODULE__, :delete_all_blocks)
   end
@@ -155,7 +167,8 @@ defmodule Aecore.Persistence.Worker do
        "blocks_info_family" => blocks_info_family,
        "patricia_proof_family" => patricia_proof_family,
        "patricia_account_family" => patricia_account_family,
-       "patricia_txs_family" => patricia_txs_family
+       "patricia_txs_family" => patricia_txs_family,
+       "total_difficulty_family" => total_difficulty_family
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
@@ -164,7 +177,8 @@ defmodule Aecore.Persistence.Worker do
         "blocks_info_family",
         "patricia_proof_family",
         "patricia_account_family",
-        "patricia_txs_family"
+        "patricia_txs_family",
+        "total_difficulty_family"
       ])
 
     {:ok,
@@ -174,6 +188,7 @@ defmodule Aecore.Persistence.Worker do
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
        blocks_info_family: blocks_info_family,
+       total_difficulty_family: total_difficulty_family,
        patricia_families: %{
          proof: patricia_proof_family,
          account: patricia_account_family,
@@ -191,7 +206,8 @@ defmodule Aecore.Persistence.Worker do
           blocks_family: blocks_family,
           chain_state_family: chain_state_family,
           latest_block_info_family: latest_block_info_family,
-          blocks_info_family: blocks_info_family
+          blocks_info_family: blocks_info_family,
+          total_difficulty_family: total_difficulty_family
         } = state
       ) do
     batch =
@@ -202,6 +218,7 @@ defmodule Aecore.Persistence.Worker do
             :block -> blocks_family
             :latest_block_info -> latest_block_info_family
             :block_info -> blocks_info_family
+            :total_diff -> total_difficulty_family
           end
 
         Enum.reduce(data, batch_acc, fn {key, val}, batch_acc_ ->
@@ -235,6 +252,15 @@ defmodule Aecore.Persistence.Worker do
         %{chain_state_family: chain_state_family} = state
       ) do
     {:reply, Rox.put(chain_state_family, account, chain_state, write_options()), state}
+  end
+
+  def handle_call(
+        {:add_total_difficulty, new_total_difficulty},
+        _from,
+        %{total_difficulty_family: total_diff_family} = state
+      ) do
+    key = "total_difficulty"
+    {:reply, Rox.put(total_diff_family, key, new_total_difficulty, write_options()), state}
   end
 
   def handle_call({:get_block_by_hash, hash}, _from, %{blocks_family: blocks_family} = state) do
@@ -286,6 +312,25 @@ defmodule Aecore.Persistence.Worker do
       |> Enum.into(%{})
 
     {:reply, all_blocks_info, state}
+  end
+
+  def handle_call(
+        :get_total_difficulty,
+        _from,
+        %{total_difficulty_family: total_diff_family} = state
+      ) do
+    response = Rox.get(total_diff_family, "total_difficulty")
+
+    total_diff =
+      case response do
+        {:ok, total_difficulty} ->
+          total_difficulty
+
+        _ ->
+          Scientific.target_to_difficulty(Difficulty.get_default_difficulty())
+      end
+
+    {:reply, total_diff, state}
   end
 
   def handle_call(:delete_all_blocks, _from, %{blocks_family: blocks_family} = state) do

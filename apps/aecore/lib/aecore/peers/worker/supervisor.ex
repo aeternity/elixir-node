@@ -11,6 +11,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Peers.Jobs
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok)
@@ -20,6 +21,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
     {pubkey, privkey} = PeerKeys.keypair()
 
     children = [
+      Jobs,
       Sync,
       PeerConnectionSupervisor,
       Peers,

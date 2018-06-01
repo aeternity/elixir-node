@@ -16,12 +16,16 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Sync
+  alias Aecore.Peers.Jobs
+  alias Aecore.Peers.PeerConnection
+  alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Difficulty
   alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
+  alias Aeutil.Scientific
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -64,7 +68,8 @@ defmodule Aecore.Chain.Worker do
        blocks_data_map: blocks_data_map,
        txs_index: txs_index,
        top_hash: genesis_block_hash,
-       top_height: 0
+       top_height: 0,
+       total_diff: Persistence.get_total_difficulty()
      }, 0}
   end
 
@@ -107,6 +112,11 @@ defmodule Aecore.Chain.Worker do
   @spec lowest_valid_nonce() :: non_neg_integer()
   def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
+  end
+
+  @spec total_difficulty() :: non_neg_integer()
+  def total_difficulty do
+    GenServer.call(__MODULE__, :total_difficulty)
   end
 
   @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t()}
@@ -331,6 +341,10 @@ defmodule Aecore.Chain.Worker do
     {:reply, lowest_valid_nonce, state}
   end
 
+  def handle_call(:total_difficulty, _from, %{total_diff: total_diff} = state) do
+    {:reply, total_diff, state}
+  end
+
   def handle_call(
         {:get_block_info_from_memory_unsafe, block_hash},
         _from,
@@ -351,7 +365,8 @@ defmodule Aecore.Chain.Worker do
         %{
           blocks_data_map: blocks_data_map,
           txs_index: txs_index,
-          top_height: top_height
+          top_height: top_height,
+          total_diff: total_diff
         } = state
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
@@ -399,6 +414,8 @@ defmodule Aecore.Chain.Worker do
         txs_index: new_txs_index
     }
 
+    new_total_diff = total_diff + Scientific.target_to_difficulty(new_block.header.target)
+
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
         :chain_state => %{:chain_state => new_chain_state},
@@ -407,24 +424,27 @@ defmodule Aecore.Chain.Worker do
           :top_hash => new_block_hash,
           :top_height => new_block.header.height
         },
-        :block_info => %{new_block_hash => %{refs: new_refs}}
+        :block_info => %{new_block_hash => %{refs: new_refs}},
+        :total_diff => %{:total_difficulty => new_total_diff}
       })
 
       ## We send the block to others only if it extends the longest chain
       if Enum.empty?(Peers.all_pids()) do
         Logger.debug(fn -> "Peer list empty" end)
       else
-        for pid <- Peers.all_pids() do
-          Sync.forward_block(new_block, pid)
-          Sync.process_jobs()
-        end
+        Events.publish(:block_created, new_block)
       end
 
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
       {:reply, :ok,
-       %{state_update | top_hash: new_block_hash, top_height: new_block.header.height}}
+       %{
+         state_update
+         | top_hash: new_block_hash,
+           top_height: new_block.header.height,
+           total_diff: new_total_diff
+       }}
     else
       Persistence.batch_write(%{
         :chain_state => %{:chain_state => new_chain_state},

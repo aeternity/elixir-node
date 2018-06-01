@@ -5,6 +5,7 @@ defmodule Aecore.Peers.Sync do
 
   use GenServer
 
+  alias __MODULE__
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
@@ -14,6 +15,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Peers.Events
   alias Aeutil.Scientific
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Peers.Jobs
 
   require Logger
 
@@ -38,7 +40,6 @@ defmodule Aecore.Peers.Sync do
   @type hash_pool :: list({{non_neg_integer(), non_neg_integer()}, block_map() | peer_id_map()})
 
   @max_headers_per_chunk 100
-  @max_diff_for_sync 50
   @max_adds 20
 
   defstruct difficulty: nil,
@@ -59,7 +60,7 @@ defmodule Aecore.Peers.Sync do
     Events.subscribe(:tx_created)
     Events.subscribe(:top_changed)
 
-    :ok = :jobs.add_queue(:sync_jobs, [:passive])
+    :ok = Jobs.add_queue(:sync_jobs)
     {:ok, state}
   end
 
@@ -68,12 +69,12 @@ defmodule Aecore.Peers.Sync do
   """
   @spec start_sync(String.t(), binary()) :: :ok | {:error, String.t()}
   def start_sync(peer_id, remote_hash) do
-    GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash})
+    GenServer.call(__MODULE__, {:start_sync, peer_id, remote_hash})
   end
 
   @spec fetch_mempool(String.t()) :: :ok | {:error, String.t()}
   def fetch_mempool(peer_id) do
-    GenServer.cast(__MODULE__, {:fetch_mempool, peer_id})
+    GenServer.call(__MODULE__, {:fetch_mempool, peer_id})
   end
 
   @spec schedule_ping(String.t()) :: :ok | {:error, String.t()}
@@ -107,16 +108,6 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
   end
 
-  @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_block(block, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_block, block, peer_id})
-  end
-
-  @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_tx(tx, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_tx, tx, peer_id})
-  end
-
   @spec update_hash_pool(list()) :: list()
   def update_hash_pool(hashes) do
     GenServer.call(__MODULE__, {:update_hash_pool, hashes})
@@ -124,14 +115,14 @@ defmodule Aecore.Peers.Sync do
 
   ## INNER FUNCTIONS ##
 
-  def handle_cast({:start_sync, peer_id, remote_hash}, state) do
-    :jobs.enqueue(:sync_jobs, {:start_sync, peer_id, remote_hash})
-    {:noreply, state}
+  def handle_call({:start_sync, peer_id, remote_hash}, _from, state) do
+    :ok = Jobs.enqueue(:sync_jobs, {:start_sync, peer_id, remote_hash})
+    {:reply, :ok, state}
   end
 
-  def handle_cast({:fetch_mempool, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_id})
-    {:noreply, state}
+  def handle_call({:fetch_mempool, peer_id}, _from, state) do
+    :ok = Jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_id})
+    {:reply, :ok, state}
   end
 
   def handle_cast({:schedule_ping, peer_id}, state) do
@@ -157,7 +148,7 @@ defmodule Aecore.Peers.Sync do
 
     {is_new, new_pool} =
       insert_header(
-        SyncNew.new(%{
+        Sync.new(%{
           difficulty: difficulty,
           from: agreed_height,
           to: height,
@@ -181,7 +172,7 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call({:sync_in_progress, peer_id}, _from, %{sync_pool: pool} = state) do
     result =
-      case Enum.find(pool, false, fn peer -> Map.get(peer, :id) == peer_id end) do
+      case Enum.find(pool, false, fn peer -> Map.get(peer, :pid) == peer_id end) do
         false ->
           false
 
@@ -190,16 +181,6 @@ defmodule Aecore.Peers.Sync do
       end
 
     {:reply, result, state}
-  end
-
-  def handle_cast({:forward_block, block, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{block: block}, peer_id})
-    {:noreply, state}
-  end
-
-  def handle_cast({:forward_tx, tx, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{tx: tx}, peer_id})
-    {:noreply, state}
   end
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
@@ -279,13 +260,14 @@ defmodule Aecore.Peers.Sync do
       :tx_received -> enqueue(:forward, %{status: :received, tx: info})
     end
 
+    Jobs.dequeue(:sync_jobs)
     {:noreply, state}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
-    Logger.info("Worker stopped with reason: ~p", [reason])
+    Logger.info("Worker stopped with reason: #{inspect(reason)}")
     new_state = Enum.filter(state, fn x -> x.pid == pid end)
-    {:noreply, new_state}
+    {:noreply, state}
   end
 
   def handle_info(_, state) do
@@ -482,12 +464,11 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  def process_jobs do
-    result = :jobs.dequeue(:sync_jobs, 1)
-    process_job(result)
+  def process_jobs([]) do
+    "No more jobs to do"
   end
 
-  defp process_job([{_t, job}]) do
+  def process_jobs([{_t, job} | t]) do
     case job do
       {:forward, %{block: block}, peer_id} ->
         do_forward_block(block, peer_id)
@@ -511,36 +492,22 @@ defmodule Aecore.Peers.Sync do
       _other ->
         Logger.debug(fn -> "Unknown job" end)
     end
+
+    process_jobs(t)
   end
 
   @spec enqueue(atom(), map()) :: list()
   defp enqueue(opts, msg) do
     peers = Peers.get_random(3)
 
-    for peer <- peers do
-      :jobs.enqueue(:sync_jobs, {opts, msg, Peers.peer_id(peer)})
+    for pid <- Peers.all_pids() do
+      Jobs.enqueue(:sync_jobs, {opts, msg, pid})
     end
   end
 
   # Send our block to the Remote Peer
   defp do_forward_block(block, peer_id) do
-    height = block.header.height
-
-    case sync_in_progress?(peer_id) do
-      ## If we are syncing with this peer and it has far more blocks ignore sending
-      {true, %{to: remote_height}} when remote_height > height + @max_diff_for_sync ->
-        Logger.debug(fn ->
-          "#{__MODULE__}: Not forwarding to #{inspect(peer_id)}, too far ahead"
-        end)
-
-      _ ->
-        ## Send block through the peer module
-        PeerConnection.send_new_block(block, peer_id)
-
-        Logger.debug(fn ->
-          "#{__MODULE__}: sent block: #{inspect(block)} to peer #{inspect(peer_id)}"
-        end)
-    end
+    PeerConnection.send_new_block(block, peer_id)
   end
 
   # Send a transaction to the Remote Peer

@@ -12,6 +12,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Peers.Sync
+  alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
 
@@ -385,13 +386,12 @@ defmodule Aecore.Peers.PeerConnection do
           # don't sync - same top block
           :ok
 
-        local_top_difficulty() > difficulty ->
+        Chain.total_difficulty() > difficulty ->
           # don't sync - our difficulty is higher
           :ok
 
         true ->
           Sync.start_sync(conn_pid, best_hash)
-          Sync.process_jobs()
           :ok
       end
 
@@ -402,7 +402,7 @@ defmodule Aecore.Peers.PeerConnection do
       end)
 
       Sync.fetch_mempool(conn_pid)
-      Sync.process_jobs()
+      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -488,11 +488,6 @@ defmodule Aecore.Peers.PeerConnection do
     Pool.add_transaction(tx)
   end
 
-  defp local_top_difficulty do
-    top_block = Chain.top_block()
-    top_block.header.target
-  end
-
   defp local_ping_object do
     peers = Peers.get_random(@peer_share_count)
 
@@ -509,7 +504,7 @@ defmodule Aecore.Peers.PeerConnection do
     %{
       genesis_hash: Block.genesis_hash(),
       best_hash: Chain.top_block_hash(),
-      difficulty: local_top_difficulty(),
+      difficulty: Chain.total_difficulty(),
       peers: peers,
       port: Supervisor.sync_port()
     }

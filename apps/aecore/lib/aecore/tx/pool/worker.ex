@@ -16,6 +16,7 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Sync
+  alias Aecore.Peers.Events
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -94,10 +95,7 @@ defmodule Aecore.Tx.Pool.Worker do
           if Enum.empty?(Peers.all_pids()) do
             Logger.debug(fn -> "List of peers is empty" end)
           else
-            for pid <- Peers.all_pids() do
-              Sync.forward_tx(tx, pid)
-              Sync.process_jobs()
-            end
+            Events.publish(:tx_created, tx)
           end
         end
 

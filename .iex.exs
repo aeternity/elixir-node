@@ -6,7 +6,7 @@ alias Aecore.Naming.Naming
 alias Aecore.Oracle.Tx.{OracleExtendTx, OracleQueryTx, OracleRegistrationTx, OracleResponseTx}
 alias Aecore.Peers.{PeerConnection, Sync}
 alias Aecore.Peers.Worker, as: Peers
-alias Aecore.Persistance.Worker, as: Persistance
+alias Aecore.Persistence.Worker, as: Persistence
 alias Aecore.Pow.{Cuckoo, Hashcash}
 alias Aecore.Account.{Account, AccountStateTree}
 alias Aecore.Account.Tx.SpendTx
