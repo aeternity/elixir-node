@@ -1,4 +1,4 @@
-version: "2"
+version: "3"
 services:
 
 
@@ -26,7 +26,16 @@ services:
         - elixir-node-4001-db:/elixir_node/apps/aecore/priv/rox_db_4001
       stdin_open: true
       tty: true
-          command: -e "pubkey = Aehttpclient.Client.get_info(\"elixir-node-4000:4000\") |> elem(1) |> Map.get(:public_key) decoded_pubkey = Aecore.Account.Account.base58c_decode(pubkey) peer = Map.put(%{}, :host, 'elixir-node-4000') |> Map.put(:port, 3015) |> Map.put(:pubkey, decoded_pubkey) Aecore.Peers.Worker.try_connect(peer) Aecore.Miner.Worker.resume()"
+      command: 
+        -e "Aehttpclient.Client.get_info(\"elixir-node-4000:4000\")
+        |> elem(1) 
+        |> Map.get(:public_key) 
+        |> Aecore.Account.Account.base58c_decode()
+        |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
+        |> Map.put(:host, 'elixir-node-4000') 
+        |> Map.put(:port, 3015) 
+        |> Aecore.Peers.Worker.try_connect()"
+        -e "Aecore.Miner.Worker.resume()"
 
 
   elixir-node-4002:
@@ -39,7 +48,15 @@ services:
         PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4002
       volumes:
         - elixir-node-4002-db:/elixir_node/apps/aecore/priv/rox_db_4002
-      command: -e "pubkey = Aehttpclient.Client.get_info(\"elixir-node-4000:4000\") |> elem(1) |> Map.get(:public_key) decoded_pubkey = Aecore.Account.Account.base58c_decode(pubkey) peer = Map.put(%{}, :host, 'elixir-node-4000') |> Map.put(:port, 3015) |> Map.put(:pubkey, decoded_pubkey) Aecore.Peers.Worker.try_connect(peer)"
+      command: 
+        -e "Aehttpclient.Client.get_info(\"elixir-node-4000:4000\")
+        |> elem(1) 
+        |> Map.get(:public_key) 
+        |> Aecore.Account.Account.base58c_decode()
+        |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
+        |> Map.put(:host, 'elixir-node-4000') 
+        |> Map.put(:port, 3015) 
+        |> Aecore.Peers.Worker.try_connect()"
 
 
   proxy:
