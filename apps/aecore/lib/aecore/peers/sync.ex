@@ -34,7 +34,7 @@ defmodule Aecore.Peers.Sync do
   @type block_map :: %{block: Block.t()}
 
   @typedoc "List of all the syncing peers"
-  @type sync_pool :: list(sync_peer())
+  @type sync_pool :: list()
 
   @typedoc "List of tuples of block height and block hash connected to a given block or peer"
   @type hash_pool :: list({{non_neg_integer(), non_neg_integer()}, block_map() | peer_id_map()})
@@ -63,7 +63,6 @@ defmodule Aecore.Peers.Sync do
     :ok = Jobs.add_queue(:sync_jobs)
     {:ok, state}
   end
-
 
   def state do
     GenServer.call(__MODULE__, :state)
@@ -130,15 +129,6 @@ defmodule Aecore.Peers.Sync do
   def handle_call({:fetch_mempool, peer_id}, _from, state) do
     :ok = Jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_id})
     {:reply, :ok, state}
-  end
-
-  def handle_cast({:schedule_ping, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:schedule_ping, peer_id})
-    {:noreply, state}
-  end
-
-  def handle_cast({:delete_from_pool, peer_id}, %{sync_pool: pool} = state) do
-    {:noreply, %{state | sync_pool: Enum.filter(pool, fn peer -> peer.peer != peer_id end)}}
   end
 
   def handle_call(
@@ -253,6 +243,15 @@ defmodule Aecore.Peers.Sync do
              %{state | hash_pool: new_hash_pool}}
         end
     end
+  end
+
+  def handle_cast({:schedule_ping, peer_id}, state) do
+    :jobs.enqueue(:sync_jobs, {:schedule_ping, peer_id})
+    {:noreply, state}
+  end
+
+  def handle_cast({:delete_from_pool, peer_id}, %{sync_pool: pool} = state) do
+    {:noreply, %{state | sync_pool: Enum.filter(pool, fn peer -> peer.peer != peer_id end)}}
   end
 
   def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
