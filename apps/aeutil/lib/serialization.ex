@@ -22,7 +22,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Account.Tx.CoinbaseTx
 
   require Logger
 
@@ -178,6 +177,9 @@ defmodule Aeutil.Serialization do
       :txs_hash ->
         SignedTx.base58c_encode_root(value)
 
+      :miner ->
+        Account.base58c_encode(value)
+
       :sender ->
         Account.base58c_encode(value)
 
@@ -279,6 +281,9 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :sender ->
+        Account.base58c_decode(value)
+
+      :miner ->
         Account.base58c_decode(value)
 
       :receiver ->
@@ -624,7 +629,6 @@ defmodule Aeutil.Serialization do
   def type_to_tag(Account), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:account_state]}
   def type_to_tag(SignedTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:signed_tx]}
   def type_to_tag(SpendTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:spend_tx]}
-  def type_to_tag(CoinbaseTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:coinbase_tx]}
 
   def type_to_tag(OracleRegistrationTx),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_reg_tx]}
@@ -669,7 +673,6 @@ defmodule Aeutil.Serialization do
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
   def tag_to_type(10), do: Account
   def tag_to_type(12), do: SpendTx
-  def tag_to_type(13), do: CoinbaseTx
   def tag_to_type(22), do: OracleRegistrationTx
   def tag_to_type(23), do: OracleQueryTx
   def tag_to_type(24), do: OracleResponseTx
@@ -689,7 +692,6 @@ defmodule Aeutil.Serialization do
 
   @spec get_version(atom()) :: non_neg_integer() | {:error, String.t()}
   def get_version(SpendTx), do: {:ok, 1}
-  def get_version(CoinbaseTx), do: {:ok, 1}
   def get_version(OracleRegistrationTx), do: {:ok, 1}
   def get_version(OracleQueryTx), do: {:ok, 1}
   def get_version(OracleResponseTx), do: {:ok, 1}

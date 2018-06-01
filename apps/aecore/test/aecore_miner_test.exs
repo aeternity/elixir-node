@@ -5,6 +5,7 @@ defmodule MinerTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
 
   setup do
@@ -21,11 +22,6 @@ defmodule MinerTest do
     assert Chain.top_height() >= 1
     assert Chain.top_block().header.height >= 1
     assert length(Chain.longest_blocks_chain()) > 1
-    top_block = Chain.top_block()
-    top_block_coinbase_tx = Enum.at(top_block.txs, 0)
-    assert top_block_coinbase_tx.signatures == []
-    assert top_block_coinbase_tx.data.senders == []
-    assert top_block_coinbase_tx.data.payload.amount <= Miner.coinbase_transaction_amount()
-    assert SignedTx.is_coinbase?(top_block_coinbase_tx)
+    assert Chain.top_block().header.miner == Wallet.get_public_key()
   end
 end

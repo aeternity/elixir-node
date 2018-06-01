@@ -22,7 +22,6 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Account.Tx.CoinbaseTx
 
   require Logger
 
@@ -80,7 +79,6 @@ defmodule Aecore.Tx.DataTx do
   def valid_types do
     [
       Aecore.Account.Tx.SpendTx,
-      Aecore.Account.Tx.CoinbaseTx,
       Aecore.Oracle.Tx.OracleExtendTx,
       Aecore.Oracle.Tx.OracleQueryTx,
       Aecore.Oracle.Tx.OracleRegistrationTx,
@@ -315,22 +313,6 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  defp encode(tag, version, %DataTx{type: CoinbaseTx} = tx) do
-    list = [
-      tag,
-      version,
-      tx.payload.receiver,
-      tx.nonce,
-      tx.payload.amount
-    ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
-  end
-
   defp encode(tag, version, %DataTx{type: OracleRegistrationTx} = tx) do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
@@ -525,19 +507,6 @@ defmodule Aecore.Tx.DataTx do
       },
       senders,
       Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int)
-    )
-  end
-
-  defp decode(CoinbaseTx, [receiver, nonce, amount]) do
-    DataTx.init(
-      CoinbaseTx,
-      %{
-        receiver: receiver,
-        amount: Serialization.transform_item(amount, :int)
-      },
-      [],
-      0,
       Serialization.transform_item(nonce, :int)
     )
   end
