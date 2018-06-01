@@ -322,7 +322,7 @@ defmodule Aecore.Peers.Sync do
   # If we have it already, we get either the local or the remote info
   # from the peer with highest from_height.
   # After that we merge the new_sync_peer data with the old one, updating it.
-  @spec insert_header(sync_peer(), sync_pool()) :: {true | false, sync_pool()}
+  @spec insert_header(sync_peer(), sync_pool()) :: {true, sync_pool} | {false, sync_pool()}
   defp insert_header(
          %{
            difficulty: difficulty,
@@ -361,7 +361,7 @@ defmodule Aecore.Peers.Sync do
   # Here we initiate the actual sync of the Peers. We get the remote Peer values,
   # then we agree on some height, and check weather we agree on it, if not we go lower,
   # until we agree on some height. This might be even the Gensis block!
-  @spec do_start_sync(pid(), binary()) :: String.t()
+  @spec do_start_sync(pid(), binary()) :: :ok | {:error, String.t()}
   defp do_start_sync(peer_id, remote_hash) do
     case PeerConnection.get_header_by_hash(remote_hash, peer_id) do
       {:ok, remote_header} ->
