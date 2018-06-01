@@ -64,56 +64,41 @@ defmodule Aecore.Peers.Sync do
     {:ok, state}
   end
 
-  @doc """
-  Starts a synchronizing process between our node and the node of the given peer_id
-  """
-  @spec start_sync(String.t(), binary()) :: :ok | {:error, String.t()}
-  def start_sync(peer_id, remote_hash) do
-    GenServer.call(__MODULE__, {:start_sync, peer_id, remote_hash})
-  end
-
-  @spec fetch_mempool(String.t()) :: :ok | {:error, String.t()}
-  def fetch_mempool(peer_id) do
-    GenServer.call(__MODULE__, {:fetch_mempool, peer_id})
-  end
-
-  @spec schedule_ping(String.t()) :: :ok | {:error, String.t()}
-  def schedule_ping(peer_id) do
-    GenServer.cast(__MODULE__, {:schedule_ping, peer_id})
-  end
-
-  def delete_from_pool(peer_id) do
-    GenServer.cast(__MODULE__, {:delete_from_pool, peer_id})
-  end
-
-  @spec forward_block(Block.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_block(block, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_block, block, peer_id})
-  end
-
-  @spec forward_tx(SignedTx.t(), String.t()) :: :ok | {:error, String.t()}
-  def forward_tx(tx, peer_id) do
-    GenServer.cast(__MODULE__, {:forward_tx, tx, peer_id})
-  end
 
   def state do
     GenServer.call(__MODULE__, :state)
   end
 
   @doc """
+  Starts a synchronizing process between our node and the node of the given peer_id
+  """
+  @spec start_sync(pid(), binary()) :: :ok | {:error, String.t()}
+  def start_sync(peer_id, remote_hash) do
+    GenServer.call(__MODULE__, {:start_sync, peer_id, remote_hash})
+  end
+
+  @doc """
+  Fetches the remote Pool of transactions
+  """
+  @spec fetch_mempool(pid()) :: :ok | {:error, String.t()}
+  def fetch_mempool(peer_id) do
+    GenServer.call(__MODULE__, {:fetch_mempool, peer_id})
+  end
+
+  @doc """
   Checks weather the sync is in progress
   """
-  @spec sync_in_progress?(String.t()) :: {true | false, non_neg_integer}
+  @spec sync_in_progress?(pid()) :: {true | false, non_neg_integer}
   def sync_in_progress?(peer_id) do
     GenServer.call(__MODULE__, {:sync_in_progress, peer_id})
   end
 
-  @spec new_header?(String.t(), Header.t(), non_neg_integer(), binary()) :: true | false
+  @spec new_header?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
   def new_header?(peer_id, header, agreed_height, hash) do
     GenServer.call(__MODULE__, {:new_header, self(), peer_id, header, agreed_height, hash})
   end
 
-  @spec fetch_next(String.t(), non_neg_integer(), binary(), any()) :: tuple()
+  @spec fetch_next(pid(), non_neg_integer(), binary(), any()) :: tuple()
   def fetch_next(peer_id, height_in, hash_in, result) do
     GenServer.call(__MODULE__, {:fetch_next, peer_id, height_in, hash_in, result}, 30_000)
   end
@@ -123,7 +108,19 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:update_hash_pool, hashes})
   end
 
+  def schedule_ping(peer_id) do
+    GenServer.cast(__MODULE__, {:schedule_ping, peer_id})
+  end
+
+  def delete_from_pool(peer_id) do
+    GenServer.cast(__MODULE__, {:delete_from_pool, peer_id})
+  end
+
   ## INNER FUNCTIONS ##
+
+  def handle_call(:state, _from, state) do
+    {:reply, state, state}
+  end
 
   def handle_call({:start_sync, peer_id, remote_hash}, _from, state) do
     :ok = Jobs.enqueue(:sync_jobs, {:start_sync, peer_id, remote_hash})
@@ -141,21 +138,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_cast({:delete_from_pool, peer_id}, %{sync_pool: pool} = state) do
-    {:noreply, %{state | sync_pool: List.delete(pool, peer_id)}}
-  end
-
-  def handle_cast({:forward_block, block, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{block: block}, peer_id})
-    {:noreply, state}
-  end
-
-  def handle_cast({:forward_tx, tx, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:forward, %{tx: tx}, peer_id})
-    {:noreply, state}
-  end
-
-  def handle_call(:state, _from, state) do
-    {:reply, state, state}
+    {:noreply, %{state | sync_pool: Enum.filter(pool, fn peer -> peer.peer != peer_id end)}}
   end
 
   def handle_call(
@@ -284,10 +267,10 @@ defmodule Aecore.Peers.Sync do
     {:noreply, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %{sync_pool: sync_pool} = state) do
     Logger.info("Worker stopped with reason: #{inspect(reason)}")
-    new_state = Enum.filter(state, fn x -> x.pid == pid end)
-    {:noreply, state}
+    new_state = Enum.filter(sync_pool, fn peer -> peer.peer != pid end)
+    {:noreply, new_state}
   end
 
   def handle_info(_, state) do
@@ -380,7 +363,7 @@ defmodule Aecore.Peers.Sync do
   # Here we initiate the actual sync of the Peers. We get the remote Peer values,
   # then we agree on some height, and check weather we agree on it, if not we go lower,
   # until we agree on some height. This might be even the Gensis block!
-  @spec do_start_sync(String.t(), binary()) :: String.t()
+  @spec do_start_sync(pid(), binary()) :: String.t()
   defp do_start_sync(peer_id, remote_hash) do
     case PeerConnection.get_header_by_hash(remote_hash, peer_id) do
       {:ok, remote_header} ->
@@ -417,7 +400,7 @@ defmodule Aecore.Peers.Sync do
 
   # With this func we try to agree on block height on which we agree and could sync.
   # In other words a common block.
-  @spec agree_on_height(String.t(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
+  @spec agree_on_height(pid(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
           tuple()
   defp agree_on_height(_peer_id, _r_header, _r_height, l_height, agreed_hash)
        when l_height == 0 do
