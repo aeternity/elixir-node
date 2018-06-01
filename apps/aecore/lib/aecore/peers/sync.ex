@@ -268,8 +268,7 @@ defmodule Aecore.Peers.Sync do
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %{sync_pool: sync_pool} = state) do
     Logger.info("Worker stopped with reason: #{inspect(reason)}")
-    new_state = Enum.filter(sync_pool, fn peer -> peer.peer != pid end)
-    {:noreply, new_state}
+    {:noreply, %{state | sync_pool: Enum.filter(sync_pool, fn peer -> peer.peer != pid end)}
   end
 
   def handle_info(_, state) do
