@@ -534,6 +534,10 @@ defmodule Aeutil.Serialization do
   def decode_ttl_type(0), do: :relative
   @spec header_to_binary(Header.t()) :: binary
   def header_to_binary(%Header{} = header) do
+    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
+    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
+    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
+    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
     pow_to_binary = pow_to_binary(header.pow_evidence)
 
     # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
@@ -542,11 +546,11 @@ defmodule Aeutil.Serialization do
     <<
       header.version::64,
       header.height::64,
-      header.prev_hash::binary-size(32),
-      header.txs_hash::binary-size(32),
-      header.root_hash::binary-size(32),
+      header.prev_hash::binary-size(header_prev_hash_size),
+      header.txs_hash::binary-size(header_txs_hash_size),
+      header.root_hash::binary-size(header_root_hash_size),
       header.target::64,
-      pow_to_binary::binary-size(168),
+      pow_to_binary::binary-size(pow_evidence_size),
       header.nonce::64,
       header.time::64,
       # pubkey should be adjusted to 32 bytes.
@@ -562,15 +566,19 @@ defmodule Aeutil.Serialization do
   def binary_to_header(binary) when is_binary(binary) do
     # Application.get_env(:aecore, :aewallet)[:pub_key_size]
     miner_pubkey_size = 32
+    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
+    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
+    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
+    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
 
     <<
       version::64,
       height::64,
-      prev_hash::binary-size(32),
-      txs_hash::binary-size(32),
-      root_hash::binary-size(32),
+      prev_hash::binary-size(header_prev_hash_size),
+      txs_hash::binary-size(header_txs_hash_size),
+      root_hash::binary-size(header_root_hash_size),
       target::64,
-      pow_evidence_bin::binary-size(168),
+      pow_evidence_bin::binary-size(pow_evidence_size),
       nonce::64,
       # pubkey should be adjusted to 32 bytes.
       time::64,
@@ -601,11 +609,11 @@ defmodule Aeutil.Serialization do
   def pow_to_binary(pow) when is_list(pow) do
     if Enum.count(pow) == 42 do
       list_of_pows =
-        for evidence <- pow do
+        for evidence <- pow, into: <<>> do
           <<evidence::32>>
         end
 
-      serialize_pow(:binary.list_to_bin(list_of_pows), <<>>)
+      serialize_pow(list_of_pows, <<>>)
     else
       List.duplicate(0, 42)
     end
