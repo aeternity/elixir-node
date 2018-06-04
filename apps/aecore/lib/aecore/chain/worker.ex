@@ -16,7 +16,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
@@ -212,14 +212,14 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     with {:ok, prev_block} <- get_block(block.header.prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
-         blocks_for_difficulty_calculation =
-           get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks()),
+         blocks_for_target_calculation =
+           get_blocks(block.header.prev_hash, Target.get_number_of_blocks()),
          {:ok, new_chain_state} <-
            BlockValidation.calculate_and_validate_block(
              block,
              prev_block,
              prev_block_chain_state,
-             blocks_for_difficulty_calculation
+             blocks_for_target_calculation
            ) do
       add_validated_block(block, new_chain_state)
     else
