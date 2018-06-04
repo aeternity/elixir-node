@@ -8,7 +8,7 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
@@ -51,15 +51,15 @@ defmodule AecoreValidationTest do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
-    blocks_for_difficulty_calculation =
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
 
     _ =
       BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
-        blocks_for_difficulty_calculation
+        blocks_for_target_calculation
       )
 
     incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
@@ -69,7 +69,7 @@ defmodule AecoreValidationTest do
                incorrect_pow_block,
                prev_block,
                get_chain_state(),
-               blocks_for_difficulty_calculation
+               blocks_for_target_calculation
              )
   end
 
@@ -84,15 +84,15 @@ defmodule AecoreValidationTest do
     top_block = Chain.top_block()
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
-    blocks_for_difficulty_calculation =
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
 
     _ =
       BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
-        blocks_for_difficulty_calculation
+        blocks_for_target_calculation
       )
 
     wrong_time_block = %Block{
@@ -110,7 +110,7 @@ defmodule AecoreValidationTest do
                wrong_time_block,
                prev_block,
                get_chain_state(),
-               blocks_for_difficulty_calculation
+               blocks_for_target_calculation
              )
   end
 

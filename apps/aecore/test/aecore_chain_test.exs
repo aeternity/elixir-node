@@ -13,7 +13,7 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
 
   setup do
     # Persistence.delete_all_blocks()
@@ -69,8 +69,8 @@ defmodule AecoreChainTest do
 
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)
 
-    blocks_for_difficulty_calculation =
-      Chain.get_blocks(top_block_hash_next, Difficulty.get_number_of_blocks())
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash_next, Target.get_number_of_blocks())
 
     top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
@@ -88,7 +88,7 @@ defmodule AecoreChainTest do
              top_block_from_chain,
              previous_block,
              chainstate,
-             blocks_for_difficulty_calculation
+             blocks_for_target_calculation
            )
 
     assert :ok = Chain.add_block(block_mined)
