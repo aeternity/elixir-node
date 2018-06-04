@@ -7,7 +7,6 @@ defmodule Aecore.Tx.SignedTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Tx.CoinbaseTx
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -38,11 +37,6 @@ defmodule Aecore.Tx.SignedTx do
 
   def data_tx(%SignedTx{data: data}) do
     data
-  end
-
-  @spec is_coinbase?(SignedTx.t()) :: boolean()
-  def is_coinbase?(%SignedTx{data: data}) do
-    data.type == CoinbaseTx
   end
 
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
@@ -90,7 +84,7 @@ defmodule Aecore.Tx.SignedTx do
   def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
     new_signature =
       data
-      |> Serialization.pack_binary()
+      |> Serialization.rlp_encode(:tx)
       |> Signing.sign(priv_key)
 
     {success, new_sigs} =
@@ -121,7 +115,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    Hash.hash(Serialization.pack_binary(data))
+    Hash.hash(Serialization.rlp_encode(data, :tx))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()
@@ -215,7 +209,7 @@ defmodule Aecore.Tx.SignedTx do
       Logger.error("Wrong signature count")
       false
     else
-      data_binary = Serialization.pack_binary(data)
+      data_binary = Serialization.rlp_encode(data, :tx)
 
       sigs
       |> Enum.zip(DataTx.senders(data))
@@ -238,5 +232,29 @@ defmodule Aecore.Tx.SignedTx do
         end
       end)
     end
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), SignedTx.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, version, %SignedTx{} = tx) do
+    ExRLP.encode([
+      tag,
+      version,
+      tx.signatures,
+      Serialization.rlp_encode(tx.data, :tx)
+    ])
+  end
+
+  def rlp_encode(tx) do
+    {:error, "#{__MODULE__} : Invalid SignedTx data #{inspect(tx)}"}
+  end
+
+  @spec rlp_decode(list()) :: SignedTx.t() | atom()
+  def rlp_decode([signatures, tx_data]) do
+    %SignedTx{data: Serialization.rlp_decode(tx_data), signatures: signatures}
+  end
+
+  def rlp_decode(_) do
+    {:error, "#{__MODULE__} : Invalid SignedTx serialization "}
   end
 end

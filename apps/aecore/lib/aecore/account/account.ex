@@ -19,18 +19,20 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.Naming
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Tx.CoinbaseTx
+  alias Aeutil.Serialization
 
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer()
+          last_updated: non_neg_integer(),
+          pubkey: Wallet.pubkey()
         }
 
   @type account_payload :: %{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer()
+          last_updated: non_neg_integer(),
+          pubkey: Wallet.pubkey()
         }
 
   @type chain_state_name :: :accounts
@@ -42,16 +44,17 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :last_updated]
+  defstruct [:balance, :nonce, :last_updated, :pubkey]
 
-  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0}
+  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0, pubkey: <<>>}
 
   @spec new(account_payload()) :: Account.t()
-  def new(%{balance: balance, nonce: nonce, last_updated: last_updated}) do
+  def new(%{balance: balance, nonce: nonce, last_updated: last_updated, pubkey: pubkey}) do
     %Account{
       balance: balance,
       nonce: nonce,
-      last_updated: last_updated
+      last_updated: last_updated,
+      pubkey: pubkey
     }
   end
 
@@ -82,19 +85,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
-  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer()) :: {:ok, SignedTx.t()}
-  def spend(receiver, amount, fee) do
+  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary()) ::
+          {:ok, SignedTx.t()}
+  def spend(receiver, amount, fee, payload) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    spend(sender, sender_priv_key, receiver, amount, fee, nonce)
-  end
-
-  @spec create_coinbase_tx(binary(), non_neg_integer()) :: SignedTx.t()
-  def create_coinbase_tx(to_acc, value) do
-    payload = CoinbaseTx.create(to_acc, value)
-    data = DataTx.init(CoinbaseTx, payload, [], 0, 0)
-    SignedTx.create(data)
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload)
   end
 
   @doc """
@@ -106,10 +103,17 @@ defmodule Aecore.Account.Account do
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer()
+          non_neg_integer(),
+          binary()
         ) :: {:ok, SignedTx.t()}
-  def spend(sender, sender_priv_key, receiver, amount, fee, nonce) do
-    payload = %{receiver: receiver, amount: amount}
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl) do
+    payload = %{
+      receiver: receiver,
+      amount: amount,
+      payload: pl,
+      version: SpendTx.get_tx_version()
+    }
+
     build_tx(payload, SpendTx, sender, sender_priv_key, fee, nonce)
   end
 
@@ -284,7 +288,7 @@ defmodule Aecore.Account.Account do
   end
 
   @spec build_tx(
-          DataTx.paload(),
+          DataTx.payload(),
           DataTx.tx_types(),
           binary(),
           binary(),
@@ -334,5 +338,43 @@ defmodule Aecore.Account.Account do
 
   def base58c_decode(bin) do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), Account.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, version, %Account{} = account) do
+    list = [
+      tag,
+      version,
+      account.pubkey,
+      account.nonce,
+      account.last_updated,
+      account.balance
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
+  end
+
+  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def rlp_decode([pubkey, nonce, height, balance]) do
+    {:ok,
+     %Account{
+       pubkey: pubkey,
+       balance: Serialization.transform_item(balance, :int),
+       last_updated: Serialization.transform_item(height, :int),
+       nonce: Serialization.transform_item(nonce, :int)
+     }}
+  end
+
+  def rlp_decode(data) do
+    {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
   end
 end

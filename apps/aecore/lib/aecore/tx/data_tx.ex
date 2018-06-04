@@ -10,14 +10,14 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aeutil.Serialization
-  alias Aecore.Structures.OracleRegistrationTx
-  alias Aecore.Structures.OracleQueryTx
-  alias Aecore.Structures.OracleResponseTx
-  alias Aecore.Structures.OracleExtendTx
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Keys.Wallet
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
 
   require Logger
 
@@ -75,7 +75,6 @@ defmodule Aecore.Tx.DataTx do
   def valid_types do
     [
       Aecore.Account.Tx.SpendTx,
-      Aecore.Account.Tx.CoinbaseTx,
       Aecore.Oracle.Tx.OracleExtendTx,
       Aecore.Oracle.Tx.OracleQueryTx,
       Aecore.Oracle.Tx.OracleRegistrationTx,
@@ -283,5 +282,425 @@ defmodule Aecore.Tx.DataTx do
 
   defp senders_pubkeys_size_valid?([]) do
     true
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), DataTx.t()) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, version, term) do
+    encode(tag, version, term)
+  end
+
+  defp encode(tag, version, %DataTx{type: SpendTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.payload.receiver,
+      tx.payload.amount,
+      tx.fee,
+      tx.nonce,
+      tx.payload.payload
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: OracleRegistrationTx} = tx) do
+    ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
+
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      "$æx" <> Serialization.transform_item(tx.payload.query_format),
+      "$æx" <> Serialization.transform_item(tx.payload.response_format),
+      tx.payload.query_fee,
+      ttl_type,
+      tx.payload.ttl.ttl,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: OracleQueryTx} = tx) do
+    ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
+    ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
+
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.oracle_address,
+      "$æx" <> Serialization.transform_item(tx.payload.query_data),
+      tx.payload.query_fee,
+      ttl_type_q,
+      tx.payload.query_ttl.ttl,
+      ttl_type_r,
+      tx.payload.response_ttl.ttl,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: OracleResponseTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.query_id,
+      "$æx" <> Serialization.transform_item(tx.payload.response),
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: OracleExtendTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.ttl,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: NamePreClaimTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.commitment,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: NameClaimTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.name,
+      tx.payload.name_salt,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: NameUpdateTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.hash,
+      tx.payload.client_ttl,
+      tx.payload.pointers,
+      tx.payload.expire_by,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: NameRevokeTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.hash,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: NameTransferTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.hash,
+      tx.payload.target,
+      tx.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
+  def rlp_decode(tag, values) when is_list(values) do
+    decode(tag, values)
+  end
+
+  def rlp_decode(data) when is_binary(data) do
+    ExRLP.decode(data)
+  end
+
+  defp decode(SpendTx, [senders, receiver, amount, fee, nonce, payload]) do
+    DataTx.init(
+      SpendTx,
+      %{
+        receiver: receiver,
+        amount: Serialization.transform_item(amount, :int),
+        version: 1,
+        payload: payload
+      },
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(OracleQueryTx, [
+         senders,
+         nonce,
+         oracle_address,
+         encoded_query_data,
+         query_fee,
+         encoded_query_ttl_type,
+         query_ttl_value,
+         encoded_response_ttl_type,
+         response_ttl_value,
+         fee
+       ]) do
+    query_ttl_type =
+      encoded_query_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    response_ttl_type =
+      encoded_response_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    query_data = decode_format(encoded_query_data)
+
+    payload = %{
+      oracle_address: oracle_address,
+      query_data: query_data,
+      query_fee: Serialization.transform_item(query_fee, :int),
+      query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: query_ttl_type},
+      response_ttl: %{
+        ttl: Serialization.transform_item(response_ttl_value, :int),
+        type: response_ttl_type
+      }
+    }
+
+    DataTx.init(
+      OracleQueryTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(OracleRegistrationTx, [
+         senders,
+         nonce,
+         encoded_query_format,
+         encoded_response_format,
+         query_fee,
+         encoded_ttl_type,
+         ttl_value,
+         fee
+       ]) do
+    ttl_type =
+      encoded_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    query_format = decode_format(encoded_query_format)
+
+    response_format = decode_format(encoded_response_format)
+
+    payload = %{
+      query_format: query_format,
+      response_format: response_format,
+      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_type},
+      query_fee: Serialization.transform_item(query_fee, :int)
+    }
+
+    DataTx.init(
+      OracleRegistrationTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(OracleResponseTx, [senders, nonce, encoded_query_id, encoded_response, fee]) do
+    query_id = decode_format(encoded_query_id)
+    response = decode_format(encoded_response)
+
+    payload = %{
+      query_id: query_id,
+      response: response
+    }
+
+    DataTx.init(
+      OracleResponseTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(OracleExtendTx, [senders, nonce, ttl_value, fee]) do
+    payload = %{
+      ttl: Serialization.transform_item(ttl_value, :int)
+    }
+
+    DataTx.init(
+      OracleExtendTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(NamePreClaimTx, [senders, nonce, commitment, fee]) do
+    payload = %NamePreClaimTx{commitment: commitment}
+
+    DataTx.init(
+      NamePreClaimTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(NameClaimTx, [senders, nonce, name, name_salt, fee]) do
+    payload = %NameClaimTx{name: name, name_salt: name_salt}
+
+    DataTx.init(
+      NameClaimTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(NameUpdateTx, [senders, nonce, hash, name_ttl, pointers, ttl, fee]) do
+    payload = %NameUpdateTx{
+      client_ttl: Serialization.transform_item(ttl, :int),
+      expire_by: Serialization.transform_item(name_ttl, :int),
+      hash: hash,
+      pointers: pointers
+    }
+
+    DataTx.init(
+      NameUpdateTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(NameRevokeTx, [senders, nonce, hash, fee]) do
+    payload = %NameRevokeTx{hash: hash}
+
+    DataTx.init(
+      NameRevokeTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(NameTransferTx, [senders, nonce, hash, recipient, fee]) do
+    payload = %NameTransferTx{hash: hash, target: recipient}
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int)
+    )
+  end
+
+  defp decode(_, _) do
+    {:error, "#{__MODULE__}: Unknown DataTx structure"}
+  end
+
+  # Optional function-workaround:
+  # As we have differences in value types in some fields,
+  # which means that we encode these fields different apart from what Epoch does,
+  # we need to recognize the origins of this value.
+  # My proposal is (until the problem is solved) to add
+  # specific prefix to the data before encodings, for example, "$æx"
+  # this prefix will allow us to know, how the data should be handled.
+  # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
+  @spec decode_format(binary()) :: binary()
+  defp decode_format(<<"$æx", binary::binary>>) do
+    Serialization.transform_item(binary, :binary)
+  end
+
+  defp decode_format(binary) when is_binary(binary) do
+    binary
   end
 end

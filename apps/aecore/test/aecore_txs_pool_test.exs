@@ -46,10 +46,26 @@ defmodule AecoreTxsPoolTest do
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
     {:ok, signed_tx1} =
-      Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, 5, 10, nonce1)
+      Account.spend(
+        wallet.a_pub_key,
+        wallet.priv_key,
+        wallet.b_pub_key,
+        5,
+        10,
+        nonce1,
+        <<"payload">>
+      )
 
     {:ok, signed_tx2} =
-      Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, 5, 10, nonce1 + 1)
+      Account.spend(
+        wallet.a_pub_key,
+        wallet.priv_key,
+        wallet.b_pub_key,
+        5,
+        10,
+        nonce1 + 1,
+        <<"payload">>
+      )
 
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -60,16 +76,22 @@ defmodule AecoreTxsPoolTest do
 
     :ok = Miner.mine_sync_block_to_chain()
     assert length(Chain.longest_blocks_chain()) > 1
-    assert Enum.count(Chain.top_block().txs) == 2
+    assert Enum.count(Chain.top_block().txs) == 1
     assert Enum.empty?(Pool.get_pool())
   end
 
-  test "add negative transaction fail", wallet do
+  test "fail negative ammount in  transaction", wallet do
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
 
-    {:ok, signed_tx} =
-      Account.spend(wallet.a_pub_key, wallet.priv_key, wallet.b_pub_key, -5, 10, nonce)
-
-    assert :error = Pool.add_transaction(signed_tx)
+    assert {:error, "Elixir.Aecore.Account.Tx.SpendTx: The amount cannot be a negative number"} =
+             DataTx.validate(
+               DataTx.init(
+                 SpendTx,
+                 %{receiver: wallet.b_pub_key, amount: -5, version: 1, payload: <<"payload">>},
+                 wallet.a_pub_key,
+                 10,
+                 nonce
+               )
+             )
   end
 end

@@ -48,7 +48,7 @@ defmodule AecoreTxTest do
     amount = 5
     fee = 1
 
-    payload = %{receiver: tx.receiver, amount: amount}
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -56,36 +56,22 @@ defmodule AecoreTxTest do
 
     assert :ok = SignedTx.validate(signed_tx)
     [signature] = signed_tx.signatures
-    message = Serialization.pack_binary(signed_tx.data)
+    message = Serialization.rlp_encode(signed_tx.data, :tx)
     assert true = Signing.verify(message, signature, sender)
   end
 
-  test "negative tx invalid", tx do
+  @tag :test_test
+  test "negative DataTx invalid", tx do
     sender = Wallet.get_public_key()
     amount = -5
     fee = 1
 
-    payload = %{receiver: tx.receiver, amount: amount}
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"some payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
-    {:error, _} = SpendTx.validate(signed_tx.data.payload, signed_tx.data)
-  end
-
-  test "coinbase tx invalid", tx do
-    sender = Wallet.get_public_key()
-    amount = 5
-    fee = 1
-
-    payload = %{receiver: tx.receiver, amount: amount}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-
-    priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
-
-    assert !SignedTx.is_coinbase?(signed_tx)
+    assert {:error, "#{SpendTx}: The amount cannot be a negative number"} ==
+             DataTx.validate(tx_data)
   end
 
   test "invalid spend transaction", tx do
@@ -98,7 +84,7 @@ defmodule AecoreTxTest do
     assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 100
 
-    payload = %{receiver: tx.receiver, amount: amount}
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     priv_key = Wallet.get_private_key()
@@ -108,7 +94,7 @@ defmodule AecoreTxTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    # We should have only made two coinbase transactions
+    # We should have only made two coinbases
     assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 200
 
@@ -132,7 +118,7 @@ defmodule AecoreTxTest do
     amount = 200
     fee = 50
 
-    payload = %{receiver: tx.receiver, amount: amount}
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
@@ -151,7 +137,7 @@ defmodule AecoreTxTest do
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-    payload = %{receiver: tx.receiver, amount: amount}
+    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
     {:error, _} = DataTx.validate(data_tx)
@@ -166,7 +152,7 @@ defmodule AecoreTxTest do
     receiver = Wallet.get_private_key("M/0")
     refute byte_size(receiver) == 33
     :ok = Miner.mine_sync_block_to_chain()
-    payload = %{receiver: receiver, amount: amount}
+    payload = %{receiver: receiver, amount: amount, version: 1, payload: <<"payload">>}
 
     data_tx = DataTx.init(SpendTx, payload, sender, fee, 1)
     {:error, _} = DataTx.validate(data_tx)
@@ -183,7 +169,7 @@ defmodule AecoreTxTest do
     :ok = Miner.mine_sync_block_to_chain()
     # Send tokens to the first account, sender has 200 tokens
 
-    payload = %{receiver: acc1, amount: amount}
+    payload = %{receiver: acc1, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
     priv_key = Wallet.get_private_key()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
@@ -198,7 +184,7 @@ defmodule AecoreTxTest do
     fee2 = 40
     # Balance of acc1 is more than amount and fee, send tokens to acc2
 
-    payload2 = %{receiver: acc2, amount: amount2}
+    payload2 = %{receiver: acc2, amount: amount2, version: 1, payload: <<"payload">>}
     tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
     priv_key2 = Wallet.get_private_key("m/1")
     {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, acc1, priv_key2)

@@ -17,8 +17,8 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Difficulty
   alias Aecore.Keys.Wallet
+  alias Aecore.Chain.Target
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -41,13 +41,15 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    genesis_block_header = Block.genesis_block().header
+    genesis_block_hash = BlockValidation.block_header_hash(genesis_block_header)
 
     {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
         Block.genesis_block().txs,
         build_chain_state(),
-        0
+        genesis_block_header.height,
+        genesis_block_header.miner
       )
 
     blocks_data_map = %{
@@ -231,14 +233,14 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     with {:ok, prev_block} <- get_block(block.header.prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
-         blocks_for_difficulty_calculation =
-           get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks()),
+         blocks_for_target_calculation =
+           get_blocks(block.header.prev_hash, Target.get_number_of_blocks()),
          {:ok, new_chain_state} <-
            BlockValidation.calculate_and_validate_block(
              block,
              prev_block,
              prev_block_chain_state,
-             blocks_for_difficulty_calculation
+             blocks_for_target_calculation
            ) do
       add_validated_block(block, new_chain_state)
     else
@@ -377,12 +379,16 @@ defmodule Aecore.Chain.Worker do
     new_refs =
       0..@max_refs
       |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-        case Enum.at(blocks_data_map[prev].refs, i) do
-          nil ->
+        with true <- Map.has_key?(blocks_data_map, prev),
+             {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
+          [hash | acc]
+        else
+          :error ->
             acc
 
-          hash ->
-            [hash | acc]
+          _ ->
+            Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
+            acc
         end
       end)
       |> Enum.reverse()
@@ -500,6 +506,11 @@ defmodule Aecore.Chain.Worker do
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
+    if Enum.empty?(blocks_map) do
+      [block_hash] = Map.keys(state.blocks_data_map)
+      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+    end
+
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
 
     blocks_data_map =
@@ -570,7 +581,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.pack_binary(filtered_tx)
+          tx_bin = Serialization.rlp_encode(filtered_tx, :signedtx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)

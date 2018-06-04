@@ -9,6 +9,7 @@ defmodule Aecore.Naming.Naming do
   alias Aecore.Keys.Wallet
   alias Aeutil.Hash
   alias Aeutil.Bits
+  alias Aeutil.Serialization
 
   @pre_claim_ttl 300
 
@@ -24,7 +25,6 @@ defmodule Aecore.Naming.Naming do
 
   @type claim :: %{
           hash: binary(),
-          name: String.t(),
           owner: Wallet.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
@@ -68,7 +68,7 @@ defmodule Aecore.Naming.Naming do
 
   @spec create_claim(
           binary(),
-          String.t(),
+          binary(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
@@ -85,7 +85,7 @@ defmodule Aecore.Naming.Naming do
       :pointers => pointers
     }
 
-  @spec create_claim(binary(), String.t(), Wallet.pubkey(), non_neg_integer()) :: claim()
+  @spec create_claim(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
   def create_claim(hash, name, owner, height),
     do: %{
       :hash => hash,
@@ -157,5 +157,74 @@ defmodule Aecore.Naming.Naming do
 
   def base58c_decode_commitment(_) do
     {:error, "Wrong data"}
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
+          binary() | {:error, String.t()}
+  def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
+    list = [
+      tag,
+      version,
+      naming_state.hash,
+      naming_state.owner,
+      naming_state.expires,
+      Atom.to_string(naming_state.status),
+      naming_state.ttl,
+      naming_state.pointers
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
+    list = [
+      tag,
+      version,
+      name_commitment.hash,
+      name_commitment.owner,
+      name_commitment.created,
+      name_commitment.expires
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(term) do
+    {:error, "Invalid Naming state / Name Commitment structure : #{inspect(term)}"}
+  end
+
+  @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
+  def rlp_decode([hash, owner, expires, status, ttl, pointers], :name) do
+    {:ok,
+     %{
+       hash: hash,
+       owner: owner,
+       expires: Serialization.transform_item(expires, :int),
+       status: String.to_atom(status),
+       ttl: Serialization.transform_item(ttl, :int),
+       pointers: pointers
+     }}
+  end
+
+  def rlp_decode([hash, owner, created, expires], :name_commitment) do
+    {:ok,
+     %{
+       hash: hash,
+       owner: owner,
+       created: Serialization.transform_item(created, :int),
+       expires: Serialization.transform_item(expires, :int)
+     }}
+  end
+
+  def rlp_decode(_) do
+    {:error, "#{__MODULE__} : Invalid Name state / Name Commitment serialization"}
   end
 end

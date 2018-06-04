@@ -59,6 +59,25 @@ config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
 
+config :aecore, :rlp_tags,
+  account_state: 10,
+  signed_tx: 11,
+  spend_tx: 12,
+  registered_orc_state: 20,
+  interaction_obj_state: 21,
+  oracle_reg_tx: 22,
+  oracle_query_tx: 23,
+  oracle_response_tx: 24,
+  oracle_extend_tx: 25,
+  naming_state: 30,
+  name_commitment_state: 31,
+  name_claim_tx: 32,
+  name_pre_claim_tx: 33,
+  name_update_tx: 34,
+  name_revoke_tx: 35,
+  name_transfer_tx: 36,
+  block: 100
+
 config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 32
@@ -77,7 +96,8 @@ config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
-  number_of_blocks_in_memory: 100
+  number_of_blocks_in_memory: 100,
+  write_options: [sync: true, disable_wal: false]
 
 config :logger,
   compile_time_purge_level: :info,

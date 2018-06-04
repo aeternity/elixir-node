@@ -9,7 +9,7 @@ defmodule Aecore.Persistence.Worker do
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aeutil.Scientific
 
   @typedoc """
@@ -47,6 +47,11 @@ defmodule Aecore.Persistence.Worker do
       |> Map.delete("chain_state")
 
     GenServer.call(__MODULE__, {:add_block_info, {hash, cleaned_info}})
+  end
+
+  @spec add_block_by_hash(binary(), Block.t()) :: :ok | {:error, reason :: term()}
+  def add_block_by_hash(hash, block) do
+    GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
   end
 
   @spec add_block_by_hash(Block.t()) :: :ok | {:error, reason :: term()}
@@ -327,7 +332,7 @@ defmodule Aecore.Persistence.Worker do
           total_difficulty
 
         _ ->
-          Scientific.target_to_difficulty(Difficulty.get_default_difficulty())
+          Scientific.target_to_difficulty(Target.get_default_target())
       end
 
     {:reply, total_diff, state}

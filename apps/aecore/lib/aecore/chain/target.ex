@@ -1,4 +1,4 @@
-defmodule Aecore.Chain.Difficulty do
+defmodule Aecore.Chain.Target do
   @moduledoc """
   Contains functions used to calculate the PoW difficulty.
   """
@@ -15,11 +15,11 @@ defmodule Aecore.Chain.Difficulty do
   @spec get_number_of_blocks :: non_neg_integer()
   def get_number_of_blocks, do: @number_of_blocks
 
-  @spec get_default_difficulty :: non_neg_integer()
-  def get_default_difficulty, do: @highest_target_scientific
+  @spec get_default_target :: non_neg_integer()
+  def get_default_target, do: @highest_target_scientific
 
-  @spec calculate_next_difficulty(integer(), list(Block.t())) :: integer()
-  def calculate_next_difficulty(timestamp, previous_blocks) do
+  @spec calculate_next_target(integer(), list(Block.t())) :: integer()
+  def calculate_next_target(timestamp, previous_blocks) do
     sorted_blocks =
       Enum.sort(previous_blocks, fn block1, block2 ->
         block1.header.height < block2.header.height

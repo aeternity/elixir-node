@@ -209,7 +209,15 @@ defmodule MultipleTransactionsTest do
     {receiver_pub_key, _receiver_priv_key} = receiver
 
     {:ok, signed_tx} =
-      Account.spend(sender_pub_key, sender_priv_key, receiver_pub_key, amount, fee, nonce)
+      Account.spend(
+        sender_pub_key,
+        sender_priv_key,
+        receiver_pub_key,
+        amount,
+        fee,
+        nonce,
+        <<"payload">>
+      )
 
     signed_tx
   end
