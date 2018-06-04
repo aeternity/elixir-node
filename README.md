@@ -131,7 +131,7 @@ The DataTx strucure hold:
 
   `Peers.all_peers()`
 
-- Connect to a peer by specifying the address (host), port and peer pubkey (different from the keypair which is used for transaction signing):
+- Connect to a peer by specifying the address (host), port (SYNC_PORT, different from the PORT environment variable that is used for HTTP requests) and peer pubkey (different from the keypair which is used for transaction signing):
 
   `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})`
 
