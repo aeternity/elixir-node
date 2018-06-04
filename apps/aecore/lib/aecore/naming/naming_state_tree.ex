@@ -14,14 +14,14 @@ defmodule Aecore.Naming.NamingStateTree do
   end
 
   @spec put(namings_state(), binary(), Naming.t()) :: namings_state()
-  def put(trie, key, value) do
+  def put(tree, key, value) do
     serialized = serialize(value)
-    PatriciaMerkleTree.enter(trie, key, serialized)
+    PatriciaMerkleTree.enter(tree, key, serialized)
   end
 
   @spec get(namings_state(), binary()) :: Naming.t() | :none
-  def get(trie, key) do
-    case PatriciaMerkleTree.lookup(trie, key) do
+  def get(tree, key) do
+    case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, value} ->
         {:ok, naming} = deserialize(value)
         naming
@@ -32,8 +32,8 @@ defmodule Aecore.Naming.NamingStateTree do
   end
 
   @spec delete(Trie.t(), binary()) :: Trie.t()
-  def delete(trie, key) do
-    PatriciaMerkleTree.delete(trie, key)
+  def delete(tree, key) do
+    PatriciaMerkleTree.delete(tree, key)
   end
 
   defp serialize(

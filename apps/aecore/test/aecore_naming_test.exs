@@ -13,6 +13,7 @@ defmodule AecoreNamingTest do
   alias Aecore.Account.Account
   alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Naming.NameUtil
+  alias Aeutil.PatriciaMerkleTree
 
   setup do
     Persistence.start_link([])
@@ -36,8 +37,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -52,8 +52,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
@@ -67,8 +66,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
@@ -84,8 +82,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
@@ -108,8 +105,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
@@ -139,8 +135,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -155,8 +150,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
 
@@ -175,8 +169,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -195,8 +188,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert :none == first_name_claim
@@ -216,8 +208,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -232,8 +223,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
@@ -253,8 +243,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
@@ -272,8 +261,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -288,8 +276,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
@@ -303,8 +290,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
@@ -334,8 +320,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
@@ -353,8 +338,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
@@ -369,8 +353,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
@@ -384,8 +367,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state, claim_hash)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
@@ -401,8 +383,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
@@ -427,8 +408,7 @@ defmodule AecoreNamingTest do
 
     naming_state = Chain.chain_state().naming
 
-    # This functionality will be implement - Get all keys and their count of a given patricia trie #373
-    # assert 1 == Enum.count(naming_state)
+    assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
     hash = revoke.data.payload.hash
     first_name_revoke = NamingStateTree.get(naming_state, hash)
     assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
