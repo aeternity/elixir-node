@@ -126,12 +126,13 @@ The DataTx strucure hold:
   `Miner.get_state()`
 
 ##### Peers:
+  The default sync port is 3015, it can be set manually by running the node with `SYNC_PORT=some_port iex -S mix`. This port is different from the one used by the phoenix server application.
 
 - To get all peers:
 
   `Peers.all_peers()`
 
-- Connect to a peer by specifying the address (host), port (SYNC_PORT, different from the PORT environment variable that is used for HTTP requests) and peer pubkey (different from the keypair which is used for transaction signing):
+- Connect to a peer by specifying the address (host), port (SYNC_PORT) and peer pubkey (different from the keypair which is used for transaction signing):
 
   `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})`
 
