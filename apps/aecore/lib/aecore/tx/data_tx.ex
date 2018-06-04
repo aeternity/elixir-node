@@ -13,11 +13,11 @@ defmodule Aecore.Tx.DataTx do
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys.Wallet
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Keys.Wallet
 
   require Logger
 

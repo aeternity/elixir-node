@@ -24,7 +24,7 @@ ENV LC_ALL en_US.UTF-8
 RUN curl https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb -o erlang-solutions_1.0_all.deb
 RUN dpkg -i erlang-solutions_1.0_all.deb
 RUN apt-get update
-RUN apt-get install -y esl-erlang=1:20.2.2 elixir=1.6.1-1
+RUN apt-get install -y esl-erlang=1:20.3 elixir=1.6.4-1
 
 # install rust dependency for rocksdb persistence
 USER elixir

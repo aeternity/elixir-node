@@ -17,8 +17,8 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Target
+  alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
