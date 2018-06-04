@@ -8,7 +8,7 @@ defmodule Aecore.Miner.Worker do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aecore.Chain.Header
   alias Aecore.Chain.Block
   alias Aecore.Pow.Cuckoo
@@ -223,13 +223,12 @@ defmodule Aecore.Miner.Worker do
 
     candidate_height = top_block.header.height + 1
 
-    blocks_for_difficulty_calculation =
-      Chain.get_blocks(top_block_hash, Difficulty.get_number_of_blocks())
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
 
     timestamp = System.system_time(:milliseconds)
 
-    difficulty =
-      Difficulty.calculate_next_difficulty(timestamp, blocks_for_difficulty_calculation)
+    target = Target.calculate_next_target(timestamp, blocks_for_target_calculation)
 
     txs_list = get_pool_values()
     ordered_txs_list = Enum.sort(txs_list, fn tx1, tx2 -> tx1.data.nonce < tx2.data.nonce end)
@@ -242,7 +241,7 @@ defmodule Aecore.Miner.Worker do
 
     miner_pubkey = Wallet.get_public_key()
 
-    create_block(top_block, chain_state, difficulty, valid_txs_by_fee, timestamp, miner_pubkey)
+    create_block(top_block, chain_state, target, valid_txs_by_fee, timestamp, miner_pubkey)
   end
 
   def calculate_total_fees(txs) do
@@ -271,7 +270,7 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  defp create_block(top_block, chain_state, difficulty, valid_txs, timestamp, miner_pubkey) do
+  defp create_block(top_block, chain_state, target, valid_txs, timestamp, miner_pubkey) do
     txs_hash = BlockValidation.calculate_txs_hash(valid_txs)
 
     {:ok, new_chain_state} =
@@ -292,7 +291,7 @@ defmodule Aecore.Miner.Worker do
         top_block_hash,
         txs_hash,
         root_hash,
-        difficulty,
+        target,
         0,
         timestamp,
         miner_pubkey,
