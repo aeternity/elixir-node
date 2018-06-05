@@ -11,49 +11,13 @@ services:
       PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4000
     volumes:
       - elixir-node-4000-db:/elixir_node/apps/aecore/priv/rox_db_4000
-    command: 
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-      -e "Aecore.Account.Account.spend(Aecore.Wallet.Worker.get_public_key(\"M/0\"), 20, 10, \"test1\")
-        |> (fn({_, tx}) -> tx end).()
-        |> Aecore.Tx.Pool.Worker.add_transaction()"
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-
-      -e "Aecore.Oracle.Oracle.register(%{\"type\" => \"object\", \"properties\" => 
-        %{\"currency\" => %{\"type\" => \"string\"}}}, 
-        %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5, 
-        %{:ttl => 10, :type => :relative})"
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-      -e "IO.puts \"Registered oracle:\""
-      -e "IO.inspect Aecore.Chain.Worker.registered_oracles()"
-
-      -e "Aecore.Oracle.Oracle.extend(3, 10)"
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-      -e "IO.puts \"Registered oracle with updated ttl:\""
-      -e "IO.inspect Aecore.Chain.Worker.registered_oracles()"
-
-      -e "Aecore.Chain.Worker.registered_oracles() 
-          |> Map.keys() 
-          |> Enum.at(0)
-          |> Aecore.Oracle.Oracle.query(%{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"   
-      -e "IO.puts \"Oracle interaction object:\""
-      -e "IO.inspect Aecore.Chain.Worker.oracle_interaction_objects()"
-
-      -e "Aecore.Chain.Worker.oracle_interaction_objects() 
-          |> Map.keys() 
-          |> Enum.at(0) 
-          |> Aecore.Oracle.Oracle.respond(%{\"currency\" => \"BGN\"}, 5)"
-      -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"  
-      -e "IO.puts \"Oracle interaction object with respond:\""
-      -e "IO.inspect Aecore.Chain.Worker.oracle_interaction_objects()"
+    command: -e "Aecore.Miner.Worker.resume()"
 
 
   elixir-node-4001:
       build: .
       image: elixir-node
       hostname: elixir-node-4001
-      links:
-        - "elixir-node-4000"
       environment:
         PORT: 4001
         PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4001
@@ -61,65 +25,20 @@ services:
         - elixir-node-4001-db:/elixir_node/apps/aecore/priv/rox_db_4001
       stdin_open: true
       tty: true
-      command:       
-        -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "Aecore.Account.Account.pre_claim(\"test.aet\", <<1::256>>, 10)
-          |> (fn({_, pre_claim}) -> pre_claim end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
+      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")" -e "Aecore.Miner.Worker.resume()"
 
-        -e "Aecore.Account.Account.claim(\"test.aet\", <<1::256>>, 10)
-          |> (fn({_, claim}) -> claim end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "IO.puts \"Naming:\"" -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
-
-        -e "Aecore.Account.Account.name_update(\"test.aet\", \"{\\"test\\":2}\", 10) 
-          |> (fn({_, update}) -> update end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "IO.puts \"Naming updated:\"" -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
-        
-        -e "Aecore.Wallet.Worker.get_private_key(\"m/0/1\")
-          |> Aecore.Wallet.Worker.to_public_key()
-          |> (fn transfer_to_pub -> Aecore.Account.Account.name_transfer(\"test.aet\", transfer_to_pub, 10) end).()
-          |> (fn({_, transfer_tx}) -> transfer_tx end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "IO.puts \"Naming new owner:\"" 
-        -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
-
-        -e "Aecore.Wallet.Worker.get_private_key(\"m/0/1\") 
-          |> Aecore.Wallet.Worker.to_public_key()
-          |> Aecore.Account.Account.spend(10, 10, <<\"payload\">>)
-          |> (fn({_, tx}) -> tx end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "Aecore.Wallet.Worker.get_private_key(\"m/0/1\") 
-          |> Aecore.Wallet.Worker.to_public_key()
-          |> Aecore.Account.Account.name_revoke(Aecore.Wallet.Worker.get_private_key(\"m/0/1\"), 
-            \"test.aet\", 10, Aecore.Account.Account.nonce(Aecore.Chain.Worker.chain_state().accounts, 
-            Aecore.Wallet.Worker.to_public_key(Aecore.Wallet.Worker.get_private_key(\"m/0/1\"))) + 1)
-          |> (fn({_, tx}) -> tx end).()
-          |> Aecore.Tx.Pool.Worker.add_transaction()"
-        -e "Aecore.Miner.Worker.mine_sync_block_to_chain()"
-        -e "IO.puts \"Naming revoked:\"" 
-        -e "IO.inspect Aecore.Chain.Worker.chain_state().naming"
 
   elixir-node-4002:
       build: .
       image: elixir-node
       hostname: elixir-node-4002
-      links: 
-        - "elixir-node-4001"
       environment:
         PORT: 4002
         PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4002
       volumes:
         - elixir-node-4002-db:/elixir_node/apps/aecore/priv/rox_db_4002
-      command: 
-        -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
+      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
+
 
   proxy:
     image: nginx:1.13.8
