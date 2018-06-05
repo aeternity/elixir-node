@@ -8,7 +8,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aeutil.Hash
   alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
@@ -44,7 +44,7 @@ defmodule Aecore.Chain.BlockValidation do
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
         target =
-          Difficulty.calculate_next_difficulty(
+          Target.calculate_next_target(
             new_block.header.time,
             blocks_for_target_calculation
           )
