@@ -245,20 +245,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  # @spec registered_oracles() :: Oracle.registered_oracles()
-  # def registered_oracles do
-  #   GenServer.call(__MODULE__, :registered_oracles)
-  # end
-
-  # @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  # def oracle_interaction_objects do
-  #   GenServer.call(__MODULE__, :oracle_interaction_objects)
-  # end
-
-  @spec chain_state() :: %{
-          :accounts => Chainstate.accounts(),
-          :oracles => Oracle.t()
-        }
+  @spec chain_state() :: Chainstate.t()
   def chain_state do
     top_block_chain_state()
   end
@@ -651,8 +638,8 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
-      # {key = :oracles, root_hash}, acc_state ->
-      #   Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+      {key = :oracles, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
@@ -664,8 +651,8 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 
-      # {key = :oracles, value}, acc_state ->
-      #   Map.put(acc_state, key, value.root_hash)
+      {key = :oracles, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
