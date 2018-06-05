@@ -21,6 +21,8 @@ script:
   - mix format --check-formatted
   - mix coveralls -u
   - mix dialyzer --halt-exit-status
+  - docker-compose build
+  - docker-compose -f docker-compose-ci.yml up
 
 cache:
   directories:
