@@ -45,8 +45,6 @@ Function get_raw_blocks/1 has no local return
 Function get_pool_txs/1 has no local return
 Function send_block/2 has no local return
 Function send_tx/2 has no local return
-Function spend/4 has no local return
-Function spend/7 has no local return
 Function get_peers/1 has no local return
 Function get_and_add_peers/1 has no local return
 Function get_account_balance/1 has no local return
