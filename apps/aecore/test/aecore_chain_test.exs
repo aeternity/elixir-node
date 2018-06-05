@@ -12,7 +12,8 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
+  alias Aecore.Wallet.Worker, as: Wallet
 
   setup do
     # Persistence.delete_all_blocks()
@@ -37,7 +38,13 @@ defmodule AecoreChainTest do
 
     {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
-    {:ok, new_chain_state} = Chainstate.calculate_and_validate_chain_state([], chain_state, 1)
+    {:ok, new_chain_state} =
+      Chainstate.calculate_and_validate_chain_state(
+        [],
+        chain_state,
+        2,
+        Wallet.get_public_key()
+      )
 
     new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
@@ -49,6 +56,7 @@ defmodule AecoreChainTest do
         root_hash: new_root_hash,
         target: 553_713_663,
         nonce: 0,
+        miner: Wallet.get_public_key(),
         time: System.system_time(:milliseconds),
         version: 1
       },
@@ -61,8 +69,8 @@ defmodule AecoreChainTest do
 
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)
 
-    blocks_for_difficulty_calculation =
-      Chain.get_blocks(top_block_hash_next, Difficulty.get_number_of_blocks())
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash_next, Target.get_number_of_blocks())
 
     top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)
@@ -80,7 +88,7 @@ defmodule AecoreChainTest do
              top_block_from_chain,
              previous_block,
              chainstate,
-             blocks_for_difficulty_calculation
+             blocks_for_target_calculation
            )
 
     assert :ok = Chain.add_block(block_mined)

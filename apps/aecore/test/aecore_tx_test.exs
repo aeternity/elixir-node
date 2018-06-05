@@ -74,20 +74,6 @@ defmodule AecoreTxTest do
              DataTx.validate(tx_data)
   end
 
-  test "coinbase tx invalid", tx do
-    sender = Wallet.get_public_key()
-    amount = 5
-    fee = 1
-
-    payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-
-    priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
-
-    assert !SignedTx.is_coinbase?(signed_tx)
-  end
-
   test "invalid spend transaction", tx do
     sender = Wallet.get_public_key()
     amount = 200
@@ -108,7 +94,7 @@ defmodule AecoreTxTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    # We should have only made two coinbase transactions
+    # We should have only made two coinbases
     assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 200
 

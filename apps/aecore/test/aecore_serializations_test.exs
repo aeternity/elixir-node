@@ -69,15 +69,6 @@ defmodule AecoreSerializationTest do
   end
 
   @tag :rlp_test
-  test "DataTx(CoinbaseTx) serialization", setup do
-    Miner.mine_sync_block_to_chain()
-    coinbasetx = create_data(CoinbaseTx, :elixir).data
-    serialized_coinbasetx = Serialization.rlp_encode(coinbasetx, :tx)
-    deserialized_spendtx = Serialization.rlp_decode(serialized_coinbasetx)
-    assert deserialized_spendtx == coinbasetx
-  end
-
-  @tag :rlp_test
   test "Block serialization", setup do
     block = create_data(Block, :elixir)
     serialized_block = Serialization.rlp_encode(block, :block)
@@ -154,9 +145,6 @@ defmodule AecoreSerializationTest do
           100,
           Chain.lowest_valid_nonce()
         )
-
-      CoinbaseTx ->
-        List.last(Chain.top_block().txs)
 
       SignedTx ->
         {:ok, signed_tx} =
