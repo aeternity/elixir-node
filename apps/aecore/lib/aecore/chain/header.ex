@@ -5,16 +5,18 @@ defmodule Aecore.Chain.Header do
 
   alias Aecore.Chain.Header
   alias Aeutil.Bits
+  alias Aecore.Wallet.Worker, as: Wallet
 
   @type t :: %Header{
           height: non_neg_integer(),
           prev_hash: binary(),
           txs_hash: binary(),
           root_hash: binary(),
-          time: non_neg_integer(),
+          target: non_neg_integer(),
           nonce: non_neg_integer(),
-          version: non_neg_integer(),
-          target: non_neg_integer()
+          time: non_neg_integer(),
+          miner: Wallet.pubkey(),
+          version: non_neg_integer()
         }
 
   defstruct [
@@ -24,9 +26,10 @@ defmodule Aecore.Chain.Header do
     :root_hash,
     :target,
     :nonce,
-    :pow_evidence,
     :time,
-    :version
+    :miner,
+    :version,
+    :pow_evidence
   ]
 
   use ExConstructor
@@ -39,19 +42,21 @@ defmodule Aecore.Chain.Header do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
+          Wallet.pubkey(),
           non_neg_integer()
         ) :: Header.t()
 
-  def create(height, prev_hash, txs_hash, root_hash, target, nonce, version, time) do
+  def create(height, prev_hash, txs_hash, root_hash, target, nonce, time, miner, version) do
     %Header{
       height: height,
       prev_hash: prev_hash,
       txs_hash: txs_hash,
       root_hash: root_hash,
-      time: time,
+      target: target,
       nonce: nonce,
-      version: version,
-      target: target
+      time: time,
+      miner: miner,
+      version: version
     }
   end
 

@@ -11,6 +11,8 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Naming.Naming
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Wallet.Worker, as: Wallet
 
   require Logger
 
@@ -39,12 +41,19 @@ defmodule Aecore.Chain.Chainstate do
     }
   end
 
-  @spec calculate_and_validate_chain_state(list(), Chainstate.t(), non_neg_integer()) ::
-          {:ok, Chainstate.t()} | {:error, String.t()}
-  def calculate_and_validate_chain_state(txs, chainstate, block_height) do
+  @spec calculate_and_validate_chain_state(
+          list(),
+          Chainstate.t(),
+          non_neg_integer(),
+          Wallet.pubkey()
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
+    chainstate_with_coinbase =
+      calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
+
     updated_chainstate =
-      Enum.reduce_while(txs, chainstate, fn tx, chainstate ->
-        case apply_transaction_on_state(chainstate, block_height, tx) do
+      Enum.reduce_while(txs, chainstate_with_coinbase, fn tx, chainstate_acc ->
+        case apply_transaction_on_state(chainstate_acc, block_height, tx) do
           {:ok, updated_chainstate} ->
             {:cont, updated_chainstate}
 
@@ -61,6 +70,25 @@ defmodule Aecore.Chain.Chainstate do
 
       error ->
         {:error, error}
+    end
+  end
+
+  defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
+    case miner do
+      <<0::256>> ->
+        chainstate
+
+      miner_pubkey ->
+        accounts_state_with_coinbase =
+          AccountStateTree.update(chainstate.accounts, miner_pubkey, fn acc ->
+            Account.apply_transfer!(
+              acc,
+              block_height,
+              Miner.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
+            )
+          end)
+
+        %{chainstate | accounts: accounts_state_with_coinbase}
     end
   end
 
