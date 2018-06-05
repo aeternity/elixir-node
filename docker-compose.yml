@@ -51,8 +51,8 @@ services:
       command:
         -e "Aehttpclient.Client.get_info(\"elixir-node-4000:4000\")
         |> elem(1)
-        |> Map.get(:public_key)
-        |> Aecore.Account.Account.base58c_decode()
+        |> Map.get(:peer_pubkey)
+        |> Aecore.Keys.Peer.base58c_decode()
         |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
         |> Map.put(:host, 'elixir-node-4000')
         |> Map.put(:port, 3015)
