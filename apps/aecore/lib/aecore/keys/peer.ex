@@ -6,6 +6,7 @@ defmodule Aecore.Keys.Peer do
   alias Aewallet.Cypher
   alias Aecore.Keys.Utils
   alias Aecore.Keys.Worker, as: Keys
+  alias Aeutil.Bits
 
   @type pubkey :: binary()
 
@@ -104,5 +105,13 @@ defmodule Aecore.Keys.Peer do
       {:error, message} ->
         {:error, "The path you have given has thrown an #{message} error!"}
     end
+  end
+
+  def base58c_encode(bin) do
+    Bits.encode58c("pp", bin)
+  end
+
+  def base58c_decode(<<"pp$", payload::binary>>) do
+    Bits.decode58(payload)
   end
 end
