@@ -51,4 +51,5 @@ RUN mix compile
 
 # set entrypoint
 EXPOSE 4000
+EXPOSE 3015
 ENTRYPOINT ["iex", "-S", "mix", "phx.server"]

@@ -32,7 +32,7 @@ services:
         |> Map.get(:peer_pubkey)
         |> Aecore.Keys.Peer.base58c_decode()
         |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
-        |> Map.put(:host, 'elixir-node-4000')
+        |> Map.put(:host, 'localhost')
         |> Map.put(:port, 3015)
         |> Aecore.Peers.Worker.try_connect()"
         -e "Aecore.Miner.Worker.resume()"
@@ -54,7 +54,7 @@ services:
         |> Map.get(:peer_pubkey)
         |> Aecore.Keys.Peer.base58c_decode()
         |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
-        |> Map.put(:host, 'elixir-node-4000')
+        |> Map.put(:host, 'localhost')
         |> Map.put(:port, 3015)
         |> Aecore.Peers.Worker.try_connect()"
 
