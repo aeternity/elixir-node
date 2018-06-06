@@ -10,6 +10,8 @@
 :0: Unknown function 'Elixir.Aewallet.Wallet':get_seed/2
 :0: Unknown function 'Elixir.ExJsonSchema.Schema':resolve/1
 :0: Unknown function 'Elixir.ExJsonSchema.Validator':validate/2
+:0: Unknown function 'Elixir.ExRLP':decode/1
+:0: Unknown function 'Elixir.ExRLP':encode/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.DB.ExternalDB':init/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Proof':construct_proof/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Proof':verify_proof/4
@@ -18,36 +20,19 @@
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':new/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':new/2
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':update/3
+:0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':all_keys/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/2
 :0: Unknown function 'Elixir.Msgpax':unpack/1
+:0: Unknown function 'Elixir.Serialization':rlp_encode/2
 :0: Unknown function base58:base58_to_binary/1
 :0: Unknown function base58:binary_to_base58/1
 :0: Unknown function enacl:generichash/2
 :0: Unknown function sha3:hash/2
-:0: Unknown type 'Elixir.Account':t/0
-:0: Unknown type 'Elixir.Aecore.Account.Account':pubkey/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':account/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':chainstate/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':naming/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':account_chainstate/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':accounts/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':chainstate/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleExtendTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleQueryTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleRegistrationTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleResponseTx':t/0
-:0: Unknown type 'Elixir.Aecore.Tx.DataTx':paload/0
-:0: Unknown type 'Elixir.Block':t/0
-:0: Unknown type 'Elixir.ChainState':account/0
-:0: Unknown type 'Elixir.ChainState':account_chainstate/0
-:0: Unknown type 'Elixir.ChainState':t/0
-:0: Unknown type 'Elixir.Chainstate':chain_state_types/0
-:0: Unknown type 'Elixir.Chainstate':t/0
-:0: Unknown type 'Elixir.List':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
+<<<<<<< HEAD
 :0: Unknown type 'Elixir.NameTransferTx':t/0
 :0: Unknown type 'Elixir.SignedTx':t/0
 :0: Unknown type 'Elixir.Wallet':pubkey/0
@@ -346,3 +331,5 @@ apps/aecore/lib/aecore/tx/pool/worker.ex:117: The pattern #{'txs':=_@2} can neve
 apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:31: The call 'Elixir.Aeutil.Serialization':block(Vblock@1::#{'__struct__':='Elixir.Aecore.Chain.Block', 'header':=#{'__struct__':='Elixir.Aecore.Chain.Header', 'height':=non_neg_integer(), 'miner':=binary(), 'nonce':=non_neg_integer(), 'pow_evidence':=_, 'prev_hash':=binary(), 'root_hash':=binary(), 'target':=non_neg_integer(), 'time':=non_neg_integer(), 'txs_hash':=binary(), 'version':=non_neg_integer()}, 'txs':=[#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=#{'__struct__':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Oracle.Tx.OracleExtendTx' | 'Elixir.Aecore.Oracle.Tx.OracleQueryTx' | 'Elixir.Aecore.Oracle.Tx.OracleRegistrationTx' | 'Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'amount'=>non_neg_integer(), 'client_ttl'=>non_neg_integer(), 'commitment'=>binary(), 'expire_by'=>non_neg_integer(), 'hash'=>binary(), 'name'=>binary(), 'name_salt'=>binary(), 'oracle_address'=>binary(), 'payload'=>binary(), 'pointers'=>binary(), 'query_data'=>_, 'query_fee'=>non_neg_integer(), 'query_format'=>map(), 'query_id'=>binary(), 'query_ttl'=>#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'receiver'=>binary(), 'response'=>map(), 'response_format'=>map(), 'response_ttl'=>#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'target'=>binary(), 'ttl'=>non_neg_integer() | #{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'version'=>non_neg_integer()}, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Oracle.Tx.OracleExtendTx' | 'Elixir.Aecore.Oracle.Tx.OracleRegistrationTx' | 'Elixir.Aecore.Oracle.Tx.OracleResponseTx'}, 'signatures':=[binary()]}]},'serialize') will never return since it differs in the 2nd argument from the success typing arguments: (map(),'deserialize')
 apps/aecore/lib/aecore/miner/worker.ex:269: The call 'Elixir.Aecore.Oracle.Oracle':'tx_ttl_is_valid?'(Vtx@1::#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=#{'__struct__':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Oracle.Tx.OracleExtendTx' | 'Elixir.Aecore.Oracle.Tx.OracleQueryTx' | 'Elixir.Aecore.Oracle.Tx.OracleRegistrationTx' | 'Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'amount'=>non_neg_integer(), 'client_ttl'=>non_neg_integer(), 'commitment'=>binary(), 'expire_by'=>non_neg_integer(), 'hash'=>binary(), 'name'=>binary(), 'name_salt'=>binary(), 'oracle_address'=>binary(), 'payload'=>binary(), 'pointers'=>binary(), 'query_data'=>_, 'query_fee'=>non_neg_integer(), 'query_format'=>map(), 'query_id'=>binary(), 'query_ttl'=>#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'receiver'=>binary(), 'response'=>map(), 'response_format'=>map(), 'response_ttl'=>#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'target'=>binary(), 'ttl'=>non_neg_integer() | #{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'version'=>non_neg_integer()}, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Oracle.Tx.OracleExtendTx' | 'Elixir.Aecore.Oracle.Tx.OracleRegistrationTx' | 'Elixir.Aecore.Oracle.Tx.OracleResponseTx'}, 'signatures':=[binary()]},Vblock_height@1::pos_integer()) breaks the contract (oracle_txs_with_ttl(),non_neg_integer()) -> boolean()
 >>>>>>> 48fb420d109d191a61b638db2516cce6c5404f02
+=======
+>>>>>>> e1429bbdb6991f22579c8f37082b09ad74177c00

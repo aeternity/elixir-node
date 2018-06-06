@@ -12,7 +12,7 @@ defmodule Aehttpserver.Web.MinerController do
         json(conn, Miner.suspend())
 
       "status" ->
-        {_, state} = Miner.get_state()
+        state = Miner.get_state()
         json(conn, state)
     end
   end

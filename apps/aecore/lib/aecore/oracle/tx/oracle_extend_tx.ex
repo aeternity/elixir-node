@@ -8,8 +8,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
 
   require Logger
 
@@ -21,18 +21,20 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           ttl: non_neg_integer()
         }
 
+  @type tx_type_state() :: Chainstate.oracles()
+
   defstruct [:ttl]
   use ExConstructor
 
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  @spec init(payload()) :: OracleExtendTx.t()
+  @spec init(payload()) :: t()
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -49,12 +51,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          tx_type_state(),
           non_neg_integer(),
-          OracleExtendTx.t(),
+          t(),
           DataTx.t()
-        ) :: {ChainState.accounts(), Oracle.oracles()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         oracle_state,
@@ -75,12 +77,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          tx_type_state(),
           non_neg_integer(),
-          OracleExtendTx.t(),
+          t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         %{registered_oracles: registered_oracles},
@@ -107,12 +109,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          OracleExtendTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
