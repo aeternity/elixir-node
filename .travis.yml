@@ -20,7 +20,7 @@ script:
   - mix credo list
   - mix format --check-formatted
   - mix coveralls -u
-  - mix dialyzer --halt-exit-status
+  - mix dialyzer 
 
 cache:
   directories:
