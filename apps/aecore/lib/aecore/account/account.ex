@@ -24,14 +24,12 @@ defmodule Aecore.Account.Account do
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer(),
           pubkey: Wallet.pubkey()
         }
 
   @type account_payload :: %{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          last_updated: non_neg_integer(),
           pubkey: Wallet.pubkey()
         }
 
@@ -44,16 +42,15 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :last_updated, :pubkey]
+  defstruct [:balance, :nonce, :pubkey]
 
-  def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0, pubkey: <<>>}
+  def empty, do: %Account{balance: 0, nonce: 0, pubkey: <<>>}
 
-  @spec new(account_payload()) :: t()
-  def new(%{balance: balance, nonce: nonce, last_updated: last_updated, pubkey: pubkey}) do
+  @spec new(account_payload()) :: Account.t()
+  def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
     %Account{
       balance: balance,
       nonce: nonce,
-      last_updated: last_updated,
       pubkey: pubkey
     }
   end
@@ -72,14 +69,6 @@ defmodule Aecore.Account.Account do
   @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
-  end
-
-  @doc """
-  Return the last_updated for a given key.
-  """
-  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
-  def last_updated(tree, key) do
-    AccountStateTree.get(tree, key).last_updated
   end
 
   @doc """
@@ -308,14 +297,14 @@ defmodule Aecore.Account.Account do
   Adds balance to a given Account state and updates last update block.
   """
   @spec apply_transfer!(t(), non_neg_integer(), integer()) :: t()
-  def apply_transfer!(account_state, block_height, amount) do
+  def apply_transfer!(account_state, _block_height, amount) do
     new_balance = account_state.balance + amount
 
     if new_balance < 0 do
       throw({:error, "#{__MODULE__}: Negative balance"})
     end
 
-    %Account{account_state | balance: new_balance, last_updated: block_height}
+    %Account{account_state | balance: new_balance}
   end
 
   @spec apply_nonce!(t(), integer()) :: t()
@@ -350,7 +339,6 @@ defmodule Aecore.Account.Account do
       version,
       account.pubkey,
       account.nonce,
-      account.last_updated,
       account.balance
     ]
 
@@ -365,13 +353,12 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list()) :: {:ok, t()} | {:error, String.t()}
-  def rlp_decode([pubkey, nonce, height, balance]) do
+  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def rlp_decode([pubkey, nonce, balance]) do
     {:ok,
      %Account{
        pubkey: pubkey,
        balance: Serialization.transform_item(balance, :int),
-       last_updated: Serialization.transform_item(height, :int),
        nonce: Serialization.transform_item(nonce, :int)
      }}
   end

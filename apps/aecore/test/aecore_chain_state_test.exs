@@ -41,9 +41,9 @@ defmodule AecoreChainstateTest do
       Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2, <<"payload">>)
 
     init_accounts = %{
-      wallet.a_pub_key => %Account{balance: 3, nonce: 100, last_updated: 0},
-      wallet.b_pub_key => %Account{balance: 5, nonce: 1, last_updated: 0},
-      wallet.c_pub_key => %Account{balance: 4, nonce: 1, last_updated: 0}
+      wallet.a_pub_key => %Account{balance: 3, nonce: 100},
+      wallet.b_pub_key => %Account{balance: 5, nonce: 1},
+      wallet.c_pub_key => %Account{balance: 4, nonce: 1}
     }
 
     accounts_chainstate =
@@ -54,25 +54,22 @@ defmodule AecoreChainstateTest do
     chain_state =
       apply_txs_on_state([signed_tx1, signed_tx2], %{:accounts => accounts_chainstate}, 1)
 
-    assert {6, 100, 1} ==
+    assert {6, 100} ==
              {
                Account.balance(chain_state.accounts, wallet.a_pub_key),
-               Account.nonce(chain_state.accounts, wallet.a_pub_key),
-               Account.last_updated(chain_state.accounts, wallet.a_pub_key)
+               Account.nonce(chain_state.accounts, wallet.a_pub_key)
              }
 
-    assert {3, 2, 1} ==
+    assert {3, 2} ==
              {
                Account.balance(chain_state.accounts, wallet.b_pub_key),
-               Account.nonce(chain_state.accounts, wallet.b_pub_key),
-               Account.last_updated(chain_state.accounts, wallet.b_pub_key)
+               Account.nonce(chain_state.accounts, wallet.b_pub_key)
              }
 
-    assert {1, 2, 1} ==
+    assert {1, 2} ==
              {
                Account.balance(chain_state.accounts, wallet.c_pub_key),
-               Account.nonce(chain_state.accounts, wallet.c_pub_key),
-               Account.last_updated(chain_state.accounts, wallet.c_pub_key)
+               Account.nonce(chain_state.accounts, wallet.c_pub_key)
              }
   end
 
