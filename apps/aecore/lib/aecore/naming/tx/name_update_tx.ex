@@ -5,12 +5,13 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Naming
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -24,7 +25,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameUpdateTx we have the naming subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the NameUpdateTx Transaction type"
   @type t :: %NameUpdateTx{
@@ -48,7 +49,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NameUpdateTx.t()
+  @spec init(payload()) :: t()
   def init(%{
         hash: hash,
         expire_by: expire_by,
@@ -61,7 +62,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
           hash: hash,
@@ -95,12 +96,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameUpdateTx.t(),
+          t(),
           DataTx.t()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
@@ -127,12 +128,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          AccountsStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameUpdateTx.t(),
+          t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -171,12 +172,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
