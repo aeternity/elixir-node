@@ -48,7 +48,7 @@ defmodule Aecore.Account.Account do
 
   def empty, do: %Account{balance: 0, nonce: 0, last_updated: 0, pubkey: <<>>}
 
-  @spec new(account_payload()) :: Account.t()
+  @spec new(account_payload()) :: t()
   def new(%{balance: balance, nonce: nonce, last_updated: last_updated, pubkey: pubkey}) do
     %Account{
       balance: balance,
@@ -61,7 +61,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the balance for a given key.
   """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec balance(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
     AccountStateTree.get(tree, key).balance
   end
@@ -69,7 +69,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the nonce for a given key.
   """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec nonce(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
   end
@@ -77,7 +77,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the last_updated for a given key.
   """
-  @spec last_updated(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec last_updated(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def last_updated(tree, key) do
     AccountStateTree.get(tree, key).last_updated
   end
@@ -86,7 +86,7 @@ defmodule Aecore.Account.Account do
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
   @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary()) ::
-          {:ok, SignedTx.t()}
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def spend(receiver, amount, fee, payload) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -105,7 +105,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           binary()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl) do
     payload = %{
       receiver: receiver,
@@ -120,7 +120,8 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NamePreClaimTx where the miners public key is used as a sender
   """
-  @spec pre_claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  @spec pre_claim(String.t(), binary(), non_neg_integer()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -138,7 +139,7 @@ defmodule Aecore.Account.Account do
           binary(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     case Naming.create_commitment_hash(name, name_salt) do
       {:ok, commitment} ->
@@ -153,7 +154,8 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameClaimTx where the miners public key is used as a sender
   """
-  @spec claim(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  @spec claim(String.t(), binary(), non_neg_integer()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(name, name_salt, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -171,7 +173,7 @@ defmodule Aecore.Account.Account do
           binary(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
     case NameUtil.normalized_namehash(name) do
       {:ok, _} ->
@@ -186,7 +188,8 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameUpdateTx where the miners public key is used as a sender
   """
-  @spec name_update(String.t(), String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  @spec name_update(String.t(), String.t(), non_neg_integer()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def name_update(name, pointers, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -204,7 +207,7 @@ defmodule Aecore.Account.Account do
           String.t(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
@@ -225,7 +228,8 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameTransferTx where the miners public key is used as a sender
   """
-  @spec name_transfer(String.t(), binary(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  @spec name_transfer(String.t(), binary(), non_neg_integer()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(name, target, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -243,7 +247,7 @@ defmodule Aecore.Account.Account do
           binary(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(sender, sender_priv_key, name, target, fee, nonce) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
@@ -258,7 +262,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameTransferTx where the miners public key is used as a sender
   """
-  @spec name_revoke(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()}
+  @spec name_revoke(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(name, fee) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
@@ -275,7 +279,7 @@ defmodule Aecore.Account.Account do
           String.t(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()}
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(sender, sender_priv_key, name, fee, nonce) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
@@ -288,7 +292,7 @@ defmodule Aecore.Account.Account do
   end
 
   @spec build_tx(
-          DataTx.payload(),
+          map(),
           DataTx.tx_types(),
           binary(),
           binary(),
@@ -303,8 +307,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given Account state and updates last update block.
   """
-  @spec apply_transfer!(ChainState.account(), non_neg_integer(), integer()) ::
-          ChainState.account()
+  @spec apply_transfer!(t(), non_neg_integer(), integer()) :: t()
   def apply_transfer!(account_state, block_height, amount) do
     new_balance = account_state.balance + amount
 
@@ -315,7 +318,7 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance, last_updated: block_height}
   end
 
-  @spec apply_nonce!(ChainState.account(), integer()) :: ChainState.account()
+  @spec apply_nonce!(t(), integer()) :: t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
       throw({:error, "#{__MODULE__}: Invalid nonce"})
@@ -340,8 +343,7 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), Account.t()) ::
-          binary() | {:error, String.t()}
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, %Account{} = account) do
     list = [
       tag,
@@ -363,7 +365,7 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
+  @spec rlp_decode(list()) :: {:ok, t()} | {:error, String.t()}
   def rlp_decode([pubkey, nonce, height, balance]) do
     {:ok,
      %Account{

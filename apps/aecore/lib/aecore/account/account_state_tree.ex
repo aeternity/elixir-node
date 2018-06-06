@@ -6,6 +6,7 @@ defmodule Aecore.Account.AccountStateTree do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
+  alias MerklePatriciaTree.Trie
 
   @type accounts_state :: Trie.t()
 

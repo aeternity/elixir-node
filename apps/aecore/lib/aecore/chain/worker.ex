@@ -82,7 +82,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :current_state)
   end
 
-  @spec top_block_chain_state() :: Chainstate.account_chainstate()
+  @spec top_block_chain_state() :: Chainstate.t()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -111,7 +111,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
@@ -145,7 +145,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
@@ -227,12 +227,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), Chainstate.t()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: {:ok, ChainState.account_chainstate()} | {:error, String.t()}
+  @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->
@@ -256,10 +256,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
-  @spec chain_state() :: %{
-          :accounts => Chainstate.accounts(),
-          :oracles => Oracle.t()
-        }
+  @spec chain_state() :: Chainstate.t()
   def chain_state do
     top_block_chain_state()
   end
