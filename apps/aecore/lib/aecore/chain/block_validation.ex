@@ -8,9 +8,10 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aeutil.Hash
   alias Aeutil.Serialization
+  alias Aecore.Chain.Chainstate
 
   @time_validation_future_limit_ms 30 * 60 * 1000
 
@@ -19,7 +20,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec calculate_and_validate_block(
           Block.t(),
           Block.t(),
-          Chainstate.chainstate(),
+          Chainstate.t(),
           list(Block.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(
@@ -43,7 +44,7 @@ defmodule Aecore.Chain.BlockValidation do
         root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
         target =
-          Difficulty.calculate_next_difficulty(
+          Target.calculate_next_target(
             new_block.header.time,
             blocks_for_target_calculation
           )

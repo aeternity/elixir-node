@@ -10,6 +10,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -48,10 +50,10 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @spec get_chain_state_name() :: :none
-  def get_chain_state_name, do: :none
+  @spec get_chain_state_name() :: nil
+  def get_chain_state_name, do: nil
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
     %SpendTx{receiver: receiver, amount: amount, payload: payload, version: version}
   end
@@ -59,7 +61,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -89,12 +91,12 @@ defmodule Aecore.Account.Tx.SpendTx do
   Changes the account state (balance) of the sender and receiver.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          SpendTx.t(),
+          t(),
           DataTx.t()
-        ) :: {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
     sender = DataTx.main_sender(data_tx)
 
@@ -115,10 +117,10 @@ defmodule Aecore.Account.Tx.SpendTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.account(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          SpendTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
@@ -132,12 +134,12 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          SpendTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

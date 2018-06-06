@@ -13,6 +13,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
 
   require Logger
 

@@ -13,6 +13,7 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerBlocksTask
   alias Aecore.Chain.Header
+  alias Aecore.Chain.Block
 
   require Logger
 
@@ -355,7 +356,7 @@ defmodule Aecore.Peers.Sync do
         :ok ->
           remove_block_from_state(BlockValidation.block_header_hash(block.header))
 
-        :error ->
+        {:error, _binary} ->
           Logger.info("Block: #{inspect(block)} couldn't be added to chain")
       end
     end)
