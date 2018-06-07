@@ -54,7 +54,7 @@ defmodule Aecore.Pow.Cuckoo do
     {:ok, %{builder | hash: pack_header_and_nonce(blake2b, header.nonce)}}
   end
 
-  defp get_os_cmd(%{process: process, header: header, hash: hash} = builder) do
+  defp get_os_cmd(%{process: process, hash: hash} = builder) do
     {:ok, command, options} = build_command(process, hash)
     {:ok, %{builder | cmd: command, cmd_opt: options}}
   end
