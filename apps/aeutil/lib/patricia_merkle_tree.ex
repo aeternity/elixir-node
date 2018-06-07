@@ -17,7 +17,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Depending on the name, different data base ref will
   be used for the trie creaton.
   """
-  @type trie_name :: :account | :txs | :proof
+  @type trie_name :: :accounts | :txs | :proof
 
   @spec root_hash(Trie.t()) :: binary
   def root_hash(%{root_hash: root_hash}), do: root_hash
@@ -25,7 +25,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Creating new trie.
   """
-  @spec new(trie_name) :: Trie.t()
+  @spec new(trie_name()) :: Trie.t()
   def new(trie_name), do: Trie.new(ExternalDB.init(get_db_handlers(trie_name)))
 
   @doc """
