@@ -8,6 +8,7 @@ defmodule PersistenceTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
 
   setup persistance_state do
     Persistence.start_link([])
@@ -51,20 +52,24 @@ defmodule PersistenceTest do
   @tag timeout: 30_000
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
+    correct_balance =
+      Chain.chain_state().accounts
+      |> Account.balance(persistance_state.account1)
+
     ## For specific account
-    assert {:ok, %{balance: _}} = Persistence.get_account_chain_state(persistance_state.account1)
+    assert %{balance: correct_balance} = get_account_state(persistance_state.account1)
 
     ## Non existant accounts are empty
-    empty = Account.empty()
-    assert {:ok, empty} = Persistence.get_account_chain_state(persistance_state.account2)
+    assert :not_found = get_account_state(persistance_state.account2)
+
     ## For all accounts
-    all_accounts = Persistence.get_all_accounts_chain_states()
+    all_accounts = Persistence.get_all_chainstates()
     assert false == Enum.empty?(Map.keys(all_accounts))
   end
 
   @tag timeout: 20_000
   @tag :persistence
-  test "Get latest two blocks from rocksdb", persistance_state do
+  test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
 
     Map.values(Persistence.get_blocks(2))
@@ -87,6 +92,19 @@ defmodule PersistenceTest do
     assert {:error, "#{Persistence}: Bad hash value: :wrong_input_type"} ==
              Persistence.get_block_by_hash(:wrong_input_type)
 
+    assert :not_found = get_account_state(persistance_state.account2)
+
     assert "Blocks number must be greater than one" == Persistence.get_blocks(0)
+  end
+
+  defp get_account_state(account) do
+    root_hashes_map = Persistence.get_all_chainstates()
+    chainstate = Chain.transfrom_chainstate(:to_chainstate, root_hashes_map)
+    empty_account = Account.empty()
+
+    case AccountStateTree.get(chainstate.accounts, account) do
+      ^empty_account -> :not_found
+      value -> value
+    end
   end
 end

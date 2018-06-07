@@ -134,13 +134,6 @@ defmodule Aecore.Chain.Chainstate do
     Enum.reverse(txs_list)
   end
 
-  @spec calculate_total_tokens(t()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
-    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + Account.balance(accounts_tree, pub_key)
-    end)
-  end
-
   def base58c_encode(bin) do
     Bits.encode58c("bs", bin)
   end
