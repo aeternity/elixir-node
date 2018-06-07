@@ -55,11 +55,11 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp get_os_cmd(%{process: process, header: header, hash: hash} = builder) do
-    {:ok, command, options} = build_command(process, header.nonce, hash)
+    {:ok, command, options} = build_command(process, hash)
     {:ok, %{builder | cmd: command, cmd_opt: options}}
   end
 
-  defp build_command(process, nonce, hash) do
+  defp build_command(process, hash) do
     {exe, extra, size} = Application.get_env(:aecore, :pow)[:params]
 
     cmd =
