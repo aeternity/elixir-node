@@ -58,7 +58,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the balance for a given key.
   """
-  @spec balance(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec balance(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
     AccountStateTree.get(tree, key).balance
   end
@@ -66,7 +66,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the nonce for a given key.
   """
-  @spec nonce(AccountStateTree.tree(), Wallet.pubkey()) :: non_neg_integer()
+  @spec nonce(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
   end
