@@ -8,7 +8,6 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Block
 
   @typedoc """
