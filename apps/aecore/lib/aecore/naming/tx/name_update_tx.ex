@@ -11,6 +11,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -47,7 +48,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NameUpdateTx.t()
+  @spec init(payload()) :: t()
   def init(%{
         hash: hash,
         expire_by: expire_by,
@@ -60,7 +61,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
           hash: hash,
@@ -97,7 +98,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameUpdateTx.t(),
+          t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -129,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameUpdateTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -172,10 +173,10 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

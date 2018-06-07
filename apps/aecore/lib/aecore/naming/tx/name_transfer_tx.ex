@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -42,7 +43,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NameTransferTx.t()
+  @spec init(payload()) :: t()
   def init(%{hash: hash, target: target}) do
     %NameTransferTx{hash: hash, target: target}
   end
@@ -50,7 +51,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -79,7 +80,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameTransferTx.t(),
+          t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -104,7 +105,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameTransferTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -141,10 +142,10 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

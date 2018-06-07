@@ -11,6 +11,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -40,7 +41,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NamePreClaimTx.t()
+  @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
     %NamePreClaimTx{commitment: commitment}
   end
@@ -48,7 +49,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @doc """
   Checks commitment hash byte size
   """
-  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -75,7 +76,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -104,7 +105,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -128,10 +129,10 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

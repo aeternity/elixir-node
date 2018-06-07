@@ -11,6 +11,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -41,7 +42,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NameClaimTx.t()
+  @spec init(payload()) :: t()
   def init(%{name: name, name_salt: name_salt} = _payload) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
@@ -49,7 +50,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Checks name format
   """
-  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
@@ -80,7 +81,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -112,7 +113,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -156,10 +157,10 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
