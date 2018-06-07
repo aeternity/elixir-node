@@ -128,12 +128,12 @@ defmodule AecoreSerializationTest do
     assert deserialized_name_commitment = name_commitment
   end
 
-  # @tag :rlp_test
-  # test "Erlang RLP-encoded block deserialization", setup do
-  #   serialized_erlang_block = create_data(Block, :erlang)
-  #   deserialized_erlang_block = Serialization.rlp_decode(serialized_erlang_block)
-  #   assert %Block{} = deserialized_erlang_block
-  # end
+  @tag :rlp_test
+  test "Epoch RLP-encoded block deserialization", setup do
+    epoch_serialized_block = create_data(Block, :erlang)
+    deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
+    assert %Block{} = deserialized_epoch_block
+  end
 
   def create_data(data_type, :elixir) do
     case data_type do
@@ -324,7 +324,7 @@ defmodule AecoreSerializationTest do
     case data_type do
       Block ->
         Base.decode64!(
-          "+QFWZA65AVAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJ9fwZvmQcvEAEoP00E0s7URtepTZg/jO3Wy5gb5Fgj5AAAAACEA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA"
+          "+QFWZA65AVAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOXmmv/3SQdDjexUzDIgBElzLw7DGKrzrhx70NclO9hFAAAAACEA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA"
         )
     end
   end

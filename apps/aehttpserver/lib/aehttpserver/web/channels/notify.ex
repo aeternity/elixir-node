@@ -3,8 +3,10 @@ defmodule Aehttpserver.Web.Notify do
   Contains functionality for broadcasting new blocks/transactions via websocket.
   """
 
+  alias Aecore.Tx.SignedTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.Serialization
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Endpoint

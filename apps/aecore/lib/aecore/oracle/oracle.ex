@@ -12,7 +12,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
@@ -79,7 +78,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(Account.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
+  @spec query(Wallet.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
           :ok | :error
   def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
     payload = %{
@@ -177,7 +176,7 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec tx_ttl_is_valid?(oracle_txs_with_ttl(), non_neg_integer()) :: boolean
+  @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
       %OracleRegistrationTx{} ->
@@ -340,7 +339,8 @@ defmodule Aecore.Oracle.Oracle do
     {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | Block.t() | DataTx.t()
+  @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
+          {:ok, map()} | {:error, String.t()}
   def rlp_decode(
         [orc_owner, query_format, response_format, query_fee, expires],
         :registered_oracle

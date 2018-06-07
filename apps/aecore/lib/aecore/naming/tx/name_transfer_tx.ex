@@ -5,13 +5,14 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Naming
   alias Aeutil.Hash
   alias Aecore.Keys.Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -23,7 +24,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameTransferTx we have the naming subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the NameTransferTx Transaction type"
   @type t :: %NameTransferTx{
@@ -43,7 +44,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NameTransferTx.t()
+  @spec init(payload()) :: t()
   def init(%{hash: hash, target: target}) do
     %NameTransferTx{hash: hash, target: target}
   end
@@ -51,7 +52,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -77,12 +78,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Changes the naming state for claim transfers.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameTransferTx.t(),
+          t(),
           DataTx.t()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
@@ -102,12 +103,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameTransferTx.t(),
+          t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -140,12 +141,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

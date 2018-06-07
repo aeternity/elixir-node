@@ -5,12 +5,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Naming
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -23,7 +24,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NamePreClaimTx we don't have a subdomain chainstate."
-  @type tx_type_state() :: ChainState.naming()
+  @type tx_type_state() :: Chainstate.naming()
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %NamePreClaimTx{
@@ -41,7 +42,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: NamePreClaimTx.t()
+  @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
     %NamePreClaimTx{commitment: commitment}
   end
@@ -49,7 +50,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @doc """
   Checks commitment hash byte size
   """
-  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -73,12 +74,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Pre claims a name for one account.
   """
   @spec process_chainstate(
-          AccountStateTree.accounts_state(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
-        ) :: {AccountStateTree.accounts_state(), tx_type_state()}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
@@ -102,12 +103,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          NameClaimTx.t(),
+          t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         _naming_state,
@@ -127,12 +128,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
-          NameCaimTx.t(),
+          t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
