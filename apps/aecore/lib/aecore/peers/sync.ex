@@ -87,7 +87,7 @@ defmodule Aecore.Peers.Sync do
   @doc """
   Checks weather the sync is in progress
   """
-  @spec sync_in_progress?(pid()) :: {true | false, non_neg_integer}
+  @spec sync_in_progress?(pid()) :: false | {true, non_neg_integer}
   def sync_in_progress?(peer_id) do
     GenServer.call(__MODULE__, {:sync_in_progress, peer_id})
   end
