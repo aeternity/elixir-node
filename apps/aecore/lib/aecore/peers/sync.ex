@@ -107,10 +107,6 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:update_hash_pool, hashes})
   end
 
-  def schedule_ping(peer_id) do
-    GenServer.cast(__MODULE__, {:schedule_ping, peer_id})
-  end
-
   def delete_from_pool(peer_id) do
     GenServer.cast(__MODULE__, {:delete_from_pool, peer_id})
   end
@@ -245,11 +241,6 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  def handle_cast({:schedule_ping, peer_id}, state) do
-    :jobs.enqueue(:sync_jobs, {:schedule_ping, peer_id})
-    {:noreply, state}
-  end
-
   def handle_cast({:delete_from_pool, peer_id}, %{sync_pool: pool} = state) do
     {:noreply, %{state | sync_pool: Enum.filter(pool, fn peer -> peer.peer != peer_id end)}}
   end
@@ -294,14 +285,17 @@ defmodule Aecore.Peers.Sync do
 
   defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
        when h == height and n_added < @max_adds do
-    case Map.get(map, :block) do
-      nil ->
+    case Map.get(map, :block, :error) do
+      :error ->
         split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
       block ->
         hash = BlockValidation.block_header_hash(block.header)
 
-        case block.header.prev_hash do
+        case Map.get(block.header, prev_hash, :error) do
+          :error ->
+            split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
+
           prev_hash ->
             case Chain.add_block(block) do
               :ok ->
@@ -387,7 +381,6 @@ defmodule Aecore.Peers.Sync do
           true ->
             pool_result = fill_pool(peer_id, agreed_hash)
             fetch_more(peer_id, agreed_height, agreed_hash, pool_result)
-            :ok
         end
 
       {:error, reason} ->
@@ -433,11 +426,13 @@ defmodule Aecore.Peers.Sync do
   defp fetch_more(peer_id, _, _, :done) do
     ## Chain sync done
     delete_from_pool(peer_id)
+    :ok
   end
 
-  defp fetch_more(peer_id, last_height, _, {:error, error}) do
-    Logger.info("Abort sync at height #{last_height} Error: #{error}")
+  defp fetch_more(peer_id, last_height, _, {:error, reason}) do
+    Logger.info("Abort sync at height #{last_height} Error: #{reason}")
     delete_from_pool(peer_id)
+    {:error, reason}
   end
 
   defp fetch_more(peer_id, last_height, header_hash, result) do
@@ -485,10 +480,6 @@ defmodule Aecore.Peers.Sync do
 
       {:fetch_mempool, peer_id} ->
         do_fetch_mempool(peer_id)
-
-      {:ping, peer_id} ->
-        PeerConnection.ping_peer(peer_id)
-        :ok
 
       _other ->
         Logger.debug(fn -> "Unknown job" end)
