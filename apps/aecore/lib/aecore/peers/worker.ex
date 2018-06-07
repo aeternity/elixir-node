@@ -8,11 +8,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
 
   require Logger
 
