@@ -88,7 +88,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         response_ttl: response_ttl
       }) do
     %OracleQueryTx{
-      oracle_address: oracle_address,
+      oracle_address:
+        <<2, 93, 121, 15, 188, 10, 145, 22, 155, 236, 37, 144, 18, 19, 125, 118, 112, 199, 131,
+          61, 100, 201, 59, 94, 66, 168, 97, 31, 209, 0, 13, 218, 113>>,
       query_data: query_data,
       query_fee: query_fee,
       query_ttl: query_ttl,
@@ -165,17 +167,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       fee: tx.query_fee
     }
 
-    IO.inspect("------------------------------------")
-    IO.inspect("#{inspect(io)}")
-    IO.inspect("------------------------------------")
-
     new_oracle_tree = OracleStateTree.insert_query(oracles, io)
-    # updated_interaction_objects = Map.put(oracles, interaction_object_id, io)
-
-    # updated_oracle_state = %{
-    #   oracles
-    #   | interaction_objects: updated_interaction_objects
-    # }
 
     {:ok, {updated_accounts_state, new_oracle_tree}}
   end

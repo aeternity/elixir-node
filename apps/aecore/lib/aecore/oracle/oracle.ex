@@ -81,16 +81,26 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
+    pub_key =
+      <<2, 93, 121, 15, 188, 10, 145, 22, 155, 236, 37, 144, 18, 19, 125, 118, 112, 199, 131, 61,
+        100, 201, 59, 94, 66, 168, 97, 31, 209, 0, 13, 218, 113>>
+
+    pr_key =
+      <<46, 156, 137, 183, 50, 89, 74, 244, 124, 78, 153, 200, 28, 206, 135, 222, 83, 94, 150, 34,
+        193, 132, 94, 235, 68, 240, 188, 90, 42, 14, 107, 64>>
+
     tx_data =
       DataTx.init(
         OracleRegistrationTx,
         payload,
-        Wallet.get_public_key(),
+        pub_key,
+        # Wallet.get_public_key(),
         fee,
         Chain.lowest_valid_nonce()
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    # {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, pub_key, pr_key)
     Pool.add_transaction(tx)
   end
 

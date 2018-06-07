@@ -83,8 +83,11 @@ defmodule Aecore.Oracle.OracleStateTree do
 
     new_otree =
       case how do
-        :insert -> insert(tree.otree, id, serialized)
-        :enter -> enter(tree.otree, id, serialized)
+        :insert ->
+          insert(tree.otree, id, serialized)
+
+        :enter ->
+          enter(tree.otree, id, serialized)
       end
 
     new_ctree = cache_push(tree.ctree, {:oracle, id}, expires)
@@ -123,7 +126,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   ### PMT ==============================================================
 
   defp insert(tree, key, value) do
-    PatriciaMerkleTree.insert(tree, key, value)
+    PatriciaMerkleTree.enter(tree, key, value)
   end
 
   defp enter(tree, key, value) do
