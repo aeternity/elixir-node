@@ -554,7 +554,13 @@ defmodule Aeutil.Serialization do
     header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
     header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
     pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
-    pow_to_binary = pow_to_binary(header.pow_evidence)
+
+    pow_to_binary =
+      if header.pow_evidence != :no_value do
+        pow_to_binary(Enum.reverse(header.pow_evidence))
+      else
+        pow_to_binary(List.duplicate(0, 42))
+      end
 
     # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
     miner_pubkey_size = 32
@@ -606,7 +612,7 @@ defmodule Aeutil.Serialization do
     %Header{
       height: height,
       nonce: nonce,
-      pow_evidence: pow_evidence,
+      pow_evidence: Enum.reverse(pow_evidence),
       prev_hash: prev_hash,
       root_hash: root_hash,
       target: target,
@@ -622,8 +628,8 @@ defmodule Aeutil.Serialization do
   end
 
   @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
-  def pow_to_binary(pow) when is_list(pow) do
-    if Enum.count(pow) == 42 do
+  def pow_to_binary(pow) do
+    if is_list(pow) and Enum.count(pow) == 42 do
       list_of_pows =
         for evidence <- pow, into: <<>> do
           <<evidence::32>>
