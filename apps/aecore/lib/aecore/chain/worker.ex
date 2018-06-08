@@ -651,6 +651,9 @@ defmodule Aecore.Chain.Worker do
       {key = :naming, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
+      {key = :accounts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
       # TODO
       # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
       {key, value}, acc_state ->
@@ -661,6 +664,9 @@ defmodule Aecore.Chain.Worker do
   defp get_persist_strategy(:from_chainstate) do
     fn
       {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 
       # TODO

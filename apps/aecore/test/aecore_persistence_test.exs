@@ -52,11 +52,16 @@ defmodule PersistenceTest do
   @tag timeout: 30_000
   @tag :persistence
   test "Get chain state from the rocksdb", persistance_state do
+    correct_balance =
+      Chain.chain_state().accounts
+      |> Account.balance(persistance_state.account1)
+
     ## For specific account
-    assert %{balance: _} = get_account_state(persistance_state.account1)
+    assert %{balance: correct_balance} = get_account_state(persistance_state.account1)
 
     ## Non existant accounts are empty
     assert :not_found = get_account_state(persistance_state.account2)
+
     ## For all accounts
     all_accounts = Persistence.get_all_chainstates()
     assert false == Enum.empty?(Map.keys(all_accounts))

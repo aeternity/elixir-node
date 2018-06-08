@@ -32,3 +32,27 @@
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
+Function put/3 has no local return
+Function update/3 has no local return
+Function process_chainstate/5 has no local return
+The created fun has no local return
+Function deduct_fee/5 has no local return
+Function check_peer/2 has no local return
+Function standard_deduct_fee/4 has no local return
+Function get_info/1 has no local return
+Function get_block/1 has no local return
+Function get_raw_blocks/1 has no local return
+Function get_pool_txs/1 has no local return
+Function send_block/2 has no local return
+Function send_tx/2 has no local return
+Function get_peers/1 has no local return
+Function get_and_add_peers/1 has no local return
+Function get_account_balance/1 has no local return
+Function get_account_txs/1 has no local return
+Function get/1 has no local return
+Function get/2 has no local return
+Function handle_info/2 has no local return
+Function trim_peers/1 will never be called
+Function 'should_a_peer_be_added?'/1 will never be called
+Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
+Function block_by_hash/2 has no local return
