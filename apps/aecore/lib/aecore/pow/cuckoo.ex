@@ -60,11 +60,11 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_command(process, hash) do
-    {exe, extra, size} = Application.get_env(:aecore, :pow)[:params]
+    {exe, _extra, size} = Application.get_env(:aecore, :pow)[:params]
 
     cmd =
       case process do
-        :generate -> [exe, " -h ", hash, " ", extra]
+        :generate -> [exe, " -h ", hash]
         :verify -> ["./verify", size, " -h ", hash]
       end
 
