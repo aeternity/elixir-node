@@ -88,9 +88,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         response_ttl: response_ttl
       }) do
     %OracleQueryTx{
-      oracle_address:
-        <<2, 93, 121, 15, 188, 10, 145, 22, 155, 236, 37, 144, 18, 19, 125, 118, 112, 199, 131,
-          61, 100, 201, 59, 94, 66, 168, 97, 31, 209, 0, 13, 218, 113>>,
+      oracle_address: oracle_address,
       query_data: query_data,
       query_fee: query_fee,
       query_ttl: query_ttl,

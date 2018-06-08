@@ -90,34 +90,25 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    interaction_objects = OracleStateTree.get_query(oracles, tx.query_id)
+    query_fee = interaction_objects.fee
 
-    # IO.puts "----"
-    # IO.inspect tx
-    # IO.puts "----"
+    updated_accounts_state =
+      accounts
+      |> AccountStateTree.update(sender, fn acc ->
+        Account.apply_transfer!(acc, block_height, query_fee)
+      end)
 
-    # interaction_object = interaction_objects[tx.query_id]
-    # query_fee = interaction_object.fee
+    updated_interaction_objects = %{
+      interaction_objects
+      | response: tx.response,
+        expires: interaction_objects.expires + interaction_objects.response_ttl,
+        has_response: true
+    }
 
-    # updated_accounts_state =
-    #   accounts
-    #   |> AccountStateTree.update(sender, fn acc ->
-    #     Account.apply_transfer!(acc, block_height, query_fee)
-    #   end)
+    updated_oracle_state = OracleStateTree.insert_query(oracles, updated_interaction_objects)
 
-    # updated_interaction_objects =
-    #   Map.put(interaction_objects, tx.query_id, %{
-    #     interaction_object
-    #     | response: tx.response,
-    #       expires: interaction_object.expires + interaction_object.response_ttl,
-    #       has_response: true
-    #   })
-
-    # updated_oracle_state = %{
-    #   oracle_state
-    #   | interaction_objects: updated_interaction_objects
-    # }
-
-    # {:ok, {updated_accounts_state, updated_oracle_state}}
+    {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
   @spec preprocess_check(
@@ -136,51 +127,31 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
-    id = sender <> tx.query_id
-
-    IO.puts("--tx--")
-    IO.inspect(tx)
-    IO.puts("--tx--")
-
-    IO.puts("--data_tx--")
-    IO.inspect(data_tx)
-    IO.puts("--data_tx--")
-
-    IO.puts("--id--")
-    IO.inspect(id)
-    IO.puts("--id--")
-
-    IO.puts("--sender--")
-    IO.inspect(sender)
-    IO.puts("--sender--")
+    # id = sender <> tx.query_id TODO: Have to fix
+    id = tx.query_id
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !OracleStateTree.lookup_oracle?(oracles, id) ->
+      !OracleStateTree.lookup_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
-      # !Oracle.data_valid?(
-      #   registered_oracles[sender].response_format,
-      #   tx.response
-      # ) ->
-      #   {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
+      !Oracle.data_valid?(
+        OracleStateTree.get_oracle(oracles, sender).response_format,
+        tx.response
+      ) ->
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
-      # !Oracle.data_valid?(
-      #   OracleStateTree.get_oracle(oracles, sender).response_format,
-      #   tx.response
-      # ) ->
-      #   {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
+      !OracleStateTree.lookup_query?(oracles, id) ->
+        # TODO inspect is not correct!!!
+        {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
-      # !Map.has_key?(interaction_objects, tx.query_id) ->
-      #   {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
+      OracleStateTree.get_query(oracles, id).response != :undefined ->
+        {:error, "#{__MODULE__}: Query already answered"}
 
-      # interaction_objects[tx.query_id].response != :undefined ->
-      #   {:error, "#{__MODULE__}: Query already answered"}
-
-      # interaction_objects[tx.query_id].oracle_address != sender ->
-      #   {:error, "#{__MODULE__}: Query references a different oracle"}
+      OracleStateTree.get_query(oracles, id).oracle_address != sender ->
+        {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
@@ -203,8 +174,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
-    referenced_query_response_ttl = Chain.oracle_interaction_objects()[tx.query_id].response_ttl
-
+    oracles = Chain.chain_state().oracles
+    referenced_query_response_ttl = OracleStateTree.get_query(oracles, tx.query_id).response_ttl
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end
 

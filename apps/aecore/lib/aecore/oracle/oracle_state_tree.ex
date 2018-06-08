@@ -105,7 +105,8 @@ defmodule Aecore.Oracle.OracleStateTree do
         oracle_id
       )
 
-    tree_id = oracle_id <> id
+    # tree_id = oracle_id <> id TODO -> Have to ask Rado!!!!!
+    tree_id = id
 
     expires = OracleQueryTx.get_expires(query)
     serialized = Serialization.rlp_encode(query, :oracle_query)

@@ -420,15 +420,6 @@ defmodule Aecore.Chain.Worker do
     {:reply, registered_oracles, state}
   end
 
-  def handle_call(
-        :oracle_interaction_objects,
-        _from,
-        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
-      ) do
-    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
-    {:reply, interaction_objects, state}
-  end
-
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
     {:reply, blocks_data_map, state}
   end
