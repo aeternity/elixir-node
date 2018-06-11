@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Account.AccountStateTree
 
   require Logger
@@ -70,19 +70,16 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         ) :: {ChainState.accounts(), Oracle.oracles()}
   def process_chainstate(
         accounts,
-        oracle_state,
+        oracles,
         _block_height,
         %OracleExtendTx{} = tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
-    updated_oracle_state =
-      update_in(
-        oracle_state,
-        [:registered_oracles, sender, :expires],
-        &(&1 + tx.ttl)
-      )
+    updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl))
+    updated_oracle_state = OracleStateTree.insert_oracle(oracles, updated_registered_oracle)
 
     {:ok, {accounts, updated_oracle_state}}
   end
@@ -96,7 +93,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         ) :: :ok
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         _block_height,
         tx,
         data_tx
@@ -108,7 +105,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !Map.has_key?(registered_oracles, sender) ->
+      !OracleStateTree.lookup_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
