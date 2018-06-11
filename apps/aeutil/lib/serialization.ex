@@ -557,7 +557,7 @@ defmodule Aeutil.Serialization do
 
     pow_to_binary =
       if header.pow_evidence != :no_value do
-        pow_to_binary(Enum.reverse(header.pow_evidence))
+        pow_to_binary(header.pow_evidence)
       else
         pow_to_binary(List.duplicate(0, 42))
       end
@@ -612,7 +612,7 @@ defmodule Aeutil.Serialization do
     %Header{
       height: height,
       nonce: nonce,
-      pow_evidence: Enum.reverse(pow_evidence),
+      pow_evidence: pow_evidence,
       prev_hash: prev_hash,
       root_hash: root_hash,
       target: target,
@@ -644,8 +644,7 @@ defmodule Aeutil.Serialization do
   @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
   defp serialize_pow(pow, acc) when pow != <<>> do
     <<elem::binary-size(4), rest::binary>> = pow
-    acc = elem <> acc
-    serialize_pow(rest, acc)
+    serialize_pow(rest, acc <> elem)
   end
 
   defp serialize_pow(<<>>, acc) do
@@ -662,8 +661,7 @@ defmodule Aeutil.Serialization do
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    acc = [pow | acc]
-    deserialize_pow(rest, acc)
+    deserialize_pow(rest, acc ++ [pow])
   end
 
   defp deserialize_pow(<<>>, acc) do
