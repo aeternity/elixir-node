@@ -661,7 +661,7 @@ defmodule Aeutil.Serialization do
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    deserialize_pow(rest, acc ++ [pow])
+    deserialize_pow(rest, List.insert_at(acc, -1, pow))
   end
 
   defp deserialize_pow(<<>>, acc) do
