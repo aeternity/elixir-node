@@ -11,8 +11,8 @@ defmodule Aecore.Chain.Block do
           header: Header.t(),
           txs: list(SignedTx.t())
         }
-
-  @current_block_version 1
+  # was changed to match current Epoch's block version
+  @current_block_version Application.get_env(:aecore, :version)[:block]
 
   defstruct [:header, :txs]
   use ExConstructor
