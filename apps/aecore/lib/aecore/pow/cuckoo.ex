@@ -50,23 +50,22 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp hash_header(%{header: header} = builder) do
-    header = %{header | pow_evidence: List.duplicate(0, 42)}
-    hash = :base64.encode_to_string(BlockValidation.block_header_hash(header))
-    {:ok, %{builder | hash: hash}}
+    blake2b = BlockValidation.block_header_hash(%{header | nonce: 0, pow_evidence: :no_value})
+    {:ok, %{builder | hash: pack_header_and_nonce(blake2b, header.nonce)}}
   end
 
-  defp get_os_cmd(%{process: process, header: header, hash: hash} = builder) do
-    {:ok, command, options} = build_command(process, header.nonce, hash)
+  defp get_os_cmd(%{process: process, hash: hash} = builder) do
+    {:ok, command, options} = build_command(process, hash)
     {:ok, %{builder | cmd: command, cmd_opt: options}}
   end
 
-  defp build_command(process, nonce, hash) do
+  defp build_command(process, hash) do
     {exe, _extra, size} = Application.get_env(:aecore, :pow)[:params]
 
     cmd =
       case process do
-        :generate -> [exe, " -h ", hash, " -n ", nonce]
-        :verify -> ["./verify", size, " -h ", hash, " -n ", nonce]
+        :generate -> [exe, " -h ", hash]
+        :verify -> ["./verify", size, " -h ", hash]
       end
 
     command = Enum.join(export_ld_lib_path() ++ cmd)
@@ -151,7 +150,7 @@ defmodule Aecore.Pow.Cuckoo do
     case String.split(msg, "\nSolution ") do
       [_, solution] ->
         [solution, _more | _] = String.split(solution, "\n")
-        solution = for e <- String.split(solution, " "), do: String.to_integer(Base.encode16(e))
+        solution = for e <- String.split(solution, " "), do: e |> Integer.parse(16) |> elem(0)
         {:ok, {:generated, solution}}
 
       _ ->
@@ -206,8 +205,15 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp solution_to_string(soln) do
-    list = for e <- soln, do: Base.decode16!(Integer.to_string(e))
+    list = for e <- soln, do: e |> :binary.encode_unsigned() |> Base.encode16()
     Enum.join(list, " ")
+  end
+
+  @spec pack_header_and_nonce(binary(), integer()) :: charlist()
+  defp pack_header_and_nonce(hash, nonce) do
+    nonce_str = :base64.encode_to_string(<<nonce::unsigned-little-integer-size(64)>>)
+    hash_str = :base64.encode_to_string(hash)
+    hash_str ++ nonce_str
   end
 
   defp builder(process, header) do
