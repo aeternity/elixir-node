@@ -13,6 +13,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -547,6 +548,101 @@ defmodule Aecore.Peers.PeerConnection do
     ]
 
     ExRLP.encode(list)
+  end
+
+  def rlp_encode(@header, header) do
+    header_binary = Serialization.header_to_binary(header)
+    list = [@p2p_msg_version, header_binary]
+    ExRLP.encode(list)
+  end
+
+  def rlp_encode(@get_n_successors, %{
+        hash: hash,
+        n: n
+      }) do
+    list = [
+      @p2p_msg_version,
+      hash,
+      :binary.encode_unsigned(n)
+    ]
+
+    ExRLP.encode(list)
+  end
+
+  def rlp_encode(@header_hashes, header_hashes) do
+    ExRLP.encode([@p2p_msg_version | header_hashes])
+  end
+
+  def rlp_encode(@get_block, block_hash) do
+    ExRLP.encode([@p2p_msg_version, block_hash])
+  end
+
+  def rlp_encode(@block, block) do
+    list = [@p2p_msg_version, Serialization.rlp_encode(block, :block)]
+    ExRLP.encode(list)
+  end
+
+  def rlp_encode(@tx, tx) do
+    list = [@p2p_msg_version, Serialization.rlp_encode(tx, :signedtx)]
+    ExRLP.encode(list)
+  end
+
+  def rlp_decode_tx(encoded_tx) do
+    [
+      _vsn,
+      tx
+    ] = ExRLP.decode(encoded_tx)
+
+    Serialization.rlp_decode(tx)
+  end
+
+  def rlp_decode_block(encoded_block) do
+    [
+      _vsn,
+      block
+    ] = ExRLP.decode(encoded_block)
+
+    Serialization.rlp_decode(block)
+  end
+
+  def rlp_decode_get_block(encoded_block_hash) do
+    [
+      _vsn,
+      block_hash
+    ] = ExRLP.decode(encoded_block_hash)
+
+    block_hash
+  end
+
+  def rlp_decode_header_hashes(enconded_header_hashes) do
+    [
+      _vsn,
+      header_hashes
+    ] = ExRLP.decode(enconded_header_hashes)
+
+    header_hashes
+  end
+
+  def rlp_decode_n_successors(encoded_n_successors) do
+    [
+      _vsn,
+      hash,
+      n
+    ] = ExRLP.decode(encoded_n_successors)
+
+    %{
+      hash: hash,
+      n: :binary.decode_unsigned(n)
+    }
+  end
+
+  def rlp_decode_header(encoded_header) do
+    [
+      _vsn,
+      header_binary
+    ] = ExRLP.decode(encoded_header)
+
+    Serialization.binary_to_header(header_binary)
   end
 
   def rlp_decode_ping(encoded_ping) do
