@@ -44,7 +44,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   ### ------------------------------------------------------------------
 
   @spec init(payload()) :: t()
-
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}
   end

@@ -5,12 +5,11 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
-  alias Aecore.Naming.Naming
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Wallet.Worker, as: Wallet
 
@@ -18,14 +17,10 @@ defmodule Aecore.Chain.Chainstate do
 
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: OracleStateTree.oracles_state()
-  @type naming :: Naming.state()
+  @type naming :: NamingStateTree.namings_state()
   @type chain_state_types :: :accounts | :oracles | :naming | :none
 
-  @type t :: %Chainstate{
-          accounts: accounts(),
-          oracles: oracles(),
-          naming: naming()
-        }
+  @type t :: %Chainstate{accounts: accounts(), oracles: oracles(), naming: naming()}
 
   defstruct [
     :accounts,
@@ -38,7 +33,7 @@ defmodule Aecore.Chain.Chainstate do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
       :oracles => OracleStateTree.init_empty(),
-      :naming => Naming.init_empty()
+      :naming => NamingStateTree.init_empty()
     }
   end
 

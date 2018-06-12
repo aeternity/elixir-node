@@ -554,7 +554,16 @@ defmodule Aeutil.Serialization do
     header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
     header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
     pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
-    pow_to_binary = pow_to_binary(header.pow_evidence)
+
+    pow_to_binary =
+      if header.pow_evidence != :no_value do
+        pow_to_binary(header.pow_evidence)
+      else
+        pow_to_binary(List.duplicate(0, 42))
+      end
+
+    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
+    miner_pubkey_size = 32
 
     # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
     miner_pubkey_size = 32
@@ -622,8 +631,8 @@ defmodule Aeutil.Serialization do
   end
 
   @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
-  def pow_to_binary(pow) when is_list(pow) do
-    if Enum.count(pow) == 42 do
+  def pow_to_binary(pow) do
+    if is_list(pow) and Enum.count(pow) == 42 do
       list_of_pows =
         for evidence <- pow, into: <<>> do
           <<evidence::32>>
@@ -638,8 +647,7 @@ defmodule Aeutil.Serialization do
   @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
   defp serialize_pow(pow, acc) when pow != <<>> do
     <<elem::binary-size(4), rest::binary>> = pow
-    acc = elem <> acc
-    serialize_pow(rest, acc)
+    serialize_pow(rest, acc <> elem)
   end
 
   defp serialize_pow(<<>>, acc) do
@@ -656,8 +664,7 @@ defmodule Aeutil.Serialization do
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    acc = [pow | acc]
-    deserialize_pow(rest, acc)
+    deserialize_pow(rest, List.insert_at(acc, -1, pow))
   end
 
   defp deserialize_pow(<<>>, acc) do
@@ -720,7 +727,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(24), do: OracleResponseTx
   def tag_to_type(25), do: OracleExtendTx
   def tag_to_type(30), do: Name
-  def tag_to_type(31), do: NameCommitmentTx
+  def tag_to_type(31), do: NameCommitment
   def tag_to_type(32), do: NameClaimTx
   def tag_to_type(33), do: NamePreClaimTx
   def tag_to_type(34), do: NameUpdateTx
@@ -738,7 +745,7 @@ defmodule Aeutil.Serialization do
   def get_version(OracleQueryTx), do: {:ok, 1}
   def get_version(OracleResponseTx), do: {:ok, 1}
   def get_version(OracleExtendTx), do: {:ok, 1}
-  def get_version(NameName), do: {:ok, 1}
+  def get_version(Name), do: {:ok, 1}
   def get_version(NameCommitment), do: {:ok, 1}
   def get_version(NameClaimTx), do: {:ok, 1}
   def get_version(NamePreClaimTx), do: {:ok, 1}

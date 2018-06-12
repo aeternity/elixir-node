@@ -645,4 +645,38 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp build_chain_state, do: Chainstate.init()
+
+  def transfrom_chainstate(strategy, chainstate) do
+    Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
+  end
+
+  defp get_persist_strategy(:to_chainstate) do
+    fn
+      {key = :naming, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :accounts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
+
+  defp get_persist_strategy(:from_chainstate) do
+    fn
+      {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :accounts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
 end

@@ -17,7 +17,8 @@ defmodule Aecore.Persistence.Worker do
   Those names referes to the keys into patricia_families
   map in our state
   """
-  @type db_ref_name :: :proof | :txs | :accounts | :oracles | :oracles_cache
+
+  @type db_ref_name :: :proof | :txs | :accounts | :oracles | :oracles_cache | :naming
 
   require Logger
 
@@ -156,7 +157,8 @@ defmodule Aecore.Persistence.Worker do
        "patricia_accounts_family" => patricia_accounts_family,
        "patricia_oracles_family" => patricia_oracles_family,
        "patricia_oracles_cache_family" => patricia_oracles_cache_family,
-       "patricia_txs_family" => patricia_txs_family
+       "patricia_txs_family" => patricia_txs_family,
+       "patricia_naming_family" => patricia_naming_family
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
@@ -167,7 +169,8 @@ defmodule Aecore.Persistence.Worker do
         "patricia_accounts_family",
         "patricia_oracles_family",
         "patricia_oracles_cache_family",
-        "patricia_txs_family"
+        "patricia_txs_family",
+        "patricia_naming_family"
       ])
 
     {:ok,
@@ -183,7 +186,8 @@ defmodule Aecore.Persistence.Worker do
          oracles: patricia_oracles_family,
          oracles_cache: patricia_oracles_cache_family,
          txs: patricia_txs_family,
-         test_trie: db
+         test_trie: db,
+         naming: patricia_naming_family
        }
      }}
   end

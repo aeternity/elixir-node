@@ -31,6 +31,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
+
   ### getters ---------------------------------------------------------
   def get_oracle(resp_tx), do: resp_tx.oracle
   def get_nonce(resp_tx), do: resp_tx.nonce
