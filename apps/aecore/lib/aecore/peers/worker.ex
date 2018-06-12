@@ -61,6 +61,20 @@ defmodule Aecore.Peers.Worker do
     GenServer.cast(__MODULE__, {:try_connect, peer_info})
   end
 
+  def rlp_encode_peers(peers) do
+    Enum.map(peers, fn %{host: host, port: port, pubkey: pubkey} ->
+      list = [to_string(host), :binary.encode_unsigned(port), pubkey]
+      ExRLP.encode(list)
+    end)
+  end
+
+  def rlp_decode_peers(encoded_peers) do
+    Enum.map(encoded_peers, fn encoded_peer ->
+      [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
+      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
+    end)
+  end
+
   def handle_call(:state, _from, state) do
     {:reply, state, state}
   end

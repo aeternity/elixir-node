@@ -19,6 +19,7 @@ defmodule Aecore.Peers.PeerConnection do
   @behaviour :ranch_protocol
 
   @p2p_protocol_vsn 2
+  @p2p_msg_version 1
   @noise_timeout 5000
 
   @msg_fragment 0
@@ -470,7 +471,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_mempool(pid) do
     pool = Pool.get_pool()
-    send_response({:ok, pool}, @mempool, pid)
+    encoded_txs = Enum.map(pool, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
+    send_response({:ok, %{txs: encoded_txs}}, @mempool, pid)
   end
 
   defp handle_new_block(payload) do
@@ -502,6 +504,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp ping_object(peers) do
     %{
+      share: 32,
       genesis_hash: Block.genesis_hash(),
       best_hash: Chain.top_block_hash(),
       difficulty: local_top_difficulty(),
@@ -524,5 +527,53 @@ defmodule Aecore.Peers.PeerConnection do
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
+  end
+
+  def rlp_encode(@ping, %{
+        share: share,
+        genesis_hash: genesis_hash,
+        best_hash: best_hash,
+        difficulty: difficulty,
+        peers: peers,
+        port: port
+      }) do
+    list = [
+      :binary.encode_unsigned(port),
+      :binary.encode_unsigned(share),
+      genesis_hash,
+      :binary.encode_unsigned(difficulty),
+      best_hash,
+      Peers.rlp_decode_peers(peers)
+    ]
+
+    ExRLP.encode(list)
+  end
+
+  def rlp_decode_ping(encoded_ping) do
+    [
+      port,
+      share,
+      genesis_hash,
+      difficulty,
+      best_hash,
+      peers
+    ] = ExRLP.decode(encoded_ping)
+
+    %{
+      port: :binary.decode_unsigned(port),
+      share: :binary.decode_unsigned(share),
+      genesis_hash: genesis_hash,
+      difficulty: :binary.decode_unsigned(difficulty),
+      best_hash: best_hash,
+      peers: Peers.rlp_decode_peers(peers)
+    }
+  end
+
+  def rlp_encode(@get_mempool, _data) do
+    ExRLP.encode([@p2p_msg_version])
+  end
+
+  def rlp_decode(@get_mempool, _data) do
+    []
   end
 end
