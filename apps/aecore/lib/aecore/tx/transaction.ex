@@ -49,13 +49,12 @@ defmodule Aecore.Tx.Transaction do
   the transaction (Transaction type-specific chainstate)
   """
   @callback process_chainstate(
-              AccountStateTree.accounts_state(),
+              Chainstate.accounts(),
               tx_type_state(),
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t()
-            ) ::
-              {:ok, {AccountStateTree.accounts_state(), tx_type_state()}} | {:error, String.t()}
+            ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, String.t()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.
@@ -84,7 +83,7 @@ defmodule Aecore.Tx.Transaction do
       end
   """
   @callback preprocess_check(
-              AccountStateTree.accounts_state(),
+              Chainstate.accounts(),
               tx_type_state(),
               block_height :: non_neg_integer(),
               tx_types(),
@@ -92,10 +91,10 @@ defmodule Aecore.Tx.Transaction do
             ) :: :ok | {:error, reason}
 
   @callback deduct_fee(
-              AccountStateTree.accounts_state(),
+              Chainstate.accounts(),
               non_neg_integer(),
               tx_types(),
               DataTx.t(),
               non_neg_integer()
-            ) :: Account.t()
+            ) :: Chainstate.accounts()
 end

@@ -12,7 +12,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
+  alias Aeutil.Serialization
+  alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
@@ -77,7 +78,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates a query transaction with the given oracle address, data query
   and a TTL of the query and response.
   """
-  @spec query(Account.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
+  @spec query(Wallet.pubkey(), json(), non_neg_integer(), non_neg_integer(), ttl(), ttl()) ::
           :ok | :error
   def query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl) do
     payload = %{
@@ -175,7 +176,7 @@ defmodule Aecore.Oracle.Oracle do
     ttl - block_height
   end
 
-  @spec tx_ttl_is_valid?(oracle_txs_with_ttl(), non_neg_integer()) :: boolean
+  @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
       %OracleRegistrationTx{} ->
@@ -274,5 +275,122 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl > 0
     end
+  end
+
+  @spec rlp_encode(
+          non_neg_integer(),
+          non_neg_integer(),
+          map(),
+          :registered_oracle | :interaction_object
+        ) :: binary()
+  def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
+    list = [
+      tag,
+      version,
+      registered_oracle.owner,
+      Serialization.transform_item(registered_oracle.query_format),
+      Serialization.transform_item(registered_oracle.response_format),
+      registered_oracle.query_fee,
+      registered_oracle.expires
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(tag, version, %{} = interaction_object, :interaction_object) do
+    has_response =
+      case interaction_object.has_response do
+        true -> 1
+        false -> 0
+      end
+
+    response =
+      case interaction_object.response do
+        :undefined -> Parser.to_string(:undefined)
+        %DataTx{type: OracleResponseTx} = data -> data
+      end
+
+    list = [
+      tag,
+      version,
+      interaction_object.sender_address,
+      interaction_object.sender_nonce,
+      interaction_object.oracle_address,
+      Serialization.transform_item(interaction_object.query),
+      has_response,
+      response,
+      interaction_object.expires,
+      interaction_object.response_ttl,
+      interaction_object.fee
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
+  end
+
+  @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
+          {:ok, map()} | {:error, String.t()}
+  def rlp_decode(
+        [orc_owner, query_format, response_format, query_fee, expires],
+        :registered_oracle
+      ) do
+    {:ok,
+     %{
+       owner: orc_owner,
+       query_format: Serialization.transform_item(query_format, :binary),
+       response_format: Serialization.transform_item(response_format, :binary),
+       query_fee: Serialization.transform_item(query_fee, :int),
+       expires: Serialization.transform_item(expires, :int)
+     }}
+  end
+
+  def rlp_decode(
+        [
+          sender_address,
+          sender_nonce,
+          oracle_address,
+          query,
+          has_response,
+          response,
+          expires,
+          response_ttl,
+          fee
+        ],
+        :interaction_object
+      ) do
+    has_response =
+      case Serialization.transform_item(has_response, :int) do
+        1 -> true
+        0 -> false
+      end
+
+    {:ok,
+     %{
+       expires: Serialization.transform_item(expires, :int),
+       fee: Serialization.transform_item(fee, :int),
+       has_response: has_response,
+       oracle_address: oracle_address,
+       query: Serialization.transform_item(query, :binary),
+       response: response,
+       response_ttl: Serialization.transform_item(response_ttl, :int),
+       sender_address: sender_address,
+       sender_nonce: Serialization.transform_item(sender_nonce, :int)
+     }}
+  end
+
+  def rlp_decode(_) do
+    {:error,
+     "#{__MODULE__}Illegal Registered oracle state / Oracle interaction object serialization"}
   end
 end

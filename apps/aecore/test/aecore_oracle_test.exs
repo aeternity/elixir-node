@@ -21,41 +21,33 @@ defmodule AecoreOracleTest do
   end
 
   @tag timeout: 120_000
+  @tag :oracle_test
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Chain.registered_oracles()) == true
     register_oracle(:valid)
+
     Miner.mine_sync_block_to_chain()
+
     assert Enum.empty?(Chain.registered_oracles()) == false
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
     assert %{} == Pool.get_and_empty_pool()
-    # Check for last_updated
-    assert Chain.top_height() ==
-             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pub_key)
 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
-
     assert %{} == Pool.get_and_empty_pool()
-    # Check for last_updated
-    assert Chain.top_height() ==
-             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
 
     assert %{} == Pool.get_and_empty_pool()
-    # Check for last_updated
-    assert Chain.top_height() ==
-             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0)
-
     assert nil != interaction_object.response
     Chain.clear_state()
 
@@ -104,12 +96,8 @@ defmodule AecoreOracleTest do
     Miner.mine_sync_block_to_chain()
     Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
-    # Check for last_updated
     oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0)
     assert oracle.expires == 15
-
-    assert Chain.top_height() ==
-             Account.last_updated(TestUtils.get_accounts_chainstate(), pub_key)
 
     Chain.clear_state()
   end
