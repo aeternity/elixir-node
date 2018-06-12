@@ -8,7 +8,7 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Block
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -105,16 +105,10 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:add_account_chain_state, {account, data}})
   end
 
-  @spec get_account_chain_state(account :: binary()) ::
-          {:ok, chain_state :: map()} | {:error, reason :: term()}
-  def get_account_chain_state(account) do
-    GenServer.call(__MODULE__, {:get_account_chain_state, account})
-  end
-
-  @spec get_all_accounts_chain_states() ::
-          {:ok, chain_state :: map()} | {:error, reason :: term()}
-  def get_all_accounts_chain_states do
-    GenServer.call(__MODULE__, :get_all_accounts_chain_states)
+  @spec get_all_chainstates() ::
+          {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
+  def get_all_chainstates do
+    GenServer.call(__MODULE__, :get_all_chainstates)
   end
 
   @spec get_all_blocks_info() :: {:ok, map()} | :not_found | {:error, reason :: term()}
@@ -316,25 +310,11 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call(
-        {:get_account_chain_state, account},
+        :get_all_chainstates,
         _from,
         %{chain_state_family: chain_state_family} = state
       ) do
-    {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
-
-    reply = {:ok, AccountStateTree.get(chainstate.accounts, account)}
-
-    {:reply, reply, state}
-  end
-
-  def handle_call(
-        :get_all_accounts_chain_states,
-        _from,
-        %{chain_state_family: chain_state_family} = state
-      ) do
-    response = Rox.get(chain_state_family, "chain_state")
-
-    case response do
+    case Rox.get(chain_state_family, "chain_state") do
       {:ok, chainstate} -> {:reply, chainstate, state}
       _ -> {:reply, %{}, state}
     end

@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.Chainstate
 
   @type payload :: %{
           query_id: binary(),
@@ -22,6 +23,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           query_id: binary(),
           response: map()
         }
+
+  @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [:query_id, :response]
   use ExConstructor
@@ -43,7 +46,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   def set_fee(resp_tx, fee), do: %{resp_tx | fee: fee}
   ### -----------------------------------------------------------------
 
-  @spec init(payload()) :: OracleResponseTx.t()
+  @spec init(payload()) :: t()
   def init(%{
         query_id: query_id,
         response: response
@@ -54,7 +57,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -76,12 +79,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec process_chainstate(
-          ChainState.account(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          tx_type_state(),
           non_neg_integer(),
-          OracleResponseTx.t(),
+          t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), Oracle.oracles()}}
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         oracles,
@@ -112,10 +115,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec preprocess_check(
-          ChainState.accounts(),
-          Oracle.oracles(),
+          Chainstate.accounts(),
+          tx_type_state(),
           non_neg_integer(),
-          OracleResponseTx.t(),
+          t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -162,17 +165,17 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
     oracles = Chain.chain_state().oracles
     referenced_query_response_ttl = OracleStateTree.get_query(oracles, tx.query_id).response_ttl

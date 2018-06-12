@@ -72,6 +72,16 @@ config :aecore, :rlp_tags,
   name_transfer_tx: 36,
   block: 100
 
+config :aecore, :version, block: 14
+
+config :aecore, :bytes_size,
+  txs_hash: 32,
+  state_hash: 32,
+  miner_pubkey: 32,
+  header_hash: 32,
+  root_hash: 32,
+  pow_total_size: 168
+
 config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 32

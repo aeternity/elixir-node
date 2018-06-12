@@ -10,6 +10,8 @@
 :0: Unknown function 'Elixir.Aewallet.Wallet':get_seed/2
 :0: Unknown function 'Elixir.ExJsonSchema.Schema':resolve/1
 :0: Unknown function 'Elixir.ExJsonSchema.Validator':validate/2
+:0: Unknown function 'Elixir.ExRLP':decode/1
+:0: Unknown function 'Elixir.ExRLP':encode/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.DB.ExternalDB':init/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Proof':construct_proof/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Proof':verify_proof/4
@@ -18,125 +20,42 @@
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':new/1
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':new/2
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':update/3
+:0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':all_keys/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/2
 :0: Unknown function 'Elixir.Msgpax':unpack/1
+:0: Unknown function 'Elixir.Serialization':rlp_encode/2
 :0: Unknown function base58:base58_to_binary/1
 :0: Unknown function base58:binary_to_base58/1
 :0: Unknown function enacl:generichash/2
 :0: Unknown function sha3:hash/2
-:0: Unknown type 'Elixir.Account':t/0
-:0: Unknown type 'Elixir.Aecore.Account.Account':pubkey/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':account/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':chainstate/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':naming/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':account_chainstate/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':accounts/0
-:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':chainstate/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleExtendTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleQueryTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleRegistrationTx':t/0
-:0: Unknown type 'Elixir.Aecore.Structures.OracleResponseTx':t/0
-:0: Unknown type 'Elixir.Aecore.Tx.DataTx':paload/0
-:0: Unknown type 'Elixir.Block':t/0
-:0: Unknown type 'Elixir.ChainState':account/0
-:0: Unknown type 'Elixir.ChainState':account_chainstate/0
-:0: Unknown type 'Elixir.ChainState':t/0
-:0: Unknown type 'Elixir.Chainstate':chain_state_types/0
-:0: Unknown type 'Elixir.Chainstate':t/0
-:0: Unknown type 'Elixir.List':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
-:0: Unknown type 'Elixir.NameTransferTx':t/0
-:0: Unknown type 'Elixir.SignedTx':t/0
-:0: Unknown type 'Elixir.Wallet':pubkey/0
-:0: Unknown type 'Elixir.AccountsStateTree':accounts_state/0
-:0: Unknown type 'Elixir.Aecore.Chain.ChainState':accounts/0
-:0: Unknown type 'Elixir.Aecore.Oracle.Oracle':oracles/0
-:0: Unknown type 'Elixir.ChainState':accounts/0
-:0: Unknown type 'Elixir.ChainState':chainstate/0
-:0: Unknown type 'Elixir.NameCaimTx':t/0
-:0: Unknown type 'Elixir.NameClaimTx':t/0
-:0: Unknown type 'Elixir.OracleExtendTx':t/0
-:0: Unknown type 'Elixir.Signature':t/0
-:0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':all_keys/1
-The pattern {'ok', Vaccount_state@1} can never match the type binary() | #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}
+Function put/3 has no local return
+Function update/3 has no local return
+Function process_chainstate/5 has no local return
 The created fun has no local return
-The pattern {'ok', Vupdated_chainstate@1} can never match the type #{'__struct__':='Elixir.Aecore.Chain.Chainstate', 'accounts':=gb_merkle_trees:tree(), 'naming':=#{binary()=>#{'expires':=non_neg_integer(), 'hash':=binary(), 'owner':=binary(), 'created'=>non_neg_integer(), 'name'=>binary(), 'pointers'=>[any()], 'status'=>'claimed' | 'revoked', 'ttl'=>non_neg_integer()}}, 'oracles':=#{'interaction_objects':=#{binary()=>#{'query':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleQueryTx', 'oracle_address':=binary(), 'query_data':=_, 'query_fee':=non_neg_integer(), 'query_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'response_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}, 'query_height_included':=non_neg_integer(), 'response':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'query_id':=binary(), 'response':=map()}, 'response_height_included':=non_neg_integer()}}, 'registered_oracles':=#{binary()=>#{'height_included':=non_neg_integer(), 'tx':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleRegistrationTx', 'query_fee':=non_neg_integer(), 'query_format':=map(), 'response_format':=map(), 'ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}}}}}
-The pattern {'error', Vreason@1} can never match the type #{'__struct__':='Elixir.Aecore.Chain.Chainstate', 'accounts':=gb_merkle_trees:tree(), 'naming':=#{binary()=>#{'expires':=non_neg_integer(), 'hash':=binary(), 'owner':=binary(), 'created'=>non_neg_integer(), 'name'=>binary(), 'pointers'=>[any()], 'status'=>'claimed' | 'revoked', 'ttl'=>non_neg_integer()}}, 'oracles':=#{'interaction_objects':=#{binary()=>#{'query':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleQueryTx', 'oracle_address':=binary(), 'query_data':=_, 'query_fee':=non_neg_integer(), 'query_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'response_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}, 'query_height_included':=non_neg_integer(), 'response':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'query_id':=binary(), 'response':=map()}, 'response_height_included':=non_neg_integer()}}, 'registered_oracles':=#{binary()=>#{'height_included':=non_neg_integer(), 'tx':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleRegistrationTx', 'query_fee':=non_neg_integer(), 'query_format':=map(), 'response_format':=map(), 'ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}}}}}
-The call 'Elixir.Aecore.Tx.SignedTx':reward(Vdata@1::#{'payload':=#{'receiver':=_, _=>_}, 'sender':='nil', _=>_},Vreceiver_state@1::#{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=0, 'last_updated':=0, 'nonce':=0}) breaks the contract ('Elixir.Aecore.Tx.DataTx':t(),'Elixir.Account':t()) -> 'Elixir.Account':t()
-The pattern 'ok' can never match the type binary() | {'error',<<_:64,_:_*8>>} | #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}
-The pattern {'ok', Vupdated_chainstate@2} can never match the type #{'__struct__':='Elixir.Aecore.Chain.Chainstate', 'accounts':=gb_merkle_trees:tree(), 'naming':=#{binary()=>#{'expires':=non_neg_integer(), 'hash':=binary(), 'owner':=binary(), 'created'=>non_neg_integer(), 'name'=>binary(), 'pointers'=>[any()], 'status'=>'claimed' | 'revoked', 'ttl'=>non_neg_integer()}}, 'oracles':=#{'interaction_objects':=#{binary()=>#{'query':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleQueryTx', 'oracle_address':=binary(), 'query_data':=_, 'query_fee':=non_neg_integer(), 'query_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'response_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}, 'query_height_included':=non_neg_integer(), 'response':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'query_id':=binary(), 'response':=map()}, 'response_height_included':=non_neg_integer()}}, 'registered_oracles':=#{binary()=>#{'height_included':=non_neg_integer(), 'tx':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleRegistrationTx', 'query_fee':=non_neg_integer(), 'query_format':=map(), 'response_format':=map(), 'ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}}}}}
-The pattern {'error', Vreason@1} can never match the type #{'__struct__':='Elixir.Aecore.Chain.Chainstate', 'accounts':=gb_merkle_trees:tree(), 'naming':=#{binary()=>#{'expires':=non_neg_integer(), 'hash':=binary(), 'owner':=binary(), 'created'=>non_neg_integer(), 'name'=>binary(), 'pointers'=>[any()], 'status'=>'claimed' | 'revoked', 'ttl'=>non_neg_integer()}}, 'oracles':=#{'interaction_objects':=#{binary()=>#{'query':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleQueryTx', 'oracle_address':=binary(), 'query_data':=_, 'query_fee':=non_neg_integer(), 'query_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}, 'response_ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}, 'query_height_included':=non_neg_integer(), 'response':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleResponseTx', 'query_id':=binary(), 'response':=map()}, 'response_height_included':=non_neg_integer()}}, 'registered_oracles':=#{binary()=>#{'height_included':=non_neg_integer(), 'tx':=#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleRegistrationTx', 'query_fee':=non_neg_integer(), 'query_format':=map(), 'response_format':=map(), 'ttl':=#{'ttl':=non_neg_integer(), 'type':='absolute' | 'relative'}}}}}}
-Function handle_info/2 has no local return
-The call 'Elixir.Aeutil.Serialization':remove_struct(Vchain_states@1::'not_found' | {'error',_} | {'ok',map()}) breaks the contract ([any()]) -> [any()]
-    ; (map()) -> map() in the 1st argument
-Function mine_sync_block_to_chain/0 has no local return
-Function candidate/0 has no local return
-The call 'Elixir.Aecore.Tx.DataTx':init('Elixir.Aecore.Account.Tx.SpendTx',Vpayload@1::#{'amount':=number(), 'receiver':=_},'nil',0,0) breaks the contract (tx_types(),payload(),binary(),integer(),integer()) -> 'Elixir.Aecore.Tx.DataTx':t()
-The call 'Elixir.Aecore.Oracle.Oracle':'tx_ttl_is_valid?'(Vtx@1::#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=#{'__struct__':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Oracle.Tx.OracleExtendTx' | 'Elixir.Aecore.Oracle.Tx.OracleQueryTx' | 'Elixir.Aecore.Oracle.Tx.OracleRegistrationTx' | 'Elixir.Aecore.Oracle.Tx.OracleResponseTx', _=>_}, 'sender':=binary(), 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signature':=binary()},Vblock_height@1::pos_integer()) breaks the contract (oracle_txs_with_ttl(),non_neg_integer()) -> boolean()
-Function create_block/5 will never be called
-Overloaded contract for 'Elixir.Aecore.Naming.NameUtil':validate_label_length/1 has overlapping domains; such contracts are currently unsupported and are simply ignored
-The return type {gb_merkle_trees:tree(),_} in the specification of process_chainstate/7 is not a subtype of {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The specified type for the 3rd argument of preprocess_check/7 (gb_merkle_trees:tree()) is not a supertype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Invalid type specification for function 'Elixir.Aecore.Naming.Tx.NameClaimTx':preprocess_check/7. The success typing is (atom() | #{'name':=binary(), 'name_salt':=binary(), _=>_},_,atom() | #{'balance':=number(), _=>_},number(),_,_,map()) -> 'ok' | {'error',<<_:64,_:_*8>>}
-The return type any() in the specification of deduct_fee/2 is not a subtype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The return type {gb_merkle_trees:tree(),_} in the specification of process_chainstate/7 is not a subtype of {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The specified type for the 3rd argument of preprocess_check/7 (gb_merkle_trees:tree()) is not a supertype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Invalid type specification for function 'Elixir.Aecore.Naming.Tx.NamePreClaimTx':preprocess_check/7. The success typing is (_,_,atom() | #{'balance':=number(), _=>_},number(),_,_,_) -> 'ok' | {'error',<<_:64,_:_*8>>}
-The return type any() in the specification of deduct_fee/2 is not a subtype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The return type {gb_merkle_trees:tree(),_} in the specification of process_chainstate/7 is not a subtype of {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The specified type for the 3rd argument of preprocess_check/7 (gb_merkle_trees:tree()) is not a supertype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Invalid type specification for function 'Elixir.Aecore.Naming.Tx.NameRevokeTx':preprocess_check/7. The success typing is (atom() | #{'hash':=_, _=>_},_,atom() | #{'balance':=number(), _=>_},number(),_,_,map()) -> 'ok' | {'error',<<_:64,_:_*8>>}
-The return type any() in the specification of deduct_fee/2 is not a subtype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The return type {gb_merkle_trees:tree(),_} in the specification of process_chainstate/7 is not a subtype of {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The specified type for the 3rd argument of preprocess_check/7 (gb_merkle_trees:tree()) is not a supertype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Invalid type specification for function 'Elixir.Aecore.Naming.Tx.NameTransferTx':preprocess_check/7. The success typing is (atom() | #{'hash':=_, _=>_},_,atom() | #{'balance':=number(), _=>_},number(),_,_,map()) -> 'ok' | {'error',<<_:64,_:_*8>>}
-The return type any() in the specification of deduct_fee/2 is not a subtype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The return type {gb_merkle_trees:tree(),_} in the specification of process_chainstate/7 is not a subtype of {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The specified type for the 3rd argument of preprocess_check/7 (gb_merkle_trees:tree()) is not a supertype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Invalid type specification for function 'Elixir.Aecore.Naming.Tx.NameUpdateTx':preprocess_check/7. The success typing is (atom() | #{'hash':=_, _=>_},_,atom() | #{'balance':=number(), _=>_},number(),_,_,map()) -> 'ok' | {'error',<<_:64,_:_*8>>}
-The return type any() in the specification of deduct_fee/2 is not a subtype of #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Function register/5 has no local return
-The call 'Elixir.Aecore.Tx.DataTx':init('Elixir.Aecore.Oracle.Tx.OracleRegistrationTx',Vpayload@1::#{'query_fee':=_, 'query_format':=_, 'response_format':=_, 'ttl':=_},binary(),Vfee@1::any(),non_neg_integer()) breaks the contract (tx_types(),payload(),binary(),integer(),integer()) -> 'Elixir.Aecore.Tx.DataTx':t()
-Function query/6 has no local return
-The call 'Elixir.Aecore.Tx.DataTx':init('Elixir.Aecore.Oracle.Tx.OracleQueryTx',Vpayload@1::#{'oracle_address':=_, 'query_data':=_, 'query_fee':=_, 'query_ttl':=_, 'response_ttl':=_},binary(),Vfee@1::any(),non_neg_integer()) breaks the contract (tx_types(),payload(),binary(),integer(),integer()) -> 'Elixir.Aecore.Tx.DataTx':t()
-Function respond/3 has no local return
-The call 'Elixir.Aecore.Tx.DataTx':init('Elixir.Aecore.Oracle.Tx.OracleResponseTx',Vpayload@1::#{'query_id':=_, 'response':=_},binary(),Vfee@1::any(),non_neg_integer()) breaks the contract (tx_types(),payload(),binary(),integer(),integer()) -> 'Elixir.Aecore.Tx.DataTx':t()
-Function extend/2 has no local return
-The call 'Elixir.Aecore.Tx.DataTx':init('Elixir.Aecore.Oracle.Tx.OracleExtendTx',Vpayload@1::#{'ttl':=_},binary(),Vfee@1::any(),non_neg_integer()) breaks the contract (tx_types(),payload(),binary(),integer(),integer()) -> 'Elixir.Aecore.Tx.DataTx':t()
-Invalid type specification for function 'Elixir.Aecore.Oracle.Tx.OracleExtendTx':process_chainstate/7. The success typing is (#{'__struct__':='Elixir.Aecore.Oracle.Tx.OracleExtendTx', _=>_},_,non_neg_integer(),_,_,map(),_) -> {map(),_}
-The inferred type for the 6th argument of process_chainstate/7 (map()) is not a supertype of gb_merkle_trees:tree(), which is expected type for this argument in the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-The inferred return type of process_chainstate/7 ({map(),_}) has nothing in common with {'error' | gb_merkle_trees:tree(),binary() | map()}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
-Call to missing or unexported function 'Elixir.Aecore.Account.Account':get_account_state/3
-Invalid type specification for function 'Elixir.Aecore.Oracle.Tx.OracleExtendTx':preprocess_check/7. The success typing is (_,_,atom() | #{'balance':=number(), _=>_},number(),_,_,#{'registered_oracles':=_, _=>_}) -> 'ok' | {'error',<<_:64,_:_*8>>}
-apps/aecore/lib/aecore/peers/sync.ex:358: The pattern 'error' can never match the type {'error',binary()}
-Function trim_peers/1 will never be called
+Function deduct_fee/5 has no local return
 Function check_peer/2 has no local return
-Function 'should_a_peer_be_added?'/1 will never be called
-The call 'Elixir.Exexec':send(Vospid@1::non_neg_integer(),'eof') breaks the contract (pid() | os_pid(),binary()) -> 'ok'
-Guard test '/='(Verror@1::'nil','nil') can never succeed
-The pattern {'ok', _account_key@1} can never match the type 'none' | binary() | #{'__struct__':='Elixir.Aecore.Account.Account', 'balance':=non_neg_integer(), 'last_updated':=non_neg_integer(), 'nonce':=non_neg_integer()}
-Invalid type specification for function 'Elixir.Aecore.Tx.DataTx':validate_nonce/2. The success typing is (gb_merkle_trees:tree(),atom() | #{'nonce':=_, 'sender':=binary(), _=>_}) -> 'ok' | {'error',<<_:64,_:_*8>>}
-Call to missing or unexported function 'Elixir.Aeutil.Parser':'to_string!'/1
-The pattern #{'txs':=_@2} can never match the type {'error',binary()} | {'ok',#{'__struct__':='Elixir.Aecore.Chain.Block', 'header':=#{'__struct__':='Elixir.Aecore.Chain.Header', 'height':=non_neg_integer(), 'nonce':=non_neg_integer(), 'pow_evidence':=_, 'prev_hash':=binary(), 'root_hash':=binary(), 'target':=non_neg_integer(), 'time':=non_neg_integer(), 'txs_hash':=binary(), 'version':=non_neg_integer()}, 'txs':=[#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'sender':=binary(), 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signature':=binary()}]}}
-The pattern #{'txs':=_@4} can never match the type {'error',binary()} | {'ok',#{'__struct__':='Elixir.Aecore.Chain.Block', 'header':=#{'__struct__':='Elixir.Aecore.Chain.Header', 'height':=non_neg_integer(), 'nonce':=non_neg_integer(), 'pow_evidence':=_, 'prev_hash':=binary(), 'root_hash':=binary(), 'target':=non_neg_integer(), 'time':=non_neg_integer(), 'txs_hash':=binary(), 'version':=non_neg_integer()}, 'txs':=[#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'senders':=[binary()], 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signatures':=[binary()]}]}}
-Invalid type specification for function 'Elixir.Aecore.Wallet.Worker':'key_size_valid?'/1. The success typing is (bitstring()) -> 'ok' | {'error',<<_:64,_:_*8>>}
-Overloaded contract for 'Elixir.Aecore.Wallet.Worker':has_wallet/2 has overlapping domains; such contracts are currently unsupported and are simply ignored
+Function standard_deduct_fee/4 has no local return
 Function get_info/1 has no local return
 Function get_block/1 has no local return
 Function get_raw_blocks/1 has no local return
 Function get_pool_txs/1 has no local return
 Function send_block/2 has no local return
-The call 'Elixir.Aeutil.Serialization':block(Vblock@1::any(),'serialize') will never return since it differs in the 2nd argument from the success typing arguments: (map(),'deserialize')
+Function send_tx/2 has no local return
 Function get_peers/1 has no local return
 Function get_and_add_peers/1 has no local return
 Function get_account_balance/1 has no local return
 Function get_account_txs/1 has no local return
 Function get/1 has no local return
 Function get/2 has no local return
+Function handle_info/2 has no local return
+Function trim_peers/1 will never be called
+Function 'should_a_peer_be_added?'/1 will never be called
 Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
+<<<<<<< HEAD
 The call 'Elixir.Aeutil.Serialization':block(Vblock@1::atom() | #{'txs':=_, _=>_},'serialize') will never return since it differs in the 2nd argument from the success typing arguments: (map(),'deserialize')
 Function block_by_hash/2 has no local return
 The call 'Elixir.Aeutil.Serialization':block(Vblock@1::#{'__struct__':='Elixir.Aecore.Chain.Block', 'header':=#{'__struct__':='Elixir.Aecore.Chain.Header', 'height':=non_neg_integer(), 'nonce':=non_neg_integer(), 'pow_evidence':=_, 'prev_hash':=binary(), 'root_hash':=binary(), 'target':=non_neg_integer(), 'time':=non_neg_integer(), 'txs_hash':=binary(), 'version':=non_neg_integer()}, 'txs':=[#{'__struct__':='Elixir.Aecore.Tx.SignedTx', 'data':=#{'__struct__':='Elixir.Aecore.Tx.DataTx', 'fee':=non_neg_integer(), 'nonce':=non_neg_integer(), 'payload':=_, 'sender':=binary(), 'type':='Elixir.Aecore.Account.Tx.SpendTx' | 'Elixir.Aecore.Naming.Tx.NameClaimTx' | 'Elixir.Aecore.Naming.Tx.NamePreClaimTx' | 'Elixir.Aecore.Naming.Tx.NameRevokeTx' | 'Elixir.Aecore.Naming.Tx.NameTransferTx' | 'Elixir.Aecore.Naming.Tx.NameUpdateTx' | 'Elixir.Aecore.Structures.OracleExtendTx' | 'Elixir.Aecore.Structures.OracleRegistrationTx' | 'Elixir.Aecore.Structures.OracleResponseTx'}, 'signature':=binary()}]},'serialize') will never return since it differs in the 2nd argument from the success typing arguments: (map(),'deserialize')
@@ -405,3 +324,6 @@ apps/aecore/lib/aecore/oracle/tx/oracle_query_tx.ex:101: The return type {_,_} i
 apps/aecore/lib/aecore/oracle/tx/oracle_registration_tx.ex:95: The return type {'ok',{_,_}} in the specification of process_chainstate/5 is not a subtype of {'error',binary()} | {'ok',{_,map()}}, which is the expected return type for the callback of the 'Elixir.Aecore.Tx.Transaction' behaviour
 apps/aeutil/lib/serialization.ex:427: The call 'Elixir.Aecore.Naming.Naming':rlp_encode(Vtag@1::any(),Vversion@1::1,Vterm@1::map(),'naming_state') breaks the contract (non_neg_integer(),non_neg_integer(),map(),'name' | 'name_commitment') -> binary() | {'error','Elixir.String':t()}
 
+=======
+Function block_by_hash/2 has no local return
+>>>>>>> master

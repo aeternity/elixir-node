@@ -3,8 +3,7 @@ defmodule Aecore.Naming.Naming do
   Aecore naming module implementation.
   """
 
-  alias Aecore.Naming.Naming
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aeutil.Hash
@@ -25,6 +24,7 @@ defmodule Aecore.Naming.Naming do
 
   @type claim :: %{
           hash: binary(),
+          name: binary(),
           owner: Wallet.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
@@ -97,8 +97,7 @@ defmodule Aecore.Naming.Naming do
       :pointers => []
     }
 
-  @spec create_commitment_hash(String.t(), Naming.salt()) ::
-          {:ok, binary()} | {:error, String.t()}
+  @spec create_commitment_hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
     case NameUtil.normalized_namehash(name) do
       {:ok, hash} ->
@@ -124,8 +123,7 @@ defmodule Aecore.Naming.Naming do
   @spec get_pre_claim_ttl() :: non_neg_integer()
   def get_pre_claim_ttl, do: @pre_claim_ttl
 
-  @spec apply_block_height_on_state!(ChainState.chainstate(), integer()) ::
-          ChainState.chainstate()
+  @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
   def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
     updated_naming_state =
       naming_state
@@ -159,7 +157,7 @@ defmodule Aecore.Naming.Naming do
     {:error, "Wrong data"}
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :name | :name_commitment) ::
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :naming_state | :name_commitment) ::
           binary() | {:error, String.t()}
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
     list = [

@@ -25,6 +25,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
@@ -81,7 +82,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :current_state)
   end
 
-  @spec top_block_chain_state() :: Chainstate.account_chainstate()
+  @spec top_block_chain_state() :: Chainstate.t()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -110,7 +111,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
@@ -144,7 +145,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
@@ -226,12 +227,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), Chainstate.t()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: {:ok, ChainState.account_chainstate()} | {:error, String.t()}
+  @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->
@@ -363,12 +364,9 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = Chainstate.calculate_total_tokens(new_chain_state)
-
     Logger.info(fn ->
       "#{__MODULE__}: Added block ##{new_block.header.height}
-      with hash #{Header.base58c_encode(new_block_hash)},
-      total tokens: #{inspect(total_tokens)}"
+      with hash #{Header.base58c_encode(new_block_hash)}"
     end)
 
     state_update = %{
@@ -379,7 +377,10 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        ## Transfrom from chain state
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
           :top_hash => new_block_hash,
@@ -411,15 +412,6 @@ defmodule Aecore.Chain.Worker do
     {:reply, txs_index, state}
   end
 
-  def handle_call(
-        :registered_oracles,
-        _from,
-        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
-      ) do
-    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
-    {:reply, registered_oracles, state}
-  end
-
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
     {:reply, blocks_data_map, state}
   end
@@ -431,7 +423,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_accounts_chain_states()
+    chain_states = Persistence.get_all_chainstates()
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -439,7 +431,7 @@ defmodule Aecore.Chain.Worker do
       if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
-        chain_states
+        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
       end
 
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
@@ -629,8 +621,10 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
-      {key = :oracles, root_hash}, acc_state ->
-        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+      {_key = :oracles, %{otree: o_root_hash, ctree: c_root_hash}}, acc_state ->
+        otree = %{:otree => PatriciaMerkleTree.new(:oracles, o_root_hash)}
+        ctree = %{:ctree => PatriciaMerkleTree.new(:oracles_cache, c_root_hash)}
+        put_in(acc_state, [:oracles], Map.merge(otree, ctree))
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
@@ -643,7 +637,7 @@ defmodule Aecore.Chain.Worker do
         Map.put(acc_state, key, value.root_hash)
 
       {key = :oracles, value}, acc_state ->
-        Map.put(acc_state, key, value.root_hash)
+        Map.put(acc_state, key, %{otree: value.otree.root_hash, ctree: value.ctree.root_hash})
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)

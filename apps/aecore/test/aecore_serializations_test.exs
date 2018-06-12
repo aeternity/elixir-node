@@ -25,6 +25,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Naming.Naming
   alias Aeutil.Serialization
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.BlockValidation
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -128,12 +129,13 @@ defmodule AecoreSerializationTest do
     assert deserialized_name_commitment = name_commitment
   end
 
-  # @tag :rlp_test
-  # test "Erlang RLP-encoded block deserialization", setup do
-  #   serialized_erlang_block = create_data(Block, :erlang)
-  #   deserialized_erlang_block = Serialization.rlp_decode(serialized_erlang_block)
-  #   assert %Block{} = deserialized_erlang_block
-  # end
+  @tag :rlp_block
+  @tag timeout: 120_000
+  test "Epoch RLP-encoded block deserialization", setup do
+    epoch_serialized_block = create_data(Block, :erlang)
+    deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
+    assert %Block{} = deserialized_epoch_block
+  end
 
   def create_data(data_type, :elixir) do
     case data_type do
@@ -189,22 +191,6 @@ defmodule AecoreSerializationTest do
       Block ->
         Miner.mine_sync_block_to_chain()
         Chain.top_block()
-
-      Account ->
-        {%Aecore.Chain.Chainstate{
-           accounts:
-             {1,
-              {<<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4,
-                 236, 181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
-               <<231, 10, 1, 161, 3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138,
-                 35, 63, 33, 4, 236, 181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199,
-                 73, 102, 128, 1, 100>>,
-               <<165, 213, 247, 84, 246, 15, 80, 32, 192, 81, 141, 192, 203, 23, 180, 252, 121,
-                 239, 93, 131, 134, 195, 134, 13, 193, 43, 97, 225, 196, 18, 87, 180>>}},
-           oracles: %{interaction_objects: %{}, registered_oracles: %{}}
-         },
-         <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236, 181,
-           172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>}
 
       NamePreClaimTx ->
         %Aecore.Tx.DataTx{
@@ -325,7 +311,7 @@ defmodule AecoreSerializationTest do
     case data_type do
       Block ->
         Base.decode64!(
-          "+QFWZA65AVAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJ9fwZvmQcvEAEoP00E0s7URtepTZg/jO3Wy5gb5Fgj5AAAAACEA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA"
+          "+QFWZA65AVAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOXmmv/3SQdDjexUzDIgBElzLw7DGKrzrhx70NclO9hFAAAAACEA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA"
         )
     end
   end
