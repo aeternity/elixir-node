@@ -161,7 +161,7 @@ defmodule Aecore.Tx.DataTx do
   Checks whether the fee is above 0.
   """
   @spec validate(t()) :: :ok | {:error, String.t()}
-  def validate(%DataTx{ttl: ttl, fee: fee, type: type} = tx) do
+  def validate(%DataTx{fee: fee, type: type} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
         {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
@@ -173,7 +173,8 @@ defmodule Aecore.Tx.DataTx do
         {:error, "#{__MODULE__}: Invalid senders pubkey size"}
 
       DataTx.ttl(tx) < 0 ->
-        {:error, "#{__MODULE__}: Invalid TTL value: #{ttl} can't be a negative integer."}
+        {:error,
+         "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
 
       true ->
         payload_validate(tx)
@@ -194,7 +195,7 @@ defmodule Aecore.Tx.DataTx do
 
       DataTx.ttl(tx) < block_height ->
         {:error,
-         "#{__MODULE__}: Invalid or expired TTL value: #{ttl}, with given block's height: #{
+         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
            block_height
          }"}
 
