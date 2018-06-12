@@ -141,7 +141,10 @@ defmodule Aecore.Tx.DataTx do
 
   @spec ttl(t()) :: non_neg_integer()
   def ttl(%DataTx{ttl: ttl}) do
-    ttl
+    case ttl do
+      0 -> :max_ttl
+      ttl -> ttl
+    end
   end
 
   @spec payload(t()) :: map()
@@ -169,8 +172,31 @@ defmodule Aecore.Tx.DataTx do
       !senders_pubkeys_size_valid?(tx.senders) ->
         {:error, "#{__MODULE__}: Invalid senders pubkey size"}
 
-      ttl < 0 ->
-        {:error, "#{__MODULE__}: TTL cannot be a negative integer"}
+      DataTx.ttl(tx) < 0 ->
+        {:error, "#{__MODULE__}: Invalid TTL value: #{ttl} can't be a negative integer."}
+
+      true ->
+        payload_validate(tx)
+    end
+  end
+
+  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{fee: fee, type: type} = tx, block_height) do
+    cond do
+      !Enum.member?(valid_types(), type) ->
+        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
+
+      fee < 0 ->
+        {:error, "#{__MODULE__}: Negative fee"}
+
+      !senders_pubkeys_size_valid?(tx.senders) ->
+        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
+
+      DataTx.ttl(tx) < block_height ->
+        {:error,
+         "#{__MODULE__}: Invalid or expired TTL value: #{ttl}, with given block's height: #{
+           block_height
+         }"}
 
       true ->
         payload_validate(tx)
