@@ -17,7 +17,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Depending on the name, different data base ref will
   be used for the trie creaton.
   """
-  @type trie_name :: :accounts | :txs | :proof
+  @type trie_name :: :txs | :proof | :naming | :accounts
 
   @spec root_hash(Trie.t()) :: binary
   def root_hash(%{root_hash: root_hash}), do: root_hash
