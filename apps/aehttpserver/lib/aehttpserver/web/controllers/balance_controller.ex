@@ -6,13 +6,9 @@ defmodule Aehttpserver.Web.BalanceController do
 
   def show(conn, params) do
     acc = Account.base58c_decode(params["account"])
+    tree = Chain.chain_state().accounts
 
-    case Chain.chain_state()[acc] do
-      nil ->
-        json(conn, %{"balance" => 0, "account" => "unknown"})
-
-      %{balance: balance} ->
-        json(conn, %{"balance" => balance, "account" => params["account"]})
-    end
+    balance = Account.balance(tree, acc)
+    json(conn, %{"balance" => balance, "account" => params["account"]})
   end
 end
