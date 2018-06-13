@@ -173,15 +173,15 @@ defmodule Aecore.Tx.DataTx do
       !senders_pubkeys_size_valid?(tx.senders) ->
         {:error, "#{__MODULE__}: Invalid senders pubkey size"}
 
+      DataTx.ttl(tx) < 0 ->
+        {:error,
+         "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
+
       DataTx.ttl(tx) < block_height ->
         {:error,
          "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
            block_height
          }"}
-
-      DataTx.ttl(tx) < 0 ->
-        {:error,
-         "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
 
       true ->
         payload_validate(tx)
