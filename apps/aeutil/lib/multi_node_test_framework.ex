@@ -14,43 +14,52 @@ defmodule Aeutil.MultiNodeTestFramework do
     GenServer.call(__MODULE__, {:new_node, port})
   end
 
+  def mine_sync_block(node_name) do
+    GenServer.call(__MODULE__, {:mine_sync_block, node_name})
+  end
+
+  def sync_two_nodes(node_name1, node_name2) do
+    GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
+  end
+
   def alive_ports() do
     GenServer.call(__MODULE__, {:alive_ports})
   end
 
-  def get_node_chainstate(node_name) do
-    GenServer.call(__MODULE__, {:get_node_chainstate, node_name})
+  def get_node_top_block(node_name) do
+    GenServer.call(__MODULE__, {:get_node_top_block, node_name})
   end
 
-  def command(node_name, command) do
-    GenServer.call(__MODULE__, {:command, node_name, command})
+  def handle_call({:mine_sync_block, node_name}, _, state) do
+    cmd = "Aecore.Miner.Worker.mine_sync_block_to_chain()\n"
+    result = Port.command(state[node_name].process_port, cmd)
+    {:reply, result, state}
   end
 
-  def run_nodes_test() do
-    GenServer.call(__MODULE__, {:run_nodes_test})
+  def handle_call({:sync_two_nodes, node_name1, node_name2}, _, state) do
+    port = state[node_name2].port
+    cmd = "Aecore.Peers.Worker.add_peer(\"localhost:#{port}\")\n"
+    result = Port.command(state[node_name1].process_port, cmd)
+    {:reply, result, state}
   end
 
   def handle_call({:get_state}, _, state) do
     {:reply, state, state}
   end
 
-  def handle_call({:get_node_chainstate, node_name}, _, state) do
-    result = Port.command(state[node_name].port, "Aecore.Chain.Worker.top_block()")
+  def handle_call({:get_node_top_block, node_name}, _, state) do
+    cmd = "Aecore.Chain.Worker.top_block()\n"
+    result = Port.command(state[node_name].process_port, cmd)
     {:reply, result, state}
   end
 
   def handle_call({:alive_ports}, _, state) do
-    alive_ports = for {name, info} <- state, do: Port.info(state[name].port)
+    alive_ports = for {name, _} <- state, do: Port.info(state[name].port)
     {:reply, alive_ports, state}
   end
 
-  def handle_call({:command, node_name, command}, _, state) do
-    result = Port.command(state[node_name].port, command)
-    {:reply, result, state}
-  end
-
   def handle_info({port, {:data, result}}, state) do
-    IO.puts "Elixir got: #{inspect result}"
+    IO.inspect result
     {:noreply, state}
   end
 
@@ -72,8 +81,8 @@ defmodule Aeutil.MultiNodeTestFramework do
       Path.join(tmp_path, "apps/aehttpserver/config/test.exs")
     ])
 
-    port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
-    new_state = Map.put(state, name, %{port: port, path: tmp_path})
+    process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
+    new_state = Map.put(state, name, %{process_port: process_port, path: tmp_path, port: port, top_block: nil})
     {:reply, new_state, new_state}
   end
 end
