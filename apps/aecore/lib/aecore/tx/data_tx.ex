@@ -19,6 +19,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Worker, as: Chain
 
   require Logger
 
@@ -160,29 +161,8 @@ defmodule Aecore.Tx.DataTx do
   @doc """
   Checks whether the fee is above 0.
   """
-  @spec validate(t()) :: :ok | {:error, String.t()}
-  def validate(%DataTx{fee: fee, type: type} = tx) do
-    cond do
-      !Enum.member?(valid_types(), type) ->
-        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
-
-      fee < 0 ->
-        {:error, "#{__MODULE__}: Negative fee"}
-
-      !senders_pubkeys_size_valid?(tx.senders) ->
-        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
-
-      DataTx.ttl(tx) < 0 ->
-        {:error,
-         "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
-
-      true ->
-        payload_validate(tx)
-    end
-  end
-
   @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def validate(%DataTx{fee: fee, type: type} = tx, block_height) do
+  def validate(%DataTx{fee: fee, type: type} = tx, block_height \\ Chain.top_height()) do
     cond do
       !Enum.member?(valid_types(), type) ->
         {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
@@ -198,6 +178,10 @@ defmodule Aecore.Tx.DataTx do
          "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
            block_height
          }"}
+
+      DataTx.ttl(tx) < 0 ->
+        {:error,
+         "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
 
       true ->
         payload_validate(tx)
