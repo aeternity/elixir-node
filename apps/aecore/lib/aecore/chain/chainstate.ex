@@ -62,7 +62,9 @@ defmodule Aecore.Chain.Chainstate do
       %Chainstate{} = new_chainstate ->
         {:ok,
          new_chainstate
-         |> Oracle.prune(block_height)}
+         |> Oracle.remove_expired_oracles(block_height)}
+
+      #  |> Oracle.remove_expired_interaction_objects(block_height)}
 
       error ->
         {:error, error}

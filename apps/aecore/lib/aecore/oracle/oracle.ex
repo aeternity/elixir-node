@@ -245,39 +245,16 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def prune(chainstate, block_height) do
-    OracleStateTree.prune(chainstate.oracles, block_height)
-    chainstate
-  end
-
   def remove_expired_oracles(chainstate, block_height) do
-    # TODO:
-    # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
-    # %{chainstate | oracles: new_oracles_tree}
-    chainstate
-  end
-
-  def remove_expired_oracles1(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
-                                                                         %{
-                                                                           expires: expiry_height
-                                                                         }},
-                                                                        acc ->
-      if expiry_height <= block_height do
-        acc
-        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        |> elem(1)
-      else
-        acc
-      end
-    end)
+    new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
+    %{chainstate | oracles: new_oracles_tree}
   end
 
   def remove_expired_interaction_objects(chainstate, block_height) do
     # TODO:
-    # new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
-    # %{chainstate | oracles: new_oracles_tree}
-    chainstate
+    new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
+    %{chainstate | oracles: new_oracles_tree}
+    # chainstate
   end
 
   def remove_expired_interaction_objects1(

@@ -20,17 +20,16 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   def prune(tree, block_height) do
-    # # [{account_pubkey, expires}]
-    # expired_oracles = get_expited_oracle_ids(tree, block_height - 1)
-    # initialize_deletion(tree, expired_oracles)
-    tree
+    # [{account_pubkey, expires}]
+    expired_oracles = get_expired_oracle_ids(tree, block_height - 1)
+    initialize_deletion(tree, expired_oracles)
   end
 
   defp initialize_deletion(tree, expired_oracles) do
     # TODO -> Does not cover full functionality
-    #    expired_cache = get_expited_cache_ids(expired_oracles)
+    #    expired_cache = get_expired_cache_ids(expired_oracles)
     Enum.reduce(expired_oracles, tree, fn {account_pubkey, expires} = exp, acc_tree ->
-      new_otree = delete(acc_tree.otree, account_pubkey)
+      %{acc_tree | otree: delete(acc_tree.otree, account_pubkey)}
     end)
   end
 
@@ -160,8 +159,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(tree, _where), do: tree.otree
 
   ### Helper functions ================================================
-
-  defp get_expited_oracle_ids(tree, block_height) do
+  defp get_expired_oracle_ids(tree, block_height) do
     PatriciaMerkleTree.all_keys(tree.otree)
     |> Enum.reduce([], fn account_pubkey, acc ->
       expires = get_oracle(tree, account_pubkey).expires
@@ -174,7 +172,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
-  defp get_expited_cache_ids(tree, block_height) do
+  defp get_expired_cache_ids(tree, block_height) do
     for {account_pubkey, expires_at} <- expired_oracles do
       cache_key_encode({:oracle, account_pubkey}, expires_at)
     end
