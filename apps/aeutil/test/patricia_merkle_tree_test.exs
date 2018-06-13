@@ -70,6 +70,18 @@ defmodule AeutilPatriciaMerkleTreeTest do
     assert empty_trie.root_hash == new_trie.root_hash
   end
 
+  @tag :patricia_merkle_tree
+  test "Get all keys and their size" do
+    t =
+      :test_trie
+      |> PatriciaMerkleTree.new()
+      |> PatriciaMerkleTree.enter("111", "v1")
+      |> PatriciaMerkleTree.enter("112", "v2")
+
+    assert ["111", "112"] = PatriciaMerkleTree.all_keys(t)
+    assert 2 = PatriciaMerkleTree.trie_size(t)
+  end
+
   @doc """
   Creates trie from trie list by entering each element
   """

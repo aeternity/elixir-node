@@ -41,8 +41,12 @@ defmodule AehttpclientTest do
     init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx1} = Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 1)
-    {:ok, signed_tx2} = Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 2)
+
+    {:ok, signed_tx1} =
+      Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 1, <<"payload">>)
+
+    {:ok, signed_tx2} =
+      Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 2, <<"payload">>)
 
     assert :ok = Pool.add_transaction(signed_tx1)
     assert :ok = Pool.add_transaction(signed_tx2)

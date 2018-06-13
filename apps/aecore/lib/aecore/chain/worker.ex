@@ -16,7 +16,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Target
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
@@ -25,6 +25,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
@@ -39,13 +40,15 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    genesis_block_hash = BlockValidation.block_header_hash(Block.genesis_block().header)
+    genesis_block_header = Block.genesis_block().header
+    genesis_block_hash = BlockValidation.block_header_hash(genesis_block_header)
 
     {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
         Block.genesis_block().txs,
         build_chain_state(),
-        0
+        genesis_block_header.height,
+        genesis_block_header.miner
       )
 
     blocks_data_map = %{
@@ -79,7 +82,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :current_state)
   end
 
-  @spec top_block_chain_state() :: Chainstate.account_chainstate()
+  @spec top_block_chain_state() :: Chainstate.t()
   def top_block_chain_state do
     GenServer.call(__MODULE__, :top_block_info).chain_state
   end
@@ -108,7 +111,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
   end
 
-  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
     get_block(decoded_hash)
@@ -142,7 +145,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t()}
+  @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
     ## At first we are making attempt to get the block from the chain state.
     ## If there is no such block then we check into the db.
@@ -209,14 +212,14 @@ defmodule Aecore.Chain.Worker do
   def add_block(%Block{} = block) do
     with {:ok, prev_block} <- get_block(block.header.prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
-         blocks_for_difficulty_calculation =
-           get_blocks(block.header.prev_hash, Difficulty.get_number_of_blocks()),
+         blocks_for_target_calculation =
+           get_blocks(block.header.prev_hash, Target.get_number_of_blocks()),
          {:ok, new_chain_state} <-
            BlockValidation.calculate_and_validate_block(
              block,
              prev_block,
              prev_block_chain_state,
-             blocks_for_difficulty_calculation
+             blocks_for_target_calculation
            ) do
       add_validated_block(block, new_chain_state)
     else
@@ -224,12 +227,12 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec add_validated_block(Block.t(), Chainstate.chainstate()) :: :ok
+  @spec add_validated_block(Block.t(), Chainstate.t()) :: :ok
   defp add_validated_block(%Block{} = block, chain_state) do
     GenServer.call(__MODULE__, {:add_validated_block, block, chain_state})
   end
 
-  @spec chain_state(binary()) :: {:ok, ChainState.account_chainstate()} | {:error, String.t()}
+  @spec chain_state(binary()) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def chain_state(block_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->
@@ -253,10 +256,7 @@ defmodule Aecore.Chain.Worker do
     GenServer.call(__MODULE__, :oracle_interaction_objects)
   end
 
-  @spec chain_state() :: %{
-          :accounts => Chainstate.accounts(),
-          :oracles => Oracle.t()
-        }
+  @spec chain_state() :: Chainstate.t()
   def chain_state do
     top_block_chain_state()
   end
@@ -350,12 +350,16 @@ defmodule Aecore.Chain.Worker do
     new_refs =
       0..@max_refs
       |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-        case Enum.at(blocks_data_map[prev].refs, i) do
-          nil ->
+        with true <- Map.has_key?(blocks_data_map, prev),
+             {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
+          [hash | acc]
+        else
+          :error ->
             acc
 
-          hash ->
-            [hash | acc]
+          _ ->
+            Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
+            acc
         end
       end)
       |> Enum.reverse()
@@ -370,12 +374,9 @@ defmodule Aecore.Chain.Worker do
     hundred_blocks_data_map =
       remove_old_block_data_from_map(updated_blocks_data_map, new_block_hash)
 
-    total_tokens = Chainstate.calculate_total_tokens(new_chain_state)
-
     Logger.info(fn ->
       "#{__MODULE__}: Added block ##{new_block.header.height}
-      with hash #{Header.base58c_encode(new_block_hash)},
-      total tokens: #{inspect(total_tokens)}"
+      with hash #{Header.base58c_encode(new_block_hash)}"
     end)
 
     state_update = %{
@@ -386,7 +387,10 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        ## Transfrom from chain state
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
           :top_hash => new_block_hash,
@@ -447,7 +451,7 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_accounts_chain_states()
+    chain_states = Persistence.get_all_chainstates()
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -455,11 +459,16 @@ defmodule Aecore.Chain.Worker do
       if is_empty_chain_state do
         state.blocks_data_map[top_hash].chain_state
       else
-        chain_states
+        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
       end
 
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
+
+    if Enum.empty?(blocks_map) do
+      [block_hash] = Map.keys(state.blocks_data_map)
+      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+    end
 
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -531,7 +540,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.pack_binary(filtered_tx)
+          tx_bin = Serialization.rlp_encode(filtered_tx, :signedtx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)
@@ -632,4 +641,38 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp build_chain_state, do: Chainstate.init()
+
+  def transfrom_chainstate(strategy, chainstate) do
+    Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
+  end
+
+  defp get_persist_strategy(:to_chainstate) do
+    fn
+      {key = :naming, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :accounts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
+
+  defp get_persist_strategy(:from_chainstate) do
+    fn
+      {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :accounts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      # TODO
+      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
+    end
+  end
 end

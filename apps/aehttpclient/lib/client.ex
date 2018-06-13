@@ -55,13 +55,13 @@ defmodule Aehttpclient.Client do
     post_to_peers("block", data, peers)
   end
 
-  @spec send_tx(SignedTx.t(), list(binary())) :: :ok
+  @spec send_tx(map(), list(binary())) :: :ok
   def send_tx(tx, peers) do
     data = SignedTx.serialize(tx)
     post_to_peers("tx", data, peers)
   end
 
-  @spec post_to_peers(String.t(), SignedTx.t(), list(String.t())) :: :ok
+  @spec post_to_peers(String.t(), map(), list(String.t())) :: :ok
   defp post_to_peers(uri, data, peers) do
     Enum.each(peers, fn peer ->
       post(peer, data, uri)

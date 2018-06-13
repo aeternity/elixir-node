@@ -216,7 +216,7 @@ defmodule Aecore.Wallet.Worker do
     :ok
   end
 
-  @spec get_file_name(String.t()) :: List.t()
+  @spec get_file_name(String.t()) :: list()
   defp get_file_name(path) do
     path
     |> Path.join("*/")

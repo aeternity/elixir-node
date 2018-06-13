@@ -56,6 +56,7 @@ config :aecore, :pow,
     root_hash: <<0::256>>,
     time: 1_507_275_094_308,
     nonce: 304,
+    miner: <<0::256>>,
     pow_evidence: [
       383_737,
       616_161,
