@@ -133,7 +133,7 @@ defmodule Aeutil.PatriciaMerkleTree do
       iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:wrong_type)
       {:error, "Unknown print type"}
   """
-  @spec print_trie(Trie.t(), :as_struct | :as_pair) :: Trie.t() | {:error, term()}
+  @spec print_trie(Trie.t(), :as_struct | :as_pair) :: Trie.t() | list() | {:error, term()}
   def print_trie(trie, :as_struct), do: Inspector.inspect_trie(trie)
   def print_trie(trie, :as_pair), do: Inspector.all_values(trie)
   def print_trie(_, _), do: {:error, "Unknown print type"}
