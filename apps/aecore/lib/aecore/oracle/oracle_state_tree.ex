@@ -5,8 +5,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aecore.Oracle.Oracle
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx}
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Oracle.Tx.OracleQueryTx
 
   #  @type oracles_state :: Trie.t()
   @type oracles_state :: %{otree: Trie.t(), ctree: Trie.t()}
@@ -20,17 +19,20 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   def prune(tree, block_height) do
-    # [{account_pubkey, expires}]
     expired_oracles = get_expired_oracle_ids(tree, block_height - 1)
     initialize_deletion(tree, expired_oracles)
   end
 
   defp initialize_deletion(tree, expired_oracles) do
-    # TODO -> Does not cover full functionality
     expired_cache = get_expired_cache_ids(tree.ctree, expired_oracles)
 
-    Enum.reduce(expired_oracles, tree, fn {account_pubkey, expires} = exp, acc_tree ->
-      %{acc_tree | otree: delete(acc_tree.otree, account_pubkey)}
+    new_map_tree =
+      Enum.reduce(expired_oracles, tree, fn {account_pubkey, _expires}, acc_tree ->
+        %{acc_tree | otree: delete(acc_tree.otree, account_pubkey)}
+      end)
+
+    Enum.reduce(expired_cache, new_map_tree, fn cache, acc_tree ->
+      %{acc_tree | ctree: delete(acc_tree.ctree, cache)}
     end)
   end
 
@@ -105,7 +107,8 @@ defmodule Aecore.Oracle.OracleStateTree do
         oracle_id
       )
 
-    tree_id = oracle_id <> id
+    # tree_id = oracle_id <> id #TODO: After PMT is fixed
+    tree_id = id
     expires = OracleQueryTx.get_expires(query)
     serialized = Serialization.rlp_encode(query, :oracle_query)
 

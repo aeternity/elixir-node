@@ -154,8 +154,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
-
     io = %{
       sender_address: sender,
       sender_nonce: nonce,
