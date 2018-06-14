@@ -250,44 +250,6 @@ defmodule Aecore.Oracle.Oracle do
     %{chainstate | oracles: new_oracles_tree}
   end
 
-  def remove_expired_interaction_objects(chainstate, block_height) do
-    # TODO:
-    new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
-    %{chainstate | oracles: new_oracles_tree}
-    # chainstate
-  end
-
-  def remove_expired_interaction_objects1(
-        chain_state,
-        block_height
-      ) do
-    interaction_objects = chain_state.oracles.interaction_objects
-
-    Enum.reduce(interaction_objects, chain_state, fn {query_id,
-                                                      %{
-                                                        sender_address: sender_address,
-                                                        has_response: has_response,
-                                                        expires: expires,
-                                                        fee: fee
-                                                      }},
-                                                     acc ->
-      if expires <= block_height do
-        updated_state =
-          acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
-
-        if has_response do
-          updated_state
-        else
-          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
-        end
-      else
-        acc
-      end
-    end)
-  end
-
   defp ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
     case type do
       :absolute ->

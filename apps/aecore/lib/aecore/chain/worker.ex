@@ -644,6 +644,9 @@ defmodule Aecore.Chain.Worker do
 
       {key = :oracles, value}, acc_state ->
         Map.put(acc_state, key, %{otree: value.otree.root_hash, ctree: value.ctree.root_hash})
+
+      {key, value}, acc_state ->
+        Map.put(acc_state, key, value)
     end
   end
 

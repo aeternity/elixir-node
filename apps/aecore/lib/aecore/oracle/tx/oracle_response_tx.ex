@@ -131,8 +131,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
-    # id = sender <> tx.query_id TODO: Have to fix
-    id = tx.query_id
+    id = sender <> tx.query_id
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

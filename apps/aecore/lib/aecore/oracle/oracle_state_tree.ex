@@ -27,7 +27,8 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp initialize_deletion(tree, expired_oracles) do
     # TODO -> Does not cover full functionality
-    #    expired_cache = get_expired_cache_ids(expired_oracles)
+    expired_cache = get_expired_cache_ids(tree.ctree, expired_oracles)
+
     Enum.reduce(expired_oracles, tree, fn {account_pubkey, expires} = exp, acc_tree ->
       %{acc_tree | otree: delete(acc_tree.otree, account_pubkey)}
     end)
@@ -104,9 +105,7 @@ defmodule Aecore.Oracle.OracleStateTree do
         oracle_id
       )
 
-    # tree_id = oracle_id <> id TODO -> Have to ask Rado!!!!!
-    tree_id = id
-
+    tree_id = oracle_id <> id
     expires = OracleQueryTx.get_expires(query)
     serialized = Serialization.rlp_encode(query, :oracle_query)
 
@@ -172,7 +171,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
-  defp get_expired_cache_ids(tree, block_height) do
+  def get_expired_cache_ids(tree, expired_oracles) do
     for {account_pubkey, expires_at} <- expired_oracles do
       cache_key_encode({:oracle, account_pubkey}, expires_at)
     end
@@ -183,11 +182,11 @@ defmodule Aecore.Oracle.OracleStateTree do
     enter(ctree, encoded, @dummy_val)
   end
 
-  defp cache_key_encode(key, expires) do
+  def cache_key_encode(key, expires) do
     :sext.encode({expires, key})
   end
 
-  defp cache_key_decode() do
-    :not_implemented
+  def cache_key_decode(binary) do
+    :sext.decode(binary)
   end
 end
