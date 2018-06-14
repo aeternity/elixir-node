@@ -160,8 +160,8 @@ defmodule Aeutil.PatriciaMerkleTree do
   def print_trie(trie, :as_pair, false), do: Inspector.all_values(trie)
 
   def print_trie(trie, :as_pair, _) do
-    Inspector.all_values(trie)
-    |> Enum.reduce([], fn {key, val}, acc ->
+    list = Inspector.all_values(trie)
+    Enum.reduce(list, [], fn {key, val}, acc ->
       [{key, elem(Serialization.rlp_decode(val), 1)} | acc]
     end)
   end
