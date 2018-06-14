@@ -6,6 +6,7 @@ defmodule Aeutil.PatriciaMerkleTree do
 
   """
 
+  alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.DB.ExternalDB
@@ -98,16 +99,32 @@ defmodule Aeutil.PatriciaMerkleTree do
 
   @doc """
   Providing pretty print of a given trie in the shell.
-  Depending on the atom it can print structure or key value pairs
+  Depending on the atom it can print structure or key value pairs. The default output is :as_struct
 
   ## Examples
 
-  If we want to print as pair
-      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:as_pair)
+  If we want to print as pair and no serialization is needed
+      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie([output: :as_pair, deserialize: false])
       [{"111", "v1"}, {"112", "v2"}]
 
-  If we want to print the whole struct. Returns the trie as well
-      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:as_struct)
+  If we want to print as pair and serialization is needed
+      iex> Chain.get_chain_state_by_height(1).accounts |> PatriciaMerkleTree.print_trie([output: :as_pair, deserialize: true])
+      [
+        {<<3, 198, 106, 104, 110, 21, 75, 215, 141, 232, 196, 72, 106, 43, 188, 85,
+         47, 30, 208, 235, 189, 51, 92, 132, 247, 27, 130, 183, 118, 136, 119, 33,
+         190>>,
+        %Aecore.Account.Account{
+          balance: 100,
+          nonce: 0,
+          pubkey: <<3, 198, 106, 104, 110, 21, 75, 215, 141, 232, 196, 72, 106, 43,
+                   188, 85, 47, 30, 208, 235, 189, 51, 92, 132, 247, 27, 130, 183, 118, 136,
+                   119, 33, 190>>
+        }}
+     ]
+
+
+  If we want to print the whole struct. Returns the trie as well.
+      iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie()
       ~~~~~~Trie~~~
       Node: ext (prefix: [3, 1, 3, 1, 3])
         Node: branch (value: "")
@@ -133,10 +150,23 @@ defmodule Aeutil.PatriciaMerkleTree do
       iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie(:wrong_type)
       {:error, "Unknown print type"}
   """
-  @spec print_trie(Trie.t(), :as_struct | :as_pair) :: Trie.t() | list() | {:error, term()}
-  def print_trie(trie, :as_struct), do: Inspector.inspect_trie(trie)
-  def print_trie(trie, :as_pair), do: Inspector.all_values(trie)
-  def print_trie(_, _), do: {:error, "Unknown print type"}
+  @spec print_trie(Trie.t(), keyword()) :: Trie.t() | list() | {:error, term()}
+  def print_trie(trie, opts \\ [output: :as_struct, deserialize: false]) do
+    print_trie(trie, opts[:output], opts[:deserialize])
+  end
+
+  def print_trie(trie, :as_struct, _), do: Inspector.inspect_trie(trie)
+
+  def print_trie(trie, :as_pair, false), do: Inspector.all_values(trie)
+
+  def print_trie(trie, :as_pair, _) do
+    Inspector.all_values(trie)
+    |> Enum.reduce([], fn {key, val}, acc ->
+      [{key, elem(Serialization.rlp_decode(val), 1)} | acc]
+    end)
+  end
+
+  def print_trie(_, _, _), do: {:error, "Unknown print type"}
 
   @doc """
   Retrieving all keys of a given trie
