@@ -122,7 +122,6 @@ defmodule Aeutil.PatriciaMerkleTree do
         }}
      ]
 
-
   If we want to print the whole struct. Returns the trie as well.
       iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie()
       ~~~~~~Trie~~~
