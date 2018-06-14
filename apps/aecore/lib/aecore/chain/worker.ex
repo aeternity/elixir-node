@@ -648,6 +648,9 @@ defmodule Aecore.Chain.Worker do
 
   defp get_persist_strategy(:to_chainstate) do
     fn
+      {key = :naming, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
@@ -660,6 +663,9 @@ defmodule Aecore.Chain.Worker do
 
   defp get_persist_strategy(:from_chainstate) do
     fn
+      {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
       {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 
