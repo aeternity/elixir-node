@@ -22,14 +22,14 @@ defmodule AecoreCuckooTest do
     end)
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 60000
   @tag :cuckoo
   test "Generate solution with a winning nonce and high target threshold", setup do
     %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
     assert found_solution == wining_solution()
   end
 
-  @tag timeout: 10_000
+  @tag timeout: 60000
   @tag :cuckoo
   test "Verify solution with a high target threshold", setup do
     header = Cuckoo.generate(block_candidate().header)
@@ -38,48 +38,48 @@ defmodule AecoreCuckooTest do
 
   defp wining_solution do
     [
-      313_161,
-      333_265,
-      343_834,
-      353_733,
-      31_303_962,
-      31_326_661,
-      31_633_262,
-      31_653_335,
-      32_306_536,
-      32_343_266,
-      32_623_632,
-      32_636_139,
-      32_643_033,
-      32_646_138,
-      33_303_562,
-      33_336_533,
-      33_363_363,
-      33_373_036,
-      33_623_564,
-      33_636_233,
-      34_323_432,
-      34_386_133,
-      34_396_535,
-      34_623_435,
-      34_623_931,
-      34_656_436,
-      35_333_130,
-      35_333_131,
-      35_346_566,
-      35_363_237,
-      35_366_532,
-      35_393_964,
-      36_356_432,
-      36_613_234,
-      36_613_339,
-      36_643_764,
-      37_316_566,
-      37_373_265,
-      37_396_363,
-      37_613_535,
-      37_643_435,
-      37_656_166
+      526,
+      1720,
+      3463,
+      3841,
+      5225,
+      6487,
+      6660,
+      7467,
+      9404,
+      9483,
+      11730,
+      12200,
+      13764,
+      14827,
+      15211,
+      15420,
+      16209,
+      17703,
+      18165,
+      18873,
+      19092,
+      19286,
+      19438,
+      19619,
+      19875,
+      20227,
+      21014,
+      22067,
+      22885,
+      23112,
+      23251,
+      24112,
+      24448,
+      25053,
+      25259,
+      25486,
+      26774,
+      26864,
+      27696,
+      28183,
+      29677,
+      31797
     ]
   end
 
@@ -103,15 +103,11 @@ defmodule AecoreCuckooTest do
     %Block{
       header: %Header{
         height: 5,
-        nonce: 35,
+        nonce: 67,
         pow_evidence: List.duplicate(0, 42),
         prev_hash: prev_hash,
         root_hash: root_hash,
         target: 553_713_663,
-        height: 6,
-        nonce: 218,
-        pow_evidence: nil,
-        prev_hash: prev_hash,
         time: 1_523_540_274_221,
         txs_hash: txs_hash,
         miner: miner,

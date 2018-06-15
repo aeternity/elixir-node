@@ -8,7 +8,6 @@ defmodule Aecore.Persistence.Worker do
 
   alias Rox.Batch
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Block
 
   @typedoc """
@@ -18,7 +17,7 @@ defmodule Aecore.Persistence.Worker do
   Those names referes to the keys into patricia_families
   map in our state
   """
-  @type db_ref_name :: :proof | :txs | :account
+  @type db_ref_name :: :proof | :txs | :naming | :accounts
 
   require Logger
 
@@ -106,16 +105,10 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:add_account_chain_state, {account, data}})
   end
 
-  @spec get_account_chain_state(account :: binary()) ::
-          {:ok, chain_state :: map()} | {:error, reason :: term()}
-  def get_account_chain_state(account) do
-    GenServer.call(__MODULE__, {:get_account_chain_state, account})
-  end
-
-  @spec get_all_accounts_chain_states() ::
-          {:ok, chain_state :: map()} | {:error, reason :: term()}
-  def get_all_accounts_chain_states do
-    GenServer.call(__MODULE__, :get_all_accounts_chain_states)
+  @spec get_all_chainstates() ::
+          {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
+  def get_all_chainstates do
+    GenServer.call(__MODULE__, :get_all_chainstates)
   end
 
   @spec get_all_blocks_info() :: {:ok, map()} | :not_found | {:error, reason :: term()}
@@ -160,8 +153,9 @@ defmodule Aecore.Persistence.Worker do
        "chain_state_family" => chain_state_family,
        "blocks_info_family" => blocks_info_family,
        "patricia_proof_family" => patricia_proof_family,
-       "patricia_account_family" => patricia_account_family,
-       "patricia_txs_family" => patricia_txs_family
+       "patricia_txs_family" => patricia_txs_family,
+       "patricia_accounts_family" => patricia_accounts_family,
+       "patricia_naming_family" => patricia_naming_family
      }} =
       Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
         "blocks_family",
@@ -169,8 +163,9 @@ defmodule Aecore.Persistence.Worker do
         "chain_state_family",
         "blocks_info_family",
         "patricia_proof_family",
-        "patricia_account_family",
-        "patricia_txs_family"
+        "patricia_txs_family",
+        "patricia_accounts_family",
+        "patricia_naming_family"
       ])
 
     {:ok,
@@ -182,9 +177,10 @@ defmodule Aecore.Persistence.Worker do
        blocks_info_family: blocks_info_family,
        patricia_families: %{
          proof: patricia_proof_family,
-         account: patricia_account_family,
+         accounts: patricia_accounts_family,
          txs: patricia_txs_family,
-         test_trie: db
+         test_trie: db,
+         naming: patricia_naming_family
        }
      }}
   end
@@ -311,25 +307,11 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call(
-        {:get_account_chain_state, account},
+        :get_all_chainstates,
         _from,
         %{chain_state_family: chain_state_family} = state
       ) do
-    {:ok, chainstate} = Rox.get(chain_state_family, "chain_state")
-
-    reply = {:ok, AccountStateTree.get(chainstate.accounts, account)}
-
-    {:reply, reply, state}
-  end
-
-  def handle_call(
-        :get_all_accounts_chain_states,
-        _from,
-        %{chain_state_family: chain_state_family} = state
-      ) do
-    response = Rox.get(chain_state_family, "chain_state")
-
-    case response do
+    case Rox.get(chain_state_family, "chain_state") do
       {:ok, chainstate} -> {:reply, chainstate, state}
       _ -> {:reply, %{}, state}
     end

@@ -80,8 +80,6 @@ defmodule AecoreTxTest do
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-
-    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 100
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
@@ -94,21 +92,17 @@ defmodule AecoreTxTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    # We should have only made two coinbases
-    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 200
 
     :ok = Miner.mine_sync_block_to_chain()
     # At this poing the sender should have 300 tokens,
     # enough to mine the transaction in the pool
 
-    assert AccountStateTree.size(Chain.chain_state().accounts) == 1
     assert Account.balance(Chain.chain_state().accounts, Wallet.get_public_key()) == 300
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert AccountStateTree.size(Chain.chain_state().accounts) == 2
     assert Account.balance(TestUtils.get_accounts_chainstate(), Wallet.get_public_key()) == 200
     assert Account.balance(Chain.chain_state().accounts, tx.receiver) == 200
   end

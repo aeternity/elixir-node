@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -31,7 +31,6 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @doc """
   Definition of Aecore NameRevokeTx structure
-
   ## Parameters
   - hash: hash of name to be revoked
   """
@@ -84,7 +83,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         %NameRevokeTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = Map.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
 
     claim = %{
       claim_to_update
@@ -92,7 +91,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         expires: block_height + Naming.get_revoke_expiration_ttl()
     }
 
-    updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -118,13 +117,13 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = Map.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
-      claim == nil ->
+      claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       claim.owner != sender ->

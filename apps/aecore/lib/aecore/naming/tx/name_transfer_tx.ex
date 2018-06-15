@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Keys.Wallet
   alias Aecore.Account.AccountStateTree
@@ -34,7 +34,6 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @doc """
   Definition of Aecore NameTransferTx structure
-
   ## Parameters
   - hash: hash of name to be transfered
   - target: target public key to transfer to
@@ -91,9 +90,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         %NameTransferTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = Map.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
     claim = %{claim_to_update | owner: tx.target}
-    updated_naming_chainstate = Map.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -119,13 +118,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = Map.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash)
 
     cond do
       account_state.balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance: #{inspect(account_state.balance - fee)}"}
 
-      claim == nil ->
+      claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       claim.owner != sender ->

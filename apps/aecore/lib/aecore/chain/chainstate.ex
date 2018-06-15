@@ -8,9 +8,9 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.Oracle
-  alias Aecore.Naming.Naming
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
 
@@ -18,13 +18,13 @@ defmodule Aecore.Chain.Chainstate do
 
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: Oracle.t()
-  @type naming :: Naming.state()
+  @type naming :: NamingStateTree.namings_state()
   @type chain_state_types :: :accounts | :oracles | :naming | :none
 
   @type t :: %Chainstate{
-          accounts: accounts(),
-          oracles: oracles(),
-          naming: naming()
+          accounts: accounts,
+          oracles: oracles,
+          naming: naming
         }
 
   defstruct [
@@ -38,7 +38,7 @@ defmodule Aecore.Chain.Chainstate do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
       :oracles => %{registered_oracles: %{}, interaction_objects: %{}},
-      :naming => Naming.init_empty()
+      :naming => NamingStateTree.init_empty()
     }
   end
 
@@ -97,7 +97,7 @@ defmodule Aecore.Chain.Chainstate do
   @spec apply_transaction_on_state(t(), non_neg_integer(), SignedTx.t()) ::
           t() | {:error, String.t()}
   def apply_transaction_on_state(chainstate, block_height, tx) do
-    case SignedTx.validate(tx) do
+    case SignedTx.validate(tx, block_height) do
       :ok ->
         SignedTx.process_chainstate(chainstate, block_height, tx)
 
@@ -132,13 +132,6 @@ defmodule Aecore.Chain.Chainstate do
       end)
 
     Enum.reverse(txs_list)
-  end
-
-  @spec calculate_total_tokens(t()) :: non_neg_integer()
-  def calculate_total_tokens(%{accounts: accounts_tree}) do
-    AccountStateTree.reduce(accounts_tree, 0, fn {pub_key, _value}, acc ->
-      acc + Account.balance(accounts_tree, pub_key)
-    end)
   end
 
   def base58c_encode(bin) do

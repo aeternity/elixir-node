@@ -58,7 +58,7 @@ defmodule AecoreChainTest do
         nonce: 0,
         miner: Wallet.get_public_key(),
         time: System.system_time(:milliseconds),
-        version: 1
+        version: 14
       },
       txs: []
     }

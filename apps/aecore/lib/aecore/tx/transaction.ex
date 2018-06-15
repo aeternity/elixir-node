@@ -4,10 +4,6 @@ defmodule Aecore.Tx.Transaction do
   child tx of DataTx should implement to work correctly on the blockchain
   """
 
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Structures.SpendTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
@@ -48,7 +44,7 @@ defmodule Aecore.Tx.Transaction do
   # Callbacks
 
   @doc "The name for state chain entry to be passed for processing"
-  @callback get_chain_state_name() :: Chainstate.chain_state_types() | nil
+  @callback get_chain_state_name() :: Chainstate.chain_state_types() | :none
 
   @callback init(payload()) :: tx_types()
 

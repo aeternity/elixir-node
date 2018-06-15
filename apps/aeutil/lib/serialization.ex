@@ -336,8 +336,13 @@ defmodule Aeutil.Serialization do
     serialize_txs_info_to_json(txs_info, [])
   end
 
+  def serialize_term(term), do: :erlang.term_to_binary(term)
+  def deserialize_term(:none), do: :none
+  def deserialize_term({:ok, binary}), do: deserialize_term(binary)
+  def deserialize_term(binary), do: {:ok, :erlang.binary_to_term(binary)}
+
   defp serialize_txs_info_to_json([h | t], acc) do
-    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce)
+    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce, h.ttl)
     tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
 
     senders_list =
@@ -545,30 +550,62 @@ defmodule Aeutil.Serialization do
   def decode_ttl_type(0), do: :relative
   @spec header_to_binary(Header.t()) :: binary
   def header_to_binary(%Header{} = header) do
-    pow_to_binary = pow_to_binary(header.pow_evidence)
+    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
+    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
+    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
+    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
+
+    pow_to_binary =
+      if header.pow_evidence != :no_value do
+        pow_to_binary(header.pow_evidence)
+      else
+        pow_to_binary(List.duplicate(0, 42))
+      end
+
+    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
+    miner_pubkey_size = 32
 
     <<
       header.version::64,
       header.height::64,
-      header.prev_hash::binary-size(32),
-      header.txs_hash::binary-size(32),
-      header.root_hash::binary-size(32),
+      header.prev_hash::binary-size(header_prev_hash_size),
+      header.txs_hash::binary-size(header_txs_hash_size),
+      header.root_hash::binary-size(header_root_hash_size),
       header.target::64,
-      pow_to_binary::binary-size(168),
+      pow_to_binary::binary-size(pow_evidence_size),
       header.nonce::64,
-      header.time::64
+      header.time::64,
+      # pubkey should be adjusted to 32 bytes.
+      header.miner::binary-size(miner_pubkey_size)
     >>
   end
 
   def header_to_binary(_) do
-    {:error, "Illegal structure serialization"}
+    {:error, "#{__MODULE__} : Illegal header structure serialization"}
   end
 
   @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
   def binary_to_header(binary) when is_binary(binary) do
-    <<version::64, height::64, prev_hash::binary-size(32), txs_hash::binary-size(32),
-      root_hash::binary-size(32), target::64, pow_evidence_bin::binary-size(168), nonce::64,
-      time::64>> = binary
+    # Application.get_env(:aecore, :aewallet)[:pub_key_size]
+    miner_pubkey_size = 32
+    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
+    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
+    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
+    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
+
+    <<
+      version::64,
+      height::64,
+      prev_hash::binary-size(header_prev_hash_size),
+      txs_hash::binary-size(header_txs_hash_size),
+      root_hash::binary-size(header_root_hash_size),
+      target::64,
+      pow_evidence_bin::binary-size(pow_evidence_size),
+      nonce::64,
+      # pubkey should be adjusted to 32 bytes.
+      time::64,
+      miner::binary-size(miner_pubkey_size)
+    >> = binary
 
     pow_evidence = binary_to_pow(pow_evidence_bin)
 
@@ -581,23 +618,24 @@ defmodule Aeutil.Serialization do
       target: target,
       time: time,
       txs_hash: txs_hash,
-      version: version
+      version: version,
+      miner: miner
     }
   end
 
   def binary_to_header(_) do
-    {:error, "Illegal header binary serialization"}
+    {:error, "#{__MODULE__} : Illegal header to binary serialization"}
   end
 
   @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
-  def pow_to_binary(pow) when is_list(pow) do
-    if Enum.count(pow) == 42 do
+  def pow_to_binary(pow) do
+    if is_list(pow) and Enum.count(pow) == 42 do
       list_of_pows =
-        for evidence <- pow do
+        for evidence <- pow, into: <<>> do
           <<evidence::32>>
         end
 
-      serialize_pow(:binary.list_to_bin(list_of_pows), <<>>)
+      serialize_pow(list_of_pows, <<>>)
     else
       List.duplicate(0, 42)
     end
@@ -606,8 +644,7 @@ defmodule Aeutil.Serialization do
   @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
   defp serialize_pow(pow, acc) when pow != <<>> do
     <<elem::binary-size(4), rest::binary>> = pow
-    acc = acc <> elem
-    serialize_pow(rest, acc)
+    serialize_pow(rest, acc <> elem)
   end
 
   defp serialize_pow(<<>>, acc) do
@@ -620,19 +657,18 @@ defmodule Aeutil.Serialization do
   end
 
   def binary_to_pow(_) do
-    {:error, "Illegal PoW serialization"}
+    {:error, "#{__MODULE__} : Illegal PoW serialization"}
   end
 
   defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    acc = [pow | acc]
-    deserialize_pow(rest, acc)
+    deserialize_pow(rest, List.insert_at(acc, -1, pow))
   end
 
   defp deserialize_pow(<<>>, acc) do
     if Enum.count(Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)) == 42 do
-      Enum.reverse(acc)
+      acc
     else
-      {:error, "Illegal PoW serialization"}
+      {:error, "#{__MODULE__} : Illegal PoW serialization"}
     end
   end
 
@@ -689,7 +725,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(24), do: OracleResponseTx
   def tag_to_type(25), do: OracleExtendTx
   def tag_to_type(30), do: Name
-  def tag_to_type(31), do: NameCommitmentTx
+  def tag_to_type(31), do: NameCommitment
   def tag_to_type(32), do: NameClaimTx
   def tag_to_type(33), do: NamePreClaimTx
   def tag_to_type(34), do: NameUpdateTx
@@ -707,7 +743,7 @@ defmodule Aeutil.Serialization do
   def get_version(OracleQueryTx), do: {:ok, 1}
   def get_version(OracleResponseTx), do: {:ok, 1}
   def get_version(OracleExtendTx), do: {:ok, 1}
-  def get_version(NameName), do: {:ok, 1}
+  def get_version(Name), do: {:ok, 1}
   def get_version(NameCommitment), do: {:ok, 1}
   def get_version(NameClaimTx), do: {:ok, 1}
   def get_version(NamePreClaimTx), do: {:ok, 1}
