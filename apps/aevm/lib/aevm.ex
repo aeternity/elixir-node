@@ -2,6 +2,7 @@ defmodule Aevm do
   use Bitwise
 
   require OpCodes
+  require GasCodes
   require OpCodesUtil
   require AevmConst
 
@@ -20,6 +21,8 @@ defmodule Aevm do
       op_code = get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
 
+      IO.inspect("#{op_name} #{State.gas(state)}")
+
       dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
       state1 = exec(op_code, state)
 
@@ -28,7 +31,12 @@ defmodule Aevm do
 
       gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
 
-      state2 = Gas.update_gas(gas_cost, state1)
+      state2 =
+        if op_code != OpCodes._CALL() do
+          Gas.update_gas(gas_cost, state1)
+        else
+          state1
+        end
 
       state3 = State.inc_cp(state2)
 
@@ -1039,8 +1047,9 @@ defmodule Aevm do
     push(account, state5)
   end
 
-  defp exec(OpCodes._CALL(), state) do
-    # TODO
+  def exec(OpCodes._CALL(), state) do
+    {return, state1} = call(state, OpCodes._CALL())
+    push(return, state1)
   end
 
   defp exec(OpCodes._CALLCODE(), state) do
@@ -1300,5 +1309,90 @@ defmodule Aevm do
 
     <<val::integer-unsigned-256>> = <<pad::bits, sign_bit::1, trunc_val::bits>>
     val
+  end
+
+  defp call(state, op_code) do
+    if State.calldepth(state) < 1024 do
+      call1(state, op_code)
+    else
+      {0, state}
+    end
+  end
+
+  defp call1(state, op_code) do
+    # TODO: works for CALL only
+
+    IO.inspect(State.stack(state))
+    {gas, state1} = pop(state)
+    {to, state2} = pop(state1)
+    {value, state3} = pop(state2)
+    {in_offset, state4} = pop(state3)
+    {in_size, state5} = pop(state4)
+    {out_offset, state6} = pop(state5)
+    {out_size, state7} = pop(state6)
+
+    {in_area, state8} = Memory.get_area(in_offset, in_size, state7)
+
+    # check gas
+    op_code = get_op_code(state)
+    op_name = OpCodesUtil.mnemonic(op_code)
+    dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
+    mem_gas_cost = Gas.memory_gas_cost(state8, state)
+    op_gas_cost = Gas.op_gas_cost(op_code)
+    gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
+    state8 = Gas.update_gas(gas_cost, state8)
+
+    call_gas =
+      if value != 0 do
+        gas + GasCodes._GCALLSTIPEND()
+      else
+        gas
+      end
+
+    caller = State.caller(state8)
+    dest = to
+
+    exec = %{
+      :address => dest,
+      :origin => State.origin(state8),
+      :caller => State.address(state8),
+      :data => in_area,
+      :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
+      :gasPrice => State.gasPrice(state8),
+      :gas => call_gas,
+      :value => value
+    }
+
+    env = %{
+      :currentCoinbase => State.currentCoinbase(state8),
+      :currentDifficulty => State.currentDifficulty(state8),
+      :currentGasLimit => State.currentGasLimit(state8),
+      :currentNumber => State.currentNumber(state8),
+      :currentTimestamp => State.currentTimestamp(state8)
+    }
+
+    call_state = State.init_vm1(exec, env, Map.get(state8, :pre), State.calldepth(state8) + 1)
+
+    {out_gas, return_value} =
+      try do
+        {:ok, out_state} = loop(call_state)
+        {State.gas(out_state), 1}
+      catch
+        {:error, _, out_state1} ->
+          {GasCodes._GCALLSTIPEND(), 1}
+      end
+
+    IO.inspect("out_gas #{out_gas}")
+    remaining_gas = State.gas(state8) + out_gas
+
+    return_state1 = State.set_gas(remaining_gas, state8)
+    return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
+    {message, _} = Memory.get_area(0, out_size, return_state1)
+    return_state3 = Memory.write_area(out_offset, message, return_state2)
+
+    mem_gas_cost = Gas.memory_gas_cost(return_state3, state8)
+    return_state4 = State.set_gas(remaining_gas - mem_gas_cost, return_state3)
+
+    {return_value, return_state4}
   end
 end

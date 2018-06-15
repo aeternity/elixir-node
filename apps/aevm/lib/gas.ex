@@ -35,8 +35,18 @@ defmodule Gas do
   end
 
   def dynamic_gas_cost("CALL", state) do
-    # TODO
-    0
+    gas_cost = 0
+    # TODO: account creation?
+    value = peek(2, state)
+
+    gas_cost = gas_cost +
+      if value !== 0 do
+        GasCodes._GCALLVALUE()
+      else
+        0
+      end
+
+    gas_cost + GasCodes._GCALL()
   end
 
   def dynamic_gas_cost("DELEGATECALL", state) do

@@ -7,7 +7,7 @@ defmodule Storage do
 
   def sload(key, state) do
     storage = State.storage(state)
-    Map.get(storage, key)
+    Map.get(storage, key, 0)
   end
 
   defp store(key, 0, storage) do

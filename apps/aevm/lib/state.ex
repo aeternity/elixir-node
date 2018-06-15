@@ -1,6 +1,6 @@
 defmodule State do
-  @spec init_vm(map(), map(), map()) :: map()
-  def init_vm(exec, env, pre) do
+  @spec init_vm(map(), map(), map(), integer()) :: map()
+  def init_vm(exec, env, pre, calldepth) do
     bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
@@ -12,6 +12,8 @@ defmodule State do
       :jumpdests => [],
       :out => <<>>,
       :logs => [],
+      :callcreates => [],
+      # :return_data => return_data,
 
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
@@ -29,9 +31,66 @@ defmodule State do
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
 
-      :pre => pre
+      :pre => pre,
+
+      :calldepth => calldepth
     }
   end
+
+  def calldepth(state) do
+    Map.get(state, :calldepth)
+  end
+
+  @spec init_vm1(map(), map(), map(), integer()) :: map()
+  def init_vm1(exec, env, pre, calldepth) do
+    bytecode = Map.get(exec, :code)
+
+    %{
+      :stack => [],
+      :memory => %{size: 0},
+      :storage => init_storage(Map.get(exec, :address), pre),
+      :cp => 0,
+      :jumpdests => [],
+      :out => <<>>,
+      :logs => [],
+      :callcreates => [],
+      # :return_data => return_data,
+
+      :address => Map.get(exec, :address),
+      :origin => Map.get(exec, :origin),
+      :caller => Map.get(exec, :caller),
+      :data => Map.get(exec, :data),
+      :code => bytecode,
+      :gasPrice => Map.get(exec, :gasPrice),
+      :gas => Map.get(exec, :gas),
+      :value => Map.get(exec, :value),
+
+      :currentCoinbase => Map.get(env, :currentCoinbase),
+      :currentDifficulty => Map.get(env, :currentDifficulty),
+      :currentGasLimit => Map.get(env, :currentGasLimit),
+      :currentNumber => Map.get(env, :currentNumber),
+      :currentTimestamp => Map.get(env, :currentTimestamp),
+
+      :pre => pre,
+
+      :calldepth => calldepth
+    }
+  end
+
+  def add_callcreate(data, destination, gas_limit, value, state) do
+    callcreates = Map.get(state, :callcreates)
+
+    Map.put(state, :callcreates, [
+      %{
+        :data => data,
+        :destination => destination,
+        :gasLimit => gas_limit,
+        :value => value
+      }
+      | callcreates
+    ])
+  end
+
 
   def set_stack(stack, state) do
     Map.put(state, :stack, stack)
