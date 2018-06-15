@@ -6,6 +6,7 @@ defmodule Aecore.Peers.Worker do
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
 
@@ -123,7 +124,10 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
-    Enum.each(peers, fn peer -> PeerConnection.send_new_block(peer.connection, block) end)
+    Enum.each(peers, fn {_pubkey, peer} ->
+      PeerConnection.send_new_block(block, peer.connection)
+    end)
+
     {:noreply, state}
   end
 
