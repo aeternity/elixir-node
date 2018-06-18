@@ -382,7 +382,6 @@ defmodule Aecore.Oracle.Oracle do
         _ -> Serialization.transform_item(response, :binary)
       end
 
-    # TODO: Structure
     {:ok,
      %{
        expires: Serialization.transform_item(expires, :int),

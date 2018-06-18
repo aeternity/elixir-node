@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 

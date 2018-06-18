@@ -8,7 +8,6 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx

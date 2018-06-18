@@ -161,7 +161,8 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   ### Helper functions ================================================
   defp get_expired_oracle_ids(tree, block_height) do
-    PatriciaMerkleTree.all_keys(tree.otree)
+    tree.otree
+    |> PatriciaMerkleTree.all_keys()
     |> Enum.reduce([], fn account_pubkey, acc ->
       expires = get_oracle(tree, account_pubkey).expires
 

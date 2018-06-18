@@ -146,7 +146,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !OracleStateTree.lookup_query?(oracles, tx.query_id) ->
-        # TODO inspect is not correct!!!
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->

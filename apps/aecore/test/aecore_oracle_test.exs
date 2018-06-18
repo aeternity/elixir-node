@@ -1,13 +1,13 @@
 defmodule AecoreOracleTest do
   use ExUnit.Case
 
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
-  alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
+  alias Aeutil.PatriciaMerkleTree
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -25,19 +25,22 @@ defmodule AecoreOracleTest do
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
+    otree = Chain.chain_state().oracles.otree
 
-    # assert Enum.empty?(Chain.registered_oracles()) == true TODO: -> Check if you can fix this assert
+    assert otree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
     register_oracle(:valid)
 
     Miner.mine_sync_block_to_chain()
+    otree = Chain.chain_state().oracles.otree
+    assert otree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
 
-    # assert Enum.empty?(Chain.registered_oracles()) == false TODO: -> Check if you can fix this assert
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
     assert %{} == Pool.get_and_empty_pool()
 
-    # assert true == Chain.registered_oracles() |> Map.keys() |> Enum.member?(pub_key) TODO: -> Check if you can fix this assert
+    otree = Chain.chain_state().oracles.otree
+    assert otree |> PatriciaMerkleTree.all_keys() |> Enum.member?(pub_key) == true
 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
@@ -48,8 +51,10 @@ defmodule AecoreOracleTest do
 
     assert %{} == Pool.get_and_empty_pool()
 
-    # interaction_object = Chain.oracle_interaction_objects() |> Map.values() |> Enum.at(0) TODO: -> Check if you can fix this assert
-    # assert nil != interaction_object.response
+    otree = Chain.chain_state().oracles.otree
+    query_id = otree |> PatriciaMerkleTree.all_keys() |> List.last()
+    interaction_object = OracleStateTree.get_query(Chain.chain_state().oracles, query_id)
+    assert nil != interaction_object.response
     Chain.clear_state()
 
     Miner.mine_sync_block_to_chain()
@@ -58,20 +63,24 @@ defmodule AecoreOracleTest do
     register_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
 
-    # assert Enum.empty?(Chain.registered_oracles()) == true TODO: -> Check if you can fix this assert
+    otree = Chain.chain_state().oracles.otree
+    assert otree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
+
     Chain.clear_state()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
 
-    # assert Enum.empty?(Chain.registered_oracles()) == false TODO: -> Check if you can fix this assert
+    otree = Chain.chain_state().oracles.otree
+    assert otree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
+
     query_oracle(:invalid, :address)
     query_oracle(:invalid, :query_data)
     query_oracle(:invalid, :query_fee)
     query_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
 
-    # assert Enum.empty?(Chain.oracle_interaction_objects()) == true TODO: -> Check if you can fix this assert
+    assert Chain.top_block().txs == []
 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
@@ -80,18 +89,18 @@ defmodule AecoreOracleTest do
     oracle_respond(:invalid, :response_data)
     Miner.mine_sync_block_to_chain()
 
-    # assert Chain.oracle_interaction_objects()
-    #        |> Map.values()
-    #        |> Enum.map(fn object -> object.response end)
-    #        |> Enum.all?(fn response -> response == :undefined end) TODO: -> Check if you can fix this assert
+    otree = Chain.chain_state().oracles.otree
+    query_key = otree |> PatriciaMerkleTree.all_keys() |> List.last()
+    query = OracleStateTree.get_query(Chain.chain_state().oracles, query_key)
+    assert query.response == :undefined
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
 
-    # assert Chain.oracle_interaction_objects()
-    #        |> Map.values()
-    #        |> Enum.map(fn object -> object.response end)
-    #        |> Enum.all?(fn response -> response != :undefined end) TODO: -> Check if you can fix this assert
+    otree = Chain.chain_state().oracles.otree
+    query_key = otree |> PatriciaMerkleTree.all_keys() |> List.last()
+    query = OracleStateTree.get_query(Chain.chain_state().oracles, query_key)
+    assert query.response != :undefined
 
     Chain.clear_state()
     register_oracle(:valid)
@@ -100,8 +109,10 @@ defmodule AecoreOracleTest do
     Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
 
-    # oracle = Chain.registered_oracles() |> Map.values() |> Enum.at(0) TODO: -> Check if you can fix this assert
-    # assert oracle.expires == 15
+    otree = Chain.chain_state().oracles.otree
+    oracle_key = otree |> PatriciaMerkleTree.all_keys() |> List.first()
+    oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
+    assert oracle.expires == 15
 
     Chain.clear_state()
   end
@@ -143,7 +154,8 @@ defmodule AecoreOracleTest do
     case validity do
       :valid ->
         ttl = get_ttl(validity)
-        oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+        otree = Chain.chain_state().oracles.otree
+        oracle_address = otree |> PatriciaMerkleTree.all_keys() |> List.first()
         Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
 
       :invalid ->
@@ -155,17 +167,20 @@ defmodule AecoreOracleTest do
 
           :query_data ->
             ttl = get_ttl(:valid)
-            oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+            otree = Chain.chain_state().oracles.otree
+            oracle_address = otree |> PatriciaMerkleTree.all_keys() |> List.first()
             Oracle.query(oracle_address, %{"currency" => 5}, 5, 10, ttl, ttl)
 
           :query_fee ->
             ttl = get_ttl(:valid)
-            oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+            otree = Chain.chain_state().oracles.otree
+            oracle_address = otree |> PatriciaMerkleTree.all_keys() |> List.first()
             Oracle.query(oracle_address, %{"currency" => "USD"}, 3, 10, ttl, ttl)
 
           :ttl ->
             ttl = get_ttl(validity)
-            oracle_address = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)
+            otree = Chain.chain_state().oracles.otree
+            oracle_address = otree |> PatriciaMerkleTree.all_keys() |> List.first()
             Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
         end
     end
@@ -174,7 +189,8 @@ defmodule AecoreOracleTest do
   def oracle_respond(validity, field \\ nil) do
     case validity do
       :valid ->
-        query_id = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
+        otree = Chain.chain_state().oracles.otree
+        query_id = otree |> PatriciaMerkleTree.all_keys() |> List.last()
         Oracle.respond(query_id, %{"currency" => "BGN"}, 5)
 
       :invalid ->
@@ -184,7 +200,8 @@ defmodule AecoreOracleTest do
             Oracle.respond(query_id, %{"currency" => "BGN"}, 5)
 
           :response_data ->
-            query_id = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)
+            otree = Chain.chain_state().oracles.otree
+            query_id = otree |> PatriciaMerkleTree.all_keys() |> List.last()
             Oracle.respond(query_id, %{"currency" => 5}, 5)
         end
     end
