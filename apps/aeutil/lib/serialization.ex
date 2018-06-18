@@ -565,9 +565,6 @@ defmodule Aeutil.Serialization do
     # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
     miner_pubkey_size = 32
 
-    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
-    miner_pubkey_size = 32
-
     <<
       header.version::64,
       header.height::64,

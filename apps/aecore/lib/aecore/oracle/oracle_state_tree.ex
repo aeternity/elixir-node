@@ -174,7 +174,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
-  def get_expired_cache_ids(tree, expired_oracles) do
+  def get_expired_cache_ids(_tree, expired_oracles) do
     for {account_pubkey, expires_at} <- expired_oracles do
       cache_key_encode({:oracle, account_pubkey}, expires_at)
     end

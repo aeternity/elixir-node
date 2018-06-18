@@ -13,6 +13,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
+  alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
@@ -275,6 +276,24 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl > 0
     end
+  end
+
+  def get_registered_oracles() do
+    otree = Chain.chain_state().oracles.otree
+    keys = PatriciaMerkleTree.all_keys(otree)
+
+    registered_oracles_key =
+      Enum.reduce(keys, [], fn x, acc ->
+        if byte_size(x) == 33 do
+          [x | acc]
+        else
+          acc
+        end
+      end)
+
+    Enum.reduce(registered_oracles_key, %{}, fn x, acc ->
+      Map.put(acc, x, OracleStateTree.get_oracle(Chain.chain_state().oracles, x))
+    end)
   end
 
   @spec rlp_encode(

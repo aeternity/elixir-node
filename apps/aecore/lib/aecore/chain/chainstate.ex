@@ -7,7 +7,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Miner.Worker, as: Miner
