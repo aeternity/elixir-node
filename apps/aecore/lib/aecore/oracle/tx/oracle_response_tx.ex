@@ -131,8 +131,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
-    # id = sender <> tx.query_id #TODO: After PMT is fixed
-    id = tx.query_id
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -147,14 +145,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
-      !OracleStateTree.lookup_query?(oracles, id) ->
+      !OracleStateTree.lookup_query?(oracles, tx.query_id) ->
         # TODO inspect is not correct!!!
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
-      OracleStateTree.get_query(oracles, id).response != :undefined ->
+      OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, id).oracle_address != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->

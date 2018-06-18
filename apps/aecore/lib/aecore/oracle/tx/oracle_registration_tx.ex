@@ -10,7 +10,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias ExJsonSchema.Schema, as: JsonSchema
-  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
   @type payload :: %{
