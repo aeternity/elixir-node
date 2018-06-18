@@ -129,7 +129,7 @@ defmodule AecoreSerializationTest do
     assert deserialized_name_commitment = name_commitment
   end
 
-  @tag :rlp_block
+  @tag :rlp_test
   @tag timeout: 120_000
   test "Epoch RLP-encoded block deserialization", setup do
     epoch_serialized_block = create_data(Block, :erlang)
