@@ -342,7 +342,7 @@ defmodule Aeutil.Serialization do
   def deserialize_term(binary), do: {:ok, :erlang.binary_to_term(binary)}
 
   defp serialize_txs_info_to_json([h | t], acc) do
-    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce)
+    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce, h.ttl)
     tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
 
     senders_list =

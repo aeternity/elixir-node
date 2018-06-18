@@ -59,7 +59,8 @@ defmodule AeutilSerializationTest do
             },
             senders: [sender],
             nonce: 743_183_534_114,
-            fee: 40
+            fee: 40,
+            ttl: 0
           },
           signatures: [<<1, 2, 3>>]
         }
@@ -81,7 +82,8 @@ defmodule AeutilSerializationTest do
               "version" => 1,
               "payload" => "some payload"
             },
-            "type" => "Elixir.Aecore.Account.Tx.SpendTx"
+            "type" => "Elixir.Aecore.Account.Tx.SpendTx",
+            "ttl" => 0
           },
           "signature" => "AQID"
         }

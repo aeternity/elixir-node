@@ -93,7 +93,7 @@ defmodule Aecore.Chain.Chainstate do
   @spec apply_transaction_on_state(t(), non_neg_integer(), SignedTx.t()) ::
           t() | {:error, String.t()}
   def apply_transaction_on_state(chainstate, block_height, tx) do
-    case SignedTx.validate(tx) do
+    case SignedTx.validate(tx, block_height) do
       :ok ->
         SignedTx.process_chainstate(chainstate, block_height, tx)
 
