@@ -2,7 +2,11 @@ alias Aecore.Chain.Worker, as: Chain
 alias Aecore.Chain.{Chainstate, BlockValidation, Difficulty, Block, Header}
 alias Aecore.Miner.Worker, as: Miner
 alias Aecore.Oracle.Oracle
-alias Aecore.Naming.Naming
+alias Aecore.Naming.{Naming, NamingStateTree}
+alias Aecore.Naming.Tx.NamePreClaimTx
+alias Aecore.Naming.Tx.NameClaimTx
+alias Aecore.Naming.Tx.NameUpdateTx
+alias Aecore.Naming.Tx.NameRevokeTx
 alias Aecore.Oracle.Tx.{OracleExtendTx, OracleQueryTx, OracleRegistrationTx, OracleResponseTx}
 alias Aecore.Peers.{PeerConnection, Sync}
 alias Aecore.Peers.Worker, as: Peers
@@ -12,11 +16,18 @@ alias Aecore.Account.{Account, AccountStateTree}
 alias Aecore.Account.Tx.SpendTx
 alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
+<<<<<<< HEAD
 alias Aecore.Keys.Wallet
 alias Aecore.Keys.Peer, as: PeerKeys
+=======
+alias Aecore.Keys.Worker, as: Wallet
+alias Aecore.Keys.Peer, as: PeerKeys
+
+>>>>>>> master
 alias Aehttpclient.Client
 
 alias Aeutil.Bits
 alias Aeutil.Parser
 alias Aeutil.Scientific
 alias Aeutil.Serialization
+alias Aeutil.PatriciaMerkleTree

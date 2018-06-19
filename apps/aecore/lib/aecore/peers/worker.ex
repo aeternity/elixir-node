@@ -6,6 +6,7 @@ defmodule Aecore.Peers.Worker do
   use GenServer
 
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
 
@@ -63,6 +64,20 @@ defmodule Aecore.Peers.Worker do
 
   def try_connect(peer_info) do
     GenServer.cast(__MODULE__, {:try_connect, peer_info})
+  end
+
+  def rlp_encode_peers(peers) do
+    Enum.map(peers, fn %{host: host, port: port, pubkey: pubkey} ->
+      list = [to_string(host), :binary.encode_unsigned(port), pubkey]
+      ExRLP.encode(list)
+    end)
+  end
+
+  def rlp_decode_peers(encoded_peers) do
+    Enum.map(encoded_peers, fn encoded_peer ->
+      [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
+      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
+    end)
   end
 
   def handle_call(:state, _from, state) do
@@ -123,7 +138,10 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
-    Enum.each(peers, fn peer -> PeerConnection.send_new_block(peer.connection, block) end)
+    Enum.each(peers, fn {_pubkey, peer} ->
+      PeerConnection.send_new_block(block, peer.connection)
+    end)
+
     {:noreply, state}
   end
 

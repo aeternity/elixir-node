@@ -78,6 +78,8 @@ config :aecore, :rlp_tags,
   name_transfer_tx: 36,
   block: 100
 
+config :aecore, :version, block: 14
+
 config :aecore, :bytes_size,
   txs_hash: 32,
   state_hash: 32,

@@ -15,12 +15,14 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
   @behaviour :ranch_protocol
 
   @p2p_protocol_vsn 2
+  @p2p_msg_version 1
   @noise_timeout 5000
 
   @msg_fragment 0
@@ -38,8 +40,9 @@ defmodule Aecore.Peers.PeerConnection do
   @mempool 14
 
   @max_packet_size 0x1FF
-  @fragment_size @max_packet_size - 6
-  @fragment_size_bytes @fragment_size * 8
+  @fragment_size 0x1F9
+  @fragment_size_bits @fragment_size * 8
+  @msg_id_size 2
 
   @peer_share_count 32
 
@@ -127,7 +130,7 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_mempool(pid()) :: {:ok, %{binary() => SignedTx.t()}}
+  @spec get_mempool(pid()) :: {:ok, list(SignedTx.t())}
   def get_mempool(pid) when is_pid(pid) do
     @get_mempool
     |> pack_msg(<<>>)
@@ -137,7 +140,7 @@ defmodule Aecore.Peers.PeerConnection do
   @spec send_new_block(Block.t(), pid()) :: :ok | :error
   def send_new_block(block, pid) when is_pid(pid) do
     @block
-    |> pack_msg(%{block: block})
+    |> pack_msg(block)
     |> send_msg_no_response(pid)
   end
 
@@ -244,12 +247,16 @@ defmodule Aecore.Peers.PeerConnection do
     end
   end
 
-  def handle_info({:noise, _, <<@msg_fragment::16, n::16, m::16, fragment::binary()>>}, state) do
-    handle_fragment(state, n, m, fragment)
+  def handle_info(
+        {:noise, _,
+         <<@msg_fragment::16, fragment_index::16, total_fragments::16, fragment::binary()>>},
+        state
+      ) do
+    handle_fragment(state, fragment_index, total_fragments, fragment)
   end
 
   def handle_info({:noise, _, <<type::16, payload::binary()>>}, state) do
-    deserialized_payload = :erlang.binary_to_term(payload)
+    deserialized_payload = rlp_decode(type, payload)
     self = self()
 
     case type do
@@ -295,7 +302,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp do_ping(%{status: {:connected, socket}}) do
     ping_object = local_ping_object()
-    serialized_ping_object = :erlang.term_to_binary(ping_object)
+    serialized_ping_object = rlp_encode(@ping, ping_object)
     msg = <<@ping::16, serialized_ping_object::binary()>>
     :enoise.send(socket, msg)
   end
@@ -317,38 +324,52 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
 
-  defp send_msg_no_response(msg, pid) when byte_size(msg) > @max_packet_size - 2 do
-    number_of_chunks = div(@fragment_size + byte_size(msg) - 1, @fragment_size)
+  defp send_msg_no_response(msg, pid) when byte_size(msg) > @max_packet_size - @msg_id_size do
+    number_of_chunks = msg |> byte_size() |> Kernel./(@fragment_size) |> Float.ceil() |> trunc()
     send_chunks(pid, 1, number_of_chunks, msg)
   end
 
   defp send_msg_no_response(msg, pid), do: GenServer.call(pid, {:send_msg_no_response, msg})
 
-  defp send_chunks(pid, n, m, msg) when n == m do
-    send_fragment(<<@msg_fragment::16, n::16, m::16, msg::binary()>>, pid)
+  defp send_chunks(pid, fragment_index, total_fragments, msg)
+       when fragment_index == total_fragments do
+    send_fragment(
+      <<@msg_fragment::16, fragment_index::16, total_fragments::16, msg::binary()>>,
+      pid
+    )
   end
 
-  defp send_chunks(pid, n, m, <<chunk::@fragment_size_bytes, rest::binary()>>) do
-    send_fragment(<<@msg_fragment::16, n::16, m::16, chunk::@fragment_size_bytes>>, pid)
-    send_chunks(pid, n + 1, m, rest)
+  defp send_chunks(
+         pid,
+         fragment_index,
+         total_fragments,
+         <<chunk::@fragment_size_bits, rest::binary()>>
+       ) do
+    send_fragment(
+      <<@msg_fragment::16, fragment_index::16, total_fragments::16, chunk::@fragment_size_bits>>,
+      pid
+    )
+
+    send_chunks(pid, fragment_index + 1, total_fragments, rest)
   end
 
   defp send_fragment(fragment, pid), do: GenServer.call(pid, {:send_msg_no_response, fragment})
 
-  defp pack_msg(type, payload), do: <<type::16, :erlang.term_to_binary(payload)::binary>>
+  defp pack_msg(type, payload), do: <<type::16, rlp_encode(type, payload)::binary>>
 
   defp handle_fragment(state, 1, _m, fragment) do
     {:noreply, Map.put(state, :fragments, [fragment])}
   end
 
-  defp handle_fragment(%{fragments: fragments} = state, n, m, fragment) when n == m do
+  defp handle_fragment(%{fragments: fragments} = state, fragment_index, total_fragments, fragment)
+       when fragment_index == total_fragments do
     msg = [fragment | fragments] |> Enum.reverse() |> :erlang.list_to_binary()
     send(self(), {:noise, :unused, msg})
     {:noreply, Map.delete(state, :fragments)}
   end
 
-  defp handle_fragment(%{fragments: fragments} = state, n, _m, fragment)
-       when n == length(fragments) + 1 do
+  defp handle_fragment(%{fragments: fragments} = state, fragment_index, _m, fragment)
+       when fragment_index == length(fragments) + 1 do
     {:noreply, %{state | fragments: [fragment | fragments]}}
   end
 
@@ -456,6 +477,7 @@ defmodule Aecore.Peers.PeerConnection do
           header_hashes =
             Enum.map(headers, fn header ->
               {header.height, BlockValidation.block_header_hash(header)}
+              <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
             end)
 
           {:ok, Enum.reverse(header_hashes)}
@@ -474,8 +496,9 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp handle_get_mempool(pid) do
-    pool = Pool.get_pool()
-    send_response({:ok, pool}, @mempool, pid)
+    pool = Map.values(Pool.get_pool())
+    encoded_txs = Enum.map(pool, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
+    send_response({:ok, %{txs: encoded_txs}}, @mempool, pid)
   end
 
   defp handle_new_block(payload) do
@@ -502,6 +525,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp ping_object(peers) do
     %{
+      share: 32,
       genesis_hash: Block.genesis_hash(),
       best_hash: Chain.top_block_hash(),
       difficulty: Chain.total_difficulty(),
@@ -524,5 +548,257 @@ defmodule Aecore.Peers.PeerConnection do
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
+  end
+
+  # RLP for peer messages
+
+  # fragments aren't encoded
+  defp rlp_encode(@msg_fragment, fragment) do
+    fragment
+  end
+
+  defp rlp_encode(@p2p_response, %{result: result, type: type, object: object, reason: reason}) do
+    serialized_result = bool_bin(result)
+
+    serialized_reason = reason || <<>>
+
+    serialized_object =
+      case object do
+        nil ->
+          <<>>
+
+        object ->
+          rlp_encode(type, object)
+      end
+
+    ExRLP.encode([
+      @p2p_msg_version,
+      serialized_result,
+      type,
+      serialized_reason,
+      serialized_object
+    ])
+  end
+
+  defp rlp_encode(@ping, %{
+         share: share,
+         genesis_hash: genesis_hash,
+         best_hash: best_hash,
+         difficulty: difficulty,
+         peers: peers,
+         port: port
+       }) do
+    ExRLP.encode([
+      port,
+      share,
+      genesis_hash,
+      difficulty,
+      best_hash,
+      Peers.rlp_encode_peers(peers)
+    ])
+  end
+
+  defp rlp_encode(@get_header_by_hash, %{hash: hash}) do
+    ExRLP.encode([@p2p_msg_version, hash])
+  end
+
+  defp rlp_encode(@get_header_by_height, %{height: height}) do
+    ExRLP.encode([@p2p_msg_version, height])
+  end
+
+  defp rlp_encode(@header, header) do
+    header_binary = Serialization.header_to_binary(header)
+    ExRLP.encode([@p2p_msg_version, header_binary])
+  end
+
+  defp rlp_encode(@get_n_successors, %{
+         hash: hash,
+         n: n
+       }) do
+    ExRLP.encode([
+      @p2p_msg_version,
+      hash,
+      n
+    ])
+  end
+
+  defp rlp_encode(@header_hashes, header_hashes) do
+    ExRLP.encode([@p2p_msg_version, header_hashes])
+  end
+
+  defp rlp_encode(@get_block, %{hash: hash}) do
+    ExRLP.encode([@p2p_msg_version, hash])
+  end
+
+  defp rlp_encode(@block, block) do
+    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(block, :block)])
+  end
+
+  defp rlp_encode(@tx, tx) do
+    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(tx, :signedtx)])
+  end
+
+  defp rlp_encode(@get_mempool, _data) do
+    ExRLP.encode([@p2p_msg_version])
+  end
+
+  defp rlp_encode(@mempool, %{txs: mempool}) do
+    ExRLP.encode([@p2p_msg_version, mempool])
+  end
+
+  defp rlp_decode(@msg_fragment, fragment) do
+    fragment
+  end
+
+  defp rlp_decode(@p2p_response, encoded_response) do
+    [_vsn, result, type, reason, object] = ExRLP.decode(encoded_response)
+    deserialized_result = bool_bin(result)
+
+    deserialized_type = :binary.decode_unsigned(type)
+
+    deserialized_reason =
+      case reason do
+        <<>> ->
+          nil
+
+        reason ->
+          reason
+      end
+
+    deserialized_object =
+      case object do
+        <<>> ->
+          nil
+
+        object ->
+          rlp_decode(deserialized_type, object)
+      end
+
+    %{
+      result: deserialized_result,
+      type: deserialized_type,
+      reason: deserialized_reason,
+      object: deserialized_object
+    }
+  end
+
+  defp rlp_decode(@ping, encoded_ping) do
+    [
+      port,
+      share,
+      genesis_hash,
+      difficulty,
+      best_hash,
+      peers
+    ] = ExRLP.decode(encoded_ping)
+
+    %{
+      port: :binary.decode_unsigned(port),
+      share: :binary.decode_unsigned(share),
+      genesis_hash: genesis_hash,
+      difficulty: :binary.decode_unsigned(difficulty),
+      best_hash: best_hash,
+      peers: Peers.rlp_decode_peers(peers)
+    }
+  end
+
+  defp rlp_decode(@get_header_by_hash, encoded_get_header_by_hash) do
+    [_vsn, hash] = ExRLP.decode(encoded_get_header_by_hash)
+    %{hash: hash}
+  end
+
+  defp rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
+    [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
+    %{height: :binary.decode_unsigned(height)}
+  end
+
+  defp rlp_decode(@header, encoded_header) do
+    [
+      _vsn,
+      header_binary
+    ] = ExRLP.decode(encoded_header)
+
+    deserialized_header = Serialization.binary_to_header(header_binary)
+    %{header: deserialized_header}
+  end
+
+  defp rlp_decode(@get_n_successors, encoded_get_n_successors) do
+    [
+      _vsn,
+      hash,
+      n
+    ] = ExRLP.decode(encoded_get_n_successors)
+
+    %{
+      hash: hash,
+      n: :binary.decode_unsigned(n)
+    }
+  end
+
+  defp rlp_decode(@header_hashes, encoded_header_hashes) do
+    [
+      _vsn,
+      header_hashes
+    ] = ExRLP.decode(encoded_header_hashes)
+
+    deserialized_hashes =
+      Enum.map(header_hashes, fn <<height::64, hash::binary>> -> %{height: height, hash: hash} end)
+
+    %{hashes: deserialized_hashes}
+  end
+
+  defp rlp_decode(@get_block, encoded_block_hash) do
+    [
+      _vsn,
+      block_hash
+    ] = ExRLP.decode(encoded_block_hash)
+
+    %{hash: block_hash}
+  end
+
+  defp rlp_decode(@block, encoded_block) do
+    [
+      _vsn,
+      block
+    ] = ExRLP.decode(encoded_block)
+
+    deserialized_block = Serialization.rlp_decode(block)
+    %{block: deserialized_block}
+  end
+
+  defp rlp_decode(@tx, encoded_tx) do
+    [
+      _vsn,
+      tx
+    ] = ExRLP.decode(encoded_tx)
+
+    deserialized_tx = Serialization.rlp_decode(tx)
+    %{tx: deserialized_tx}
+  end
+
+  defp rlp_decode(@get_mempool, _data) do
+    []
+  end
+
+  defp rlp_decode(@mempool, encoded_pool) do
+    [_vsn, pool] = ExRLP.decode(encoded_pool)
+    txs = Enum.map(pool, fn encoded_tx -> Serialization.rlp_decode(encoded_tx) end)
+    %{txs: txs}
+  end
+
+  defp bool_bin(bool) do
+    case bool do
+      true ->
+        <<1>>
+
+      false ->
+        <<0>>
+
+      <<1>> ->
+        true
+
+      <<0>> ->
+        false
+    end
   end
 end

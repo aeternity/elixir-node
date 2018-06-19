@@ -42,6 +42,15 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
+  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx, block_height) do
+    if signatures_valid?(tx) do
+      DataTx.validate(data, block_height)
+    else
+      {:error, "#{__MODULE__}: Signatures invalid"}
+    end
+  end
+
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
