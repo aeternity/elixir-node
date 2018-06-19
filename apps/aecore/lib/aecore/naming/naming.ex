@@ -14,9 +14,9 @@ defmodule Aecore.Naming.Naming do
 
   @revoke_expiration_ttl 2016
 
-  @client_ttl_limit 86400
+  @client_ttl_limit 86_400
 
-  @claim_expire_by_relative_limit 50000
+  @claim_expire_by_relative_limit 50_000
 
   @name_salt_byte_size 32
 

@@ -181,7 +181,7 @@ defmodule AecoreSerializationTest do
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
           query: %{"currency" => "USD"},
           response: :undefined,
-          response_ttl: 86000,
+          response_ttl: 86_000,
           sender_address:
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
@@ -230,8 +230,8 @@ defmodule AecoreSerializationTest do
           fee: 5,
           nonce: 3,
           payload: %Aecore.Naming.Tx.NameUpdateTx{
-            client_ttl: 86400,
-            expire_by: 50003,
+            client_ttl: 86_400,
+            expire_by: 50_003,
             hash:
               <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
@@ -281,7 +281,7 @@ defmodule AecoreSerializationTest do
 
       Name ->
         %{
-          expires: 50003,
+          expires: 50_003,
           hash:
             <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
               186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
@@ -290,7 +290,7 @@ defmodule AecoreSerializationTest do
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
           pointers: [],
           status: :claimed,
-          ttl: 86400
+          ttl: 86_400
         }
 
       NameCommitment ->
@@ -302,7 +302,7 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
           created: 8500,
-          expires: 86400
+          expires: 86_400
         }
     end
   end

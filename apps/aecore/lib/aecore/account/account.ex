@@ -207,7 +207,7 @@ defmodule Aecore.Account.Account do
         payload = %{
           hash: namehash,
           expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
-          client_ttl: 86400,
+          client_ttl: 86_400,
           pointers: pointers
         }
 

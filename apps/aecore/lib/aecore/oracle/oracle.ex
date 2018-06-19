@@ -278,7 +278,7 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def get_registered_oracles() do
+  def get_registered_oracles do
     otree = Chain.chain_state().oracles.otree
     keys = PatriciaMerkleTree.all_keys(otree)
 
