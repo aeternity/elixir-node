@@ -21,6 +21,7 @@ defmodule Aecore.Keys.Peer do
     Application.get_env(:aecore, :peer_keys)[:path]
   end
 
+  @spec keypair() :: {pubkey(), privkey()}
   def keypair do
     Keys.get_peer_keypair()
   end
