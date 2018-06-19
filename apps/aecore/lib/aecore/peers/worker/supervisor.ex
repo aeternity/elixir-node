@@ -1,21 +1,48 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   @moduledoc """
-  Supervisor responsible for all of the worker modules in his folder
+  Supervises the Peers, PeerConnectionSupervisor and ranch acceptor
+  processes with a one_for_all strategy 
   """
 
   use Supervisor
 
-  def start_link(args) do
-    Supervisor.start_link(__MODULE__, :ok, args)
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.PeerConnection
+  alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Keys.Peer, as: PeerKeys
+
+  def start_link(_args) do
+    Supervisor.start_link(__MODULE__, :ok)
   end
 
   def init(:ok) do
+    {pubkey, privkey} = PeerKeys.keypair()
+
     children = [
-      Aecore.Peers.Worker,
-      Aecore.Peers.Sync,
-      Aecore.Peers.Scheduler
+      PeerConnectionSupervisor,
+      Peers,
+      :ranch.child_spec(
+        :peer_pool,
+        num_of_acceptors(),
+        :ranch_tcp,
+        [port: sync_port()],
+        PeerConnection,
+        %{
+          port: sync_port(),
+          privkey: privkey,
+          pubkey: pubkey
+        }
+      )
     ]
 
-    Supervisor.init(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_all)
+  end
+
+  def sync_port do
+    Application.get_env(:aecore, :peers)[:sync_port]
+  end
+
+  def num_of_acceptors do
+    Application.get_env(:aecore, :peers)[:ranch_acceptors]
   end
 end
