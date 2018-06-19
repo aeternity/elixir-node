@@ -49,7 +49,7 @@ defmodule EpochElixir.Mixfile do
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
-      {:enacl, [github: "jlouis/enacl", ref: "c8403ab", manager: :rebar]},
+      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
       {:gen_state_machine, "~> 2.0.1"},
