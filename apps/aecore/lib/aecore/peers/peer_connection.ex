@@ -38,8 +38,9 @@ defmodule Aecore.Peers.PeerConnection do
   @mempool 14
 
   @max_packet_size 0x1FF
-  @fragment_size @max_packet_size - 6
+  @fragment_size 0x1F9
   @fragment_size_bits @fragment_size * 8
+  @msg_id_size 2
 
   @peer_share_count 32
 
@@ -242,8 +243,12 @@ defmodule Aecore.Peers.PeerConnection do
     end
   end
 
-  def handle_info({:noise, _, <<@msg_fragment::16, n::16, m::16, fragment::binary()>>}, state) do
-    handle_fragment(state, n, m, fragment)
+  def handle_info(
+        {:noise, _,
+         <<@msg_fragment::16, fragment_index::16, total_fragments::16, fragment::binary()>>},
+        state
+      ) do
+    handle_fragment(state, fragment_index, total_fragments, fragment)
   end
 
   def handle_info({:noise, _, <<type::16, payload::binary()>>}, state) do
@@ -314,20 +319,33 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp send_request_msg(msg, pid), do: GenServer.call(pid, {:send_request_msg, msg})
 
-  defp send_msg_no_response(msg, pid) when byte_size(msg) > @max_packet_size - 2 do
-    number_of_chunks = div(@fragment_size + byte_size(msg) - 1, @fragment_size)
+  defp send_msg_no_response(msg, pid) when byte_size(msg) > @max_packet_size - @msg_id_size do
+    number_of_chunks = msg |> byte_size() |> Kernel./(@fragment_size) |> Float.ceil() |> trunc()
     send_chunks(pid, 1, number_of_chunks, msg)
   end
 
   defp send_msg_no_response(msg, pid), do: GenServer.call(pid, {:send_msg_no_response, msg})
 
-  defp send_chunks(pid, n, m, msg) when n == m do
-    send_fragment(<<@msg_fragment::16, n::16, m::16, msg::binary()>>, pid)
+  defp send_chunks(pid, fragment_index, total_fragments, msg)
+       when fragment_index == total_fragments do
+    send_fragment(
+      <<@msg_fragment::16, fragment_index::16, total_fragments::16, msg::binary()>>,
+      pid
+    )
   end
 
-  defp send_chunks(pid, n, m, <<chunk::@fragment_size_bits, rest::binary()>>) do
-    send_fragment(<<@msg_fragment::16, n::16, m::16, chunk::@fragment_size_bits>>, pid)
-    send_chunks(pid, n + 1, m, rest)
+  defp send_chunks(
+         pid,
+         fragment_index,
+         total_fragments,
+         <<chunk::@fragment_size_bits, rest::binary()>>
+       ) do
+    send_fragment(
+      <<@msg_fragment::16, fragment_index::16, total_fragments::16, chunk::@fragment_size_bits>>,
+      pid
+    )
+
+    send_chunks(pid, fragment_index + 1, total_fragments, rest)
   end
 
   defp send_fragment(fragment, pid), do: GenServer.call(pid, {:send_msg_no_response, fragment})
@@ -338,14 +356,15 @@ defmodule Aecore.Peers.PeerConnection do
     {:noreply, Map.put(state, :fragments, [fragment])}
   end
 
-  defp handle_fragment(%{fragments: fragments} = state, n, m, fragment) when n == m do
+  defp handle_fragment(%{fragments: fragments} = state, fragment_index, total_fragments, fragment)
+       when fragment_index == total_fragments do
     msg = [fragment | fragments] |> Enum.reverse() |> :erlang.list_to_binary()
     send(self(), {:noise, :unused, msg})
     {:noreply, Map.delete(state, :fragments)}
   end
 
-  defp handle_fragment(%{fragments: fragments} = state, n, _m, fragment)
-       when n == length(fragments) + 1 do
+  defp handle_fragment(%{fragments: fragments} = state, fragment_index, _m, fragment)
+       when fragment_index == length(fragments) + 1 do
     {:noreply, %{state | fragments: [fragment | fragments]}}
   end
 
@@ -532,6 +551,11 @@ defmodule Aecore.Peers.PeerConnection do
 
   # RLP for peer messages
 
+  # fragments aren't encoded
+  defp rlp_encode(@msg_fragment, fragment) do
+    fragment
+  end
+
   defp rlp_encode(@p2p_response, %{result: result, type: type, object: object, reason: reason}) do
     serialized_result = bool_bin(result)
 
@@ -619,6 +643,10 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp rlp_encode(@mempool, %{txs: mempool}) do
     ExRLP.encode([@p2p_msg_version, mempool])
+  end
+
+  defp rlp_decode(@msg_fragment, fragment) do
+    fragment
   end
 
   defp rlp_decode(@p2p_response, encoded_response) do
