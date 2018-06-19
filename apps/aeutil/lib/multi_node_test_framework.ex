@@ -1,11 +1,16 @@
 defmodule Aeutil.MultiNodeTestFramework do
+  @moduledoc """
+  Module for multi node sync test
+  """
+
+  require Logger
   use GenServer
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
 
-  def get_state() do
+  def get_state do
     GenServer.call(__MODULE__, {:get_state})
   end
 
@@ -17,7 +22,11 @@ defmodule Aeutil.MultiNodeTestFramework do
     GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
   end
 
-  def alive_ports() do
+  def compare_nodes(node_name1, node_name2) do
+    GenServer.call(__MODULE__, {:compare_nodes, node_name1, node_name2})
+  end
+
+  def alive_ports do
     GenServer.call(__MODULE__, {:alive_ports})
   end
 
@@ -50,10 +59,7 @@ defmodule Aeutil.MultiNodeTestFramework do
   def register_oracle(node_name) do
     send_command(
       node_name,
-      "Aecore.Oracle.Oracle.register(%{\"type\" => \"object\", \"properties\" =>
-    %{\"currency\" => %{\"type\" => \"string\"}}},
-    %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5,
-    %{:ttl => 10, :type => :relative})"
+      "Aecore.Oracle.Oracle.register(%{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5, %{:ttl => 10, :type => :relative})"
     )
   end
 
@@ -91,7 +97,7 @@ defmodule Aeutil.MultiNodeTestFramework do
   # mining
   def mine_sync_block(node_name) do
     send_command(node_name, "Aecore.Miner.Worker.mine_sync_block_to_chain()")
-    get_node_top_block(node_name)
+    get_node_top_block_hash(node_name)
   end
 
   # chain
@@ -100,7 +106,8 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def get_node_top_block_hash(node_name) do
-    send_command(node_name, "Aecore.Chain.Worker.top_block_hash() |> Base.encode16")
+    send_command(node_name, "block_hash = Aecore.Chain.Worker.top_block_hash() |> Base.encode16")
+    send_command(node_name, "{:block_hash, block_hash}")
   end
 
   # naming txs
@@ -176,16 +183,10 @@ defmodule Aeutil.MultiNodeTestFramework do
     Port.info(process_port) != nil
   end
 
-  def compare_nodes(node_name1, node_name2) do
-    hash1 = get_node_top_block_hash(node_name1)
-    hash2 = get_node_top_block_hash(node_name2)
-    String.equivalent?(hash1, hash2)
-  end
-
   # server
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
-    if Map.has_key? state, node_name do
+    if Map.has_key?(state, node_name) do
       result = Port.command(state[node_name].process_port, cmd)
       {:reply, result, state}
     else
@@ -222,17 +223,25 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def handle_info({process_port, {:data, result}}, state) do
-    if Regex.match?(~r/[%]Aecore.Chain.Block/, result) do
+    if result =~ "block_hash" do
       node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
-      state = put_in(state[elem(node, 0)].top_block, result)
+      result = Regex.run(~r/"([0-9A-Z]*)/, result) |> List.last()
+      state = put_in(state[elem(node, 0)].top_block_hash, result)
+      {:noreply, state}
+    else
+      node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
+      state = put_in(state[elem(node, 0)].last_result, result)
+      {:noreply, state}
     end
+  end
 
-    IO.inspect result
-    {:noreply, state}
+  def handle_call({:compare_nodes, node_name1, node_name2}, _, state) do
+    hash1 = state[node_name1].top_block_hash
+    hash2 = state[node_name2].top_block_hash
+    {:reply, String.equivalent?(hash1, hash2), state}
   end
 
   def handle_call({:new_node, node_name, port}, _, state) do
-
     if Map.has_key?(state, node_name) do
       {:reply, :already_exists, state}
     else
@@ -259,7 +268,7 @@ defmodule Aeutil.MultiNodeTestFramework do
           process_port: process_port,
           path: tmp_path,
           port: port,
-          top_block: nil,
+          last_result: nil,
           top_block_hash: nil
         })
 
