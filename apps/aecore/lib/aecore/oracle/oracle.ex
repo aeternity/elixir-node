@@ -13,6 +13,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Wallet.Worker, as: Wallet
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aeutil.Parser
@@ -26,51 +27,14 @@ defmodule Aecore.Oracle.Oracle do
   @type json_schema :: map()
   @type json :: any()
 
-  @type registered_oracles :: %{
-          Wallet.pubkey() => %{
-            tx: OracleRegistrationTx.t(),
-            height_included: non_neg_integer()
-          }
-        }
-
-  @type interaction_objects :: %{
-          OracleQueryTx.id() => %{
-            query: OracleQueryTx.t(),
-            response: OracleResponseTx.t(),
-            query_height_included: non_neg_integer(),
-            response_height_included: non_neg_integer()
-          }
-        }
-
-  @type t :: %{
-          otree: registered_oracles(),
-          ctree: interaction_objects()
-        }
-
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
-  ### getters ---------------------------------------------------------
   def get_owner(oracle), do: oracle.owner
   def get_query_format(oracle), do: oracle.query_format
   def get_response_format(oracle), do: oracle.response_format
   def get_query_fee(oracle), do: oracle.query_fee
   def get_expires(oracle), do: oracle.expires
-  ### -----------------------------------------------------------------
-  ### setters ---------------------------------------------------------
-  def set_owner(oracle, owner), do: %{oracle | owner: owner}
-  def set_query_format(oracle, query_format), do: %{oracle | query_format: query_format}
 
-  def set_response_format(oracle, response_format),
-    do: %{oracle | response_format: response_format}
-
-  def set_query_fee(oracle, query_fee), do: %{oracle | query_fee: query_fee}
-  def set_expires(oracle, expires), do: %{oracle | expires: expires}
-  ### -----------------------------------------------------------------
-
-  @doc """
-  Registers an oracle with the given requirements for queries and responses,
-  a fee that should be paid by queries and a TTL.
-  """
   @spec register(
           json_schema(),
           json_schema(),
@@ -263,6 +227,7 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
+  @spec remove_expired_oracles(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
   def remove_expired_oracles(chainstate, block_height) do
     new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
     %{chainstate | oracles: new_oracles_tree}
@@ -278,6 +243,7 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
+  @spec get_registered_oracles :: map()
   def get_registered_oracles do
     otree = Chain.chain_state().oracles.otree
     keys = PatriciaMerkleTree.all_keys(otree)

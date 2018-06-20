@@ -32,21 +32,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  ### getters ---------------------------------------------------------
-  def get_oracle(resp_tx), do: resp_tx.oracle
-  def get_nonce(resp_tx), do: resp_tx.nonce
-  def get_query_id(resp_tx), do: resp_tx.query_id
-  def get_response(resp_tx), do: resp_tx.response
-  def get_fee(resp_tx), do: resp_tx.fee
-  ### -----------------------------------------------------------------
-  ### setters ---------------------------------------------------------
-  def set_oracle(resp_tx, oracle), do: %{resp_tx | oracle: oracle}
-  def set_nonce(resp_tx, nonce), do: %{resp_tx | nonce: nonce}
-  def set_query_id(resp_tx, query_id), do: %{resp_tx | query_id: query_id}
-  def set_response(resp_tx, response), do: %{resp_tx | response: response}
-  def set_fee(resp_tx, fee), do: %{resp_tx | fee: fee}
-  ### -----------------------------------------------------------------
-
   @spec init(payload()) :: t()
   def init(%{
         query_id: query_id,

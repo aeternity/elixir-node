@@ -7,10 +7,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
 
-  #  @type oracles_state :: Trie.t()
   @type oracles_state :: %{otree: Trie.t(), ctree: Trie.t()}
-  @type hash :: binary()
-
   @dummy_val <<0>>
 
   @spec init_empty() :: oracles_state()
@@ -36,9 +33,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
-  ### ===================================================================
-  ### Oracles API
-  ### ===================================================================
   def enter_oracle(tree, oracle) do
     add_oracle(tree, oracle, :enter)
   end
@@ -55,9 +49,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     lookup?(tree, key, :oracle)
   end
 
-  ### ===================================================================
-  ### Query / Interaction objects  API
-  ### ===================================================================
   def enter_query(tree, query) do
     add_query(tree, query, :enter)
   end
@@ -74,10 +65,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     lookup?(tree, key, :oracle_query)
   end
 
-  ### ===================================================================
-  ### Internal functions
-  ### ===================================================================
-  ### Oracles ===========================================================
   defp add_oracle(tree, oracle, how) do
     id = Oracle.get_owner(oracle)
     expires = Oracle.get_expires(oracle)
@@ -96,7 +83,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     %{otree: new_otree, ctree: new_ctree}
   end
 
-  ### Querys ===========================================================
   defp add_query(tree, query, how) do
     oracle_id = OracleQueryTx.get_oracle_address(query)
 
@@ -123,8 +109,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     new_ctree = cache_push(tree.ctree, {:query, oracle_id, id}, expires)
     %{otree: new_otree, ctree: new_ctree}
   end
-
-  ### PMT ==============================================================
 
   defp insert(tree, key, value) do
     PatriciaMerkleTree.enter(tree, key, value)
@@ -159,7 +143,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(tree, :oracle_query), do: tree.otree
   defp which_tree(tree, _where), do: tree.otree
 
-  ### Helper functions ================================================
   defp get_expired_oracle_ids(tree, block_height) do
     tree.otree
     |> PatriciaMerkleTree.all_keys()
@@ -185,11 +168,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     enter(ctree, encoded, @dummy_val)
   end
 
-  def cache_key_encode(key, expires) do
+  defp cache_key_encode(key, expires) do
     :sext.encode({expires, key})
-  end
-
-  def cache_key_decode(binary) do
-    :sext.decode(binary)
   end
 end

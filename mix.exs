@@ -62,7 +62,8 @@ defmodule EpochElixir.Mixfile do
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:ex_rlp, "~> 0.2.1"},
-      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
+      {:merkle_patricia_tree,
+       git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true}
     ]

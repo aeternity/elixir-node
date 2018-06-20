@@ -30,19 +30,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  ### getter -----------------------------------------------------------
-  def get_oracle(ext_tx), do: ext_tx.oracle
-  def get_nonce(ext_tx), do: ext_tx.nonce
-  def get_ttl(ext_tx), do: ext_tx.ttl
-  def get_fee(ext_tx), do: ext_tx.fee
-  ### ------------------------------------------------------------------
-  ### setter -----------------------------------------------------------
-  def set_oracle(ext_tx, oracle), do: %{ext_tx | oracle: oracle}
-  def set_nonce(ext_tx, nonce), do: %{ext_tx | nonce: nonce}
-  def set_ttl(ext_tx, ttl), do: %{ext_tx | ttl: ttl}
-  def set_fee(ext_tx, fee), do: %{ext_tx | fee: fee}
-  ### ------------------------------------------------------------------
-
   @spec init(payload()) :: t()
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}

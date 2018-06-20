@@ -43,7 +43,7 @@ defmodule Aecore.Tx.Transaction do
   # Callbacks
 
   @doc "The name for state chain entry to be passed for processing"
-  @callback get_chain_state_name() :: Chainstate.chain_state_types() | :none | nil
+  @callback get_chain_state_name() :: Chainstate.chain_state_types()
 
   @callback init(payload()) :: tx_types()
 
