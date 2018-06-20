@@ -29,12 +29,6 @@ defmodule Aecore.Oracle.Oracle do
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
-  def get_owner(oracle), do: oracle.owner
-  def get_query_format(oracle), do: oracle.query_format
-  def get_response_format(oracle), do: oracle.response_format
-  def get_query_fee(oracle), do: oracle.query_fee
-  def get_expires(oracle), do: oracle.expires
-
   @spec register(
           json_schema(),
           json_schema(),
@@ -272,11 +266,11 @@ defmodule Aecore.Oracle.Oracle do
     list = [
       tag,
       version,
-      get_owner(oracle),
-      Serialization.transform_item(get_query_format(oracle)),
-      Serialization.transform_item(get_response_format(oracle)),
-      get_query_fee(oracle),
-      get_expires(oracle)
+      oracle.owner,
+      Serialization.transform_item(oracle.query_format),
+      Serialization.transform_item(oracle.response_format),
+      oracle.query_fee,
+      oracle.expires
     ]
 
     try do

@@ -2,7 +2,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   @moduledoc """
   Top level oracle state tree.
   """
-  alias Aecore.Oracle.Oracle
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
@@ -75,8 +74,8 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp add_oracle(tree, oracle, how) do
-    id = Oracle.get_owner(oracle)
-    expires = Oracle.get_expires(oracle)
+    id = oracle.owner
+    expires = oracle.expires
     serialized = Serialization.rlp_encode(oracle, :oracle)
 
     new_otree =
@@ -93,17 +92,17 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp add_query(tree, query, how) do
-    oracle_id = OracleQueryTx.get_oracle_address(query)
+    oracle_id = query.oracle_address
 
     id =
       OracleQueryTx.id(
-        OracleQueryTx.get_sender_address(query),
-        OracleQueryTx.get_sender_nonce(query),
+        query.sender_address,
+        query.sender_nonce,
         oracle_id
       )
 
     tree_id = oracle_id <> id
-    expires = OracleQueryTx.get_expires(query)
+    expires = query.sender_address
     serialized = Serialization.rlp_encode(query, :oracle_query)
 
     new_otree =

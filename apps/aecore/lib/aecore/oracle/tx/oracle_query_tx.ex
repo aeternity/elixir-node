@@ -52,11 +52,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  def get_sender_address(oracle_query), do: oracle_query.sender_address
-  def get_sender_nonce(oracle_query), do: oracle_query.sender_nonce
-  def get_oracle_address(oracle_query), do: oracle_query.oracle_address
-  def get_expires(oracle_query), do: oracle_query.expires
-
   @spec init(payload()) :: t()
   def init(%{
         oracle_address: oracle_address,
@@ -207,7 +202,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   def get_oracle_query_fee(oracle_address) do
     Chain.chain_state().oracles
     |> OracleStateTree.get_oracle(oracle_address)
-    |> Oracle.get_query_fee()
+    |> Map.get(:query_fee)
   end
 
   @spec is_minimum_fee_met?(t(), non_neg_integer(), non_neg_integer() | nil) :: boolean()
@@ -216,7 +211,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       tx.query_fee >=
         Chain.chain_state().oracles
         |> OracleStateTree.get_oracle(tx.oracle_address)
-        |> Oracle.get_query_fee()
+        |> Map.get(:query_fee)
 
     tx_fee_is_met =
       case tx.query_ttl do
