@@ -15,9 +15,50 @@ defmodule Aecore.Oracle.OracleStateTree do
     %{otree: PatriciaMerkleTree.new(:oracles), ctree: PatriciaMerkleTree.new(:oracles_cache)}
   end
 
+  @spec prune(oracles_state(), non_neg_integer()) :: oracles_state()
   def prune(tree, block_height) do
     expired_oracles = get_expired_oracle_ids(tree, block_height - 1)
     initialize_deletion(tree, expired_oracles)
+  end
+
+  @spec enter_oracle(oracles_state(), map()) :: oracles_state()
+  def enter_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :enter)
+  end
+
+  @spec insert_oracle(oracles_state(), map()) :: oracles_state()
+  def insert_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :insert)
+  end
+
+  @spec get_oracle(oracles_state(), binary()) :: map()
+  def get_oracle(tree, key) do
+    get(tree.otree, key)
+  end
+
+  @spec lookup_oracle?(oracles_state(), binary()) :: boolean()
+  def lookup_oracle?(tree, key) do
+    lookup?(tree, key, :oracle)
+  end
+
+  @spec enter_query(oracles_state(), map()) :: oracles_state()
+  def enter_query(tree, query) do
+    add_query(tree, query, :enter)
+  end
+
+  @spec insert_query(oracles_state(), map()) :: oracles_state()
+  def insert_query(tree, query) do
+    add_query(tree, query, :insert)
+  end
+
+  @spec get_query(oracles_state(), binary()) :: map()
+  def get_query(tree, key) do
+    get(tree.otree, key)
+  end
+
+  @spec lookup_query?(oracles_state(), binary()) :: boolean()
+  def lookup_query?(tree, key) do
+    lookup?(tree, key, :oracle_query)
   end
 
   defp initialize_deletion(tree, expired_oracles) do
@@ -31,38 +72,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     Enum.reduce(expired_cache, new_map_tree, fn cache, acc_tree ->
       %{acc_tree | ctree: delete(acc_tree.ctree, cache)}
     end)
-  end
-
-  def enter_oracle(tree, oracle) do
-    add_oracle(tree, oracle, :enter)
-  end
-
-  def insert_oracle(tree, oracle) do
-    add_oracle(tree, oracle, :insert)
-  end
-
-  def get_oracle(tree, key) do
-    get(tree.otree, key)
-  end
-
-  def lookup_oracle?(tree, key) do
-    lookup?(tree, key, :oracle)
-  end
-
-  def enter_query(tree, query) do
-    add_query(tree, query, :enter)
-  end
-
-  def insert_query(tree, query) do
-    add_query(tree, query, :insert)
-  end
-
-  def get_query(tree, key) do
-    get(tree.otree, key)
-  end
-
-  def lookup_query?(tree, key) do
-    lookup?(tree, key, :oracle_query)
   end
 
   defp add_oracle(tree, oracle, how) do
@@ -157,7 +166,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     end)
   end
 
-  def get_expired_cache_ids(_tree, expired_oracles) do
+  defp get_expired_cache_ids(_tree, expired_oracles) do
     for {account_pubkey, expires_at} <- expired_oracles do
       cache_key_encode({:oracle, account_pubkey}, expires_at)
     end
