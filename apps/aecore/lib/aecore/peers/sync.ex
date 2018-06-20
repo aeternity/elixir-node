@@ -599,7 +599,7 @@ defmodule Aecore.Peers.Sync do
   # Try to fetch the pool of transactions
   # from the Remote Peer we are connected to
   defp do_fetch_mempool(peer_pid) do
-    {:ok, pool} = PeerConnection.get_mempool(peer_pid)
+    {:ok, %{txs: pool}} = PeerConnection.get_mempool(peer_pid)
     Logger.debug(fn -> "#{__MODULE__}: Mempool received from #{inspect(peer_pid)}" end)
     Enum.each(pool, fn tx -> Pool.add_transaction(tx) end)
   end

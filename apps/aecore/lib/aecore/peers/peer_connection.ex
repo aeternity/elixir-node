@@ -592,7 +592,7 @@ defmodule Aecore.Peers.PeerConnection do
       port,
       share,
       genesis_hash,
-      difficulty,
+      :erlang.term_to_binary(difficulty),
       best_hash,
       Peers.rlp_encode_peers(peers)
     ])
@@ -696,7 +696,7 @@ defmodule Aecore.Peers.PeerConnection do
       port: :binary.decode_unsigned(port),
       share: :binary.decode_unsigned(share),
       genesis_hash: genesis_hash,
-      difficulty: :binary.decode_unsigned(difficulty),
+      difficulty: :erlang.binary_to_term(difficulty),
       best_hash: best_hash,
       peers: Peers.rlp_decode_peers(peers)
     }

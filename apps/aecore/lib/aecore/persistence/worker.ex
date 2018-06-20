@@ -329,9 +329,7 @@ defmodule Aecore.Persistence.Worker do
           total_difficulty
 
         _ ->
-          Target.get_default_target()
-          |> Scientific.target_to_difficulty()
-          |> Kernel.trunc()
+          Scientific.target_to_difficulty(Target.get_default_target())
       end
 
     {:reply, total_diff, state}
