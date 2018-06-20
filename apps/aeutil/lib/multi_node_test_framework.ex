@@ -227,18 +227,22 @@ defmodule Aeutil.MultiNodeTestFramework do
       node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
       result = Regex.run(~r/"([0-9A-Z]*)/, result) |> List.last()
       state = put_in(state[elem(node, 0)].top_block_hash, result)
-      {:noreply, state}
     else
       node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
       state = put_in(state[elem(node, 0)].last_result, result)
-      {:noreply, state}
     end
+    IO.inspect result
+    {:noreply, state}
   end
 
   def handle_call({:compare_nodes, node_name1, node_name2}, _, state) do
     hash1 = state[node_name1].top_block_hash
     hash2 = state[node_name2].top_block_hash
-    {:reply, String.equivalent?(hash1, hash2), state}
+    if String.equivalent?(hash1, hash2) do
+      {:reply, :synced, state}
+    else
+      {:reply, :not_synced, state}
+    end
   end
 
   def handle_call({:new_node, node_name, port}, _, state) do
@@ -269,7 +273,7 @@ defmodule Aeutil.MultiNodeTestFramework do
           path: tmp_path,
           port: port,
           last_result: nil,
-          top_block_hash: nil
+          top_block_hash: nil,
         })
 
       {:reply, new_state, new_state}
