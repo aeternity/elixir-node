@@ -168,14 +168,6 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
-  def peer_id(peer_id) when is_binary(peer_id) do
-    peer_id
-  end
-
-  def peer_id({_, %{connection: peer_id}}) do
-    peer_id
-  end
-
   defp prepare_peers(peers) do
     Enum.map(peers, fn peer -> Map.delete(peer, :connection) end)
   end

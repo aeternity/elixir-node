@@ -1,7 +1,6 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   @moduledoc """
-  Supervises the Peers, PeerConnectionSupervisor and ranch acceptor
-  processes with a one_for_all strategy
+  Supervises the Peers, PeerConnectionSupervisor, Sync, Jobs and ranch acceptor processes with a one_for_all strategy
   """
 
   use Supervisor
