@@ -5,7 +5,8 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
+  alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aeutil.PatriciaMerkleTree
 

@@ -3,7 +3,7 @@ defmodule Aecore.Account.AccountStateTree do
   Top level account state tree.
   """
   alias Aecore.Account.Account
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie

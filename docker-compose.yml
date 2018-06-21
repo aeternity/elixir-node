@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
 
 
@@ -19,13 +19,23 @@ services:
       image: elixir-node
       hostname: elixir-node-4001
       environment:
+        SYNC_PORT: 3017
         PORT: 4001
         PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4001
       volumes:
         - elixir-node-4001-db:/elixir_node/apps/aecore/priv/rox_db_4001
       stdin_open: true
       tty: true
-      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")" -e "Aecore.Miner.Worker.resume()"
+      command:
+        -e "Aehttpclient.Client.get_info(\"elixir-node-4000:4000\")
+        |> elem(1)
+        |> Map.get(:peer_pubkey)
+        |> Aecore.Keys.Peer.base58c_decode()
+        |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
+        |> Map.put(:host, 'localhost')
+        |> Map.put(:port, 3015)
+        |> Aecore.Peers.Worker.try_connect()"
+        -e "Aecore.Miner.Worker.resume()"
 
 
   elixir-node-4002:
@@ -33,23 +43,32 @@ services:
       image: elixir-node
       hostname: elixir-node-4002
       environment:
+        SYNC_PORT: 3016
         PORT: 4002
         PERSISTENCE_PATH: /elixir_node/aecore/priv/rox_db_4002
       volumes:
         - elixir-node-4002-db:/elixir_node/apps/aecore/priv/rox_db_4002
-      command: -e "Aecore.Peers.Worker.add_peer(\"elixir-node-4000:4000\")"
+      command:
+        -e "Aehttpclient.Client.get_info(\"elixir-node-4000:4000\")
+        |> elem(1)
+        |> Map.get(:peer_pubkey)
+        |> Aecore.Keys.Peer.base58c_decode()
+        |> (fn decoded_pubkey -> Map.put(%{}, :pubkey, decoded_pubkey) end).()
+        |> Map.put(:host, 'localhost')
+        |> Map.put(:port, 3015)
+        |> Aecore.Peers.Worker.try_connect()"
 
 
-  proxy:
-    image: nginx:1.13.8
-    hostname: proxy
-    ports:
-     - "4000:4000"
-     - "4001:4001"
-     - "4002:4002"
-    volumes:
-      - ${PWD}/docker/nginx-default.conf:/etc/nginx/conf.d/default.conf
-      - ${PWD}/docker/nginx-cors.conf:/etc/nginx/cors.conf
+  # proxy:
+  #   image: nginx:1.13.8
+  #   hostname: proxy
+  #   ports:
+  #    - "4000:4000"
+  #    - "4001:4001"
+  #    - "4002:4002"
+  #   volumes:
+  #     - ${PWD}/docker/nginx-default.conf:/etc/nginx/conf.d/default.conf
+  #     - ${PWD}/docker/nginx-cors.conf:/etc/nginx/cors.conf
 
 
 volumes:

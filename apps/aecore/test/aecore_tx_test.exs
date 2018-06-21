@@ -12,7 +12,7 @@ defmodule AecoreTxTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aecore.Account.AccountStateTree

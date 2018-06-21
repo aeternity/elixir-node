@@ -9,7 +9,7 @@ defmodule Aecore do
 
   def start(_type, _args) do
     children = [
-      Aecore.Wallet.Worker.Supervisor,
+      Aecore.Keys.Worker.Supervisor,
       Aecore.Persistence.Worker.Supervisor,
       Aecore.Chain.Worker.Supervisor,
       Aecore.Miner.Worker.Supervisor,

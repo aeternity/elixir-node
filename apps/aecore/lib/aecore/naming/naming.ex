@@ -5,7 +5,7 @@ defmodule Aecore.Naming.Naming do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aeutil.Hash
   alias Aeutil.Bits
   alias Aeutil.Serialization

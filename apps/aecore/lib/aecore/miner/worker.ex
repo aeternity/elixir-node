@@ -15,8 +15,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
 
   require Logger
 
@@ -55,11 +54,7 @@ defmodule Aecore.Miner.Worker do
 
   @spec resume() :: :ok
   def resume do
-    if Peers.chain_synced?() do
-      GenServer.call(__MODULE__, {:mining, :start})
-    else
-      Logger.error("#{__MODULE__}: Can't start miner, chain not yet synced")
-    end
+    GenServer.call(__MODULE__, {:mining, :start})
   end
 
   @spec suspend() :: :ok

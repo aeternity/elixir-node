@@ -17,7 +17,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
 

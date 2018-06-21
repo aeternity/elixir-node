@@ -3,7 +3,7 @@ defmodule Aecore.Tx.SignedTx do
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx

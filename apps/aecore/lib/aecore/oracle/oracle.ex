@@ -11,7 +11,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree

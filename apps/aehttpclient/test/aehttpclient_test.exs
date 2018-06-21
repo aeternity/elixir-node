@@ -7,7 +7,7 @@ defmodule AehttpclientTest do
   alias Aecore.Chain.Header
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
 
   @tag :http_client
   test "Client functions" do
