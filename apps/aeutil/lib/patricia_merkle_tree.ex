@@ -98,6 +98,12 @@ defmodule Aeutil.PatriciaMerkleTree do
   def delete(trie, key), do: Trie.delete(trie, key)
 
   @doc """
+  Providing debug print of a given trie in the shell
+  """
+  @spec print_debug(Trie.t()) :: Trie.t() | list() | {:error, term()}
+  def print_debug(trie), do: print_trie(trie, output: :as_pair, deserialize: true)
+
+  @doc """
   Providing pretty print of a given trie in the shell.
   Depending on the atom it can print structure or key value pairs. The default output is :as_struct
 
