@@ -124,7 +124,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    io = %{
+    query = %{
       sender_address: sender,
       sender_nonce: nonce,
       oracle_address: tx.oracle_address,
@@ -136,7 +136,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       fee: tx.query_fee
     }
 
-    new_oracle_tree = OracleStateTree.insert_query(oracles, io)
+    new_oracle_tree = OracleStateTree.insert_query(oracles, query)
 
     {:ok, {updated_accounts_state, new_oracle_tree}}
   end

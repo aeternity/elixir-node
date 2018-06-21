@@ -17,7 +17,7 @@ defmodule AehttpclientTest do
     Pool.get_and_empty_pool()
     add_txs_to_pool()
 
-    # assert {:ok, _} = Client.get_info("localhost:4000") -> Commented until the problem with phoenix dependencies is resolved
+    assert {:ok, _} = Client.get_info("localhost:4000")
 
     assert {:ok, _} =
              Client.get_block(

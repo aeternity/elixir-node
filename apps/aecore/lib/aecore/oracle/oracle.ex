@@ -29,6 +29,8 @@ defmodule Aecore.Oracle.Oracle do
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
+  @pubkey_size 33
+
   @spec register(
           json_schema(),
           json_schema(),
@@ -243,16 +245,16 @@ defmodule Aecore.Oracle.Oracle do
     keys = PatriciaMerkleTree.all_keys(otree)
 
     registered_oracles_key =
-      Enum.reduce(keys, [], fn x, acc ->
-        if byte_size(x) == 33 do
-          [x | acc]
+      Enum.reduce(keys, [], fn key, acc ->
+        if byte_size(key) == @pubkey_size do
+          [key | acc]
         else
           acc
         end
       end)
 
-    Enum.reduce(registered_oracles_key, %{}, fn x, acc ->
-      Map.put(acc, x, OracleStateTree.get_oracle(Chain.chain_state().oracles, x))
+    Enum.reduce(registered_oracles_key, %{}, fn pub_key, acc ->
+      Map.put(acc, pub_key, OracleStateTree.get_oracle(Chain.chain_state().oracles, pub_key))
     end)
   end
 
