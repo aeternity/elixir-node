@@ -649,10 +649,16 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
-      {_key = :oracles, %{otree: o_root_hash, ctree: c_root_hash}}, acc_state ->
-        otree = %{:otree => PatriciaMerkleTree.new(:oracles, o_root_hash)}
-        ctree = %{:ctree => PatriciaMerkleTree.new(:oracles_cache, c_root_hash)}
-        put_in(acc_state, [:oracles], Map.merge(otree, ctree))
+      {_key = :oracles,
+       %{oracle_tree: oracle_root_hash, oracle_cache_tree: oracle_cache_root_hash}},
+      acc_state ->
+        oracle_tree = %{:oracle_tree => PatriciaMerkleTree.new(:oracles, oracle_root_hash)}
+
+        oracle_cache_tree = %{
+          :oracle_cache_tree => PatriciaMerkleTree.new(:oracles_cache, oracle_cache_root_hash)
+        }
+
+        put_in(acc_state, [:oracles], Map.merge(oracle_tree, oracle_cache_tree))
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)
@@ -668,7 +674,10 @@ defmodule Aecore.Chain.Worker do
         Map.put(acc_state, key, value.root_hash)
 
       {key = :oracles, value}, acc_state ->
-        Map.put(acc_state, key, %{otree: value.otree.root_hash, ctree: value.ctree.root_hash})
+        Map.put(acc_state, key, %{
+          oracle_tree: value.oracle_tree.root_hash,
+          oracle_cache_tree: value.oracle_cache_tree.root_hash
+        })
 
       {key, value}, acc_state ->
         Map.put(acc_state, key, value)

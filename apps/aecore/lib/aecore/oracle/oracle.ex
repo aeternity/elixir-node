@@ -241,8 +241,8 @@ defmodule Aecore.Oracle.Oracle do
 
   @spec get_registered_oracles :: map()
   def get_registered_oracles do
-    otree = Chain.chain_state().oracles.otree
-    keys = PatriciaMerkleTree.all_keys(otree)
+    oracle_tree = Chain.chain_state().oracles.oracle_tree
+    keys = PatriciaMerkleTree.all_keys(oracle_tree)
 
     registered_oracles_key =
       Enum.reduce(keys, [], fn key, acc ->
