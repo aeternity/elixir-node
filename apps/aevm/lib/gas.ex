@@ -96,7 +96,7 @@ defmodule Gas do
     value = peek(1, state)
     curr_storage = Storage.sload(address, state)
 
-    if value != 0 && curr_storage === nil do
+    if value != 0 && curr_storage === 0 do
       GasCodes._GSSET()
     else
       GasCodes._GSRESET()

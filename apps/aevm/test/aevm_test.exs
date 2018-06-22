@@ -27,20 +27,22 @@ defmodule AevmTest do
     assert out_test == out_state
   end
 
-  # defp validate_out(_out_test, _out_state) do
-  #   true
-  # end
-
   defp validate_gas(gas_test, gas_state) do
     assert gas_test == gas_state
   end
 
-  # defp validate_gas(_gas_test, _gas_state) do
-  #   :ok
-  # end
+  defp validate_callcreates(%{:callcreates => callcreates_test}, callcreates_state) do
+    assert callcreates_test == callcreates_state
+  end
 
-  def validate_no_post(%{:post => _post} = spec), do: {:should_have_succeeded, spec}
-  def validate_no_post(%{}), do: :ok
+  defp validate_no_post(%{:post => _post} = spec), do: {:should_have_succeeded, spec}
+  defp validate_no_post(%{}), do: :ok
+
+  defp test_opts() do
+    %{
+      :execute_calls => false
+    }
+  end
 
   defp extract_and_validate(json_test, config_name) do
     spec = Map.get(json_test, config_name)
@@ -52,12 +54,13 @@ defmodule AevmTest do
     IO.inspect("Test #{config_name} is running")
 
     try do
-      {:ok, state} = Aevm.loop(State.init_vm(exec_values, env_values, pre_values, 0))
+      {:ok, state} = Aevm.loop(State.init_vm(exec_values, env_values, pre_values, 0, test_opts()))
       IO.inspect(state, limit: :infinity)
 
-      # validate_storage(spec, state.storage)
+      validate_storage(spec, state.storage)
       validate_gas(spec.gas, state.gas)
       validate_out(spec.out, state.out)
+      validate_callcreates(spec, state.callcreates)
 
       {:ok, state}
     catch
@@ -788,41 +791,41 @@ defmodule AevmTest do
     extract_and_validate(json_test, config_name)
   end do
     [
-      {:ABAcalls0},
+      # {:ABAcalls0}, #works
       # {:ABAcalls1}, # TODO: check - executes, but no validation keys in test
       # {:ABAcalls2}, # TODO: check - executes, but no validation keys in test
       # {:ABAcalls3}, # TODO: check - executes, but no validation keys in test
-      # {:ABAcallsSuicide0},
-      # {:ABAcallsSuicide1},
-      # {:CallRecursiveBomb0},
-      # {:CallRecursiveBomb1},
-      # {:CallRecursiveBomb2},
-      # {:CallRecursiveBomb3},
-      # {:CallToNameRegistrator0},
-      # {:CallToNameRegistratorNotMuchMemory0},
-      # # {:CallToNameRegistratorNotMuchMemory1}, # TODO: CALL
+      # {:ABAcallsSuicide0}, # TODO - suicide
+      # {:ABAcallsSuicide1}, #works
+      # {:CallRecursiveBomb0}, #works
+      # {:CallRecursiveBomb1}, #works
+      # {:CallRecursiveBomb2}, #works
+      # {:CallRecursiveBomb3}, #works
+      # {:CallToNameRegistrator0}, #works
+      # {:CallToNameRegistratorNotMuchMemory0}, #works? (out of gas)?
+      # {:CallToNameRegistratorNotMuchMemory1}, #works? (out of gas)?
       # {:CallToNameRegistratorOutOfGas},
-      # {:CallToNameRegistratorTooMuchMemory0},
-      # {:CallToNameRegistratorTooMuchMemory1},
-      # {:CallToNameRegistratorTooMuchMemory2},
+      # {:CallToNameRegistratorTooMuchMemory0}, #works?
+      # {:CallToNameRegistratorTooMuchMemory1}, #works?
+      # {:CallToNameRegistratorTooMuchMemory2}, #works?
       # {:CallToPrecompiledContract},
-      # {:CallToReturn1},
-      # {:PostToNameRegistrator0},
-      # {:PostToReturn1},
-      # {:TestNameRegistrator},
+      # {:CallToReturn1}, #works
+      # {:PostToNameRegistrator0}, #works
+      # {:PostToReturn1}, #works
+      # {:TestNameRegistrator}, #works
       # {:callcodeToNameRegistrator0},
       # {:callcodeToReturn1},
       # {:callstatelessToNameRegistrator0},
-      # {:callstatelessToReturn1},
+      # {:callstatelessToReturn1}, #works
       # {:createNameRegistrator},
       # {:createNameRegistratorOutOfMemoryBonds0},
       # {:createNameRegistratorOutOfMemoryBonds1},
       # {:createNameRegistratorValueTooHigh},
-      # {:return0},
+      # {:return0}, #works?
       # {:return1},
-      # {:return2},
+      # {:return2}, #works?
       # {:suicide0},
-      # {:suicideNotExistingAccount},
+      # {:suicideNotExistingAccount}, #works?
       # {:suicideSendEtherToMe}
     ]
   end

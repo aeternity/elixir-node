@@ -1,6 +1,6 @@
 defmodule State do
-  @spec init_vm(map(), map(), map(), integer()) :: map()
-  def init_vm(exec, env, pre, calldepth) do
+  @spec init_vm(map(), map(), map(), integer(), map()) :: map()
+  def init_vm(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
     code_bin = bytecode_to_bin(bytecode)
 
@@ -33,7 +33,10 @@ defmodule State do
 
       :pre => pre,
 
-      :calldepth => calldepth
+      :calldepth => calldepth,
+
+      # opts
+      :execute_contracts => Map.get(opts, :execute_contracts, false)
     }
   end
 
@@ -41,8 +44,8 @@ defmodule State do
     Map.get(state, :calldepth)
   end
 
-  @spec init_vm1(map(), map(), map(), integer()) :: map()
-  def init_vm1(exec, env, pre, calldepth) do
+  @spec init_vm1(map(), map(), map(), integer(), map()) :: map()
+  def init_vm1(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
 
     %{
@@ -73,8 +76,15 @@ defmodule State do
 
       :pre => pre,
 
-      :calldepth => calldepth
+      :calldepth => calldepth,
+
+      # opts
+      :execute_calls => Map.get(opts, :execute_contracts, false)
     }
+  end
+
+  def execute_calls(state) do
+    Map.get(state, :execute_calls, false)
   end
 
   def add_callcreate(data, destination, gas_limit, value, state) do
