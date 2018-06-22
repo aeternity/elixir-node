@@ -219,7 +219,7 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == :none do
+        if tx.type.get_chain_state_name() == :accounts do
           %{chainstate | accounts: new_accounts_state}
         else
           %{chainstate | accounts: new_accounts_state}

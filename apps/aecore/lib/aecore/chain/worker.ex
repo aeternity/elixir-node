@@ -659,9 +659,6 @@ defmodule Aecore.Chain.Worker do
         }
 
         put_in(acc_state, [:oracles], Map.merge(oracle_tree, oracle_cache_tree))
-
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
     end
   end
 
@@ -678,9 +675,6 @@ defmodule Aecore.Chain.Worker do
           oracle_tree: value.oracle_tree.root_hash,
           oracle_cache_tree: value.oracle_cache_tree.root_hash
         })
-
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
     end
   end
 
