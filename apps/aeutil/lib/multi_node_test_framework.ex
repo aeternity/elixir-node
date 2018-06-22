@@ -183,6 +183,25 @@ defmodule Aeutil.MultiNodeTestFramework do
     Port.info(process_port) != nil
   end
 
+  def get_all_peers(node_name) do
+    send_command(node_name, "Aecore.Peers.Worker.all_peers")
+  end
+
+  def create_peers_map(peers_str) do
+    result = String.replace(peers_str, ~r/iex\(\d\)>/, "")
+    |> String.replace("\n", "")
+    IO.inspect keys = Regex.scan(~r/([0-9]{9}+)(?<!=>)/, result)
+    keys = for k <- keys, do: List.last k
+    latest_blocks = Regex.scan(~r/(?<=\")[a-zA-Z0-9$]{52}+/, result)
+    latest_blocks = for bl <- latest_blocks, do: List.last bl
+    uris = Regex.scan(~r/(?<=")[a-zA-Z0-9.]+:[0-9]+(?<!\\)/, result)
+    uris = for uri <- uris, do: List.last uri
+    list = [keys, latest_blocks, uris]
+
+    Enum.reduce(1..(length(keys) - 1), %{}, fn(el, acc) -> %{Enum.at(keys, el) =>
+        %{latest_block: Enum.at(latest_blocks, el), uri: Enum.at(uris, el)}} end)
+  end
+
   # server
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
@@ -223,13 +242,18 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def handle_info({process_port, {:data, result}}, state) do
-    if result =~ "block_hash" do
-      node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
-      result = Regex.run(~r/"([0-9A-Z]*)/, result) |> List.last()
-      state = put_in(state[elem(node, 0)].top_block_hash, result)
-    else
-      node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
-      state = put_in(state[elem(node, 0)].last_result, result)
+    cond do
+      result =~ "block_hash" ->
+        node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
+        result = Regex.run(~r/"([0-9A-Z]*)/, result) |> List.last()
+        state = put_in(state[elem(node, 0)].top_block_hash, result)
+      result =~ "latest_block" && result =~ "uri" ->
+        node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
+        IO.inspect result
+        result = create_peers_map(result)
+        state = put_in(state[elem(node, 0)].peers, result)
+      true ->
+        state
     end
     IO.inspect result
     {:noreply, state}
@@ -274,6 +298,7 @@ defmodule Aeutil.MultiNodeTestFramework do
           port: port,
           last_result: nil,
           top_block_hash: nil,
+          peers: nil
         })
 
       {:reply, new_state, new_state}
