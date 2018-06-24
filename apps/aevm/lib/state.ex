@@ -2,7 +2,6 @@ defmodule State do
   @spec init_vm(map(), map(), map(), integer(), map()) :: map()
   def init_vm(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
-    code_bin = bytecode_to_bin(bytecode)
 
     %{
       :stack => [],
@@ -13,13 +12,12 @@ defmodule State do
       :out => <<>>,
       :logs => [],
       :callcreates => [],
-      # :return_data => return_data,
 
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
       :caller => Map.get(exec, :caller),
       :data => Map.get(exec, :data),
-      :code => code_bin,
+      :code => bytecode,
       :gasPrice => Map.get(exec, :gasPrice),
       :gas => Map.get(exec, :gas),
       :value => Map.get(exec, :value),
@@ -36,51 +34,21 @@ defmodule State do
       :calldepth => calldepth,
 
       # opts
-      :execute_contracts => Map.get(opts, :execute_contracts, false)
+      :execute_calls => Map.get(opts, :execute_calls, false)
     }
+  end
+
+  def init_for_call(gas, to, value, data, caller, dest, caller_state, opts) do
+    exec = export_exec(gas, to, value, data, caller, dest, caller_state)
+    env = export_env(caller_state)
+    pre = Map.get(caller_state, :pre, %{})
+    calldepth = State.calldepth(caller_state) + 1
+
+    init_vm(exec, env, pre, calldepth, opts)
   end
 
   def calldepth(state) do
     Map.get(state, :calldepth)
-  end
-
-  @spec init_vm1(map(), map(), map(), integer(), map()) :: map()
-  def init_vm1(exec, env, pre, calldepth, opts) do
-    bytecode = Map.get(exec, :code)
-
-    %{
-      :stack => [],
-      :memory => %{size: 0},
-      :storage => init_storage(Map.get(exec, :address), pre),
-      :cp => 0,
-      :jumpdests => [],
-      :out => <<>>,
-      :logs => [],
-      :callcreates => [],
-      # :return_data => return_data,
-
-      :address => Map.get(exec, :address),
-      :origin => Map.get(exec, :origin),
-      :caller => Map.get(exec, :caller),
-      :data => Map.get(exec, :data),
-      :code => bytecode,
-      :gasPrice => Map.get(exec, :gasPrice),
-      :gas => Map.get(exec, :gas),
-      :value => Map.get(exec, :value),
-
-      :currentCoinbase => Map.get(env, :currentCoinbase),
-      :currentDifficulty => Map.get(env, :currentDifficulty),
-      :currentGasLimit => Map.get(env, :currentGasLimit),
-      :currentNumber => Map.get(env, :currentNumber),
-      :currentTimestamp => Map.get(env, :currentTimestamp),
-
-      :pre => pre,
-
-      :calldepth => calldepth,
-
-      # opts
-      :execute_calls => Map.get(opts, :execute_contracts, false)
-    }
   end
 
   def execute_calls(state) do
@@ -285,5 +253,28 @@ defmodule State do
       nil -> %{}
       %{:storage => storage} -> storage
     end
+  end
+
+  defp export_exec(gas, to, value, data, caller, dest, state) do
+    %{
+      :address => dest,
+      :origin => State.origin(state),
+      :caller => caller,
+      :data => data,
+      :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
+      :gasPrice => State.gasPrice(state),
+      :gas => gas,
+      :value => value
+    }
+  end
+
+  defp export_env(state) do
+    %{
+      :currentCoinbase => State.currentCoinbase(state),
+      :currentDifficulty => State.currentDifficulty(state),
+      :currentGasLimit => State.currentGasLimit(state),
+      :currentNumber => State.currentNumber(state),
+      :currentTimestamp => State.currentTimestamp(state)
+    }
   end
 end

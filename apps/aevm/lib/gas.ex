@@ -35,8 +35,12 @@ defmodule Gas do
   end
 
   def dynamic_gas_cost("CALL", state) do
-    gas_cost = 0
     # TODO: account creation?
+
+    gas_cost = GasCodes._GCALL()
+
+    gas_state = State.gas(state)
+    gas = peek(0, state)
     value = peek(2, state)
 
     gas_cost = gas_cost +
@@ -46,7 +50,17 @@ defmodule Gas do
         0
       end
 
-    gas_cost + GasCodes._GCALL()
+    gas_cost +
+      if gas_state >= gas_cost do
+        gas_one_64_substracted = substract_one_64(gas_state - gas_cost)
+        if gas < gas_one_64_substracted do
+          gas
+        else
+          gas_one_64_substracted
+        end
+      else
+        gas
+      end
   end
 
   def dynamic_gas_cost("DELEGATECALL", state) do
@@ -126,5 +140,9 @@ defmodule Gas do
 
   def log(value, num) do
     log(Bitwise.bsr(value, 8), num + 1)
+  end
+
+  defp substract_one_64(value) do
+    value - (value / 64 |> Float.floor() |> round())
   end
 end

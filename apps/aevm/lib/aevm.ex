@@ -21,7 +21,7 @@ defmodule Aevm do
       op_code = get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
 
-      IO.inspect("#{op_name} #{State.gas(state)}")
+      # IO.inspect("#{op_name} #{State.gas(state)}")
 
       dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
       state1 = exec(op_code, state)
@@ -1322,108 +1322,105 @@ defmodule Aevm do
   end
 
   defp call1(state, op_code) do
-    # TODO: works for CALL only
-
     {gas, state1} = pop(state)
     {to, state2} = pop(state1)
-
-    {value, state3} =
-      if op_code == OpCodes._CALL() || op_code == OpCodes._CALLCODE() do
-        pop(state2)
-      else
-        {State.value(state2), state2}
-      end
-
+    {value, state3} = determine_call_value(state2, op_code)
     {in_offset, state4} = pop(state3)
     {in_size, state5} = pop(state4)
     {out_offset, state6} = pop(state5)
     {out_size, state7} = pop(state6)
 
-    {in_area, state8} = Memory.get_area(in_offset, in_size, state7)
-
     # check gas
-    op_code = get_op_code(state)
+    op_code = get_op_code(state7)
     op_name = OpCodesUtil.mnemonic(op_code)
     dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
-    mem_gas_cost = Gas.memory_gas_cost(state8, state)
+    mem_gas_cost = Gas.memory_gas_cost(state7, state)
     op_gas_cost = Gas.op_gas_cost(op_code)
-    gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost + gas
-    state8 = Gas.update_gas(gas_cost, state8)
+    gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
+    state8 = Gas.update_gas(gas_cost, state7)
 
-    call_gas =
-      if value != 0 do
-        gas + GasCodes._GCALLSTIPEND()
-      else
-        gas
-      end
-
-    caller =
-      if op_code == OpCodes._CALL() || op_code == OpCodes._CALLCODE() do
-        State.address(state8)
-      else
-        State.caller(state8)
-      end
-
-    dest =
-      if op_code == OpCodes._CALL() do
-        to
-      else
-        State.address(state8)
-      end
-
-    exec = %{
-      :address => dest,
-      :origin => State.origin(state8),
-      :caller => State.address(state8),
-      :data => in_area,
-      :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
-      :gasPrice => State.gasPrice(state8),
-      :gas => call_gas,
-      :value => value
-    }
-
-    env = %{
-      :currentCoinbase => State.currentCoinbase(state8),
-      :currentDifficulty => State.currentDifficulty(state8),
-      :currentGasLimit => State.currentGasLimit(state8),
-      :currentNumber => State.currentNumber(state8),
-      :currentTimestamp => State.currentTimestamp(state8)
-    }
+    {in_area, state9} = Memory.get_area(in_offset, in_size, state8)
+    call_gas = adjust_call_gas(gas, value)
+    caller = determine_call_caller(state9, op_code)
+    dest = determine_call_dest(state, op_code)
 
     call_state =
-      State.init_vm1(exec, env, Map.get(state8, :pre), State.calldepth(state8) + 1, %{
+      State.init_for_call(call_gas, to, value, in_area, caller, dest, state9, %{
         default_opts()
-        | :execute_calls => State.execute_calls(state8)
+        | :execute_calls => State.execute_calls(state9)
       })
 
-    if State.execute_calls(call_state) do
-      {out_gas, return_value} =
-        try do
-          {:ok, out_state} = loop(call_state)
-          {State.gas(out_state), 1}
-        catch
-          {:error, _, out_state1} ->
-            {GasCodes._GCALLSTIPEND(), 1}
+    return_state =
+      if State.execute_calls(call_state) do
+        {ret, out_gas} =
+          try do
+            {:ok, out_state} = loop(call_state)
+            {:ok, State.gas(out_state)}
+          catch
+            {:error, _, _} ->
+              {:error, 0}
+          end
+
+        remaining_gas = State.gas(state9) + out_gas
+        return_state1 = State.set_gas(remaining_gas, state9)
+        return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
+        case ret do
+          :ok ->
+            {message, _} = Memory.get_area(0, out_size, return_state2)
+            return_state3 = Memory.write_area(out_offset, message, return_state2)
+            mem_gas_cost = Gas.memory_gas_cost(return_state3, return_state2)
+            State.set_gas(remaining_gas - mem_gas_cost, return_state3)
+
+          :error ->
+            return_state2
         end
+      else
+        remaining_gas = State.gas(state9) + call_gas
+        state10 = State.set_gas(remaining_gas, state9)
+        State.add_callcreate(in_area, dest, call_gas, value, state10)
+      end
 
-      IO.inspect("#{State.gas(state8)}")
-      remaining_gas = State.gas(state8) + out_gas
+    {1, return_state}
+  end
 
-      return_state1 = State.set_gas(remaining_gas, state8)
-      return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
-      {message, _} = Memory.get_area(0, out_size, return_state1)
-      return_state3 = Memory.write_area(out_offset, message, return_state2)
+  defp determine_call_value(state, op_code) do
+    case op_code do
+      OpCodes._CALL() ->
+        pop(state)
+      OpCodes._CALLCODE() ->
+        pop(state)
+      OpCodes._DELEGATECALL() ->
+        {State.value(state), state}
+    end
+  end
 
-      mem_gas_cost = Gas.memory_gas_cost(return_state3, state8)
-      return_state4 = State.set_gas(remaining_gas - mem_gas_cost, return_state3)
+  defp determine_call_caller(state, op_code) do
+    case op_code do
+      OpCodes._CALL() ->
+        State.address(state)
+      OpCodes._CALLCODE() ->
+        State.address(state)
+      OpCodes._DELEGATECALL() ->
+        State.caller(state)
+    end
+  end
 
-      {return_value, return_state4}
+  defp determine_call_dest(state, op_code) do
+    case op_code do
+      OpCodes._CALL() ->
+        Stack.peek(1, state)
+      OpCodes._CALLCODE() ->
+        State.address(state)
+      OpCodes._DELEGATECALL() ->
+        State.address(state)
+    end
+  end
+
+  defp adjust_call_gas(gas, value) do
+    if value != 0 do
+      gas + GasCodes._GCALLSTIPEND()
     else
-      remaining_gas = State.gas(state8) + call_gas
-      state9 = State.set_gas(remaining_gas, state8)
-      state10 = State.add_callcreate(in_area, dest, call_gas, value, state9)
-
-      {1, state10}
+      gas
     end
   end
 
