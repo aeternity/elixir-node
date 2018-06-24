@@ -21,8 +21,6 @@ defmodule Aevm do
       op_code = get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
 
-      # IO.inspect("#{op_name} #{State.gas(state)}")
-
       dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
       state1 = exec(op_code, state)
 

@@ -51,11 +51,8 @@ defmodule AevmTest do
     env_values = Map.get(spec, :env)
     pre_values = Map.get(spec, :pre)
 
-    IO.inspect("Test #{config_name} is running")
-
     try do
       {:ok, state} = Aevm.loop(State.init_vm(exec_values, env_values, pre_values, 0, test_opts()))
-      # IO.inspect(state, limit: :infinity)
 
       validate_storage(spec, state.storage)
       validate_gas(spec.gas, state.gas)
@@ -66,7 +63,7 @@ defmodule AevmTest do
     catch
       {:error, reason, state} ->
         validate_no_post(spec)
-        IO.inspect("Error: #{reason}")
+
         {:error, state}
     end
   end
