@@ -1,159 +1,151 @@
 defmodule Aecore.Chain.BlockValidation do
-  require Logger
+  @moduledoc """
+  Contains functions used to validate data inside of the block structure
+  """
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Chain.ChainState
-  alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Difficulty
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Target
+  alias Aeutil.Hash
   alias Aeutil.Serialization
+  alias Aecore.Chain.Chainstate
 
-  @timestamp_validation_blocks_count 10
-  @timestamp_validation_future_limit_ms 3_600_000
+  @time_validation_future_limit_ms 30 * 60 * 1000
 
-  @spec calculate_and_validate_block!(Block.t(), Block.t(), ChainState.account_chainstate(), list(Block.t())) :: {:error, term()} | :ok
-  def calculate_and_validate_block!(new_block, previous_block, old_chain_state, blocks_for_difficulty_calculation) do
+  @type tree :: :gb_merkle_trees.tree()
 
+  @spec calculate_and_validate_block(
+          Block.t(),
+          Block.t(),
+          Chainstate.t(),
+          list(Block.t())
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def calculate_and_validate_block(
+        new_block,
+        previous_block,
+        old_chain_state,
+        blocks_for_target_calculation
+      ) do
     is_genesis = new_block == Block.genesis_block() && previous_block == nil
 
-    single_validate_block!(new_block)
+    case single_validate_block(new_block) do
+      :ok ->
+        {:ok, new_chain_state} =
+          Chainstate.calculate_and_validate_chain_state(
+            new_block.txs,
+            old_chain_state,
+            new_block.header.height,
+            new_block.header.miner
+          )
 
-    new_chain_state = ChainState.calculate_and_validate_chain_state!(new_block.txs, old_chain_state, new_block.header.height)
+        root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-    chain_state_hash = ChainState.calculate_chain_state_hash(new_chain_state)
+        target =
+          Target.calculate_next_target(
+            new_block.header.time,
+            blocks_for_target_calculation
+          )
 
-    server = self()
-    work   = fn() -> Cuckoo.verify(new_block.header) end
-    spawn(fn() ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
+        cond do
+          # do not check previous block height for genesis block, there is none
+          !(is_genesis || check_correct_height?(new_block, previous_block)) ->
+            {:error, "#{__MODULE__}: Incorrect height"}
 
-    is_difficulty_target_met =
-      receive do
-      {:worker_reply, _from, verified?} -> verified?
-    end
+          !valid_header_time?(new_block) ->
+            {:error, "#{__MODULE__}: Invalid header time"}
 
-    difficulty = Difficulty.calculate_next_difficulty(blocks_for_difficulty_calculation)
-    cond do
-      # do not check previous block hash for genesis block, there is none
-      !(is_genesis || check_prev_hash?(new_block, previous_block)) ->
-        throw({:error, "Incorrect previous hash"})
+          new_block.header.root_hash != root_hash ->
+            {:error, "#{__MODULE__}: Root hash not matching"}
 
-      # do not check previous block height for genesis block, there is none
-      !(is_genesis || check_correct_height?(new_block, previous_block)) ->
-        throw({:error, "Incorrect height"})
+          target != new_block.header.target ->
+            {:error, "#{__MODULE__}: Invalid block target"}
 
-      !valid_header_timestamp?(new_block) ->
-        throw({:error, "Invalid header timestamp"})
+          true ->
+            {:ok, new_chain_state}
+        end
 
-      !is_difficulty_target_met ->
-        throw({:error, "Header hash doesnt meet the difficulty target"})
-
-      new_block.header.chain_state_hash != chain_state_hash ->
-        throw({:error, "Chain state hash not matching"})
-
-      difficulty != new_block.header.difficulty_target ->
-        throw({:error, "Invalid block difficulty"})
-
-      true ->
-        new_chain_state
+      err ->
+        err
     end
   end
 
-  @spec single_validate_block!(Block.t()) :: {:error, term()} | :ok
-  def single_validate_block!(block) do
-    coinbase_transactions_sum = sum_coinbase_transactions(block)
-    total_fees = Miner.calculate_total_fees(block.txs)
-    block_size_bytes = block |> :erlang.term_to_binary() |> :erlang.byte_size()
+  @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
+  def single_validate_block(block) do
+    server = self()
+    work = fn -> Cuckoo.verify(block.header) end
+
+    spawn(fn ->
+      send(server, {:worker_reply, self(), work.()})
+    end)
+
+    is_target_met =
+      receive do
+        {:worker_reply, _from, verified?} -> verified?
+      end
+
+    block_txs_count = length(block.txs)
+    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
     cond do
-      block.header.txs_hash != calculate_root_hash(block.txs) ->
-        throw({:error, "Root hash of transactions does not match the one in header"})
+      block.header.txs_hash != calculate_txs_hash(block.txs) ->
+        {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
-        throw({:error, "One or more transactions not valid"})
-
-      coinbase_transactions_sum > Miner.coinbase_transaction_value() + total_fees ->
-        throw({:error, "Sum of coinbase transactions values exceeds the maximum coinbase transactions value"})
+        {:error, "#{__MODULE__}: One or more transactions not valid"}
 
       block.header.version != Block.current_block_version() ->
-        throw({:error, "Invalid block version"})
+        {:error, "#{__MODULE__}: Invalid block version"}
 
-      block_size_bytes > Application.get_env(:aecore, :block)[:max_block_size_bytes] ->
-        throw({:error, "Block size is too big"})
+      block_txs_count > max_txs_for_block ->
+        {:error, "#{__MODULE__}: Too many transactions"}
+
+      !valid_header_time?(block) ->
+        {:error, "#{__MODULE__}: Invalid header time"}
+
+      !is_target_met ->
+        {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
         :ok
     end
   end
 
-  @spec block_header_hash(Header.t) :: binary()
+  @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.pack_binary(header)
-    :crypto.hash(:sha256, block_header_bin)
+    block_header_bin = Serialization.header_to_binary(header)
+    Hash.hash(block_header_bin)
   end
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(block) do
-    block.txs
-    |> Enum.map(fn tx ->
-      SignedTx.is_coinbase?(tx) ||  SignedTx.validate(tx)
-    end)
+    block.txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
-  @spec filter_invalid_transactions_chainstate(list(SignedTx.t()), map(), integer()) :: list(SignedTx.t())
-  def filter_invalid_transactions_chainstate(txs_list, chain_state, block_height) do
-    {valid_txs_list, _} = List.foldl(
-      txs_list,
-      {[], chain_state},
-      fn (tx, {valid_txs_list, chain_state_acc}) ->
-        {{is_valid, reason}, updated_chain_state} = validate_transaction_chainstate(tx, chain_state_acc, block_height)
-        if is_valid do
-          {valid_txs_list ++ [tx], updated_chain_state}
-        else
-          Logger.warn("Filtering out invalid tx. Reason: #{reason}")
-          {valid_txs_list, chain_state_acc}
-        end
-      end
-    )
-
-    valid_txs_list
-  end
-
-  @spec validate_transaction_chainstate(SignedTx.t(), ChainState.account_chainstate(), integer()) :: {true, map()} | {{false, binary()}, map()}
-  defp validate_transaction_chainstate(tx, chain_state, block_height) do
-    try do
-      {{true, nil}, ChainState.apply_tx!(tx, chain_state, block_height)}
-    catch
-      {:error, reason} -> {{false, reason}, chain_state}
-    end
-  end
-
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs) when txs == [] do
+  @spec calculate_txs_hash([]) :: binary()
+  def calculate_txs_hash(txs) when txs == [] do
     <<0::256>>
   end
 
-  @spec calculate_root_hash(list(SignedTx.t())) :: binary()
-  def calculate_root_hash(txs)  do
+  @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
+  def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
     |> :gb_merkle_trees.root_hash()
   end
 
-  @spec build_merkle_tree(list(SignedTx.t())) :: tuple()
+  @spec build_merkle_tree(list(SignedTx.t())) :: tree()
   def build_merkle_tree(txs) do
     if Enum.empty?(txs) do
       <<0::256>>
     else
       merkle_tree =
-      for transaction <- txs do
-        transaction_data_bin = Serialization.pack_binary(transaction.data)
-        {:crypto.hash(:sha256, transaction_data_bin), transaction_data_bin}
-      end
+        for transaction <- txs do
+          transaction_data_bin = Serialization.rlp_encode(transaction.data, :tx)
+          {Hash.hash(transaction_data_bin), transaction_data_bin}
+        end
 
       merkle_tree
       |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
@@ -162,46 +154,13 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec calculate_root_hash(Block.t()) :: integer()
-  defp sum_coinbase_transactions(block) do
-    block.txs
-    |> Enum.map(fn tx ->
-      if SignedTx.is_coinbase?(tx) do
-        tx.data.value
-      else
-        0
-      end
-    end)
-    |> Enum.sum()
-  end
-
-  @spec check_prev_hash?(Block.t(), Block.t()) :: boolean()
-  defp check_prev_hash?(new_block, previous_block) do
-    prev_block_header_hash = block_header_hash(previous_block.header)
-    new_block.header.prev_hash == prev_block_header_hash
-  end
-
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
   defp check_correct_height?(new_block, previous_block) do
     previous_block.header.height + 1 == new_block.header.height
   end
 
-  @spec valid_header_timestamp?(Block.t()) :: boolean()
-  defp valid_header_timestamp?(%Block{header: new_block_header}) do
-    case new_block_header.timestamp <= System.system_time(:milliseconds) + @timestamp_validation_future_limit_ms do
-      true ->
-        last_blocks = Chain.get_blocks(Chain.top_block_hash(), @timestamp_validation_blocks_count)
-
-        last_blocks_timestamps =
-          for block <- last_blocks, do: block.header.timestamp
-
-        avg = Enum.sum(last_blocks_timestamps) / Enum.count(last_blocks_timestamps)
-
-        new_block_header.timestamp >= avg
-
-      false ->
-        false
-    end
+  @spec valid_header_time?(Block.t()) :: boolean()
+  defp valid_header_time?(%Block{header: new_block_header}) do
+    new_block_header.time < System.system_time(:milliseconds) + @time_validation_future_limit_ms
   end
-
 end

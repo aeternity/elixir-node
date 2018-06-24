@@ -3,143 +3,160 @@ defmodule AecoreValidationTest do
   Unit tests for the BlockValidation module
   """
 
-  use ExUnit.Case, async: false, seed: 0
+  use ExUnit.Case
   doctest Aecore.Chain.BlockValidation
 
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SpendTx
-  alias Aecore.Structures.SignedTx
+  alias Aecore.Chain.Target
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Keys.Wallet
+  alias Aecore.Account.Account
+
+  setup_all do
+    Code.require_file("test_utils.ex", "./test")
+    path = Application.get_env(:aecore, :persistence)[:path]
+
+    if File.exists?(path) do
+      File.rm_rf(path)
+    end
+
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      Chain.clear_state()
+      :ok
+    end)
+  end
 
   setup ctx do
+    Miner.mine_sync_block_to_chain()
+
     [
-      to_acc: Wallet.get_public_key(),
-      lock_time_block:
-        Chain.top_block().header.height +
-          Application.get_env(:aecore, :tx_data)[:lock_time_coinbase] + 1
+      receiver: Wallet.get_public_key("M/0")
     ]
   end
 
   @tag :validation
   test "validate block header height", ctx do
-    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
 
     _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
-        blocks_for_difficulty_calculation
+        blocks_for_target_calculation
       )
 
-    wrong_height_block = %Block{new_block | header: %Header{new_block.header | height: 300}}
+    incorrect_pow_block = %Block{new_block | header: %Header{new_block.header | height: 10}}
 
-    assert {:error, "Incorrect height"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_height_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+    assert {:error, "#{BlockValidation}: Header hash doesnt meet the target"} ==
+             BlockValidation.calculate_and_validate_block(
+               incorrect_pow_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_target_calculation
              )
   end
 
   @tag :validation
   @timeout 10_000_000
-  test "validate block header timestamp", ctx do
-    new_block = get_new_block(ctx.to_acc, ctx.lock_time_block)
+  test "validate block header time", ctx do
+    Miner.mine_sync_block_to_chain()
+
+    new_block = get_new_block(ctx.receiver)
     prev_block = get_prev_block()
 
-    blocks_for_difficulty_calculation = [new_block, prev_block]
+    top_block = Chain.top_block()
+    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+
+    blocks_for_target_calculation =
+      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
 
     _ =
-      BlockValidation.calculate_and_validate_block!(
+      BlockValidation.calculate_and_validate_block(
         new_block,
         prev_block,
         get_chain_state(),
-        blocks_for_difficulty_calculation
+        blocks_for_target_calculation
       )
 
-    wrong_timestamp_block = %Block{new_block | header: %Header{new_block.header | timestamp: 10}}
+    wrong_time_block = %Block{
+      new_block
+      | header: %Header{
+          new_block.header
+          | time:
+              System.system_time(:milliseconds) + System.system_time(:milliseconds) +
+                30 * 60 * 1000
+        }
+    }
 
-    assert {:error, "Invalid header timestamp"} ==
-             catch_throw(
-               BlockValidation.calculate_and_validate_block!(
-                 wrong_timestamp_block,
-                 prev_block,
-                 get_chain_state(),
-                 blocks_for_difficulty_calculation
-               )
+    assert {:error, "#{BlockValidation}: Invalid header time"} ==
+             BlockValidation.calculate_and_validate_block(
+               wrong_time_block,
+               prev_block,
+               get_chain_state(),
+               blocks_for_target_calculation
              )
   end
 
-  @timeout 10_000_000
+  @timeout 10_000
   test "validate transactions in a block", ctx do
-    from_acc = Wallet.get_public_key()
-
-    {:ok, tx1} =
-      SpendTx.create(
-        from_acc,
-        ctx.to_acc,
-        5,
-        Map.get(Chain.chain_state(), ctx.to_acc, %{nonce: 0}).nonce + 1,
-        1,
-        ctx.lock_time_block
-      )
-
-    {:ok, tx2} =
-      SpendTx.create(
-        from_acc,
-        ctx.to_acc,
-        10,
-        Map.get(Chain.chain_state(), ctx.to_acc, %{nonce: 0}).nonce + 1,
-        1,
-        ctx.lock_time_block
-      )
+    sender = Wallet.get_public_key()
+    amount = 5
+    fee = 1
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx1} = SignedTx.sign_tx(tx1, priv_key)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx2, priv_key)
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
+
+    {:ok, signed_tx1} =
+      Account.spend(sender, priv_key, ctx.receiver, amount, fee, nonce + 1, <<"payload">>)
+
+    {:ok, signed_tx2} =
+      Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
     block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
 
-    assert block |> BlockValidation.validate_block_transactions()
+    assert block
+           |> BlockValidation.validate_block_transactions()
            |> Enum.all?() == true
   end
 
-  def get_new_block(to_acc, lock_time_block) do
-    from_acc = Wallet.get_public_key()
-
-    {:ok, tx} =
-      SpendTx.create(
-        from_acc,
-        to_acc,
-        100,
-        Map.get(Chain.chain_state(), to_acc, %{nonce: 0}).nonce + 1,
-        10,
-        lock_time_block
-      )
+  def get_new_block(receiver) do
+    sender = Wallet.get_public_key()
+    amount = 100
+    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
+    fee = 10
 
     priv_key = Wallet.get_private_key()
-    {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
 
-    Aecore.Txs.Pool.Worker.add_transaction(signed_tx)
+    {:ok, signed_tx} =
+      Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
+
+    Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
     new_block
   end
 
-  def get_prev_block() do
+  def get_prev_block do
     Chain.top_block()
   end
 
-  def get_chain_state() do
+  def get_chain_state do
     Chain.chain_state()
   end
 end

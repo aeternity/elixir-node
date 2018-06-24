@@ -4,15 +4,16 @@ defmodule Aehttpserver.Web.MinerController do
   alias Aecore.Miner.Worker, as: Miner
 
   def show(conn, params) do
-    case(params["operation"]) do
+    case params["operation"] do
       "start" ->
-        json conn, Miner.resume()
+        json(conn, Miner.resume())
+
       "stop" ->
-        json conn, Miner.suspend()
+        json(conn, Miner.suspend())
+
       "status" ->
-        {_, state} = Miner.get_state()
-        json conn, state
+        state = Miner.get_state()
+        json(conn, state)
     end
   end
-
 end

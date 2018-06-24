@@ -1,58 +1,119 @@
 defmodule AecoreCuckooTest do
-  require Logger
-  use ExUnit.Case
-
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Structures.SignedTx
-  alias Aecore.Structures.SpendTx
-
   @moduledoc """
   Unit tests for the cuckoo module
   """
-   @tag timeout: 10_000
-   @tag :cuckoo
-   test "Generate solution with a winning nonce and high target threshold" do
-     %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
-     assert found_solution == wining_solution()
-   end
 
-   @tag timeout: 10_000
-   @tag :cuckoo
-   test "Verify solution with a high target threshold" do
-     header = Cuckoo.generate(block_candidate().header)
-     assert true = Cuckoo.verify(header)
-   end
+  require Logger
+
+  use ExUnit.Case
+
+  alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+
+  setup do
+    on_exit(fn ->
+      Persistence.delete_all_blocks()
+      :ok
+    end)
+  end
+
+  @tag timeout: 60000
+  @tag :cuckoo
+  test "Generate solution with a winning nonce and high target threshold", setup do
+    %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
+    assert found_solution == wining_solution()
+  end
+
+  @tag timeout: 60000
+  @tag :cuckoo
+  test "Verify solution with a high target threshold", setup do
+    header = Cuckoo.generate(block_candidate().header)
+    assert true == Cuckoo.verify(header)
+  end
 
   defp wining_solution do
-    [346438, 356235, 643639, 663435, 31303130, 31303835, 31386664,
-    31616537, 31626561, 31656262, 32343834, 32356330, 32363338, 32386462,
-    33303638, 33353733, 33376562, 33633335, 33643437, 34353864, 34363363,
-    34393031, 34623364, 34636530, 35333936, 35346366, 35363263, 35363637,
-    35376463, 35376561, 35386230, 35613265, 35626139, 35633935, 36316166,
-    36366633, 36383230, 36616232, 36626232, 37393839, 37633732, 37646539]
-   end
+    [
+      526,
+      1720,
+      3463,
+      3841,
+      5225,
+      6487,
+      6660,
+      7467,
+      9404,
+      9483,
+      11730,
+      12200,
+      13764,
+      14827,
+      15211,
+      15420,
+      16209,
+      17703,
+      18165,
+      18873,
+      19092,
+      19286,
+      19438,
+      19619,
+      19875,
+      20227,
+      21014,
+      22067,
+      22885,
+      23112,
+      23251,
+      24112,
+      24448,
+      25053,
+      25259,
+      25486,
+      26774,
+      26864,
+      27696,
+      28183,
+      29677,
+      31797
+    ]
+  end
 
   defp block_candidate do
-    %Block{header: %Header{chain_state_hash: <<230,
-    129, 113, 45, 47, 180, 171, 8, 15, 55, 74, 106, 150, 170, 190, 220, 32, 87,
-    30, 102, 106, 67, 131, 247, 17, 56, 115, 147, 17, 115, 143, 196>>,
-    difficulty_target: 1, height: 1, nonce: 31,
-    pow_evidence: nil,
-    prev_hash: <<188, 84, 93, 222, 212, 45, 228, 224, 165, 111, 167, 218, 25, 31,
-    60, 159, 14, 163, 105, 206, 162, 32, 65, 127, 128, 188, 162, 75, 124, 8,
-    229, 131>>, timestamp: 1518427070317,
-    txs_hash: <<170, 58, 122, 219, 147, 41, 59, 140, 28, 127, 153, 68, 245, 18,
-    205, 22, 147, 124, 157, 182, 123, 24, 41, 71, 132, 6, 162, 20, 227, 255, 25,
-    25>>, version: 1},
-    txs: [%SignedTx{data: %SpendTx{fee: 0,
-    from_acc: nil, lock_time_block: 11, nonce: 0,
-    to_acc: <<4, 189, 182, 95, 56, 124, 178, 175, 226, 223, 46, 184, 93, 2, 93,
-    202, 223, 118, 74, 222, 92, 242, 192, 92, 157, 35, 13, 93, 231, 74, 52,
-    96, 19, 203, 81, 87, 85, 42, 30, 111, 104, 8, 98, 177, 233, 236, 157, 118,
-    30, 223, 11, 32, 118, 9, 122, 57, 7, 143, 127, 1, 103, 242, 116, 234,
-    47>>, value: 100}, signature: nil}]}
+    root_hash =
+      <<3, 182, 90, 114, 176, 76, 149, 119, 61, 31, 182, 67, 236, 226, 55, 252, 162, 181, 135, 38,
+        5, 100, 44, 42, 98, 30, 168, 89, 51, 12, 94, 36>>
 
+    prev_hash =
+      <<12, 191, 206, 141, 4, 69, 187, 23, 135, 251, 168, 240, 201, 114, 223, 101, 113, 237, 36,
+        91, 38, 191, 166, 21, 145, 170, 182, 194, 136, 25, 12, 248>>
+
+    txs_hash =
+      <<34, 12, 151, 127, 24, 49, 178, 171, 232, 129, 182, 150, 150, 82, 125, 117, 238, 56, 140,
+        96, 82, 104, 183, 188, 198, 161, 158, 118, 132, 90, 208, 8>>
+
+    miner =
+      <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236, 181,
+        172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+
+    %Block{
+      header: %Header{
+        height: 5,
+        nonce: 67,
+        pow_evidence: List.duplicate(0, 42),
+        prev_hash: prev_hash,
+        root_hash: root_hash,
+        target: 553_713_663,
+        time: 1_523_540_274_221,
+        txs_hash: txs_hash,
+        miner: miner,
+        version: 1
+      },
+      txs: []
+    }
   end
 end

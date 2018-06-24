@@ -3,23 +3,38 @@ defmodule Aehttpserver.Web.BlockController do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
+  alias Aeutil.HTTPUtil
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Structures.Block
-  alias Aecore.Structures.Header
-  alias Aecore.Peers.Sync
+  alias Aecore.Chain.Block
+  alias Aecore.Chain.Header
   alias Aeutil.Serialization
-  alias Aeutil.Bits
 
-  def show(conn, params) do
-    block = Chain.get_block_by_bech32_hash(params["hash"])
+  def block_by_height(conn, %{"height" => height}) do
+    parsed_height = height |> Integer.parse() |> elem(0)
 
-    case block do
-      %Block{} ->
-        serialized_block = Serialization.block(block, :serialize)
-        json(conn, serialized_block)
+    if parsed_height < 0 do
+      HTTPUtil.json_not_found(conn, "Block not found")
+    else
+      case Chain.get_block_by_height(parsed_height) do
+        {:ok, block} ->
+          json(conn, Serialization.serialize_value(block))
 
-      {:error, message} ->
-        json(%{conn | status: 404}, %{error: message})
+        {:error, :chain_too_short} ->
+          HTTPUtil.json_not_found(conn, "Chain too short")
+      end
+    end
+  end
+
+  def block_by_hash(conn, %{"hash" => hash}) do
+    case Chain.get_block_by_base58_hash(hash) do
+      {:ok, block} ->
+        json(conn, Serialization.block(block, :serialize))
+
+      {:error, :block_not_found} ->
+        HTTPUtil.json_not_found(conn, "Block not found")
+
+      {:error, :invalid_hash} ->
+        HTTPUtil.json_bad_request(conn, "Invalid hash")
     end
   end
 
@@ -30,8 +45,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Header.base58c_decode(hash)
       end
 
     count =
@@ -51,8 +65,8 @@ defmodule Aehttpserver.Web.BlockController do
         hash = BlockValidation.block_header_hash(block.header)
 
         %{
-          "hash" => Header.bech32_encode(hash),
-          "header" => Serialization.block(block, :serialize).header,
+          "hash" => Header.base58c_encode(hash),
+          "header" => Map.delete(Serialization.block(block, :serialize), "transactions"),
           "tx_count" => Enum.count(block.txs)
         }
       end)
@@ -67,8 +81,7 @@ defmodule Aehttpserver.Web.BlockController do
           Chain.top_block_hash()
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Header.base58c_decode(hash)
       end
 
     to_block_hash =
@@ -77,8 +90,7 @@ defmodule Aehttpserver.Web.BlockController do
           BlockValidation.block_header_hash(Block.genesis_block().header)
 
         hash ->
-          hash_bin = Bits.bech32_decode(hash)
-          hash_bin
+          Header.base58c_decode(hash)
       end
 
     count =
@@ -99,14 +111,5 @@ defmodule Aehttpserver.Web.BlockController do
       end)
 
     json(conn, blocks_json)
-  end
-
-  def new_block(conn, _params) do
-    map = Poison.decode!(Poison.encode!(conn.body_params), keys: :atoms)
-    block = Aeutil.Serialization.block(map, :deserialize)
-    block_hash = BlockValidation.block_header_hash(block.header)
-    Sync.add_block_to_state(block_hash, block)
-    Sync.add_valid_peer_blocks_to_chain(Sync.get_peer_blocks())
-    json(conn, %{ok: "new block received"})
   end
 end

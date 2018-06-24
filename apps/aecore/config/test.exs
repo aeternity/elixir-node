@@ -28,48 +28,86 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 
-persistence_path = case System.get_env("PERSISTENCE_PATH") do
-  nil -> "apps/aecore/priv/rox_db"
-  env -> env
-end
+persistence_path =
+  case System.get_env("PERSISTENCE_PATH") do
+    nil -> "apps/aecore/priv/rox_db/"
+    env -> env
+  end
 
-config :aecore, :persistence,
-  path: Path.absname(persistence_path)
+config :aecore, :persistence, path: persistence_path |> Path.absname() |> Path.join("//")
 
 config :aecore, :pow,
+  new_candidate_nonce_count: 10,
   bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
-  params: {"./lean", "-t 5", 16},
-  max_difficulty_change: 0,
+  params: {"./lean16", "-t 5", 16},
+  max_target_change: 0,
   genesis_header: %{
     height: 0,
     prev_hash: <<0::256>>,
     txs_hash: <<0::256>>,
-    chain_state_hash: <<0 :: 256>>,
-    timestamp: 1_507_275_094_308,
-    nonce: 304,
-    pow_evidence:
-      [383737, 616161, 623333, 653164, 663632, 31303565, 31333936,
-      31336163, 31366633, 31386437, 31613832, 31633235, 32326637, 32333235,
-      32336337, 32383039, 32633234, 33303136, 33363732, 33373436, 33396366,
-      34316464, 34376137, 34393162, 34653465, 34663031, 35303132, 35306366,
-      35346664, 36343336, 36393136, 36396538, 36613461, 36623066, 36633134,
-      36633766, 36663432, 36666664, 37363561, 37393762, 37633162, 37643561],
-
+    root_hash: <<0::256>>,
+    time: 1_507_275_094_308,
+    nonce: 46,
+    miner: <<0::256>>,
+    pow_evidence: [
+      1656,
+      2734,
+      2879,
+      3388,
+      4324,
+      7350,
+      7500,
+      8237,
+      8383,
+      8970,
+      9791,
+      9799,
+      13460,
+      14799,
+      16196,
+      18360,
+      18395,
+      18815,
+      19037,
+      19181,
+      19819,
+      19824,
+      21921,
+      22577,
+      22823,
+      22943,
+      24148,
+      24883,
+      24996,
+      25922,
+      26228,
+      26358,
+      26475,
+      26804,
+      27998,
+      28638,
+      29706,
+      30489,
+      30759,
+      31453,
+      31562,
+      32630
+    ],
     version: 1,
-    difficulty_target: 1
+    target: 0x2100FFFF
   }
 
 config :aecore, :peers,
-  peers_target_count: 2,
-  peers_max_count: 4
+  ranch_acceptors: 10,
+  sync_port: 3015
 
-config :aecore, :miner,
-  resumed_by_default: false
+config :aecore, :miner, resumed_by_default: false
 
 config :aecore, :tx_data,
-  lock_time_coinbase: 0,
-  miner_fee_bytes_per_token: 100,
-  pool_fee_bytes_per_token: 100
-
-config :aecore, :block,
-  max_block_size_bytes: 500_000
+  minimum_fee: 1,
+  max_txs_per_block: 100,
+  blocks_ttl_per_token: 1000,
+  oracle_registration_base_fee: 4,
+  oracle_query_base_fee: 2,
+  oracle_response_base_fee: 2,
+  oracle_extend_base_fee: 1

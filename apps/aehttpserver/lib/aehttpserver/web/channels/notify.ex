@@ -1,54 +1,77 @@
 defmodule Aehttpserver.Web.Notify do
+  @moduledoc """
+  Contains functionality for broadcasting new blocks/transactions via websocket.
+  """
+
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.Serialization
-  alias Aewallet.Encoding
+  alias Aecore.Tx.SignedTx
+  alias Aehttpserver.Web.Endpoint
+  alias Aecore.Account.Account
+  alias Aecore.Naming.Tx.NameTransferTx
 
   def broadcast_new_transaction_in_the_pool(tx) do
-    if tx.data.from_acc != nil do
-      Aehttpserver.Web.Endpoint.broadcast!(
-        "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
-        %{"body" => Serialization.tx(tx, :serialize)}
-      )
-    end
+    broadcast_tx(tx, true)
 
-    if tx.data.to_acc != nil do
-      Aehttpserver.Web.Endpoint.broadcast!(
-        "room:notifications",
-        "new_tx:" <> Encoding.encode(tx.data.to_acc, :ae),
-        %{"body" => Serialization.tx(tx, :serialize)}
-      )
-    end
+    broadcast_tx(tx, false)
 
-    Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
-      "body" => Serialization.tx(tx, :serialize)
+    Endpoint.broadcast!("room:notifications", "new_transaction_in_the_pool", %{
+      "body" => SignedTx.serialize(tx)
     })
   end
 
   def broadcast_new_block_added_to_chain_and_new_mined_tx(block) do
     Enum.each(block.txs, fn tx ->
-      Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
-        "body" => Serialization.tx(tx, :serialize)
+      Endpoint.broadcast!("room:notifications", "new_mined_tx_everyone", %{
+        "body" => SignedTx.serialize(tx)
       })
 
-      if tx.data.from_acc != nil do
-        Aehttpserver.Web.Endpoint.broadcast!(
-          "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.from_acc, :ae),
-          %{"body" => Serialization.tx(tx, :serialize)}
-        )
-      end
-
-      if tx.data.to_acc != nil do
-        Aehttpserver.Web.Endpoint.broadcast!(
-          "room:notifications",
-          "new_mined_tx:" <> Encoding.encode(tx.data.to_acc, :ae),
-          %{"body" => Serialization.tx(tx, :serialize)}
-        )
-      end
+      broadcast_tx(tx, true)
     end)
 
-    Aehttpserver.Web.Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
+    Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
       "body" => Serialization.block(block, :serialize)
     })
+  end
+
+  def broadcast_tx(tx, is_to_sender) do
+    if is_to_sender do
+      if Map.has_key?(tx.data, :sender) && tx.data.sender != nil do
+        Endpoint.broadcast!(
+          "room:notifications",
+          "new_tx:" <> Account.base58c_encode(tx.data.sender),
+          %{"body" => SignedTx.serialize(tx)}
+        )
+      end
+    else
+      case tx.data.payload do
+        %SpendTx{} ->
+          Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.receiver),
+            %{"body" => SignedTx.serialize(tx)}
+          )
+
+        %OracleQueryTx{} ->
+          Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.oracle_address),
+            %{"body" => SignedTx.serialize(tx)}
+          )
+
+        %NameTransferTx{} ->
+          Endpoint.broadcast!(
+            "room:notifications",
+            "new_tx:" <> Account.base58c_encode(tx.data.payload.target),
+            %{"body" => SignedTx.serialize(tx)}
+          )
+
+        _ ->
+          :ok
+      end
+    end
   end
 end

@@ -1,4 +1,8 @@
 defmodule Aehttpserver.Plugs.Authorization do
+  @moduledoc """
+  A plug which checks if the request authorization UUID matches the one from the server
+  """
+
   import Plug.Conn
 
   def init(default), do: default
@@ -13,5 +17,4 @@ defmodule Aehttpserver.Plugs.Authorization do
       conn |> send_resp(401, "Unauthorized") |> halt()
     end
   end
-
 end

@@ -1,15 +1,20 @@
 defmodule Aecore do
+  @moduledoc """
+  Supervisor responsible for all of the worker modules in his folder
+  """
+
   use Application
+
   import Supervisor.Spec
 
   def start(_type, _args) do
     children = [
+      Aecore.Keys.Worker.Supervisor,
       Aecore.Persistence.Worker.Supervisor,
       Aecore.Chain.Worker.Supervisor,
       Aecore.Miner.Worker.Supervisor,
-      Aecore.Txs.Pool.Worker.Supervisor,
+      Aecore.Tx.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
-      Aecore.Wallet.Worker.Supervisor,
       supervisor(Exexec, [], function: :start)
     ]
 

@@ -20,7 +20,7 @@
         #
         # You can give explicit globs or simply directories.
         # In the latter case `**/*.{ex,exs}` will be used.
-      #
+        #
         included: ["lib/", "src/", "web/", "apps/"],
         excluded: [~r"/_build/", ~r"/deps/"]
       },
@@ -33,7 +33,7 @@
       # If you want to enforce a style guide and need a more traditional linting
       # experience, you can change `strict` to `true` below:
       #
-      strict: false,
+      strict: true,
       #
       # If you want to use uncolored output by default, you can change `color`
       # to `false` below:
@@ -45,7 +45,7 @@
       #
       # To disable a check put `false` as second element:
       #
-      #     {Credo.Check.Design.DuplicatedCode, false}
+      #
       #
       checks: [
         {Credo.Check.Consistency.ExceptionNames},
@@ -58,7 +58,7 @@
         # You can customize the priority of any check
         # Priority values are: `low, normal, high, higher`
         #
-        {Credo.Check.Design.AliasUsage, priority: :low},
+        {Credo.Check.Design.AliasUsage, priority: :normal},
 
         # For some checks, you can also set other parameters
         #
@@ -73,61 +73,58 @@
         # set this value to 0 (zero).
         #
         {Credo.Check.Design.TagTODO, exit_status: 2},
-        {Credo.Check.Design.TagFIXME},
-
-        {Credo.Check.Readability.FunctionNames},
-        {Credo.Check.Readability.LargeNumbers},
-        {Credo.Check.Readability.MaxLineLength, priority: :low, max_length: 80},
-        {Credo.Check.Readability.ModuleAttributeNames},
-        {Credo.Check.Readability.ModuleDoc},
-        {Credo.Check.Readability.ModuleNames},
-        {Credo.Check.Readability.ParenthesesOnZeroArityDefs},
-        {Credo.Check.Readability.ParenthesesInCondition},
-        {Credo.Check.Readability.PredicateFunctionNames},
-        {Credo.Check.Readability.PreferImplicitTry},
-        {Credo.Check.Readability.RedundantBlankLines},
-        {Credo.Check.Readability.StringSigils},
-        {Credo.Check.Readability.TrailingBlankLine},
-        {Credo.Check.Readability.TrailingWhiteSpace},
-        {Credo.Check.Readability.VariableNames},
-        {Credo.Check.Readability.Semicolons},
-        {Credo.Check.Readability.SpaceAfterCommas},
-
-        {Credo.Check.Refactor.DoubleBooleanNegation},
-        {Credo.Check.Refactor.CondStatements},
-        {Credo.Check.Refactor.CyclomaticComplexity},
-        {Credo.Check.Refactor.FunctionArity},
-        {Credo.Check.Refactor.LongQuoteBlocks},
-        {Credo.Check.Refactor.MatchInCondition},
-        {Credo.Check.Refactor.NegatedConditionsInUnless},
-        {Credo.Check.Refactor.NegatedConditionsWithElse},
-        {Credo.Check.Refactor.Nesting},
-        {Credo.Check.Refactor.PipeChainStart},
-        {Credo.Check.Refactor.UnlessWithElse},
-
-        {Credo.Check.Warning.BoolOperationOnSameValues},
-        {Credo.Check.Warning.ExpensiveEmptyEnumCheck},
-        {Credo.Check.Warning.IExPry},
-        {Credo.Check.Warning.IoInspect},
-        {Credo.Check.Warning.LazyLogging},
-        {Credo.Check.Warning.OperationOnSameValues},
-        {Credo.Check.Warning.OperationWithConstantResult},
-        {Credo.Check.Warning.UnusedEnumOperation},
-        {Credo.Check.Warning.UnusedFileOperation},
-        {Credo.Check.Warning.UnusedKeywordOperation},
-        {Credo.Check.Warning.UnusedListOperation},
-        {Credo.Check.Warning.UnusedPathOperation},
-        {Credo.Check.Warning.UnusedRegexOperation},
-        {Credo.Check.Warning.UnusedStringOperation},
-        {Credo.Check.Warning.UnusedTupleOperation},
-        {Credo.Check.Warning.RaiseInsideRescue},
+        {Credo.Check.Design.TagFIXME, exit_status: 0},
+        {Credo.Check.Readability.FunctionNames, priority: :higher},
+        {Credo.Check.Readability.LargeNumbers, priority: :high},
+        {Credo.Check.Readability.MaxLineLength, false},
+        {Credo.Check.Readability.ModuleAttributeNames, priority: :higher},
+        {Credo.Check.Readability.ModuleDoc, priority: :higher},
+        {Credo.Check.Readability.ModuleNames, priority: :higher},
+        {Credo.Check.Readability.ParenthesesOnZeroArityDefs, priority: :higher},
+        {Credo.Check.Readability.ParenthesesInCondition, priority: :higher},
+        {Credo.Check.Readability.PredicateFunctionNames, priority: :higher},
+        {Credo.Check.Readability.PreferImplicitTry, exit_status: 0},
+        {Credo.Check.Readability.RedundantBlankLines, priority: :higher},
+        {Credo.Check.Readability.StringSigils, exit_status: 0},
+        {Credo.Check.Readability.TrailingBlankLine, priority: :higher},
+        {Credo.Check.Readability.TrailingWhiteSpace, priority: :higher},
+        {Credo.Check.Readability.VariableNames, priority: :higher},
+        {Credo.Check.Readability.Semicolons, priority: :higher},
+        {Credo.Check.Readability.SpaceAfterCommas, priority: :higher},
+        {Credo.Check.Refactor.DoubleBooleanNegation, exit_status: 0},
+        {Credo.Check.Refactor.CondStatements, priority: :higher},
+        {Credo.Check.Refactor.CyclomaticComplexity, exit_status: 0},
+        {Credo.Check.Refactor.FunctionArity, exit_status: 0, max_arity: 7},
+        {Credo.Check.Refactor.LongQuoteBlocks, exit_status: 0},
+        {Credo.Check.Refactor.MatchInCondition, priority: :higher},
+        {Credo.Check.Refactor.NegatedConditionsInUnless, priority: :high},
+        {Credo.Check.Refactor.NegatedConditionsWithElse, priority: :high},
+        {Credo.Check.Refactor.Nesting, priority: :high, max_nesting: 3},
+        {Credo.Check.Refactor.PipeChainStart, priority: :higher},
+        {Credo.Check.Refactor.UnlessWithElse, priority: :higher},
+        {Credo.Check.Warning.BoolOperationOnSameValues, priority: :higher},
+        {Credo.Check.Warning.ExpensiveEmptyEnumCheck, priority: :higher},
+        {Credo.Check.Warning.IExPry, priority: :higher},
+        {Credo.Check.Warning.IoInspect, priority: :higher},
+        {Credo.Check.Warning.LazyLogging, priority: :high},
+        {Credo.Check.Warning.OperationOnSameValues, exit_status: 0},
+        {Credo.Check.Warning.OperationWithConstantResult, exit_status: 0},
+        {Credo.Check.Warning.UnusedEnumOperation, priority: :high},
+        {Credo.Check.Warning.UnusedFileOperation, priority: :high},
+        {Credo.Check.Warning.UnusedKeywordOperation, priority: :high},
+        {Credo.Check.Warning.UnusedListOperation, priority: :high},
+        {Credo.Check.Warning.UnusedPathOperation, priority: :high},
+        {Credo.Check.Warning.UnusedRegexOperation, priority: :high},
+        {Credo.Check.Warning.UnusedStringOperation, priority: :high},
+        {Credo.Check.Warning.UnusedTupleOperation, priority: :high},
+        {Credo.Check.Warning.RaiseInsideRescue, priority: :high},
 
         # Controversial and experimental checks (opt-in, just remove `, false`)
         #
-        {Credo.Check.Refactor.ABCSize, false},
-        {Credo.Check.Refactor.AppendSingleItem, false},
-        {Credo.Check.Refactor.VariableRebinding},
-        {Credo.Check.Warning.MapGetUnsafePass},
+        # {Credo.Check.Refactor.ABCSize},
+        {Credo.Check.Refactor.AppendSingleItem, priority: :high},
+        {Credo.Check.Refactor.VariableRebinding, exit_status: 0},
+        {Credo.Check.Warning.MapGetUnsafePass, exit_status: 0},
         {Credo.Check.Consistency.MultiAliasImportRequireUse, false},
 
         # Deprecated checks (these will be deleted after a grace period)
@@ -136,7 +133,7 @@
         {Credo.Check.Warning.NameRedeclarationByAssignment, false},
         {Credo.Check.Warning.NameRedeclarationByCase, false},
         {Credo.Check.Warning.NameRedeclarationByDef, false},
-        {Credo.Check.Warning.NameRedeclarationByFn, false},
+        {Credo.Check.Warning.NameRedeclarationByFn, false}
 
         # Custom checks can be created using `mix credo.gen.check`.
         #

@@ -24,9 +24,10 @@ To install and use the Elixir Blockchain you will need [Elixir](https://elixir-l
 
 Make sure you have installed the following packages to make sure that the Wallet will work properly:
 ```bash
-sudo apt-get install autoconf autogen
-sudo apt-get install libtool
-sudo apt-get install libgmp3-dev
+sudo apt-get install autoconf autogen libtool libgmp3-dev
+wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
+mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1
+cd libsodium-src && ./configure && make && make check && sudo make install && cd ..
 ```
 
 ## Usage
@@ -42,12 +43,25 @@ Start the application in interactive Elixir mode
 #### **Starting the miner**
 To start the miner use the following command in the command prompt:
 
-`Aecore.Miner.Worker.resume()`
+`Miner.resume()`
 
 This will continuously mine new blocks until terminated or suspended.
 To suspend/stop the miner from mining:
 
-`Aecore.Miner.Worker.suspend() `
+`Miner.suspend() `
+
+#### **Building custom child Transaction**
+To build a custom transaction you need to follow few simple steps:
+- Make your own `transaction module`
+- Create your `custom transaction structure`
+- Override the `Transaction Behaviour` callbacks
+- Write all your specific functions and checks inside your new `Transaction module`
+
+All custom transactions are childs to the `DataTx` Transaction that wraps them inside.
+The DataTx strucure hold:
+- The name of your `transaction type` that should be you `Transaction Module name`
+- The `payload` that will hold your `custom transaction structure`
+- `sender`, `fee` and `nonce`
 
 ### **API calls**
 
@@ -55,77 +69,78 @@ To suspend/stop the miner from mining:
 
 - To get the top height of the current chain:
 
-  `Aecore.Chain.Worker.top_height()`
+  `Chain.top_height()`
 
 - To add get the top block of the current chain:
 
-  `Aecore.Chain.Worker.top_block()`
+  `Chain.top_block()`
 
 - To get the top block chain state:
 
-  `Aecore.Chain.Worker.top_block_chain_state()`
+  `Chain.top_block_chain_state()`
 
 - To get the top block hash:
 
-  `Aecore.Chain.Worker.top_block_hash()`
+  `Chain.top_block_hash()`
 
 - To get the latest chainstate:
 
-  `Aecore.Chain.Worker.chain_state()`
+  `Chain.chain_state()`
 
 - To get the chainstate of certain block:
 
-  `Aecore.Chain.Worker.chain_state(block_hash)`
+  `Chain.chain_state(block_hash)`
 
 - To get a block from the local chain with certain hash
 
-  `Aecore.Chain.Worker.get_block_by_hex_hash(hash_of_a_block)`
+  `Chain.get_block_by_hex_hash(hash_of_a_block)`
 
 - To get a block from memory or the database by certain hash:
 
-  `Aecore.Chain.Worker.get_block(hash_of_a_block)`
+  `Chain.get_block(hash_of_a_block)`
 
 - To check if a certain block is in the local chain:
 
-  `Aecore.Chain.Worker.hash_block?(hash_of_a_block)`
+  `Chain.hash_block?(hash_of_a_block)`
 
 - To get a certain number of blocks:
 
-  `Aecore.Chain.Worker.get_blocks(start_block_hash, number_of_blocks)`
+  `Chain.get_blocks(start_block_hash, number_of_blocks)`
 
 - To get the longest chain:
 
-  `Aecore.Chain.Worker.longest_blocks_chain`
+  `Chain.longest_blocks_chain()`
 
 ##### Miner :
 
 - To get a candidate block:
 
-  `Aecore.Miner.Worker.candidate()`
+  `Miner.candidate()`
 
 - To get the current value of the coinbase:
 
-  `Aecore.Miner.Worker.coinbase_transaction_value()`
+  `Miner.coinbase_transaction_value()`
 
 - To get the current state of the miner:
 
-  `Aecore.Miner.Worker.get_state()`
+  `Miner.get_state()`
 
 ##### Peers:
+  The default sync port is 3015, it can be set manually by running the node with `SYNC_PORT=some_port iex -S mix`. This port is different from the one used by the phoenix server application.
 
 - To get all peers:
 
-  `Aecore.Peers.Worker.all_peers()`
+  `Peers.all_peers()`
 
-- To add peer:
+- Connect to a peer by specifying the address (host), port (SYNC_PORT) and peer pubkey (different from the keypair which is used for transaction signing):
 
-  `Aecore.Peers.Worker.add_peer(uri)`
+  `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})`
 
 ##### Transaction Pool:
 
 - To inspect all transactions in the Transaction Pool:
 
-  `Aecore.Txs.Pool.Worker.get_pool()`
+  `Pool.get_pool()`
 
 
 ### HTTP-API
@@ -142,7 +157,7 @@ To suspend/stop the miner from mining:
 
 - To get all blocks from the current chain:
 
-  `GET localhost:4000/blocks`  
+  `GET localhost:4000/blocks`
 
 - To get all blocks with full information about the blocks:
 
@@ -162,7 +177,7 @@ To suspend/stop the miner from mining:
 
 - To post new block to the chain:
 
-  `POST localhost:4000/new_block`
+  `POST localhost:4000/block`
 
   Body: **serialized_block**
 
@@ -188,7 +203,7 @@ To suspend/stop the miner from mining:
 
 - To get the transaction pool of an account:
 
-  `GET localhost:4000/tx_pool/{account}`  
+  `GET localhost:4000/tx_pool/{account}`
 
   Where *account* is a hex encoded public key
 
@@ -206,3 +221,79 @@ the log can be found in the source folder under:`apps/aecore/logs`
 `09:59:16.298 [info] Added block #1 with hash 6C449AC3B5E38857DC85310873979F45992270BF54304B3F60BE4F64373991B5, total tokens: 100 `
 
 `09:59:16.298 [info] Mined block #1, difficulty target 1, nonce 4`
+
+#### **Oracle usage**
+**TTL (time to live):**
+  Determines the lifetime of an object measured in blocks, it can be either absolute
+  or relative (absolute - the object is removed when a block with a height equal to the TTL is mined;
+  relative - the object is removed when a block with height equal to the TTL + block height in which the transaction was included is mined). A TTL is defined like so - %{ttl: value, type: :relative | :absolute}
+
+**Registering an oracle:**
+  `Oracle.register(query_format, response_format, query_fee, fee, ttl)`
+  The query and response formats are treated as json schemas by which the queries and responses
+  are validated. The query fee is the minimum fee that will be required for queries made to the
+  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
+  for the response fee he had to pay.
+
+  example format schema -
+    ```
+    %{
+      "type" =>
+        "object",
+      "properties" => %{
+        "base" => %{
+          "type" =>
+          "string"
+        },
+        "date" => %{
+          "type" =>
+            "string"
+        },
+        "rates" => %{
+          "type" =>
+            "object"
+        }
+      }
+    }
+    ```
+
+  To list all registered oracles -  `Chain.registered_oracles()`
+
+**Querying an oracle:**
+  `Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
+  The query TTL determines the time in which the oracle is able to respond, if he doesn't respond in time, the account making the query will get the query_fee back. The response TTL determines for how long the response will remain in the state after it is added, this TTL can only be relative.
+
+  example query -
+  ```
+  Oracle.query(
+    "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
+    %{
+      "currency" =>
+        "USD"
+     },
+     5,
+     10,
+     %{ttl: 10, type: :absolute},
+     %{ttl: 5, type: :relative}
+  )
+  ```
+
+**Respond to a query:**
+  `Oracle.respond(query_id, response, fee)`
+  Responds to a query which is referenced by ID, if the response is added successfully, the oracle receives the query_fee contained in the query.
+
+**Extend a registered oracle:**
+  `Oracle.extend(ttl, fee)`
+  Extends the TTL of an oracle with the address that matches the address of the node.
+
+All transactions have to be mined in order to take effect.
+
+#### **Naming usage**
+
+Names will follow IDNA2008 normalization and have a maximum length of 253 characters, while each label is allowed to be 63 characters maximum. Names must end with `.aet` or `.test`.
+
+ * `NamePreClaim` a name, to register your interest in claiming it, while not announcing what name, a private binary salt is chosen. `Account.pre_claim(name, salt, fee)`
+ * `NameClaim` is possible after one block to publicly claim the name by setting the owner `Account.claim(name, salt, fee)`. Claims expire after 50000 blocks, if not renewed using update.
+ * `NameUpdate` updates associated pointers to one registered name, while updating the expiry. `Account.name_update(name, pointers, fee)`
+ * `NameTransfer` transfers one account claim to a different owner. `Account.name_transfer(name, target, fee)`
+ * `NameRevoke` revokes one name claim, will result in deletion after 2016 blocks. `Account.name_revoke(name, fee)`
