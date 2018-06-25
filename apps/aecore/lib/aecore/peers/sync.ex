@@ -299,7 +299,7 @@ defmodule Aecore.Peers.Sync do
       block ->
         hash = BlockValidation.block_header_hash(block.header)
 
-        case Map.get(block.header, prev_hash, :error) do
+        case Map.get(block.header, :prev_hash, :error) do
           :error ->
             split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
@@ -365,7 +365,7 @@ defmodule Aecore.Peers.Sync do
   @spec do_start_sync(pid(), binary()) :: :ok | {:error, String.t()}
   defp do_start_sync(peer_pid, remote_hash) do
     case PeerConnection.get_header_by_hash(remote_hash, peer_pid) do
-      {:ok, remote_header} ->
+      {:ok, %{header: remote_header}} ->
         remote_height = remote_header.height
         local_height = Chain.top_height()
 
@@ -408,7 +408,8 @@ defmodule Aecore.Peers.Sync do
 
   defp agree_on_height(peer_pid, r_header, r_height, l_height, agreed_hash)
        when r_height == l_height do
-    r_hash = BlockValidation.block_header_hash(r_header)
+    %{header: header} = r_header
+    r_hash = BlockValidation.block_header_hash(header)
 
     case Persistence.get_block_by_hash(r_hash) do
       {:ok, _} ->
@@ -438,7 +439,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   defp fetch_more(peer_pid, last_height, _, {:error, reason}) do
-    Logger.info("Abort sync at height #{last_height} Error: #{reason}")
+    Logger.info("Abort sync at height #{last_height} Error: #{inspect(reason)}")
     delete_from_pool(peer_pid)
     {:error, reason}
   end
@@ -543,10 +544,10 @@ defmodule Aecore.Peers.Sync do
         delete_from_pool(peer_pid)
         :done
 
-      {:ok, chunk_hashes} ->
+      {:ok, %{hashes: chunk_hashes}} ->
         hash_pool =
-          for chunk <- chunk_hashes do
-            {chunk, %{peer: peer_pid}}
+          for %{hash: hash, height: height} <- chunk_hashes do
+            {{height, hash}, %{peer: peer_pid}}
           end
 
         update_hash_pool(hash_pool)
@@ -574,7 +575,7 @@ defmodule Aecore.Peers.Sync do
   # If we don't have the block locally, take it from the Remote Peer
   defp do_fetch_block_ext(hash, peer_pid) do
     case PeerConnection.get_block(hash, peer_pid) do
-      {:ok, block} ->
+      {:ok, %{block: block}} ->
         case BlockValidation.block_header_hash(block.header) === hash do
           true ->
             Logger.debug(fn ->
