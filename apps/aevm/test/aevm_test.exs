@@ -631,24 +631,24 @@ defmodule AevmTest do
     extract_and_validate(json_test, config_name)
   end do
     [
-      {:ackermann31},
-      {:ackermann32},
-      {:ackermann33},
-      {:fibonacci10},
-      {:fibonacci16},
-      {:"loop-add-10M"},
-      {:"loop-divadd-10M"},
-      {:"loop-divadd-unr100-10M"},
-      {:"loop-exp-16b-100k"},
-      {:"loop-exp-1b-1M"},
-      {:"loop-exp-2b-100k"},
-      {:"loop-exp-32b-100k"},
-      {:"loop-exp-4b-100k"},
-      {:"loop-exp-8b-100k"},
-      {:"loop-exp-nop-1M"},
-      {:"loop-mul"},
-      {:"loop-mulmod-2M"},
-      {:manyFunctions100}
+      # {:ackermann31},
+      # {:ackermann32},
+      # {:ackermann33},
+      # {:fibonacci10},
+      # {:fibonacci16},
+      # {:"loop-add-10M"},
+      # {:"loop-divadd-10M"},
+      # {:"loop-divadd-unr100-10M"},
+      # {:"loop-exp-16b-100k"},
+      # {:"loop-exp-1b-1M"},
+      # {:"loop-exp-2b-100k"},
+      # {:"loop-exp-32b-100k"},
+      # {:"loop-exp-4b-100k"},
+      # {:"loop-exp-8b-100k"},
+      # {:"loop-exp-nop-1M"},
+      # {:"loop-mul"},
+      # {:"loop-mulmod-2M"},
+      # {:manyFunctions100}
     ]
   end
 
