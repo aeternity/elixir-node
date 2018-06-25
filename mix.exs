@@ -56,7 +56,7 @@ defmodule EpochElixir.Mixfile do
       {:excoveralls, "~> 0.8.1", only: :test},
       {:ex_json_schema, "~> 0.5.4"},
       {:distillery, "~> 1.5.2", runtime: false},
-      {:aewallet, github: "aeternity/elixir-wallet"},
+      {:aewallet, github: "aeternity/elixir-wallet", ref: "3f2f9df", override: true},
       {:msgpax, "~> 2.1.1"},
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
