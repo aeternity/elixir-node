@@ -20,15 +20,25 @@ defmodule Aecore.Peers.Jobs do
     GenServer.call(__MODULE__, :state)
   end
 
+  @doc """
+  Creates a new jobs queue for doing some work.
+  """
   @spec add_queue(atom()) :: :ok | {:error, String.t()}
   def add_queue(queue) do
     GenServer.call(__MODULE__, {:add_queue, queue})
   end
 
+  @doc """
+  Adds a job to an already created queue. This will enqueue the job,
+  and it will stay in the queue untill it is dequeued (processed).
+  """
   def enqueue(queue, job) do
     GenServer.cast(__MODULE__, {:enqueue, queue, job})
   end
 
+  @doc """
+  Process jobs from the specified queue. It will process all pending jobs in this queue.
+  """
   def dequeue(queue) do
     GenServer.cast(__MODULE__, {:dequeue, queue})
   end

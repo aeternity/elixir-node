@@ -147,7 +147,7 @@ defmodule Aecore.Peers.PeerConnection do
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
   def send_new_tx(tx, pid) when is_pid(pid) do
     @tx
-    |> pack_msg(%{tx: tx})
+    |> pack_msg(tx)
     |> send_msg_no_response(pid)
   end
 
