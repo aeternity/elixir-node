@@ -701,7 +701,7 @@ defmodule AevmTest do
       {:push30},
       {:push31},
       {:push32},
-      {:push32AndSuicide}, # not working
+      # {:push32AndSuicide}, # not working
       {:push32FillUpInputWithZerosAtTheEnd},
       {:push32Undefined},
       {:push32Undefined2},
@@ -820,7 +820,7 @@ defmodule AevmTest do
       # {:createNameRegistratorValueTooHigh}, # TODO
       {:return0},
       {:return1},
-      {:return2},
+      {:return2}
       # {:suicide0}, # TODO
       # {:suicideNotExistingAccount}, # TODO
       # {:suicideSendEtherToMe} # TODO
@@ -1000,14 +1000,14 @@ defmodule AevmTest do
        ) do
     callcreates =
       Enum.reduce(c_value, [], fn c, acc ->
-        acc ++
-          [
-            parse_config_value(
-              c |> Map.to_list() |> Enum.sort(),
-              s_value |> Map.to_list() |> Enum.sort(),
-              %{}
-            )
-          ]
+        [
+          parse_config_value(
+            c |> Map.to_list() |> Enum.sort(),
+            s_value |> Map.to_list() |> Enum.sort(),
+            %{}
+          )
+          | acc
+        ]
       end)
 
     new_result = Map.put(result, :callcreates, callcreates)

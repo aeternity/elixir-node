@@ -229,7 +229,7 @@ defmodule State do
 
       true ->
         bin_nth_block = <<nth_block::256>>
-        hash = Aevm.sha3_hash(bin_nth_block)
+        hash = AevmUtil.sha3_hash(bin_nth_block)
         <<value::integer-unsigned-256>> = hash
         value
     end
