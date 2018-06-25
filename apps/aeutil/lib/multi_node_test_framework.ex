@@ -3,6 +3,8 @@ defmodule Aeutil.MultiNodeTestFramework do
   Module for multi node sync test
   """
 
+  alias Aeutil.Serialization
+
   require Logger
   use GenServer
 
@@ -41,6 +43,14 @@ defmodule Aeutil.MultiNodeTestFramework do
 
   def delete_node(node_name) do
     GenServer.call(__MODULE__, {:delete_node, node_name})
+  end
+
+  def update_top_block_state(node_name) do
+    GenServer.call(__MODULE__, {:update_top_block_state, node_name})
+  end
+
+  def update_peers_map(node_name) do
+    GenServer.call(__MODULE__, {:update_peers_map, node_name})
   end
 
   # oracles
@@ -97,12 +107,22 @@ defmodule Aeutil.MultiNodeTestFramework do
   # mining
   def mine_sync_block(node_name) do
     send_command(node_name, "Aecore.Miner.Worker.mine_sync_block_to_chain()")
-    get_node_top_block_hash(node_name)
   end
 
   # chain
   def get_node_top_block(node_name) do
-    send_command(node_name, "Aecore.Chain.Worker.top_block()")
+    send_command(node_name, "top_block = Aecore.Chain.Worker.top_block()")
+
+    send_command(
+      node_name,
+      "serialized_block = Aeutil.Serialization.block(top_block, :serialize)"
+    )
+
+    send_command(node_name, "{:ok, json} = Poison.encode(serialized_block)")
+    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
+    send_command(node_name, "File.write(path, json)")
+    :timer.sleep(3000)
+    update_top_block_state(node_name)
   end
 
   def get_node_top_block_hash(node_name) do
@@ -184,25 +204,52 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def get_all_peers(node_name) do
-    send_command(node_name, "Aecore.Peers.Worker.all_peers")
-  end
-
-  def create_peers_map(peers_str) do
-    result = String.replace(peers_str, ~r/iex\(\d\)>/, "")
-    |> String.replace("\n", "")
-    IO.inspect keys = Regex.scan(~r/([0-9]{9}+)(?<!=>)/, result)
-    keys = for k <- keys, do: List.last k
-    latest_blocks = Regex.scan(~r/(?<=\")[a-zA-Z0-9$]{52}+/, result)
-    latest_blocks = for bl <- latest_blocks, do: List.last bl
-    uris = Regex.scan(~r/(?<=")[a-zA-Z0-9.]+:[0-9]+(?<!\\)/, result)
-    uris = for uri <- uris, do: List.last uri
-    list = [keys, latest_blocks, uris]
-
-    Enum.reduce(1..(length(keys) - 1), %{}, fn(el, acc) -> %{Enum.at(keys, el) =>
-        %{latest_block: Enum.at(latest_blocks, el), uri: Enum.at(uris, el)}} end)
+    send_command(node_name, "peers = Aecore.Peers.Worker.all_peers")
+    send_command(node_name, "{:ok, json} = Poison.encode(peers)")
+    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
+    send_command(node_name, "File.write(path, json)")
+    :timer.sleep(3000)
+    update_peers_map(node_name)
   end
 
   # server
+
+  def handle_call({:update_top_block_state, node_name}, _, state) do
+    path = state[node_name].path <> "/result.json"
+
+    with {:ok, data} <- File.read(path),
+         {:ok, decoded_data} <- Poison.decode(data) do
+      serialized_block = Serialization.block(decoded_data, :deserialize)
+      new_state = put_in(state[node_name].top_block, serialized_block)
+      File.rm(path)
+      {:reply, :ok, new_state}
+    else
+      {:error, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:update_peers_map, node_name}, _, state) do
+    path = state[node_name].path <> "/result.json"
+
+    with {:ok, data} <- File.read(path),
+         {:ok, decoded_data} <- Poison.decode(data) do
+      decoded_data =
+        Enum.reduce(decoded_data, %{}, fn {num, info}, acc ->
+          info =
+            for {k, v} <- info,
+                into: %{},
+                do: {String.to_atom(k), v}
+
+          Map.put(acc, String.to_integer(num), info)
+        end)
+
+      new_state = put_in(state[node_name].peers, decoded_data)
+      File.rm(path)
+      {:reply, :ok, new_state}
+    else
+      {:error, reason} -> {:reply, reason, state}
+    end
+  end
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
     if Map.has_key?(state, node_name) do
@@ -242,26 +289,24 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def handle_info({process_port, {:data, result}}, state) do
+    node = Enum.find(state, fn {_, value} -> value.process_port == process_port end) |> elem(0)
+
     cond do
       result =~ "block_hash" ->
-        node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
         result = Regex.run(~r/"([0-9A-Z]*)/, result) |> List.last()
         state = put_in(state[elem(node, 0)].top_block_hash, result)
-      result =~ "latest_block" && result =~ "uri" ->
-        node = Enum.find(state, fn {_, value} -> value.process_port == process_port end)
-        IO.inspect result
-        result = create_peers_map(result)
-        state = put_in(state[elem(node, 0)].peers, result)
+
       true ->
         state
     end
-    IO.inspect result
+
     {:noreply, state}
   end
 
   def handle_call({:compare_nodes, node_name1, node_name2}, _, state) do
     hash1 = state[node_name1].top_block_hash
     hash2 = state[node_name2].top_block_hash
+
     if String.equivalent?(hash1, hash2) do
       {:reply, :synced, state}
     else
@@ -297,6 +342,7 @@ defmodule Aeutil.MultiNodeTestFramework do
           path: tmp_path,
           port: port,
           last_result: nil,
+          top_block: nil,
           top_block_hash: nil,
           peers: nil
         })
