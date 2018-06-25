@@ -1,4 +1,9 @@
 defmodule OpCodesUtil do
+  @moduledoc """
+    Module for defining mnemonics and utils for the OpCodes
+  """
+
+  # credo:disable-for-this-file
 
   require OpCodes
   require GasCodes

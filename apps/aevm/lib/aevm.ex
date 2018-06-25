@@ -1,4 +1,8 @@
 defmodule Aevm do
+  @moduledoc """
+    Module for an execution of a contract
+  """
+
   use Bitwise
 
   require OpCodes
@@ -410,8 +414,8 @@ defmodule Aevm do
   end
 
   defp exec(OpCodes._GASPRICE(), state) do
-    gasPrice = State.gasPrice(state)
-    push(gasPrice, state)
+    gas_price = State.gas_price(state)
+    push(gas_price, state)
   end
 
   defp exec(OpCodes._EXTCODESIZE(), state) do
@@ -434,7 +438,7 @@ defmodule Aevm do
   end
 
   defp exec(OpCodes._RETURNDATASIZE(), state) do
-    #Not sure what "output data from the previous call from the current env" means
+    # Not sure what "output data from the previous call from the current env" means
     return_data = State.return_data(state)
     value = byte_size(return_data)
     push(value, state)
@@ -474,28 +478,28 @@ defmodule Aevm do
   end
 
   defp exec(OpCodes._COINBASE(), state) do
-    currentCoinbase = State.currentCoinbase(state)
-    push(currentCoinbase, state)
+    current_coinbase = State.current_coinbase(state)
+    push(current_coinbase, state)
   end
 
   defp exec(OpCodes._TIMESTAMP(), state) do
-    currentTimestamp = State.currentTimestamp(state)
-    push(currentTimestamp, state)
+    current_timestamp = State.current_timestamp(state)
+    push(current_timestamp, state)
   end
 
   defp exec(OpCodes._NUMBER(), state) do
-    currentNumber = State.currentNumber(state)
-    push(currentNumber, state)
+    current_number = State.current_number(state)
+    push(current_number, state)
   end
 
   defp exec(OpCodes._DIFFICULTY(), state) do
-    currentDifficulty = State.currentDifficulty(state)
-    push(currentDifficulty, state)
+    current_difficulty = State.current_difficulty(state)
+    push(current_difficulty, state)
   end
 
   defp exec(OpCodes._GASLIMIT(), state) do
-    currentGasLimit = State.currentGasLimit(state)
-    push(currentGasLimit, state)
+    current_gas_limit = State.current_gas_limit(state)
+    push(current_gas_limit, state)
   end
 
   # 50s: Stack, Memory, Storage and Flow Operations
@@ -1225,8 +1229,8 @@ defmodule Aevm do
 
     cond do
       from_byte + n >= size && from_byte > size ->
-        byteSize = n * 8
-        <<0::size(byteSize)>>
+        byte_size = n * 8
+        <<0::size(byte_size)>>
 
       from_byte + n >= size ->
         extend = (n - (size - from_byte)) * 8
@@ -1362,6 +1366,7 @@ defmodule Aevm do
         remaining_gas = State.gas(state9) + out_gas
         return_state1 = State.set_gas(remaining_gas, state9)
         return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
+
         case ret do
           :ok ->
             {message, _} = Memory.get_area(0, out_size, return_state2)
@@ -1385,8 +1390,10 @@ defmodule Aevm do
     case op_code do
       OpCodes._CALL() ->
         pop(state)
+
       OpCodes._CALLCODE() ->
         pop(state)
+
       OpCodes._DELEGATECALL() ->
         {State.value(state), state}
     end
@@ -1396,8 +1403,10 @@ defmodule Aevm do
     case op_code do
       OpCodes._CALL() ->
         State.address(state)
+
       OpCodes._CALLCODE() ->
         State.address(state)
+
       OpCodes._DELEGATECALL() ->
         State.caller(state)
     end
@@ -1407,8 +1416,10 @@ defmodule Aevm do
     case op_code do
       OpCodes._CALL() ->
         Stack.peek(1, state)
+
       OpCodes._CALLCODE() ->
         State.address(state)
+
       OpCodes._DELEGATECALL() ->
         State.address(state)
     end
@@ -1422,7 +1433,7 @@ defmodule Aevm do
     end
   end
 
-  defp default_opts() do
+  defp default_opts do
     %{
       :execute_calls => true
     }

@@ -1,4 +1,10 @@
 defmodule AevmConst do
+  @moduledoc """
+    Module for defining macros for general util
+  """
+
+  # credo:disable-for-this-file
+
   require Bitwise
 
   defmacro mask256 do quote do: Bitwise.bsl(1, 256) - 1 end

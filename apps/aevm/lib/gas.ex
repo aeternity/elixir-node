@@ -1,4 +1,8 @@
 defmodule Gas do
+  @moduledoc """
+    Module for calculating the gas of a contract
+  """
+
   use Bitwise
 
   require OpCodesUtil
@@ -43,16 +47,18 @@ defmodule Gas do
     gas = peek(0, state)
     value = peek(2, state)
 
-    gas_cost = gas_cost +
-      if value !== 0 do
-        GasCodes._GCALLVALUE()
-      else
-        0
-      end
+    gas_cost =
+      gas_cost +
+        if value !== 0 do
+          GasCodes._GCALLVALUE()
+        else
+          0
+        end
 
     gas_cost +
       if gas_state >= gas_cost do
         gas_one_64_substracted = substract_one_64(gas_state - gas_cost)
+
         if gas < gas_one_64_substracted do
           gas
         else
@@ -143,6 +149,8 @@ defmodule Gas do
   end
 
   defp substract_one_64(value) do
-    value - (value / 64 |> Float.floor() |> round())
+    one_64th = (value / 64)
+    rounded_64th = one_64th |> Float.floor() |> round()
+    value - rounded_64th
   end
 end

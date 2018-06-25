@@ -1,4 +1,9 @@
 defmodule GasCodes do
+  @moduledoc """
+    Module for defining macros for gas cost
+  """
+
+  # credo:disable-for-this-file
 
   # Nothing paid for operations of the set Wzero.
   defmacro _GZERO do quote do: 0 end

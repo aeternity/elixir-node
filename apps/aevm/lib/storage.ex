@@ -1,4 +1,8 @@
 defmodule Storage do
+  @moduledoc """
+    Module for working with the VM's internal storage
+  """
+
   def sstore(key, value, state) do
     storage = State.storage(state)
     new_storage = store(key, value, storage)

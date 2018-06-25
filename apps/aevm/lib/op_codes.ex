@@ -1,4 +1,9 @@
 defmodule OpCodes do
+  @moduledoc """
+    Module for defining macros for the Opcodes
+  """
+
+  # credo:disable-for-this-file
 
   # 0s: Stop and Arithmetic Operations
   defmacro _STOP do quote do: 0x00 end

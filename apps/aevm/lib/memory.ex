@@ -1,4 +1,8 @@
 defmodule Memory do
+  @moduledoc """
+    Module for working with the VM's internal memory
+  """
+
   use Bitwise
 
   def load(address, state) do

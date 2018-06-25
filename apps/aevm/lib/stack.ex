@@ -1,7 +1,7 @@
 defmodule Stack do
-  def new() do
-    []
-  end
+  @moduledoc """
+    Module for working with the VM's internal stack
+  """
 
   def push(arg, state) do
     stack = State.stack(state)

@@ -38,7 +38,7 @@ defmodule AevmTest do
   defp validate_no_post(%{:post => _post} = spec), do: {:should_have_succeeded, spec}
   defp validate_no_post(%{}), do: :ok
 
-  defp test_opts() do
+  defp test_opts do
     %{
       :execute_calls => false
     }
@@ -1042,7 +1042,7 @@ defmodule AevmTest do
     )
   end
 
-  defp config_structure() do
+  defp config_structure do
     %{
       :multiple_atom => %{
         :_info => %{

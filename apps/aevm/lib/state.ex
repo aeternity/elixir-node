@@ -1,4 +1,8 @@
 defmodule State do
+  @moduledoc """
+    Module for handling state
+  """
+
   @spec init_vm(map(), map(), map(), integer(), map()) :: map()
   def init_vm(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
@@ -68,7 +72,6 @@ defmodule State do
       | callcreates
     ])
   end
-
 
   def set_stack(stack, state) do
     Map.put(state, :stack, stack)
@@ -146,7 +149,7 @@ defmodule State do
     Map.get(state, :gas)
   end
 
-  def gasPrice(state) do
+  def gas_price(state) do
     Map.get(state, :gasPrice)
   end
 
@@ -158,23 +161,23 @@ defmodule State do
     Map.get(state, :value)
   end
 
-  def currentCoinbase(state) do
+  def current_coinbase(state) do
     Map.get(state, :currentCoinbase)
   end
 
-  def currentDifficulty(state) do
+  def current_difficulty(state) do
     Map.get(state, :currentDifficulty)
   end
 
-  def currentGasLimit(state) do
+  def current_gas_limit(state) do
     Map.get(state, :currentGasLimit)
   end
 
-  def currentNumber(state) do
+  def current_number(state) do
     Map.get(state, :currentNumber)
   end
 
-  def currentTimestamp(state) do
+  def current_timestamp(state) do
     Map.get(state, :currentTimestamp)
   end
 
@@ -209,11 +212,11 @@ defmodule State do
   end
 
   def calculate_blockhash(nth_block, _a, state) do
-    #TODO: h -> header, maybe needs refactoring for an actual blockchain
-    currentNumber = currentNumber(state)
+    # TODO: h -> header, maybe needs refactoring for an actual blockchain
+    current_number = current_number(state)
 
     cond do
-      nth_block >= currentNumber ->
+      nth_block >= current_number ->
         0
 
       _a == 256 ->
@@ -221,7 +224,7 @@ defmodule State do
 
       # h == 0 -> 0
 
-      currentNumber - 256 > nth_block ->
+      current_number - 256 > nth_block ->
         0
 
       true ->
@@ -262,7 +265,7 @@ defmodule State do
       :caller => caller,
       :data => data,
       :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
-      :gasPrice => State.gasPrice(state),
+      :gasPrice => State.gas_price(state),
       :gas => gas,
       :value => value
     }
@@ -270,11 +273,11 @@ defmodule State do
 
   defp export_env(state) do
     %{
-      :currentCoinbase => State.currentCoinbase(state),
-      :currentDifficulty => State.currentDifficulty(state),
-      :currentGasLimit => State.currentGasLimit(state),
-      :currentNumber => State.currentNumber(state),
-      :currentTimestamp => State.currentTimestamp(state)
+      :currentCoinbase => State.current_coinbase(state),
+      :currentDifficulty => State.current_difficulty(state),
+      :currentGasLimit => State.current_gas_limit(state),
+      :currentNumber => State.current_number(state),
+      :currentTimestamp => State.current_timestamp(state)
     }
   end
 end
