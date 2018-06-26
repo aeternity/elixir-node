@@ -223,10 +223,9 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  @spec remove_expired_oracles(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
-  def remove_expired_oracles(chainstate, block_height) do
-    new_oracles_tree = OracleStateTree.prune(chainstate.oracles, block_height)
-    %{chainstate | oracles: new_oracles_tree}
+  @spec remove_expired(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def remove_expired(chainstate, block_height) do
+    OracleStateTree.prune(chainstate, block_height)
   end
 
   defp ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do

@@ -5,6 +5,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Account.AccountStateTree
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
@@ -17,10 +18,12 @@ defmodule Aecore.Oracle.OracleStateTree do
     }
   end
 
-  @spec prune(oracles_state(), non_neg_integer()) :: oracles_state()
-  def prune(tree, block_height) do
-    expired_oracles = get_expired_oracle_ids(tree, block_height - 1)
-    initialize_deletion(tree, expired_oracles)
+  @spec prune(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def prune(chainstate, block_height) do
+    {new_oracles_state, new_accounts_state} =
+      initialize_deletion({chainstate.oracles, chainstate.accounts}, block_height - 1)
+
+    %{chainstate | oracles: new_oracles_state, accounts: new_accounts_state}
   end
 
   @spec enter_oracle(oracles_state(), map()) :: oracles_state()
@@ -38,9 +41,9 @@ defmodule Aecore.Oracle.OracleStateTree do
     get(tree.oracle_tree, key)
   end
 
-  @spec lookup_oracle?(oracles_state(), binary()) :: boolean()
-  def lookup_oracle?(tree, key) do
-    lookup?(tree, key, :oracle)
+  @spec exists_oracle?(oracles_state(), binary()) :: boolean()
+  def exists_oracle?(tree, key) do
+    exists?(tree, key, :oracle)
   end
 
   @spec enter_query(oracles_state(), map()) :: oracles_state()
@@ -58,22 +61,71 @@ defmodule Aecore.Oracle.OracleStateTree do
     get(tree.oracle_tree, key)
   end
 
-  @spec lookup_query?(oracles_state(), binary()) :: boolean()
-  def lookup_query?(tree, key) do
-    lookup?(tree, key, :oracle_query)
+  @spec exists_query?(oracles_state(), binary()) :: boolean()
+  def exists_query?(tree, key) do
+    exists?(tree, key, :oracle_query)
   end
 
-  defp initialize_deletion(tree, expired_oracles) do
-    expired_cache = get_expired_cache_ids(tree.oracle_cache_tree, expired_oracles)
-
-    new_map_tree =
-      Enum.reduce(expired_oracles, tree, fn {account_pubkey, _expires}, acc_tree ->
-        %{acc_tree | oracle_tree: delete(acc_tree.oracle_tree, account_pubkey)}
-      end)
-
-    Enum.reduce(expired_cache, new_map_tree, fn cache, acc_tree ->
-      %{acc_tree | oracle_cache_tree: delete(acc_tree.oracle_cache_tree, cache)}
+  defp initialize_deletion({oracles_state, _accounts_state} = trees, expires) do
+    oracles_state.oracle_cache_tree
+    |> PatriciaMerkleTree.all_keys()
+    |> Enum.reduce(trees, fn cache_key_encoded, new_trees_state ->
+      cache_key_encoded
+      |> cache_key_decode()
+      |> filter_expired(expires, cache_key_encoded, new_trees_state)
     end)
+  end
+
+  def p(term, title) do
+    IO.inspect("#{title}: #{inspect(term)}")
+    term
+  end
+
+  defp filter_expired({expires, data}, expires, cache_key_encoded, trees) do
+    {updated_oracles_state, updated_accounts_state} = delete_expired(data, trees)
+
+    {
+      Map.put(
+        updated_oracles_state,
+        :oracle_cache_tree,
+        delete(updated_oracles_state.oracle_cache_tree, cache_key_encoded)
+      ),
+      updated_accounts_state
+    }
+  end
+
+  defp filter_expired(_, _, _, trees), do: trees
+
+  defp delete_expired({:oracle, oracle_id}, {oracles_state, accounts_state}) do
+    {
+      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, oracle_id)),
+      accounts_state
+    }
+  end
+
+  defp delete_expired({:query, oracle_id, query_id}, {oracles_state, accounts_state}) do
+    tree_id = oracle_id <> query_id
+    query = get_query(oracles_state, tree_id)
+    new_accounts_state = refund_if_not_response(query, accounts_state)
+
+    {
+      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, tree_id)),
+      new_accounts_state
+    }
+  end
+
+  defp refund_if_not_response(query, accounts_state) do
+    if !query.has_response do
+      p(accounts_state, "accounts_state")
+
+      a =
+        AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+          Map.update!(account, :balance, &(&1 + query.fee))
+        end)
+
+      p(a, "a")
+      a
+    end
   end
 
   defp add_oracle(tree, oracle, how) do
@@ -105,8 +157,10 @@ defmodule Aecore.Oracle.OracleStateTree do
       )
 
     tree_id = oracle_id <> id
-    expires = query.sender_address
+    expires = query.expires
     serialized = Serialization.rlp_encode(query, :oracle_query)
+    p(id, "Q_Id")
+    p(tree_id, "Q_tree_id")
 
     new_oracle_tree =
       case how do
@@ -133,7 +187,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     PatriciaMerkleTree.delete(tree, key)
   end
 
-  defp lookup?(tree, key, where) do
+  defp exists?(tree, key, where) do
     tree
     |> which_tree(where)
     |> get(key) !== :none
@@ -154,26 +208,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(tree, :oracle_query), do: tree.oracle_tree
   defp which_tree(tree, _where), do: tree.oracle_tree
 
-  defp get_expired_oracle_ids(tree, block_height) do
-    tree.oracle_tree
-    |> PatriciaMerkleTree.all_keys()
-    |> Enum.reduce([], fn account_pubkey, acc ->
-      expires = get_oracle(tree, account_pubkey).expires
-
-      if expires == block_height do
-        [{account_pubkey, expires}] ++ acc
-      else
-        acc
-      end
-    end)
-  end
-
-  defp get_expired_cache_ids(_tree, expired_oracles) do
-    for {account_pubkey, expires_at} <- expired_oracles do
-      cache_key_encode({:oracle, account_pubkey}, expires_at)
-    end
-  end
-
   defp cache_push(oracle_cache_tree, key, expires) do
     encoded = cache_key_encode(key, expires)
     enter(oracle_cache_tree, encoded, @dummy_val)
@@ -181,5 +215,9 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp cache_key_encode(key, expires) do
     :sext.encode({expires, key})
+  end
+
+  defp cache_key_decode(key) do
+    :sext.decode(key)
   end
 end

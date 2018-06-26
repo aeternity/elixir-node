@@ -165,7 +165,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      !OracleStateTree.lookup_oracle?(oracles, tx.oracle_address) ->
+      !OracleStateTree.exists_oracle?(oracles, tx.oracle_address) ->
         {:error, "#{__MODULE__}: No oracle registered with the address:
          #{inspect(tx.oracle_address)}"}
 

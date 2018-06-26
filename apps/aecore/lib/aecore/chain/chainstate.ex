@@ -60,7 +60,7 @@ defmodule Aecore.Chain.Chainstate do
 
     case updated_chainstate do
       %Chainstate{} = new_chainstate ->
-        {:ok, Oracle.remove_expired_oracles(new_chainstate, block_height)}
+        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
 
       error ->
         {:error, error}
