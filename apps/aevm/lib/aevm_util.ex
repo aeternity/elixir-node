@@ -257,38 +257,40 @@ defmodule AevmUtil do
         | :execute_calls => State.execute_calls(state9)
       })
 
-    return_state =
-      if State.execute_calls(call_state) do
-        {ret, out_gas} =
-          try do
-            {:ok, out_state} = Aevm.loop(call_state)
-            {:ok, State.gas(out_state)}
-          catch
-            {:error, _, _} ->
-              {:error, 0}
-          end
+    if State.execute_calls(call_state) do
+      {ret, out_gas} =
+        try do
+          {:ok, out_state} = Aevm.loop(call_state)
+          {1, State.gas(out_state)}
+        catch
+          {:error, _, _} ->
+            {0, 0}
+        end
 
-        remaining_gas = State.gas(state9) + out_gas
-        return_state1 = State.set_gas(remaining_gas, state9)
-        return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
+      remaining_gas = State.gas(state9) + out_gas
+      return_state1 = State.set_gas(remaining_gas, state9)
+      return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
 
+      final_return_state =
         case ret do
-          :ok ->
+          1 ->
             {message, _} = Memory.get_area(0, out_size, return_state2)
             return_state3 = Memory.write_area(out_offset, message, return_state2)
             mem_gas_cost = Gas.memory_gas_cost(return_state3, return_state2)
             State.set_gas(remaining_gas - mem_gas_cost, return_state3)
 
-          :error ->
+          0 ->
             return_state2
         end
-      else
-        remaining_gas = State.gas(state9) + call_gas
-        state10 = State.set_gas(remaining_gas, state9)
-        State.add_callcreate(in_area, dest, call_gas, value, state10)
-      end
 
-    {1, return_state}
+      {ret, final_return_state}
+    else
+      remaining_gas = State.gas(state9) + call_gas
+      state10 = State.set_gas(remaining_gas, state9)
+      state11 = State.add_callcreate(in_area, dest, call_gas, value, state10)
+
+      {1, state11}
+    end
   end
 
   defp determine_call_value(state, op_code) do

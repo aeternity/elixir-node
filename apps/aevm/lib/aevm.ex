@@ -25,23 +25,23 @@ defmodule Aevm do
       op_name = OpCodesUtil.mnemonic(op_code)
 
       dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
-      state1 = exec(op_code, state)
+      state_after_exec = exec(op_code, state)
 
-      mem_gas_cost = Gas.memory_gas_cost(state1, state)
+      mem_gas_cost = Gas.memory_gas_cost(state_after_exec, state)
       op_gas_cost = Gas.op_gas_cost(op_code)
 
       gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
 
-      state2 =
+      updated_gas_state =
         if Enum.member?([OpCodes._CALL(), OpCodes._CALLCODE(), OpCodes._DELEGATECALL()], op_code) do
-          state1
+          state_after_exec
         else
-          Gas.update_gas(gas_cost, state1)
+          Gas.update_gas(gas_cost, state_after_exec)
         end
 
-      state3 = State.inc_cp(state2)
+      updated_current_position_state = State.inc_cp(updated_gas_state)
 
-      loop1(state3)
+      loop1(updated_current_position_state)
     end
   end
 
