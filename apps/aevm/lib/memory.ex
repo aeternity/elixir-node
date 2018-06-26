@@ -5,6 +5,7 @@ defmodule Memory do
 
   use Bitwise
 
+  @spec load(integer(), map()) :: {integer(), map()}
   def load(address, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
@@ -21,6 +22,7 @@ defmodule Memory do
     {binary_word_to_integer(value_binary), State.set_memory(memory1, state)}
   end
 
+  @spec store(integer(), integer(), map()) :: map()
   def store(address, value, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
@@ -53,6 +55,7 @@ defmodule Memory do
     State.set_memory(memory3, state)
   end
 
+  @spec store8(integer(), integer(), map()) :: map()
   def store8(address, value, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
@@ -67,16 +70,19 @@ defmodule Memory do
     State.set_memory(memory2, state)
   end
 
+  @spec memory_size_words(map()) :: non_neg_integer()
   def memory_size_words(state) do
     memory = State.memory(state)
     Map.get(memory, :size)
   end
 
+  @spec memory_size_bytes(map()) :: non_neg_integer()
   def memory_size_bytes(state) do
     memory_size_words = memory_size_words(state)
     memory_size_words * 32
   end
 
+  @spec get_area(integer(), integer(), map()) :: {binary() , map()}
   def get_area(from, bytes, state) do
     memory = State.memory(state)
 
@@ -87,6 +93,7 @@ defmodule Memory do
     {area, State.set_memory(memory1, state)}
   end
 
+  @spec write_area(integer(), integer(), map()) :: map()
   def write_area(from, bytes, state) do
     memory = State.memory(state)
 

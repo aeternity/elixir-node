@@ -3,16 +3,20 @@ defmodule Stack do
     Module for working with the VM's internal stack
   """
 
+  @maximum_stack_length 1024
+
+  @spec push(any(), map()) :: :ok | {:error, String.t(), list()}
   def push(arg, state) do
     stack = State.stack(state)
 
-    if length(stack) < 1024 do
+    if length(stack) < @maximum_stack_length do
       State.set_stack([arg | stack], state)
     else
       throw({:error, "out_of_stack", stack})
     end
   end
 
+  @spec pop(map()) :: {any(), list()} | {:error, String.t(), list()}
   def pop(state) do
     stack = State.stack(state)
 
@@ -22,6 +26,7 @@ defmodule Stack do
     end
   end
 
+  @spec peek(integer(), map()) :: any() | {:error, String.t(), list()}
   def peek(index, state) when index >= 0 do
     stack = State.stack(state)
 
@@ -35,6 +40,7 @@ defmodule Stack do
     end
   end
 
+  @spec dup(integer(), map()) :: any() | {:error, String.t(), list()}
   def dup(index, state) do
     stack = State.stack(state)
 
@@ -52,6 +58,7 @@ defmodule Stack do
     end
   end
 
+  @spec swap(integer(), map()) :: map() | {:error, String.t(), list()}
   def swap(index, state) do
     stack = State.stack(state)
 

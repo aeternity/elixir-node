@@ -42,6 +42,8 @@ defmodule State do
     }
   end
 
+  @spec init_for_call(integer(), integer(), integer(), binary(), integer(), integer(), map(), map()) ::
+          map()
   def init_for_call(gas, to, value, data, caller, dest, caller_state, opts) do
     exec = export_exec(gas, to, value, data, caller, dest, caller_state)
     env = export_env(caller_state)
@@ -280,4 +282,4 @@ defmodule State do
       :currentTimestamp => State.current_timestamp(state)
     }
   end
-end
+  end

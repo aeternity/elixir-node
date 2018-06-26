@@ -3,12 +3,14 @@ defmodule Storage do
     Module for working with the VM's internal storage
   """
 
+  @spec sstore(integer(), integer(), map()) :: map()
   def sstore(key, value, state) do
     storage = State.storage(state)
     new_storage = store(key, value, storage)
     State.set_storage(new_storage, state)
   end
 
+  @spec sload(integer(), map()) :: map()
   def sload(key, state) do
     storage = State.storage(state)
     Map.get(storage, key, 0)

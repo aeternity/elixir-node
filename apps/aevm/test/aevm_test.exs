@@ -61,7 +61,7 @@ defmodule AevmTest do
 
       {:ok, state}
     catch
-      {:error, reason, state} ->
+      {:error, _reason, state} ->
         validate_no_post(spec)
 
         {:error, state}
