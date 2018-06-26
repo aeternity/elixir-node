@@ -72,6 +72,9 @@ defmodule Aecore.Tx.DataTx do
   - fee: The amount of tokens given to the miner
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
   """
+
+  @account_bin_id Application.get_env(:aecore, :binary_ids)[:account]
+
   defstruct [:type, :payload, :senders, :fee, :nonce, :ttl]
   use ExConstructor
 
@@ -331,10 +334,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: SpendTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.payload.receiver,
       tx.payload.amount,
       tx.fee,
@@ -353,10 +364,18 @@ defmodule Aecore.Tx.DataTx do
   defp encode(tag, version, %DataTx{type: OracleRegistrationTx} = tx) do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
       "$æx" <> Serialization.transform_item(tx.payload.response_format),
@@ -378,10 +397,18 @@ defmodule Aecore.Tx.DataTx do
     ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
 
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.oracle_address,
       "$æx" <> Serialization.transform_item(tx.payload.query_data),
@@ -402,10 +429,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: OracleResponseTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.query_id,
       "$æx" <> Serialization.transform_item(tx.payload.response),
@@ -421,10 +456,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: OracleExtendTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.ttl,
       tx.fee,
@@ -439,10 +482,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NamePreClaimTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.commitment,
       tx.fee,
@@ -457,10 +508,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameClaimTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.name,
       tx.payload.name_salt,
@@ -476,10 +535,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameUpdateTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.hash,
       tx.payload.client_ttl,
@@ -497,10 +564,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameRevokeTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.hash,
       tx.fee,
@@ -515,10 +590,18 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameTransferTx} = tx) do
+    senders =
+      for acc <- tx.senders do
+        case Serialization.add_id(:account, acc) do
+          {:ok, tagged_pub_key} -> tagged_pub_key
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     list = [
       tag,
       version,
-      tx.senders,
+      senders,
       tx.nonce,
       tx.payload.hash,
       tx.payload.target,
@@ -538,8 +621,26 @@ defmodule Aecore.Tx.DataTx do
     decode(tag, values)
   end
 
-  defp decode(SpendTx, [senders, receiver, amount, fee, ttl, nonce, payload]) do
+  defp decode(SpendTx, [
+         encoded_senders,
+         encoded_receiver,
+         amount,
+         fee,
+         ttl,
+         nonce,
+         payload
+       ]) do
     {:ok, vsn} = Serialization.get_version(SpendTx)
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
+    {:ok, receiver} = Serialization.extract_id(encoded_receiver)
 
     DataTx.init(
       SpendTx,
@@ -557,9 +658,9 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(OracleQueryTx, [
-         senders,
+         encoded_senders,
          nonce,
-         oracle_address,
+         encoded_oracle_address,
          encoded_query_data,
          query_fee,
          encoded_query_ttl_type,
@@ -569,6 +670,16 @@ defmodule Aecore.Tx.DataTx do
          fee,
          ttl
        ]) do
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
+    {:ok, oracle_address} = Serialization.extract_id(encoded_oracle_address)
+
     query_ttl_type =
       encoded_query_ttl_type
       |> Serialization.transform_item(:int)
@@ -603,7 +714,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(OracleRegistrationTx, [
-         senders,
+         encoded_senders,
          nonce,
          encoded_query_format,
          encoded_response_format,
@@ -613,6 +724,14 @@ defmodule Aecore.Tx.DataTx do
          fee,
          ttl
        ]) do
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     ttl_type =
       encoded_ttl_type
       |> Serialization.transform_item(:int)
@@ -639,9 +758,24 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(OracleResponseTx, [senders, nonce, encoded_query_id, encoded_response, fee, ttl]) do
+  defp decode(OracleResponseTx, [
+         encoded_senders,
+         nonce,
+         encoded_query_id,
+         encoded_response,
+         fee,
+         ttl
+       ]) do
     query_id = decode_format(encoded_query_id)
     response = decode_format(encoded_response)
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     payload = %{
       query_id: query_id,
@@ -658,10 +792,18 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(OracleExtendTx, [senders, nonce, ttl_value, fee, ttl]) do
+  defp decode(OracleExtendTx, [encoded_senders, nonce, ttl_value, fee, ttl]) do
     payload = %{
       ttl: Serialization.transform_item(ttl_value, :int)
     }
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     DataTx.init(
       OracleExtendTx,
@@ -673,8 +815,16 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NamePreClaimTx, [senders, nonce, commitment, fee, ttl]) do
+  defp decode(NamePreClaimTx, [encoded_senders, nonce, commitment, fee, ttl]) do
     payload = %NamePreClaimTx{commitment: commitment}
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     DataTx.init(
       NamePreClaimTx,
@@ -686,8 +836,16 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameClaimTx, [senders, nonce, name, name_salt, fee, ttl]) do
+  defp decode(NameClaimTx, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     DataTx.init(
       NameClaimTx,
@@ -699,7 +857,15 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameUpdateTx, [senders, nonce, hash, name_ttl, pointers, ttl, fee, ttl]) do
+  defp decode(NameUpdateTx, [encoded_senders, nonce, hash, name_ttl, pointers, ttl, fee, ttl]) do
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
+
     payload = %NameUpdateTx{
       client_ttl: Serialization.transform_item(ttl, :int),
       expire_by: Serialization.transform_item(name_ttl, :int),
@@ -717,8 +883,16 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameRevokeTx, [senders, nonce, hash, fee, ttl]) do
+  defp decode(NameRevokeTx, [encoded_senders, nonce, hash, fee, ttl]) do
     payload = %NameRevokeTx{hash: hash}
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     DataTx.init(
       NameRevokeTx,
@@ -730,8 +904,16 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameTransferTx, [senders, nonce, hash, recipient, fee, ttl]) do
+  defp decode(NameTransferTx, [encoded_senders, nonce, hash, recipient, fee, ttl]) do
     payload = %NameTransferTx{hash: hash, target: recipient}
+
+    senders =
+      for sender <- encoded_senders do
+        case Serialization.extract_id(sender) do
+          {:ok, extracted_data} -> extracted_data
+          {:error, msg} -> {:error, msg}
+        end
+      end
 
     DataTx.init(
       NameTransferTx,
