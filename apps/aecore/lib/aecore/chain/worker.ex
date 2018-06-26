@@ -84,7 +84,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec top_block_chain_state() :: Chainstate.t()
   def top_block_chain_state do
-    GenServer.call(__MODULE__, :top_block_info).chain_state
+    GenServer.call(__MODULE__, :top_block_info)[top_block_hash()]
   end
 
   @spec top_block_hash() :: binary()
@@ -206,8 +206,9 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_chain_state_by_height(non_neg_integer(), binary() | nil) ::
-          Chainstate.t() | {:error, String.t()}
+  Chainstate.t() | {:error, String.t()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
+    IO.inspect(chain_hash, label: "Chain hash")
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error ->
         error
@@ -401,7 +402,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{
         ## Transfrom from chain state
         :chain_state => %{
-          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+          new_block_hash => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
         },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
@@ -422,7 +423,7 @@ defmodule Aecore.Chain.Worker do
     else
       Persistence.batch_write(%{
         :chain_state => %{
-          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+          new_block_hash => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
         },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
@@ -465,7 +466,9 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_chainstates()
+    chain_states = Persistence.get_all_chainstates(top_hash)
+
+    IO.inspect(chain_states, label: "Persisted all chain states")
 
     is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
 
@@ -495,7 +498,8 @@ defmodule Aecore.Chain.Worker do
           Map.put(info, :block, block)
         end)
         |> Map.update!(top_hash, fn info ->
-          Map.put(info, :chain_state, top_chain_state)
+          IO.inspect(top_chain_state, label: "top chain state")
+          Map.put(info, top_hash, top_chain_state)
         end)
       end
 
@@ -612,15 +616,17 @@ defmodule Aecore.Chain.Worker do
 
   defp get_block_info_by_height(height, chain_hash) do
     begin_hash =
-      if chain_hash == nil do
-        top_block_hash()
-      else
+    if chain_hash == nil do
+      top_block_hash()
+    else
+      IO.inspect(chain_hash, label: "Chain hash")
         chain_hash
       end
 
     blocks_data_map = GenServer.call(__MODULE__, :blocks_data_map)
+    IO.inspect(blocks_data_map, label: "Blocks data map")
     n = blocks_data_map[begin_hash].block.header.height - height
-
+    IO.inspect(n, label: "N")
     if n < 0 do
       {:error, :chain_too_short}
     else
