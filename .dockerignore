@@ -38,3 +38,6 @@ apps/aecore/logs
 
 # Ignore linter directories
 .elixir_ls/
+
+# Ignore ethereum VM tests
+/aevm_external/
