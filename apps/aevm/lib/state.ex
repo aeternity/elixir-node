@@ -11,7 +11,7 @@ defmodule State do
       :stack => [],
       :memory => %{size: 0},
       :storage => init_storage(Map.get(exec, :address), pre),
-      :cp => 0,
+      :pc => 0,
       :jumpdests => [],
       :out => <<>>,
       :logs => [],
@@ -87,8 +87,8 @@ defmodule State do
     Map.put(state, :storage, storage)
   end
 
-  def set_cp(cp, state) do
-    Map.put(state, :cp, cp)
+  def set_pc(pc, state) do
+    Map.put(state, :pc, pc)
   end
 
   def set_out(out, state) do
@@ -123,8 +123,8 @@ defmodule State do
     Map.get(state, :code)
   end
 
-  def cp(state) do
-    Map.get(state, :cp)
+  def pc(state) do
+    Map.get(state, :pc)
   end
 
   def jumpdests(state) do
@@ -208,9 +208,9 @@ defmodule State do
     Map.get(state, :return_data)
   end
 
-  def inc_cp(state) do
-    cp = Map.get(state, :cp)
-    Map.put(state, :cp, cp + 1)
+  def inc_pc(state) do
+    pc = Map.get(state, :pc)
+    Map.put(state, :pc, pc + 1)
   end
 
   def calculate_blockhash(nth_block, _a, state) do

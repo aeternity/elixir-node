@@ -19,7 +19,7 @@ defmodule AevmUtil do
   @spec stop_exec(map()) :: map()
   def stop_exec(state) do
     code = State.code(state)
-    State.set_cp(byte_size(code), state)
+    State.set_pc(byte_size(code), state)
   end
 
   def sdiv(_value1, 0), do: 0
@@ -78,32 +78,32 @@ defmodule AevmUtil do
 
   @spec get_op_code(map()) :: integer()
   def get_op_code(state) do
-    cp = State.cp(state)
+    pc = State.pc(state)
     code = State.code(state)
-    prev_bits = cp * 8
+    prev_bits = pc * 8
 
     <<_::size(prev_bits), op_code::size(8), _::binary>> = code
 
     op_code
   end
 
-  @spec move_cp_n_bytes(integer(), map()) :: {integer(), map()}
-  def move_cp_n_bytes(bytes, state) do
-    old_cp = State.cp(state)
+  @spec move_pc_n_bytes(integer(), map()) :: {integer(), map()}
+  def move_pc_n_bytes(bytes, state) do
+    old_pc = State.pc(state)
     code = State.code(state)
 
-    curr_cp = old_cp + 1
-    prev_bits = curr_cp * 8
+    curr_pc = old_pc + 1
+    prev_bits = curr_pc * 8
     value_size_bits = bytes * 8
     code_byte_size = byte_size(code)
 
     value =
       cond do
-        curr_cp > code_byte_size ->
+        curr_pc > code_byte_size ->
           0
 
-        curr_cp + bytes >= code_byte_size ->
-          extend = (curr_cp + bytes - code_byte_size) * 8
+        curr_pc + bytes >= code_byte_size ->
+          extend = (curr_pc + bytes - code_byte_size) * 8
           <<_::size(prev_bits), value::size(value_size_bits)>> = <<code::binary, 0::size(extend)>>
           value
 
@@ -112,7 +112,7 @@ defmodule AevmUtil do
           value
       end
 
-    state1 = State.set_cp(old_cp + bytes, state)
+    state1 = State.set_pc(old_pc + bytes, state)
 
     {value, state1}
   end
@@ -159,32 +159,32 @@ defmodule AevmUtil do
     :sha3.hash(256, data)
   end
 
-  def load_jumpdests(%{cp: cp, code: code} = state) when cp >= byte_size(code) do
-    State.set_cp(0, state)
+  def load_jumpdests(%{pc: pc, code: code} = state) when pc >= byte_size(code) do
+    State.set_pc(0, state)
   end
 
   def load_jumpdests(state) do
-    cp = State.cp(state)
+    pc = State.pc(state)
 
     op_code = get_op_code(state)
 
-    state1 =
+    loaded_jumpdests_state =
       cond do
         op_code == OpCodes._JUMPDEST() ->
           jumpdests = State.jumpdests(state)
-          %{state | jumpdests: [cp | jumpdests]}
+          %{state | jumpdests: [pc | jumpdests]}
 
         op_code >= OpCodes._PUSH1() && op_code <= OpCodes._PUSH32() ->
           bytes = op_code - OpCodes._PUSH1() + 1
-          {_, state1} = move_cp_n_bytes(bytes, state)
-          state1
+          {_, moved_pc_state} = move_pc_n_bytes(bytes, state)
+          moved_pc_state
 
         true ->
           state
       end
 
-    state2 = State.inc_cp(state1)
-    load_jumpdests(state2)
+    updated_pc_state = State.inc_pc(loaded_jumpdests_state)
+    load_jumpdests(updated_pc_state)
   end
 
   @spec log(list(), integer(), integer(), map()) :: map()
@@ -222,41 +222,39 @@ defmodule AevmUtil do
   @spec call(integer(), map()) :: {integer(), map()}
   def call(op_code, state) do
     if State.calldepth(state) < 1024 do
-      call1(op_code, state)
+      execute_call(op_code, state)
     else
       {0, state}
     end
   end
 
-  @spec call1(integer(), map()) :: {integer(), map()}
-  defp call1(op_code, state) do
-    {gas, state1} = Stack.pop(state)
-    {to, state2} = Stack.pop(state1)
-    {value, state3} = determine_call_value(op_code, state2)
-    {in_offset, state4} = Stack.pop(state3)
-    {in_size, state5} = Stack.pop(state4)
-    {out_offset, state6} = Stack.pop(state5)
-    {out_size, state7} = Stack.pop(state6)
+  defp execute_call(op_code, state) do
+    {gas, to, value, input_offset, input_size, output_offset, output_size,
+     state_popped_call_params} = get_call_params(op_code, state)
 
-    # check gas
-    op_code = get_op_code(state7)
-    op_name = OpCodesUtil.mnemonic(op_code)
-    dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, state)
-    mem_gas_cost = Gas.memory_gas_cost(state7, state)
-    op_gas_cost = Gas.op_gas_cost(op_code)
-    gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
-    state8 = Gas.update_gas(gas_cost, state7)
+    spent_call_gas_state = spend_call_gas(state_popped_call_params, state)
 
-    {in_area, state9} = Memory.get_area(in_offset, in_size, state8)
+    {input_area, updated_memory_size_state} =
+      Memory.get_area(input_offset, input_size, spent_call_gas_state)
+
     call_gas = adjust_call_gas(gas, value)
-    caller = determine_call_caller(op_code, state9)
+    caller = determine_call_caller(op_code, updated_memory_size_state)
     dest = determine_call_dest(op_code, state)
 
     call_state =
-      State.init_for_call(call_gas, to, value, in_area, caller, dest, state9, %{
-        default_opts()
-        | :execute_calls => State.execute_calls(state9)
-      })
+      State.init_for_call(
+        call_gas,
+        to,
+        value,
+        input_area,
+        caller,
+        dest,
+        updated_memory_size_state,
+        %{
+          default_opts()
+          | :execute_calls => State.execute_calls(updated_memory_size_state)
+        }
+      )
 
     if State.execute_calls(call_state) do
       {ret, out_gas} =
@@ -268,33 +266,65 @@ defmodule AevmUtil do
             {0, 0}
         end
 
-      remaining_gas = State.gas(state9) + out_gas
-      return_state1 = State.set_gas(remaining_gas, state9)
-      return_state2 = State.add_callcreate(in_area, dest, call_gas, value, return_state1)
+      remaining_gas = State.gas(updated_memory_size_state) + out_gas
+      updated_gas_state = State.set_gas(remaining_gas, updated_memory_size_state)
 
-      final_return_state =
+      added_callcreate_state =
+        State.add_callcreate(input_area, dest, call_gas, value, updated_gas_state)
+
+      final_state =
         case ret do
           1 ->
-            {message, _} = Memory.get_area(0, out_size, return_state2)
-            return_state3 = Memory.write_area(out_offset, message, return_state2)
-            mem_gas_cost = Gas.memory_gas_cost(return_state3, return_state2)
-            State.set_gas(remaining_gas - mem_gas_cost, return_state3)
+            {message, _} = Memory.get_area(0, output_size, added_callcreate_state)
+
+            updated_memory_size_state =
+              Memory.write_area(output_offset, message, added_callcreate_state)
+
+            mem_gas_cost = Gas.memory_gas_cost(updated_memory_size_state, added_callcreate_state)
+            State.set_gas(remaining_gas - mem_gas_cost, updated_memory_size_state)
 
           0 ->
-            return_state2
+            added_callcreate_state
         end
 
-      {ret, final_return_state}
+      {ret, final_state}
     else
-      remaining_gas = State.gas(state9) + call_gas
-      state10 = State.set_gas(remaining_gas, state9)
-      state11 = State.add_callcreate(in_area, dest, call_gas, value, state10)
+      remaining_gas = State.gas(updated_memory_size_state) + call_gas
+      updated_memory_size_state = State.set_gas(remaining_gas, updated_memory_size_state)
 
-      {1, state11}
+      added_callcreate_state =
+        State.add_callcreate(input_area, dest, call_gas, value, updated_memory_size_state)
+
+      {1, added_callcreate_state}
     end
   end
 
-  @spec determine_call_value(integer(), map()) :: any()
+  defp get_call_params(op_code, state) do
+    {gas, state_popped_gas} = Stack.pop(state)
+    {to, state_popped_to} = Stack.pop(state_popped_gas)
+    {value, state_popped_value} = determine_call_value(op_code, state_popped_to)
+    {input_offset, state_popped_input_offset} = Stack.pop(state_popped_value)
+    {input_size, state_popped_input_size} = Stack.pop(state_popped_input_offset)
+    {output_offset, state_popped_output_offset} = Stack.pop(state_popped_input_size)
+    {output_size, state_popped_output_size} = Stack.pop(state_popped_output_offset)
+
+    {gas, to, value, input_offset, input_size, output_offset, output_size,
+     state_popped_output_size}
+  end
+
+  defp spend_call_gas(current_state, initial_state) do
+    op_code = get_op_code(initial_state)
+    op_name = OpCodesUtil.mnemonic(op_code)
+
+    dynamic_gas_cost = Gas.dynamic_gas_cost(op_name, initial_state)
+    mem_gas_cost = Gas.memory_gas_cost(current_state, initial_state)
+    op_gas_cost = Gas.op_gas_cost(op_code)
+
+    gas_cost = mem_gas_cost + dynamic_gas_cost + op_gas_cost
+
+    Gas.update_gas(gas_cost, current_state)
+  end
+
   defp determine_call_value(op_code, state) do
     case op_code do
       OpCodes._CALL() ->
@@ -308,7 +338,6 @@ defmodule AevmUtil do
     end
   end
 
-  @spec determine_call_caller(integer(), map) :: any()
   defp determine_call_caller(op_code, state) do
     case op_code do
       OpCodes._CALL() ->
@@ -322,7 +351,6 @@ defmodule AevmUtil do
     end
   end
 
-  @spec determine_call_caller(integer(), map()) :: any()
   defp determine_call_dest(op_code, state) do
     case op_code do
       OpCodes._CALL() ->
@@ -336,7 +364,6 @@ defmodule AevmUtil do
     end
   end
 
-  @spec adjust_call_gas(integer(), integer()) :: integer()
   defp adjust_call_gas(gas, value) do
     if value != 0 do
       gas + GasCodes._GCALLSTIPEND()

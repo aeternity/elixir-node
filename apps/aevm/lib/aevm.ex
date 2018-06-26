@@ -16,10 +16,10 @@ defmodule Aevm do
   end
 
   defp loop1(state) do
-    cp = State.cp(state)
+    pc = State.pc(state)
     code = State.code(state)
 
-    if cp >= byte_size(code) do
+    if pc >= byte_size(code) do
       {:ok, state}
     else
       op_code = AevmUtil.get_op_code(state)
@@ -40,9 +40,9 @@ defmodule Aevm do
           Gas.update_gas(gas_cost, state_after_exec)
         end
 
-      updated_current_position_state = State.inc_cp(updated_gas_state)
+      updated_pc_state = State.inc_pc(updated_gas_state)
 
-      loop1(updated_current_position_state)
+      loop1(updated_pc_state)
     end
   end
 
@@ -553,7 +553,7 @@ defmodule Aevm do
     if Enum.member?(jumpdests, position) do
       jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
       state1 = Gas.update_gas(jumpdest_cost, state)
-      State.set_cp(position, state1)
+      State.set_pc(position, state1)
     else
       throw({:error, "invalid_jump_dest, #{position}", state})
     end
@@ -569,7 +569,7 @@ defmodule Aevm do
       if Enum.member?(jumpdests, position) do
         jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
         state1 = Gas.update_gas(jumpdest_cost, state)
-        State.set_cp(position, state1)
+        State.set_pc(position, state1)
       else
         throw({:error, "invalid_jump_dest, #{position}", state})
       end
@@ -579,7 +579,7 @@ defmodule Aevm do
   end
 
   defp exec(OpCodes._PC(), state) do
-    pc = State.cp(state)
+    pc = State.pc(state)
     Stack.push(pc, state)
   end
 
@@ -603,224 +603,224 @@ defmodule Aevm do
 
   defp exec(OpCodes._PUSH1() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH2() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH3() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH4() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH5() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH6() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH7() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH8() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH9() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH10() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH11() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH12() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH13() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH14() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH15() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH16() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH17() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH18() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH19() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH20() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH21() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH22() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH23() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH24() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH25() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH26() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH27() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH28() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH29() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH30() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH31() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
 
   defp exec(OpCodes._PUSH32() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
-    {result, state1} = AevmUtil.move_cp_n_bytes(bytes, state)
+    {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
 
     Stack.push(result, state1)
   end
