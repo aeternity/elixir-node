@@ -117,6 +117,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     nonce = DataTx.nonce(data_tx)
+    :io.format("Sender: ~p~nAccount: ~p", [sender, AccountStateTree.get(accounts, sender)])
 
     updated_accounts_state =
       accounts

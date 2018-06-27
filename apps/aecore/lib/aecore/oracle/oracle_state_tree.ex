@@ -72,6 +72,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     |> Enum.reduce(trees, fn cache_key_encoded, new_trees_state ->
       cache_key_encoded
       |> cache_key_decode()
+      |> p("----------------------")
       |> filter_expired(expires, cache_key_encoded, new_trees_state)
     end)
   end
@@ -115,16 +116,12 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp refund_if_not_response(query, accounts_state) do
-    if !query.has_response do
-      p(accounts_state, "accounts_state")
-
-      a =
-        AccountStateTree.update(accounts_state, query.sender_address, fn account ->
-          Map.update!(account, :balance, &(&1 + query.fee))
-        end)
-
-      p(a, "a")
-      a
+    if not query.has_response do
+      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+        Map.update!(account, :balance, &(&1 + query.fee))
+      end)
+    else
+      accounts_state
     end
   end
 

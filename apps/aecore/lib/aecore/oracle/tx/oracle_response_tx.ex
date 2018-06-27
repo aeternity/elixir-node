@@ -121,7 +121,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !OracleStateTree.lookup_oracle?(oracles, sender) ->
+      !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
@@ -130,7 +130,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
-      !OracleStateTree.lookup_query?(oracles, tx.query_id) ->
+      !OracleStateTree.exists_query?(oracles, tx.query_id) ->
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->

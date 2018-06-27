@@ -95,7 +95,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !OracleStateTree.lookup_oracle?(oracles, sender) ->
+      !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
