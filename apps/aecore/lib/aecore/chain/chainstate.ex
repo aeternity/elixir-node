@@ -13,6 +13,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Oracle.Oracle
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -86,7 +87,7 @@ defmodule Aecore.Chain.Chainstate do
             Account.apply_transfer!(
               acc,
               block_height,
-              Miner.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
+              GovernanceConstants.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
             )
           end)
 

@@ -15,6 +15,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
+  alias Aecore.Governance.GovernanceConstants
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -168,7 +169,7 @@ defmodule MultipleTransactionsTest do
       Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
 
     assert miner_balance_after_mining ==
-             miner_balance_before_mining + Miner.coinbase_transaction_amount() + 20
+             miner_balance_before_mining + GovernanceConstants.coinbase_transaction_amount() + 20
   end
 
   defp create_signed_tx(sender, receiver, amount, nonce, fee) do

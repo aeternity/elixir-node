@@ -14,6 +14,7 @@ defmodule AecoreChainTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Target
+  alias Aecore.Governance.GovernanceConstants
 
   setup do
     # Persistence.delete_all_blocks()
@@ -70,7 +71,10 @@ defmodule AecoreChainTest do
     top_block_hash_next = BlockValidation.block_header_hash(top_block_next.header)
 
     blocks_for_target_calculation =
-      Chain.get_blocks(top_block_hash_next, Target.get_number_of_blocks())
+      Chain.get_blocks(
+        top_block_hash_next,
+        GovernanceConstants.number_of_blocks_for_target_recalculation()
+      )
 
     top_block_hash_next_base58 = top_block_hash_next |> Header.base58c_encode()
     [top_block_from_chain | [previous_block | []]] = Chain.get_blocks(top_block_hash_next, 2)

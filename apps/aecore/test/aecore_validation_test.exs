@@ -19,6 +19,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
+  alias Aecore.Governance.GovernanceConstants
 
   setup_all do
     Code.require_file("test_utils.ex", "./test")
@@ -52,7 +53,10 @@ defmodule AecoreValidationTest do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     blocks_for_target_calculation =
-      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
+      Chain.get_blocks(
+        top_block_hash,
+        GovernanceConstants.number_of_blocks_for_target_recalculation()
+      )
 
     _ =
       BlockValidation.calculate_and_validate_block(
@@ -85,7 +89,10 @@ defmodule AecoreValidationTest do
     top_block_hash = BlockValidation.block_header_hash(top_block.header)
 
     blocks_for_target_calculation =
-      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
+      Chain.get_blocks(
+        top_block_hash,
+        GovernanceConstants.number_of_blocks_for_target_recalculation()
+      )
 
     _ =
       BlockValidation.calculate_and_validate_block(

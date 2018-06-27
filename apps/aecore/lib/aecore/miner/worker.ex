@@ -16,11 +16,11 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
   @mersenne_prime 2_147_483_647
-  @coinbase_transaction_amount 100
 
   def start_link(_args) do
     GenServer.start_link(
@@ -219,7 +219,10 @@ defmodule Aecore.Miner.Worker do
     candidate_height = top_block.header.height + 1
 
     blocks_for_target_calculation =
-      Chain.get_blocks(top_block_hash, Target.get_number_of_blocks())
+      Chain.get_blocks(
+        top_block_hash,
+        GovernanceConstants.number_of_blocks_for_target_recalculation()
+      )
 
     timestamp = System.system_time(:milliseconds)
 
@@ -295,8 +298,6 @@ defmodule Aecore.Miner.Worker do
 
     %Block{header: unmined_header, txs: valid_txs}
   end
-
-  def coinbase_transaction_amount, do: @coinbase_transaction_amount
 
   def next_nonce(@mersenne_prime), do: 0
   def next_nonce(nonce), do: nonce + 1
