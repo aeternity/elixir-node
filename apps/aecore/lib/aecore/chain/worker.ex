@@ -467,17 +467,6 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_chainstates(top_hash)
-
-    is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
-
-    top_chain_state =
-      if is_empty_chain_state do
-        state.blocks_data_map[top_hash].chain_state
-      else
-        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
-      end
-
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
