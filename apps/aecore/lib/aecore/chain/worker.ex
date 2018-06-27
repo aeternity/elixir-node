@@ -141,7 +141,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_header(binary()) :: Block.t() | {:error, reason()}
+  @spec get_header(binary()) :: Header.t() | {:error, reason()}
   def get_header(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
       {:error, _reason} ->
@@ -506,7 +506,8 @@ defmodule Aecore.Chain.Worker do
 
     if Enum.empty?(blocks_map) do
       [block_hash] = Map.keys(state.blocks_data_map)
-      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+      %{block: block} = state.blocks_data_map[block_hash]
+      Persistence.add_block_by_hash(block_hash, block)
     end
 
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()

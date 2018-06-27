@@ -408,8 +408,7 @@ defmodule Aecore.Peers.Sync do
 
   defp agree_on_height(peer_pid, r_header, r_height, l_height, agreed_hash)
        when r_height == l_height do
-    %{header: header} = r_header
-    r_hash = BlockValidation.block_header_hash(header)
+    r_hash = BlockValidation.block_header_hash(r_header)
 
     case Persistence.get_block_by_hash(r_hash) do
       {:ok, _} ->
@@ -424,7 +423,7 @@ defmodule Aecore.Peers.Sync do
   defp agree_on_height(peer_pid, _r_header, r_height, l_height, agreed_hash)
        when r_height != l_height do
     case PeerConnection.get_header_by_height(l_height, peer_pid) do
-      {:ok, header} ->
+      {:ok, %{header: header}} ->
         agree_on_height(peer_pid, header, l_height, l_height, agreed_hash)
 
       {:error, _reason} ->
