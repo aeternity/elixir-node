@@ -2,6 +2,8 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
+import_config "dev.exs"
+
 # This configuration is loaded before any dependency and is restricted
 # to this project. If another project depends on this project, this
 # file won't be loaded nor affect the parent project. For this reason,
@@ -28,25 +30,7 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 
-persistence_path =
-  case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db"
-    env -> env
-  end
-
-config :aecore, :persistence,
-  path: Path.absname(persistence_path),
-  write_options: [sync: true, disable_wal: false]
-
-new_candidate_nonce_count =
-  case System.get_env("NEW_CANDIDATE_NONCE_COUNT") do
-    nil -> 10
-    env -> env
-  end
-
 config :aecore, :pow,
-  new_candidate_nonce_count: new_candidate_nonce_count,
-  bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
   params: {"./mean28s-generic", "-t 5", 28},
   max_target_change: 1,
   genesis_header: %{
@@ -105,17 +89,4 @@ config :aecore, :pow,
     target: 0x2100FFFF
   }
 
-config :aecore, :peers,
-  peers_target_count: 25,
-  peers_max_count: 50
-
 config :aecore, :miner, resumed_by_default: true
-
-config :aecore, :tx_data,
-  minimum_fee: 10,
-  max_txs_per_block: 100,
-  blocks_ttl_per_token: 1000,
-  oracle_registration_base_fee: 4,
-  oracle_query_base_fee: 2,
-  oracle_response_base_fee: 2,
-  oracle_extend_base_fee: 1
