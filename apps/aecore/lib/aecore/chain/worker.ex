@@ -448,7 +448,9 @@ defmodule Aecore.Chain.Worker do
        }}
     else
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
       })
