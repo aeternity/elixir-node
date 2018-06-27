@@ -683,6 +683,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp rlp_decode(@ping, encoded_ping) do
     [
+      _vsn,
       port,
       share,
       genesis_hash,
