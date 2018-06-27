@@ -1,4 +1,4 @@
-defmodule Aeutil.MultiNodeTestFramework do
+defmodule Aecore.MultiNodeTestFramework.Worker do
   @moduledoc """
   Module for multi node sync test
   """
@@ -34,6 +34,8 @@ defmodule Aeutil.MultiNodeTestFramework do
 
   @spec compare_nodes(String.t(), String.t()) :: :synced | :not_synced
   def compare_nodes(node_name1, node_name2) do
+    get_node_top_block(node_name1)
+    get_node_top_block(node_name2)
     GenServer.call(__MODULE__, {:compare_nodes, node_name1, node_name2})
   end
 
@@ -190,7 +192,7 @@ defmodule Aeutil.MultiNodeTestFramework do
     send_command(node_name, "{:ok, json} = Poison.encode(serialized_block)")
     send_command(node_name, "path = System.cwd() <> \"/result.json\"")
     send_command(node_name, "File.write(path, json)")
-    :timer.sleep(1000)
+    :timer.sleep(2000)
     update_top_block_state(node_name)
   end
 
@@ -291,10 +293,13 @@ defmodule Aeutil.MultiNodeTestFramework do
     update_peers_map(node_name)
   end
 
+  def busy_port?(port) do
+    :os.cmd('lsof -i -P -n | grep -w #{port}') != []
+  end
+
   # server
 
   def handle_info({process_port, {:data, result}}, state) do
-    Logger.info(process_port <> ": #{result}")
     {:noreply, state}
   end
 
@@ -344,23 +349,24 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def handle_call({:update_top_block_state, node_name}, _, state) do
-    path = state[node_name].path <> "/result.json"
-
-    with {:ok, data} <- File.read(path),
+    with true <- Map.has_key?(state, node_name),
+         path <- state[node_name].path <> "/result.json",
+         {:ok, data} <- File.read(path),
          {:ok, decoded_data} <- Poison.decode(data) do
       serialized_block = Serialization.block(decoded_data, :deserialize)
       new_state = put_in(state[node_name].top_block, serialized_block)
       File.rm(path)
       {:reply, :ok, new_state}
     else
+      false -> {:reply, :no_such_node, state}
       {:error, reason} -> {:reply, reason, state}
     end
   end
 
   def handle_call({:update_peers_map, node_name}, _, state) do
-    path = state[node_name].path <> "/result.json"
-
-    with {:ok, data} <- File.read(path),
+    with true <- Map.has_key?(state, node_name),
+         path <- state[node_name].path <> "/result.json",
+         {:ok, data} <- File.read(path),
          {:ok, decoded_data} <- Poison.decode(data) do
       decoded_data =
         Enum.reduce(decoded_data, %{}, fn {num, info}, acc ->
@@ -376,6 +382,7 @@ defmodule Aeutil.MultiNodeTestFramework do
       File.rm(path)
       {:reply, :ok, new_state}
     else
+      false -> {:reply, :no_such_node, state}
       {:error, reason} -> {:reply, reason, state}
     end
   end
@@ -429,40 +436,45 @@ defmodule Aeutil.MultiNodeTestFramework do
   end
 
   def handle_call({:new_node, node_name, port}, _, state) do
-    if Map.has_key?(state, node_name) do
-      {:reply, :already_exists, state}
-    else
-      {:ok, tmp_path} = Temp.mkdir(node_name)
-      System.cmd("cp", ["-R", System.cwd(), tmp_path])
-      tmp_path = tmp_path <> "/elixir-node"
+    cond do
+      Map.has_key?(state, node_name) ->
+        {:reply, :already_exists, state}
 
-      System.cmd("sed", [
-        "-i",
-        "s/4000/#{port}/",
-        Path.join(tmp_path, "apps/aehttpserver/config/dev.exs")
-      ])
+      busy_port?(port) ->
+        {:reply, :busy_port, state}
 
-      System.cmd("sed", [
-        "-i",
-        "s/4000/#{port}/",
-        Path.join(tmp_path, "apps/aehttpserver/config/test.exs")
-      ])
+      true ->
+        {:ok, tmp_path} = Temp.mkdir(node_name)
+        System.cmd("cp", ["-R", System.cwd(), tmp_path])
+        tmp_path = tmp_path <> "/elixir-node"
 
-      process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
+        System.cmd("sed", [
+          "-i",
+          "s/4000/#{port}/",
+          Path.join(tmp_path, "apps/aehttpserver/config/dev.exs")
+        ])
 
-      new_state =
-        Map.put(state, node_name, %{
-          process_port: process_port,
-          path: tmp_path,
-          port: port,
-          top_block: nil,
-          top_block_hash: nil,
-          peers: %{},
-          registered_oracles: %{},
-          oracle_interaction_objects: %{}
-        })
+        System.cmd("sed", [
+          "-i",
+          "s/4000/#{port}/",
+          Path.join(tmp_path, "apps/aehttpserver/config/test.exs")
+        ])
 
-      {:reply, new_state, new_state}
+        process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
+
+        new_state =
+          Map.put(state, node_name, %{
+            process_port: process_port,
+            path: tmp_path,
+            port: port,
+            top_block: nil,
+            top_block_hash: nil,
+            peers: %{},
+            registered_oracles: %{},
+            oracle_interaction_objects: %{}
+          })
+
+        {:reply, new_state, new_state}
     end
   end
 end
