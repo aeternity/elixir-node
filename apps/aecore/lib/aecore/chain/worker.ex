@@ -103,7 +103,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, reason()}
   def get_header_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
-    get_header(decoded_hash)
+    get_header_by_hash(decoded_hash)
   rescue
     _ ->
       {:error, :invalid_hash}
@@ -131,7 +131,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_headers_forward(binary(), non_neg_integer()) ::
           {:ok, list(Header.t())} | {:error, atom()}
   def get_headers_forward(starting_header, count) do
-    case get_header(starting_header) do
+    case get_header_by_hash(starting_header) do
       {:ok, header} ->
         blocks_to_get = min(top_height() - header.height, count)
         get_headers_forward([], header.height, blocks_to_get + 1)
@@ -141,8 +141,8 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_header(binary()) :: Header.t() | {:error, reason()}
-  def get_header(header_hash) do
+  @spec get_header_by_hash(binary()) :: {:ok, Header.t()} | {:error, reason()}
+  def get_header_by_hash(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
       {:error, _reason} ->
         {:error, :header_not_found}
