@@ -16,6 +16,7 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Hash
+  alias Aeutil.Serialization
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
   alias Aecore.Naming.Tx.NamePreClaimTx
