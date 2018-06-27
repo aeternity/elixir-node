@@ -72,14 +72,8 @@ defmodule Aecore.Oracle.OracleStateTree do
     |> Enum.reduce(trees, fn cache_key_encoded, new_trees_state ->
       cache_key_encoded
       |> cache_key_decode()
-      |> p("----------------------")
       |> filter_expired(expires, cache_key_encoded, new_trees_state)
     end)
-  end
-
-  def p(term, title) do
-    IO.inspect("#{title}: #{inspect(term)}")
-    term
   end
 
   defp filter_expired({expires, data}, expires, cache_key_encoded, trees) do
@@ -156,8 +150,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     tree_id = oracle_id <> id
     expires = query.expires
     serialized = Serialization.rlp_encode(query, :oracle_query)
-    p(id, "Q_Id")
-    p(tree_id, "Q_tree_id")
 
     new_oracle_tree =
       case how do
