@@ -59,6 +59,10 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:delete_node, node_name})
   end
 
+  def delete_all_nodes do
+    GenServer.call(__MODULE__, {:delete_all_nodes})
+  end
+
   defp update_registered_oracles_state(node_name) do
     GenServer.call(__MODULE__, {:update_registered_oracles_state, node_name})
   end
@@ -299,7 +303,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info({process_port, {:data, result}}, state) do
+  def handle_info({_, {:data, _}}, state) do
     {:noreply, state}
   end
 
@@ -405,6 +409,20 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   def handle_call({:get_state}, _, state) do
     {:reply, state, state}
+  end
+
+  def handle_call({:delete_all_nodes}, _, state) do
+    Enum.each(state, fn {_, val} ->
+      {:os_pid, pid} = Port.info(val.process_port, :os_pid)
+      Port.close(val.process_port)
+      System.cmd("kill", ["#{pid}"])
+
+      val.path
+      |> String.replace("elixir-node", "")
+      |> File.rm_rf()
+    end)
+
+    {:reply, :ok, %{}}
   end
 
   def handle_call({:delete_node, node_name}, _, state) do
