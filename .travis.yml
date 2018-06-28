@@ -20,7 +20,6 @@ script:
   - mix compile --warnings-as-errors
   - mix compile.xref --warnings-as-errors
   - mix credo list
-  - mix format --check-formatted
   - mix coveralls -u
   - mix dialyzer
 

@@ -149,7 +149,7 @@ defmodule Gas do
   end
 
   defp substract_one_64(value) do
-    one_64th = (value / 64)
+    one_64th = value / 64
     rounded_64th = one_64th |> Float.floor() |> round()
     value - rounded_64th
   end

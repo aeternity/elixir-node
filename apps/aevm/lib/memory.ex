@@ -82,7 +82,7 @@ defmodule Memory do
     memory_size_words * 32
   end
 
-  @spec get_area(integer(), integer(), map()) :: {binary() , map()}
+  @spec get_area(integer(), integer(), map()) :: {binary(), map()}
   def get_area(from, bytes, state) do
     memory = State.memory(state)
 
