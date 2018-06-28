@@ -20,7 +20,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     ChannelSettleTx
   }
 
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Tx.{SignedTx, DataTx}
 
   @type fsm_state :: :initialized | :half_signed | :signed | :open | :update | :closing | :closed

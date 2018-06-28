@@ -3,7 +3,7 @@ defmodule PersistenceTest do
   doctest Aecore.Persistence.Worker
 
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation

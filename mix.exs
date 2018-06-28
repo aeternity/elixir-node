@@ -6,7 +6,7 @@ defmodule EpochElixir.Mixfile do
       app: :elixir_node,
       apps_path: "apps",
       version: "0.1.0",
-      elixir: "~> 1.6",
+      elixir: "~> 1.6.4",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -49,7 +49,6 @@ defmodule EpochElixir.Mixfile do
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
-      {:enacl, [github: "jlouis/enacl", ref: "c8403ab", manager: :rebar]},
       {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
       {:gen_state_machine, "~> 2.0.1"},
@@ -57,12 +56,17 @@ defmodule EpochElixir.Mixfile do
       {:excoveralls, "~> 0.8.1", only: :test},
       {:ex_json_schema, "~> 0.5.4"},
       {:distillery, "~> 1.5.2", runtime: false},
-      {:aewallet, github: "aeternity/elixir-wallet"},
+      {:aewallet, github: "aeternity/elixir-wallet", ref: "3f2f9df", override: true},
       {:msgpax, "~> 2.1.1"},
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:ex_rlp, "~> 0.2.1"},
-      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
+      {:merkle_patricia_tree,
+       git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
+      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
+      {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
+      {:ranch,
+       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
     ]
   end
 end

@@ -5,7 +5,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
 

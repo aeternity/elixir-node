@@ -5,7 +5,7 @@ defmodule Aecore.Chain.Header do
 
   alias Aecore.Chain.Header
   alias Aeutil.Bits
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
 
   @type t :: %Header{
           height: non_neg_integer(),

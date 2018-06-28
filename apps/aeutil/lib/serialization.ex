@@ -342,7 +342,7 @@ defmodule Aeutil.Serialization do
   def deserialize_term(binary), do: {:ok, :erlang.binary_to_term(binary)}
 
   defp serialize_txs_info_to_json([h | t], acc) do
-    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce)
+    tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce, h.ttl)
     tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
 
     senders_list =
@@ -725,7 +725,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(24), do: OracleResponseTx
   def tag_to_type(25), do: OracleExtendTx
   def tag_to_type(30), do: Name
-  def tag_to_type(31), do: NameCommitmentTx
+  def tag_to_type(31), do: NameCommitment
   def tag_to_type(32), do: NameClaimTx
   def tag_to_type(33), do: NamePreClaimTx
   def tag_to_type(34), do: NameUpdateTx
@@ -743,7 +743,7 @@ defmodule Aeutil.Serialization do
   def get_version(OracleQueryTx), do: {:ok, 1}
   def get_version(OracleResponseTx), do: {:ok, 1}
   def get_version(OracleExtendTx), do: {:ok, 1}
-  def get_version(NameName), do: {:ok, 1}
+  def get_version(Name), do: {:ok, 1}
   def get_version(NameCommitment), do: {:ok, 1}
   def get_version(NameClaimTx), do: {:ok, 1}
   def get_version(NamePreClaimTx), do: {:ok, 1}

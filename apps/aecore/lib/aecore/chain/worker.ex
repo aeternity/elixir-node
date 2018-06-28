@@ -17,7 +17,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Target
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -121,6 +121,18 @@ defmodule Aecore.Chain.Worker do
   rescue
     _ ->
       {:error, :invalid_hash}
+  end
+
+  @spec get_headers_forward(binary(), non_neg_integer()) ::
+          {:ok, list(Header.t())} | {:error, atom()}
+  def get_headers_forward(starting_header, count) do
+    case get_header(starting_header) do
+      {:ok, header} ->
+        get_headers_forward([], header.height, count)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec get_header(binary()) :: Block.t() | {:error, reason()}
@@ -418,7 +430,9 @@ defmodule Aecore.Chain.Worker do
        %{state_update | top_hash: new_block_hash, top_height: new_block.header.height}}
     else
       Persistence.batch_write(%{
-        :chain_state => %{:chain_state => new_chain_state},
+        :chain_state => %{
+          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+        },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
       })
@@ -613,6 +627,20 @@ defmodule Aecore.Chain.Worker do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
+  defp get_headers_forward(headers, next_header_height, count) when count > 0 do
+    case get_header_by_height(next_header_height) do
+      {:ok, header} ->
+        get_headers_forward([header | headers], header.height + 1, count - 1)
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
+    {:ok, headers}
+  end
+
   defp get_block_info_by_height(height, chain_hash) do
     begin_hash =
       if chain_hash == nil do
@@ -679,6 +707,9 @@ defmodule Aecore.Chain.Worker do
 
   defp get_persist_strategy(:to_chainstate) do
     fn
+      {key = :naming, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
@@ -691,6 +722,9 @@ defmodule Aecore.Chain.Worker do
 
   defp get_persist_strategy(:from_chainstate) do
     fn
+      {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
       {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 

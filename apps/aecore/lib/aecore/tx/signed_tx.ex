@@ -3,7 +3,7 @@ defmodule Aecore.Tx.SignedTx do
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
@@ -37,6 +37,15 @@ defmodule Aecore.Tx.SignedTx do
   def validate(%SignedTx{data: data} = tx) do
     if signatures_valid?(tx) do
       DataTx.validate(data)
+    else
+      {:error, "#{__MODULE__}: Signatures invalid"}
+    end
+  end
+
+  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  def validate(%SignedTx{data: data} = tx, block_height) do
+    if signatures_valid?(tx) do
+      DataTx.validate(data, block_height)
     else
       {:error, "#{__MODULE__}: Signatures invalid"}
     end

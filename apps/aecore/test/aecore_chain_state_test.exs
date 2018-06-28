@@ -8,7 +8,7 @@ defmodule AecoreChainstateTest do
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 

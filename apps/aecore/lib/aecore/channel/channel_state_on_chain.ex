@@ -5,7 +5,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   require Logger
 
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Tx.DataTx

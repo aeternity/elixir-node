@@ -5,7 +5,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Channel.Worker, as: Channels
   alias Aecore.Account.Account
 

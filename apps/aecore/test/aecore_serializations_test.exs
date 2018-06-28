@@ -18,7 +18,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
@@ -129,7 +129,7 @@ defmodule AecoreSerializationTest do
     assert deserialized_name_commitment = name_commitment
   end
 
-  @tag :rlp_block
+  @tag :rlp_test
   @tag timeout: 120_000
   test "Epoch RLP-encoded block deserialization", setup do
     epoch_serialized_block = create_data(Block, :erlang)
@@ -149,8 +149,7 @@ defmodule AecoreSerializationTest do
         )
 
       SignedTx ->
-        {:ok, signed_tx} =
-          Account.spend(Aecore.Wallet.Worker.get_public_key("M/0/1"), 100, 20, <<"payload">>)
+        {:ok, signed_tx} = Account.spend(Wallet.get_public_key("M/0/1"), 100, 20, <<"payload">>)
 
         signed_tx
 

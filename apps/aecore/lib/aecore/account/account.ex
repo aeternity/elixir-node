@@ -4,7 +4,7 @@ defmodule Aecore.Account.Account do
   """
 
   require Logger
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
@@ -74,13 +74,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
-  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary()) ::
+  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def spend(receiver, amount, fee, payload) do
+  def spend(receiver, amount, fee, payload, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload)
+    spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload, ttl)
   end
 
   @doc """
@@ -93,9 +93,10 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          binary()
+          binary(),
+          non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl) do
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl, ttl \\ 0) do
     payload = %{
       receiver: receiver,
       amount: amount,
@@ -103,19 +104,19 @@ defmodule Aecore.Account.Account do
       version: SpendTx.get_tx_version()
     }
 
-    build_tx(payload, SpendTx, sender, sender_priv_key, fee, nonce)
+    build_tx(payload, SpendTx, sender, sender_priv_key, fee, nonce, ttl)
   end
 
   @doc """
   Builds a NamePreClaimTx where the miners public key is used as a sender
   """
-  @spec pre_claim(String.t(), binary(), non_neg_integer()) ::
+  @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def pre_claim(name, name_salt, fee) do
+  def pre_claim(name, name_salt, fee, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce)
+    pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
 
   @doc """
@@ -127,13 +128,14 @@ defmodule Aecore.Account.Account do
           String.t(),
           binary(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
+  def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
     case Naming.create_commitment_hash(name, name_salt) do
       {:ok, commitment} ->
         payload = %{commitment: commitment}
-        build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce)
+        build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)
 
       err ->
         err
@@ -143,13 +145,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameClaimTx where the miners public key is used as a sender
   """
-  @spec claim(String.t(), binary(), non_neg_integer()) ::
+  @spec claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def claim(name, name_salt, fee) do
+  def claim(name, name_salt, fee, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    claim(sender, sender_priv_key, name, name_salt, fee, nonce)
+    claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
 
   @doc """
@@ -161,13 +163,14 @@ defmodule Aecore.Account.Account do
           String.t(),
           binary(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def claim(sender, sender_priv_key, name, name_salt, fee, nonce) do
+  def claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, _} ->
         payload = %{name: name, name_salt: name_salt}
-        build_tx(payload, NameClaimTx, sender, sender_priv_key, fee, nonce)
+        build_tx(payload, NameClaimTx, sender, sender_priv_key, fee, nonce, ttl)
 
       err ->
         err
@@ -177,13 +180,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameUpdateTx where the miners public key is used as a sender
   """
-  @spec name_update(String.t(), String.t(), non_neg_integer()) ::
+  @spec name_update(String.t(), String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(name, pointers, fee) do
+  def name_update(name, pointers, fee, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    name_update(sender, sender_priv_key, name, pointers, fee, nonce)
+    name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl)
   end
 
   @doc """
@@ -195,9 +198,10 @@ defmodule Aecore.Account.Account do
           String.t(),
           String.t(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(sender, sender_priv_key, name, pointers, fee, nonce) do
+  def name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
         payload = %{
@@ -207,7 +211,7 @@ defmodule Aecore.Account.Account do
           pointers: pointers
         }
 
-        build_tx(payload, NameUpdateTx, sender, sender_priv_key, fee, nonce)
+        build_tx(payload, NameUpdateTx, sender, sender_priv_key, fee, nonce, ttl)
 
       err ->
         err
@@ -217,13 +221,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameTransferTx where the miners public key is used as a sender
   """
-  @spec name_transfer(String.t(), binary(), non_neg_integer()) ::
+  @spec name_transfer(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_transfer(name, target, fee) do
+  def name_transfer(name, target, fee, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    name_transfer(sender, sender_priv_key, name, target, fee, nonce)
+    name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl)
   end
 
   @doc """
@@ -235,13 +239,14 @@ defmodule Aecore.Account.Account do
           String.t(),
           binary(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_transfer(sender, sender_priv_key, name, target, fee, nonce) do
+  def name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
         payload = %{hash: namehash, target: target}
-        build_tx(payload, NameTransferTx, sender, sender_priv_key, fee, nonce)
+        build_tx(payload, NameTransferTx, sender, sender_priv_key, fee, nonce, ttl)
 
       err ->
         err
@@ -251,12 +256,13 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameTransferTx where the miners public key is used as a sender
   """
-  @spec name_revoke(String.t(), non_neg_integer()) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_revoke(name, fee) do
+  @spec name_revoke(String.t(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
+  def name_revoke(name, fee, ttl \\ 0) do
     sender = Wallet.get_public_key()
     sender_priv_key = Wallet.get_private_key()
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    name_revoke(sender, sender_priv_key, name, fee, nonce)
+    name_revoke(sender, sender_priv_key, name, fee, nonce, ttl)
   end
 
   @doc """
@@ -267,13 +273,14 @@ defmodule Aecore.Account.Account do
           Wallet.privkey(),
           String.t(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_revoke(sender, sender_priv_key, name, fee, nonce) do
+  def name_revoke(sender, sender_priv_key, name, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
         payload = %{hash: namehash}
-        build_tx(payload, NameRevokeTx, sender, sender_priv_key, fee, nonce)
+        build_tx(payload, NameRevokeTx, sender, sender_priv_key, fee, nonce, ttl)
 
       err ->
         err
@@ -286,10 +293,11 @@ defmodule Aecore.Account.Account do
           binary(),
           binary(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def build_tx(payload, tx_type, sender, sender_prv, fee, nonce) do
-    tx = DataTx.init(tx_type, payload, sender, fee, nonce)
+  def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
+    tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
     SignedTx.sign_tx(tx, sender, sender_prv)
   end
 
