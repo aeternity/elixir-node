@@ -213,14 +213,14 @@ defmodule State do
     Map.put(state, :pc, pc + 1)
   end
 
-  def calculate_blockhash(nth_block, _a, state) do
+  def calculate_blockhash(nth_block, a, state) do
     current_number = current_number(state)
 
     cond do
       nth_block >= current_number ->
         0
 
-      _a == 256 ->
+      a == 256 ->
         0
 
       # h == 0 -> 0

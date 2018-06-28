@@ -71,7 +71,7 @@ defmodule Gas do
       end
   end
 
-  def dynamic_gas_cost("DELEGATECALL", state) do
+  def dynamic_gas_cost("DELEGATECALL", _state) do
     # TODO
     0
   end
