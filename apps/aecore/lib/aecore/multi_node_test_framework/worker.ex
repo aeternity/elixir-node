@@ -32,11 +32,17 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     get_all_peers(node_name2)
   end
 
-  @spec compare_nodes(String.t(), String.t()) :: :synced | :not_synced
-  def compare_nodes(node_name1, node_name2) do
+  @spec compare_nodes_by_top_block(String.t(), String.t()) :: :synced | :not_synced
+  def compare_nodes_by_top_block(node_name1, node_name2) do
     get_node_top_block(node_name1)
     get_node_top_block(node_name2)
-    GenServer.call(__MODULE__, {:compare_nodes, node_name1, node_name2})
+    GenServer.call(__MODULE__, {:compare_nodes_by_top_block, node_name1, node_name2})
+  end
+
+  def compare_nodes_by_registered_oracles(node_name1, node_name2) do
+    registered_oracles(node_name1)
+    registered_oracles(node_name2)
+    GenServer.call(__MODULE__, {:compare_nodes_by_registered_oracles, node_name1, node_name2})
   end
 
   def alive_ports do
@@ -442,7 +448,18 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     {:reply, alive_ports, state}
   end
 
-  def handle_call({:compare_nodes, node_name1, node_name2}, _, state) do
+  def handle_call({:compare_nodes_by_registered_oracles, node_name1, node_name2}, _, state) do
+    registered_oracles1 = state[node_name1].registered_oracles
+    registered_oracles2 = state[node_name2].registered_oracles
+
+    if registered_oracles1 == registered_oracles2 do
+      {:reply, :synced, state}
+    else
+      {:reply, :not_synced, state}
+    end
+  end
+
+  def handle_call({:compare_nodes_by_top_block, node_name1, node_name2}, _, state) do
     block1 = state[node_name1].top_block
     block2 = state[node_name2].top_block
 
@@ -463,7 +480,8 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
       true ->
         {:ok, tmp_path} = Temp.mkdir(node_name)
-        System.cmd("cp", ["-R", System.cwd(), tmp_path])
+        path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
+        System.cmd("cp", ["-R", path, tmp_path])
         tmp_path = tmp_path <> "/elixir-node"
 
         System.cmd("sed", [
@@ -492,7 +510,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
             oracle_interaction_objects: %{}
           })
 
-        {:reply, new_state, new_state}
+        {:reply, :ok, new_state}
     end
   end
 end
