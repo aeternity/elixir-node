@@ -26,6 +26,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.ChannelStateOffChain
 
   require Logger
 
@@ -554,6 +555,100 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  defp encode(tag, version, %DataTx{type: ChannelCloseMutalTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.channel_id,
+      tx.payload.initiator_amount,
+      tx.payload.responder_amount,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelCloseSoloTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      ChannelStateOffChain.encode(tx.payload.state),
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelCreateTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.initiator_amount,
+      tx.payload.responder_amount,
+      tx.payload.locktime,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelSettleTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.channel_id,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelSlashTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      ChannelStateOffChain.encode(tx.payload.state),
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
   @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
   def rlp_decode(tag, values) when is_list(values) do
     decode(tag, values)
@@ -753,6 +848,97 @@ defmodule Aecore.Tx.DataTx do
 
   defp decode(NameTransferTx, [senders, nonce, hash, recipient, fee, ttl]) do
     payload = %NameTransferTx{hash: hash, target: recipient}
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelCloseMutalTx, [
+         senders,
+         nonce,
+         channel_id,
+         initiator_amount,
+         responder_amount,
+         fee,
+         ttl
+       ]) do
+    payload = %ChannelCloseMutalTx{
+      channel_id: channel_id,
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int)
+    }
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelCloseSoloTx, [senders, nonce, state, fee, ttl]) do
+    payload = %ChannelCloseSoloTx{
+      state: ChannelStateOffChain.decode(state)
+    }
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelCreateTx, [
+         senders,
+         nonce,
+         initiator_amount,
+         responder_amount,
+         locktime,
+         fee,
+         ttl
+       ]) do
+    payload = %ChannelCreateTx{
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int),
+      locktime: Serialization.transform_item(locktime, :int)
+    }
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelSettleTx, [senders, nonce, channel_id, fee, ttl]) do
+    payload = %ChannelSettleTx{channel_id: channel_id}
+
+    DataTx.init(
+      NameTransferTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelSlashTx, [senders, nonce, state, fee, ttl]) do
+    payload = %ChannelSlashTx{state: ChannelStateOffChain.decode(state)}
 
     DataTx.init(
       NameTransferTx,

@@ -42,7 +42,7 @@ defmodule TestUtils do
   end
 
   defp spend_list(pk, sk, [{receiver, amount} | rest], nonce) do
-    {:ok, tx} = Account.spend(pk, sk, receiver, amount, 10, nonce)
+    {:ok, tx} = Account.spend(pk, sk, receiver, amount, 10, nonce, <<>>)
     Pool.add_transaction(tx)
     spend_list(pk, sk, rest, nonce + 1)
   end

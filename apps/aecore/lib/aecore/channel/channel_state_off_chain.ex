@@ -41,7 +41,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       sequence: sequence,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      signatures: [nil, nil]
+      signatures: [<<>>, <<>>]
     }
   end
 
@@ -60,6 +60,30 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       responder_amount: responder_amount,
       signatures: signatures
     }
+  end
+
+  def encode(%ChannelStateOffChain{
+        channel_id: channel_id,
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        signatures: signatures
+      }) do
+    [channel_id, sequence, initiator_amount, responder_amount, signatures]
+  end
+
+  def decode([channel_id, sequence, initiator_amount, responder_amount, [_, _] = signatures]) do
+    %ChannelStateOffChain{
+      channel_id: channel_id,
+      sequence: Serialization.transform_item(sequence, :int),
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int),
+      signatures: signatures
+    }
+  end
+
+  def decode(data) do
+    {:error, "#{__MODULE__}: Unknown ChannelStateOffChain structure: #{inspect(data)} "}
   end
 
   @spec id(ChannelStateOffChain.t()) :: binary()
@@ -178,7 +202,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   Validates initiator signature
   """
   @spec valid_initiator?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
-  def valid_initiator?(%ChannelStateOffChain{signatures: [nil, _]}, _) do
+  def valid_initiator?(%ChannelStateOffChain{signatures: [<<>>, _]}, _) do
     false
   end
 
@@ -198,7 +222,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   Validates responder signature
   """
   @spec valid_responder?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
-  def valid_responder?(%ChannelStateOffChain{signatures: [_, nil]}, _) do
+  def valid_responder?(%ChannelStateOffChain{signatures: [_, <<>>]}, _) do
     false
   end
 
@@ -272,7 +296,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       | initiator_amount: initiator_amount - amount,
         responder_amount: responder_amount + amount,
         sequence: sequence + 1,
-        signatures: [nil, nil]
+        signatures: [<<>>, <<>>]
     }
 
     {:ok, new_state}

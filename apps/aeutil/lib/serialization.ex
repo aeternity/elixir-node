@@ -22,6 +22,11 @@ defmodule Aeutil.Serialization do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
+  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Channel.Tx.ChannelCloseMutalTx
+  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Channel.Tx.ChannelSlashTx
+  alias Aecore.Channel.Tx.ChannelSettleTx
 
   require Logger
 
@@ -714,6 +719,16 @@ defmodule Aeutil.Serialization do
   def type_to_tag(OracleQuery),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:interaction_obj_state]}
 
+  def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
+
+  def type_to_tag(ChannelCloseSoloTx), do: {:ok, 42}
+
+  def type_to_tag(ChannelCreateTx), do: {:ok, 43}
+
+  def type_to_tag(ChannelSettleTx), do: {:ok, 44}
+
+  def type_to_tag(ChannelSlashTx), do: {:ok, 45}
+
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
   def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
 
@@ -731,6 +746,11 @@ defmodule Aeutil.Serialization do
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
+  def tag_to_type(41), do: ChannelCloseMutalTx
+  def tag_to_type(42), do: ChannelCloseSoloTx
+  def tag_to_type(43), do: ChannelCreateTx
+  def tag_to_type(44), do: ChannelSettleTx
+  def tag_to_type(45), do: ChannelSlashTx
   def tag_to_type(20), do: Oracle
   def tag_to_type(21), do: OracleQuery
   def tag_to_type(11), do: SignedTx
@@ -750,6 +770,11 @@ defmodule Aeutil.Serialization do
   def get_version(NameUpdateTx), do: {:ok, 1}
   def get_version(NameRevokeTx), do: {:ok, 1}
   def get_version(NameTransferTx), do: {:ok, 1}
+  def get_version(ChannelCloseMutalTx), do: {:ok, 1}
+  def get_version(ChannelCloseSoloTx), do: {:ok, 1}
+  def get_version(ChannelCreateTx), do: {:ok, 1}
+  def get_version(ChannelSettleTx), do: {:ok, 1}
+  def get_version(ChannelSlashTx), do: {:ok, 1}
   def get_version(Account), do: {:ok, 1}
   def get_version(Oracle), do: {:ok, 1}
   def get_version(OracleQuery), do: {:ok, 1}
