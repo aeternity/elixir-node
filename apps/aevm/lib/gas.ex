@@ -43,8 +43,6 @@ defmodule Gas do
 
   @spec dynamic_gas_cost(String.t(), map()) :: integer()
   def dynamic_gas_cost("CALL", state) do
-    # TODO: account creation?
-
     gas_cost = GasCodes._GCALL()
 
     gas_state = State.gas(state)

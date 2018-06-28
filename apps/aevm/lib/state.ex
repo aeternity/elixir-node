@@ -214,7 +214,6 @@ defmodule State do
   end
 
   def calculate_blockhash(nth_block, _a, state) do
-    # TODO: h -> header, maybe needs refactoring for an actual blockchain
     current_number = current_number(state)
 
     cond do
