@@ -508,8 +508,7 @@ defmodule Aecore.Chain.Worker do
 
     if Enum.empty?(blocks_map) do
       [block_hash] = Map.keys(state.blocks_data_map)
-      %{block: block} = state.blocks_data_map[block_hash]
-      Persistence.add_block_by_hash(block_hash, block)
+      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
     end
 
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()

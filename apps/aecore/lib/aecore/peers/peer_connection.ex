@@ -457,7 +457,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_hash(payload, pid) do
     hash = payload.hash
-    result = Chain.get_header(hash)
+    result = Chain.get_header_by_hash(hash)
     send_response(result, @header, pid)
   end
 
