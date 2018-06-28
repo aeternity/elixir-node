@@ -20,17 +20,18 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
+  alias Aeutil.Identifier
 
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          pubkey: Wallet.pubkey()
+          id: Identifier.t()
         }
 
   @type account_payload :: %{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          pubkey: Wallet.pubkey()
+          id: Identifier.t()
         }
 
   @type chain_state_name :: :accounts
@@ -42,16 +43,16 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :pubkey]
+  defstruct [:balance, :nonce, :id]
 
-  def empty, do: %Account{balance: 0, nonce: 0, pubkey: <<>>}
+  def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{}}
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
     %Account{
       balance: balance,
       nonce: nonce,
-      pubkey: pubkey
+      id: Identifier.create_identifier(pubkey, :account)
     }
   end
 
@@ -345,7 +346,6 @@ defmodule Aecore.Account.Account do
     list = [
       tag,
       version,
-      account.pubkey,
       account.nonce,
       account.balance
     ]
@@ -361,17 +361,19 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([pubkey, nonce, balance]) do
+  @spec rlp_decode(list(), Wallet.pubkey()) :: {:ok, Account.t()} | {:error, String.t()}
+  def rlp_decode([nonce, balance], pubkey) do
+    {:ok, id} = Identifier.create_identifier(pubkey, :account)
+
     {:ok,
      %Account{
-       pubkey: pubkey,
+       id: id,
        balance: Serialization.transform_item(balance, :int),
        nonce: Serialization.transform_item(nonce, :int)
      }}
   end
 
-  def rlp_decode(data) do
+  def rlp_decode(data, _) do
     {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
   end
 end

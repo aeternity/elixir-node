@@ -218,18 +218,18 @@ defmodule Aecore.Tx.SignedTx do
       |> Enum.reduce(true, fn {sig, acc}, validity ->
         cond do
           sig == nil ->
-            Logger.error("Missing signature of #{acc}")
+            Logger.error("Missing signature of #{inspect(acc)}")
             false
 
           !Wallet.key_size_valid?(acc) ->
-            Logger.error("Wrong sender size")
+            Logger.error("Wrong sender size #{inspect(acc)}")
             false
 
           Signing.verify(data_binary, sig, acc) ->
             validity
 
           true ->
-            Logger.error("Signature of #{acc} invalid")
+            Logger.error("Signature of #{inspect(acc)} invalid")
             false
         end
       end)

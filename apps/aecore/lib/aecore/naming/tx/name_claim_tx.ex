@@ -42,6 +42,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   # Callbacks
 
+  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{name: name, name_salt: name_salt} = _payload) do
     %NameClaimTx{name: name, name_salt: name_salt}

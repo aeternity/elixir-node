@@ -55,7 +55,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: version}
+    {:ok, identified_receiver} = Identifier.create_identifier(receiver, :account)
+    %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
   end
 
   @doc """

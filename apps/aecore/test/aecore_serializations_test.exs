@@ -192,91 +192,108 @@ defmodule AecoreSerializationTest do
         Chain.top_block()
 
       NamePreClaimTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 1,
-          payload: %Aecore.Naming.Tx.NamePreClaimTx{
-            commitment:
-              <<1, 168, 130, 92, 49, 3, 219, 12, 26, 208, 240, 226, 92, 7, 216, 30, 22, 168, 99,
-                121, 127, 147, 123, 47, 116, 13, 204, 240, 229, 180, 128, 222>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NamePreClaimTx
-        }
+        {:ok, pre_claim_tx} = Account.pre_claim("pre_claim.aet", <<"pre_claim_salt">>, 5)
+        pre_claim_tx.data
+
+      # %Aecore.Tx.DataTx{
+      #   fee: 5,
+      #   nonce: 1,
+      #   payload: %Aecore.Naming.Tx.NamePreClaimTx{
+      #     commitment:
+      #       <<1, 168, 130, 92, 49, 3, 219, 12, 26, 208, 240, 226, 92, 7, 216, 30, 22, 168, 99,
+      #         121, 127, 147, 123, 47, 116, 13, 204, 240, 229, 180, 128, 222>>
+      #   },
+      #   senders: [
+      #     <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+      #       181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+      #   ],
+      #   type: Aecore.Naming.Tx.NamePreClaimTx
+      # }
 
       NameClaimTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 2,
-          payload: %Aecore.Naming.Tx.NameClaimTx{
-            name: "test.aet",
-            name_salt:
-              <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 1>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameClaimTx
-        }
+        {:ok, claim_tx} = Account.claim("pre_claim.aet", <<"pre_claim_salt">>, 5)
+        claim_tx.data
+
+      # %Aecore.Tx.DataTx{
+      #   fee: 5,
+      #   nonce: 2,
+      #   payload: %Aecore.Naming.Tx.NameClaimTx{
+      #     name: "test.aet",
+      #     name_salt:
+      #       <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      #         0, 0, 0, 0, 1>>
+      #   },
+      #   senders: [
+      #     <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+      #       181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+      #   ],
+      #   type: Aecore.Naming.Tx.NameClaimTx
+      # }
 
       NameUpdateTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 3,
-          payload: %Aecore.Naming.Tx.NameUpdateTx{
-            client_ttl: 86400,
-            expire_by: 50003,
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            pointers: "{\"test\": 2}"
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameUpdateTx
-        }
+        {:ok, name_update_tx} = Account.name_update("name_update.aet", "{\"test\": 2}", 5)
+        name_update_tx.data
+
+      # %Aecore.Tx.DataTx{
+      #   fee: 5,
+      #   nonce: 3,
+      #   payload: %Aecore.Naming.Tx.NameUpdateTx{
+      #     client_ttl: 86400,
+      #     expire_by: 50003,
+      #     hash:
+      #       <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+      #         186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+      #     pointers: "{\"test\": 2}"
+      #   },
+      #   senders: [
+      #     <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+      #       181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+      #   ],
+      #   type: Aecore.Naming.Tx.NameUpdateTx
+      # }
 
       NameTransferTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 4,
-          payload: %Aecore.Naming.Tx.NameTransferTx{
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            target:
-              <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240,
-                209, 81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameTransferTx
-        }
+        {:ok, name_transfer} =
+          Account.name_transfer("name_update.aet", Wallet.get_public_key("M/0/1"), 5)
+
+        name_transfer.data
+
+      # %Aecore.Tx.DataTx{
+      #   fee: 5,
+      #   nonce: 4,
+      #   payload: %Aecore.Naming.Tx.NameTransferTx{
+      #     hash:
+      #       <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+      #         186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+      #     target:
+      #       <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240,
+      #         209, 81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
+      #   },
+      #   senders: [
+      #     <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+      #       181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
+      #   ],
+      #   type: Aecore.Naming.Tx.NameTransferTx
+      # }
 
       NameRevokeTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 1,
-          payload: %Aecore.Naming.Tx.NameRevokeTx{
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>
-          },
-          senders: [
-            <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
-              81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
-          ],
-          type: Aecore.Naming.Tx.NameRevokeTx
-        }
+        {:ok, name_revoke} = Account.name_revoke("pre_claim.aet", 10)
+        name_revoke.data
+
+      # %Aecore.Tx.DataTx{
+      #   fee: 5,
+      #   nonce: 1,
+      #   payload: %Aecore.Naming.Tx.NameRevokeTx{
+      #     hash:
+      #       <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+      #         186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>
+      #   },
+      #   senders: [
+      #     <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
+      #       81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
+      #   ],
+      #   type: Aecore.Naming.Tx.NameRevokeTx
+      # }
 
       Name ->
         %{

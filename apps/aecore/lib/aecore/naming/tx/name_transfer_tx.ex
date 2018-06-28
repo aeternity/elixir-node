@@ -44,6 +44,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+  # TODO integrate Identifiers
   def init(%{hash: hash, target: target}) do
     %NameTransferTx{hash: hash, target: target}
   end

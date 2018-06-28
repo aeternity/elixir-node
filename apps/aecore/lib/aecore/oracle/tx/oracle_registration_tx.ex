@@ -41,6 +41,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   use ExConstructor
 
+  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{
         query_format: query_format,

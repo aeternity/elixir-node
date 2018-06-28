@@ -478,7 +478,7 @@ defmodule Aeutil.Serialization do
     {:error, "#{__MODULE__} : Illegal serialization attempt: #{inspect(error)}"}
   end
 
-  def rlp_decode(binary) when is_binary(binary) do
+  def rlp_decode(binary, pubkey \\ nil) when is_binary(binary) do
     result =
       try do
         ExRLP.decode(binary)
@@ -490,46 +490,51 @@ defmodule Aeutil.Serialization do
       [tag_bin, ver_bin | rest_data] ->
         tag = transform_item(tag_bin, :int)
         ver = transform_item(ver_bin, :int)
-        rlp_decode(tag_to_type(tag), ver, rest_data)
+        rlp_decode(tag_to_type(tag), ver, rest_data, pubkey)
 
       {:error, reason} ->
         {:error, "#{__MODULE__}: Illegal deserialization, reason : #{reason}"}
     end
   end
 
-  def rlp_decode(data) do
+  def rlp_decode(data, _) do
     {:error, "#{__MODULE__}: Illegal deserialization: #{inspect(data)}"}
   end
 
-  defp rlp_decode(Block, _version, block_data) do
+  defp rlp_decode(Block, _version, block_data, nil) do
     Block.rlp_decode(block_data)
   end
 
-  defp rlp_decode(Name, _version, name_data) do
+  # logics should be overviewed
+  defp rlp_decode(Name, _version, name_data, nil) do
     Naming.rlp_decode(name_data, :name)
   end
 
-  defp rlp_decode(NameCommitment, _version, name_commitment) do
+  # logics should be overviewed
+  defp rlp_decode(NameCommitment, _version, name_commitment, nil) do
     Naming.rlp_decode(name_commitment, :name_commitment)
   end
 
-  defp rlp_decode(Oracle, _version, reg_orc) do
+  # storing logics should be overviewed
+  defp rlp_decode(Oracle, _version, reg_orc, nil) do
     Oracle.rlp_decode(reg_orc, :registered_oracle)
   end
 
-  defp rlp_decode(OracleQuery, _version, interaction_object) do
+  # storing logics should be overviewed
+  defp rlp_decode(OracleQuery, _version, interaction_object, nil) do
     Oracle.rlp_decode(interaction_object, :interaction_object)
   end
 
-  defp rlp_decode(Account, _version, account_state) do
-    Account.rlp_decode(account_state)
+  # account decoding
+  defp rlp_decode(Account, _version, account_state, pubkey) when pubkey != nil do
+    Account.rlp_decode(account_state, pubkey)
   end
 
-  defp rlp_decode(SignedTx, _version, signedtx) do
+  defp rlp_decode(SignedTx, _version, signedtx, nil) do
     SignedTx.rlp_decode(signedtx)
   end
 
-  defp rlp_decode(payload, _version, datatx) do
+  defp rlp_decode(payload, _version, datatx, nil) do
     DataTx.rlp_decode(payload, datatx)
   end
 
@@ -757,29 +762,29 @@ defmodule Aeutil.Serialization do
   def get_version(SignedTx), do: {:ok, 1}
   def get_version(ver), do: {:error, "#{__MODULE__} : Unknown Struct version: #{inspect(ver)}"}
 
-  @spec add_id(id(), binary()) :: binary() | {:error, String.t()}
-  # TODO: Binary_data's (which is being concatenated with id here) size should be strict and have a length of 32 bytes. Therefore must be adjusted to 32 bytes to match current state of Epoch's implementation
-  def add_id(type, <<binary_data::binary>>) do
-    case Application.get_env(:aecore, :binary_ids)[type] do
-      nil ->
-        {:error, "#{__MODULE__}: Id for the given type: #{type} doesn't exist"}
+  # @spec add_id(id(), binary()) :: binary() | {:error, String.t()}
+  # # TODO: Binary_data's (which is being concatenated with id here) size should be strict and have a length of 32 bytes. Therefore must be adjusted to 32 bytes to match current state of Epoch's implementation
+  # def add_id(type, <<binary_data::binary>>) do
+  #   case Application.get_env(:aecore, :binary_ids)[type] do
+  #     nil ->
+  #       {:error, "#{__MODULE__}: Id for the given type: #{type} doesn't exist"}
 
-      # TODO: same problem as mentioned at 762 line
-      id ->
-        {:ok, <<id::unsigned-integer-size(8), binary_data::binary>>}
-    end
-  end
+  #     # TODO: same problem as mentioned at 762 line
+  #     id ->
+  #       {:ok, <<id::unsigned-integer-size(8), binary_data::binary>>}
+  #   end
+  # end
 
-  def add_id(_, _), do: {:error, "#{__MODULE__} Illegal data id addition"}
+  # def add_id(_, _), do: {:error, "#{__MODULE__} Illegal data id addition"}
 
-  @spec extract_id(binary()) :: binary() | {:error, String.t()}
-  # TODO same problem as mentioned at 762 line as previous comment
-  def extract_id(<<id::unsigned-integer-size(8), rest_binary_data::binary>>) do
-    {:ok, rest_binary_data}
-  end
+  # @spec extract_id(binary()) :: binary() | {:error, String.t()}
+  # # TODO same problem as mentioned at 762 line as previous comment
+  # def extract_id(<<id::unsigned-integer-size(8), rest_binary_data::binary>>) do
+  #   {:ok, rest_binary_data}
+  # end
 
-  # def extract_id(<<id::size(8), data::binary>>),
-  #   do: {:error, "#{__MODULE__}: Incorrect or corrupted data: #{inspect(data)}"} #TODO this error case should be returned after all adjustments
+  # # def extract_id(<<id::size(8), data::binary>>),
+  # #   do: {:error, "#{__MODULE__}: Incorrect or corrupted data: #{inspect(data)}"} #TODO this error case should be returned after all adjustments
 
-  def extract_id(_, _), do: {:error, "#{__MODULE__}: Illegal data extraction"}
+  # def extract_id(_, _), do: {:error, "#{__MODULE__}: Illegal data extraction"}
 end

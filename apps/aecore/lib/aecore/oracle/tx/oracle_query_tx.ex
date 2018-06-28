@@ -52,6 +52,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
+  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{
         oracle_address: oracle_address,

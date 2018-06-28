@@ -40,6 +40,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+  # TODO integrate Identifiers
   def init(%{hash: hash}) do
     %NameRevokeTx{hash: hash}
   end

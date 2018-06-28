@@ -41,6 +41,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   # Callbacks
 
+  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
     %NamePreClaimTx{commitment: commitment}

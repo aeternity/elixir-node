@@ -24,6 +24,7 @@ defmodule Aecore.Oracle.Oracle do
   @type json_schema :: map()
   @type json :: any()
 
+  # TODO integrate Identifiers
   @type registered_oracles :: %{
           Wallet.pubkey() => %{
             tx: OracleRegistrationTx.t(),
@@ -31,6 +32,7 @@ defmodule Aecore.Oracle.Oracle do
           }
         }
 
+  # TODO integrate Identifiers
   @type interaction_objects :: %{
           OracleQueryTx.id() => %{
             query: OracleQueryTx.t(),
