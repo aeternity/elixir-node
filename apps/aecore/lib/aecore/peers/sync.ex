@@ -25,7 +25,7 @@ defmodule Aecore.Peers.Sync do
           from: non_neg_integer(),
           to: non_neg_integer(),
           hash: binary(),
-          peer: String.t(),
+          peer: pid(),
           pid: binary()
         }
 
