@@ -71,10 +71,10 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
     cond do
       length(senders) != 1 ->
-        {:error, "Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size"}
 
       ChannelStateOffChain.sequence(state) == 0 ->
-        {:error, "Can't slash with zero state"}
+        {:error, "#{__MODULE__}: Can't slash with zero state"}
 
       true ->
         :ok
@@ -134,13 +134,13 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "Negative sender balance"}
+        {:error, "#{__MODULE__}: Negative sender balance"}
 
       channel == nil ->
-        {:error, "Channel doesn't exist (already closed?)"}
+        {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       ChannelStateOnChain.active?(channel) ->
-        {:error, "Can't slash active channel"}
+        {:error, "#{__MODULE__}: Can't slash active channel"}
 
       true ->
         ChannelStateOnChain.validate_slashing(channel, state)

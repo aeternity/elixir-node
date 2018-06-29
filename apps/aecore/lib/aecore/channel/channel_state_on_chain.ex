@@ -138,13 +138,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       ) do
     cond do
       channel.slash_sequence != -1 ->
-        {:error, "Channel already slashed"}
+        {:error, "#{__MODULE__}: Channel already slashed"}
 
       channel.initiator_amount != ChannelStateOffChain.initiator_amount(offchain_state) ->
-        {:error, "Wrong initator amount"}
+        {:error, "#{__MODULE__}: Wrong initator amount"}
 
       channel.responder_amount != ChannelStateOffChain.responder_amount(offchain_state) ->
-        {:error, "Wrong responder amount"}
+        {:error, "#{__MODULE__}: Wrong responder amount"}
 
       true ->
         :ok
@@ -154,11 +154,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
     cond do
       channel.slash_sequence >= ChannelStateOffChain.sequence(offchain_state) ->
-        {:error, "Offchain state is too old"}
+        {:error, "#{__MODULE__}: Offchain state is too old"}
 
       channel.initiator_amount + channel.responder_amount !=
           ChannelStateOffChain.total_amount(offchain_state) ->
-        {:error, "Invalid total amount"}
+        {:error, "#{__MODULE__}: Invalid total amount"}
 
       true ->
         ChannelStateOffChain.validate(offchain_state, pubkeys(channel))

@@ -321,7 +321,7 @@ defmodule Aecore.Channel.Worker do
         {:reply, {:error, reason}, state}
 
       :error ->
-        {:reply, {:error, "Pool error"}, state}
+        {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
     end
   end
 
@@ -386,7 +386,9 @@ defmodule Aecore.Channel.Worker do
         {:reply, {:error, reason}, state}
 
       :error ->
-        {:reply, {:error, "Transaction Pool error (Invalid received tx signature?)"}, state}
+        {:reply,
+         {:error, "#{__MODULE__}: Transaction Pool error (Invalid received tx signature?)"},
+         state}
     end
   end
 
@@ -426,7 +428,7 @@ defmodule Aecore.Channel.Worker do
         {:error, reason}
 
       :error ->
-        {:error, "Pool error"}
+        {:error, "#{__MODULE__}: Pool error"}
     end
   end
 
@@ -442,7 +444,7 @@ defmodule Aecore.Channel.Worker do
         {:error, reason}
 
       :error ->
-        {:error, "Pool error"}
+        {:error, "#{__MODULE__}: Pool error"}
     end
   end
 
@@ -470,13 +472,13 @@ defmodule Aecore.Channel.Worker do
             {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
 
           :error ->
-            {:reply, {:error, "Pool error"}, state}
+            {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
         end
       else
         {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
       end
     else
-      {:reply, {:error, "Unknown channel"}, state}
+      {:reply, {:error, "#{__MODULE__}: Unknown channel"}, state}
     end
   end
 
@@ -503,7 +505,7 @@ defmodule Aecore.Channel.Worker do
     if Map.has_key?(state, channel_id) do
       {:reply, {:ok, Map.get(state, channel_id)}, state}
     else
-      {:reply, {:error, "No such channel"}, state}
+      {:reply, {:error, "#{__MODULE__}: No such channel"}, state}
     end
   end
 end

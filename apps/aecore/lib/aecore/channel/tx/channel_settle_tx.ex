@@ -59,7 +59,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     senders = DataTx.senders(data_tx)
 
     if length(senders) != 1 do
-      {:error, "Invalid from_accs size"}
+      {:error, "#{__MODULE__}: Invalid from_accs size"}
     else
       :ok
     end
@@ -123,13 +123,13 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance < fee ->
-        {:error, "Negative sender balance"}
+        {:error, "#{__MODULE__}: Negative sender balance"}
 
       channel == nil ->
-        {:error, "Channel doesn't exist (already closed?)"}
+        {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       !ChannelStateOnChain.settled?(channel, block_height) ->
-        {:error, "Channel isn't settled"}
+        {:error, "#{__MODULE__}: Channel isn't settled"}
 
       true ->
         :ok

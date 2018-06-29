@@ -121,10 +121,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       ]) do
     cond do
       !valid_initiator?(state, initiator_pubkey) ->
-        {:error, "Invalid initiator signature"}
+        {:error, "#{__MODULE__}: Invalid initiator signature"}
 
       !valid_responder?(state, responder_pubkey) ->
-        {:error, "Invalid responder signature"}
+        {:error, "#{__MODULE__}: Invalid responder signature"}
 
       true ->
         :ok
@@ -132,7 +132,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   def validate(%ChannelStateOffChain{}, _) do
-    {:error, "Invalid signatures count"}
+    {:error, "#{__MODULE__}: Invalid signatures count"}
   end
 
   @doc """
@@ -147,26 +147,26 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   def validate_half_update(prev_state, new_state, [initiator_pubkey, responder_pubkey], role) do
     cond do
       new_state.sequence <= prev_state.sequence ->
-        {:error, "Invalid sequence"}
+        {:error, "#{__MODULE__}: Invalid sequence"}
 
       new_state.channel_id != prev_state.channel_id ->
-        {:error, "Different channel id"}
+        {:error, "#{__MODULE__}: Different channel id"}
 
       prev_state.initiator_amount + prev_state.responder_amount !=
           new_state.initiator_amount + new_state.responder_amount ->
-        {:error, "Invalid new total amount"}
+        {:error, "#{__MODULE__}: Invalid new total amount"}
 
       role == :initiator && !valid_responder?(new_state, responder_pubkey) ->
-        {:error, "Invalid responder signature"}
+        {:error, "#{__MODULE__}: Invalid responder signature"}
 
       role == :initiator && prev_state.initiator_amount > new_state.initiator_amount ->
-        {:error, "Negative responder transfer"}
+        {:error, "#{__MODULE__}: Negative responder transfer"}
 
       role == :responder && !valid_initiator?(new_state, initiator_pubkey) ->
-        {:error, "Invalid initiator signature"}
+        {:error, "#{__MODULE__}: Invalid initiator signature"}
 
       role == :responder && prev_state.responder_amount > new_state.responder_amount ->
-        {:error, "Negative initiator transfer"}
+        {:error, "#{__MODULE__}: Negative initiator transfer"}
 
       true ->
         :ok
@@ -184,14 +184,14 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   def validate_full_update(prev_state, new_state, pubkeys) do
     cond do
       new_state.sequence <= prev_state.sequence ->
-        {:error, "Invalid sequence"}
+        {:error, "#{__MODULE__}: Invalid sequence"}
 
       new_state.channel_id != prev_state.channel_id ->
-        {:error, "Different channel id"}
+        {:error, "#{__MODULE__}: Different channel id"}
 
       prev_state.initiator_amount + prev_state.responder_amount !=
           new_state.initiator_amount + new_state.responder_amount ->
-        {:error, "Invalid new total amount"}
+        {:error, "#{__MODULE__}: Invalid new total amount"}
 
       true ->
         validate(new_state, pubkeys)

@@ -81,13 +81,13 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
     cond do
       tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "Channel cannot have negative total balance"}
+        {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
 
       tx.locktime < 0 ->
-        {:error, "Locktime cannot be negative"}
+        {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
-        {:error, "Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size"}
 
       true ->
         :ok
@@ -163,13 +163,13 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + tx.initiator_amount) < 0 ->
-        {:error, "Negative initiator balance"}
+        {:error, "#{__MODULE__}: Negative initiator balance"}
 
       AccountStateTree.get(accounts, responder_pubkey).balance - tx.responder_amount < 0 ->
-        {:error, "Negative responder balance"}
+        {:error, "#{__MODULE__}: Negative responder balance"}
 
       Map.has_key?(channels, ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)) ->
-        {:error, "Channel already exists"}
+        {:error, "#{__MODULE__}: Channel already exists"}
 
       true ->
         :ok

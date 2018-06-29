@@ -70,7 +70,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     senders = DataTx.senders(data_tx)
 
     if length(senders) != 1 do
-      {:error, "Invalid senders size"}
+      {:error, "#{__MODULE__}: Invalid senders size"}
     else
       :ok
     end
@@ -129,17 +129,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "Negative sender balance"}
+        {:error, "#{__MODULE__}: Negative sender balance"}
 
       channel == nil ->
-        {:error, "Channel doesn't exist (already closed?)"}
+        {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       !ChannelStateOnChain.active?(channel) ->
-        {:error, "Can't solo close active channel. Use slash."}
+        {:error, "#{__MODULE__}: Can't solo close active channel. Use slash."}
 
       sender != ChannelStateOnChain.initiator_pubkey(channel) &&
           sender != ChannelStateOnChain.responder_pubkey(channel) ->
-        {:error, "Sender must be a party of the channel"}
+        {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->
         ChannelStateOnChain.validate_slashing(channel, state)

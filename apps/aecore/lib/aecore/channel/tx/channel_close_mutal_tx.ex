@@ -86,10 +86,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
     cond do
       tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "Channel cannot have negative total balance"}
+        {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
 
       length(senders) != 2 ->
-        {:error, "Invalid from_accs size"}
+        {:error, "#{__MODULE__}: Invalid from_accs size"}
 
       true ->
         :ok
@@ -154,17 +154,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + 1) / 2 +
         tx.initiator_amount < 0 ->
-        {:error, "Negative initiator balance"}
+        {:error, "#{__MODULE__}: Negative initiator balance"}
 
       AccountStateTree.get(accounts, responder_pubkey).balance - fee / 2 + tx.responder_amount < 0 ->
-        {:error, "Negative responder balance"}
+        {:error, "#{__MODULE__}: Negative responder balance"}
 
       channel == nil ->
-        {:error, "Channel doesn't exist (already closed?)"}
+        {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       channel.initiator_amount + channel.responder_amount !=
           tx.initiator_amount + tx.responder_amount ->
-        {:error, "Wrong total balance"}
+        {:error, "#{__MODULE__}: Wrong total balance"}
 
       true ->
         :ok

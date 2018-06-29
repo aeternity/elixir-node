@@ -219,7 +219,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def create_open(%ChannelStatePeer{}) do
-    {:error, "Invalid call"}
+    {:error, "#{__MODULE__}: Invalid call"}
   end
 
   @doc """
@@ -245,13 +245,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     cond do
       ChannelCreateTx.initiator_amount(open_payload) != initiator_amount ->
-        {:error, "Wrong initiator amount"}
+        {:error, "#{__MODULE__}: Wrong initiator amount"}
 
       ChannelCreateTx.responder_amount(open_payload) != responder_amount ->
-        {:error, "Wrong responder amount"}
+        {:error, "#{__MODULE__}: Wrong responder amount"}
 
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
-        {:error, "Wrong peers"}
+        {:error, "#{__MODULE__}: Wrong peers"}
 
       true ->
         zero_state = ChannelStateOffChain.create(id, 0, initiator_amount, responder_amount)
@@ -271,7 +271,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def sign_open(%ChannelStatePeer{}) do
-    {:error, "Invalid call"}
+    {:error, "#{__MODULE__}: Invalid call"}
   end
 
   @doc """
@@ -306,7 +306,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     if ChannelStateOffChain.initiator_amount(new_state) < peer_state.channel_reserve ||
          ChannelStateOffChain.responder_amount(new_state) < peer_state.channel_reserve do
-      {:error, "Too big transfer"}
+      {:error, "#{__MODULE__}: Too big transfer"}
     else
       new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key)
 
@@ -321,7 +321,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def transfer(%ChannelStatePeer{} = state, _amount, _priv_key) do
-    {:error, "Can't transfer now; channel state is #{state.fsm_state}"}
+    {:error, "#{__MODULE__}: Can't transfer now; channel state is #{state.fsm_state}"}
   end
 
   @doc """
@@ -343,7 +343,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def recv_state(%ChannelStatePeer{} = state) do
-    {:error, "Can't receive state now; channel state is #{state.fsm_state}"}
+    {:error, "#{__MODULE__}: Can't receive state now; channel state is #{state.fsm_state}"}
   end
 
   defp recv_full_state(
@@ -442,7 +442,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def close(%ChannelStatePeer{} = state) do
-    {:error, "Can't close now; channel state is #{state.fsm_state}"}
+    {:error, "#{__MODULE__}: Can't close now; channel state is #{state.fsm_state}"}
   end
 
   @doc """
@@ -462,18 +462,18 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     cond do
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
-        {:error, "Invalid senders"}
+        {:error, "#{__MODULE__}: Invalid senders"}
 
       ChannelCloseMutalTx.channel_id(close_tx) != ChannelStateOffChain.id(state) ->
-        {:error, "Invalid id"}
+        {:error, "#{__MODULE__}: Invalid id"}
 
       ChannelCloseMutalTx.initiator_amount(close_tx) !=
           ChannelStateOffChain.initiator_amount(state) ->
-        {:error, "Invalid initiator_amount"}
+        {:error, "#{__MODULE__}: Invalid initiator_amount"}
 
       ChannelCloseMutalTx.responder_amount(close_tx) !=
           ChannelStateOffChain.responder_amount(state) ->
-        {:error, "Invalid responder_amount"}
+        {:error, "#{__MODULE__}: Invalid responder_amount"}
 
       true ->
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
@@ -483,7 +483,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def recv_close_tx(%ChannelStatePeer{} = state) do
-    {:error, "Can't receive close tx now; channel state is #{state.fsm_state}"}
+    {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{state.fsm_state}"}
   end
 
   @doc """
