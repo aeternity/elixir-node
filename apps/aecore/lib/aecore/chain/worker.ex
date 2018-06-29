@@ -361,8 +361,7 @@ defmodule Aecore.Chain.Worker do
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
-    Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
-    Enum.each(new_block.txs, fn tx -> new_tx_notify(tx) end)
+
     new_block_hash = BlockValidation.block_header_hash(new_block.header)
 
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
@@ -420,11 +419,8 @@ defmodule Aecore.Chain.Worker do
         :block_info => %{new_block_hash => %{refs: new_refs}}
       })
 
-      ## We send the block to others only if it extends the longest chain
-      Peers.broadcast_block(new_block)
-
-      # Broadcasting notifications for new block added to chain and new mined transaction
-      Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
+      # TODO when top fork changes we should notify about all txs that were missed
+      new_top_block_notify(new_block)
 
       {:reply, :ok,
        %{state_update | top_hash: new_block_hash, top_height: new_block.header.height}}
@@ -521,17 +517,14 @@ defmodule Aecore.Chain.Worker do
      %{state | blocks_data_map: blocks_data_map, top_hash: top_hash, top_height: top_height}}
   end
 
-  def new_tx_notify(tx) do
-    case DataTx.payload(SignedTx.data_tx(tx)) do
-      %ChannelCreateTx{} ->
-        Channel.opened(tx)
+  defp new_top_block_notify(new_block) do
+    Enum.each(new_block.txs, fn tx ->
+      Pool.remove_transaction(tx)
+      Channel.new_tx_mined(tx)
+    end)
 
-      %ChannelCloseMutalTx{} ->
-        Channel.closed(tx)
-
-      _ ->
-        :ok
-    end
+    Peers.broadcast_block(new_block)
+    Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
   end
 
   defp remove_old_block_data_from_map(block_map, top_hash) do

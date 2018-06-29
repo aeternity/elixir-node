@@ -11,7 +11,8 @@ defmodule Aecore.Channel.Worker do
     ChannelCloseMutalTx,
     ChannelCloseSoloTx,
     ChannelSlashTx,
-    ChannelSettleTx
+    ChannelSettleTx,
+    ChannelCreateTx
   }
 
   alias Aecore.Tx.{DataTx, SignedTx}
@@ -39,6 +40,36 @@ defmodule Aecore.Channel.Worker do
 
   def init(_args) do
     {:ok, %{}}
+  end
+
+  @doc """
+  Notifies channel manager about new mined tx
+  """
+  def new_tx_mined(%ChannelCreateTx{} = tx) do
+    opened(tx)
+  end
+
+  def new_tx_mined(%ChannelCloseMutalTx{} = tx) do
+    closed(tx)
+  end
+
+  def new_tx_mined(%ChannelCloseSoloTx{} = tx) do
+    # TODO
+    :ok
+  end
+
+  def new_tx_mined(%ChannelSlashTx{} = tx) do
+    # TODO
+    :ok
+  end
+
+  def new_tx_mined(%ChannelSettleTx{} = tx) do
+    closed(tx)
+  end
+
+  def new_tx_mined(_) do
+    # We don't care about this tx
+    :ok
   end
 
   @doc """
@@ -360,11 +391,19 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:closed, close_tx}, _from, state) do
-    id =
+    payload =
       close_tx
       |> SignedTx.data_tx()
       |> DataTx.payload()
-      |> ChannelCloseMutalTx.channel_id()
+
+    id =
+      case payload do
+        %ChannelCloseMutalTx{channel_id: id} ->
+          id
+
+        %ChannelSettleTx{channel_id: id} ->
+          id
+      end
 
     if Map.has_key?(state, id) do
       peer_state = Map.get(state, id)
