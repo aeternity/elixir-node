@@ -297,3 +297,40 @@ Names will follow IDNA2008 normalization and have a maximum length of 253 charac
  * `NameUpdate` updates associated pointers to one registered name, while updating the expiry. `Account.name_update(name, pointers, fee)`
  * `NameTransfer` transfers one account claim to a different owner. `Account.name_transfer(name, target, fee)`
  * `NameRevoke` revokes one name claim, will result in deletion after 2016 blocks. `Account.name_revoke(name, fee)`
+
+#### **Channels usage**
+
+For normal channel operation procedure should be followed:
+
+0. Parties negotiate channel properties (founds, accounts involved, locktime, channel\_reserve, temporary\_id)
+1. Initiator calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :initiator, channel_reserve)`
+2. Responder calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :responder, channel_reserve)`
+3. Initiator calls `{:ok, channel_id, half_signed_open_tx} = Channel.create_open(temporary_id, locktime, fee, nonce, priv_key)`
+4. Initiator sends `half_signed_open_tx` to Responder
+5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = sign_open(temporary_id, half_signed_open_tx, priv_key)`
+6. Responder sends back `fully_signed_open_tx` to Initiator
+7. Both parties await the transaction to be mined. Status of channel will get changed to `:open`
+8. Both parties can create transactions as follows:
+    
+    a. First party calls `{:ok, half_signed_state} = Channel.transfer(channel_id, amount, priv_key)`
+    b. First party sendd `half_signed_state` to second party.
+    c. Second party calls `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
+    c. Second party sends back `signed_state`
+    d. First party calls `{:ok, nil} = Channel.recv_state(signed_state)`
+9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, fee, nonce, priv_key`
+10. First party sends `half_signed_close_tx` to second party
+11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, priv_key)`
+12. Second party sends `fully_signed_close_tx` to first party
+13. When channel status changes to `:closed` channel is fully closed
+
+If other party misbehaves and creates a `ChannelCloseSoloTx` with old state the party should call `Channel.slash(channel_id, fee, nonce, pubkey, priv_key)` (note: pubkey and privkey may be from another account then used to open the channel. One might send their ChannelStateOffChain to somebody else for safekeeping before going offline.)
+
+If other party disappear or refuses to sign `ChannelCloseMutalTx` with up-to-date state the party should call `Channel.solo_close(channel_id, fee, nonce, priv_key)`.
+
+When locktime is exhaused and a party should call `Channel.settle(channel_id, fee, nonce, priv_key)` to close the channel.
+
+Channel status can be checked with:
+```
+{:ok, state} = Channel.get_channel(channel_id)
+state.fsm_state
+```
