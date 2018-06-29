@@ -48,10 +48,14 @@ defmodule Aevm do
 
   # 0s: Stop and Arithmetic Operations
 
+  # 0x00 STOP
+  # Halts execution.
   defp exec(OpCodes._STOP(), state) do
     AevmUtil.stop_exec(state)
   end
 
+  # 0x01 ADD
+  # Addition operation.
   defp exec(OpCodes._ADD(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -61,6 +65,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x02 MUL
+  # Multiplication operation.
   defp exec(OpCodes._MUL(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -70,6 +76,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x03 SUB
+  # Subtraction operation.
   defp exec(OpCodes._SUB(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -79,6 +87,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x04 DIV
+  # Integer division operation.
   defp exec(OpCodes._DIV(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -95,6 +105,9 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x05 SDIV
+  # Signed integer division operation (truncated).
+  # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SDIV(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -111,6 +124,8 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x06 MOD
+  # Modulo remainder operation.
   defp exec(OpCodes._MOD(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -127,6 +142,9 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x07 SMOD
+  # Signed modulo remainder operation.
+  # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SMOD(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -143,6 +161,10 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x08 ADDMOD
+  # Modulo addition operation.
+  # All intermediate calculations of this operation are not
+  # subject to the 2^256 modulo.
   defp exec(OpCodes._ADDMOD(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -160,6 +182,10 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x09 MULMOD
+  # Modulo multiplication operation.
+  # All intermediate calculations of this operation are not
+  # subject to the 2^256 modulo.
   defp exec(OpCodes._MULMOD(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -177,6 +203,8 @@ defmodule Aevm do
     Stack.push(masked, state)
   end
 
+  # 0x0a EXP
+  # Exponential operation.
   defp exec(OpCodes._EXP(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -186,6 +214,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x0b SIGNEXTEND
+  # Extend length of two’s complement signed integer.
   defp exec(OpCodes._SIGNEXTEND(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -197,6 +227,8 @@ defmodule Aevm do
 
   # 10s: Comparison & Bitwise Logic Operations
 
+  # 0x10 LT
+  # Less-than comparison.
   defp exec(OpCodes._LT(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -211,6 +243,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x11 GT
+  # Greater-than comparison.
   defp exec(OpCodes._GT(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -225,6 +259,9 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x12 SLT
+  # Signed less-than comparison.
+  # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SLT(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -242,6 +279,9 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x13 SGT
+  # Signed greater-than comparison.
+  # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SGT(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -259,6 +299,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x14 EQ
+  # Equality comparison.
   defp exec(OpCodes._EQ(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -276,6 +318,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x15 ISZERO
+  # Simple not operator.
   defp exec(OpCodes._ISZERO(), state) do
     {op1, state} = Stack.pop(state)
 
@@ -289,6 +333,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x16 AND
+  # Bitwise AND operation.
   defp exec(OpCodes._AND(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -298,6 +344,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x17 OR
+  # Bitwise OR operation.
   defp exec(OpCodes._OR(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -307,6 +355,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x18 XOR
+  # Bitwise XOR operation.
   defp exec(OpCodes._XOR(), state) do
     {op1, state} = Stack.pop(state)
     {op2, state} = Stack.pop(state)
@@ -316,6 +366,8 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x19 NOT
+  # Bitwise NOT operation.
   defp exec(OpCodes._NOT(), state) do
     {op1, state} = Stack.pop(state)
 
@@ -324,6 +376,10 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x1a BYTE
+  # Retrieve single byte from word.
+  # For the Nth byte, we count from the left
+  # (i.e. N=0 would be the most significant in big endian).
   defp exec(OpCodes._BYTE(), state) do
     {byte, state} = Stack.pop(state)
     {value, state} = Stack.pop(state)
@@ -335,6 +391,8 @@ defmodule Aevm do
 
   # 20s: SHA3
 
+  # 0x20 SHA3
+  # Compute Keccak-256 hash.
   defp exec(OpCodes._SHA3(), state) do
     {from_pos, state1} = Stack.pop(state)
     {nbytes, state2} = Stack.pop(state1)
@@ -347,11 +405,15 @@ defmodule Aevm do
 
   # 30s: Environmental Information
 
+  # 0x30 ADDRESS
+  # Get address of currently executing account.
   defp exec(OpCodes._ADDRESS(), state) do
     address = State.address(state)
     Stack.push(address, state)
   end
 
+  # 0x31 BALANCE
+  # Get balance of the given account.
   defp exec(OpCodes._BALANCE(), state) do
     {address, state} = Stack.pop(state)
 
@@ -360,33 +422,54 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x32 ORIGIN
+  # Get execution origination address.
+  # This is the sender of original transaction;
+  # it is never an account with non-empty associated code.
   defp exec(OpCodes._ORIGIN(), state) do
     origin = State.origin(state)
     Stack.push(origin, state)
   end
 
+  # 0x33 CALLER
+  # Get caller address.
+  # This is the address of the account that is directly responsible
+  # for this execution.
   defp exec(OpCodes._CALLER(), state) do
     caller = State.caller(state)
     Stack.push(caller, state)
   end
 
+  # 0x34 CALLVALUE
+  # Get deposited value by the instruction/transaction
+  # responsible for this execution.
   defp exec(OpCodes._CALLVALUE(), state) do
     value = State.value(state)
     Stack.push(value, state)
   end
 
+  # 0x35 CALLDATALOAD
+  # Get input data of current environment.
+  # This pertains to the input data passed with the message call
+  # instruction or transaction.
   defp exec(OpCodes._CALLDATALOAD(), state) do
     {address, state1} = Stack.pop(state)
     value = AevmUtil.value_from_data(address, state1)
     Stack.push(value, state1)
   end
 
+  # 0x36 CALLDATASIZE
+  # Get size of input data in current environment.
+  # This pertains to the input data passed with the message call
+  # instruction or transaction.
   defp exec(OpCodes._CALLDATASIZE(), state) do
     data = State.data(state)
     value = byte_size(data)
     Stack.push(value, state)
   end
 
+  # 0x37 CALLDATACOPY
+  # Copy input data in current environment to memory.
   defp exec(OpCodes._CALLDATACOPY(), state) do
     {nbytes, state1} = Stack.pop(state)
     {from_data_pos, state2} = Stack.pop(state1)
@@ -397,12 +480,16 @@ defmodule Aevm do
     Memory.write_area(nbytes, data_bytes, state3)
   end
 
+  # 0x38 CODESIZE
+  # Get size of code running in current environment.
   defp exec(OpCodes._CODESIZE(), state) do
     code = State.code(state)
     value = byte_size(code)
     Stack.push(value, state)
   end
 
+  # 0x39 CODECOPY
+  # Copy code running in current environment to memory.
   defp exec(OpCodes._CODECOPY(), state) do
     {nbytes, state1} = Stack.pop(state)
     {from_code_pos, state2} = Stack.pop(state1)
@@ -413,11 +500,16 @@ defmodule Aevm do
     Memory.write_area(nbytes, code_bytes, state3)
   end
 
+  # 0x3a GASPRICE
+  # Get price of gas in current environment.
+  # This is gas price specified by the originating transaction.
   defp exec(OpCodes._GASPRICE(), state) do
     gas_price = State.gas_price(state)
     Stack.push(gas_price, state)
   end
 
+  # 0x3b EXTCODESIZE
+  # Get size of an account’s code.
   defp exec(OpCodes._EXTCODESIZE(), state) do
     {address, state} = Stack.pop(state)
 
@@ -426,6 +518,8 @@ defmodule Aevm do
     Stack.push(ext_code_size, state)
   end
 
+  # 0x3c EXTCODECOPY
+  # Copy an account’s code to memory.
   defp exec(OpCodes._EXTCODECOPY(), state) do
     {address, state1} = Stack.pop(state)
     {nbytes, state2} = Stack.pop(state1)
@@ -437,13 +531,16 @@ defmodule Aevm do
     Memory.write_area(nbytes, code_bytes, state4)
   end
 
+  # 0x3d RETURNDATASIZE
+  # Get size of output data from the previous call from the current environment.
   defp exec(OpCodes._RETURNDATASIZE(), state) do
-    # Not sure what "output data from the previous call from the current env" means
     return_data = State.return_data(state)
     value = byte_size(return_data)
     Stack.push(value, state)
   end
 
+  # 0x3e RETURNDATACOPY
+  # Copy output data from the previous call to memory.
   defp exec(OpCodes._RETURNDATACOPY(), state) do
     {nbytes, state1} = Stack.pop(state)
     {from_rdata_pos, state2} = Stack.pop(state1)
@@ -456,47 +553,58 @@ defmodule Aevm do
 
   # 40s: Block Information
 
+  # 0x40 BLOCKHASH
+  # Get the hash of one of the 256 most
+  # recent complete blocks.
+  # µ's[0] ≡ P(IHp, µs[0], 0)
+  # where P is the hash of a block of a particular number,
+  # up to a maximum age.
+  # 0 is left on the stack if the looked for block number
+  # is greater than the current block number
+  # or more than 256 blocks behind the current block.
+  #               0 if n > Hi ∨ a = 256 ∨ h = 0
+  # P(h, n, a) ≡  h if n = Hi
+  #               P(Hp, n, a + 1) otherwise
+  # and we assert the header H can be determined as
+  # its hash is the parent hash
+  # in the block following it.
   defp exec(OpCodes._BLOCKHASH(), state) do
-    # Get the hash of one of the 256 most
-    # recent complete blocks.
-    # µ's[0] ≡ P(IHp, µs[0], 0)
-    # where P is the hash of a block of a particular number,
-    # up to a maximum age.
-    # 0 is left on the stack if the looked for block number
-    # is greater than the current block number
-    # or more than 256 blocks behind the current block.
-    #               0 if n > Hi ∨ a = 256 ∨ h = 0
-    # P(h, n, a) ≡  h if n = Hi
-    #               P(Hp, n, a + 1) otherwise
-    # and we assert the header H can be determined as
-    # its hash is the parent hash
-    # in the block following it.
     {nth_block, state1} = Stack.pop(state)
     hash = State.calculate_blockhash(nth_block, 0, state1)
 
     Stack.push(hash, state1)
   end
 
+  # 0x41 COINBASE
+  # Get the block’s beneficiary address.
   defp exec(OpCodes._COINBASE(), state) do
     current_coinbase = State.current_coinbase(state)
     Stack.push(current_coinbase, state)
   end
 
+  # 0x42 TIMESTAMP
+  # Get the block’s timestamp.
   defp exec(OpCodes._TIMESTAMP(), state) do
     current_timestamp = State.current_timestamp(state)
     Stack.push(current_timestamp, state)
   end
 
+  # 0x43 NUMBER
+  # Get the block’s number.
   defp exec(OpCodes._NUMBER(), state) do
     current_number = State.current_number(state)
     Stack.push(current_number, state)
   end
 
+  # 0x44 DIFFICULTY
+  # Get the block’s difficulty.
   defp exec(OpCodes._DIFFICULTY(), state) do
     current_difficulty = State.current_difficulty(state)
     Stack.push(current_difficulty, state)
   end
 
+  # 0x45 GASLIMIT
+  # Get the block’s gas limit.
   defp exec(OpCodes._GASLIMIT(), state) do
     current_gas_limit = State.current_gas_limit(state)
     Stack.push(current_gas_limit, state)
@@ -504,12 +612,16 @@ defmodule Aevm do
 
   # 50s: Stack, Memory, Storage and Flow Operations
 
+  # 0x50 POP
+  # Remove item from stack.
   defp exec(OpCodes._POP(), state) do
     {_, state} = Stack.pop(state)
 
     state
   end
 
+  # 0x51 MLOAD
+  # Load word from memory.
   defp exec(OpCodes._MLOAD(), state) do
     {address, state} = Stack.pop(state)
 
@@ -518,6 +630,8 @@ defmodule Aevm do
     Stack.push(result, state1)
   end
 
+  # 0x52 MSTORE
+  # Save word to memory.
   defp exec(OpCodes._MSTORE(), state) do
     {address, state} = Stack.pop(state)
     {value, state} = Stack.pop(state)
@@ -525,6 +639,8 @@ defmodule Aevm do
     Memory.store(address, value, state)
   end
 
+  # 0x53 MSTORE8
+  # Save byte to memory.
   defp exec(OpCodes._MSTORE8(), state) do
     {address, state} = Stack.pop(state)
     {value, state} = Stack.pop(state)
@@ -532,6 +648,8 @@ defmodule Aevm do
     Memory.store8(address, value, state)
   end
 
+  # 0x54 SLOAD
+  # Load word from storage.
   defp exec(OpCodes._SLOAD(), state) do
     {address, state} = Stack.pop(state)
 
@@ -540,12 +658,16 @@ defmodule Aevm do
     Stack.push(result, state)
   end
 
+  # 0x55 SSTORE
+  # Save word to storage.
   defp exec(OpCodes._SSTORE(), state) do
     {key, state} = Stack.pop(state)
     {value, state} = Stack.pop(state)
     Storage.sstore(key, value, state)
   end
 
+  # 0x56 JUMP
+  # Alter the program counter.
   defp exec(OpCodes._JUMP(), state) do
     {position, state} = Stack.pop(state)
     jumpdests = State.jumpdests(state)
@@ -559,6 +681,8 @@ defmodule Aevm do
     end
   end
 
+  # 0x57 JUMPI
+  # Conditionally alter the program counter.
   defp exec(OpCodes._JUMPI(), state) do
     {position, state} = Stack.pop(state)
     {condition, state} = Stack.pop(state)
@@ -578,29 +702,50 @@ defmodule Aevm do
     end
   end
 
+  # 0x58 PC
+  # Get the value of the program counter prior
+  # to the increment corresponding to this instruction.
   defp exec(OpCodes._PC(), state) do
     pc = State.pc(state)
     Stack.push(pc, state)
   end
 
+  # 0x59 MSIZE
+  # Get the size of active memory in bytes.
   defp exec(OpCodes._MSIZE(), state) do
     result = Memory.memory_size_bytes(state)
 
     Stack.push(result, state)
   end
 
+  # 0x5a GAS
+  # Get the amount of available gas, including the corresponding reduction
+  # for the cost of this instruction.
   defp exec(OpCodes._GAS(), state) do
     gas_cost = Gas.op_gas_cost(OpCodes._GAS())
     gas = State.gas(state) - gas_cost
     Stack.push(gas, state)
   end
 
+  # 0x5b JUMPDEST
+  # Mark a valid destination for jumps.
+  # This operation has no effect on machine state during execution.
   defp exec(OpCodes._JUMPDEST(), state) do
     state
   end
 
   # 60s & 70s: Push Operations
 
+  # 0x60 PUSH1
+  # Place 1 byte item on stack.
+  # µ's[0] ≡ c(µpc + 1)
+  # where c(x) ≡ (Ib[x] if x < ||Ib||
+  #               0 otherwise
+  # The bytes are read in line from the program code’s bytes array.
+  # The function c ensures the bytes
+  # default to zero if they extend past the limits.
+  # The byte is right-aligned
+  # (takes the lowest significant place in big endian).
   defp exec(OpCodes._PUSH1() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
     {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
@@ -608,6 +753,10 @@ defmodule Aevm do
     Stack.push(result, state1)
   end
 
+  # 0x61 PUSH2
+  # Place 2-byte item on stack.
+  # The bytes are right-aligned
+  # (takes the lowest significant place in big endian).
   defp exec(OpCodes._PUSH2() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
     {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
@@ -818,6 +967,10 @@ defmodule Aevm do
     Stack.push(result, state1)
   end
 
+  # 0x7f PUSH32
+  # Place 32-byte (full word) item on stack.
+  # The bytes are right-aligned
+  # (takes the lowest significant place in big endian).
   defp exec(OpCodes._PUSH32() = current_op, state) do
     bytes = current_op - OpCodes._PUSH1() + 1
     {result, state1} = AevmUtil.move_pc_n_bytes(bytes, state)
@@ -827,11 +980,15 @@ defmodule Aevm do
 
   # 80s: Duplication Operations
 
+  # 0x80 DUP1
+  # Duplicate 1st stack item.
   defp exec(OpCodes._DUP1() = current_op, state) do
     slot = current_op - OpCodes._DUP1() + 1
     Stack.dup(slot, state)
   end
 
+  # 0x81 DUP2
+  # Duplicate 2nd stack item.
   defp exec(OpCodes._DUP2() = current_op, state) do
     slot = current_op - OpCodes._DUP1() + 1
     Stack.dup(slot, state)
@@ -902,6 +1059,8 @@ defmodule Aevm do
     Stack.dup(slot, state)
   end
 
+  # 0x8f DUP16
+  # Duplicate 16th stack item.
   defp exec(OpCodes._DUP16() = current_op, state) do
     slot = current_op - OpCodes._DUP1() + 1
     Stack.dup(slot, state)
@@ -909,11 +1068,15 @@ defmodule Aevm do
 
   # 90s: Exchange Operations
 
+  # 0x90 SWAP1
+  # Exchange 1st and 2nd stack items.
   defp exec(OpCodes._SWAP1() = current_op, state) do
     bytes = current_op - OpCodes._SWAP1() + 1
     Stack.swap(bytes, state)
   end
 
+  # 0x91 SWAP2
+  # Exchange 1st and 3rd stack items.
   defp exec(OpCodes._SWAP2() = current_op, state) do
     bytes = current_op - OpCodes._SWAP1() + 1
     Stack.swap(bytes, state)
@@ -984,6 +1147,8 @@ defmodule Aevm do
     Stack.swap(bytes, state)
   end
 
+  # 0x9f SWAP16
+  # Exchange 1st and 17th stack items.
   defp exec(OpCodes._SWAP16() = current_op, state) do
     bytes = current_op - OpCodes._SWAP1() + 1
     Stack.swap(bytes, state)
@@ -991,6 +1156,8 @@ defmodule Aevm do
 
   # a0s: Logging Operations
 
+  # 0xa0 LOG0
+  # Append log record with no topics.
   defp exec(OpCodes._LOG0(), state) do
     {from_pos, state1} = Stack.pop(state)
     {nbytes, state2} = Stack.pop(state1)
@@ -998,6 +1165,8 @@ defmodule Aevm do
     AevmUtil.log([], from_pos, nbytes, state2)
   end
 
+  # 0xa1 LOG1
+  # Append log record with one topic.
   defp exec(OpCodes._LOG1(), state) do
     {from_pos, state1} = Stack.pop(state)
     {nbytes, state2} = Stack.pop(state1)
@@ -1025,6 +1194,8 @@ defmodule Aevm do
     AevmUtil.log([topic1, topic2, topic3], from_pos, nbytes, state5)
   end
 
+  # 0xa4 LOG4
+  # Append log record with four topics.
   defp exec(OpCodes._LOG4(), state) do
     {from_pos, state1} = Stack.pop(state)
     {nbytes, state2} = Stack.pop(state1)
@@ -1038,6 +1209,8 @@ defmodule Aevm do
 
   # f0s: System operations
 
+  # 0xf0 CREATE
+  # Create a new account with associated code.
   defp exec(OpCodes._CREATE(), state) do
     {value, state1} = Stack.pop(state)
     {from_pos, state2} = Stack.pop(state1)
@@ -1049,16 +1222,22 @@ defmodule Aevm do
     Stack.push(account, state5)
   end
 
+  # 0xf1 CALL
+  # Message-call into an account.
   defp exec(OpCodes._CALL(), state) do
     {return, state1} = AevmUtil.call(OpCodes._CALL(), state)
     Stack.push(return, state1)
   end
 
+  # 0xf2 CALLCODE
+  # Message-call into this account with an alternative account’s code.
   defp exec(OpCodes._CALLCODE(), state) do
     {return, state1} = AevmUtil.call(OpCodes._CALL(), state)
     Stack.push(return, state1)
   end
 
+  # 0xf3 RETURN
+  # Halt execution returning output data.
   defp exec(OpCodes._RETURN(), state) do
     {from_pos, state} = Stack.pop(state)
     {nbytes, state} = Stack.pop(state)
@@ -1069,6 +1248,9 @@ defmodule Aevm do
     AevmUtil.stop_exec(state2)
   end
 
+  # 0xf4 DELEGATECALL
+  # Message-call into this account with an alternative account’s code, but
+  # persisting the current values for sender and value.
   defp exec(OpCodes._DELEGATECALL(), state) do
     {return, state1} = AevmUtil.call(OpCodes._CALL(), state)
     Stack.push(return, state1)
@@ -1086,18 +1268,17 @@ defmodule Aevm do
   #   # TODO
   # end
 
+  # 0xfe INVALID
+  # Designated invalid instruction.
   defp exec(OpCodes._INVALID(), state) do
     throw({:error, "invalid instruction", state})
   end
 
+  # 0xff SUICIDE
   # Halt Execution, Mark for deletion
-
   defp exec(OpCodes._SUICIDE(), state) do
     {value, state1} = Stack.pop(state)
     state2 = State.set_selfdestruct(value, state1)
-
-    # mem_gas_cost = Gas.memory_gas_cost(state1, state)
-    # State.set_gas()
 
     AevmUtil.stop_exec(state2)
   end
