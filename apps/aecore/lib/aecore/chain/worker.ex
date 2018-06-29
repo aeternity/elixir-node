@@ -26,9 +26,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
-  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseMutalTx}
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 

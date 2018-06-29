@@ -53,12 +53,12 @@ defmodule Aecore.Channel.Worker do
     closed(tx)
   end
 
-  def new_tx_mined(%ChannelCloseSoloTx{} = tx) do
+  def new_tx_mined(%ChannelCloseSoloTx{} = _tx) do
     # TODO
     :ok
   end
 
-  def new_tx_mined(%ChannelSlashTx{} = tx) do
+  def new_tx_mined(%ChannelSlashTx{} = _tx) do
     # TODO
     :ok
   end

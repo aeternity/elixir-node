@@ -7,7 +7,6 @@ defmodule AecoreChannelTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
   alias Aecore.Channel.Worker, as: Channels
-  alias Aecore.Account.Account
 
   alias Aecore.Channel.{ChannelStateOffChain, ChannelStateOnChain, ChannelStatePeer}
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
@@ -90,8 +89,8 @@ defmodule AecoreChannelTest do
     TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5)
     TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
 
-    call_s1({:closed, close_tx})
-    call_s2({:closed, close_tx})
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
     assert :closed == get_fsm_state_s1(id)
     assert :closed == get_fsm_state_s2(id)
 
@@ -165,7 +164,7 @@ defmodule AecoreChannelTest do
   test "create channel, responder dissapears, solo close", ctx do
     id = create_channel(ctx)
 
-    {:ok, state} = call_s1({:transfer, id, 50, ctx.sk1})
+    {:ok, _state} = call_s1({:transfer, id, 50, ctx.sk1})
     assert :update == get_fsm_state_s1(id)
     # We simulate no response from other peer = transfer failed
 

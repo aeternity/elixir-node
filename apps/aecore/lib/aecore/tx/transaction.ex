@@ -5,7 +5,6 @@ defmodule Aecore.Tx.Transaction do
   """
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.AccountStateTree
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
