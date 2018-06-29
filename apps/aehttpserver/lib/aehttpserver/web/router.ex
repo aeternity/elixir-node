@@ -23,7 +23,8 @@ defmodule Aehttpserver.Web.Router do
     get("/peer/key", InfoController, :public_key)
 
     get("/info", InfoController, :info)
-    get("/peers", PeersController, :info)
+    get("/peer_info", PeersController, :info)
+    get("/peers", PeersController, :peers)
     resources("/tx", TxController, param: "account", only: [:show])
     get("/blocks", BlockController, :get_blocks)
     get("/raw_blocks", BlockController, :get_raw_blocks)

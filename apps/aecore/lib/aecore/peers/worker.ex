@@ -9,6 +9,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aehttpclient.Client
 
   require Logger
 
@@ -60,6 +61,16 @@ defmodule Aecore.Peers.Worker do
 
   def broadcast_block(%Block{} = block) do
     GenServer.cast(__MODULE__, {:broadcast_block, block})
+  end
+
+  def get_info_try_connect(uri) do
+    case Client.get_peer_info(uri) do
+      {:ok, peer_info} ->
+        try_connect(peer_info)
+
+      {:error, _reason} = error ->
+        error
+    end
   end
 
   def try_connect(peer_info) do
