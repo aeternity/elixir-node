@@ -20,6 +20,7 @@ alias Aecore.Keys.Worker, as: Wallet
 alias Aecore.Keys.Peer, as: PeerKeys
 alias Aecore.Channel.{ChannelStatePeer, ChannelStateOffChain, ChannelStateOnChain}
 alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseSoloTx, ChannelCloseMutalTx}
+alias Aecore.Channel.Worker, as: Channel
 
 alias Aehttpclient.Client
 
