@@ -124,7 +124,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       AccountStateTree.get(accounts, sender).balance < fee ->
         {:error, "#{__MODULE__}: Negative sender balance"}
 
-      channel == nil ->
+      channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       !ChannelStateOnChain.settled?(channel, block_height) ->

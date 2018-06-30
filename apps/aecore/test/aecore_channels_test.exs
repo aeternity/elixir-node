@@ -180,11 +180,14 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_transactions_mined()
 
+    close_height = Chain.top_height() + 2
+    assert ChannelStateTree.get(Chain.channels(), id).slash_close == close_height
+
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
     assert :ok == Pool.add_transaction(settle_tx)
 
-    Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_pool()) == false
     assert PatriciaMerkleTree.trie_size(Chain.channels()) == 1
 
@@ -212,6 +215,7 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_transactions_mined()
     assert ChannelStateTree.get(Chain.channels(), id) != :none
+    assert ChannelStateTree.get(Chain.channels(), id).lock_period == 2
 
     TestUtils.assert_balance(ctx.pk1, 40)
     TestUtils.assert_balance(ctx.pk2, 50)

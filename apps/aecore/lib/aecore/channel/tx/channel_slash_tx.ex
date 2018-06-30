@@ -134,7 +134,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative sender balance"}
 
-      channel == nil ->
+      channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       ChannelStateOnChain.active?(channel) ->

@@ -112,7 +112,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Returns true if channel wasn't slashed. (Closed channels should be removed from Channels state tree)
   """
   @spec active?(ChannelStateOnChain.t()) :: boolean()
-  def active?(%ChannelStateOnChain{slash_sequence: 0}) do
+  def active?(%ChannelStateOnChain{slash_close: 0}) do
     true
   end
 

@@ -158,7 +158,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       AccountStateTree.get(accounts, responder_pubkey).balance - fee / 2 + tx.responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
-      channel == nil ->
+      channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       channel.initiator_amount + channel.responder_amount !=
