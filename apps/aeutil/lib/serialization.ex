@@ -27,6 +27,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.ChannelStateOnChain
 
   require Logger
 
@@ -389,6 +390,7 @@ defmodule Aeutil.Serialization do
           | :interaction_object
           | :naming_state
           | :name_commitment
+          | :channel_onchain
           | :block
           | :signedtx
         ) :: binary | {:error, String.t()}
@@ -455,6 +457,18 @@ defmodule Aeutil.Serialization do
     else
       error ->
         {:error, "#{__MODULE__} : Invalid Name Commitment State serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%ChannelStateOnChain{} = term, :channel_onchain) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(term.__struct__),
+         {:ok, version} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, version, term) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid Channel on-chain state serialization: #{inspect(error)}"}
     end
   end
 
@@ -531,6 +545,10 @@ defmodule Aeutil.Serialization do
 
   defp rlp_decode(SignedTx, _version, signedtx) do
     SignedTx.rlp_decode(signedtx)
+  end
+
+  defp rlp_decode(ChannelStateOnChain, _version, channel_state_on_chain) do
+    ChannelStateOnChain.rlp_decode(channel_state_on_chain)
   end
 
   defp rlp_decode(payload, _version, datatx) do
@@ -719,6 +737,8 @@ defmodule Aeutil.Serialization do
   def type_to_tag(OracleQuery),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:interaction_obj_state]}
 
+  def type_to_tag(ChannelStateOnChain), do: {:ok, 40}
+
   def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
 
   def type_to_tag(ChannelCloseSoloTx), do: {:ok, 42}
@@ -746,6 +766,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
+  def tag_to_type(40), do: ChannelStateOnChain
   def tag_to_type(41), do: ChannelCloseMutalTx
   def tag_to_type(42), do: ChannelCloseSoloTx
   def tag_to_type(43), do: ChannelCreateTx
@@ -770,6 +791,7 @@ defmodule Aeutil.Serialization do
   def get_version(NameUpdateTx), do: {:ok, 1}
   def get_version(NameRevokeTx), do: {:ok, 1}
   def get_version(NameTransferTx), do: {:ok, 1}
+  def get_version(ChannelStateOnChain), do: {:ok, 1}
   def get_version(ChannelCloseMutalTx), do: {:ok, 1}
   def get_version(ChannelCloseSoloTx), do: {:ok, 1}
   def get_version(ChannelCreateTx), do: {:ok, 1}

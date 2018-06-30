@@ -8,9 +8,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.ChainState
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateOffChain
-  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
 
   require Logger
 
@@ -23,7 +21,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @type reason :: String.t()
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
-  @type tx_type_state() :: Channel.channels_onchain()
+  @type tx_type_state() :: ChannelStateTree.t()
 
   @typedoc "Structure of the ChannelCloseSoloTx Transaction type"
   @type t :: %ChannelCloseSoloTx{
@@ -81,11 +79,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   """
   @spec process_chainstate(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -96,7 +94,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     channel_id = ChannelStateOffChain.id(state)
 
     new_channels =
-      Map.update!(channels, channel_id, fn channel ->
+      ChannelStateTree.update!(channels, channel_id, fn channel ->
         ChannelStateOnChain.apply_slashing(channel, block_height, state)
       end)
 
@@ -109,7 +107,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   """
   @spec preprocess_check(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
           DataTx.t()
@@ -125,7 +123,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     fee = DataTx.fee(data_tx)
 
     channel_id = ChannelStateOffChain.id(state)
-    channel = Map.get(channels, channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

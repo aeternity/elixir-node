@@ -8,8 +8,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Channel.ChannelStateTree
 
   require Logger
 
@@ -24,7 +23,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @type reason :: String.t()
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
-  @type tx_type_state() :: Channel.channels_onchain()
+  @type tx_type_state() :: ChannelStateTree.t()
 
   @typedoc "Structure of the ChannelMutalClose Transaction type"
   @type t :: %ChannelCloseMutalTx{
@@ -101,11 +100,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   """
   @spec process_chainstate(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -124,7 +123,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         Account.apply_transfer!(acc, block_height, tx.responder_amount)
       end)
 
-    new_channels = Map.drop(channels, [channel_id])
+    new_channels = ChannelStateTree.delete(channels, channel_id)
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -135,7 +134,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   """
   @spec preprocess_check(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
           DataTx.t()
@@ -149,7 +148,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     fee = DataTx.fee(data_tx)
-    channel = Map.get(channels, tx.channel_id)
+    channel = ChannelStateTree.get(channels, tx.channel_id)
 
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + 1) / 2 +

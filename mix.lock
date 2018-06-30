@@ -14,7 +14,7 @@
   "enacl": {:git, "https://github.com/aeternity/enacl.git", "2f50ba6289f2f2d9fef05d22a396c0bab4f64149", [ref: "2f50ba6"]},
   "enoise": {:git, "https://github.com/aeternity/enoise.git", "6d793b711854a02d56c68d9959e1525389464c87", [ref: "6d793b711854a02d56c68d9959e1525389464c87"]},
   "erl_base58": {:hex, :erl_base58, "0.0.1", "37710854461d71df338e73c65776302db41c4bab4674d2ec134ed7bcfc7b5552", [:rebar3], [], "hexpm"},
-  "erlexec": {:hex, :erlexec, "1.7.4", "f69091121625bc93e6dad4bb1b131e3e15bcb717ec40ec77c1de77b6823cc909", [:rebar3], [], "hexpm"},
+  "erlexec": {:hex, :erlexec, "1.9.0", "b8af818389e825bcf2d3760eb8300b75cda79c4b522b9533f096c6dee2eef833", [:rebar3], [], "hexpm"},
   "ex_json_schema": {:hex, :ex_json_schema, "0.5.7", "14a1bcd716e432badb19e5f54fd0f3f0be47b34d1b5957944702be90d66a6cf6", [:mix], [], "hexpm"},
   "ex_rlp": {:hex, :ex_rlp, "0.2.1", "bd320900d6316cdfe01d365d4bda22eb2f39b359798daeeffd3bd1ca7ba958ec", [:mix], [], "hexpm"},
   "exconstructor": {:hex, :exconstructor, "1.1.0", "272623a7b203cb2901c20cbb92c5c3ab103cc0087ff7c881979e046043346752", [:mix], [], "hexpm"},

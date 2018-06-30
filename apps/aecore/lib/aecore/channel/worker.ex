@@ -30,8 +30,6 @@ defmodule Aecore.Channel.Worker do
   """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
-  @type channels_onchain :: %{binary() => ChannelStateOnChain.t()}
-
   @type error :: {:error, binary()}
 
   def start_link(_args) do
@@ -105,7 +103,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Initializes channel with temporary ID. This has to be called for every channel by both :initiator and :responder. 
+  Initializes channel with temporary ID. This has to be called for every channel by both :initiator and :responder.
   """
   @spec initialize(
           binary(),

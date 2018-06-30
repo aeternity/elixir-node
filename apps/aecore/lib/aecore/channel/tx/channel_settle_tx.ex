@@ -8,8 +8,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
 
   require Logger
 
@@ -22,7 +21,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @type reason :: String.t()
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
-  @type tx_type_state() :: Channel.channels_onchain()
+  @type tx_type_state() :: ChannelStateTree.t()
 
   @typedoc "Structure of the ChannelSettle Transaction type"
   @type t :: %ChannelSettleTx{
@@ -70,11 +69,11 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
   @spec process_chainstate(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -82,7 +81,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         %ChannelSettleTx{channel_id: channel_id},
         _data_tx
       ) do
-    channel = channels[channel_id]
+    channel = ChannelStateTree.get(channels, channel_id)
 
     new_accounts =
       accounts
@@ -93,7 +92,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         Account.apply_transfer!(acc, block_height, channel.responder_amount)
       end)
 
-    new_channels = Map.drop(channels, [channel_id])
+    new_channels = ChannelStateTree.delete(channels, channel_id)
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -104,7 +103,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
   @spec preprocess_check(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
@@ -119,7 +118,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     fee = DataTx.fee(data_tx)
     sender = DataTx.main_sender(data_tx)
 
-    channel = Map.get(channels, channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance < fee ->

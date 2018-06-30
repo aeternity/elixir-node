@@ -10,6 +10,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
+  alias Aeutil.Serialization
 
   @type t :: %ChannelStateOnChain{
           initiator_pubkey: Wallet.pubkey(),
@@ -21,7 +22,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           slash_sequence: integer()
         }
 
-  @type channels :: %{binary() => t()}
+  @type id :: binary()
 
   @doc """
   Definition of State Channel OnChain structure
@@ -32,8 +33,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   - initiator_amount - amount deposited by initiator or from slashing
   - responder_amount - amount deposited by responder or from slashing
   - lock_period - time before slashing is settled
-  - slash_close - when != -1: block height when slashing is settled
-  - slash_sequence - when != -1: sequence or slashing
+  - slash_close - when != 0: block height when slashing is settled
+  - slash_sequence - when != 0: sequence or slashing
   """
   defstruct [
     :initiator_pubkey,
@@ -56,15 +57,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
       lock_period: lock_period,
-      slash_close: -1,
-      slash_sequence: -1
+      slash_close: 0,
+      slash_sequence: 0
     }
   end
 
   @doc """
   Generates channel id from ChannelCreateTx.
   """
-  @spec id(DataTx.t()) :: binary()
+  @spec id(DataTx.t()) :: id()
   def id(data_tx) do
     nonce = DataTx.nonce(data_tx)
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
@@ -74,7 +75,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Generates channel id from detail of ChannelCreateTx.
   """
-  @spec id(Wallet.pubkey(), Wallet.pubkey(), non_neg_integer()) :: binary()
+  @spec id(Wallet.pubkey(), Wallet.pubkey(), non_neg_integer()) :: id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
     binary_data = initiator_pubkey <> <<nonce::size(64)>> <> responder_pubkey
 
@@ -111,7 +112,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Returns true if channel wasn't slashed. (Closed channels should be removed from Channels state tree)
   """
   @spec active?(ChannelStateOnChain.t()) :: boolean()
-  def active?(%ChannelStateOnChain{slash_sequence: -1}) do
+  def active?(%ChannelStateOnChain{slash_sequence: 0}) do
     true
   end
 
@@ -137,7 +138,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelStateOffChain{sequence: 0} = offchain_state
       ) do
     cond do
-      channel.slash_sequence != -1 ->
+      channel.slash_sequence != 0 ->
         {:error, "#{__MODULE__}: Channel already slashed"}
 
       channel.initiator_amount != ChannelStateOffChain.initiator_amount(offchain_state) ->
@@ -188,5 +189,52 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         initiator_amount: ChannelStateOffChain.initiator_amount(offchain_state),
         responder_amount: ChannelStateOffChain.responder_amount(offchain_state)
     }
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
+  def rlp_encode(tag, version, %ChannelStateOnChain{} = channel) do
+    list = [
+      tag,
+      version,
+      channel.initiator_pubkey,
+      channel.responder_pubkey,
+      channel.initiator_amount,
+      channel.responder_amount,
+      channel.lock_period,
+      channel.slash_close,
+      channel.slash_sequence
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  @spec rlp_decode(list()) :: {:ok, ChannelStateOnChain.t()} | {:error, String.t()}
+  def rlp_decode([
+        initiator_pubkey,
+        responder_pubkey,
+        initiator_amount,
+        responder_amount,
+        lock_period,
+        slash_close,
+        slash_sequence
+      ]) do
+    {:ok,
+     %ChannelStateOnChain{
+       initiator_pubkey: initiator_pubkey,
+       responder_pubkey: responder_pubkey,
+       initiator_amount: Serialization.transform_item(initiator_amount, :int),
+       responder_amount: Serialization.transform_item(responder_amount, :int),
+       lock_period: Serialization.transform_item(lock_period, :int),
+       slash_close: Serialization.transform_item(slash_close, :int),
+       slash_sequence: Serialization.transform_item(slash_sequence, :int)
+     }}
+  end
+
+  def rlp_decode(_, _) do
+    {:error, "#{__MODULE__}: Invalid ChannelStateOnChain structure"}
   end
 end

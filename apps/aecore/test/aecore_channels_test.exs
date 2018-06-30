@@ -8,8 +8,16 @@ defmodule AecoreChannelTest do
   alias Aecore.Keys.Wallet
   alias Aecore.Channel.Worker, as: Channels
 
-  alias Aecore.Channel.{ChannelStateOffChain, ChannelStateOnChain, ChannelStatePeer}
+  alias Aecore.Channel.{
+    ChannelStateOffChain,
+    ChannelStateOnChain,
+    ChannelStatePeer,
+    ChannelStateTree
+  }
+
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
+
+  alias Aeutil.PatriciaMerkleTree
 
   alias Aecore.Tx.{DataTx, SignedTx}
 
@@ -85,7 +93,7 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_transactions_mined()
 
-    assert Enum.empty?(Chain.channels()) == true
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 0
     TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5)
     TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
 
@@ -136,7 +144,7 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_transactions_mined()
 
-    assert ChannelStateOnChain.active?(Map.get(Chain.channels(), id)) == false
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.channels(), id)) == false
 
     assert :ok == call_s1({:slashed, tx, 10, 2, ctx.pk1, ctx.sk1})
 
@@ -148,7 +156,7 @@ defmodule AecoreChannelTest do
 
     Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_pool()) == false
-    assert Enum.empty?(Chain.channels()) == false
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 1
 
     TestUtils.assert_balance(ctx.pk1, 40 - 10)
     TestUtils.assert_balance(ctx.pk2, 50 - 15)
@@ -157,7 +165,7 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 270)
     TestUtils.assert_balance(ctx.pk2, 50 - 15 + 30)
-    assert Enum.empty?(Chain.channels()) == true
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 0
   end
 
   @tag timeout: 120_000
@@ -178,7 +186,7 @@ defmodule AecoreChannelTest do
 
     Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_pool()) == false
-    assert Enum.empty?(Chain.channels()) == false
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 1
 
     TestUtils.assert_balance(ctx.pk1, 40 - 10)
     TestUtils.assert_balance(ctx.pk2, 50)
@@ -187,11 +195,11 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 150)
     TestUtils.assert_balance(ctx.pk2, 50 + 150)
-    assert Enum.empty?(Chain.channels()) == true
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 0
   end
 
   defp create_channel(ctx) do
-    assert Enum.empty?(Chain.channels()) == true
+    assert PatriciaMerkleTree.trie_size(Chain.channels()) == 0
 
     tmp_id = <<123>>
     assert :ok == call_s1({:initialize, tmp_id, [ctx.pk1, ctx.pk2], [150, 150], :initiator, 10})
@@ -203,7 +211,7 @@ defmodule AecoreChannelTest do
     assert id == id2
 
     TestUtils.assert_transactions_mined()
-    assert Map.has_key?(Chain.channels(), id)
+    assert ChannelStateTree.get(Chain.channels(), id) != :none
 
     TestUtils.assert_balance(ctx.pk1, 40)
     TestUtils.assert_balance(ctx.pk2, 50)

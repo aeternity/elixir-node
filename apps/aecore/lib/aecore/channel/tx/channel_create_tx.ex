@@ -8,8 +8,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.Worker, as: Channel
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
 
   require Logger
 
@@ -24,7 +23,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type reason :: String.t()
 
   @typedoc "Structure that holds specific transaction info in the chainstate."
-  @type tx_type_state() :: Channel.channels_onchain()
+  @type tx_type_state() :: ChannelStateTree.t()
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
@@ -99,11 +98,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
   @spec process_chainstate(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateOnChain.t()}}
+        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -134,7 +133,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
-    new_channels = Map.put(channels, channel_id, channel)
+    new_channels = ChannelStateTree.put(channels, channel_id, channel)
 
     {:ok, {new_accounts, new_channels}}
   end
@@ -145,7 +144,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
   @spec preprocess_check(
           ChainState.account(),
-          ChannelStateOnChain.channels(),
+          ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t()
@@ -168,7 +167,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       AccountStateTree.get(accounts, responder_pubkey).balance - tx.responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
-      Map.has_key?(channels, ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)) ->
+      ChannelStateTree.has_key?(
+        channels,
+        ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
+      ) ->
         {:error, "#{__MODULE__}: Channel already exists"}
 
       true ->
