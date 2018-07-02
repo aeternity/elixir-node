@@ -559,7 +559,7 @@ defmodule Aecore.Peers.PeerConnection do
   defp rlp_encode(@p2p_response, %{result: result, type: type, object: object, reason: reason}) do
     serialized_result = bool_bin(result)
 
-    serialized_reason = reason || <<>>
+    serialized_reason = to_string(reason)
 
     serialized_object =
       case object do
@@ -588,6 +588,7 @@ defmodule Aecore.Peers.PeerConnection do
          port: port
        }) do
     ExRLP.encode([
+      @p2p_msg_version,
       port,
       share,
       genesis_hash,
@@ -683,6 +684,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp rlp_decode(@ping, encoded_ping) do
     [
+      _vsn,
       port,
       share,
       genesis_hash,
