@@ -1,329 +1,185 @@
 defmodule Aecore.Peers.Worker do
   @moduledoc """
-  Peer manager module
+  Contains peer handling functionality.
   """
 
   use GenServer
 
-  alias Aecore.Peers.Sync
-  alias Aehttpclient.Client
-  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Peers.Worker.PeerConnectionSupervisor
+  alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aehttpclient.Client
 
   require Logger
 
-  @mersenne_prime 2_147_483_647
-  @peers_max_count Application.get_env(:aecore, :peers)[:peers_max_count]
-  @probability_of_peer_remove_when_max 0.5
-
-  @type peers :: %{non_neg_integer() => %{latest_block: String.t(), uri: String.t()}}
-
   def start_link(_args) do
-    GenServer.start_link(
-      __MODULE__,
-      %{peers: %{}, nonce: get_peer_nonce()},
-      name: __MODULE__
-    )
+    peers = %{}
+
+    {pubkey, privkey} = PeerKeys.keypair()
+
+    local_peer = %{privkey: privkey, pubkey: pubkey}
+    state = %{peers: peers, local_peer: local_peer}
+    GenServer.start_link(__MODULE__, state, name: __MODULE__)
   end
 
-  ## Client side
-
-  @spec chain_synced?() :: boolean()
-  def chain_synced? do
-    GenServer.call(__MODULE__, :is_chain_synced)
+  def init(state) do
+    {:ok, state}
   end
 
-  @spec add_peer(String.t()) :: :ok | {:error, term} | :error
-  def add_peer(uri) do
-    GenServer.call(__MODULE__, {:add_peer, uri})
+  def state do
+    GenServer.call(__MODULE__, :state)
   end
 
-  @spec remove_peer(String.t()) :: :ok | :error
-  def remove_peer(uri) do
-    GenServer.call(__MODULE__, {:remove_peer, uri})
-  end
-
-  @spec check_peers() :: :ok
-  def check_peers do
-    GenServer.call(__MODULE__, :check_peers)
-  end
-
-  @spec all_uris() :: list(binary())
-  def all_uris do
-    all_peers()
-    |> Map.values()
-    |> Enum.map(fn %{uri: uri} -> uri end)
-  end
-
-  @spec all_peers() :: peers
   def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
-  @spec genesis_block_header_hash() :: term()
-  def genesis_block_header_hash do
-    BlockValidation.block_header_hash(Block.genesis_block().header)
+  def all_pids do
+    GenServer.call(__MODULE__, :all_pids)
   end
 
-  @spec schedule_add_peer(String.t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def schedule_add_peer(uri, nonce) do
-    GenServer.cast(__MODULE__, {:schedule_add_peer, uri, nonce})
+  def add_peer(conn_info) do
+    GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
 
-  @doc """
-  Gets a random peer nonce
-  """
-  @spec get_peer_nonce() :: non_neg_integer()
-  def get_peer_nonce do
-    case :ets.info(:nonce_table) do
-      :undefined -> create_nonce_table()
-      _ -> :table_created
+  def remove_peer(pubkey) do
+    GenServer.call(__MODULE__, {:remove_peer, pubkey})
+  end
+
+  def get_random(count) do
+    GenServer.call(__MODULE__, {:get_random, count})
+  end
+
+  def get_random(count, exclude) do
+    GenServer.call(__MODULE__, {:get_random, count, exclude})
+  end
+
+  def have_peer?(peer_pubkey) do
+    GenServer.call(__MODULE__, {:have_peer?, peer_pubkey})
+  end
+
+  def broadcast_block(%Block{} = block) do
+    GenServer.cast(__MODULE__, {:broadcast_block, block})
+  end
+
+  def get_info_try_connect(uri) do
+    case Client.get_peer_info(uri) do
+      {:ok, peer_info} ->
+        try_connect(peer_info)
+
+      {:error, _reason} = error ->
+        error
     end
-
-    case :ets.lookup(:nonce_table, :nonce) do
-      [] ->
-        nonce = :rand.uniform(@mersenne_prime)
-        :ets.insert(:nonce_table, {:nonce, nonce})
-        nonce
-
-      _ ->
-        :ets.lookup(:nonce_table, :nonce)[:nonce]
-    end
   end
 
-  @spec broadcast_block(Block.t()) :: :ok
-  def broadcast_block(block) do
-    spawn(fn ->
-      Client.send_block(block, all_uris())
-      :ok
+  def try_connect(peer_info) do
+    GenServer.cast(__MODULE__, {:try_connect, peer_info})
+  end
+
+  def rlp_encode_peers(peers) do
+    Enum.map(peers, fn %{host: host, port: port, pubkey: pubkey} ->
+      list = [to_string(host), :binary.encode_unsigned(port), pubkey]
+      ExRLP.encode(list)
     end)
-
-    :ok
   end
 
-  @spec broadcast_tx(SignedTx.t()) :: :ok
-  def broadcast_tx(tx) do
-    spawn(fn ->
-      Client.send_tx(tx, all_uris())
+  def rlp_decode_peers(encoded_peers) do
+    Enum.map(encoded_peers, fn encoded_peer ->
+      [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
+      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
     end)
-
-    :ok
   end
 
-  ## Server side
-
-  def init(initial_peers) do
-    {:ok, initial_peers}
-  end
-
-  def handle_call(:is_chain_synced, _from, %{peers: peers} = state) do
-    local_latest_block_height = Chain.top_height()
-
-    peer_uris =
-      peers
-      |> Map.values()
-      |> Enum.map(fn %{uri: uri} -> uri end)
-
-    peer_latest_block_heights =
-      Enum.map(peer_uris, fn uri ->
-        case Client.get_info(uri) do
-          {:ok, info} ->
-            info.current_block_height
-
-          :error ->
-            0
-        end
-      end)
-
-    is_synced =
-      if Enum.empty?(peer_uris) do
-        true
-      else
-        Enum.max(peer_latest_block_heights) <= local_latest_block_height
-      end
-
-    {:reply, is_synced, state}
-  end
-
-  def handle_call({:add_peer, uri}, _from, state) do
-    add_peer(uri, state)
-  end
-
-  def handle_call({:remove_peer, uri}, _from, %{peers: peers} = state) do
-    if Map.has_key?(peers, uri) do
-      Logger.info(fn -> "#{__MODULE__}: Removed #{uri} from the peer list" end)
-      {:reply, :ok, %{state | peers: Map.delete(peers, uri)}}
-    else
-      Logger.error(fn -> "#{__MODULE__}: #{uri} is not in the peer list" end)
-
-      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} not found"},
-       %{state | peers: peers}}
-    end
-  end
-
-  @doc """
-  Filters the peers map by checking if the response status from a GET /info
-  request is :ok and if the genesis block hash is the same as the one
-  in the current node. After that the current block hash for every peer
-  is updated if the one in the latest GET /info request is different.
-  """
-  def handle_call(:check_peers, _from, %{peers: peers} = state) do
-    filtered_peers =
-      :maps.filter(
-        fn _, %{uri: uri} ->
-          case Client.get_info(uri) do
-            {:ok, info} ->
-              binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
-              binary_genesis_hash == genesis_block_header_hash()
-
-            _ ->
-              false
-          end
-        end,
-        peers
-      )
-
-    updated_peers =
-      for {nonce, %{uri: uri, latest_block: latest_block}} <- filtered_peers, into: %{} do
-        {_, info} = Client.get_info(uri)
-
-        if info.current_block_hash != latest_block do
-          {nonce, %{uri: uri, latest_block: info.current_block_hash}}
-        else
-          {nonce, %{uri: uri, latest_block: latest_block}}
-        end
-      end
-
-    removed_peers_count = Enum.count(peers) - Enum.count(filtered_peers)
-
-    if removed_peers_count > 0 do
-      Logger.info(fn ->
-        "#{__MODULE__}: #{removed_peers_count} peers were removed after the check"
-      end)
-    end
-
-    {:reply, :ok, %{state | peers: updated_peers}}
+  def handle_call(:state, _from, state) do
+    {:reply, state, state}
   end
 
   def handle_call(:all_peers, _from, %{peers: peers} = state) do
-    {:reply, peers, state}
+    all_peers = peers |> Map.values() |> prepare_peers()
+    {:reply, all_peers, state}
   end
 
-  ## Async operations
-  def handle_cast({:schedule_add_peer, uri, nonce}, %{peers: peers} = state) do
-    if Map.has_key?(peers, nonce) do
-      {:noreply, state}
-    else
-      {:reply, _, newstate} = add_peer(uri, state)
-      {:noreply, newstate}
-    end
+  def handle_call(:all_pids, _from, %{peers: peers} = state) do
+    pids = for peer <- Map.values(peers), do: peer.connection
+    {:reply, pids, state}
   end
 
-  def handle_cast(any, state) do
-    Logger.info("#{__MODULE__}: Unhandled cast message:  #{inspect(any)}")
+  def handle_call(
+        {:add_peer, %{pubkey: pubkey} = peer_info},
+        _from,
+        %{peers: peers} = state
+      ) do
+    updated_peers = Map.put(peers, pubkey, peer_info)
+    updated_state = %{state | peers: updated_peers}
+    {:reply, :ok, updated_state}
+  end
+
+  def handle_call({:remove_peer, pubkey}, _from, %{peers: peers} = state) do
+    updated_peers = Map.delete(peers, pubkey)
+    updated_state = %{state | peers: updated_peers}
+    {:reply, :ok, updated_state}
+  end
+
+  def handle_call({:get_random, count}, _from, %{peers: peers} = state) do
+    random_peers =
+      peers
+      |> Map.values()
+      |> Enum.take_random(count)
+      |> prepare_peers()
+
+    {:reply, random_peers, state}
+  end
+
+  def handle_call({:get_random, count, exclude}, _from, %{peers: peers} = state) do
+    filtered_peers =
+      peers
+      |> Map.values()
+      |> Enum.filter(fn peer ->
+        !Enum.any?(exclude, fn to_be_excluded -> peer.pubkey == to_be_excluded end)
+      end)
+
+    random_peers = filtered_peers |> Enum.take_random(count) |> prepare_peers()
+    {:reply, random_peers, state}
+  end
+
+  def handle_call({:have_peer?, peer_pubkey}, _from, %{peers: peers} = state) do
+    have_peer = Map.has_key?(peers, peer_pubkey)
+    {:reply, have_peer, state}
+  end
+
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+    Enum.each(peers, fn {_pubkey, peer} ->
+      PeerConnection.send_new_block(block, peer.connection)
+    end)
+
     {:noreply, state}
   end
 
-  ## Internal functions
-  defp add_peer(uri, state) do
-    %{peers: peers} = state
+  def handle_cast(
+        {:try_connect, peer_info},
+        %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
+      ) do
+    if peer_info.pubkey != pubkey do
+      case Map.has_key?(peers, peer_info.pubkey) do
+        false ->
+          conn_info =
+            Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
-    state_has_uri =
-      peers
-      |> Map.values()
-      |> Enum.map(fn %{uri: uri} -> uri end)
-      |> Enum.member?(uri)
+          {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
+          {:noreply, state}
 
-    if state_has_uri do
-      Logger.debug(fn ->
-        "#{__MODULE__}: Skipped adding #{uri}, already known"
-      end)
-
-      {:reply, {:error, "#{__MODULE__}: Peer: #{inspect(uri)} already known"}, state}
-    else
-      case check_peer(uri, get_peer_nonce()) do
-        {:ok, info} ->
-          cond do
-            Map.has_key?(peers, info.peer_nonce) ->
-              Logger.debug(fn ->
-                "#{__MODULE__}: Skipped adding #{uri}, same nonce already present"
-              end)
-
-              {:reply, {:error, "#{__MODULE__}: Peer already known"}, state}
-
-            should_a_peer_be_added?(map_size(peers)) ->
-              peers_update1 = trim_peers(peers)
-
-              updated_peers =
-                Map.put(peers_update1, info.peer_nonce, %{
-                  uri: uri,
-                  latest_block: info.current_block_hash
-                })
-
-              Logger.info(fn -> "#{__MODULE__}: Added #{uri} to the peer list" end)
-              Sync.ask_peers_for_unknown_blocks(updated_peers)
-              Sync.add_unknown_peer_pool_txs(updated_peers)
-              {:reply, :ok, %{state | peers: updated_peers}}
-
-            true ->
-              Logger.debug(fn -> "#{__MODULE__}: Max peers reached. #{uri} not added" end)
-              {:reply, :ok, state}
-          end
-
-        {:error, "Equal peer nonces"} ->
-          {:reply, :ok, state}
-
-        {:error, reason} ->
-          Logger.error(fn -> "#{__MODULE__}: Failed to add peer. reason=#{reason}" end)
-          {:reply, {:error, reason}, state}
+        true ->
+          Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+          {:noreply, state}
       end
-    end
-  end
-
-  defp trim_peers(peers) do
-    if map_size(peers) >= @peers_max_count do
-      random_peer = Enum.random(Map.keys(peers))
-      Logger.debug(fn -> "#{__MODULE__}: Max peers reached. #{random_peer} removed" end)
-      Map.delete(peers, random_peer)
     else
-      peers
+      Logger.info("Can't add ourself")
+      {:noreply, state}
     end
   end
 
-  defp create_nonce_table do
-    :ets.new(:nonce_table, [:named_table])
-  end
-
-  defp check_peer(uri, own_nonce) do
-    case Client.get_info(uri) do
-      {:ok, info} ->
-        binary_genesis_hash = Header.base58c_decode(info.genesis_block_hash)
-
-        cond do
-          own_nonce == info.peer_nonce ->
-            {:error, "Equal peer nonces"}
-
-          binary_genesis_hash != genesis_block_header_hash() ->
-            {:error, "#{__MODULE__}: Genesis header hash not valid"}
-
-          !Map.has_key?(info, :server) || info.server != "aehttpserver" ->
-            {:error, "#{__MODULE__}: Peer is not an aehttpserver"}
-
-          true ->
-            {:ok, info}
-        end
-
-      _error ->
-        {:error, "#{__MODULE__}: Request error"}
-    end
-  end
-
-  defp should_a_peer_be_added?(peers_count) do
-    peers_count < @peers_max_count || :rand.uniform() < @probability_of_peer_remove_when_max
+  defp prepare_peers(peers) do
+    Enum.map(peers, fn peer -> Map.delete(peer, :connection) end)
   end
 end

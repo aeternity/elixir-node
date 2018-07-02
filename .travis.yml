@@ -1,7 +1,7 @@
 dist: xenial
 language: elixir
 elixir:
-  - 1.6.2
+  - 1.6.4
 otp_release:
   - 20.2.2
 
@@ -17,6 +17,7 @@ before_install:
 
 script:
   - mix compile --warnings-as-errors
+  - mix compile.xref --warnings-as-errors
   - mix credo list
   - mix format --check-formatted
   - mix coveralls -u

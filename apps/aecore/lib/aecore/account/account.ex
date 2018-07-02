@@ -4,7 +4,7 @@ defmodule Aecore.Account.Account do
   """
 
   require Logger
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account

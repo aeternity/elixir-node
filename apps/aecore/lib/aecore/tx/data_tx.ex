@@ -17,7 +17,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
 
@@ -538,13 +538,15 @@ defmodule Aecore.Tx.DataTx do
     decode(tag, values)
   end
 
-  defp decode(SpendTx, [senders, receiver, amount, fee, nonce, payload, ttl]) do
+  defp decode(SpendTx, [senders, receiver, amount, fee, ttl, nonce, payload]) do
+    {:ok, vsn} = Serialization.get_version(SpendTx)
+
     DataTx.init(
       SpendTx,
       %{
         receiver: receiver,
         amount: Serialization.transform_item(amount, :int),
-        version: 1,
+        version: vsn,
         payload: payload
       },
       senders,
@@ -741,8 +743,9 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(_, _) do
-    {:error, "#{__MODULE__}: Unknown DataTx structure"}
+  defp decode(tx_type, tx_data) do
+    {:error,
+     "#{__MODULE__}: Unknown DataTx structure: #{inspect(tx_type)}, TX's data: #{inspect(tx_data)} "}
   end
 
   # Optional function-workaround:

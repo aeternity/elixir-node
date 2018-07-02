@@ -56,7 +56,8 @@ config :aecore, :pow,
     root_hash: <<0::256>>,
     time: 1_507_275_094_308,
     nonce: 46,
-    miner: <<0::256>>,
+    # 256 if key is 32 bytes
+    miner: <<0::264>>,
     pow_evidence: [
       1656,
       2734,
@@ -105,9 +106,15 @@ config :aecore, :pow,
     target: 0x2100FFFF
   }
 
+sync_port =
+  case System.get_env("SYNC_PORT") do
+    nil -> 3015
+    env -> String.to_integer(env)
+  end
+
 config :aecore, :peers,
-  peers_target_count: 5,
-  peers_max_count: 8
+  ranch_acceptors: 10,
+  sync_port: sync_port
 
 config :aecore, :miner, resumed_by_default: false
 

@@ -12,8 +12,9 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Keys.Wallet
   alias Aecore.Chain.Target
-  alias Aecore.Wallet.Worker, as: Wallet
+  alias Aecore.Keys.Wallet
 
   setup do
     # Persistence.delete_all_blocks()

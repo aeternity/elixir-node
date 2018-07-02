@@ -1,364 +1,606 @@
 defmodule Aecore.Peers.Sync do
   @moduledoc """
-  Contains peer sync functionality
+  This module is responsible for the Sync logic between Peers to share blocks between eachother
   """
 
   use GenServer
 
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aehttpclient.Client, as: HttpClient
+  alias __MODULE__
+  alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Peers.PeerBlocksTask
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.Block
+  alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Peers.PeerConnection
+  alias Aeutil.Scientific
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Peers.Jobs
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Events
 
   require Logger
 
-  @peers_target_count Application.get_env(:aecore, :peers)[:peers_target_count]
+  @typedoc "Structure of a peer to sync with"
+  @type sync_peer :: %{
+          difficulty: non_neg_integer(),
+          from: non_neg_integer(),
+          to: non_neg_integer(),
+          hash: binary(),
+          peer: pid(),
+          pid: binary()
+        }
 
-  @type peer_blocks :: map()
-  @type peer_block_tasks :: map()
+  @type peer_pid_map :: %{peer: pid()}
+
+  @type block_map :: %{block: Block.t()}
+
+  @typedoc "List of all the syncing peers"
+  @type sync_pool :: list(sync_peer())
+
+  @typedoc "List of tuples of block height and block hash connected to a given block or peer"
+  @type hash_pool :: list({{non_neg_integer(), non_neg_integer()}, block_map() | peer_pid_map()})
+
+  @max_headers_per_chunk 100
+  @max_adds 20
+
+  defstruct difficulty: nil,
+            from: nil,
+            to: nil,
+            hash: nil,
+            peer: nil,
+            pid: nil
+
+  use ExConstructor
 
   def start_link(_args) do
-    GenServer.start_link(
-      __MODULE__,
-      %{peer_blocks: %{}, peer_block_tasks: %{}, chain_sync_running: false},
-      name: __MODULE__
-    )
+    GenServer.start_link(__MODULE__, %{:sync_pool => [], :hash_pool => []}, name: __MODULE__)
   end
 
   def init(state) do
+    Events.subscribe(:block_created)
+    Events.subscribe(:tx_created)
+    Events.subscribe(:top_changed)
+
+    :ok = Jobs.add_queue(:sync_jobs)
     {:ok, state}
   end
 
-  @spec get_peer_blocks() :: peer_blocks()
-  def get_peer_blocks do
-    GenServer.call(__MODULE__, :get_peer_blocks)
+  def state do
+    GenServer.call(__MODULE__, :state)
   end
 
-  @spec add_running_task(String.t()) :: :ok
-  def add_running_task(peer_uri) do
-    GenServer.call(__MODULE__, {:add_running_task, peer_uri})
+  @doc """
+  Starts a synchronizing process between our node and the node of the given peer_pid
+  """
+  @spec start_sync(pid(), binary()) :: :ok | {:error, String.t()}
+  def start_sync(peer_pid, remote_hash) do
+    GenServer.call(__MODULE__, {:start_sync, peer_pid, remote_hash})
   end
 
-  @spec remove_running_task(String.t()) :: :ok
-  def remove_running_task(peer_uri) do
-    GenServer.call(__MODULE__, {:remove_running_task, peer_uri})
+  @doc """
+  Fetches the remote Pool of transactions
+  """
+  @spec fetch_mempool(pid()) :: :ok | {:error, String.t()}
+  def fetch_mempool(peer_pid) do
+    GenServer.call(__MODULE__, {:fetch_mempool, peer_pid})
   end
 
-  @spec get_running_tasks() :: peer_block_tasks()
-  def get_running_tasks do
-    GenServer.call(__MODULE__, :get_running_tasks)
+  @doc """
+  Checks weather the sync is in progress
+  """
+  @spec sync_in_progress?(pid()) :: false | {true, non_neg_integer}
+  def sync_in_progress?(peer_pid) do
+    GenServer.call(__MODULE__, {:sync_in_progress, peer_pid})
   end
 
-  @spec chain_sync_running?() :: boolean()
-  def chain_sync_running? do
-    GenServer.call(__MODULE__, :get_chain_sync_status)
+  @spec new_peer?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
+  def new_peer?(peer_pid, header, agreed_height, hash) do
+    GenServer.call(__MODULE__, {:is_new_peer, self(), peer_pid, header, agreed_height, hash})
   end
 
-  @spec set_chain_sync_status(boolean()) :: :ok
-  def set_chain_sync_status(status) do
-    GenServer.call(__MODULE__, {:set_chain_sync_status, status})
+  @doc """
+  Does the fetching of the blocks depending on the hash_pool.
+  """
+  @spec fetch_next(pid(), non_neg_integer(), binary(), any()) :: :done | tuple()
+  def fetch_next(peer_pid, height_in, hash_in, result) do
+    GenServer.call(__MODULE__, {:fetch_next, peer_pid, height_in, hash_in, result}, 30_000)
   end
 
-  @spec add_block_to_state(binary(), Block.t()) :: :ok
-  def add_block_to_state(block_hash, block) do
-    GenServer.call(__MODULE__, {:add_block_to_state, block_hash, block})
+  @spec update_hash_pool(list()) :: list(Header.t())
+  def update_hash_pool(hashes) do
+    GenServer.call(__MODULE__, {:update_hash_pool, hashes})
   end
 
-  @spec remove_block_from_state(binary()) :: :ok
-  def remove_block_from_state(block_hash) do
-    GenServer.call(__MODULE__, {:remove_block_from_state, block_hash})
+  def delete_from_pool(peer_pid) do
+    GenServer.cast(__MODULE__, {:delete_from_pool, peer_pid})
   end
 
-  @spec ask_peers_for_unknown_blocks(Peers.peers()) :: :ok
-  def ask_peers_for_unknown_blocks(peers) do
-    Enum.each(peers, fn {_, %{uri: uri, latest_block: top_block_hash}} ->
-      top_hash_decoded = Header.base58c_decode(top_block_hash)
+  ## INNER FUNCTIONS ##
 
-      if !Map.has_key?(get_running_tasks(), uri) do
-        PeerBlocksTask.start_link([uri, top_hash_decoded])
-      end
-    end)
+  def handle_call(:state, _from, state) do
+    {:reply, state, state}
   end
 
-  @spec add_peer_blocks_to_sync_state(String.t(), binary()) :: :ok
-  def add_peer_blocks_to_sync_state(peer_uri, from_block_hash) do
-    with false <- Chain.has_block?(from_block_hash),
-         {:ok, blocks} <-
-           HttpClient.get_raw_blocks({peer_uri, from_block_hash, Chain.top_block_hash()}),
-         false <- Enum.empty?(blocks) do
-      Enum.each(blocks, fn block ->
-        case BlockValidation.single_validate_block(block) do
-          :ok ->
-            peer_block_hash = BlockValidation.block_header_hash(block.header)
+  def handle_call({:start_sync, peer_pid, remote_hash}, _from, state) do
+    :ok = Jobs.enqueue(:sync_jobs, {:start_sync, peer_pid, remote_hash})
+    {:reply, :ok, state}
+  end
 
-            if !Chain.has_block?(peer_block_hash) do
-              add_block_to_state(peer_block_hash, block)
-            end
+  def handle_call({:fetch_mempool, peer_pid}, _from, state) do
+    :ok = Jobs.enqueue(:sync_jobs, {:fetch_mempool, peer_pid})
+    {:reply, :ok, state}
+  end
 
-          {:error, message} ->
-            Logger.error(fn -> message end)
-        end
-      end)
+  def handle_call(
+        {:is_new_peer, process_pid, peer_pid, header, agreed_height, hash},
+        _from,
+        %{sync_pool: pool} = state
+      ) do
+    height = header.height
+    difficulty = Scientific.target_to_difficulty(header.target)
 
-      earliest_block = Enum.at(blocks, Enum.count(blocks) - 1)
-
-      add_peer_blocks_to_sync_state(
-        peer_uri,
-        earliest_block.header.prev_hash
+    {new?, new_pool} =
+      try_add_peer(
+        Sync.new(%{
+          difficulty: difficulty,
+          from: agreed_height,
+          to: height,
+          hash: hash,
+          peer: peer_pid,
+          pid: process_pid
+        }),
+        pool
       )
+
+    if new? do
+      Process.monitor(process_pid)
     else
-      true ->
-        remove_running_task(peer_uri)
-
-      {:error, message} ->
-        Logger.error(fn -> message end)
-        remove_running_task(peer_uri)
+      :ok
     end
+
+    {:reply, new?, %{state | sync_pool: new_pool}}
   end
 
-  @spec add_valid_peer_blocks_to_chain(map()) :: :ok
-  def add_valid_peer_blocks_to_chain(state) do
-    unless chain_sync_running?() do
-      set_chain_sync_status(true)
+  def handle_call({:sync_in_progress, peer_pid}, _from, %{sync_pool: pool} = state) do
+    result =
+      case Enum.find(pool, false, fn peer -> Map.get(peer, :pid) == peer_pid end) do
+        false ->
+          false
 
-      Enum.each(state, fn {_, block} ->
-        built_chain = build_chain(state, block, [])
-        add_built_chain(built_chain)
-      end)
-
-      set_chain_sync_status(false)
-    end
-  end
-
-  @spec add_unknown_peer_pool_txs(Peers.peers()) :: :ok
-  def add_unknown_peer_pool_txs(peers) do
-    peer_uris = peers |> Map.values() |> Enum.map(fn %{uri: uri} -> uri end)
-
-    Enum.each(peer_uris, fn peer ->
-      case HttpClient.get_pool_txs(peer) do
-        {:ok, deserialized_pool_txs} ->
-          Enum.each(deserialized_pool_txs, fn tx ->
-            Pool.add_transaction(tx)
-          end)
-
-        :error ->
-          Logger.error("#{__MODULE__}: Couldn't get pool from peer: #{inspect(peer)}")
+        peer ->
+          {true, peer}
       end
-    end)
+
+    {:reply, result, state}
   end
 
-  def handle_call(:get_peer_blocks, _from, %{peer_blocks: peer_blocks} = state) do
-    {:reply, peer_blocks, state}
+  def handle_call({:update_hash_pool, hashes}, _from, state) do
+    hash_pool = merge(state.hash_pool, hashes)
+    Logger.debug(fn -> "Hash pool now contains #{inspect(hash_pool)} hashes" end)
+    {:reply, :ok, %{state | hash_pool: hash_pool}}
   end
 
-  def handle_call(
-        {:add_running_task, peer_uri},
-        from,
-        %{peer_block_tasks: peer_block_tasks} = state
-      ) do
-    updated_tasks = Map.put(peer_block_tasks, peer_uri, from)
+  def handle_call({:fetch_next, peer_pid, height_in, hash_in, result}, _from, state) do
+    hash_pool =
+      case result do
+        {:ok, block} ->
+          block_height = block.header.height
+          block_hash = BlockValidation.block_header_hash(block.header)
 
-    {:reply, :ok, %{state | peer_block_tasks: updated_tasks}}
-  end
+          # If the hash of this block does not fit wanted hash, it is discarded
+          # (In case we ask for block with hash X and we get a block with hash Y)
+          List.keyreplace(
+            state.hash_pool,
+            {block_height, block_hash},
+            0,
+            {{block_height, block_hash}, %{block: block}}
+          )
 
-  def handle_call(
-        {:remove_running_task, peer_uri},
-        _from,
-        %{peer_block_tasks: peer_block_tasks} = state
-      ) do
-    updated_tasks = Map.delete(peer_block_tasks, peer_uri)
+        _ ->
+          state.hash_pool
+      end
 
-    {:reply, :ok, %{state | peer_block_tasks: updated_tasks}}
-  end
+    Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
-  def handle_call(:get_running_tasks, _from, %{peer_block_tasks: peer_block_tasks} = state) do
-    {:reply, peer_block_tasks, state}
-  end
+    case update_chain_from_pool(height_in, hash_in, hash_pool) do
+      {:error, reason} ->
+        Logger.info("#{__MODULE__}: Chain update failed: #{inspect(reason)}")
+        {:reply, {:error, reason}, %{state | hash_pool: hash_pool}}
 
-  def handle_call(
-        :get_chain_sync_status,
-        _from,
-        %{chain_sync_running: chain_sync_running} = state
-      ) do
-    {:reply, chain_sync_running, state}
-  end
+      {:ok, new_height, new_hash, []} ->
+        Logger.debug(fn -> "Got all the blocks from Hashpool" end)
 
-  def handle_call({:set_chain_sync_status, status}, _from, state) do
-    {:reply, :ok, %{state | chain_sync_running: status}}
-  end
+        # The sync might be done. Check for more blocks.
+        case Enum.find(state.sync_pool, false, fn peer -> Map.get(peer, :id) == peer_pid end) do
+          false ->
+            # Abort sync, we don't have this peer in our list anymore.
+            {:reply, {:error, :unknown_peer}, %{state | hash_pool: []}}
 
-  def handle_call(
-        {:add_block_to_state, block_hash, block},
-        _from,
-        %{peer_blocks: peer_blocks} = state
-      ) do
-    updated_peer_blocks =
-      if Chain.has_block?(block_hash) do
-        peer_blocks
-      else
-        case BlockValidation.single_validate_block(block) do
-          :ok ->
-            Map.put(peer_blocks, block_hash, block)
+          %{to: to} when to <= new_height ->
+            # We are done!
+            new_sync_pool =
+              Enum.reject(state.sync_pool, fn peers -> Map.get(peers, :id) == peer_pid end)
 
-          {:error, message} ->
-            Logger.error(fn -> "#{__MODULE__}: Can't add block to Sync state - #{message}" end)
-            peer_blocks
+            {:reply, :done, %{state | hash_pool: [], sync_pool: new_sync_pool}}
+
+          _peer ->
+            # This peer has more blocks to give. Fetch them!
+            {:reply, {:fill_pool, new_height, new_hash}, %{state | hash_pool: []}}
         end
-      end
 
-    {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
+      {:ok, new_height, new_hash, new_hash_pool} ->
+        sliced_hash_pool =
+          for {{height, hash}, %{peer: _id}} <- new_hash_pool do
+            {height, hash}
+          end
+
+        case sliced_hash_pool do
+          [] ->
+            # We have all blocks. Just insertion left
+            {:reply, {:insert, new_height, new_hash}, %{state | hash_pool: new_hash_pool}}
+
+          pick_from_hashes ->
+            # We still have blocks to fetch.
+            {_pick_height, pick_hash} = Enum.random(pick_from_hashes)
+
+            {:reply, {:fetch, new_height, new_hash, pick_hash},
+             %{state | hash_pool: new_hash_pool}}
+        end
+    end
   end
 
-  def handle_call(
-        {:remove_block_from_state, block_hash},
-        _from,
-        %{peer_blocks: peer_blocks} = state
-      ) do
-    updated_peer_blocks = Map.delete(peer_blocks, block_hash)
-
-    {:reply, :ok, %{state | peer_blocks: updated_peer_blocks}}
+  def handle_cast({:delete_from_pool, peer_pid}, %{sync_pool: pool} = state) do
+    {:noreply, %{state | sync_pool: Enum.filter(pool, fn peer -> peer.peer != peer_pid end)}}
   end
 
-  def handle_info(_any, state) do
+  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+    case event do
+      :block_created -> enqueue(:forward, %{status: :created, block: info})
+      :tx_created -> enqueue(:forward, %{status: :created, tx: info})
+      :top_changed -> enqueue(:forward, %{status: :top_changed, block: info})
+      :tx_received -> enqueue(:forward, %{status: :received, tx: info})
+    end
+
+    Jobs.dequeue(:sync_jobs)
     {:noreply, state}
   end
 
-  # To make sure no peer is more popular in network then others,
-  # we remove one peer at random if we have at least target_count of peers.
-  @spec introduce_variety :: :ok
-  def introduce_variety do
-    peers_count = map_size(Peers.all_peers())
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %{sync_pool: sync_pool} = state) do
+    Logger.info("Worker stopped with reason: #{inspect(reason)}")
+    {:noreply, %{state | sync_pool: Enum.filter(sync_pool, fn peer -> peer.peer != pid end)}}
+  end
 
-    if peers_count >= @peers_target_count do
-      random_peer = Enum.random(Map.keys(Peers.all_peers()))
-      Logger.info(fn -> "#{__MODULE__}: Removing #{random_peer} to introduce variety" end)
-      Peers.remove_peer(random_peer)
-      :ok
-    else
-      :ok
+  def handle_info(_, state) do
+    {:noreply, state}
+  end
+
+  @spec update_chain_from_pool(non_neg_integer(), binary(), list()) :: tuple()
+  defp update_chain_from_pool(agreed_height, agreed_hash, hash_pool) do
+    case split_hash_pool(agreed_height + 1, agreed_hash, hash_pool, [], 0) do
+      {_, _, [], rest, n_added} when rest != [] and n_added < @max_adds ->
+        {:error, {:stuck_at, agreed_height + 1}}
+
+      {new_agreed_height, new_agreed_hash, same, rest, _} ->
+        {:ok, new_agreed_height, new_agreed_hash, same ++ rest}
     end
   end
 
-  # If our peer count is lower then @peers_target_count,
-  # we request peers list from all known peers and choose at random
-  # min(peers_we_need_to_have_target_count, peers_we_currently_have)
-  # new peers to add.
-  @spec refill :: :ok | {:error, term()}
-  def refill do
-    peers_count = map_size(Peers.all_peers())
+  @spec split_hash_pool(non_neg_integer(), binary(), list(), any(), non_neg_integer()) :: tuple()
+  defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
+       when h < height do
+    split_hash_pool(height, prev_hash, hash_pool, same, n_added)
+  end
 
-    cond do
-      peers_count == 0 ->
-        {:error, "#{__MODULE__}: No peers"}
+  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
+       when h == height and n_added < @max_adds do
+    case Map.get(map, :block, :error) do
+      :error ->
+        split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
-      peers_count < @peers_target_count ->
-        all_peers =
-          Peers.all_peers()
-          |> Map.values()
-          |> Enum.map(fn %{uri: uri} -> uri end)
+      block ->
+        hash = BlockValidation.block_header_hash(block.header)
 
-        new_count = get_newpeers_and_add(all_peers)
+        case Map.get(block.header, :prev_hash, :error) do
+          :error ->
+            split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
-        if new_count > 0 do
-          Logger.info(fn -> "#{__MODULE__}: Aquired #{new_count} new peers" end)
-          :ok
+          prev_hash ->
+            case Chain.add_block(block) do
+              :ok ->
+                split_hash_pool(h + 1, hash, hash_pool, [], n_added + 1)
+
+              {:error, _} ->
+                split_hash_pool(height, prev_hash, hash_pool, same, n_added)
+            end
+        end
+    end
+  end
+
+  defp split_hash_pool(height, prev_hash, hash_pool, same, n_added) do
+    {height - 1, prev_hash, same, hash_pool, n_added}
+  end
+
+  # Tries to add new peer to the peer_pool.
+  # If we have it already, we get either the local or the remote info
+  # from the peer with highest from_height.
+  # After that we merge the new_sync_peer data with the old one, updating it.
+  @spec try_add_peer(sync_peer(), sync_pool()) :: {true, sync_pool()} | {false, sync_pool()}
+  defp try_add_peer(
+         %{
+           difficulty: difficulty,
+           from: _agreed_height,
+           to: height,
+           hash: _hash,
+           peer: peer_pid,
+           pid: _process_pid
+         } = new_peer_data,
+         sync_pool
+       ) do
+    {new_peer?, new_pool} =
+      case Enum.find(sync_pool, false, fn peer -> Map.get(peer, :id) == peer_pid end) do
+        false ->
+          # This peer is new
+          {true, [new_peer_data | sync_pool]}
+
+        old_peer_data ->
+          # We already have this peer
+
+          peer_data =
+            if old_peer_data.from > new_peer_data.from do
+              old_peer_data
+            else
+              new_peer_data
+            end
+
+          max_diff = max(difficulty, old_peer_data.difficulty)
+          max_height = max(height, old_peer_data.to)
+          {false, [%{peer_data | difficulty: max_diff, to: max_height} | sync_pool]}
+      end
+
+    {new_peer?, Enum.sort_by(new_pool, fn peer -> peer.difficulty end)}
+  end
+
+  # Here we initiate the actual sync of the Peers. We get the remote Peer values,
+  # then we agree on some height, and check weather we agree on it, if not we go lower,
+  # until we agree on some height. This might be even the Gensis block!
+  @spec do_start_sync(pid(), binary()) :: :ok | {:error, String.t()}
+  defp do_start_sync(peer_pid, remote_hash) do
+    case PeerConnection.get_header_by_hash(remote_hash, peer_pid) do
+      {:ok, %{header: remote_header}} ->
+        remote_height = remote_header.height
+        local_height = Chain.top_height()
+
+        {:ok, genesis_block} = Chain.get_block_by_height(0)
+
+        min_agreed_hash = BlockValidation.block_header_hash(genesis_block.header)
+        max_agreed_height = min(local_height, remote_height)
+
+        {agreed_height, agreed_hash} =
+          agree_on_height(
+            peer_pid,
+            remote_header,
+            remote_height,
+            max_agreed_height,
+            min_agreed_hash
+          )
+
+        if new_peer?(peer_pid, remote_header, agreed_height, agreed_hash) do
+          pool_result = fill_pool(peer_pid, agreed_hash)
+          fetch_more(peer_pid, agreed_height, agreed_hash, pool_result)
         else
-          Logger.debug(fn ->
-            "#{__MODULE__}: No new peers added when trying to refill peers"
-          end)
-
-          {:error, "#{__MODULE__}: No new peers added"}
+          # Sync is already in progress with this peer
+          :ok
         end
 
+      {:error, reason} ->
+        Logger.error("#{__MODULE__}: Fetching top block from
+                      #{inspect(peer_pid)} failed with: #{inspect(reason)} ")
+    end
+  end
+
+  # With this func we try to agree on block height on which we agree and could sync.
+  # In other words a common block.
+  @spec agree_on_height(pid(), binary(), non_neg_integer(), non_neg_integer(), binary()) ::
+          tuple()
+  defp agree_on_height(_peer_pid, _r_header, _r_height, l_height, agreed_hash)
+       when l_height == 0 do
+    {0, agreed_hash}
+  end
+
+  defp agree_on_height(peer_pid, r_header, r_height, l_height, agreed_hash)
+       when r_height == l_height do
+    r_hash = BlockValidation.block_header_hash(r_header)
+
+    case Persistence.get_block_by_hash(r_hash) do
+      {:ok, _} ->
+        {r_height, r_hash}
+
+      _ ->
+        # We are on a fork
+        agree_on_height(peer_pid, r_header, r_height, l_height - 1, agreed_hash)
+    end
+  end
+
+  defp agree_on_height(peer_pid, _r_header, r_height, l_height, agreed_hash)
+       when r_height != l_height do
+    case PeerConnection.get_header_by_height(l_height, peer_pid) do
+      {:ok, %{header: header}} ->
+        agree_on_height(peer_pid, header, l_height, l_height, agreed_hash)
+
+      {:error, _reason} ->
+        {0, agreed_hash}
+    end
+  end
+
+  defp fetch_more(peer_pid, _, _, :done) do
+    ## Chain sync done
+    delete_from_pool(peer_pid)
+    :ok
+  end
+
+  defp fetch_more(peer_pid, last_height, _, {:error, reason}) do
+    Logger.info("Abort sync at height #{last_height} Error: #{inspect(reason)}")
+    delete_from_pool(peer_pid)
+    {:error, reason}
+  end
+
+  defp fetch_more(peer_pid, last_height, header_hash, result) do
+    ## We need to supply the Hash, because locally we might have a shorter,
+    ## but locally more difficult fork
+    case fetch_next(peer_pid, last_height, header_hash, result) do
+      {:fetch, new_height, new_hash, hash} ->
+        case do_fetch_block(hash, peer_pid) do
+          {:ok, new_block} ->
+            fetch_more(peer_pid, new_height, new_hash, {:ok, new_block})
+
+          {:error, _} = error ->
+            fetch_more(peer_pid, new_height, new_hash, error)
+        end
+
+      {:insert, new_height, new_hash} ->
+        fetch_more(peer_pid, new_height, new_hash, :no_result)
+
+      {:fill_pool, agreed_height, agreed_hash} ->
+        pool_result = fill_pool(peer_pid, agreed_hash)
+        fetch_more(peer_pid, agreed_height, agreed_hash, pool_result)
+
+      other ->
+        fetch_more(peer_pid, last_height, header_hash, other)
+    end
+  end
+
+  def process_jobs([]) do
+    "No more jobs to do"
+  end
+
+  def process_jobs([{_t, job} | t]) do
+    case job do
+      {:forward, %{block: block}, peer_pid} ->
+        PeerConnection.send_new_block(block, peer_pid)
+
+      {:forward, %{tx: tx}, peer_pid} ->
+        PeerConnection.send_new_tx(tx, peer_pid)
+
+      {:start_sync, peer_pid, remote_hash} ->
+        case sync_in_progress?(peer_pid) do
+          false -> do_start_sync(peer_pid, remote_hash)
+          _ -> Logger.info("Sync already in progress")
+        end
+
+      {:fetch_mempool, peer_pid} ->
+        do_fetch_mempool(peer_pid)
+
+      _other ->
+        Logger.debug(fn -> "Unknown job" end)
+    end
+
+    process_jobs(t)
+  end
+
+  @spec enqueue(atom(), map()) :: list()
+  defp enqueue(opts, msg) do
+    Enum.each(Peers.all_pids(), fn pid ->
+      Jobs.enqueue(:sync_jobs, {opts, msg, pid})
+    end)
+  end
+
+  # Merges the local Hashes with the Remote Peer hashes
+  # So it takes the data from where the height is higher
+  defp merge([], new_hashes), do: new_hashes
+  defp merge(old_hashes, []), do: old_hashes
+
+  defp merge([{{h_1, _hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
+       when h_1 < h_2 do
+    merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
+  end
+
+  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, _hash_2}, _} | new_hashes])
+       when h_1 > h_2 do
+    merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
+  end
+
+  defp merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes]) do
+    pick_same({{h_2, hash_2}, map_2}, old_hashes, new_hashes)
+  end
+
+  defp pick_same({{h, hash_2}, map_2}, [{{h, hash_1}, map_1} | old_hashes], new_hashes) do
+    case hash_1 == hash_2 do
       true ->
-        :ok
+        [
+          {{h, hash_1}, Map.merge(map_1, map_2)}
+          | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)
+        ]
+
+      false ->
+        [{{h, hash_1}, map_1} | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)]
     end
   end
 
-  defp get_newpeers_and_add(known) do
-    known_count = length(known)
-    known_set = MapSet.new(known)
+  defp pick_same(_, old_hashes, new_hashes), do: merge(old_hashes, new_hashes)
 
-    number_of_peers_to_add = Enum.min([@peers_target_count - known_count, known_count])
+  defp fill_pool(peer_pid, agreed_hash) do
+    case PeerConnection.get_n_successors(agreed_hash, @max_headers_per_chunk, peer_pid) do
+      {:ok, []} ->
+        delete_from_pool(peer_pid)
+        :done
 
-    known
-    |> Enum.shuffle()
-    |> Enum.take(@peers_target_count - known_count)
-    |> Enum.reduce([], fn peer, acc ->
-      case HttpClient.get_peers(peer) do
-        {:ok, list} ->
-          Enum.concat(acc, Enum.map(Map.values(list), fn %{"uri" => uri} -> uri end))
+      {:ok, %{hashes: chunk_hashes}} ->
+        hash_pool =
+          for %{hash: hash, height: height} <- chunk_hashes do
+            {{height, hash}, %{peer: peer_pid}}
+          end
 
-        {:error, message} ->
-          Logger.error(fn -> "#{__MODULE__}: Couldn't get peers from #{peer}: #{message}" end)
-          acc
-      end
-    end)
-    |> Enum.reduce([], fn peer, acc ->
-      if MapSet.member?(known_set, peer) do
-        acc
-      else
-        [peer | acc]
-      end
-    end)
-    |> Enum.shuffle()
-    |> Enum.reduce(0, fn peer, acc ->
-      # if we have successfully added less then number_of_peers_to_add peers
-      # then try to add another one
-      if acc < number_of_peers_to_add do
-        case Peers.add_peer(peer) do
-          :ok ->
-            acc + 1
+        update_hash_pool(hash_pool)
+        {:filled_pool, length(chunk_hashes) - 1}
 
-          _ ->
-            acc
+      _err ->
+        delete_from_pool(peer_pid)
+        {:error, :sync_abort}
+    end
+  end
+
+  # Check if we already have this block locally, is so
+  # take it from the chain
+  defp do_fetch_block(hash, peer_pid) do
+    case Chain.get_block(hash) do
+      {:ok, block} ->
+        Logger.debug(fn -> "#{__MODULE__}: We already have this block!" end)
+        {:ok, false, block}
+
+      {:error, _} ->
+        do_fetch_block_ext(hash, peer_pid)
+    end
+  end
+
+  # If we don't have the block locally, take it from the Remote Peer
+  defp do_fetch_block_ext(hash, peer_pid) do
+    case PeerConnection.get_block(hash, peer_pid) do
+      {:ok, %{block: block}} ->
+        case BlockValidation.block_header_hash(block.header) === hash do
+          true ->
+            Logger.debug(fn ->
+              "#{__MODULE__}: Block #{inspect(block)} fetched from #{inspect(peer_pid)}"
+            end)
+
+            {:ok, block}
+
+          false ->
+            {:error, :hash_mismatch}
         end
-      else
-        acc
-      end
-    end)
-  end
 
-  # Builds a chain, starting from the given block,
-  # until we reach a block, of which the previous block is the highest in our chain
-  # (that means we can add this chain to ours)
-  defp build_chain(state, block, chain) do
-    has_parent_block_in_state = Map.has_key?(state, block.header.prev_hash)
-    has_parent_in_chain = Chain.has_block?(block.header.prev_hash)
-    block_header_hash = BlockValidation.block_header_hash(block.header)
+      err ->
+        Logger.debug(fn ->
+          "#{__MODULE__}: Failed to fetch the block from #{inspect(peer_pid)}"
+        end)
 
-    if Chain.has_block?(block_header_hash) do
-      chain
-    else
-      cond do
-        has_parent_block_in_state ->
-          build_chain(state, state[block.header.prev_hash], [block | chain])
-
-        has_parent_in_chain ->
-          [block | chain]
-
-        true ->
-          []
-      end
+        err
     end
   end
 
-  # Adds the given chain to the local chain and
-  # deletes the blocks we added from the state
-  defp add_built_chain(chain) do
-    Enum.each(chain, fn block ->
-      case Chain.add_block(block) do
-        :ok ->
-          remove_block_from_state(BlockValidation.block_header_hash(block.header))
-
-        {:error, _binary} ->
-          Logger.info("Block: #{inspect(block)} couldn't be added to chain")
-      end
-    end)
+  # Try to fetch the pool of transactions
+  # from the Remote Peer we are connected to
+  defp do_fetch_mempool(peer_pid) do
+    {:ok, %{txs: pool}} = PeerConnection.get_mempool(peer_pid)
+    Logger.debug(fn -> "#{__MODULE__}: Mempool received from #{inspect(peer_pid)}" end)
+    Enum.each(pool, fn tx -> Pool.add_transaction(tx) end)
   end
 end
