@@ -187,16 +187,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
-  def refund_sender(query, accounts_state) do
-    if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
-        Map.update!(account, :balance, &(&1 + query.fee))
-      end)
-    else
-      accounts_state
-    end
-  end
-
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),

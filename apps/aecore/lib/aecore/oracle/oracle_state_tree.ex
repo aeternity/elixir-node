@@ -4,7 +4,8 @@ defmodule Aecore.Oracle.OracleStateTree do
   """
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aecore.Oracle.Tx.OracleQueryTx, as: Query
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Oracle
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
@@ -100,7 +101,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp delete_expired({:query, oracle_id, query_id}, {oracles_state, accounts_state}) do
     tree_id = oracle_id <> query_id
     query = get_query(oracles_state, tree_id)
-    new_accounts_state = Query.refund_sender(query, accounts_state)
+    new_accounts_state = Oracle.refund_sender(query, accounts_state)
 
     {
       Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, tree_id)),
@@ -130,7 +131,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     oracle_id = query.oracle_address
 
     id =
-      Query.id(
+      OracleQueryTx.id(
         query.sender_address,
         query.sender_nonce,
         oracle_id

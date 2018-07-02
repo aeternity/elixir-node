@@ -8,6 +8,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -226,6 +227,18 @@ defmodule Aecore.Oracle.Oracle do
   @spec remove_expired(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
   def remove_expired(chainstate, block_height) do
     OracleStateTree.prune(chainstate, block_height)
+  end
+
+  @spec refund_sender(map(), AccountStateTree.accounts_state()) ::
+          AccountStateTree.accounts_state()
+  def refund_sender(query, accounts_state) do
+    if not query.has_response do
+      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+        Map.update!(account, :balance, &(&1 + query.fee))
+      end)
+    else
+      accounts_state
+    end
   end
 
   defp ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
