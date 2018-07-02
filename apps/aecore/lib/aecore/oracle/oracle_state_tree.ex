@@ -4,7 +4,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   """
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Oracle.Tx.OracleQueryTx, as: Query
   alias Aecore.Account.AccountStateTree
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
@@ -71,7 +71,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     |> PatriciaMerkleTree.all_keys()
     |> Enum.reduce(trees, fn cache_key_encoded, new_trees_state ->
       cache_key_encoded
-      |> cache_key_decode()
+      |> Serialization.cache_key_decode()
       |> filter_expired(expires, cache_key_encoded, new_trees_state)
     end)
   end
@@ -101,22 +101,12 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp delete_expired({:query, oracle_id, query_id}, {oracles_state, accounts_state}) do
     tree_id = oracle_id <> query_id
     query = get_query(oracles_state, tree_id)
-    new_accounts_state = refund_if_not_response(query, accounts_state)
+    new_accounts_state = Query.refund_sender(query, accounts_state)
 
     {
       Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, tree_id)),
       new_accounts_state
     }
-  end
-
-  defp refund_if_not_response(query, accounts_state) do
-    if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
-        Map.update!(account, :balance, &(&1 + query.fee))
-      end)
-    else
-      accounts_state
-    end
   end
 
   defp add_oracle(tree, oracle, how) do
@@ -141,7 +131,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     oracle_id = query.oracle_address
 
     id =
-      OracleQueryTx.id(
+      Query.id(
         query.sender_address,
         query.sender_nonce,
         oracle_id
@@ -198,15 +188,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(tree, _where), do: tree.oracle_tree
 
   defp cache_push(oracle_cache_tree, key, expires) do
-    encoded = cache_key_encode(key, expires)
+    encoded = Serialization.cache_key_encode(key, expires)
     enter(oracle_cache_tree, encoded, @dummy_val)
-  end
-
-  defp cache_key_encode(key, expires) do
-    :sext.encode({expires, key})
-  end
-
-  defp cache_key_decode(key) do
-    :sext.decode(key)
   end
 end
