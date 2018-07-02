@@ -5,7 +5,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx, as: Query
-  alias Aecore.Account.AccountStateTree
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
