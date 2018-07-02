@@ -20,16 +20,16 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:get_state})
   end
 
-  @spec new_node(String.t(), non_neg_integer()) :: :already_exists | Map.t()
-  def new_node(node_name, port) do
-    GenServer.call(__MODULE__, {:new_node, node_name, port})
+  @spec new_node(String.t(), non_neg_integer(), non_neg_integer()) :: :already_exists | Map.t()
+  def new_node(node_name, port, sync_port) do
+    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port})
   end
 
   @spec sync_two_nodes(String.t(), String.t()) :: :ok
   def sync_two_nodes(node_name1, node_name2) do
     GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
-    get_all_peers(node_name1)
-    get_all_peers(node_name2)
+    # get_all_peers(node_name1)
+    # get_all_peers(node_name2)
   end
 
   @doc """
@@ -335,8 +335,15 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def get_all_peers(node_name) do
     send_command(node_name, "peers = Aecore.Peers.Worker.all_peers")
 
+    send_command(
+      node_name,
+      "peers_encoded = Enum.reduce(peers, [], fn (peer), acc ->
+                                acc ++ [put_in(peer.pubkey, Base.encode32(peer.pubkey))]
+                              end)"
+    )
+
     # encoding the peers map to the json
-    send_command(node_name, "{:ok, json} = Poison.encode(peers)")
+    send_command(node_name, "{:ok, json} = Poison.encode(peers_encoded)")
 
     # writing the json to the file
     send_command(node_name, "path = System.cwd() <> \"/result.json\"")
@@ -353,7 +360,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info({_, {:data, _}}, state) do
+  def handle_info({_, {:data, result}}, state) do
     {:noreply, state}
   end
 
@@ -438,13 +445,14 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
          {:ok, decoded_data} <- Poison.decode(data) do
       # decoding all the keys and the data to it's initial state
       decoded_data =
-        Enum.reduce(decoded_data, %{}, fn {num, info}, acc ->
-          info =
-            for {k, v} <- info,
+        Enum.reduce(decoded_data, [], fn peer, acc ->
+          peer =
+            for {k, v} <- peer,
                 into: %{},
                 do: {String.to_atom(k), v}
 
-          Map.put(acc, String.to_integer(num), info)
+          peer = put_in(peer.pubkey, Base.decode32!(peer.pubkey))
+          acc ++ [peer]
         end)
 
       # updating the state and removing the json file
@@ -468,7 +476,12 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   def handle_call({:sync_two_nodes, node_name1, node_name2}, _, state) do
     port = state[node_name2].port
-    cmd = "Aecore.Peers.Worker.add_peer(\"localhost:#{port}\")\n"
+    sync_port = state[node_name2].sync_port
+    cmd = "{:ok, peer_info} = Aehttpclient.Client.get_info(\"localhost:#{port}\")\n"
+    Port.command(state[node_name1].process_port, cmd)
+    cmd = "pub_key = Map.get(peer_info, :peer_pubkey) |> Aecore.Keys.Peer.base58c_decode()\n"
+    Port.command(state[node_name1].process_port, cmd)
+    cmd = "Peers.try_connect(%{host: 'localhost', port: #{sync_port}, pubkey: pub_key})\n"
     Port.command(state[node_name1].process_port, cmd)
     {:reply, :ok, state}
   end
@@ -538,7 +551,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     end
   end
 
-  def handle_call({:new_node, node_name, port}, _, state) do
+  def handle_call({:new_node, node_name, port, sync_port}, _, state) do
     cond do
       Map.has_key?(state, node_name) ->
         {:reply, :already_exists, state}
@@ -557,11 +570,18 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
         System.cmd("cp", ["-R", path, tmp_path])
         tmp_path = tmp_path <> "/elixir-node"
 
+        File.rm_rf(tmp_path <> "/apps/aecore/priv/peerkeys")
         # Changing the port of the new elixir-node
         System.cmd("sed", [
           "-i",
           "s/4000/#{port}/",
           Path.join(tmp_path, "apps/aehttpserver/config/dev.exs")
+        ])
+
+        System.cmd("sed", [
+          "-i",
+          "s/3015/#{sync_port}/",
+          Path.join(tmp_path, "apps/aecore/config/dev.exs")
         ])
 
         System.cmd("sed", [
@@ -578,6 +598,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
             process_port: process_port,
             path: tmp_path,
             port: port,
+            sync_port: sync_port,
             top_block: nil,
             top_block_hash: nil,
             peers: %{},

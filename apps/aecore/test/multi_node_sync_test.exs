@@ -51,8 +51,8 @@ defmodule MultiNodeSyncTest do
     TestFramework.naming_pre_claim("node3")
     TestFramework.mine_sync_block("node3")
 
-    TestFramework.spend_tx "node4"
-    TestFramework.mine_sync_block "node4"
+    TestFramework.spend_tx("node4")
+    TestFramework.mine_sync_block("node4")
 
     :timer.sleep(3000)
     assert :synced == TestFramework.compare_nodes_by_top_block("node1", "node2")
