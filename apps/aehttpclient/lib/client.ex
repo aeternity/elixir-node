@@ -8,6 +8,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Keys.Peer, as: PeerKeys
   alias Aeutil.Serialization
 
   require Logger
@@ -18,6 +19,20 @@ defmodule Aehttpclient.Client do
   @spec get_info(term()) :: {:ok, map()} | :error
   def get_info(uri) do
     get(uri <> "/info", :info)
+  end
+
+  @spec get_peer_info(term()) :: {:ok, map()} | :error
+  def get_peer_info(uri) do
+    case get(uri <> "/peer_info") do
+      {:ok, %{"port" => port, "pubkey" => pubkey}} ->
+        decoded_pubkey = PeerKeys.base58c_decode(pubkey)
+        host = uri |> String.split(":") |> Enum.at(0) |> to_charlist()
+        peer_info = %{host: host, port: port, pubkey: decoded_pubkey}
+        {:ok, peer_info}
+
+      {:error, _reason} = error ->
+        error
+    end
   end
 
   @spec get_block({term(), binary()}) :: {:ok, Block.t()} | {:error, binary()}
