@@ -417,7 +417,6 @@ defmodule Aecore.Chain.Worker do
         :block_info => %{new_block_hash => %{refs: new_refs}}
       })
 
-      # TODO when top fork changes we should notify about all txs that were missed
       new_top_block_notify(new_block)
 
       {:reply, :ok,
