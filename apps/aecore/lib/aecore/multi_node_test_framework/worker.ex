@@ -4,6 +4,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   """
 
   alias Aeutil.Serialization
+  alias Aehttpclient.Client
 
   require Logger
   use GenServer
@@ -22,7 +23,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec new_node(String.t(), non_neg_integer(), non_neg_integer()) :: :already_exists | Map.t()
   def new_node(node_name, port, sync_port) do
-    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port})
+    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port}, 10000)
   end
 
   @spec sync_two_nodes(String.t(), String.t()) :: :ok
@@ -72,7 +73,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec get_pool(String.t()) :: :ok | :unknown_node
   def get_pool(node_name) do
-    send_command(node_name, "Aecore.Tx.Pool.Worker.get_pool()")
+    send_command(node_name, "Pool.get_pool()")
   end
 
   @doc """
@@ -84,7 +85,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   end
 
   def delete_all_nodes do
-    GenServer.call(__MODULE__, {:delete_all_nodes})
+    GenServer.call(__MODULE__, {:delete_all_nodes}, 10000)
   end
 
   defp update_registered_oracles_state(node_name) do
@@ -108,7 +109,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   # oracles
   @spec oracle_interaction_objects(String.t()) :: :ok | :unknown_node
   def oracle_interaction_objects(node_name) do
-    send_command(node_name, "int_object = Aecore.Chain.Worker.oracle_interaction_objects()")
+    send_command(node_name, "int_object = Chain.oracle_interaction_objects()")
 
     # converting the keys which are binary to string
     send_command(
@@ -138,7 +139,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec registered_oracles(String.t()) :: :ok | :unknown_node
   def registered_oracles(node_name) do
-    send_command(node_name, "registered_oracles = Aecore.Chain.Worker.registered_oracles()")
+    send_command(node_name, "registered_oracles = Chain.registered_oracles()")
 
     # converting the keys which are binary to string
     send_command(
@@ -174,25 +175,25 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def register_oracle(node_name) do
     send_command(
       node_name,
-      "Aecore.Oracle.Oracle.register(%{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5, %{:ttl => 10, :type => :relative})"
+      "Oracle.register(%{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5, %{:ttl => 10, :type => :relative})"
     )
   end
 
   @spec extend_oracle(String.t()) :: :ok | :unknown_node
   def extend_oracle(node_name) do
-    send_command(node_name, "Aecore.Oracle.Oracle.extend(3, 10)")
+    send_command(node_name, "Oracle.extend(3, 10)")
   end
 
   @spec query_oracle(String.t()) :: :ok | :unknown_node
   def query_oracle(node_name) do
     send_command(
       node_name,
-      "oracle = Aecore.Chain.Worker.registered_oracles() |> Map.keys() |> Enum.at(0)"
+      "oracle = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)"
     )
 
     send_command(
       node_name,
-      "Aecore.Oracle.Oracle.query(oracle, %{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
+      "Oracle.query(oracle, %{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
     )
   end
 
@@ -200,39 +201,39 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def respond_oracle(node_name) do
     send_command(
       node_name,
-      "oracle = Aecore.Chain.Worker.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)"
+      "oracle = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)"
     )
 
-    send_command(node_name, "Aecore.Oracle.Oracle.respond(oracle, %{\"currency\" => \"BGN\"}, 5)")
+    send_command(node_name, "Oracle.respond(oracle, %{\"currency\" => \"BGN\"}, 5)")
   end
 
   # spend_tx
 
   @spec spend_tx(String.t()) :: :ok | :unknown_node
-  def spend_tx(node_name) do
+  def spend_tx(node_name1) do
     send_command(
-      node_name,
-      "{:ok, tx} = Aecore.Account.Account.spend(Aecore.Wallet.Worker.get_public_key(\"M/0\"), 20, 10, \"test1\")"
+      node_name1,
+      "{:ok, tx} = Account.spend(Wallet.get_public_key(\"M/0\"), 20, 10, \"test1\")"
     )
 
-    send_command(node_name, "Aecore.Tx.Pool.Worker.add_transaction(tx)")
+    send_command(node_name1, "Pool.add_transaction(tx)")
   end
 
   # mining
   @spec mine_sync_block(String.t()) :: :ok | :unknown_node
   def mine_sync_block(node_name) do
-    send_command(node_name, "Aecore.Miner.Worker.mine_sync_block_to_chain()")
+    send_command(node_name, "Miner.mine_sync_block_to_chain()")
     get_node_top_block(node_name)
   end
 
   # chain
   @spec get_node_top_block(String.t()) :: :ok | String.t()
   def get_node_top_block(node_name) do
-    send_command(node_name, "top_block = Aecore.Chain.Worker.top_block()")
+    send_command(node_name, "top_block = Chain.top_block()")
 
     send_command(
       node_name,
-      "serialized_block = Aeutil.Serialization.block(top_block, :serialize)"
+      "serialized_block = Serialization.block(top_block, :serialize)"
     )
 
     send_command(node_name, "{:ok, json} = Poison.encode(serialized_block)")
@@ -244,7 +245,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec get_node_top_block_hash(String.t()) :: :ok | :unknown_node
   def get_node_top_block_hash(node_name) do
-    send_command(node_name, "block_hash = Aecore.Chain.Worker.top_block_hash() |> Base.encode32")
+    send_command(node_name, "block_hash = Chain.top_block_hash() |> Base.encode32")
     send_command(node_name, "{:block_hash, block_hash}")
   end
 
@@ -258,30 +259,30 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def naming_pre_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Aecore.Account.Account.pre_claim(\"test.aet\", <<1::256>>, 10)"
+      "{:ok, tx} = Account.pre_claim(\"test.aet\", <<1::256>>, 10)"
     )
 
-    send_command(node_name, "Aecore.Tx.Pool.Worker.add_transaction(tx)")
+    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_claim(String.t()) :: :ok | :unknown_node
   def naming_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Aecore.Account.Account.claim(\"test.aet\", <<1::256>>, 10)"
+      "{:ok, tx} = Account.claim(\"test.aet\", <<1::256>>, 10)"
     )
 
-    send_command(node_name, "Aecore.Tx.Pool.Worker.add_transaction(tx)")
+    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_update(String.t()) :: :ok | :unknown_node
   def naming_update(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Aecore.Account.Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10) "
+      "{:ok, tx} = Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10) "
     )
 
-    send_command(node_name, "Aecore.Tx.Pool.Worker.add_transaction(tx)")
+    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_transfer(String.t()) :: :ok | :unknown_node
@@ -320,12 +321,12 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
       "{:ok, revoke} = Account.name_revoke(transfer_to_pub, transfer_to_priv, \"test.aet\", 10, next_nonce)"
     )
 
-    send_command(node_name, "Aecore.Tx.Pool.Worker.add_transaction(revoke)")
+    send_command(node_name, "Pool.add_transaction(revoke)")
   end
 
   @spec chainstate_naming(String.t()) :: :ok | :unknown_node
   def chainstate_naming(node_name) do
-    send_command(node_name, "Aecore.Chain.Worker.chain_state().naming")
+    send_command(node_name, "Chain.chain_state().naming")
   end
 
   @doc """
@@ -333,7 +334,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   """
   @spec get_all_peers(String.t()) :: :ok
   def get_all_peers(node_name) do
-    send_command(node_name, "peers = Aecore.Peers.Worker.all_peers")
+    send_command(node_name, "peers = Peers.all_peers")
 
     send_command(
       node_name,
@@ -477,10 +478,13 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def handle_call({:sync_two_nodes, node_name1, node_name2}, _, state) do
     port = state[node_name2].port
     sync_port = state[node_name2].sync_port
-    cmd = "{:ok, peer_info} = Aehttpclient.Client.get_info(\"localhost:#{port}\")\n"
+
+    cmd = "{:ok, peer_info} = Client.get_info(\"localhost:#{port}\")\n"
     Port.command(state[node_name1].process_port, cmd)
-    cmd = "pub_key = Map.get(peer_info, :peer_pubkey) |> Aecore.Keys.Peer.base58c_decode()\n"
+
+    cmd = "pub_key = Map.get(peer_info, :peer_pubkey) |> PeerKeys.base58c_decode()\n"
     Port.command(state[node_name1].process_port, cmd)
+
     cmd = "Peers.try_connect(%{host: 'localhost', port: #{sync_port}, pubkey: pub_key})\n"
     Port.command(state[node_name1].process_port, cmd)
     {:reply, :ok, state}
@@ -592,12 +596,16 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
         # Running the new elixir-node using Port
         process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
+        :timer.sleep(4000)
+        {:ok, info} = Client.get_info("localhost:#{port}")
+        pubkey = info.peer_pubkey
 
         new_state =
           Map.put(state, node_name, %{
             process_port: process_port,
             path: tmp_path,
             port: port,
+            pubkey: pubkey,
             sync_port: sync_port,
             top_block: nil,
             top_block_hash: nil,

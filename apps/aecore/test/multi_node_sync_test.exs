@@ -14,22 +14,26 @@ defmodule MultiNodeSyncTest do
   @tag :sync_test
   test "test nodes sync", setup do
     port1 = find_port(4001)
-    TestFramework.new_node("node1", port1)
+    sync_port1 = find_port(3016)
+    TestFramework.new_node("node1", port1, sync_port1)
 
     :timer.sleep(4000)
 
     port2 = find_port(port1)
-    TestFramework.new_node("node2", port2)
+    sync_port2 = find_port(sync_port1)
+    TestFramework.new_node("node2", port2, sync_port2)
 
     :timer.sleep(4000)
 
     port3 = find_port(port2)
-    TestFramework.new_node("node3", port3)
+    sync_port3 = find_port(sync_port2)
+    TestFramework.new_node("node3", port3, sync_port3)
 
     :timer.sleep(4000)
 
     port4 = find_port(port3)
-    TestFramework.new_node("node4", port4)
+    sync_port4 = find_port(sync_port3)
+    TestFramework.new_node("node4", port4, sync_port4)
     :timer.sleep(4000)
     TestFramework.sync_two_nodes("node1", "node2")
     TestFramework.sync_two_nodes("node4", "node1")
@@ -49,6 +53,9 @@ defmodule MultiNodeSyncTest do
     TestFramework.mine_sync_block("node3")
 
     TestFramework.naming_pre_claim("node3")
+    TestFramework.mine_sync_block("node3")
+
+    TestFramework.naming_claim("node3")
     TestFramework.mine_sync_block("node3")
 
     TestFramework.spend_tx("node4")
