@@ -6,16 +6,14 @@ defmodule Aecore.Peers.Sync do
   use GenServer
 
   alias __MODULE__
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Header, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
-  alias Aeutil.Scientific
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Peers.Jobs
+  alias Aecore.Peers.{Jobs, Events}
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Events
+  alias Aeutil.Scientific
 
   require Logger
 
@@ -26,7 +24,7 @@ defmodule Aecore.Peers.Sync do
           to: non_neg_integer(),
           hash: binary(),
           peer: pid(),
-          pid: binary()
+          pid: pid()
         }
 
   @type peer_pid_map :: %{peer: pid()}
@@ -73,7 +71,7 @@ defmodule Aecore.Peers.Sync do
   """
   @spec start_sync(pid(), binary()) :: :ok | {:error, String.t()}
   def start_sync(peer_pid, remote_hash) do
-    GenServer.call(__MODULE__, {:start_sync, peer_pid, remote_hash})
+    Jobs.enqueue(:sync_jobs, {:start_sync, peer_pid, remote_hash})
   end
 
   @doc """
@@ -92,8 +90,8 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:sync_in_progress, peer_pid})
   end
 
-  @spec new_peer?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
-  def new_peer?(peer_pid, header, agreed_height, hash) do
+  @spec add_peer?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
+  def add_peer?(peer_pid, header, agreed_height, hash) do
     GenServer.call(__MODULE__, {:is_new_peer, self(), peer_pid, header, agreed_height, hash})
   end
 
@@ -118,11 +116,6 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call(:state, _from, state) do
     {:reply, state, state}
-  end
-
-  def handle_call({:start_sync, peer_pid, remote_hash}, _from, state) do
-    :ok = Jobs.enqueue(:sync_jobs, {:start_sync, peer_pid, remote_hash})
-    {:reply, :ok, state}
   end
 
   def handle_call({:fetch_mempool, peer_pid}, _from, state) do
@@ -175,7 +168,7 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
     hash_pool = merge(state.hash_pool, hashes)
-    Logger.debug(fn -> "Hash pool now contains #{inspect(hash_pool)} hashes" end)
+    Logger.debug(fn -> "#{__MODULE__}: Hash pool now contains #{inspect(hash_pool)} hashes" end)
     {:reply, :ok, %{state | hash_pool: hash_pool}}
   end
 
@@ -207,7 +200,7 @@ defmodule Aecore.Peers.Sync do
         {:reply, {:error, reason}, %{state | hash_pool: hash_pool}}
 
       {:ok, new_height, new_hash, []} ->
-        Logger.debug(fn -> "Got all the blocks from Hashpool" end)
+        Logger.debug(fn -> "#{__MODULE__}: Got all the blocks from Hashpool" end)
 
         # The sync might be done. Check for more blocks.
         case Enum.find(state.sync_pool, false, fn peer -> Map.get(peer, :id) == peer_pid end) do
@@ -265,7 +258,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %{sync_pool: sync_pool} = state) do
-    Logger.info("Worker stopped with reason: #{inspect(reason)}")
+    Logger.info("#{__MODULE__}: Worker stopped with reason: #{inspect(reason)}")
     {:noreply, %{state | sync_pool: Enum.filter(sync_pool, fn peer -> peer.peer != pid end)}}
   end
 
@@ -383,7 +376,7 @@ defmodule Aecore.Peers.Sync do
             min_agreed_hash
           )
 
-        if new_peer?(peer_pid, remote_header, agreed_height, agreed_hash) do
+        if add_peer?(peer_pid, remote_header, agreed_height, agreed_hash) do
           pool_result = fill_pool(peer_pid, agreed_hash)
           fetch_more(peer_pid, agreed_height, agreed_hash, pool_result)
         else
@@ -410,7 +403,7 @@ defmodule Aecore.Peers.Sync do
        when r_height == l_height do
     r_hash = BlockValidation.block_header_hash(r_header)
 
-    case Persistence.get_block_by_hash(r_hash) do
+    case Chain.get_block(r_hash) do
       {:ok, _} ->
         {r_height, r_hash}
 
@@ -438,7 +431,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   defp fetch_more(peer_pid, last_height, _, {:error, reason}) do
-    Logger.info("Abort sync at height #{last_height} Error: #{inspect(reason)}")
+    Logger.info("#{__MODULE__}: Abort sync at height #{last_height} Error: #{inspect(reason)}")
     delete_from_pool(peer_pid)
     {:error, reason}
   end
@@ -483,14 +476,14 @@ defmodule Aecore.Peers.Sync do
       {:start_sync, peer_pid, remote_hash} ->
         case sync_in_progress?(peer_pid) do
           false -> do_start_sync(peer_pid, remote_hash)
-          _ -> Logger.info("Sync already in progress")
+          _ -> Logger.info("#{__MODULE__}: Sync already in progress")
         end
 
       {:fetch_mempool, peer_pid} ->
         do_fetch_mempool(peer_pid)
 
       _other ->
-        Logger.debug(fn -> "Unknown job" end)
+        Logger.debug(fn -> "#{__MODULE__}: Unknown job" end)
     end
 
     process_jobs(t)
