@@ -1,5 +1,5 @@
 defmodule Aeutil.Identifier do
-  alias Aeutil.Identifier
+  alias __MODULE__
 
   @moduledoc """
   Utility module for interacting with identifiers. 
@@ -20,13 +20,11 @@ defmodule Aeutil.Identifier do
     balance: non_neg_integer()
   }
   """
-  defstruct [:type, :value]
-  use ExConstructor
-
   @type t() :: %Identifier{type: type(), value: value()}
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
   # byte_size should be 32 byte
   @type value() :: binary()
+  defstruct type: :undefined, value: ""
 
   @spec create_identifier(type(), value()) :: Identifier.t() | {:error, String.t()}
   # byte_size(data) == 32 #TODO data should be stricted to 32 bytes only
@@ -53,7 +51,7 @@ defmodule Aeutil.Identifier do
     case Application.get_env(:aecore, :binary_ids)[data.type] do
       nil ->
         {:error,
-         "Tag for given type: #{inspect(data.type)} doesn't exist, or the data is corrupted: #{
+         "Binary tag for the given type: #{inspect(data.type)} doesn't exist, or the data is corrupted: #{
            inspect(data)
          }"}
 
@@ -67,14 +65,12 @@ defmodule Aeutil.Identifier do
   # byte_size(data) == 33 #TODO data should be stricted to 32 bytes only    
   def decode_data(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do
-
     case specify_data(tag) do
       {:error, msg} ->
         {:error, msg}
 
-      {type, tag} ->
-        {:ok, id} = create_identifier(data, type)
-        id
+      {_type, _tag} ->
+        {:ok, data}
     end
   end
 

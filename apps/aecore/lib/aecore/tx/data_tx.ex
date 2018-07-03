@@ -419,12 +419,14 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_oracle_address} = Identifier.encode_data(tx.payload.oracle_address)
+
     list = [
       tag,
       version,
       senders,
       tx.nonce,
-      tx.payload.oracle_address,
+      encoded_oracle_address,
       "$æx" <> Serialization.transform_item(tx.payload.query_data),
       tx.payload.query_fee,
       ttl_type_q,
@@ -557,12 +559,14 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
+
     list = [
       tag,
       version,
       senders,
       tx.nonce,
-      tx.payload.hash,
+      encoded_hash,
       tx.payload.client_ttl,
       tx.payload.pointers,
       tx.payload.expire_by,
@@ -645,8 +649,6 @@ defmodule Aecore.Tx.DataTx do
          payload
        ]) do
     {:ok, vsn} = Serialization.get_version(SpendTx)
-    IO.inspect(encoded_senders, label: "QWEFQQGGGEQEGQEGGE")
-    IO.inspect(encoded_receiver, label: "AFWGEWEGWEGEG")
 
     senders =
       for sender <- encoded_senders do
@@ -882,10 +884,12 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, decoded_hash} = Identifier.decode_data(hash)
+
     payload = %NameUpdateTx{
       client_ttl: Serialization.transform_item(ttl, :int),
       expire_by: Serialization.transform_item(name_ttl, :int),
-      hash: hash,
+      hash: decoded_hash,
       pointers: pointers
     }
 

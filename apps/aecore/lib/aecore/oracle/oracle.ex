@@ -14,6 +14,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.Parser
+  alias Aeutil.Identifier
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
@@ -303,10 +304,12 @@ defmodule Aecore.Oracle.Oracle do
           :registered_oracle | :interaction_object
         ) :: binary()
   def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
+    {:ok, encoded_owner} = Identifier.encode_data(registered_oracle.owner)
+
     list = [
       tag,
       version,
-      registered_oracle.owner,
+      encoded_owner,
       Serialization.transform_item(registered_oracle.query_format),
       Serialization.transform_item(registered_oracle.response_format),
       registered_oracle.query_fee,
@@ -333,12 +336,15 @@ defmodule Aecore.Oracle.Oracle do
         %DataTx{type: OracleResponseTx} = data -> data
       end
 
+    {:ok, encoded_sender} = Identifier.encode_data(interaction_object.sender_address)
+    {:ok, encoded_oracle_owner} = Identifier.encode_data(interaction_object.oracle_address)
+
     list = [
       tag,
       version,
-      interaction_object.sender_address,
+      encoded_sender,
       interaction_object.sender_nonce,
-      interaction_object.oracle_address,
+      encoded_oracle_owner,
       Serialization.transform_item(interaction_object.query),
       has_response,
       response,
@@ -364,9 +370,11 @@ defmodule Aecore.Oracle.Oracle do
         [orc_owner, query_format, response_format, query_fee, expires],
         :registered_oracle
       ) do
+    {:ok, decoded_orc_owner} = Identifier.decode_data(orc_owner)
+
     {:ok,
      %{
-       owner: orc_owner,
+       owner: decoded_orc_owner,
        query_format: Serialization.transform_item(query_format, :binary),
        response_format: Serialization.transform_item(response_format, :binary),
        query_fee: Serialization.transform_item(query_fee, :int),
@@ -394,16 +402,19 @@ defmodule Aecore.Oracle.Oracle do
         0 -> false
       end
 
+    {:ok, decoded_sender_address} = Identifier.decode_data(sender_address)
+    {:ok, decoded_orc_owner} = Identifier.decode_data(oracle_address)
+
     {:ok,
      %{
        expires: Serialization.transform_item(expires, :int),
        fee: Serialization.transform_item(fee, :int),
        has_response: has_response,
-       oracle_address: oracle_address,
+       oracle_address: decoded_orc_owner,
        query: Serialization.transform_item(query, :binary),
        response: response,
        response_ttl: Serialization.transform_item(response_ttl, :int),
-       sender_address: sender_address,
+       sender_address: decoded_sender_address,
        sender_nonce: Serialization.transform_item(sender_nonce, :int)
      }}
   end

@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Identifier
 
   require Logger
 
@@ -56,7 +57,14 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    %NameUpdateTx{hash: hash, expire_by: expire_by, client_ttl: client_ttl, pointers: pointers}
+    {:ok, identified_hash} = Identifier.create_identifier(hash, :name)
+
+    %NameUpdateTx{
+      hash: identified_hash,
+      expire_by: expire_by,
+      client_ttl: client_ttl,
+      pointers: pointers
+    }
   end
 
   @doc """
@@ -65,7 +73,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
-          hash: hash,
+          hash: identified_hash,
           expire_by: _expire_by,
           client_ttl: client_ttl,
           pointers: _pointers
@@ -78,8 +86,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       client_ttl > Naming.get_client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
 
-      byte_size(hash) != Hash.get_hash_bytes_size() ->
-        {:error, "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(hash))}"}
+      byte_size(identified_hash.value) != Hash.get_hash_bytes_size() ->
+        {:error,
+         "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(identified_hash.value))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -144,7 +153,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->

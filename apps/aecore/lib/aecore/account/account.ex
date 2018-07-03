@@ -45,14 +45,16 @@ defmodule Aecore.Account.Account do
   """
   defstruct [:balance, :nonce, :id]
 
-  def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{}}
+  def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{type: :account}}
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
+    {:ok, id} = Identifier.create_identifier(pubkey, :account)
+
     %Account{
       balance: balance,
       nonce: nonce,
-      id: Identifier.create_identifier(pubkey, :account)
+      id: id
     }
   end
 

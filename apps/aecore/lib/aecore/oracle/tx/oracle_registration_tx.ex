@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Identifier
 
   @type payload :: %{
           query_format: Oracle.json_schema(),
@@ -112,9 +113,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
+    {:ok, identified_owner} = Identifier.create_identifier(sender, :oracle)
+
     updated_registered_oracles =
-      Map.put_new(registered_oracles, sender, %{
-        owner: sender,
+      Map.put_new(registered_oracles, identified_owner, %{
+        owner: identified_owner,
         query_format: tx.query_format,
         response_format: tx.response_format,
         query_fee: tx.query_fee,
@@ -146,6 +149,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
+    {:ok, identified_sender} = Identifier.create_identifier(sender, :oracle)
+
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
@@ -153,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      Map.has_key?(registered_oracles, sender) ->
+      Map.has_key?(registered_oracles, identified_sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->

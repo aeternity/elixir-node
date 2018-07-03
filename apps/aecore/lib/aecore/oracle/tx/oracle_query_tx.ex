@@ -16,6 +16,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Identifier
 
   @type id :: binary()
 
@@ -61,8 +62,27 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
+    orc_owner =
+      case oracle_address do
+        %Identifier{} ->
+          if validate_identifier(oracle_address) == true do
+            oracle_address
+          else
+            {:error,
+             "#{__MODULE__}: Invalid specified type: #{inspect(oracle_address.type)}, for given data: #{
+               inspect(oracle_address.value)
+             }"}
+          end
+
+        non_identfied_oracle_address ->
+          {:ok, identified_orc_address} =
+            Identifier.create_identifier(non_identfied_oracle_address, :oracle)
+
+          identified_orc_address
+      end
+
     %OracleQueryTx{
-      oracle_address: oracle_address,
+      oracle_address: orc_owner,
       query_data: query_data,
       query_fee: query_fee,
       query_ttl: query_ttl,
@@ -91,7 +111,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !match?(%{type: :relative}, response_ttl) ->
         {:error, "#{__MODULE__}: Invalid ttl type"}
 
-      !Wallet.key_size_valid?(oracle_address) ->
+      !validate_identifier(oracle_address) ->
+        {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
+
+      !Wallet.key_size_valid?(oracle_address.value) ->
         {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
@@ -129,7 +152,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     updated_interaction_objects =
       Map.put(interaction_objects, interaction_object_id, %{
-        sender_address: sender,
+        sender_address: data_tx.senders,
         sender_nonce: nonce,
         oracle_address: tx.oracle_address,
         query: tx.query_data,
@@ -235,7 +258,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
-    bin = sender <> <<nonce::@nonce_size>> <> oracle_address
+    bin = sender <> <<nonce::@nonce_size>> <> oracle_address.value
     Hash.hash(bin)
   end
 
@@ -249,6 +272,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   def base58c_decode(_) do
     {:error, "#{__MODULE__}: Wrong data"}
+  end
+
+  @spec validate_identifier(Identifier.t()) :: boolean()
+  defp validate_identifier(%Identifier{} = id) do
+    {:ok, check_id} = Identifier.create_identifier(id.value, :oracle)
+    check_id == id
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
