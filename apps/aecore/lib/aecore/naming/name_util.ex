@@ -4,6 +4,7 @@ defmodule Aecore.Naming.NameUtil do
   """
 
   alias Aeutil.Hash
+  alias Aeutil.Identifier
 
   @split_name_symbol "."
 
@@ -30,13 +31,17 @@ defmodule Aecore.Naming.NameUtil do
   @spec normalize_name(String.t()) :: String.t()
   def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
 
-  @spec namehash(String.t()) :: binary()
+  @spec namehash(String.t()) :: Identifier.t()
   defp namehash(name) do
     if name == "" do
       <<0::256>>
     else
       {label, remainder} = partition_name(name)
-      Hash.hash(namehash(remainder) <> Hash.hash(label))
+
+      {:ok, identified_namehash} =
+        Identifier.create_identity(Hash.hash(namehash(remainder) <> Hash.hash(label)), :name)
+
+      identified_namehash
     end
   end
 

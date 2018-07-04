@@ -113,7 +113,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, identified_owner} = Identifier.create_identifier(sender, :oracle)
+    {:ok, identified_owner} = Identifier.create_identity(sender, :oracle)
 
     updated_registered_oracles =
       Map.put_new(registered_oracles, identified_owner, %{
@@ -149,7 +149,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    {:ok, identified_sender} = Identifier.create_identifier(sender, :oracle)
+    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -158,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      Map.has_key?(registered_oracles, identified_sender) ->
+      Map.has_key?(registered_oracles, identified_oracle_owner) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->

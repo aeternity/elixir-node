@@ -13,6 +13,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Identifier
 
   require Logger
 
@@ -46,7 +47,27 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @spec init(payload()) :: t()
   # TODO integrate Identifiers
   def init(%{hash: hash, target: target}) do
-    %NameTransferTx{hash: hash, target: target}
+    name_hash =
+      case hash do
+        %Identifier{} ->
+          if validate_identifier(hash) == true do
+            hash
+          else
+            {:error,
+             "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
+               inspect(hash.value)
+             }"}
+          end
+
+        non_identfied_name_hash ->
+          {:ok, identified_name_hash} = Identifier.create_identity(non_identfied_name_hash, :name)
+
+          identified_name_hash
+      end
+
+    IO.inspect(target, label: "Init target in : #{__MODULE__}")
+    # TODO inspect target and its representation and adjust it
+    %NameTransferTx{hash: name_hash, target: target}
   end
 
   @doc """
@@ -57,10 +78,10 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash) != Hash.get_hash_bytes_size() ->
+      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
-      !Wallet.key_size_valid?(target) ->
+      !Wallet.key_size_valid?(target.value) ->
         {:error, "#{__MODULE__}: target size invalid"}
 
       length(senders) != 1 ->
@@ -91,9 +112,10 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         %NameTransferTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
-    claim = %{claim_to_update | owner: tx.target}
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
+    claim = %{claim_to_update | owner: tx.target.value}
+    # TODO check the method of storing keys in Naming PMT 
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -128,7 +150,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
@@ -149,6 +171,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec validate_identifier(Identifier.t()) :: boolean()
+  defp validate_identifier(%Identifier{} = id) do
+    {:ok, check_id} = Identifier.create_identity(id.value, :name)
+    check_id == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

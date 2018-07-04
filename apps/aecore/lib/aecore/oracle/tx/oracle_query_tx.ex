@@ -76,7 +76,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
         non_identfied_oracle_address ->
           {:ok, identified_orc_address} =
-            Identifier.create_identifier(non_identfied_oracle_address, :oracle)
+            Identifier.create_identity(non_identfied_oracle_address, :oracle)
 
           identified_orc_address
       end
@@ -256,7 +256,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
+  @spec id(Wallet.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address.value
     Hash.hash(bin)
@@ -276,7 +276,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identifier(id.value, :oracle)
+    {:ok, check_id} = Identifier.create_identity(id.value, :oracle)
     check_id == id
   end
 

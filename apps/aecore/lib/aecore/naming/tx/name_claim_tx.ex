@@ -44,7 +44,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   # TODO integrate Identifiers
   @spec init(payload()) :: t()
-  def init(%{name: name, name_salt: name_salt} = _payload) do
+  def init(%{name: name, name_salt: name_salt}) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
 
@@ -92,15 +92,15 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         %NameClaimTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.main_sender(data_tx)
+    # sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, identified_pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = Naming.create_claim(claim_hash, tx.name, sender, block_height)
+    claim = Naming.create_claim(claim_hash, tx.name, data_tx.sender, block_height)
 
     updated_naming_chainstate =
       naming_state
-      |> NamingStateTree.delete(pre_claim_commitment)
+      |> NamingStateTree.delete(identified_pre_claim_commitment)
       |> NamingStateTree.put(claim_hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
@@ -141,7 +141,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner != sender ->
+      pre_claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)

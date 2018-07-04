@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Identifier
 
   require Logger
 
@@ -44,6 +45,25 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
+    commitment_hash =
+      case commitment do
+        %Identifier{} ->
+          if validate_identifier(commitment) == true do
+            commitment
+          else
+            {:error,
+             "#{__MODULE__}: Invalid specified type: #{inspect(commitment.type)}, for given data: #{
+               inspect(commitment.value)
+             }"}
+          end
+
+        non_identfied_commitment_hash ->
+          {:ok, identified_commitment_hash} =
+            Identifier.create_identity(non_identfied_commitment_hash, :commitment)
+
+          identified_commitment_hash
+      end
+
     %NamePreClaimTx{commitment: commitment}
   end
 
@@ -55,7 +75,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(commitment) != Hash.get_hash_bytes_size() ->
+      byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
          "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}
 
@@ -136,6 +156,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec validate_identifier(Identifier.t()) :: boolean()
+  defp validate_identifier(%Identifier{} = id) do
+    {:ok, check_id} = Identifier.create_identity(id.value, :commitment)
+    check_id == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

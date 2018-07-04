@@ -49,7 +49,7 @@ defmodule Aecore.Account.Account do
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
-    {:ok, id} = Identifier.create_identifier(pubkey, :account)
+    {:ok, id} = Identifier.create_identity(pubkey, :account)
 
     %Account{
       balance: balance,
@@ -365,7 +365,7 @@ defmodule Aecore.Account.Account do
 
   @spec rlp_decode(list(), Wallet.pubkey()) :: {:ok, Account.t()} | {:error, String.t()}
   def rlp_decode([nonce, balance], pubkey) do
-    {:ok, id} = Identifier.create_identifier(pubkey, :account)
+    {:ok, id} = Identifier.create_identity(pubkey, :account)
 
     {:ok,
      %Account{

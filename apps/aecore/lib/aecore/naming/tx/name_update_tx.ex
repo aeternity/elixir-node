@@ -57,10 +57,27 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    {:ok, identified_hash} = Identifier.create_identifier(hash, :name)
+    name_hash =
+      case hash do
+        %Identifier{} ->
+          if validate_identifier(hash) == true do
+            hash
+          else
+            {:error,
+             "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
+               inspect(hash.value)
+             }"}
+          end
+
+        non_identfied_commitment_hash ->
+          {:ok, identified_commitment_hash} =
+            Identifier.create_identity(non_identfied_commitment_hash, :commitment)
+
+          identified_commitment_hash
+      end
 
     %NameUpdateTx{
-      hash: identified_hash,
+      hash: name_hash,
       expire_by: expire_by,
       client_ttl: client_ttl,
       pointers: pointers
@@ -118,6 +135,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         %NameUpdateTx{} = tx,
         _data_tx
       ) do
+    # TODO check the method of storing keys in Naming PMT 
     claim_to_update = NamingStateTree.get(naming_state, tx.hash)
 
     claim = %{
@@ -189,6 +207,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec validate_identifier(Identifier.t()) :: boolean()
+  defp validate_identifier(%Identifier{} = id) do
+    {:ok, check_id} = Identifier.create_identity(id.value, :name)
+    check_id == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

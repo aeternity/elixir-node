@@ -106,7 +106,7 @@ defmodule Aecore.Tx.DataTx do
     if is_list(senders) do
       identified_senders =
         for sender <- senders do
-          with {:ok, identified_senders} <- Identifier.create_identifier(sender, :account) do
+          with {:ok, identified_senders} <- Identifier.create_identity(sender, :account) do
             identified_senders
           else
             {:error, msg} -> {:error, msg}
@@ -122,7 +122,7 @@ defmodule Aecore.Tx.DataTx do
         ttl: ttl
       }
     else
-      {:ok, sender} = Identifier.create_identifier(senders, :account)
+      {:ok, sender} = Identifier.create_identity(senders, :account)
 
       %DataTx{
         type: type,

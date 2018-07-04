@@ -10,6 +10,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Identifier
 
   require Logger
 
@@ -65,11 +66,13 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    ### TODO its not clear what identity is this sender :? oracle or account, possibly oracle
+    {:ok, identified_oracle} = Identifier.create_identity(sender, :oracle)
 
     updated_oracle_state =
       update_in(
         oracle_state,
-        [:registered_oracles, sender, :expires],
+        [:registered_oracles, identified_oracle, :expires],
         &(&1 + tx.ttl)
       )
 
@@ -92,12 +95,13 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
+    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !Map.has_key?(registered_oracles, sender) ->
+      !Map.has_key?(registered_oracles, identified_sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
       fee < calculate_minimum_fee(tx.ttl) ->

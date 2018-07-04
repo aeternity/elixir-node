@@ -26,20 +26,23 @@ defmodule Aeutil.Identifier do
   @type value() :: binary()
   defstruct type: :undefined, value: ""
 
-  @spec create_identifier(type(), value()) :: Identifier.t() | {:error, String.t()}
+  @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
   # byte_size(data) == 32 #TODO data should be stricted to 32 bytes only
-  def create_identifier(value, type) when is_atom(type) and is_binary(value) do
+  def create_identity(value, type) when is_atom(type) and is_binary(value) do
     case Application.get_env(:aecore, :binary_ids)[type] do
       nil ->
         {:error,
          "The following tag: #{inspect(type)} for given value: #{inspect(value)} doesn't exist"}
 
-      tag ->
+      tag when is_integer(tag) ->
         {:ok, %Identifier{type: type, value: value}}
+
+      _ ->
+        create_identity(value, type)
     end
   end
 
-  def create_identifier(data, type) do
+  def create_identity(data, type) do
     {:error,
      "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
   end
