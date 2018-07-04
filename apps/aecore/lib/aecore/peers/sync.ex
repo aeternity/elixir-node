@@ -8,7 +8,6 @@ defmodule Aecore.Peers.Sync do
   alias __MODULE__
   alias Aecore.Chain.{Header, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Peers.{Jobs, Events}
@@ -172,7 +171,7 @@ defmodule Aecore.Peers.Sync do
     {:reply, :ok, %{state | hash_pool: hash_pool}}
   end
 
-  def handle_call({:fetch_next, peer_pid, height_in, hash_in, result}, _from, state) do
+  def handle_call({:fetch_next, peer_pid, inc_height, inc_hash, result}, _from, state) do
     hash_pool =
       case result do
         {:ok, block} ->
@@ -194,7 +193,7 @@ defmodule Aecore.Peers.Sync do
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
-    case update_chain_from_pool(height_in, hash_in, hash_pool) do
+    case update_chain_from_pool(inc_height, inc_hash, hash_pool) do
       {:error, reason} ->
         Logger.info("#{__MODULE__}: Chain update failed: #{inspect(reason)}")
         {:reply, {:error, reason}, %{state | hash_pool: hash_pool}}
@@ -233,9 +232,9 @@ defmodule Aecore.Peers.Sync do
 
           pick_from_hashes ->
             # We still have blocks to fetch.
-            {_pick_height, pick_hash} = Enum.random(pick_from_hashes)
+            {_pick_height, picked_hash} = Enum.random(pick_from_hashes)
 
-            {:reply, {:fetch, new_height, new_hash, pick_hash},
+            {:reply, {:fetch, new_height, new_hash, picked_hash},
              %{state | hash_pool: new_hash_pool}}
         end
     end
@@ -277,21 +276,19 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  @spec split_hash_pool(non_neg_integer(), binary(), list(), any(), non_neg_integer()) :: tuple()
-  defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
+  @spec split_hash_pool(non_neg_integer(), binary(), hash_pool(), list(), non_neg_integer()) :: tuple()
+  defp split_hash_pool(height, prev_hash, [{{h, _hash}, _} | hash_pool], same, n_added)
        when h < height do
     split_hash_pool(height, prev_hash, hash_pool, same, n_added)
   end
 
-  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
+  defp split_hash_pool(height, prev_hash, [{{h, _hash}, map} = item | hash_pool], same, n_added)
        when h == height and n_added < @max_adds do
     case Map.get(map, :block, :error) do
       :error ->
         split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
       block ->
-        hash = BlockValidation.block_header_hash(block.header)
-
         case Map.get(block.header, :prev_hash, :error) do
           :error ->
             split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
@@ -299,6 +296,8 @@ defmodule Aecore.Peers.Sync do
           prev_hash ->
             case Chain.add_block(block) do
               :ok ->
+                hash = BlockValidation.block_header_hash(block.header)
+
                 split_hash_pool(h + 1, hash, hash_pool, [], n_added + 1)
 
               {:error, _} ->
@@ -436,12 +435,13 @@ defmodule Aecore.Peers.Sync do
     {:error, reason}
   end
 
+  # The result variable represents what action should be made
   defp fetch_more(peer_pid, last_height, header_hash, result) do
     ## We need to supply the Hash, because locally we might have a shorter,
     ## but locally more difficult fork
     case fetch_next(peer_pid, last_height, header_hash, result) do
-      {:fetch, new_height, new_hash, hash} ->
-        case do_fetch_block(hash, peer_pid) do
+      {:fetch, new_height, new_hash, picked_hash} ->
+        case do_fetch_block(picked_hash, peer_pid) do
           {:ok, new_block} ->
             fetch_more(peer_pid, new_height, new_hash, {:ok, new_block})
 
@@ -496,35 +496,38 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
-  # Merges the local Hashes with the Remote Peer hashes
-  # So it takes the data from where the height is higher
+  # Merges the local Hashes with the remote (peer) Hashes
+  # in such a way that it takes the data from where the height is higher
   defp merge([], new_hashes), do: new_hashes
   defp merge(old_hashes, []), do: old_hashes
 
-  defp merge([{{h_1, _hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
-       when h_1 < h_2 do
-    merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
+  defp merge([{{l_h, _l_hash}, _} | old_hashes], [{{r_h, r_hash}, r_map} | new_hashes])
+       when l_h < r_h do
+    merge(old_hashes, [{{r_h, r_hash}, r_map} | new_hashes])
   end
 
-  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, _hash_2}, _} | new_hashes])
-       when h_1 > h_2 do
-    merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
+  defp merge([{{l_h, l_hash}, l_map} | old_hashes], [{{r_h, _r_hash}, _} | new_hashes])
+       when l_h > r_h do
+    merge([{{l_h, l_hash}, l_map} | old_hashes], new_hashes)
   end
 
-  defp merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes]) do
-    pick_same({{h_2, hash_2}, map_2}, old_hashes, new_hashes)
+  defp merge(old_hashes, [{{r_h, r_hash}, r_map} | new_hashes]) do
+    pick_same({{r_h, r_hash}, r_map}, old_hashes, new_hashes)
   end
 
-  defp pick_same({{h, hash_2}, map_2}, [{{h, hash_1}, map_1} | old_hashes], new_hashes) do
-    case hash_1 == hash_2 do
+  defp pick_same({{h, r_hash}, r_map}, [{{h, l_hash}, l_map} | old_hashes], new_hashes) do
+    case l_hash == r_hash do
       true ->
         [
-          {{h, hash_1}, Map.merge(map_1, map_2)}
-          | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)
+          {{h, l_hash}, Map.merge(l_map, r_map)}
+          | pick_same({{h, r_hash}, r_map}, old_hashes, new_hashes)
         ]
 
       false ->
-        [{{h, hash_1}, map_1} | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)]
+        [
+          {{h, l_hash}, l_map}
+          | pick_same({{h, r_hash}, r_map}, old_hashes, new_hashes)
+        ]
     end
   end
 
