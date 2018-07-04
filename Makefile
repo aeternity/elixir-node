@@ -1,5 +1,5 @@
 #
-#Miltiple nodes
+# Multiple nodes
 #
 
 multinode-build: dev1-build
@@ -27,7 +27,7 @@ multinode-clean:
 	@make dev3-clean
 
 #
-#DEV1 commands
+# DEV1 commands
 #
 
 dev1-build: TYPE=dev1
@@ -46,7 +46,7 @@ dev1-attach: TYPE=dev1
 dev1-attach: internal-attach
 
 #
-#DEV2 commands
+# DEV2 commands
 #
 
 dev2-build: TYPE=dev2
@@ -65,7 +65,7 @@ dev2-attach: TYPE=dev2
 dev2-attach: internal-attach
 
 #
-#DEV3 commands
+# DEV3 commands
 #
 
 dev3-build: TYPE=dev3
@@ -84,7 +84,7 @@ dev3-attach: TYPE=dev3
 dev3-attach: internal-attach
 
 #
-#Internal commands
+# Internal commands
 #
 
 internal-build:
@@ -103,9 +103,36 @@ internal-clean:
 internal-attach:
 	@_build/$(TYPE)/rel/epoch_elixir/bin/epoch_elixir attach
 
+iex-node:
+	@rm -rf apps/aecore/priv/rox_db_400$(NODE_NUMBER)
+	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ AEWALLET_PATH=apps/aecore/priv/aewallet_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
+
 #
 # Utility
 #
+
+iex-0: NODE_NUMBER=0
+iex-0: iex-node
+
+iex-1: NODE_NUMBER=1
+iex-1: iex-node
+
+iex-2: NODE_NUMBER=2
+iex-2: iex-node
+
+iex-3: NODE_NUMBER=3
+iex-3: iex-node
+
+clean:
+	@rm -rf deps
+	@rm -rf _build
+	@mix clean
+
+clean-deps: clean
+	@mix deps.get
+	@mix deps.compile || true
+	# needed as duplicate for libsecp256k1 to compile
+	@mix deps.compile
 
 killall:
 	@echo "Kill all beam processes"
@@ -116,4 +143,5 @@ killall:
 	dev1-start, dev1-stop, dev1-attach, dev1-clean \
 	dev2-start, dev2-stop, dev2-attach, dev2-clean \
 	dev3-start, dev3-stop, dev3-attach, dev3-clean \
- 	killall \
+	iex-0, iex-1, iex-2, iex-3 \
+ 	clean, clean-deps, killall \
