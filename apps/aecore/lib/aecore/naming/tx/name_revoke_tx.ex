@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -88,7 +89,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     claim = %{
       claim_to_update
       | status: :revoked,
-        expires: block_height + Naming.get_revoke_expiration_ttl()
+        expires: block_height + GovernanceConstants.revoke_expiration_ttl()
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)

@@ -17,7 +17,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Target
   alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
@@ -28,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -235,7 +235,10 @@ defmodule Aecore.Chain.Worker do
     with {:ok, prev_block} <- get_block(block.header.prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
          blocks_for_target_calculation =
-           get_blocks(block.header.prev_hash, Target.get_number_of_blocks()),
+           get_blocks(
+             block.header.prev_hash,
+             GovernanceConstants.number_of_blocks_for_target_recalculation()
+           ),
          {:ok, new_chain_state} <-
            BlockValidation.calculate_and_validate_block(
              block,
@@ -418,7 +421,8 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{
         ## Transfrom from chain state
         :chain_state => %{
-          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+          new_block_hash =>
+            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
         },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
@@ -449,7 +453,8 @@ defmodule Aecore.Chain.Worker do
     else
       Persistence.batch_write(%{
         :chain_state => %{
-          :chain_state => transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+          new_block_hash =>
+            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
         },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
@@ -492,17 +497,6 @@ defmodule Aecore.Chain.Worker do
         {:ok, latest_block} -> {latest_block.hash, latest_block.height}
       end
 
-    chain_states = Persistence.get_all_chainstates()
-
-    is_empty_chain_state = chain_states |> Serialization.remove_struct() |> Enum.empty?()
-
-    top_chain_state =
-      if is_empty_chain_state do
-        state.blocks_data_map[top_hash].chain_state
-      else
-        struct(Chainstate, transfrom_chainstate(:to_chainstate, chain_states))
-      end
-
     blocks_map = Persistence.get_blocks(number_of_blocks_in_memory())
     blocks_info = Persistence.get_all_blocks_info()
 
@@ -517,12 +511,21 @@ defmodule Aecore.Chain.Worker do
       if is_empty_block_info do
         state.blocks_data_map
       else
-        blocks_info
-        |> Map.merge(blocks_map, fn _hash, info, block ->
-          Map.put(info, :block, block)
-        end)
-        |> Map.update!(top_hash, fn info ->
-          Map.put(info, :chain_state, top_chain_state)
+        blocks_info =
+          Map.merge(blocks_info, blocks_map, fn _hash, info, block ->
+            Map.put(info, :block, block)
+          end)
+
+        Enum.reduce(Map.keys(blocks_info), blocks_info, fn hash, acc_info ->
+          Map.update!(acc_info, hash, fn info ->
+            ch_states =
+              struct(
+                Chainstate,
+                transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
+              )
+
+            Map.put(info, :chain_state, ch_states)
+          end)
         end)
       end
 
