@@ -4,7 +4,6 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   """
 
   alias Aeutil.Serialization
-  alias Aehttpclient.Client
 
   require Logger
   use GenServer
@@ -23,7 +22,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec new_node(String.t(), non_neg_integer(), non_neg_integer()) :: :already_exists | Map.t()
   def new_node(node_name, port, sync_port) do
-    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port}, 10000)
+    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port}, 20000)
   end
 
   @spec sync_two_nodes(String.t(), String.t()) :: :ok
@@ -361,7 +360,10 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info({_, {:data, _}}, state) do
+  def handle_info({_, {:data, result}}, state) do
+    if String.match?(result, ~r/error/) do
+      Logger.error(fn -> result end)
+    end
     {:noreply, state}
   end
 
@@ -453,7 +455,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
                 do: {String.to_atom(k), v}
 
           peer = put_in(peer.pubkey, Base.decode32!(peer.pubkey))
-          acc ++ [peer]
+          [peer | acc]
         end)
 
       # updating the state and removing the json file
@@ -597,15 +599,12 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
         # Running the new elixir-node using Port
         process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
         :timer.sleep(4000)
-        {:ok, info} = Client.get_info("localhost:#{port}")
-        pubkey = info.peer_pubkey
 
         new_state =
           Map.put(state, node_name, %{
             process_port: process_port,
             path: tmp_path,
             port: port,
-            pubkey: pubkey,
             sync_port: sync_port,
             top_block: nil,
             top_block_hash: nil,
