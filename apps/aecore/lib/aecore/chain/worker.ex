@@ -15,12 +15,14 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Target
   alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
+  alias Aeutil.Scientific
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -66,7 +68,8 @@ defmodule Aecore.Chain.Worker do
        blocks_data_map: blocks_data_map,
        txs_index: txs_index,
        top_hash: genesis_block_hash,
-       top_height: 0
+       top_height: 0,
+       total_diff: Persistence.get_total_difficulty()
      }, 0}
   end
 
@@ -100,7 +103,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_header_by_base58_hash(String.t()) :: Header.t() | {:error, reason()}
   def get_header_by_base58_hash(hash) do
     decoded_hash = Header.base58c_decode(hash)
-    get_header(decoded_hash)
+    get_header_by_hash(decoded_hash)
   rescue
     _ ->
       {:error, :invalid_hash}
@@ -109,6 +112,11 @@ defmodule Aecore.Chain.Worker do
   @spec lowest_valid_nonce() :: non_neg_integer()
   def lowest_valid_nonce do
     GenServer.call(__MODULE__, :lowest_valid_nonce)
+  end
+
+  @spec total_difficulty() :: non_neg_integer()
+  def total_difficulty do
+    GenServer.call(__MODULE__, :total_difficulty)
   end
 
   @spec get_block_by_base58_hash(String.t()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
@@ -123,17 +131,18 @@ defmodule Aecore.Chain.Worker do
   @spec get_headers_forward(binary(), non_neg_integer()) ::
           {:ok, list(Header.t())} | {:error, atom()}
   def get_headers_forward(starting_header, count) do
-    case get_header(starting_header) do
+    case get_header_by_hash(starting_header) do
       {:ok, header} ->
-        get_headers_forward([], header.height, count)
+        blocks_to_get = min(top_height() - header.height, count)
+        get_headers_forward([], header.height, blocks_to_get + 1)
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  @spec get_header(binary()) :: Block.t() | {:error, reason()}
-  def get_header(header_hash) do
+  @spec get_header_by_hash(binary()) :: {:ok, Header.t()} | {:error, reason()}
+  def get_header_by_hash(header_hash) do
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, header_hash}) do
       {:error, _reason} ->
         {:error, :header_not_found}
@@ -179,7 +188,8 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec get_block_by_height(non_neg_integer(), binary() | nil) :: Block.t() | {:error, binary()}
+  @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
+          {:ok, Block.t()} | {:error, binary()}
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash) do
       {:error, _} = error -> error
@@ -328,6 +338,10 @@ defmodule Aecore.Chain.Worker do
     {:reply, lowest_valid_nonce, state}
   end
 
+  def handle_call(:total_difficulty, _from, %{total_diff: total_diff} = state) do
+    {:reply, total_diff, state}
+  end
+
   def handle_call(
         {:get_block_info_from_memory_unsafe, block_hash},
         _from,
@@ -348,7 +362,8 @@ defmodule Aecore.Chain.Worker do
         %{
           blocks_data_map: blocks_data_map,
           txs_index: txs_index,
-          top_height: top_height
+          top_height: top_height,
+          total_diff: total_diff
         } = state
       ) do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
@@ -397,6 +412,8 @@ defmodule Aecore.Chain.Worker do
         txs_index: new_txs_index
     }
 
+    new_total_diff = total_diff + Scientific.target_to_difficulty(new_block.header.target)
+
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
         ## Transfrom from chain state
@@ -409,17 +426,27 @@ defmodule Aecore.Chain.Worker do
           :top_hash => new_block_hash,
           :top_height => new_block.header.height
         },
-        :block_info => %{new_block_hash => %{refs: new_refs}}
+        :block_info => %{new_block_hash => %{refs: new_refs}},
+        :total_diff => %{:total_difficulty => new_total_diff}
       })
 
       ## We send the block to others only if it extends the longest chain
-      Peers.broadcast_block(new_block)
+      if Enum.empty?(Peers.all_pids()) do
+        Logger.debug(fn -> "Peer list empty" end)
+      else
+        Events.publish(:block_created, new_block)
+      end
 
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)
 
       {:reply, :ok,
-       %{state_update | top_hash: new_block_hash, top_height: new_block.header.height}}
+       %{
+         state_update
+         | top_hash: new_block_hash,
+           top_height: new_block.header.height,
+           total_diff: new_total_diff
+       }}
     else
       Persistence.batch_write(%{
         :chain_state => %{

@@ -14,8 +14,11 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Peers.Events
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Hash
+  alias Aeutil.Serialization
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
   alias Aecore.Naming.Tx.NamePreClaimTx
@@ -87,6 +90,12 @@ defmodule Aecore.Tx.Pool.Worker do
         else
           # Broadcasting notifications for new transaction in a pool(per account and every)
           Notify.broadcast_new_transaction_in_the_pool(tx)
+
+          if Enum.empty?(Peers.all_pids()) do
+            Logger.debug(fn -> "List of peers is empty" end)
+          else
+            Events.publish(:tx_created, tx)
+          end
         end
 
         {:reply, :ok, updated_pool}

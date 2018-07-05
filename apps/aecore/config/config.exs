@@ -102,6 +102,8 @@ config :aecore, :aewallet,
   pass: aewallet_pass,
   path: Path.absname(aewallet_path)
 
+config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
+
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
   number_of_blocks_in_memory: 100,

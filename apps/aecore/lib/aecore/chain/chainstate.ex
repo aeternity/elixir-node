@@ -77,7 +77,7 @@ defmodule Aecore.Chain.Chainstate do
 
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::256>> ->
+      <<0::264>> ->
         chainstate
 
       miner_pubkey ->
