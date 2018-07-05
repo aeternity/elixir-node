@@ -51,27 +51,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   use ExConstructor
 
-  @spec role(ChannelStatePeer.t()) :: Channel.role()
-  def role(%ChannelStatePeer{role: role}) do
-    role
-  end
-
-  @spec state(ChannelStatePeer.t()) :: ChannelStateOffChain.t()
-  def state(%ChannelStatePeer{highest_signed_state: state}) do
-    state
-  end
-
-  @spec fsm_state(ChannelStatePeer.t()) :: fsm_state()
-  def fsm_state(%ChannelStatePeer{fsm_state: fsm_state}) do
-    fsm_state
-  end
-
   @spec id(ChannelStatePeer.t()) :: binary()
-  def id(peer_state) do
-    peer_state
-    |> state()
-    |> ChannelStateOffChain.id()
-  end
+  def id(%ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
   Creates channel from signed channel state.
@@ -101,7 +82,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec from_open(SignedTx.t(), non_neg_integer(), Channel.role()) :: ChannelStatePeer.t()
   def from_open(open_tx, channel_reserve, role) do
     data_tx = SignedTx.data_tx(open_tx)
-    open_tx = DataTx.payload(data_tx)
+
+    %ChannelCreateTx{
+      initiator_amount: initiator_amount,
+      responder_amount: responder_amount
+    } = DataTx.payload(data_tx)
+
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     id = ChannelStateOnChain.id(data_tx)
 
@@ -109,8 +95,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
       ChannelStateOffChain.create(
         id,
         0,
-        ChannelCreateTx.initiator_amount(open_tx),
-        ChannelCreateTx.responder_amount(open_tx)
+        initiator_amount,
+        responder_amount
       )
 
     from_state(state, initiator_pubkey, responder_pubkey, channel_reserve, role)
@@ -177,7 +163,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
           fsm_state: :initialized,
           role: :initiator,
           initiator_pubkey: initiator_pubkey,
-          responder_pubkey: responder_pubkey
+          responder_pubkey: responder_pubkey,
+          highest_state: %ChannelStateOffChain{
+            initiator_amount: initiator_amount,
+            responder_amount: responder_amount
+          }
         } = peer_state,
         locktime,
         fee,
@@ -185,8 +175,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
         priv_key
       ) do
     id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
-    initiator_amount = ChannelStateOffChain.initiator_amount(peer_state.highest_state)
-    responder_amount = ChannelStateOffChain.responder_amount(peer_state.highest_state)
 
     zero_state = ChannelStateOffChain.create(id, 0, initiator_amount, responder_amount)
 
@@ -228,33 +216,41 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec sign_open(ChannelStatePeer.t(), SignedTx.t(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
   def sign_open(
-        %ChannelStatePeer{fsm_state: :initialized, role: :responder, highest_state: our_state} =
-          peer_state,
+        %ChannelStatePeer{
+          fsm_state: :initialized,
+          role: :responder,
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey,
+          highest_state: %ChannelStateOffChain{
+            initiator_amount: correct_initiator_amount,
+            responder_amount: correct_responder_amount
+          }
+        } = peer_state,
         half_signed_open_tx,
         priv_key
       ) do
-    initiator_pubkey = peer_state.initiator_pubkey
-    responder_pubkey = peer_state.responder_pubkey
     data_tx = SignedTx.data_tx(half_signed_open_tx)
     nonce = DataTx.nonce(data_tx)
-    open_payload = DataTx.payload(data_tx)
+
+    %ChannelCreateTx{
+      initiator_amount: tx_initiator_amount,
+      responder_amount: tx_responder_amount
+    } = DataTx.payload(data_tx)
 
     id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
-    initiator_amount = ChannelStateOffChain.initiator_amount(our_state)
-    responder_amount = ChannelStateOffChain.responder_amount(our_state)
 
     cond do
-      ChannelCreateTx.initiator_amount(open_payload) != initiator_amount ->
+      tx_initiator_amount != correct_initiator_amount ->
         {:error, "#{__MODULE__}: Wrong initiator amount"}
 
-      ChannelCreateTx.responder_amount(open_payload) != responder_amount ->
+      tx_responder_amount != correct_responder_amount ->
         {:error, "#{__MODULE__}: Wrong responder amount"}
 
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Wrong peers"}
 
       true ->
-        zero_state = ChannelStateOffChain.create(id, 0, initiator_amount, responder_amount)
+        zero_state = ChannelStateOffChain.create(id, 0, tx_initiator_amount, tx_responder_amount)
 
         {:ok, fully_signed_open_tx} =
           SignedTx.sign_tx(half_signed_open_tx, responder_pubkey, priv_key)
@@ -304,8 +300,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
       ) do
     {:ok, new_state} = ChannelStateOffChain.transfer(highest_state, role, amount)
 
-    if ChannelStateOffChain.initiator_amount(new_state) < peer_state.channel_reserve ||
-         ChannelStateOffChain.responder_amount(new_state) < peer_state.channel_reserve do
+    if new_state.initiator_amount < peer_state.channel_reserve ||
+         new_state.responder_amount < peer_state.channel_reserve do
       {:error, "#{__MODULE__}: Too big transfer"}
     else
       new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key)
@@ -357,7 +353,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     with :ok <-
            ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
-      if ChannelStateOffChain.sequence(highest_state) <= ChannelStateOffChain.sequence(new_state) do
+      if highest_state.sequence <= new_state.sequence do
         {:ok,
          %ChannelStatePeer{
            peer_state
@@ -414,21 +410,27 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def close(
-        %ChannelStatePeer{fsm_state: :open, highest_signed_state: state} = peer_state,
+        %ChannelStatePeer{
+          fsm_state: :open,
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey,
+          highest_signed_state: %ChannelStateOffChain{
+            channel_id: id,
+            initiator_amount: initiator_amount,
+            responder_amount: responder_amount
+          }
+        } = peer_state,
         fee,
         nonce,
         priv_key
       ) do
-    initiator_pubkey = peer_state.initiator_pubkey
-    responder_pubkey = peer_state.responder_pubkey
-
     close_tx =
       DataTx.init(
         ChannelCloseMutalTx,
         %{
-          channel_id: ChannelStateOffChain.id(state),
-          initiator_amount: ChannelStateOffChain.initiator_amount(state),
-          responder_amount: ChannelStateOffChain.responder_amount(state)
+          channel_id: id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
         },
         [initiator_pubkey, responder_pubkey],
         fee,
@@ -451,28 +453,38 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec recv_close_tx(ChannelStatePeer.t(), SignedTx.t(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def recv_close_tx(
-        %ChannelStatePeer{fsm_state: :open, highest_signed_state: state} = peer_state,
+        %ChannelStatePeer{
+          fsm_state: :open,
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey,
+          highest_signed_state: %ChannelStateOffChain{
+            channel_id: correct_id,
+            initiator_amount: correct_initiator_amount,
+            responder_amount: correct_responder_amount
+          }
+        } = peer_state,
         half_signed_tx,
         priv_key
       ) do
-    initiator_pubkey = peer_state.initiator_pubkey
-    responder_pubkey = peer_state.responder_pubkey
     data_tx = SignedTx.data_tx(half_signed_tx)
-    close_tx = DataTx.payload(data_tx)
+
+    %ChannelCloseMutalTx{
+      channel_id: tx_id,
+      initiator_amount: tx_initiator_amount,
+      responder_amount: tx_responder_amount
+    } = DataTx.payload(data_tx)
 
     cond do
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Invalid senders"}
 
-      ChannelCloseMutalTx.channel_id(close_tx) != ChannelStateOffChain.id(state) ->
+      tx_id != correct_id ->
         {:error, "#{__MODULE__}: Invalid id"}
 
-      ChannelCloseMutalTx.initiator_amount(close_tx) !=
-          ChannelStateOffChain.initiator_amount(state) ->
+      tx_initiator_amount != correct_initiator_amount ->
         {:error, "#{__MODULE__}: Invalid initiator_amount"}
 
-      ChannelCloseMutalTx.responder_amount(close_tx) !=
-          ChannelStateOffChain.responder_amount(state) ->
+      tx_responder_amount != correct_responder_amount ->
         {:error, "#{__MODULE__}: Invalid responder_amount"}
 
       true ->
@@ -539,7 +551,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
           Wallet.privkey()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t() | nil} | error()
   def slashed(
-        %ChannelStatePeer{highest_signed_state: our_state} = peer_state,
+        %ChannelStatePeer{
+          highest_signed_state: %ChannelStateOffChain{
+            sequence: best_sequence
+          }
+        } = peer_state,
         slash_tx,
         fee,
         nonce,
@@ -560,7 +576,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelSlashTx.sequence(payload)
       end
 
-    if slash_sequence < ChannelStateOffChain.sequence(our_state) do
+    if slash_sequence < best_sequence do
       slash(peer_state, fee, nonce, pubkey, privkey)
     else
       new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}

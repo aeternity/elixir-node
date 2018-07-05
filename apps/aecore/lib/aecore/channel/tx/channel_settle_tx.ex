@@ -45,11 +45,6 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     %ChannelSettleTx{channel_id: channel_id}
   end
 
-  @spec channel_id(ChannelSettleTx.t()) :: binary()
-  def channel_id(%ChannelSettleTx{channel_id: channel_id}) do
-    channel_id
-  end
-
   @doc """
   Checks transactions internal contents validity
   """

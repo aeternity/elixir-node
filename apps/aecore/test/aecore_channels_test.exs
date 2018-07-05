@@ -74,17 +74,17 @@ defmodule AecoreChannelTest do
     {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
     assert :open == get_fsm_state_s1(id)
 
-    assert 100 == ChannelStateOffChain.initiator_amount(signed_state1)
-    assert 200 == ChannelStateOffChain.responder_amount(signed_state1)
-    assert 1 == ChannelStateOffChain.sequence(signed_state1)
+    assert 100 == signed_state1.initiator_amount
+    assert 200 == signed_state1.responder_amount
+    assert 1 == signed_state1.sequence
 
     {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
     {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
     {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
 
-    assert 270 == ChannelStateOffChain.initiator_amount(signed_state2)
-    assert 30 == ChannelStateOffChain.responder_amount(signed_state2)
-    assert 2 == ChannelStateOffChain.sequence(signed_state2)
+    assert 270 == signed_state2.initiator_amount
+    assert 30 == signed_state2.responder_amount
+    assert 2 == signed_state2.sequence
 
     {:ok, close_tx} = call_s1({:close, id, 10, 2, ctx.sk1})
     {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, ctx.sk2})
@@ -118,17 +118,17 @@ defmodule AecoreChannelTest do
     {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
     assert :open == get_fsm_state_s1(id)
 
-    assert 100 == ChannelStateOffChain.initiator_amount(signed_state1)
-    assert 200 == ChannelStateOffChain.responder_amount(signed_state1)
-    assert 1 == ChannelStateOffChain.sequence(signed_state1)
+    assert 100 == signed_state1.initiator_amount
+    assert 200 == signed_state1.responder_amount
+    assert 1 == signed_state1.sequence
 
     {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
     {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
     {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
 
-    assert 270 == ChannelStateOffChain.initiator_amount(signed_state2)
-    assert 30 == ChannelStateOffChain.responder_amount(signed_state2)
-    assert 2 == ChannelStateOffChain.sequence(signed_state2)
+    assert 270 == signed_state2.initiator_amount
+    assert 30 == signed_state2.responder_amount
+    assert 2 == signed_state2.sequence
 
     slash_data =
       DataTx.init(
@@ -235,12 +235,12 @@ defmodule AecoreChannelTest do
   end
 
   defp get_fsm_state_s1(id) do
-    {:ok, peer_state} = call_s1({:get_channel, id})
-    ChannelStatePeer.fsm_state(peer_state)
+    {:ok, %ChannelStatePeer{fsm_state: fsm_state}} = call_s1({:get_channel, id})
+    fsm_state
   end
 
   defp get_fsm_state_s2(id) do
-    {:ok, peer_state} = call_s2({:get_channel, id})
-    ChannelStatePeer.fsm_state(peer_state)
+    {:ok, %ChannelStatePeer{fsm_state: fsm_state}} = call_s2({:get_channel, id})
+    fsm_state
   end
 end

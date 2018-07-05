@@ -86,33 +86,16 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     {:error, "#{__MODULE__}: Unknown ChannelStateOffChain structure: #{inspect(data)} "}
   end
 
-  @spec id(ChannelStateOffChain.t()) :: binary()
-  def id(%ChannelStateOffChain{channel_id: channel_id}) do
-    channel_id
-  end
-
-  @spec sequence(ChannelStateOffChain.t()) :: non_neg_integer()
-  def sequence(%ChannelStateOffChain{sequence: sequence}) do
-    sequence
-  end
-
-  @spec initiator_amount(ChannelStateOffChain.t()) :: non_neg_integer()
-  def initiator_amount(%ChannelStateOffChain{initiator_amount: initiator_amount}) do
-    initiator_amount
-  end
-
-  @spec responder_amount(ChannelStateOffChain.t()) :: non_neg_integer()
-  def responder_amount(%ChannelStateOffChain{responder_amount: responder_amount}) do
-    responder_amount
-  end
-
   @spec total_amount(ChannelStateOffChain.t()) :: non_neg_integer()
-  def total_amount(%ChannelStateOffChain{} = state) do
-    initiator_amount(state) + responder_amount(state)
+  def total_amount(%ChannelStateOffChain{
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
+      }) do
+    initiator_amount + responder_amount
   end
 
   @doc """
-  Validates ChannelStateOffChain signatures. 
+  Validates ChannelStateOffChain signatures.
   """
   @spec validate(ChannelStateOffChain.t(), list(Wallet.pubkey())) :: :ok | error()
   def validate(%ChannelStateOffChain{signatures: [_, _]} = state, [

@@ -51,14 +51,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @spec sequence(ChannelCloseSoloTx.t()) :: non_neg_integer()
-  def sequence(%ChannelCloseSoloTx{state: state}) do
-    ChannelStateOffChain.sequence(state)
-  end
+  def sequence(%ChannelCloseSoloTx{state: %ChannelStateOffChain{sequence: sequence}}),
+    do: sequence
 
   @spec channel_id(ChannelCloseSoloTx.t()) :: binary()
-  def channel_id(%ChannelCloseSoloTx{state: state}) do
-    ChannelStateOffChain.id(state)
-  end
+  def channel_id(%ChannelCloseSoloTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
   Checks transactions internal contents validity
@@ -88,11 +85,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         accounts,
         channels,
         block_height,
-        %ChannelCloseSoloTx{state: state},
+        %ChannelCloseSoloTx{
+          state:
+            %ChannelStateOffChain{
+              channel_id: channel_id
+            } = state
+        },
         _data_tx
       ) do
-    channel_id = ChannelStateOffChain.id(state)
-
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
         ChannelStateOnChain.apply_slashing(channel, block_height, state)
@@ -122,8 +122,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    channel_id = ChannelStateOffChain.id(state)
-    channel = ChannelStateTree.get(channels, channel_id)
+    channel = ChannelStateTree.get(channels, state.channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -135,8 +134,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       !ChannelStateOnChain.active?(channel) ->
         {:error, "#{__MODULE__}: Can't solo close active channel. Use slash."}
 
-      sender != ChannelStateOnChain.initiator_pubkey(channel) &&
-          sender != ChannelStateOnChain.responder_pubkey(channel) ->
+      sender != channel.initiator_pubkey && sender != channel.responder_pubkey ->
         {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->

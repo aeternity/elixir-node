@@ -61,21 +61,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     }
   end
 
-  @spec channel_id(ChannelCloseMutalTx.t()) :: binary()
-  def channel_id(%ChannelCloseMutalTx{channel_id: channel_id}) do
-    channel_id
-  end
-
-  @spec initiator_amount(ChannelCloseMutalTx.t()) :: non_neg_integer()
-  def initiator_amount(%ChannelCloseMutalTx{initiator_amount: initiator_amount}) do
-    initiator_amount
-  end
-
-  @spec responder_amount(ChannelCloseMutalTx.t()) :: non_neg_integer()
-  def responder_amount(%ChannelCloseMutalTx{responder_amount: responder_amount}) do
-    responder_amount
-  end
-
   @doc """
   Checks transactions internal contents validity
   """

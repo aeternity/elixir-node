@@ -61,16 +61,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     }
   end
 
-  @spec initiator_amount(ChannelCreateTx.t()) :: non_neg_integer()
-  def initiator_amount(%ChannelCreateTx{initiator_amount: initiator_amount}) do
-    initiator_amount
-  end
-
-  @spec responder_amount(ChannelCreateTx.t()) :: non_neg_integer()
-  def responder_amount(%ChannelCreateTx{responder_amount: responder_amount}) do
-    responder_amount
-  end
-
   @doc """
   Checks transactions internal contents validity
   """

@@ -51,27 +51,23 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @spec sequence(ChannelSlashTx.t()) :: non_neg_integer()
-  def sequence(%ChannelSlashTx{state: state}) do
-    ChannelStateOffChain.sequence(state)
-  end
+  def sequence(%ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}}), do: sequence
 
   @spec channel_id(ChannelSlashTx.t()) :: binary()
-  def channel_id(%ChannelSlashTx{state: state}) do
-    ChannelStateOffChain.id(state)
-  end
+  def channel_id(%ChannelSlashTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
   Checks transactions internal contents validity
   """
   @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSlashTx{state: state}, data_tx) do
+  def validate(%ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders size"}
 
-      ChannelStateOffChain.sequence(state) == 0 ->
+      sequence == 0 ->
         {:error, "#{__MODULE__}: Can't slash with zero state"}
 
       true ->
@@ -93,11 +89,14 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         accounts,
         channels,
         block_height,
-        %ChannelSlashTx{state: state},
+        %ChannelSlashTx{
+          state:
+            %ChannelStateOffChain{
+              channel_id: channel_id
+            } = state
+        },
         _data_tx
       ) do
-    channel_id = ChannelStateOffChain.id(state)
-
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
         ChannelStateOnChain.apply_slashing(channel, block_height, state)
@@ -127,8 +126,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    channel_id = ChannelStateOffChain.id(state)
-    channel = ChannelStateTree.get(channels, channel_id)
+    channel = ChannelStateTree.get(channels, state.channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

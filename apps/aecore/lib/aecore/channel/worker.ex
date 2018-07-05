@@ -347,8 +347,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:recv_state, recv_state, priv_key}, _from, state) do
-    id = ChannelStateOffChain.id(recv_state)
+  def handle_call(
+        {:recv_state, %ChannelStateOffChain{channel_id: id} = recv_state, priv_key},
+        _from,
+        state
+      ) do
     peer_state = Map.get(state, id)
 
     with {:ok, new_peer_state, offchain_state} <-
@@ -481,11 +484,10 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:settled, settle_tx}, _from, state) do
-    channel_id =
+    %ChannelSettleTx{channel_id: channel_id} =
       settle_tx
       |> SignedTx.data_tx()
       |> DataTx.payload()
-      |> ChannelSettleTx.channel_id()
 
     if Map.has_key?(state, channel_id) do
       new_peer_state = ChannelStatePeer.settled(Map.get(state, channel_id))

@@ -90,16 +90,6 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     [initiator_amount, responder_amount]
   end
 
-  @spec initiator_pubkey(ChannelStateOnChain.t()) :: Wallet.pubkey()
-  def initiator_pubkey(%ChannelStateOnChain{initiator_pubkey: initiator_pubkey}) do
-    initiator_pubkey
-  end
-
-  @spec responder_pubkey(ChannelStateOnChain.t()) :: Wallet.pubkey()
-  def responder_pubkey(%ChannelStateOnChain{responder_pubkey: responder_pubkey}) do
-    responder_pubkey
-  end
-
   @spec pubkeys(ChannelStateOnChain.t()) :: list(Wallet.pubkey())
   def pubkeys(%ChannelStateOnChain{
         initiator_pubkey: initiator_pubkey,
@@ -141,10 +131,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       channel.slash_sequence != 0 ->
         {:error, "#{__MODULE__}: Channel already slashed"}
 
-      channel.initiator_amount != ChannelStateOffChain.initiator_amount(offchain_state) ->
+      channel.initiator_amount != offchain_state.initiator_amount ->
         {:error, "#{__MODULE__}: Wrong initator amount"}
 
-      channel.responder_amount != ChannelStateOffChain.responder_amount(offchain_state) ->
+      channel.responder_amount != offchain_state.responder_amount ->
         {:error, "#{__MODULE__}: Wrong responder amount"}
 
       true ->
@@ -154,7 +144,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
     cond do
-      channel.slash_sequence >= ChannelStateOffChain.sequence(offchain_state) ->
+      channel.slash_sequence >= offchain_state.sequence ->
         {:error, "#{__MODULE__}: Offchain state is too old"}
 
       channel.initiator_amount + channel.responder_amount !=
@@ -181,13 +171,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, offchain_state) do
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
+      }) do
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,
-        slash_sequence: ChannelStateOffChain.sequence(offchain_state),
-        initiator_amount: ChannelStateOffChain.initiator_amount(offchain_state),
-        responder_amount: ChannelStateOffChain.responder_amount(offchain_state)
+        slash_sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
     }
   end
 
