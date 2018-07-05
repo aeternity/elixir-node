@@ -276,7 +276,8 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  @spec split_hash_pool(non_neg_integer(), binary(), hash_pool(), list(), non_neg_integer()) :: tuple()
+  @spec split_hash_pool(non_neg_integer(), binary(), hash_pool(), list(), non_neg_integer()) ::
+          tuple()
   defp split_hash_pool(height, prev_hash, [{{h, _hash}, _} | hash_pool], same, n_added)
        when h < height do
     split_hash_pool(height, prev_hash, hash_pool, same, n_added)
