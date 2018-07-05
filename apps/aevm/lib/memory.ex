@@ -5,13 +5,16 @@ defmodule Memory do
 
   use Bitwise
 
+  @chunk_size 32
+  @word_size 256
+
   @spec load(integer(), map()) :: {integer(), map()}
   def load(address, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
 
     prev_saved_value = Map.get(memory, memory_index, 0)
-    next_saved_value = Map.get(memory, memory_index + 32, 0)
+    next_saved_value = Map.get(memory, memory_index + @chunk_size, 0)
 
     <<_::size(bit_position), prev::binary>> = <<prev_saved_value::256>>
     <<next::size(bit_position), _::binary>> = <<next_saved_value::256>>
@@ -26,7 +29,7 @@ defmodule Memory do
   def store(address, value, state) do
     memory = State.memory(state)
     {memory_index, bit_position} = get_index_in_memory(address)
-    remaining_bits = 256 - bit_position
+    remaining_bits = @word_size - bit_position
 
     <<prev_bits::size(remaining_bits), next_bits::binary>> = <<value::256>>
 
@@ -43,10 +46,10 @@ defmodule Memory do
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_prev_value))
 
     memory2 =
-      if rem(address, 32) != 0 do
-        next_saved_value = Map.get(memory, memory_index + 32, 0)
+      if rem(address, @chunk_size) != 0 do
+        next_saved_value = Map.get(memory, memory_index + @chunk_size, 0)
         new_next_value = write_part(0, next_bits, bit_position, <<next_saved_value::256>>)
-        Map.put(memory1, memory_index + 32, binary_word_to_integer(new_next_value))
+        Map.put(memory1, memory_index + @chunk_size, binary_word_to_integer(new_next_value))
       else
         memory1
       end
@@ -79,7 +82,7 @@ defmodule Memory do
   @spec memory_size_bytes(map()) :: non_neg_integer()
   def memory_size_bytes(state) do
     memory_size_words = memory_size_words(state)
-    memory_size_words * 32
+    memory_size_words * @chunk_size
   end
 
   @spec get_area(integer(), integer(), map()) :: {binary(), map()}
@@ -111,9 +114,9 @@ defmodule Memory do
   defp read(read_value, bytes_left, bit_position, memory_index, memory) do
     memory_index_bits_left =
       if bit_position == 0 do
-        256
+        @word_size
       else
-        256 - bit_position
+        @word_size - bit_position
       end
 
     size_bits = bytes_left * 8
@@ -131,7 +134,7 @@ defmodule Memory do
 
     new_read_value = read_value <> <<read_part::size(bits_to_read)>>
     new_bytes_left = bytes_left - round(bits_to_read / 8)
-    read(new_read_value, new_bytes_left, 0, memory_index + 32, memory)
+    read(new_read_value, new_bytes_left, 0, memory_index + @chunk_size, memory)
   end
 
   defp write(<<>>, _bit_position, _memory_index, memory) do
@@ -141,9 +144,9 @@ defmodule Memory do
   defp write(bytes, bit_position, memory_index, memory) do
     memory_index_bits_left =
       if bit_position == 0 do
-        256
+        @word_size
       else
-        256 - bit_position
+        @word_size - bit_position
       end
 
     size_bits = byte_size(bytes) * 8
@@ -169,12 +172,12 @@ defmodule Memory do
 
     memory1 = Map.put(memory, memory_index, binary_word_to_integer(new_value_binary))
 
-    write(bytes_left, 0, memory_index + 32, memory1)
+    write(bytes_left, 0, memory_index + @chunk_size, memory1)
   end
 
   defp get_index_in_memory(address) do
-    memory_index = trunc(Float.floor(address / 32) * 32)
-    bit_position = rem(address, 32) * 8
+    memory_index = trunc(Float.floor(address / @chunk_size) * @chunk_size)
+    bit_position = rem(address, @chunk_size) * 8
 
     {memory_index, bit_position}
   end
@@ -194,8 +197,8 @@ defmodule Memory do
     {memory_index, _} = get_index_in_memory(address)
     current_mem_size_words = Map.get(memory, :size)
 
-    if (memory_index + 32) / 32 > current_mem_size_words do
-      Map.put(memory, :size, round((memory_index + 32) / 32))
+    if (memory_index + @chunk_size) / @chunk_size > current_mem_size_words do
+      Map.put(memory, :size, round((memory_index + @chunk_size) / @chunk_size))
     else
       memory
     end

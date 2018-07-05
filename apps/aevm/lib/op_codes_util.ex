@@ -145,6 +145,7 @@ defmodule OpCodesUtil do
   def mnemonic(OpCodes._INVALID) do "INVALID" end
   def mnemonic(OpCodes._SUICIDE) do "SUICIDE" end
 
+  # {op_code_number, elements_pushed_to_the_stack, elements_popped_from_the_stack, gas_cost}
   def opcode(OpCodes._STOP) do {mnemonic(OpCodes._STOP), 0, 0, GasCodes._GZERO} end
   def opcode(OpCodes._ADD) do {mnemonic(OpCodes._ADD), 2, 1, GasCodes._GVERYLOW} end
   def opcode(OpCodes._MUL) do {mnemonic(OpCodes._MUL), 2, 1, GasCodes._GLOW} end

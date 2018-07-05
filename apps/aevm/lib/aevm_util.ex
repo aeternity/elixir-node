@@ -9,6 +9,8 @@ defmodule AevmUtil do
   require OpCodes
   require GasCodes
 
+  @call_depth_limit 1024
+
   @spec default_opts :: map()
   def default_opts do
     %{
@@ -156,7 +158,8 @@ defmodule AevmUtil do
 
   @spec sha3_hash(binary()) :: binary()
   def sha3_hash(data) when is_binary(data) do
-    :sha3.hash(256, data)
+    hash_bit_length = 256
+    :sha3.hash(hash_bit_length, data)
   end
 
   def load_jumpdests(%{pc: pc, code: code} = state) when pc >= byte_size(code) do
@@ -221,7 +224,7 @@ defmodule AevmUtil do
 
   @spec call(integer(), map()) :: {integer(), map()}
   def call(op_code, state) do
-    if State.calldepth(state) < 1024 do
+    if State.calldepth(state) < @call_depth_limit do
       execute_call(op_code, state)
     else
       {0, state}

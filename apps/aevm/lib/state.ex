@@ -214,6 +214,11 @@ defmodule State do
   end
 
   def calculate_blockhash(nth_block, a, state) do
+    # Because the data of the blockchain is not
+    # given, the opcode BLOCKHASH could not
+    # return the hashes of the corresponding
+    # blocks. Therefore we define the hash of
+    # block number n to be SHA3-256("n").
     current_number = current_number(state)
 
     cond do

@@ -1,6 +1,7 @@
 defmodule GasCodes do
   @moduledoc """
     Module for defining macros for gas cost
+    From https://github.com/ethereum/go-ethereum/blob/master/params/gas_table.go
   """
 
   # credo:disable-for-this-file
@@ -124,8 +125,5 @@ defmodule GasCodes do
 
   # Payment for BLOCKHASH operation.
   defmacro _GBLOCKHASH do quote do: 20 end
-
-  # From https://github.com/ethereum/go-ethereum/blob/master/params/gas_table.go
-  # package params
 
 end
