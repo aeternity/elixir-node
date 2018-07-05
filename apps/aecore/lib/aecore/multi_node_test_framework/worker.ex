@@ -364,6 +364,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     if String.match?(result, ~r/error/) do
       Logger.error(fn -> result end)
     end
+
     {:noreply, state}
   end
 
