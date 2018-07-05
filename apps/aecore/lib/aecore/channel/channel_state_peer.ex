@@ -437,7 +437,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         nonce
       )
 
-    {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, my_pubkey(peer_state), priv_key)
+    {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, node_pubkey(peer_state), priv_key)
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
     {:ok, new_peer_state, close_signed_tx}
@@ -489,7 +489,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
       true ->
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
-        {:ok, signed_close_tx} = SignedTx.sign_tx(half_signed_tx, my_pubkey(peer_state), priv_key)
+
+        {:ok, signed_close_tx} =
+          SignedTx.sign_tx(half_signed_tx, node_pubkey(peer_state), priv_key)
+
         {:ok, new_peer_state, signed_close_tx}
     end
   end
@@ -518,9 +521,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
       ) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
-    data = DataTx.init(ChannelCloseSoloTx, %{state: our_state}, my_pubkey(peer_state), fee, nonce)
+    data =
+      DataTx.init(ChannelCloseSoloTx, %{state: our_state}, node_pubkey(peer_state), fee, nonce)
 
-    {:ok, our_slash_tx} = SignedTx.sign_tx(data, my_pubkey(peer_state), priv_key)
+    {:ok, our_slash_tx} = SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
     {:ok, new_peer_state, our_slash_tx}
   end
 
@@ -594,12 +598,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
       DataTx.init(
         ChannelSettleTx,
         %{channel_id: id(peer_state)},
-        ChannelStatePeer.my_pubkey(peer_state),
+        node_pubkey(peer_state),
         fee,
         nonce
       )
 
-    SignedTx.sign_tx(data, ChannelStatePeer.my_pubkey(peer_state), priv_key)
+    SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
   end
 
   @doc """
@@ -613,12 +617,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Returns our pubkey from in channel.
   """
-  @spec my_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
-  def my_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
+  @spec node_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
+  def node_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
     pubkey
   end
 
-  def my_pubkey(%ChannelStatePeer{role: :responder, responder_pubkey: pubkey}) do
+  def node_pubkey(%ChannelStatePeer{role: :responder, responder_pubkey: pubkey}) do
     pubkey
   end
 end
