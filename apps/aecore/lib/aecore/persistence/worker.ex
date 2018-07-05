@@ -112,10 +112,10 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:add_account_chain_state, {account, data}})
   end
 
-  @spec get_all_chainstates() ::
+  @spec get_all_chainstates(binary()) ::
           {:ok, chain_state :: map()} | :not_found | {:error, reason :: term()}
-  def get_all_chainstates do
-    GenServer.call(__MODULE__, :get_all_chainstates)
+  def get_all_chainstates(block_hash) do
+    GenServer.call(__MODULE__, {:get_all_chainstates, block_hash})
   end
 
   @spec get_all_blocks_info() :: {:ok, map()} | :not_found | {:error, reason :: term()}
@@ -352,11 +352,11 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def handle_call(
-        :get_all_chainstates,
+        {:get_all_chainstates, block_hash},
         _from,
         %{chain_state_family: chain_state_family} = state
       ) do
-    case Rox.get(chain_state_family, "chain_state") do
+    case Rox.get(chain_state_family, block_hash) do
       {:ok, chainstate} -> {:reply, chainstate, state}
       _ -> {:reply, %{}, state}
     end
