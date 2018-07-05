@@ -52,12 +52,6 @@ defmodule MultiNodeSyncTest do
     TestFramework.spend_tx("node3")
     TestFramework.mine_sync_block("node3")
 
-    TestFramework.naming_pre_claim("node3")
-    TestFramework.mine_sync_block("node3")
-
-    TestFramework.naming_claim("node3")
-    TestFramework.mine_sync_block("node3")
-
     TestFramework.spend_tx("node4")
     TestFramework.mine_sync_block("node4")
 

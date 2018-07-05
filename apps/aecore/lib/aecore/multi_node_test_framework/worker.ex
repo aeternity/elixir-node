@@ -361,7 +361,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info({_, {:data, result}}, state) do
+  def handle_info({_, {:data, _}}, state) do
     {:noreply, state}
   end
 
