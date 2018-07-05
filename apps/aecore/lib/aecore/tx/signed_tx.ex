@@ -13,6 +13,7 @@ defmodule Aecore.Tx.SignedTx do
   alias Aecore.Account.Account
   alias Aeutil.Bits
   alias Aeutil.Hash
+  alias Aeutil.Identifer
 
   require Logger
 

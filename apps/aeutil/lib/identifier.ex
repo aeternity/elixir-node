@@ -1,5 +1,5 @@
 defmodule Aeutil.Identifier do
-  alias __MODULE__
+  alias  Aeutil.Identifier
 
   @moduledoc """
   Utility module for interacting with identifiers. 
@@ -24,7 +24,8 @@ defmodule Aeutil.Identifier do
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
   # byte_size should be 32 byte
   @type value() :: binary()
-  defstruct type: :undefined, value: ""
+  defstruct [type: :undefined, value: ""]
+  use ExConstructor
 
   @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
   # byte_size(data) == 32 #TODO data should be stricted to 32 bytes only
