@@ -15,6 +15,7 @@ defmodule AecoreChainTest do
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Target
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys.Wallet
 
   setup do
     # Persistence.delete_all_blocks()

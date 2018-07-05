@@ -11,6 +11,9 @@ defmodule Aecore.Chain.Target do
 
   @highest_target_scientific 0x2100FFFF
 
+  @spec highest_target_scientific :: non_neg_integer()
+  def highest_target_scientific, do: @highest_target_scientific
+
   @spec calculate_next_target(integer(), list(Block.t())) :: integer()
   def calculate_next_target(timestamp, previous_blocks) do
     sorted_blocks =

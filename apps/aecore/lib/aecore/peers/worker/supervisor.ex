@@ -1,15 +1,16 @@
 defmodule Aecore.Peers.Worker.Supervisor do
   @moduledoc """
-  Supervises the Peers, PeerConnectionSupervisor and ranch acceptor
-  processes with a one_for_all strategy 
+  Supervises the Peers, PeerConnectionSupervisor, Sync, Jobs and ranch acceptor processes with a one_for_all strategy
   """
 
   use Supervisor
 
+  alias Aecore.Peers.Sync
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Peers.Jobs
 
   def start_link(_args) do
     Supervisor.start_link(__MODULE__, :ok)
@@ -19,6 +20,8 @@ defmodule Aecore.Peers.Worker.Supervisor do
     {pubkey, privkey} = PeerKeys.keypair()
 
     children = [
+      Jobs,
+      Sync,
       PeerConnectionSupervisor,
       Peers,
       :ranch.child_spec(
