@@ -790,7 +790,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(NamePreClaimTx, [senders, nonce, commitment, fee, ttl]) do
-    payload = %Aecore.Naming.Tx.NamePreClaimTx{commitment: commitment}
+    payload = %NamePreClaimTx{commitment: commitment}
 
     DataTx.init(
       NamePreClaimTx,
