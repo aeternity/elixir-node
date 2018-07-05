@@ -17,7 +17,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Target
   alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
@@ -28,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -235,7 +235,10 @@ defmodule Aecore.Chain.Worker do
     with {:ok, prev_block} <- get_block(block.header.prev_hash),
          {:ok, prev_block_chain_state} <- chain_state(block.header.prev_hash),
          blocks_for_target_calculation =
-           get_blocks(block.header.prev_hash, Target.get_number_of_blocks()),
+           get_blocks(
+             block.header.prev_hash,
+             GovernanceConstants.number_of_blocks_for_target_recalculation()
+           ),
          {:ok, new_chain_state} <-
            BlockValidation.calculate_and_validate_block(
              block,
