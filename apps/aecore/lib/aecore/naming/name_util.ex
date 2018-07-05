@@ -4,10 +4,7 @@ defmodule Aecore.Naming.NameUtil do
   """
 
   alias Aeutil.Hash
-
-  @split_name_symbol "."
-
-  @name_registrars [@split_name_symbol <> "aet", @split_name_symbol <> "test"]
+  alias Aecore.Governance.GovernanceConstants
 
   @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
   def normalized_namehash(name) do
@@ -43,13 +40,14 @@ defmodule Aecore.Naming.NameUtil do
   @spec partition_name(String.t()) :: {String.t(), String.t()}
   defp partition_name(name) do
     [label | remainder] = split_name(name)
-    {label, Enum.join(remainder, @split_name_symbol)}
+    {label, Enum.join(remainder, GovernanceConstants.split_name_symbol())}
   end
 
   @spec validate_normalized_name(String.t()) :: :ok | {:error, String.t()}
   defp validate_normalized_name(name) do
     allowed_registrar =
-      Enum.any?(@name_registrars, fn registrar -> String.ends_with?(name, registrar) end)
+      GovernanceConstants.name_registrars()
+      |> Enum.any?(fn registrar -> String.ends_with?(name, registrar) end)
 
     if allowed_registrar do
       validate_name_length(name)
@@ -76,7 +74,7 @@ defmodule Aecore.Naming.NameUtil do
   end
 
   @spec split_name(String.t()) :: [String.t()]
-  defp split_name(name), do: String.split(name, @split_name_symbol)
+  defp split_name(name), do: String.split(name, GovernanceConstants.split_name_symbol())
 
   @spec get_max_label_length :: non_neg_integer()
   def get_max_label_length do
