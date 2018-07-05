@@ -6,16 +6,13 @@ defmodule Aecore.Peers.Sync do
   use GenServer
 
   alias __MODULE__
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Header, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Peers.PeerConnection
-  alias Aeutil.Scientific
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Peers.Jobs
+  alias Aecore.Peers.{Jobs, Events}
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Events
+  alias Aeutil.Scientific
 
   require Logger
 
@@ -26,7 +23,7 @@ defmodule Aecore.Peers.Sync do
           to: non_neg_integer(),
           hash: binary(),
           peer: pid(),
-          pid: binary()
+          pid: pid()
         }
 
   @type peer_pid_map :: %{peer: pid()}
@@ -73,7 +70,7 @@ defmodule Aecore.Peers.Sync do
   """
   @spec start_sync(pid(), binary()) :: :ok | {:error, String.t()}
   def start_sync(peer_pid, remote_hash) do
-    GenServer.call(__MODULE__, {:start_sync, peer_pid, remote_hash})
+    Jobs.enqueue(:sync_jobs, {:start_sync, peer_pid, remote_hash})
   end
 
   @doc """
@@ -92,8 +89,8 @@ defmodule Aecore.Peers.Sync do
     GenServer.call(__MODULE__, {:sync_in_progress, peer_pid})
   end
 
-  @spec new_peer?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
-  def new_peer?(peer_pid, header, agreed_height, hash) do
+  @spec add_peer?(pid(), Header.t(), non_neg_integer(), binary()) :: true | false
+  def add_peer?(peer_pid, header, agreed_height, hash) do
     GenServer.call(__MODULE__, {:is_new_peer, self(), peer_pid, header, agreed_height, hash})
   end
 
@@ -118,11 +115,6 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call(:state, _from, state) do
     {:reply, state, state}
-  end
-
-  def handle_call({:start_sync, peer_pid, remote_hash}, _from, state) do
-    :ok = Jobs.enqueue(:sync_jobs, {:start_sync, peer_pid, remote_hash})
-    {:reply, :ok, state}
   end
 
   def handle_call({:fetch_mempool, peer_pid}, _from, state) do
@@ -175,11 +167,11 @@ defmodule Aecore.Peers.Sync do
 
   def handle_call({:update_hash_pool, hashes}, _from, state) do
     hash_pool = merge(state.hash_pool, hashes)
-    Logger.debug(fn -> "Hash pool now contains #{inspect(hash_pool)} hashes" end)
+    Logger.debug(fn -> "#{__MODULE__}: Hash pool now contains #{inspect(hash_pool)} hashes" end)
     {:reply, :ok, %{state | hash_pool: hash_pool}}
   end
 
-  def handle_call({:fetch_next, peer_pid, height_in, hash_in, result}, _from, state) do
+  def handle_call({:fetch_next, peer_pid, inc_height, inc_hash, result}, _from, state) do
     hash_pool =
       case result do
         {:ok, block} ->
@@ -201,13 +193,13 @@ defmodule Aecore.Peers.Sync do
 
     Logger.info("#{__MODULE__}: fetch next from Hashpool")
 
-    case update_chain_from_pool(height_in, hash_in, hash_pool) do
+    case update_chain_from_pool(inc_height, inc_hash, hash_pool) do
       {:error, reason} ->
         Logger.info("#{__MODULE__}: Chain update failed: #{inspect(reason)}")
         {:reply, {:error, reason}, %{state | hash_pool: hash_pool}}
 
       {:ok, new_height, new_hash, []} ->
-        Logger.debug(fn -> "Got all the blocks from Hashpool" end)
+        Logger.debug(fn -> "#{__MODULE__}: Got all the blocks from Hashpool" end)
 
         # The sync might be done. Check for more blocks.
         case Enum.find(state.sync_pool, false, fn peer -> Map.get(peer, :id) == peer_pid end) do
@@ -240,9 +232,9 @@ defmodule Aecore.Peers.Sync do
 
           pick_from_hashes ->
             # We still have blocks to fetch.
-            {_pick_height, pick_hash} = Enum.random(pick_from_hashes)
+            {_pick_height, picked_hash} = Enum.random(pick_from_hashes)
 
-            {:reply, {:fetch, new_height, new_hash, pick_hash},
+            {:reply, {:fetch, new_height, new_hash, picked_hash},
              %{state | hash_pool: new_hash_pool}}
         end
     end
@@ -265,7 +257,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def handle_info({:DOWN, _ref, :process, pid, reason}, %{sync_pool: sync_pool} = state) do
-    Logger.info("Worker stopped with reason: #{inspect(reason)}")
+    Logger.info("#{__MODULE__}: Worker stopped with reason: #{inspect(reason)}")
     {:noreply, %{state | sync_pool: Enum.filter(sync_pool, fn peer -> peer.peer != pid end)}}
   end
 
@@ -284,21 +276,20 @@ defmodule Aecore.Peers.Sync do
     end
   end
 
-  @spec split_hash_pool(non_neg_integer(), binary(), list(), any(), non_neg_integer()) :: tuple()
-  defp split_hash_pool(height, prev_hash, [{{h, _}, _} | hash_pool], same, n_added)
+  @spec split_hash_pool(non_neg_integer(), binary(), hash_pool(), list(), non_neg_integer()) ::
+          tuple()
+  defp split_hash_pool(height, prev_hash, [{{h, _hash}, _} | hash_pool], same, n_added)
        when h < height do
     split_hash_pool(height, prev_hash, hash_pool, same, n_added)
   end
 
-  defp split_hash_pool(height, prev_hash, [{{h, hash}, map} = item | hash_pool], same, n_added)
+  defp split_hash_pool(height, prev_hash, [{{h, _hash}, map} = item | hash_pool], same, n_added)
        when h == height and n_added < @max_adds do
     case Map.get(map, :block, :error) do
       :error ->
         split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
 
       block ->
-        hash = BlockValidation.block_header_hash(block.header)
-
         case Map.get(block.header, :prev_hash, :error) do
           :error ->
             split_hash_pool(height, prev_hash, hash_pool, [item | same], n_added)
@@ -306,6 +297,8 @@ defmodule Aecore.Peers.Sync do
           prev_hash ->
             case Chain.add_block(block) do
               :ok ->
+                hash = BlockValidation.block_header_hash(block.header)
+
                 split_hash_pool(h + 1, hash, hash_pool, [], n_added + 1)
 
               {:error, _} ->
@@ -383,7 +376,7 @@ defmodule Aecore.Peers.Sync do
             min_agreed_hash
           )
 
-        if new_peer?(peer_pid, remote_header, agreed_height, agreed_hash) do
+        if add_peer?(peer_pid, remote_header, agreed_height, agreed_hash) do
           pool_result = fill_pool(peer_pid, agreed_hash)
           fetch_more(peer_pid, agreed_height, agreed_hash, pool_result)
         else
@@ -410,7 +403,7 @@ defmodule Aecore.Peers.Sync do
        when r_height == l_height do
     r_hash = BlockValidation.block_header_hash(r_header)
 
-    case Persistence.get_block_by_hash(r_hash) do
+    case Chain.get_block(r_hash) do
       {:ok, _} ->
         {r_height, r_hash}
 
@@ -438,17 +431,18 @@ defmodule Aecore.Peers.Sync do
   end
 
   defp fetch_more(peer_pid, last_height, _, {:error, reason}) do
-    Logger.info("Abort sync at height #{last_height} Error: #{inspect(reason)}")
+    Logger.info("#{__MODULE__}: Abort sync at height #{last_height} Error: #{inspect(reason)}")
     delete_from_pool(peer_pid)
     {:error, reason}
   end
 
+  # The result variable represents what action should be made
   defp fetch_more(peer_pid, last_height, header_hash, result) do
     ## We need to supply the Hash, because locally we might have a shorter,
     ## but locally more difficult fork
     case fetch_next(peer_pid, last_height, header_hash, result) do
-      {:fetch, new_height, new_hash, hash} ->
-        case do_fetch_block(hash, peer_pid) do
+      {:fetch, new_height, new_hash, picked_hash} ->
+        case do_fetch_block(picked_hash, peer_pid) do
           {:ok, new_block} ->
             fetch_more(peer_pid, new_height, new_hash, {:ok, new_block})
 
@@ -483,14 +477,14 @@ defmodule Aecore.Peers.Sync do
       {:start_sync, peer_pid, remote_hash} ->
         case sync_in_progress?(peer_pid) do
           false -> do_start_sync(peer_pid, remote_hash)
-          _ -> Logger.info("Sync already in progress")
+          _ -> Logger.info("#{__MODULE__}: Sync already in progress")
         end
 
       {:fetch_mempool, peer_pid} ->
         do_fetch_mempool(peer_pid)
 
       _other ->
-        Logger.debug(fn -> "Unknown job" end)
+        Logger.debug(fn -> "#{__MODULE__}: Unknown job" end)
     end
 
     process_jobs(t)
@@ -503,35 +497,38 @@ defmodule Aecore.Peers.Sync do
     end)
   end
 
-  # Merges the local Hashes with the Remote Peer hashes
-  # So it takes the data from where the height is higher
+  # Merges the local Hashes with the remote (peer) Hashes
+  # in such a way that it takes the data from where the height is higher
   defp merge([], new_hashes), do: new_hashes
   defp merge(old_hashes, []), do: old_hashes
 
-  defp merge([{{h_1, _hash_1}, _} | old_hashes], [{{h_2, hash_2}, map_2} | new_hashes])
-       when h_1 < h_2 do
-    merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes])
+  defp merge([{{l_h, _l_hash}, _} | old_hashes], [{{r_h, r_hash}, r_map} | new_hashes])
+       when l_h < r_h do
+    merge(old_hashes, [{{r_h, r_hash}, r_map} | new_hashes])
   end
 
-  defp merge([{{h_1, hash_1}, map_1} | old_hashes], [{{h_2, _hash_2}, _} | new_hashes])
-       when h_1 > h_2 do
-    merge([{{h_1, hash_1}, map_1} | old_hashes], new_hashes)
+  defp merge([{{l_h, l_hash}, l_map} | old_hashes], [{{r_h, _r_hash}, _} | new_hashes])
+       when l_h > r_h do
+    merge([{{l_h, l_hash}, l_map} | old_hashes], new_hashes)
   end
 
-  defp merge(old_hashes, [{{h_2, hash_2}, map_2} | new_hashes]) do
-    pick_same({{h_2, hash_2}, map_2}, old_hashes, new_hashes)
+  defp merge(old_hashes, [{{r_h, r_hash}, r_map} | new_hashes]) do
+    pick_same({{r_h, r_hash}, r_map}, old_hashes, new_hashes)
   end
 
-  defp pick_same({{h, hash_2}, map_2}, [{{h, hash_1}, map_1} | old_hashes], new_hashes) do
-    case hash_1 == hash_2 do
+  defp pick_same({{h, r_hash}, r_map}, [{{h, l_hash}, l_map} | old_hashes], new_hashes) do
+    case l_hash == r_hash do
       true ->
         [
-          {{h, hash_1}, Map.merge(map_1, map_2)}
-          | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)
+          {{h, l_hash}, Map.merge(l_map, r_map)}
+          | pick_same({{h, r_hash}, r_map}, old_hashes, new_hashes)
         ]
 
       false ->
-        [{{h, hash_1}, map_1} | pick_same({{h, hash_2}, map_2}, old_hashes, new_hashes)]
+        [
+          {{h, l_hash}, l_map}
+          | pick_same({{h, r_hash}, r_map}, old_hashes, new_hashes)
+        ]
     end
   end
 
