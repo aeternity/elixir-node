@@ -28,8 +28,8 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   @spec sync_two_nodes(String.t(), String.t()) :: :ok
   def sync_two_nodes(node_name1, node_name2) do
     GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
-    # get_all_peers(node_name1)
-    # get_all_peers(node_name2)
+    get_all_peers(node_name1)
+    get_all_peers(node_name2)
   end
 
   @doc """
@@ -608,7 +608,6 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
             port: port,
             sync_port: sync_port,
             top_block: nil,
-            top_block_hash: nil,
             peers: %{},
             registered_oracles: %{},
             oracle_interaction_objects: %{}
