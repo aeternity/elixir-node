@@ -9,6 +9,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aehttpclient.Client
 
   require Logger
 
@@ -34,6 +35,10 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  def all_pids do
+    GenServer.call(__MODULE__, :all_pids)
+  end
+
   def add_peer(conn_info) do
     GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
@@ -56,6 +61,16 @@ defmodule Aecore.Peers.Worker do
 
   def broadcast_block(%Block{} = block) do
     GenServer.cast(__MODULE__, {:broadcast_block, block})
+  end
+
+  def get_info_try_connect(uri) do
+    case Client.get_peer_info(uri) do
+      {:ok, peer_info} ->
+        try_connect(peer_info)
+
+      {:error, _reason} = error ->
+        error
+    end
   end
 
   def try_connect(peer_info) do
@@ -85,6 +100,11 @@ defmodule Aecore.Peers.Worker do
     {:reply, all_peers, state}
   end
 
+  def handle_call(:all_pids, _from, %{peers: peers} = state) do
+    pids = for peer <- Map.values(peers), do: peer.connection
+    {:reply, pids, state}
+  end
+
   def handle_call(
         {:add_peer, %{pubkey: pubkey} = peer_info},
         _from,
@@ -102,7 +122,12 @@ defmodule Aecore.Peers.Worker do
   end
 
   def handle_call({:get_random, count}, _from, %{peers: peers} = state) do
-    random_peers = peers |> Map.values() |> Enum.take_random(count) |> prepare_peers()
+    random_peers =
+      peers
+      |> Map.values()
+      |> Enum.take_random(count)
+      |> prepare_peers()
+
     {:reply, random_peers, state}
   end
 
@@ -142,7 +167,6 @@ defmodule Aecore.Peers.Worker do
             Map.merge(peer_info, %{r_pubkey: peer_info.pubkey, privkey: privkey, pubkey: pubkey})
 
           {:ok, _pid} = PeerConnectionSupervisor.start_peer_connection(conn_info)
-
           {:noreply, state}
 
         true ->
