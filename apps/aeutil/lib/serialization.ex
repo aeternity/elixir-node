@@ -571,7 +571,7 @@ defmodule Aeutil.Serialization do
       end
 
     # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
-    miner_pubkey_size = 32
+    miner_pubkey_size = 33
 
     <<
       header.version::64,
@@ -595,7 +595,7 @@ defmodule Aeutil.Serialization do
   @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
   def binary_to_header(binary) when is_binary(binary) do
     # Application.get_env(:aecore, :aewallet)[:pub_key_size]
-    miner_pubkey_size = 32
+    miner_pubkey_size = 33
     header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
     header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
     header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]

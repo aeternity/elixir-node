@@ -12,8 +12,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aeutil.Hash
   alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
-
-  @time_validation_future_limit_ms 30 * 60 * 1000
+  alias Aecore.Governance.GovernanceConstants
 
   @type tree :: :gb_merkle_trees.tree()
 
@@ -161,6 +160,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: new_block_header}) do
-    new_block_header.time < System.system_time(:milliseconds) + @time_validation_future_limit_ms
+    new_block_header.time <
+      System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
   end
 end

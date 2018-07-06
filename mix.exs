@@ -60,16 +60,16 @@ defmodule EpochElixir.Mixfile do
       {:msgpax, "~> 2.1.1"},
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
-      {:ex_rlp, "~> 0.2.1"},
-      {:merkle_patricia_tree,
-       git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git",
-       branch: "meivantodorov/investigating-wrong-branch-encoding"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:ranch,
-       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
+       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
+      {:jobs, "~> 0.7.1"},
+      {:gproc, "~> 0.6.1"},
+      {:ex_rlp, "~> 0.2.1"},
+      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
     ]
   end
 end

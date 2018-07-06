@@ -24,7 +24,7 @@ defmodule Aecore.Account.AccountStateTree do
     PatriciaMerkleTree.enter(trie, key, serialized_account_state)
   end
 
-  @spec get(accounts_state(), Wallet.pubkey()) :: binary() | :none | Account.t()
+  @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
   def get(trie, key) do
     case PatriciaMerkleTree.lookup(trie, key) do
       :none ->
