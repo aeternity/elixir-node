@@ -209,13 +209,13 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   # spend_tx
 
   @spec spend_tx(String.t()) :: :ok | :unknown_node
-  def spend_tx(node_name1) do
+  def spend_tx(node_name) do
     send_command(
-      node_name1,
+      node_name,
       "{:ok, tx} = Account.spend(Wallet.get_public_key(\"M/0\"), 20, 10, \"test1\")"
     )
 
-    send_command(node_name1, "Pool.add_transaction(tx)")
+    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   # mining
@@ -358,6 +358,24 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
 
+  defp update_data(fun, state, node_name, key) do
+    with true <- Map.has_key?(state, node_name),
+         path <- state[node_name].path <> "/result.json",
+         {:ok, data} <- File.read(path),
+         {:ok, decoded_data} <- Poison.decode(data) do
+      # decoding all the keys and the data to it's initial state
+      decoded_data = fun.(decoded_data)
+
+      # updating the state and removing the json file
+      new_state = put_in(state[node_name][key], decoded_data)
+      File.rm(path)
+      {:reply, :ok, new_state}
+    else
+      false -> {:reply, :no_such_node, state}
+      {:error, reason} -> {:reply, reason, state}
+    end
+  end
+
   # server
 
   def handle_info({_, {:data, result}}, state) do
@@ -369,104 +387,53 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   end
 
   def handle_call({:update_oracle_interaction_objects_state, node_name}, _, state) do
-    path = state[node_name].path <> "/result.json"
-
-    # decoding all the keys and the data to it's initial state
-    with {:ok, data} <- File.read(path),
-         {:ok, decoded_data} <- Poison.decode(data) do
+    fun = fn decoded_data ->
       oracles_decode32 = for {k, v} <- decoded_data, into: %{}, do: {Base.decode32!(k), v}
 
-      decoded_data =
-        Enum.reduce(oracles_decode32, %{}, fn {k, val}, _ ->
-          atom_keys_map = for {nested_k, v} <- val, into: %{}, do: {String.to_atom(nested_k), v}
-          new_map = put_in(oracles_decode32[k], atom_keys_map)
-          new_map = put_in(new_map[k].oracle_address, Base.decode32!(new_map[k].oracle_address))
-          put_in(new_map[k].sender_address, Base.decode32!(new_map[k].sender_address))
-        end)
-
-      # updating the state
-      new_state = put_in(state[node_name].oracle_interaction_objects, decoded_data)
-
-      # deleting the file result.json
-      File.rm(path)
-      {:reply, :ok, new_state}
-    else
-      {:error, reason} -> {:reply, reason, state}
+      Enum.reduce(oracles_decode32, %{}, fn {k, val}, _ ->
+        atom_keys_map = for {nested_k, v} <- val, into: %{}, do: {String.to_atom(nested_k), v}
+        new_map = put_in(oracles_decode32[k], atom_keys_map)
+        new_map = put_in(new_map[k].oracle_address, Base.decode32!(new_map[k].oracle_address))
+        put_in(new_map[k].sender_address, Base.decode32!(new_map[k].sender_address))
+      end)
     end
+
+    update_data(fun, state, node_name, :oracle_interaction_objects)
   end
 
   def handle_call({:update_registered_oracles_state, node_name}, _, state) do
-    path = state[node_name].path <> "/result.json"
-
-    # decoding all the keys and the data to it's initial state
-    with {:ok, data} <- File.read(path),
-         {:ok, decoded_data} <- Poison.decode(data) do
+    fun = fn decoded_data ->
       oracles_decode32 = for {k, v} <- decoded_data, into: %{}, do: {Base.decode32!(k), v}
 
-      decoded_data =
-        Enum.reduce(oracles_decode32, %{}, fn {k, val}, _ ->
-          atom_keys_map = for {nested_k, v} <- val, into: %{}, do: {String.to_atom(nested_k), v}
-          new_map = put_in(oracles_decode32[k], atom_keys_map)
-          put_in(new_map[k].owner, Base.decode32!(new_map[k].owner))
-        end)
-
-      # updating the state
-      new_state = put_in(state[node_name].registered_oracles, decoded_data)
-
-      # deleting the file result.json
-      File.rm(path)
-      {:reply, :ok, new_state}
-    else
-      {:error, reason} -> {:reply, reason, state}
+      Enum.reduce(oracles_decode32, %{}, fn {k, val}, _ ->
+        atom_keys_map = for {nested_k, v} <- val, into: %{}, do: {String.to_atom(nested_k), v}
+        new_map = put_in(oracles_decode32[k], atom_keys_map)
+        put_in(new_map[k].owner, Base.decode32!(new_map[k].owner))
+      end)
     end
+
+    update_data(fun, state, node_name, :registered_oracles)
   end
 
   def handle_call({:update_top_block_state, node_name}, _, state) do
-    # reading json file and decoding the block
-    with true <- Map.has_key?(state, node_name),
-         path <- state[node_name].path <> "/result.json",
-         {:ok, data} <- File.read(path),
-         {:ok, decoded_data} <- Poison.decode(data) do
-      # deserialize block
-      serialized_block = Serialization.block(decoded_data, :deserialize)
-
-      # updating state
-      new_state = put_in(state[node_name].top_block, serialized_block)
-
-      # removing the json file
-      File.rm(path)
-      {:reply, :ok, new_state}
-    else
-      false -> {:reply, :no_such_node, state}
-      {:error, reason} -> {:reply, reason, state}
-    end
+    fun = &Serialization.block(&1, :deserialize)
+    update_data(fun, state, node_name, :top_block)
   end
 
   def handle_call({:update_peers_map, node_name}, _, state) do
-    with true <- Map.has_key?(state, node_name),
-         path <- state[node_name].path <> "/result.json",
-         {:ok, data} <- File.read(path),
-         {:ok, decoded_data} <- Poison.decode(data) do
-      # decoding all the keys and the data to it's initial state
-      decoded_data =
-        Enum.reduce(decoded_data, [], fn peer, acc ->
-          peer =
-            for {k, v} <- peer,
-                into: %{},
-                do: {String.to_atom(k), v}
+    fun = fn decoded_data ->
+      Enum.reduce(decoded_data, [], fn peer, acc ->
+        peer =
+          for {k, v} <- peer,
+              into: %{},
+              do: {String.to_atom(k), v}
 
-          peer = put_in(peer.pubkey, Base.decode32!(peer.pubkey))
-          [peer | acc]
-        end)
-
-      # updating the state and removing the json file
-      new_state = put_in(state[node_name].peers, decoded_data)
-      File.rm(path)
-      {:reply, :ok, new_state}
-    else
-      false -> {:reply, :no_such_node, state}
-      {:error, reason} -> {:reply, reason, state}
+        peer = put_in(peer.pubkey, Base.decode32!(peer.pubkey))
+        [peer | acc]
+      end)
     end
+
+    update_data(fun, state, node_name, :peers)
   end
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
