@@ -1,3 +1,5 @@
+:0: Unknown function 'Elixir.Aewallet.Cypher':decrypt/2
+:0: Unknown function 'Elixir.Aewallet.Cypher':encrypt/2
 :0: Unknown function 'Elixir.Aewallet.KeyPair':compress/1
 :0: Unknown function 'Elixir.Aewallet.KeyPair':derive/2
 :0: Unknown function 'Elixir.Aewallet.KeyPair':generate_master_key/1
@@ -21,38 +23,29 @@
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':new/2
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie':update/3
 :0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':all_keys/1
+:0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':all_values/1
+:0: Unknown function 'Elixir.MerklePatriciaTree.Trie.Inspector':inspect_trie/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/1
 :0: Unknown function 'Elixir.Msgpax':'pack!'/2
 :0: Unknown function 'Elixir.Msgpax':unpack/1
+:0: Unknown function 'Elixir.Pool':add_transactions/1
+:0: Unknown function 'Elixir.Sync':new/1
 :0: Unknown function 'Elixir.Serialization':rlp_encode/2
 :0: Unknown function base58:base58_to_binary/1
 :0: Unknown function base58:binary_to_base58/1
+:0: Unknown function enacl:crypto_sign_ed25519_public_to_curve25519/1
+:0: Unknown function enacl:crypto_sign_ed25519_secret_to_curve25519/1
+:0: Unknown function enacl:curve25519_scalarmult_base/1
 :0: Unknown function enacl:generichash/2
+:0: Unknown function enacl:sign_keypair/0
+:0: Unknown function enoise:accept/2
+:0: Unknown function enoise:close/1
+:0: Unknown function enoise:connect/2
+:0: Unknown function enoise:send/2
+:0: Unknown function enoise_hs_state:remote_keys/1
+:0: Unknown function enoise_keypair:new/2
+:0: Unknown function enoise_keypair:new/3
+:0: Unknown function enoise_keypair:pubkey/1
 :0: Unknown function sha3:hash/2
-:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
-:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
-:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
-Function put/3 has no local return
-Function update/3 has no local return
-Function process_chainstate/5 has no local return
-The created fun has no local return
-Function deduct_fee/5 has no local return
-Function check_peer/2 has no local return
-Function standard_deduct_fee/4 has no local return
-Function get_info/1 has no local return
-Function get_block/1 has no local return
-Function get_raw_blocks/1 has no local return
-Function get_pool_txs/1 has no local return
-Function send_block/2 has no local return
-Function send_tx/2 has no local return
-Function get_peers/1 has no local return
-Function get_and_add_peers/1 has no local return
-Function get_account_balance/1 has no local return
-Function get_account_txs/1 has no local return
-Function get/1 has no local return
-Function get/2 has no local return
-Function handle_info/2 has no local return
-Function trim_peers/1 will never be called
-Function 'should_a_peer_be_added?'/1 will never be called
-Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
-Function block_by_hash/2 has no local return
+:0: Unknown type 'Elixir.MerklePatriciaTree.Trie':trie/0
+:0: Unknown type 'Elixir.Trie':t/0

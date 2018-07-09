@@ -63,7 +63,7 @@ defmodule PersistenceTest do
     assert :not_found = get_account_state(persistance_state.account2)
 
     ## For all accounts
-    all_accounts = Persistence.get_all_chainstates()
+    all_accounts = Persistence.get_all_chainstates(Chain.top_block_hash())
     assert false == Enum.empty?(Map.keys(all_accounts))
   end
 
@@ -98,7 +98,7 @@ defmodule PersistenceTest do
   end
 
   defp get_account_state(account) do
-    root_hashes_map = Persistence.get_all_chainstates()
+    root_hashes_map = Persistence.get_all_chainstates(Chain.top_block_hash())
     chainstate = Chain.transfrom_chainstate(:to_chainstate, root_hashes_map)
     empty_account = Account.empty()
 

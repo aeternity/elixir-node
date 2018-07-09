@@ -20,6 +20,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
+  alias Aecore.Governance.GovernanceConstants
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -206,7 +207,7 @@ defmodule Aecore.Account.Account do
       {:ok, namehash} ->
         payload = %{
           hash: namehash,
-          expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
+          expire_by: Chain.top_height() + GovernanceConstants.claim_expire_by_relative_limit(),
           client_ttl: 86400,
           pointers: pointers
         }
