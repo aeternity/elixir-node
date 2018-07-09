@@ -606,7 +606,7 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([@p2p_msg_version, height])
   end
 
-  def rlp_encode(@header, %{header: header}) do
+  def rlp_encode(@header, header) do
     header_binary = Serialization.header_to_binary(header)
     ExRLP.encode([@p2p_msg_version, header_binary])
   end
@@ -622,7 +622,7 @@ defmodule Aecore.Peers.PeerConnection do
     ])
   end
 
-  def rlp_encode(@header_hashes, %{hashes: header_hashes}) do
+  def rlp_encode(@header_hashes, header_hashes) do
     ExRLP.encode([@p2p_msg_version, header_hashes])
   end
 
@@ -630,7 +630,7 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([@p2p_msg_version, hash])
   end
 
-  def rlp_encode(@block, %{block: block}) do
+  def rlp_encode(@block, block) do
     ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(block, :block)])
   end
 
