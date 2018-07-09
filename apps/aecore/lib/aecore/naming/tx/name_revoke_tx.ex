@@ -12,7 +12,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
   require Logger
 
   @typedoc "Expected structure for the Revoke Transaction"

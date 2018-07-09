@@ -14,7 +14,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.Parser
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 

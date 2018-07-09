@@ -1,5 +1,5 @@
-defmodule Aeutil.Identifier do
-  alias  Aeutil.Identifier
+defmodule Aecore.Chain.Identifier do
+  alias __MODULE__
 
   @moduledoc """
   Utility module for interacting with identifiers. 
@@ -24,7 +24,7 @@ defmodule Aeutil.Identifier do
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
   # byte_size should be 32 byte
   @type value() :: binary()
-  defstruct [type: :undefined, value: ""]
+  defstruct type: :undefined, value: ""
   use ExConstructor
 
   @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
@@ -41,6 +41,17 @@ defmodule Aeutil.Identifier do
       _ ->
         create_identity(value, type)
     end
+  end
+
+  def check_identity(%Identifier{} = id, type) do
+    case create_identity(id.value, :type) do
+      {:ok, check_id} -> check_id == id
+      {:error, msg} -> {:error, msg}
+    end
+  end
+
+  def check_identity(_, _) do
+    {:error, "#{__MODULE__}: Invalid ID"}
   end
 
   def create_identity(data, type) do

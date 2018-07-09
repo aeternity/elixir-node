@@ -9,7 +9,7 @@ defmodule Aecore.Naming.Naming do
   alias Aeutil.Hash
   alias Aeutil.Bits
   alias Aeutil.Serialization
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   @pre_claim_ttl 300
 
@@ -61,11 +61,12 @@ defmodule Aecore.Naming.Naming do
         ) :: commitment()
   def create_commitment(hash, owner, created, expires) do
     # IO.inspect(owner, label: "Commitment owner from tx") #TODO check if it comes from one of naming TX's
-    # {:ok, identified_hash} = Identifier.create_identity(hash, :commitment)
+    {:ok, identified_hash} = Identifier.create_identity(hash, :commitment)
+    {:ok, identified_owner} = Identifier.create_identity(owner, :account)
+
     %{
-      # identified_hash
-      :hash => hash,
-      :owner => owner,
+      :hash => identified_hash,
+      :owner => identified_owner,
       :created => created,
       :expires => expires
     }
@@ -197,13 +198,13 @@ defmodule Aecore.Naming.Naming do
 
   def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
     {:ok, encoded_commitment_hash} = Identifier.encode_data(name_commitment.hash)
-    IO.inspect(name_commitment.owner, label: "RLP ENCODING NAMING COMMITMENT OWNER")
+    {:ok, encoded_commitment_owner} = Identifier.encode_data(name_commitment.owner)
 
     list = [
       tag,
       version,
       encoded_commitment_hash,
-      name_commitment.owner,
+      encoded_commitment_owner,
       name_commitment.created,
       name_commitment.expires
     ]
@@ -237,14 +238,18 @@ defmodule Aecore.Naming.Naming do
 
   def rlp_decode([hash, owner, created, expires], :name_commitment) do
     {:ok, decoded_commitment_hash} = Identifier.decode_data(hash)
+    {:ok, decoded_commitment_owner} = Identifier.decode_data(owner)
 
     {:ok, identified_commitment_hash} =
       Identifier.create_identity(decoded_commitment_hash, :commitment)
 
+    {:ok, identified_commitment_owner} =
+      Identifier.create_identity(decoded_commitment_owner, :commitment)
+
     {:ok,
      %{
        hash: identified_commitment_hash,
-       owner: owner,
+       owner: identified_commitment_owner,
        created: Serialization.transform_item(created, :int),
        expires: Serialization.transform_item(expires, :int)
      }}

@@ -20,7 +20,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -356,11 +356,13 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_receiver} = Identifier.encode_data(tx.payload.receiver)
+
     list = [
       tag,
       version,
       senders,
-      tx.payload.receiver,
+      encoded_receiver,
       tx.payload.amount,
       tx.fee,
       tx.ttl,
@@ -506,12 +508,14 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_commitment} = Identifier.encode_data(tx.payload.commitment)
+
     list = [
       tag,
       version,
       senders,
       tx.nonce,
-      tx.payload.commitment,
+      encoded_commitment,
       tx.fee,
       tx.ttl
     ]
@@ -833,8 +837,9 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NamePreClaimTx, [encoded_senders, nonce, commitment, fee, ttl]) do
-    payload = %NamePreClaimTx{commitment: commitment}
+  defp decode(NamePreClaimTx, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
+    {:ok, decoded_commitment} = Identifier.decode_data(encoded_commitment)
+    payload = %NamePreClaimTx{commitment: decoded_commitment}
 
     senders =
       for sender <- encoded_senders do

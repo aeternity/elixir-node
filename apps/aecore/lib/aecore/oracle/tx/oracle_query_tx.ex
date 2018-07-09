@@ -16,7 +16,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   @type id :: binary()
 

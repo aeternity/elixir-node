@@ -20,7 +20,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   @type t :: %Account{
           balance: non_neg_integer(),

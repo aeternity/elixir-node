@@ -12,7 +12,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -42,29 +42,25 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   # Callbacks
 
-  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
-    commitment_hash =
+    identified_commitment =
       case commitment do
         %Identifier{} ->
-          if validate_identifier(commitment) == true do
+          if Identifier.check_identity(commitment, :commitment == true) do
             commitment
           else
-            {:error,
-             "#{__MODULE__}: Invalid specified type: #{inspect(commitment.type)}, for given data: #{
-               inspect(commitment.value)
-             }"}
+            {:error, "#{__MODULE__}: Incorrect id: #{inspect(commitment)}"}
           end
 
-        non_identfied_commitment_hash ->
-          {:ok, identified_commitment_hash} =
-            Identifier.create_identity(non_identfied_commitment_hash, :commitment)
+        non_identified_commitment ->
+          {:ok, identified_commitment} =
+            Identifier.create_identity(non_identified_commitment, :commitment)
 
-          identified_commitment_hash
+          identified_commitment
       end
 
-    %NamePreClaimTx{commitment: commitment}
+    %NamePreClaimTx{commitment: identified_commitment}
   end
 
   @doc """
@@ -111,9 +107,10 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
     commitment_expires = block_height + Naming.get_pre_claim_ttl()
 
-    commitment = Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
+    commitment =
+      Naming.create_commitment(tx.commitment.value, sender, block_height, commitment_expires)
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment, commitment)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end

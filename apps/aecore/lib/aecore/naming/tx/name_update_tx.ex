@@ -12,7 +12,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   require Logger
 

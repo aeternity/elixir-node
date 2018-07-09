@@ -12,7 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   @type payload :: %{
           query_format: Oracle.json_schema(),

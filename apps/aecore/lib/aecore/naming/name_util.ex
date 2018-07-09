@@ -4,7 +4,7 @@ defmodule Aecore.Naming.NameUtil do
   """
 
   alias Aeutil.Hash
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   @split_name_symbol "."
 
@@ -38,10 +38,7 @@ defmodule Aecore.Naming.NameUtil do
     else
       {label, remainder} = partition_name(name)
 
-      {:ok, identified_namehash} =
-        Identifier.create_identity(Hash.hash(namehash(remainder) <> Hash.hash(label)), :name)
-
-      identified_namehash
+      Hash.hash(namehash(remainder) <> Hash.hash(label))
     end
   end
 

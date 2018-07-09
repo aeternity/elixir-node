@@ -10,7 +10,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aeutil.Identifier
+  alias Aecore.Chain.Identifier
 
   require Logger
 
