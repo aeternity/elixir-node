@@ -5,18 +5,14 @@ defmodule Aecore.Chain.Target do
 
   alias Aecore.Chain.Block
   alias Aeutil.Scientific
+  alias Aecore.Governance.GovernanceConstants
 
   use Bitwise
 
-  @number_of_blocks 10
   @highest_target_scientific 0x2100FFFF
-  @expected_mine_rate 30_000
 
-  @spec get_number_of_blocks :: non_neg_integer()
-  def get_number_of_blocks, do: @number_of_blocks
-
-  @spec get_default_target :: non_neg_integer()
-  def get_default_target, do: @highest_target_scientific
+  @spec highest_target_scientific :: non_neg_integer()
+  def highest_target_scientific, do: @highest_target_scientific
 
   @spec calculate_next_target(integer(), list(Block.t())) :: integer()
   def calculate_next_target(timestamp, previous_blocks) do
@@ -35,7 +31,10 @@ defmodule Aecore.Chain.Target do
     sum_k_div_targets = Enum.sum(k_div_targets)
     last_block = hd(sorted_blocks)
     total_time = calculate_distance(last_block, timestamp)
-    new_target_int = div(trunc(total_time * k), @expected_mine_rate * sum_k_div_targets)
+
+    new_target_int =
+      div(trunc(total_time * k), GovernanceConstants.expected_mine_rate_ms() * sum_k_div_targets)
+
     min(@highest_target_scientific, Scientific.integer_to_scientific(new_target_int))
   end
 
