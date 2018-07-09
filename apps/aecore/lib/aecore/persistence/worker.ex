@@ -19,7 +19,8 @@ defmodule Aecore.Persistence.Worker do
   Those names referes to the keys into patricia_families
   map in our state
   """
-  @type db_ref_name :: :proof | :txs | :naming | :accounts
+
+  @type db_ref_name :: :proof | :txs | :accounts | :oracles | :oracles_cache | :naming
 
   require Logger
 
@@ -165,6 +166,8 @@ defmodule Aecore.Persistence.Worker do
        "chain_state_family" => chain_state_family,
        "blocks_info_family" => blocks_info_family,
        "patricia_proof_family" => patricia_proof_family,
+       "patricia_oracles_family" => patricia_oracles_family,
+       "patricia_oracles_cache_family" => patricia_oracles_cache_family,
        "patricia_txs_family" => patricia_txs_family,
        "patricia_account_family" => patricia_accounts_family,
        "patricia_naming_family" => patricia_naming_family,
@@ -176,6 +179,8 @@ defmodule Aecore.Persistence.Worker do
         "chain_state_family",
         "blocks_info_family",
         "patricia_proof_family",
+        "patricia_oracles_family",
+        "patricia_oracles_cache_family",
         "patricia_txs_family",
         "patricia_account_family",
         "patricia_naming_family",
@@ -193,6 +198,8 @@ defmodule Aecore.Persistence.Worker do
        patricia_families: %{
          proof: patricia_proof_family,
          accounts: patricia_accounts_family,
+         oracles: patricia_oracles_family,
+         oracles_cache: patricia_oracles_cache_family,
          txs: patricia_txs_family,
          test_trie: db,
          naming: patricia_naming_family
