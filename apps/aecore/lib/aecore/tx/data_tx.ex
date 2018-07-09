@@ -703,10 +703,10 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameUpdateTx, [senders, nonce, hash, name_ttl, pointers, ttl, fee, ttl]) do
+  defp decode(NameUpdateTx, [senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
     payload = %NameUpdateTx{
-      client_ttl: Serialization.transform_item(ttl, :int),
-      expire_by: Serialization.transform_item(name_ttl, :int),
+      client_ttl: Serialization.transform_item(client_ttl, :int),
+      expire_by: Serialization.transform_item(expire_by, :int),
       hash: hash,
       pointers: pointers
     }
