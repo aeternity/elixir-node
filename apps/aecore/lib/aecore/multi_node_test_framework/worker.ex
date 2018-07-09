@@ -53,6 +53,16 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:compare_nodes_by_registered_oracles, node_name1, node_name2})
   end
 
+  def compare_nodes_by_oracle_interaction_objects(node_name1, node_name2) do
+    oracle_interaction_objects(node_name1)
+    oracle_interaction_objects(node_name2)
+
+    GenServer.call(
+      __MODULE__,
+      {:compare_nodes_by_oracle_interaction_objects, node_name1, node_name2}
+    )
+  end
+
   @doc """
     Gets the process ports info.
   """
@@ -514,6 +524,21 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     end
   end
 
+  def handle_call(
+        {:compare_nodes_by_oracle_interaction_objects, node_name1, node_name2},
+        _,
+        state
+      ) do
+    oracle_interaction_objects1 = state[node_name1].oracle_interaction_objects
+    oracle_interaction_objects2 = state[node_name2].oracle_interaction_objects
+
+    if oracle_interaction_objects1 == oracle_interaction_objects2 do
+      {:reply, :synced, state}
+    else
+      {:reply, :not_synced, state}
+    end
+  end
+
   def handle_call({:compare_nodes_by_top_block, node_name1, node_name2}, _, state) do
     block1 = state[node_name1].top_block
     block2 = state[node_name2].top_block
@@ -530,7 +555,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
       Map.has_key?(state, node_name) ->
         {:reply, :already_exists, state}
 
-      busy_port?(port) ->
+      busy_port?(port) || busy_port?(sync_port) ->
         {:reply, :busy_port, state}
 
       true ->
