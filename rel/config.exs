@@ -6,17 +6,10 @@ use Mix.Releases.Config,
     default_release: :default,
     default_environment: Mix.env()
 
-environment :dev do
-  set dev_mode: true
-  set include_erts: false
-  set cookie: :"secret"
-end
-
 environment :dev_build do
   set dev_mode: true
   set include_erts: true
-  set cookie: :"secret1"
-  set vm_args: "./rel/dev_build/vm.args"
+  set cookie: :"secret_dev_build"
 end
 
 environment :prod do
