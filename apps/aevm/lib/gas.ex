@@ -43,37 +43,11 @@ defmodule Gas do
 
   @spec dynamic_gas_cost(String.t(), map()) :: integer()
   def dynamic_gas_cost("CALL", state) do
-    gas_cost = GasCodes._GCALL()
-
-    gas_state = State.gas(state)
-    gas = Stack.peek(0, state)
-    value = Stack.peek(2, state)
-
-    gas_cost =
-      gas_cost +
-        if value !== 0 do
-          GasCodes._GCALLVALUE()
-        else
-          0
-        end
-
-    gas_cost +
-      if gas_state >= gas_cost do
-        gas_one_64_substracted = substract_one_64(gas_state - gas_cost)
-
-        if gas < gas_one_64_substracted do
-          gas
-        else
-          gas_one_64_substracted
-        end
-      else
-        gas
-      end
+    dynamic_call_cost(state)
   end
 
-  def dynamic_gas_cost("DELEGATECALL", _state) do
-    # TODO
-    0
+  def dynamic_gas_cost("DELEGATECALL", state) do
+    dynamic_call_cost(state)
   end
 
   def dynamic_gas_cost("CALLDATACOPY", state) do
@@ -134,6 +108,35 @@ defmodule Gas do
 
   def dynamic_gas_cost(_op_name, _state) do
     0
+  end
+
+  defp dynamic_call_cost(state) do
+    gas_cost = GasCodes._GCALL()
+
+    gas_state = State.gas(state)
+    gas = Stack.peek(0, state)
+    value = Stack.peek(2, state)
+
+    gas_cost =
+      gas_cost +
+        if value !== 0 do
+          GasCodes._GCALLVALUE()
+        else
+          0
+        end
+
+    gas_cost +
+      if gas_state >= gas_cost do
+        gas_one_64_substracted = substract_one_64(gas_state - gas_cost)
+
+        if gas < gas_one_64_substracted do
+          gas
+        else
+          gas_one_64_substracted
+        end
+      else
+        gas
+      end
   end
 
   defp log(value) when is_integer(value) do
