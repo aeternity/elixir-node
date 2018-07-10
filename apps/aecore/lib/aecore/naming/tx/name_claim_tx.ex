@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -97,12 +98,13 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     {:ok, identified_pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
     {:ok, identified_claim_hash} = Identifier.create_identity(claim_hash, :name)
+    # ++++++++++++++++++++++++++++++++++++++++++++++++ problem
     claim = Naming.create_claim(claim_hash, tx.name, data_tx.senders, block_height)
 
     updated_naming_chainstate =
       naming_state
       |> NamingStateTree.delete(identified_pre_claim_commitment.value)
-      |> NamingStateTree.put(claim_hash, claim)
+      |> NamingStateTree.put(identified_claim_hash.value, claim.value)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -142,7 +144,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner.value != sender ->
+      pre_claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)

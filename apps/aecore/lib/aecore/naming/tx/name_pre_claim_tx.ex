@@ -47,7 +47,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     identified_commitment =
       case commitment do
         %Identifier{} ->
-          if Identifier.check_identity(commitment, :commitment == true) do
+          if Identifier.check_identity(commitment, :commitment) == true do
             commitment
           else
             {:error, "#{__MODULE__}: Incorrect id: #{inspect(commitment)}"}
@@ -110,6 +110,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     commitment =
       Naming.create_commitment(tx.commitment.value, sender, block_height, commitment_expires)
 
+    IO.inspect(tx.commitment.value)
+    IO.inspect("$$$$$$$$$$$$$$$$$$")
+    IO.inspect(commitment)
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
     {:ok, {accounts, updated_naming_chainstate}}

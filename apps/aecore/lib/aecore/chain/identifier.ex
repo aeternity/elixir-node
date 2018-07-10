@@ -33,7 +33,7 @@ defmodule Aecore.Chain.Identifier do
     case Application.get_env(:aecore, :binary_ids)[type] do
       nil ->
         {:error,
-         "The following tag: #{inspect(type)} for given value: #{inspect(value)} doesn't exist"}
+         "#{__MODULE__}: The following tag: #{inspect(type)} for given value: #{inspect(value)} doesn't exist"}
 
       tag when is_integer(tag) ->
         {:ok, %Identifier{type: type, value: value}}
@@ -44,7 +44,7 @@ defmodule Aecore.Chain.Identifier do
   end
 
   def check_identity(%Identifier{} = id, type) do
-    case create_identity(id.value, :type) do
+    case create_identity(id.value, type) do
       {:ok, check_id} -> check_id == id
       {:error, msg} -> {:error, msg}
     end

@@ -62,11 +62,10 @@ defmodule Aecore.Naming.Naming do
   def create_commitment(hash, owner, created, expires) do
     # IO.inspect(owner, label: "Commitment owner from tx") #TODO check if it comes from one of naming TX's
     {:ok, identified_hash} = Identifier.create_identity(hash, :commitment)
-    {:ok, identified_owner} = Identifier.create_identity(owner, :account)
 
     %{
       :hash => identified_hash,
-      :owner => identified_owner,
+      :owner => owner,
       :created => created,
       :expires => expires
     }
@@ -174,14 +173,15 @@ defmodule Aecore.Naming.Naming do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :naming_state | :name_commitment) ::
           binary() | {:error, String.t()}
+  # 1st elem - hash
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
-    {:ok, encoded_hash} = Identifier.encode_data(naming_state.hash)
-    IO.inspect(naming_state.owner, label: "RLP ENCODING NAMING STATE OWNER")
+    # {:ok, encoded_hash} = Identifier.encode_data(naming_state.hash)
+    # IO.inspect(naming_state.owner, label: "RLP ENCODING NAMING STATE OWNER")
 
     list = [
       tag,
       version,
-      encoded_hash,
+      # encoded_hash,
       naming_state.owner,
       naming_state.expires,
       Atom.to_string(naming_state.status),
@@ -197,14 +197,13 @@ defmodule Aecore.Naming.Naming do
   end
 
   def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
-    {:ok, encoded_commitment_hash} = Identifier.encode_data(name_commitment.hash)
-    {:ok, encoded_commitment_owner} = Identifier.encode_data(name_commitment.owner)
+    # {:ok, encoded_commitment_hash} = Identifier.encode_data(name_commitment.hash)
 
     list = [
       tag,
       version,
-      encoded_commitment_hash,
-      encoded_commitment_owner,
+      # encoded_commitment_hash,
+      name_commitment.owner,
       name_commitment.created,
       name_commitment.expires
     ]
@@ -222,12 +221,12 @@ defmodule Aecore.Naming.Naming do
 
   @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
   def rlp_decode([hash, owner, expires, status, ttl, pointers], :name) do
-    {:ok, decoded_naming_hash} = Identifier.decode_data(hash)
-    {:ok, identified_naming_hash} = Identifier.create_identity(decoded_naming_hash, :name)
+    # {:ok, decoded_naming_hash} = Identifier.decode_data(hash)
+    # {:ok, identified_naming_hash} = Identifier.create_identity(decoded_naming_hash, :name)
 
     {:ok,
      %{
-       hash: identified_naming_hash,
+       # hash: identified_naming_hash,
        owner: owner,
        expires: Serialization.transform_item(expires, :int),
        status: String.to_atom(status),
@@ -236,20 +235,10 @@ defmodule Aecore.Naming.Naming do
      }}
   end
 
-  def rlp_decode([hash, owner, created, expires], :name_commitment) do
-    {:ok, decoded_commitment_hash} = Identifier.decode_data(hash)
-    {:ok, decoded_commitment_owner} = Identifier.decode_data(owner)
-
-    {:ok, identified_commitment_hash} =
-      Identifier.create_identity(decoded_commitment_hash, :commitment)
-
-    {:ok, identified_commitment_owner} =
-      Identifier.create_identity(decoded_commitment_owner, :commitment)
-
+  def rlp_decode([owner, created, expires], :name_commitment) do
     {:ok,
      %{
-       hash: identified_commitment_hash,
-       owner: identified_commitment_owner,
+       owner: owner,
        created: Serialization.transform_item(created, :int),
        expires: Serialization.transform_item(expires, :int)
      }}

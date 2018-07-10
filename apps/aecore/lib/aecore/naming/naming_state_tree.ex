@@ -5,6 +5,7 @@ defmodule Aecore.Naming.NamingStateTree do
   alias Aecore.Naming.Naming
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   @type namings_state() :: Trie.t()
 
@@ -24,7 +25,29 @@ defmodule Aecore.Naming.NamingStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, value} ->
         {:ok, naming} = deserialize(value)
-        naming
+
+        identified_hash =
+          case naming do
+            %{
+              owner: _owner,
+              created: _created,
+              expires: _expires
+            } ->
+              {:ok, identified_commitment_hash} = Identifier.create_identity(key, :commitment)
+              identified_commitment_hash
+
+            %{
+              owner: _owner,
+              expires: _expires,
+              status: _status,
+              ttl: _ttl,
+              pointers: _pointers
+            } ->
+              {:ok, identified_name_hash} = Identifier.create_identity(key, :name)
+              identified_name_hash
+          end
+
+        Map.put(naming, :id, identified_hash)
 
       _ ->
         :none
@@ -38,7 +61,6 @@ defmodule Aecore.Naming.NamingStateTree do
 
   defp serialize(
          %{
-           hash: _hash,
            owner: _owner,
            created: _created,
            expires: _expires
@@ -50,7 +72,6 @@ defmodule Aecore.Naming.NamingStateTree do
 
   defp serialize(
          %{
-           hash: _hash,
            owner: _owner,
            expires: _expires,
            status: _status,

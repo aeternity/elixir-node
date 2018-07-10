@@ -59,7 +59,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     identified_receiver =
       case receiver do
         %Identifier{} ->
-          if Identifier.check_identity(receiver, :account == true) do
+          if Identifier.check_identity(receiver, :account) == true do
             receiver
           else
             {:error, "#{__MODULE__}: Incorrect id: #{inspect(receiver)}"}
