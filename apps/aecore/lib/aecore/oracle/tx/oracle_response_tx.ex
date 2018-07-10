@@ -95,7 +95,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         has_response: true
     }
 
-    updated_oracle_state = OracleStateTree.insert_query(oracles, updated_interaction_objects)
+    updated_oracle_state = OracleStateTree.enter_query(oracles, updated_interaction_objects)
 
     {:ok, {updated_accounts_state, updated_oracle_state}}
   end
