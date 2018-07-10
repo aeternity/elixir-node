@@ -219,7 +219,7 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == :none do
+        if tx.type.get_chain_state_name() == :accounts do
           %{chainstate | accounts: new_accounts_state}
         else
           %{chainstate | accounts: new_accounts_state}
@@ -533,6 +533,10 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
+  end
+
   @spec rlp_decode(non_neg_integer(), list()) :: tx_types() | {:error, String.t()}
   def rlp_decode(tag, values) when is_list(values) do
     decode(tag, values)
@@ -699,10 +703,10 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameUpdateTx, [senders, nonce, hash, name_ttl, pointers, ttl, fee, ttl]) do
+  defp decode(NameUpdateTx, [senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
     payload = %NameUpdateTx{
-      client_ttl: Serialization.transform_item(ttl, :int),
-      expire_by: Serialization.transform_item(name_ttl, :int),
+      client_ttl: Serialization.transform_item(client_ttl, :int),
+      expire_by: Serialization.transform_item(expire_by, :int),
       hash: hash,
       pointers: pointers
     }

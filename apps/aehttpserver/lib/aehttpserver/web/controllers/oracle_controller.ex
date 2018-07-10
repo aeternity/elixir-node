@@ -3,9 +3,7 @@ defmodule Aehttpserver.Web.OracleController do
 
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
-  alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Bits
-  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -23,17 +21,19 @@ defmodule Aehttpserver.Web.OracleController do
   end
 
   def registered_oracles(conn, _params) do
-    registered_oracles = Chain.registered_oracles()
+    registered_oracles = Oracle.get_registered_oracles()
 
     serialized_oracle_list =
       if Enum.empty?(registered_oracles) do
         %{}
       else
-        Enum.reduce(Chain.registered_oracles(), %{}, fn {address, %{tx: tx}}, acc ->
+        Enum.reduce(registered_oracles, %{}, fn {address,
+                                                 %{owner: owner} = registered_oracle_state},
+                                                acc ->
           Map.put(
             acc,
             Account.base58c_encode(address),
-            SignedTx.serialize(tx)
+            Map.put(registered_oracle_state, :owner, Account.base58c_encode(owner))
           )
         end)
       end

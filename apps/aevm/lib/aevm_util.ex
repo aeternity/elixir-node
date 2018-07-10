@@ -11,6 +11,8 @@ defmodule AevmUtil do
 
   @call_depth_limit 1024
 
+  defguardp is_non_neg_integer(value) when is_integer(value) and value >= 0
+
   @spec default_opts :: map()
   def default_opts do
     %{
@@ -42,12 +44,12 @@ defmodule AevmUtil do
     result &&& AevmConst.mask256()
   end
 
-  def pow(op1, op2) when is_integer(op1) and is_integer(op2) and op2 >= 0, do: pow(1, op1, op2)
+  def pow(op1, op2) when is_non_neg_integer(op1) and is_non_neg_integer(op2), do: pow(1, op1, op2)
 
   def pow(n, _, 0), do: n
   def pow(n, op1, 1), do: op1 * n
 
-  @spec pow(integer(), integer(), integer()) :: integer()
+  @spec pow(integer(), non_neg_integer(), non_neg_integer()) :: non_neg_integer()
   def pow(n, op1, op2) do
     square = op1 * op1 &&& AevmConst.mask256()
     exp = op2 >>> 1
