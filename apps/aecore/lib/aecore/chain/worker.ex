@@ -8,7 +8,6 @@ defmodule Aecore.Chain.Worker do
 
   alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
@@ -271,16 +270,6 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec registered_oracles() :: Oracle.registered_oracles()
-  def registered_oracles do
-    GenServer.call(__MODULE__, :registered_oracles)
-  end
-
-  @spec oracle_interaction_objects() :: Oracle.interaction_objects()
-  def oracle_interaction_objects do
-    GenServer.call(__MODULE__, :oracle_interaction_objects)
-  end
-
   @spec chain_state() :: Chainstate.t()
   def chain_state do
     top_block_chain_state()
@@ -466,24 +455,6 @@ defmodule Aecore.Chain.Worker do
 
   def handle_call(:txs_index, _from, %{txs_index: txs_index} = state) do
     {:reply, txs_index, state}
-  end
-
-  def handle_call(
-        :registered_oracles,
-        _from,
-        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
-      ) do
-    registered_oracles = blocks_data_map[top_hash].chain_state.oracles.registered_oracles
-    {:reply, registered_oracles, state}
-  end
-
-  def handle_call(
-        :oracle_interaction_objects,
-        _from,
-        %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
-      ) do
-    interaction_objects = blocks_data_map[top_hash].chain_state.oracles.interaction_objects
-    {:reply, interaction_objects, state}
   end
 
   def handle_call(:blocks_data_map, _from, %{blocks_data_map: blocks_data_map} = state) do
@@ -698,8 +669,6 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  defp build_chain_state, do: Chainstate.init()
-
   def transfrom_chainstate(strategy, chainstate) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
   end
@@ -712,25 +681,34 @@ defmodule Aecore.Chain.Worker do
       {key = :accounts, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
 
-      # TODO
-      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+      {_key = :oracles,
+       %{oracle_tree: oracle_root_hash, oracle_cache_tree: oracle_cache_root_hash}},
+      acc_state ->
+        oracle_tree = %{:oracle_tree => PatriciaMerkleTree.new(:oracles, oracle_root_hash)}
+
+        oracle_cache_tree = %{
+          :oracle_cache_tree => PatriciaMerkleTree.new(:oracles_cache, oracle_cache_root_hash)
+        }
+
+        put_in(acc_state, [:oracles], Map.merge(oracle_tree, oracle_cache_tree))
     end
   end
 
   defp get_persist_strategy(:from_chainstate) do
     fn
-      {key = :naming, value}, acc_state ->
-        Map.put(acc_state, key, value.root_hash)
-
       {key = :accounts, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
 
-      # TODO
-      # This workaround was made until the Oracles were converted to PatriciaMerkleTree #GH-349
-      {key, value}, acc_state ->
-        Map.put(acc_state, key, value)
+      {key = :naming, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :oracles, value}, acc_state ->
+        Map.put(acc_state, key, %{
+          oracle_tree: value.oracle_tree.root_hash,
+          oracle_cache_tree: value.oracle_cache_tree.root_hash
+        })
     end
   end
+
+  defp build_chain_state, do: Chainstate.init()
 end

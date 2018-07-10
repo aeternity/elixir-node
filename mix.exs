@@ -45,7 +45,7 @@ defmodule EpochElixir.Mixfile do
   # and cannot be accessed from applications inside the apps folder
   defp deps do
     [
-      {:credo, "~> 0.8.0", only: [:dev, :test], runtime: false},
+      {:credo, "~> 0.9.2", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
@@ -61,6 +61,8 @@ defmodule EpochElixir.Mixfile do
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
       {:temp, "~> 0.4"},
+      {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
+      {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:ranch,
