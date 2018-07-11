@@ -1,4 +1,4 @@
-defmodule Aecore.MultiNodeTestFramework.Worker do
+defmodule Aetestframework.MultiNodeTestFramework.Worker do
   @moduledoc """
   Module for multi node sync test
   """
@@ -20,9 +20,9 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:get_state})
   end
 
-  @spec new_node(String.t(), non_neg_integer(), non_neg_integer()) :: :already_exists | Map.t()
-  def new_node(node_name, port, sync_port) do
-    GenServer.call(__MODULE__, {:new_node, node_name, port, sync_port}, 20000)
+  @spec new_node(String.t(), non_neg_integer()) :: :already_exists | Map.t()
+  def new_node(node_name, iex_num) do
+    GenServer.call(__MODULE__, {:new_node, node_name, iex_num}, 20_000)
   end
 
   @spec sync_two_nodes(String.t(), String.t()) :: :ok
@@ -94,7 +94,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   end
 
   def delete_all_nodes do
-    GenServer.call(__MODULE__, {:delete_all_nodes}, 10000)
+    GenServer.call(__MODULE__, {:delete_all_nodes}, 10_000)
   end
 
   defp update_registered_oracles_state(node_name) do
@@ -138,8 +138,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:ok, json} = Poison.encode(oracles_encoded)")
 
     # writing it to the file
-    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
-    send_command(node_name, "File.write(path, json)")
+    send_command(node_name, "File.write(\"./result.json\", json)")
 
     # updating the state of the oracle interaction objects after the one second
     :timer.sleep(1000)
@@ -148,7 +147,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   @spec registered_oracles(String.t()) :: :ok | :unknown_node
   def registered_oracles(node_name) do
-    send_command(node_name, "registered_oracles = Chain.registered_oracles()")
+    send_command(node_name, "oracle_tree = Chain.chain_state().oracles.oracle_tree")
 
     # converting the keys which are binary to string
     send_command(
@@ -168,8 +167,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:ok, json} = Poison.encode(oracles_encoded)")
 
     # writing it to the file
-    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
-    send_command(node_name, "File.write(path, json)")
+    send_command(node_name, "File.write(\"./result.json\", json)")
 
     # updating the state of the oracle interaction objects after the one second
     :timer.sleep(1000)
@@ -197,12 +195,17 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def query_oracle(node_name) do
     send_command(
       node_name,
-      "oracle = Chain.registered_oracles() |> Map.keys() |> Enum.at(0)"
+      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
     )
 
     send_command(
       node_name,
-      "Oracle.query(oracle, %{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
+      "oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()"
+    )
+
+    send_command(
+      node_name,
+      "Oracle.query(oracle_address, %{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
     )
   end
 
@@ -246,8 +249,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     )
 
     send_command(node_name, "{:ok, json} = Poison.encode(serialized_block)")
-    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
-    send_command(node_name, "File.write(path, json)")
+    send_command(node_name, "File.write(\"./result.json\", json)")
     :timer.sleep(2000)
     update_top_block_state(node_name)
   end
@@ -356,8 +358,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:ok, json} = Poison.encode(peers_encoded)")
 
     # writing the json to the file
-    send_command(node_name, "path = System.cwd() <> \"/result.json\"")
-    send_command(node_name, "File.write(path, json)")
+    send_command(node_name, "File.write(\"./result.json\", json)")
 
     # updating peers map in the state after 1 second
     :timer.sleep(1000)
@@ -370,15 +371,15 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
 
   defp update_data(fun, state, node_name, key) do
     with true <- Map.has_key?(state, node_name),
-         path <- state[node_name].path <> "/result.json",
-         {:ok, data} <- File.read(path),
+         file <- "./result.json",
+         {:ok, data} <- File.read(file),
          {:ok, decoded_data} <- Poison.decode(data) do
       # decoding all the keys and the data to it's initial state
       decoded_data = fun.(decoded_data)
 
       # updating the state and removing the json file
       new_state = put_in(state[node_name][key], decoded_data)
-      File.rm(path)
+      File.rm(file)
       {:reply, :ok, new_state}
     else
       false -> {:reply, :no_such_node, state}
@@ -477,14 +478,10 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
   def handle_call({:delete_all_nodes}, _, state) do
     # killing all the processes and closing all of the ports of the nodes
     Enum.each(state, fn {_, val} ->
-      {:os_pid, pid} = Port.info(val.process_port, :os_pid)
+      {:os_pid, _} = Port.info(val.process_port, :os_pid)
       Port.close(val.process_port)
-      System.cmd("kill", ["#{pid}"])
-
-      # deleting nodes folders
-      val.path
-      |> String.replace("elixir-node", "")
-      |> File.rm_rf()
+      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
+      System.cmd("make", ["killall"], cd: path)
     end)
 
     {:reply, :ok, %{}}
@@ -550,53 +547,24 @@ defmodule Aecore.MultiNodeTestFramework.Worker do
     end
   end
 
-  def handle_call({:new_node, node_name, port, sync_port}, _, state) do
+  def handle_call({:new_node, node_name, iex_num}, _, state) do
     cond do
       Map.has_key?(state, node_name) ->
         {:reply, :already_exists, state}
 
-      busy_port?(port) || busy_port?(sync_port) ->
+      busy_port?("300#{iex_num}") || busy_port?("400#{iex_num}") ->
         {:reply, :busy_port, state}
 
       true ->
-        # creates the temporary path
-        {:ok, tmp_path} = Temp.mkdir(node_name)
-
-        # Removes additional folders in path (always to be root folder)
-        path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-
-        # Copies the project to the new folder
-        System.cmd("cp", ["-R", path, tmp_path])
-        tmp_path = tmp_path <> "/elixir-node"
-
-        File.rm_rf(tmp_path <> "/apps/aecore/priv/peerkeys")
-        # Changing the port of the new elixir-node
-        System.cmd("sed", [
-          "-i",
-          "s/4000/#{port}/",
-          Path.join(tmp_path, "apps/aehttpserver/config/dev.exs")
-        ])
-
-        System.cmd("sed", [
-          "-i",
-          "s/3015/#{sync_port}/",
-          Path.join(tmp_path, "apps/aecore/config/dev.exs")
-        ])
-
-        System.cmd("sed", [
-          "-i",
-          "s/4000/#{port}/",
-          Path.join(tmp_path, "apps/aehttpserver/config/test.exs")
-        ])
-
         # Running the new elixir-node using Port
-        process_port = Port.open({:spawn, "iex -S mix phx.server"}, [:binary, cd: tmp_path])
-        :timer.sleep(4000)
+        path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
+        process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, cd: path])
+        port = String.to_integer("400#{iex_num}")
+        sync_port = String.to_integer("300#{iex_num}")
 
         new_state =
           Map.put(state, node_name, %{
             process_port: process_port,
-            path: tmp_path,
             port: port,
             sync_port: sync_port,
             top_block: nil,

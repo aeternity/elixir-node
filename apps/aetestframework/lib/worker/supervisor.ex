@@ -1,4 +1,4 @@
-defmodule Aecore.MultiNodeTestFramework.Worker.Supervisor do
+defmodule Aetestframework.MultiNodeTestFramework.Worker.Supervisor do
   @moduledoc """
   Supervisor responsible for all of the worker modules in his folder
   """
@@ -11,7 +11,7 @@ defmodule Aecore.MultiNodeTestFramework.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      Aecore.MultiNodeTestFramework.Worker
+      Aetestframework.MultiNodeTestFramework.Worker
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
