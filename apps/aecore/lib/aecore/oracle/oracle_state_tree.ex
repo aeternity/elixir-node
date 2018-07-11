@@ -77,15 +77,14 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp filter_expired({expires, data}, expires, cache_key_encoded, trees) do
-    {updated_oracles_state, updated_accounts_state} = delete_expired(data, trees)
+    {new_oracles_state, new_accounts_state} = delete_expired(data, trees)
 
     {
-      Map.put(
-        updated_oracles_state,
-        :oracle_cache_tree,
-        delete(updated_oracles_state.oracle_cache_tree, cache_key_encoded)
-      ),
-      updated_accounts_state
+      %{
+        new_oracles_state
+        | oracle_cache_tree: delete(new_oracles_state.oracle_cache_tree, cache_key_encoded)
+      },
+      new_accounts_state
     }
   end
 
@@ -93,7 +92,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp delete_expired({:oracle, oracle_id}, {oracles_state, accounts_state}) do
     {
-      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, oracle_id)),
+      %{oracles_state | oracle_tree: delete(oracles_state.oracle_tree, oracle_id)},
       accounts_state
     }
   end
@@ -102,15 +101,10 @@ defmodule Aecore.Oracle.OracleStateTree do
     query_id = oracle_id <> id
     query = get_query(oracles_state, query_id)
 
-    new_accounts_state =
-      if query == :none do
-        accounts_state
-      else
-        Oracle.refund_sender(query, accounts_state)
-      end
+    new_accounts_state = Oracle.refund_sender(query, accounts_state)
 
     {
-      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, query_id)),
+      %{oracles_state | oracle_tree: delete(oracles_state.oracle_tree, query_id)},
       new_accounts_state
     }
   end
@@ -129,7 +123,11 @@ defmodule Aecore.Oracle.OracleStateTree do
           enter(tree.oracle_tree, id, serialized)
       end
 
-    new_oracle_cache_tree = cache_push(tree.oracle_cache_tree, {:oracle, id}, expires)
+    new_oracle_cache_tree =
+      tree
+      |> init_pop_stale_cache()
+      |> cache_push({:oracle, id}, expires)
+
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
 
@@ -156,7 +154,11 @@ defmodule Aecore.Oracle.OracleStateTree do
           enter(tree.oracle_tree, tree_id, serialized)
       end
 
-    new_oracle_cache_tree = cache_push(tree.oracle_cache_tree, {:query, oracle_id, id}, expires)
+    new_oracle_cache_tree =
+      tree
+      |> init_pop_stale_cache()
+      |> cache_push({:query, oracle_id, id}, expires)
+
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
 
@@ -196,5 +198,40 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp cache_push(oracle_cache_tree, key, expires) do
     encoded = Serialization.cache_key_encode(key, expires)
     enter(oracle_cache_tree, encoded, @dummy_val)
+  end
+
+  defp init_pop_stale_cache(oracles_state) do
+    %{oracle_cache_tree: cache_tree} =
+      oracles_state.oracle_cache_tree
+      |> PatriciaMerkleTree.all_keys()
+      |> Enum.reduce(oracles_state, fn key, new_state ->
+        new_cache_tree =
+          key
+          |> Serialization.cache_key_decode()
+          |> pop_stale_cache(key, new_state)
+
+        %{new_state | oracle_cache_tree: new_cache_tree}
+      end)
+
+    cache_tree
+  end
+
+  defp pop_stale_cache({exp, {:oracle, id}}, stale_cache_key, oracles_state) do
+    oracel = get(oracles_state.oracle_tree, id)
+
+    if oracel.expires > exp do
+      delete(oracles_state.oracle_cache_tree, stale_cache_key)
+    else
+      oracles_state.oracle_cache_tree
+    end
+  end
+
+  defp pop_stale_cache({_exp, {:query, oracle_id, id}}, stale_cache_key, oracles_state) do
+    query_id = oracle_id <> id
+
+    case get(oracles_state.oracle_tree, query_id) do
+      :none -> delete(oracles_state.oracle_cache_tree, stale_cache_key)
+      _query -> oracles_state.oracle_cache_tree
+    end
   end
 end
