@@ -84,7 +84,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def preprocess_check(
         accounts,
         oracles,
-        _block_height,
+        block_height,
         tx,
         data_tx
       ) do
@@ -97,6 +97,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
+
+      OracleStateTree.get_oracle(oracles, sender).expires < block_height ->
+        {:error, "#{__MODULE__}: The oracle #{inspect(sender)} expired or doesn't exist!"}
 
       fee < calculate_minimum_fee(tx.ttl) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
