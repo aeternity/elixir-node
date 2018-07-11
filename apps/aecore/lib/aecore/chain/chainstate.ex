@@ -5,27 +5,23 @@ defmodule Aecore.Chain.Chainstate do
   """
 
   alias Aecore.Tx.SignedTx
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
   @type accounts :: AccountStateTree.accounts_state()
-  @type oracles :: Oracle.t()
+  @type oracles :: OracleStateTree.oracles_state()
   @type naming :: NamingStateTree.namings_state()
   @type chain_state_types :: :accounts | :oracles | :naming | :none
 
-  @type t :: %Chainstate{
-          accounts: accounts,
-          oracles: oracles,
-          naming: naming
-        }
+  @type t :: %Chainstate{accounts: accounts(), oracles: oracles(), naming: naming()}
 
   defstruct [
     :accounts,
@@ -37,7 +33,7 @@ defmodule Aecore.Chain.Chainstate do
   def init do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
-      :oracles => %{registered_oracles: %{}, interaction_objects: %{}},
+      :oracles => OracleStateTree.init_empty(),
       :naming => NamingStateTree.init_empty()
     }
   end
@@ -65,10 +61,7 @@ defmodule Aecore.Chain.Chainstate do
 
     case updated_chainstate do
       %Chainstate{} = new_chainstate ->
-        {:ok,
-         new_chainstate
-         |> Oracle.remove_expired_oracles(block_height)
-         |> Oracle.remove_expired_interaction_objects(block_height)}
+        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
 
       error ->
         {:error, error}
@@ -77,7 +70,7 @@ defmodule Aecore.Chain.Chainstate do
 
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::256>> ->
+      <<0::264>> ->
         chainstate
 
       miner_pubkey ->
@@ -86,7 +79,7 @@ defmodule Aecore.Chain.Chainstate do
             Account.apply_transfer!(
               acc,
               block_height,
-              Miner.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
+              GovernanceConstants.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
             )
           end)
 

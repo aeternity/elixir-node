@@ -11,7 +11,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Account.Account
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
@@ -134,7 +134,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
-        %{interaction_objects: interaction_objects} = oracle_state,
+        oracles,
         block_height,
         %OracleQueryTx{} = tx,
         data_tx
@@ -148,27 +148,21 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    interaction_object_id = OracleQueryTx.id(sender, nonce, tx.oracle_address)
-
-    updated_interaction_objects =
-      Map.put(interaction_objects, interaction_object_id, %{
-        sender_address: data_tx.senders,
-        sender_nonce: nonce,
-        oracle_address: tx.oracle_address,
-        query: tx.query_data,
-        has_response: false,
-        response: :undefined,
-        expires: Oracle.calculate_absolute_ttl(tx.query_ttl, block_height),
-        response_ttl: tx.response_ttl.ttl,
-        fee: tx.query_fee
-      })
-
-    updated_oracle_state = %{
-      oracle_state
-      | interaction_objects: updated_interaction_objects
+    query = %{
+      sender_address: sender,
+      sender_nonce: nonce,
+      oracle_address: tx.oracle_address,
+      query: tx.query_data,
+      has_response: false,
+      response: :undefined,
+      expires: Oracle.calculate_absolute_ttl(tx.query_ttl, block_height),
+      response_ttl: tx.response_ttl.ttl,
+      fee: tx.query_fee
     }
 
-    {:ok, {updated_accounts_state, updated_oracle_state}}
+    new_oracle_tree = OracleStateTree.insert_query(oracles, query)
+
+    {:ok, {updated_accounts_state, new_oracle_tree}}
   end
 
   @spec preprocess_check(
@@ -180,7 +174,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         block_height,
         tx,
         data_tx
@@ -195,17 +189,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      !Map.has_key?(registered_oracles, tx.oracle_address) ->
+      !OracleStateTree.exists_oracle?(oracles, tx.oracle_address) ->
         {:error, "#{__MODULE__}: No oracle registered with the address:
          #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
-        registered_oracles[tx.oracle_address].query_format,
+        OracleStateTree.get_oracle(oracles, tx.oracle_address).query_format,
         tx.query_data
       ) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
-      tx.query_fee < registered_oracles[tx.oracle_address].query_fee ->
+      tx.query_fee < OracleStateTree.get_oracle(oracles, tx.oracle_address).query_fee ->
         {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
          lower than the one required by the oracle"}
 
@@ -230,12 +224,18 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec get_oracle_query_fee(binary()) :: non_neg_integer()
   def get_oracle_query_fee(oracle_address) do
-    Chain.registered_oracles()[oracle_address].tx.query_fee
+    Chain.chain_state().oracles
+    |> OracleStateTree.get_oracle(oracle_address)
+    |> Map.get(:query_fee)
   end
 
   @spec is_minimum_fee_met?(t(), non_neg_integer(), non_neg_integer() | nil) :: boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
-    tx_query_fee_is_met = tx.query_fee >= Chain.registered_oracles()[tx.oracle_address].query_fee
+    tx_query_fee_is_met =
+      tx.query_fee >=
+        Chain.chain_state().oracles
+        |> OracleStateTree.get_oracle(tx.oracle_address)
+        |> Map.get(:query_fee)
 
     tx_fee_is_met =
       case tx.query_ttl do

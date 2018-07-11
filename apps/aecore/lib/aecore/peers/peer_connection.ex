@@ -11,6 +11,8 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
+  alias Aecore.Peers.Sync
+  alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
@@ -44,7 +46,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   @peer_share_count 32
 
-  @first_ping_timeout 30000
+  @first_ping_timeout 30_000
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
@@ -145,7 +147,7 @@ defmodule Aecore.Peers.PeerConnection do
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
   def send_new_tx(tx, pid) when is_pid(pid) do
     @tx
-    |> pack_msg(%{tx: tx})
+    |> pack_msg(tx)
     |> send_msg_no_response(pid)
   end
 
@@ -226,19 +228,21 @@ defmodule Aecore.Peers.PeerConnection do
         :inet.setopts(socket, active: true)
 
         case :enoise.connect(socket, noise_opts) do
-          {:ok, noise_socket, _} ->
+          {:ok, noise_socket, _status} ->
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
             :ok = do_ping(new_state)
             Peers.add_peer(peer)
             {:noreply, new_state}
 
-          {:error, _reason} ->
+          {:error, reason} ->
+            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end
@@ -291,6 +295,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def handle_info({:tcp_closed, _}, state) do
     Logger.info("Connection interrupted by peer - #{inspect(state)}")
+
     Peers.remove_peer(state.r_pubkey)
     {:stop, :normal, state}
   end
@@ -402,12 +407,12 @@ defmodule Aecore.Peers.PeerConnection do
           # don't sync - same top block
           :ok
 
-        local_top_difficulty() > difficulty ->
+        Chain.total_difficulty() > difficulty ->
           # don't sync - our difficulty is higher
           :ok
 
         true ->
-          # start sync
+          Sync.start_sync(conn_pid, best_hash)
           :ok
       end
 
@@ -417,8 +422,8 @@ defmodule Aecore.Peers.PeerConnection do
         end
       end)
 
-      {:ok, %{txs: txs}} = get_mempool(conn_pid)
-      Enum.each(txs, fn tx -> Pool.add_transaction(tx) end)
+      Sync.fetch_mempool(conn_pid)
+      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -452,7 +457,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_hash(payload, pid) do
     hash = payload.hash
-    result = Chain.get_header(hash)
+    result = Chain.get_header_by_hash(hash)
     send_response(result, @header, pid)
   end
 
@@ -471,10 +476,11 @@ defmodule Aecore.Peers.PeerConnection do
         {:ok, headers} ->
           header_hashes =
             Enum.map(headers, fn header ->
+              {header.height, BlockValidation.block_header_hash(header)}
               <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
             end)
 
-          {:ok, header_hashes}
+          {:ok, Enum.reverse(header_hashes)}
 
         {:error, reason} ->
           {:error, reason}
@@ -505,11 +511,6 @@ defmodule Aecore.Peers.PeerConnection do
     Pool.add_transaction(tx)
   end
 
-  defp local_top_difficulty do
-    top_block = Chain.top_block()
-    top_block.header.target
-  end
-
   defp local_ping_object do
     peers = Peers.get_random(@peer_share_count)
 
@@ -527,7 +528,7 @@ defmodule Aecore.Peers.PeerConnection do
       share: 32,
       genesis_hash: Block.genesis_hash(),
       best_hash: Chain.top_block_hash(),
-      difficulty: local_top_difficulty(),
+      difficulty: Chain.total_difficulty(),
       peers: peers,
       port: Supervisor.sync_port()
     }
@@ -592,7 +593,7 @@ defmodule Aecore.Peers.PeerConnection do
       port,
       share,
       genesis_hash,
-      difficulty,
+      :erlang.float_to_binary(difficulty),
       best_hash,
       Peers.rlp_encode_peers(peers)
     ])
@@ -697,7 +698,7 @@ defmodule Aecore.Peers.PeerConnection do
       port: :binary.decode_unsigned(port),
       share: :binary.decode_unsigned(share),
       genesis_hash: genesis_hash,
-      difficulty: :binary.decode_unsigned(difficulty),
+      difficulty: :erlang.binary_to_float(difficulty),
       best_hash: best_hash,
       peers: Peers.rlp_decode_peers(peers)
     }

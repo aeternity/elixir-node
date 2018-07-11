@@ -13,6 +13,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -100,7 +101,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      client_ttl > Naming.get_client_ttl_limit() ->
+      client_ttl > GovernanceConstants.client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
 
       byte_size(identified_hash.value) != Hash.get_hash_bytes_size() ->

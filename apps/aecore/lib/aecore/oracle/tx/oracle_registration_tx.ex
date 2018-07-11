@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
@@ -106,30 +106,26 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
-        %{registered_oracles: registered_oracles} = oracle_state,
+        oracles,
         block_height,
         %OracleRegistrationTx{} = tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, identified_owner} = Identifier.create_identity(sender, :oracle)
-
-    updated_registered_oracles =
-      Map.put_new(registered_oracles, identified_owner, %{
-        owner: identified_owner,
-        query_format: tx.query_format,
-        response_format: tx.response_format,
-        query_fee: tx.query_fee,
-        expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
-      })
-
-    updated_oracle_state = %{
-      oracle_state
-      | registered_oracles: updated_registered_oracles
+    oracle = %{
+      owner: sender,
+      query_format: tx.query_format,
+      response_format: tx.response_format,
+      query_fee: tx.query_fee,
+      expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
     }
 
-    {:ok, {accounts, updated_oracle_state}}
+    {:ok,
+     {
+       accounts,
+       OracleStateTree.insert_oracle(oracles, oracle)
+     }}
   end
 
   @spec preprocess_check(
@@ -141,7 +137,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles},
+        oracles,
         block_height,
         tx,
         data_tx
@@ -158,7 +154,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      Map.has_key?(registered_oracles, identified_oracle_owner) ->
+      OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
       !is_minimum_fee_met?(tx, fee, block_height) ->

@@ -9,15 +9,8 @@ defmodule Aecore.Naming.Naming do
   alias Aeutil.Hash
   alias Aeutil.Bits
   alias Aeutil.Serialization
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Chain.Identifier
-
-  @pre_claim_ttl 300
-
-  @revoke_expiration_ttl 2016
-
-  @client_ttl_limit 86400
-
-  @claim_expire_by_relative_limit 50000
 
   @name_salt_byte_size 32
 
@@ -103,9 +96,9 @@ defmodule Aecore.Naming.Naming do
       :hash => hash,
       :name => name,
       :owner => owner,
-      :expires => height + @claim_expire_by_relative_limit,
+      :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
       :status => :claimed,
-      :ttl => @client_ttl_limit,
+      :ttl => GovernanceConstants.client_ttl_limit(),
       :pointers => []
     }
   end
@@ -122,20 +115,8 @@ defmodule Aecore.Naming.Naming do
     end
   end
 
-  @spec get_claim_expire_by_relative_limit() :: non_neg_integer()
-  def get_claim_expire_by_relative_limit, do: @claim_expire_by_relative_limit
-
-  @spec get_client_ttl_limit() :: non_neg_integer()
-  def get_client_ttl_limit, do: @client_ttl_limit
-
   @spec get_name_salt_byte_size() :: non_neg_integer()
   def get_name_salt_byte_size, do: @name_salt_byte_size
-
-  @spec get_revoke_expiration_ttl() :: non_neg_integer()
-  def get_revoke_expiration_ttl, do: @revoke_expiration_ttl
-
-  @spec get_pre_claim_ttl() :: non_neg_integer()
-  def get_pre_claim_ttl, do: @pre_claim_ttl
 
   @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
   def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do

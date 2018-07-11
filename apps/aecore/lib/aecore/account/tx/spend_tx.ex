@@ -51,8 +51,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @spec get_chain_state_name() :: nil
-  def get_chain_state_name, do: nil
+  @spec get_chain_state_name() :: atom()
+  def get_chain_state_name, do: :accounts
 
   @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do

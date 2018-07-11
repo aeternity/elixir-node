@@ -21,6 +21,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -209,8 +210,8 @@ defmodule Aecore.Account.Account do
       {:ok, namehash} ->
         payload = %{
           hash: namehash,
-          expire_by: Chain.top_height() + Naming.get_claim_expire_by_relative_limit(),
-          client_ttl: 86400,
+          expire_by: Chain.top_height() + GovernanceConstants.claim_expire_by_relative_limit(),
+          client_ttl: 86_400,
           pointers: pointers
         }
 
@@ -363,19 +364,17 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
   end
 
-  @spec rlp_decode(list(), Wallet.pubkey()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([nonce, balance], pubkey) do
-    {:ok, id} = Identifier.create_identity(pubkey, :account)
-
+  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def rlp_decode([nonce, balance]) do
     {:ok,
      %Account{
-       id: id,
+       id: %Identifier{type: :account},
        balance: Serialization.transform_item(balance, :int),
        nonce: Serialization.transform_item(nonce, :int)
      }}
   end
 
-  def rlp_decode(data, _) do
+  def rlp_decode(data) do
     {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
   end
 end

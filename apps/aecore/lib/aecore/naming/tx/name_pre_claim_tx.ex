@@ -13,6 +13,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -105,7 +106,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    commitment_expires = block_height + Naming.get_pre_claim_ttl()
+    commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
     commitment =
       Naming.create_commitment(tx.commitment.value, sender, block_height, commitment_expires)

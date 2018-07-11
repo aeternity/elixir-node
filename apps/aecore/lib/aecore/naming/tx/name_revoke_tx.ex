@@ -13,6 +13,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
+
   require Logger
 
   @typedoc "Expected structure for the Revoke Transaction"
@@ -107,7 +109,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     claim = %{
       claim_to_update
       | status: :revoked,
-        expires: block_height + Naming.get_revoke_expiration_ttl()
+        expires: block_height + GovernanceConstants.revoke_expiration_ttl()
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)

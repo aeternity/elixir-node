@@ -7,11 +7,15 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.Chainstate
+  alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Chain.Identifier
@@ -25,35 +29,10 @@ defmodule Aecore.Oracle.Oracle do
   @type json_schema :: map()
   @type json :: any()
 
-  # TODO integrate Identifiers
-  @type registered_oracles :: %{
-          Wallet.pubkey() => %{
-            tx: OracleRegistrationTx.t(),
-            height_included: non_neg_integer()
-          }
-        }
-
-  # TODO integrate Identifiers
-  @type interaction_objects :: %{
-          OracleQueryTx.id() => %{
-            query: OracleQueryTx.t(),
-            response: OracleResponseTx.t(),
-            query_height_included: non_neg_integer(),
-            response_height_included: non_neg_integer()
-          }
-        }
-
-  @type t :: %{
-          registered_oracles: registered_oracles(),
-          interaction_objects: interaction_objects()
-        }
-
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
-  @doc """
-  Registers an oracle with the given requirements for queries and responses,
-  a fee that should be paid by queries and a TTL.
-  """
+  @pubkey_size 33
+
   @spec register(
           json_schema(),
           json_schema(),
@@ -116,7 +95,13 @@ defmodule Aecore.Oracle.Oracle do
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    {:ok, tx} =
+      SignedTx.sign_tx(
+        tx_data,
+        Wallet.get_public_key(),
+        Wallet.get_private_key()
+      )
+
     Pool.add_transaction(tx)
   end
 
@@ -240,51 +225,21 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def remove_expired_oracles(chain_state, block_height) do
-    Enum.reduce(chain_state.oracles.registered_oracles, chain_state, fn {address,
-                                                                         %{
-                                                                           expires: expiry_height
-                                                                         }},
-                                                                        acc ->
-      if expiry_height <= block_height do
-        acc
-        |> pop_in([Access.key(:oracles), Access.key(:registered_oracles), address])
-        |> elem(1)
-      else
-        acc
-      end
-    end)
+  @spec remove_expired(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def remove_expired(chainstate, block_height) do
+    OracleStateTree.prune(chainstate, block_height)
   end
 
-  def remove_expired_interaction_objects(
-        chain_state,
-        block_height
-      ) do
-    interaction_objects = chain_state.oracles.interaction_objects
-
-    Enum.reduce(interaction_objects, chain_state, fn {query_id,
-                                                      %{
-                                                        sender_address: sender_address,
-                                                        has_response: has_response,
-                                                        expires: expires,
-                                                        fee: fee
-                                                      }},
-                                                     acc ->
-      if expires <= block_height do
-        updated_state =
-          acc
-          |> pop_in([:oracles, :interaction_objects, query_id])
-          |> elem(1)
-
-        if has_response do
-          updated_state
-        else
-          update_in(updated_state, [:accounts, sender_address, :balance], &(&1 + fee))
-        end
-      else
-        acc
-      end
-    end)
+  @spec refund_sender(map(), AccountStateTree.accounts_state()) ::
+          AccountStateTree.accounts_state()
+  def refund_sender(query, accounts_state) do
+    if not query.has_response do
+      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+        Map.update!(account, :balance, &(&1 + query.fee))
+      end)
+    else
+      accounts_state
+    end
   end
 
   defp ttl_is_valid?(%{ttl: ttl, type: type}, block_height) do
@@ -297,23 +252,42 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
+  @spec get_registered_oracles :: map()
+  def get_registered_oracles do
+    oracle_tree = Chain.chain_state().oracles.oracle_tree
+    keys = PatriciaMerkleTree.all_keys(oracle_tree)
+
+    registered_oracles_key =
+      Enum.reduce(keys, [], fn key, acc ->
+        if byte_size(key) == @pubkey_size do
+          [key | acc]
+        else
+          acc
+        end
+      end)
+
+    Enum.reduce(registered_oracles_key, %{}, fn pub_key, acc ->
+      Map.put(acc, pub_key, OracleStateTree.get_oracle(Chain.chain_state().oracles, pub_key))
+    end)
+  end
+
   @spec rlp_encode(
           non_neg_integer(),
           non_neg_integer(),
           map(),
-          :registered_oracle | :interaction_object
+          :oracle | :oracle_query
         ) :: binary()
-  def rlp_encode(tag, version, %{} = registered_oracle, :registered_oracle) do
-    {:ok, encoded_owner} = Identifier.encode_data(registered_oracle.owner)
+  def rlp_encode(tag, version, %{} = oracle, :oracle) do
+    {:ok, encoded_owner} = Identifier.encode_data(oracle.owner)
 
     list = [
       tag,
       version,
       encoded_owner,
-      Serialization.transform_item(registered_oracle.query_format),
-      Serialization.transform_item(registered_oracle.response_format),
-      registered_oracle.query_fee,
-      registered_oracle.expires
+      Serialization.transform_item(oracle.query_format),
+      Serialization.transform_item(oracle.response_format),
+      oracle.query_fee,
+      oracle.expires
     ]
 
     try do
@@ -323,34 +297,35 @@ defmodule Aecore.Oracle.Oracle do
     end
   end
 
-  def rlp_encode(tag, version, %{} = interaction_object, :interaction_object) do
+  def rlp_encode(tag, version, %{} = oracle_query, :oracle_query) do
     has_response =
-      case interaction_object.has_response do
+      case oracle_query.has_response do
         true -> 1
         false -> 0
       end
 
     response =
-      case interaction_object.response do
+      case oracle_query.response do
         :undefined -> Parser.to_string(:undefined)
+        %{} = data -> Poison.encode!(data)
         %DataTx{type: OracleResponseTx} = data -> data
       end
 
-    {:ok, encoded_sender} = Identifier.encode_data(interaction_object.sender_address)
-    {:ok, encoded_oracle_owner} = Identifier.encode_data(interaction_object.oracle_address)
+    {:ok, encoded_sender} = Identifier.encode_data(oracle_query.sender_address)
+    {:ok, encoded_oracle_owner} = Identifier.encode_data(oracle_query.oracle_address)
 
     list = [
       tag,
       version,
       encoded_sender,
-      interaction_object.sender_nonce,
+      oracle_query.sender_nonce,
       encoded_oracle_owner,
-      Serialization.transform_item(interaction_object.query),
+      Serialization.transform_item(oracle_query.query),
       has_response,
       response,
-      interaction_object.expires,
-      interaction_object.response_ttl,
-      interaction_object.fee
+      oracle_query.expires,
+      oracle_query.response_ttl,
+      oracle_query.fee
     ]
 
     try do
@@ -368,7 +343,7 @@ defmodule Aecore.Oracle.Oracle do
           {:ok, map()} | {:error, String.t()}
   def rlp_decode(
         [orc_owner, query_format, response_format, query_fee, expires],
-        :registered_oracle
+        :oracle
       ) do
     {:ok, decoded_orc_owner} = Identifier.decode_data(orc_owner)
 
@@ -394,7 +369,7 @@ defmodule Aecore.Oracle.Oracle do
           response_ttl,
           fee
         ],
-        :interaction_object
+        :oracle_query
       ) do
     has_response =
       case Serialization.transform_item(has_response, :int) do
@@ -405,6 +380,12 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, decoded_sender_address} = Identifier.decode_data(sender_address)
     {:ok, decoded_orc_owner} = Identifier.decode_data(oracle_address)
 
+    new_response =
+      case response do
+        "undefined" -> String.to_atom(response)
+        _ -> Serialization.transform_item(response, :binary)
+      end
+
     {:ok,
      %{
        expires: Serialization.transform_item(expires, :int),
@@ -412,7 +393,7 @@ defmodule Aecore.Oracle.Oracle do
        has_response: has_response,
        oracle_address: decoded_orc_owner,
        query: Serialization.transform_item(query, :binary),
-       response: response,
+       response: new_response,
        response_ttl: Serialization.transform_item(response_ttl, :int),
        sender_address: decoded_sender_address,
        sender_nonce: Serialization.transform_item(sender_nonce, :int)
