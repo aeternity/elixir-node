@@ -21,7 +21,7 @@ defmodule AecoreOracleTest do
     end)
   end
 
-  @tag timeout: 120_000
+  @tag timeout: 160_000
   @tag :oracle_test
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
@@ -114,6 +114,36 @@ defmodule AecoreOracleTest do
     oracle_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
     oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
     assert oracle.expires == 15
+
+    Chain.clear_state()
+    register_oracle(:valid)
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    oracle_tree = Chain.chain_state().oracles.oracle_tree
+    oracle_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
+
+    oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
+    expires_oracle = 12
+    assert oracle.expires == expires_oracle
+
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+
+    assert Chain.top_height() == expires_oracle
+    Oracle.extend(7, 10)
+    Miner.mine_sync_block_to_chain()
+
+    oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
+
+    assert oracle == :none
 
     Chain.clear_state()
   end
