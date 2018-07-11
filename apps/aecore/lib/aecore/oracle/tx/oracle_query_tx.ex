@@ -21,7 +21,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @type id :: binary()
 
   @type payload :: %{
-          oracle_address: Wallet.pubkey(),
+          oracle_address: Identifier.t(),
           query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
@@ -29,7 +29,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         }
 
   @type t :: %OracleQueryTx{
-          oracle_address: Wallet.pubkey(),
+          oracle_address: Identifier.t(),
           query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
@@ -148,8 +148,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
+    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
+
     query = %{
-      sender_address: sender,
+      sender_address: identified_sender,
       sender_nonce: nonce,
       oracle_address: tx.oracle_address,
       query: tx.query_data,
@@ -189,17 +191,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
         {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
 
-      !OracleStateTree.exists_oracle?(oracles, tx.oracle_address) ->
+      !OracleStateTree.exists_oracle?(oracles, tx.oracle_address.value) ->
         {:error, "#{__MODULE__}: No oracle registered with the address:
          #{inspect(tx.oracle_address)}"}
 
       !Oracle.data_valid?(
-        OracleStateTree.get_oracle(oracles, tx.oracle_address).query_format,
+        OracleStateTree.get_oracle(oracles, tx.oracle_address.value).query_format,
         tx.query_data
       ) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
-      tx.query_fee < OracleStateTree.get_oracle(oracles, tx.oracle_address).query_fee ->
+      tx.query_fee < OracleStateTree.get_oracle(oracles, tx.oracle_address.value).query_fee ->
         {:error, "#{__MODULE__}: The query fee: #{inspect(tx.query_fee)} is
          lower than the one required by the oracle"}
 
@@ -234,7 +236,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_query_fee_is_met =
       tx.query_fee >=
         Chain.chain_state().oracles
-        |> OracleStateTree.get_oracle(tx.oracle_address)
+        |> OracleStateTree.get_oracle(tx.oracle_address.value)
         |> Map.get(:query_fee)
 
     tx_fee_is_met =
@@ -258,7 +260,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec id(Wallet.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
   def id(sender, nonce, oracle_address) do
-    bin = sender <> <<nonce::@nonce_size>> <> oracle_address.value
+    bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)
   end
 

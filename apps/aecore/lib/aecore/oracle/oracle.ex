@@ -234,7 +234,7 @@ defmodule Aecore.Oracle.Oracle do
           AccountStateTree.accounts_state()
   def refund_sender(query, accounts_state) do
     if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+      AccountStateTree.update(accounts_state, query.sender_address.value, fn account ->
         Map.update!(account, :balance, &(&1 + query.fee))
       end)
     else
@@ -278,12 +278,9 @@ defmodule Aecore.Oracle.Oracle do
           :oracle | :oracle_query
         ) :: binary()
   def rlp_encode(tag, version, %{} = oracle, :oracle) do
-    {:ok, encoded_owner} = Identifier.encode_data(oracle.owner)
-
     list = [
       tag,
       version,
-      encoded_owner,
       Serialization.transform_item(oracle.query_format),
       Serialization.transform_item(oracle.response_format),
       oracle.query_fee,
@@ -342,14 +339,12 @@ defmodule Aecore.Oracle.Oracle do
   @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
           {:ok, map()} | {:error, String.t()}
   def rlp_decode(
-        [orc_owner, query_format, response_format, query_fee, expires],
+        [query_format, response_format, query_fee, expires],
         :oracle
       ) do
-    {:ok, decoded_orc_owner} = Identifier.decode_data(orc_owner)
-
     {:ok,
      %{
-       owner: decoded_orc_owner,
+       owner: %Identifier{type: :oracle},
        query_format: Serialization.transform_item(query_format, :binary),
        response_format: Serialization.transform_item(response_format, :binary),
        query_fee: Serialization.transform_item(query_fee, :int),

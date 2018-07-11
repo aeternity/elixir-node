@@ -112,9 +112,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
 
     oracle = %{
-      owner: sender,
+      owner: identified_oracle_owner,
       query_format: tx.query_format,
       response_format: tx.response_format,
       query_fee: tx.query_fee,
