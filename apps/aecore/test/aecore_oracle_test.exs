@@ -113,7 +113,7 @@ defmodule AecoreOracleTest do
     oracle_tree = Chain.chain_state().oracles.oracle_tree
     oracle_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
     oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
-    assert oracle.expires == 15
+    assert oracle.expires == 10
 
     Chain.clear_state()
     register_oracle(:valid)
@@ -123,19 +123,12 @@ defmodule AecoreOracleTest do
     oracle_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
 
     oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
-    expires_oracle = 12
+    expires_oracle = 7
     assert oracle.expires == expires_oracle
 
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
+    for n <- 1..5 do
+      Miner.mine_sync_block_to_chain()
+    end
 
     assert Chain.top_height() == expires_oracle
     Oracle.extend(7, 10)
@@ -241,7 +234,7 @@ defmodule AecoreOracleTest do
   def get_ttl(validity) do
     case validity do
       :valid ->
-        %{ttl: 10, type: :relative}
+        %{ttl: 5, type: :relative}
 
       :invalid ->
         %{ttl: 1, type: :absolute}
