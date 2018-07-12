@@ -111,9 +111,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     commitment =
       Naming.create_commitment(tx.commitment.value, sender, block_height, commitment_expires)
 
-    IO.inspect(tx.commitment.value)
-    IO.inspect("$$$$$$$$$$$$$$$$$$")
-    IO.inspect(commitment)
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
     {:ok, {accounts, updated_naming_chainstate}}

@@ -97,14 +97,13 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     {:ok, identified_pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    {:ok, identified_claim_hash} = Identifier.create_identity(claim_hash, :name)
-    # ++++++++++++++++++++++++++++++++++++++++++++++++ problem
+    IO.inspect(data_tx)
     claim = Naming.create_claim(claim_hash, tx.name, data_tx.senders, block_height)
 
     updated_naming_chainstate =
       naming_state
       |> NamingStateTree.delete(identified_pre_claim_commitment.value)
-      |> NamingStateTree.put(identified_claim_hash.value, claim.value)
+      |> NamingStateTree.put(claim_hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end

@@ -72,7 +72,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
         non_identfied_commitment_hash ->
           {:ok, identified_commitment_hash} =
-            Identifier.create_identity(non_identfied_commitment_hash, :commitment)
+            Identifier.create_identity(non_identfied_commitment_hash, :name)
 
           identified_commitment_hash
       end
@@ -173,6 +173,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, tx.hash.value)
+    IO.inspect(claim)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -212,6 +213,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
+    # :name???
     {:ok, check_id} = Identifier.create_identity(id.value, :name)
     check_id == id
   end

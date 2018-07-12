@@ -136,6 +136,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp add_query(tree, query, how) do
     oracle_id = query.oracle_address.value
+
     id =
       OracleQueryTx.id(
         query.sender_address.value,
@@ -182,30 +183,39 @@ defmodule Aecore.Oracle.OracleStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
         {:ok, deserialized} = Serialization.rlp_decode(serialized)
+
         case deserialized do
           %{
             owner: %Identifier{type: :oracle},
-            query_format:  _,
+            query_format: _,
             response_format: _,
             query_fee: _,
             expires: _
           } ->
-            {:ok, identified_orc_owner} = Identifier.create_identity(key , :oracle)
+            {:ok, identified_orc_owner} = Identifier.create_identity(key, :oracle)
             %{deserialized | owner: identified_orc_owner}
+
           %{
-              expires: _ ,
-              fee: _ ,
-              has_response: _,
-              oracle_address: oracle_address,
-              query: _,
-              response: _,
-              response_ttl: _,
-              sender_address: sender_address,
-              sender_nonce: _
-            } ->
-              {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
-              {:ok, identified_sender_address} = Identifier.create_identity(sender_address, :account)
-              %{deserialized | oracle_address: identified_orc_address, sender_address: identified_sender_address}
+            expires: _,
+            fee: _,
+            has_response: _,
+            oracle_address: oracle_address,
+            query: _,
+            response: _,
+            response_ttl: _,
+            sender_address: sender_address,
+            sender_nonce: _
+          } ->
+            {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
+
+            {:ok, identified_sender_address} =
+              Identifier.create_identity(sender_address, :account)
+
+            %{
+              deserialized
+              | oracle_address: identified_orc_address,
+                sender_address: identified_sender_address
+            }
         end
 
       _ ->

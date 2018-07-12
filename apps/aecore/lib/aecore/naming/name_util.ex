@@ -28,7 +28,7 @@ defmodule Aecore.Naming.NameUtil do
   @spec normalize_name(String.t()) :: String.t()
   def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
 
-  @spec namehash(String.t()) :: Identifier.t()
+  @spec namehash(String.t()) :: binary()
   defp namehash(name) do
     if name == "" do
       <<0::256>>

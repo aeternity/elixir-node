@@ -65,7 +65,7 @@ defmodule Aecore.Naming.Naming do
   end
 
   @spec create_claim(
-          Identifier.t(),
+          binary(),
           binary(),
           Wallet.pubkey(),
           non_neg_integer(),
@@ -74,7 +74,8 @@ defmodule Aecore.Naming.Naming do
         ) :: claim()
   def create_claim(hash, name, owner, expire_by, client_ttl, pointers) do
     # IO.inspect owner , label: "Claim owner from tx 1" #TODO check if it comes from one of naming TX's
-    # {:ok, identified_hash} = Identifier.create_identity(hash ,:name)
+    {:ok, identified_hash} = Identifier.create_identity(hash, :name)
+
     %{
       # identified_hash
       :hash => hash,
@@ -87,10 +88,11 @@ defmodule Aecore.Naming.Naming do
     }
   end
 
-  @spec create_claim(Identifier.t(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
+  @spec create_claim(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
   def create_claim(hash, name, owner, height) do
     # IO.inspect owner , label: "Claim owner from tx 2" #TODO check if it comes from one of naming TX's
-    # {:ok, identified_hash} = Identifier.create_identity(hash, :name) 
+    {:ok, identified_hash} = Identifier.create_identity(hash, :name)
+
     %{
       # identified_hash
       :hash => hash,
@@ -108,8 +110,9 @@ defmodule Aecore.Naming.Naming do
     case NameUtil.normalized_namehash(name) do
       {:ok, hash} ->
         hashed_name = Hash.hash(hash <> name_salt)
-        {:ok, identified_hashed_name} = Identifier.create_identity(hashed_name, :commitment)
+        Identifier.create_identity(hashed_name, :commitment)
 
+      # identified_hashed_name
       err ->
         err
     end
@@ -156,14 +159,17 @@ defmodule Aecore.Naming.Naming do
           binary() | {:error, String.t()}
   # 1st elem - hash
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
-    # {:ok, encoded_hash} = Identifier.encode_data(naming_state.hash)
-    # IO.inspect(naming_state.owner, label: "RLP ENCODING NAMING STATE OWNER")
+    encoded_owners =
+      for owner <- naming_state.owner do
+        {:ok, encoded_owner} = Identifier.encode_data(owner)
+        encoded_owner
+      end
 
     list = [
       tag,
       version,
       # encoded_hash,
-      naming_state.owner,
+      encoded_owners,
       naming_state.expires,
       Atom.to_string(naming_state.status),
       naming_state.ttl,
@@ -201,14 +207,19 @@ defmodule Aecore.Naming.Naming do
   end
 
   @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode([hash, owner, expires, status, ttl, pointers], :name) do
+  def rlp_decode([encoded_owners, expires, status, ttl, pointers], :name) do
     # {:ok, decoded_naming_hash} = Identifier.decode_data(hash)
     # {:ok, identified_naming_hash} = Identifier.create_identity(decoded_naming_hash, :name)
+    decoded_owners =
+      for owner <- encoded_owners do
+        {:ok, decoded_owner} = Identifier.decode_data(owner)
+        decoded_owner
+      end
 
     {:ok,
      %{
        # hash: identified_naming_hash,
-       owner: owner,
+       owner: decoded_owners,
        expires: Serialization.transform_item(expires, :int),
        status: String.to_atom(status),
        ttl: Serialization.transform_item(ttl, :int),
