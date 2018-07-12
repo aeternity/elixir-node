@@ -86,6 +86,9 @@ clean-deps: clean
 	# needed as duplicate for libsecp256k1 to compile
 	@mix deps.compile
 
+clean-deps-compile: clean-deps
+	@mix compile
+
 killall:
 	@echo "Kill all beam processes"
 	@pkill -9 beam || true
