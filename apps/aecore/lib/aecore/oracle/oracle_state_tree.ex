@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.OracleStateTree
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
@@ -113,6 +114,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     id = oracle.owner
     expires = oracle.expires
     serialized = Serialization.rlp_encode(oracle, :oracle)
+    oracle_cache_tree = oracles_state.oracle_cache_tree
 
     new_oracle_tree =
       case how do
@@ -124,15 +126,24 @@ defmodule Aecore.Oracle.OracleStateTree do
       end
 
     new_oracle_cache_tree =
-      oracles_state
-      |> init_pop_stale_cache()
-      |> cache_push({:oracle, id}, expires)
+      if exists_key?(oracle_cache_tree, id) do
+        old_oracle = OracleStateTree.get_oracle(oracles_state, id)
+        old_expires = old_oracle.expires
+        cashe_key = create_cache_key({:oracle, id}, old_expires)
+
+        oracle_cache_tree
+        |> delete(cashe_key)
+        |> cache_push({:oracle, id}, expires)
+      else
+        cache_push(oracle_cache_tree, {:oracle, id}, expires)
+      end
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
 
   defp add_query(oracles_state, query, how) do
     oracle_id = query.oracle_address
+    oracle_cache_tree = oracles_state.oracle_cache_tree
 
     id =
       OracleQueryTx.id(
@@ -155,9 +166,17 @@ defmodule Aecore.Oracle.OracleStateTree do
       end
 
     new_oracle_cache_tree =
-      oracles_state
-      |> init_pop_stale_cache()
-      |> cache_push({:query, oracle_id, id}, expires)
+      if exists_key?(oracle_cache_tree, id) do
+        old_query = OracleStateTree.get_query(oracles_state, tree_id)
+        old_expires = old_query.expires
+        cashe_key = create_cache_key({:query, id}, old_expires)
+
+        oracle_cache_tree
+        |> delete(cashe_key)
+        |> cache_push({:query, id}, expires)
+      else
+        cache_push(oracle_cache_tree, {:query, id}, expires)
+      end
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
@@ -195,43 +214,27 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp which_tree(oracles_state, :oracle_query), do: oracles_state.oracle_tree
   defp which_tree(oracles_state, _where), do: oracles_state.oracle_tree
 
+  defp exists_key?(oracle_cache_tree, id) do
+    all_keys =
+      oracle_cache_tree
+      |> PatriciaMerkleTree.all_keys()
+
+    Enum.any?(all_keys, fn key ->
+      {_, {_, deserialized_keys}} = Serialization.cache_key_decode(key)
+      deserialized_keys == id
+    end)
+  end
+
   defp cache_push(oracle_cache_tree, key, expires) do
     encoded = Serialization.cache_key_encode(key, expires)
     enter(oracle_cache_tree, encoded, @dummy_val)
   end
 
-  defp init_pop_stale_cache(oracles_state) do
-    %{oracle_cache_tree: cache_tree} =
-      oracles_state.oracle_cache_tree
-      |> PatriciaMerkleTree.all_keys()
-      |> Enum.reduce(oracles_state, fn key, new_state ->
-        new_cache_tree =
-          key
-          |> Serialization.cache_key_decode()
-          |> pop_stale_cache(key, new_state)
-
-        %{new_state | oracle_cache_tree: new_cache_tree}
-      end)
-
-    cache_tree
+  defp create_cache_key({:query, id}, expires) do
+    Serialization.cache_key_encode({:query, id}, expires)
   end
 
-  defp pop_stale_cache({exp, {:oracle, id}}, stale_cache_key, oracles_state) do
-    oracel = get(oracles_state.oracle_tree, id)
-
-    if oracel.expires > exp do
-      delete(oracles_state.oracle_cache_tree, stale_cache_key)
-    else
-      oracles_state.oracle_cache_tree
-    end
-  end
-
-  defp pop_stale_cache({_exp, {:query, oracle_id, id}}, stale_cache_key, oracles_state) do
-    query_id = oracle_id <> id
-
-    case get(oracles_state.oracle_tree, query_id) do
-      :none -> delete(oracles_state.oracle_cache_tree, stale_cache_key)
-      _query -> oracles_state.oracle_cache_tree
-    end
+  defp create_cache_key({:oracle, id}, expires) do
+    Serialization.cache_key_encode({:oracle, id}, expires)
   end
 end
