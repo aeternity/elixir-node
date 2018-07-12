@@ -46,7 +46,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   @peer_share_count 32
 
-  @first_ping_timeout 30000
+  @first_ping_timeout 30_000
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
