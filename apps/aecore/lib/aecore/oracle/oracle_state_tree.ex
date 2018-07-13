@@ -98,13 +98,19 @@ defmodule Aecore.Oracle.OracleStateTree do
     }
   end
 
-  defp delete_expired({:query, oracle_id, query_id}, {oracles_state, accounts_state}) do
-    tree_id = oracle_id <> query_id
-    query = get_query(oracles_state, tree_id)
-    new_accounts_state = Oracle.refund_sender(query, accounts_state)
+  defp delete_expired({:query, oracle_id, id}, {oracles_state, accounts_state}) do
+    query_id = oracle_id <> id
+    query = get_query(oracles_state, query_id)
+
+    new_accounts_state =
+      if query == :none do
+        accounts_state
+      else
+        Oracle.refund_sender(query, accounts_state)
+      end
 
     {
-      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, tree_id)),
+      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, query_id)),
       new_accounts_state
     }
   end
