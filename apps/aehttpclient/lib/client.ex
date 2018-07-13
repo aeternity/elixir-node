@@ -167,12 +167,12 @@ defmodule Aehttpclient.Client do
       {:ok, %HTTPoison.Response{status_code: 400}} ->
         {:error, "Response 400"}
 
-      {:error, %HTTPoison.Error{}} ->
-        {:error, "HTTPPoison Error"}
+      {:error, %HTTPoison.Error{} = error} ->
+        {:error, "HTTPPoison Error #{inspect(error)}"}
 
       unexpected ->
         Logger.error(fn ->
-          "unexpected client result " <> Kernel.inspect(unexpected)
+          "unexpected client result " <> inspect(unexpected)
         end)
 
         {:error, "Unexpected error"}
