@@ -6,6 +6,7 @@ defmodule MultiNodeSyncTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
 
   setup do
+    TestFramework.start_link(%{})
     Chain.clear_state()
     Pool.get_and_empty_pool()
 
@@ -19,20 +20,16 @@ defmodule MultiNodeSyncTest do
   @tag timeout: 120_000
   @tag :sync_test
   test "test nodes sync" do
-    TestFramework.start_link(%{})
-
     TestFramework.new_node("node1", 1)
 
-    :timer.sleep(4000)
     TestFramework.new_node("node2", 2)
 
-    :timer.sleep(4000)
     TestFramework.new_node("node3", 3)
 
-    :timer.sleep(4000)
     TestFramework.new_node("node4", 4)
 
-    :timer.sleep(4000)
+    :timer.sleep(2000)
+
     TestFramework.sync_two_nodes("node1", "node2")
     TestFramework.sync_two_nodes("node4", "node1")
     TestFramework.sync_two_nodes("node2", "node3")
@@ -56,17 +53,19 @@ defmodule MultiNodeSyncTest do
     TestFramework.query_oracle("node4")
     TestFramework.mine_sync_block("node4")
 
-    TestFramework.respond_oracle("node4")
-    TestFramework.mine_sync_block("node4")
-
     :timer.sleep(3000)
     assert :synced == TestFramework.compare_nodes_by_top_block("node1", "node2")
+    assert :synced == TestFramework.compare_nodes_by_oracle_interaction_objects("node1", "node2")
 
     assert :synced == TestFramework.compare_nodes_by_top_block("node2", "node3")
+    assert :synced == TestFramework.compare_nodes_by_oracle_interaction_objects("node2", "node3")
 
     assert :synced == TestFramework.compare_nodes_by_top_block("node3", "node4")
+    assert :synced == TestFramework.compare_nodes_by_oracle_interaction_objects("node4", "node4")
 
     assert :synced == TestFramework.compare_nodes_by_top_block("node4", "node1")
+    assert :synced == TestFramework.compare_nodes_by_oracle_interaction_objects("node4", "node1")
+
   end
 
   def find_port(start_port) do

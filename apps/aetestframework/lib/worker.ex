@@ -94,7 +94,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   end
 
   def delete_all_nodes do
-    GenServer.call(__MODULE__, {:delete_all_nodes}, 10_000)
+    GenServer.call(__MODULE__, {:delete_all_nodes}, 20_000)
   end
 
   defp update_registered_oracles_state(node_name) do
@@ -118,27 +118,29 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   # oracles
   @spec oracle_interaction_objects(String.t()) :: :ok | :unknown_node
   def oracle_interaction_objects(node_name) do
-    send_command(node_name, "int_object = Chain.oracle_interaction_objects()")
+    send_command(node_name, "oracle_tree = Chain.chain_state().oracles.oracle_tree")
+
+    send_command(
+      node_name,
+      "query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+    )
+
+    send_command(
+      node_name,
+      "interaction_object = OracleStateTree.get_query(Chain.chain_state().oracles, query_id)"
+    )
 
     # converting the keys which are binary to string
     send_command(
       node_name,
-      "oracle_int_obj_for_encoding = for {k,v} <- int_object, into: %{}, do: {Base.encode32(k), v}"
-    )
-
-    # converting the keys which are binary to string in the nested map
-    send_command(
-      node_name,
-      "oracles_encoded = Enum.reduce(oracle_int_obj_for_encoding, %{}, fn {k, val}, acc ->
-                                new_oracles = put_in(oracle_int_obj_for_encoding[k].sender_address, Base.encode32(val.sender_address))
-                                put_in(new_oracles[k].oracle_address, Base.encode32(val.oracle_address)) end)"
+      "encoded_int_object = Serialization.rlp_encode(interaction_object, :oracle_query) |> Base.encode32"
     )
 
     # encoding the map to the json
-    send_command(node_name, "{:ok, json} = Poison.encode(oracles_encoded)")
+    send_command(node_name, "{:ok, json} = Poison.encode(encoded_int_object)")
 
     # writing it to the file
-    send_command(node_name, "File.write(\"./result.json\", json)")
+    send_command(node_name, "File.write(System.cwd() <> \"/result.json\", json)")
 
     # updating the state of the oracle interaction objects after the one second
     :timer.sleep(1000)
@@ -167,7 +169,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:ok, json} = Poison.encode(oracles_encoded)")
 
     # writing it to the file
-    send_command(node_name, "File.write(\"./result.json\", json)")
+    send_command(node_name, "File.write(System.cwd() <> \"/result.json\", json)")
 
     # updating the state of the oracle interaction objects after the one second
     :timer.sleep(1000)
@@ -213,10 +215,15 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def respond_oracle(node_name) do
     send_command(
       node_name,
-      "oracle = Chain.oracle_interaction_objects() |> Map.keys() |> Enum.at(0)"
+      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
     )
 
-    send_command(node_name, "Oracle.respond(oracle, %{\"currency\" => \"BGN\"}, 5)")
+    send_command(
+      node_name,
+      "query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+    )
+
+    send_command(node_name, "Oracle.respond(query_id, %{\"currency\" => \"BGN\"}, 5)")
   end
 
   # spend_tx
@@ -245,11 +252,16 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
     send_command(
       node_name,
-      "serialized_block = Serialization.block(top_block, :serialize)"
+      "serialized_block = Serialization.rlp_encode(top_block, :block) |> Base.encode32()"
     )
 
     send_command(node_name, "{:ok, json} = Poison.encode(serialized_block)")
-    send_command(node_name, "File.write(\"./result.json\", json)")
+
+    send_command(
+      node_name,
+      "File.write((String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, \"\")) <> \"/result.json\", json)"
+    )
+
     :timer.sleep(2000)
     update_top_block_state(node_name)
   end
@@ -358,7 +370,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:ok, json} = Poison.encode(peers_encoded)")
 
     # writing the json to the file
-    send_command(node_name, "File.write(\"./result.json\", json)")
+    send_command(node_name, "File.write(System.cwd() <> \"/result.json\", json)")
 
     # updating peers map in the state after 1 second
     :timer.sleep(1000)
@@ -371,7 +383,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   defp update_data(fun, state, node_name, key) do
     with true <- Map.has_key?(state, node_name),
-         file <- "./result.json",
+         path <- String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, ""),
+         file <- path <> "/result.json",
          {:ok, data} <- File.read(file),
          {:ok, decoded_data} <- Poison.decode(data) do
       # decoding all the keys and the data to it's initial state
@@ -399,14 +412,12 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   def handle_call({:update_oracle_interaction_objects_state, node_name}, _, state) do
     fun = fn decoded_data ->
-      oracles_decode32 = for {k, v} <- decoded_data, into: %{}, do: {Base.decode32!(k), v}
+      {:ok, decoded_data} =
+        decoded_data
+        |> Base.decode32!()
+        |> Serialization.rlp_decode()
 
-      Enum.reduce(oracles_decode32, %{}, fn {k, val}, _ ->
-        atom_keys_map = for {nested_k, v} <- val, into: %{}, do: {String.to_atom(nested_k), v}
-        new_map = put_in(oracles_decode32[k], atom_keys_map)
-        new_map = put_in(new_map[k].oracle_address, Base.decode32!(new_map[k].oracle_address))
-        put_in(new_map[k].sender_address, Base.decode32!(new_map[k].sender_address))
-      end)
+      decoded_data
     end
 
     update_data(fun, state, node_name, :oracle_interaction_objects)
@@ -427,7 +438,12 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   end
 
   def handle_call({:update_top_block_state, node_name}, _, state) do
-    fun = &Serialization.block(&1, :deserialize)
+    fun = fn decoded_data ->
+      decoded_data
+      |> Base.decode32!()
+      |> Serialization.rlp_decode()
+    end
+
     update_data(fun, state, node_name, :top_block)
   end
 
@@ -489,13 +505,9 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   def handle_call({:delete_node, node_name}, _, state) do
     if Map.has_key?(state, node_name) do
-      # kills the process, closes the port and deletes the node folder
+      # kills the process, closes the port
       {:os_pid, pid} = Port.info(state[node_name].process_port, :os_pid)
       Port.close(state[node_name].process_port)
-
-      state[node_name].path
-      |> String.replace("elixir-node", "")
-      |> File.rm_rf()
 
       System.cmd("kill", ["#{pid}"])
       new_state = Map.delete(state, node_name)
