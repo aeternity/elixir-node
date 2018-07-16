@@ -75,7 +75,7 @@ defmodule Aecore.Naming.Naming do
   def create_claim(hash, name, owner, expire_by, client_ttl, pointers) do
     # IO.inspect owner , label: "Claim owner from tx 1" #TODO check if it comes from one of naming TX's
     {:ok, identified_hash} = Identifier.create_identity(hash, :name)
-
+    # {:ok , identified_owner} = Identifier.create_identity(owner,:account)
     %{
       # identified_hash
       :hash => hash,
@@ -92,10 +92,10 @@ defmodule Aecore.Naming.Naming do
   def create_claim(hash, name, owner, height) do
     # IO.inspect owner , label: "Claim owner from tx 2" #TODO check if it comes from one of naming TX's
     {:ok, identified_hash} = Identifier.create_identity(hash, :name)
-
+    # MAYBE NOT VALID {:ok, identified_owner} = Identifier.create_identity(owner, :account)
     %{
       # identified_hash
-      :hash => hash,
+      :hash => identified_hash,
       :name => name,
       :owner => owner,
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
@@ -105,14 +105,12 @@ defmodule Aecore.Naming.Naming do
     }
   end
 
-  @spec create_commitment_hash(String.t(), salt()) :: {:ok, Identifier.t()} | {:error, String.t()}
+  @spec create_commitment_hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
     case NameUtil.normalized_namehash(name) do
       {:ok, hash} ->
-        hashed_name = Hash.hash(hash <> name_salt)
-        Identifier.create_identity(hashed_name, :commitment)
+        {:ok, Hash.hash(hash <> name_salt)}
 
-      # identified_hashed_name
       err ->
         err
     end
@@ -159,17 +157,14 @@ defmodule Aecore.Naming.Naming do
           binary() | {:error, String.t()}
   # 1st elem - hash
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
-    encoded_owners =
-      for owner <- naming_state.owner do
-        {:ok, encoded_owner} = Identifier.encode_data(owner)
-        encoded_owner
-      end
+    IO.inspect(naming_state)
+    {:ok, encoded_owner} = Identifier.encode_data(naming_state.owner)
 
     list = [
       tag,
       version,
       # encoded_hash,
-      encoded_owners,
+      encoded_owner,
       naming_state.expires,
       Atom.to_string(naming_state.status),
       naming_state.ttl,
@@ -185,12 +180,14 @@ defmodule Aecore.Naming.Naming do
 
   def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
     # {:ok, encoded_commitment_hash} = Identifier.encode_data(name_commitment.hash)
+    # {:ok, encoded_owner} = Identifier.create_identity(, :account)
+    IO.inspect(name_commitment)
+    {:ok, encoded_identified_owner} = Identifier.encode_data(name_commitment.owner)
 
     list = [
       tag,
       version,
-      # encoded_commitment_hash,
-      name_commitment.owner,
+      encoded_identified_owner,
       name_commitment.created,
       name_commitment.expires
     ]
@@ -207,19 +204,16 @@ defmodule Aecore.Naming.Naming do
   end
 
   @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode([encoded_owners, expires, status, ttl, pointers], :name) do
+  def rlp_decode([encoded_owner, expires, status, ttl, pointers], :name) do
     # {:ok, decoded_naming_hash} = Identifier.decode_data(hash)
     # {:ok, identified_naming_hash} = Identifier.create_identity(decoded_naming_hash, :name)
-    decoded_owners =
-      for owner <- encoded_owners do
-        {:ok, decoded_owner} = Identifier.decode_data(owner)
-        decoded_owner
-      end
+    {:ok, decoded_owner} = Identifier.decode_data(encoded_owner)
+    {:ok, identified_decoded_owner} = Identifier.create_identity(decoded_owner, :account)
 
     {:ok,
      %{
        # hash: identified_naming_hash,
-       owner: decoded_owners,
+       owner: identified_decoded_owner,
        expires: Serialization.transform_item(expires, :int),
        status: String.to_atom(status),
        ttl: Serialization.transform_item(ttl, :int),
@@ -228,9 +222,12 @@ defmodule Aecore.Naming.Naming do
   end
 
   def rlp_decode([owner, created, expires], :name_commitment) do
+    {:ok, decoded_owner} = Identifier.decode_data(owner)
+    {:ok, identified_decoded_owner} = Identifier.create_identity(decoded_owner, :account)
+
     {:ok,
      %{
-       owner: owner,
+       owner: identified_decoded_owner,
        created: Serialization.transform_item(created, :int),
        expires: Serialization.transform_item(expires, :int)
      }}

@@ -93,16 +93,14 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         %NameClaimTx{} = tx,
         data_tx
       ) do
-    # sender = DataTx.main_sender(data_tx)
-
-    {:ok, identified_pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    IO.inspect(data_tx)
-    claim = Naming.create_claim(claim_hash, tx.name, data_tx.senders, block_height)
+    [identified_sender] = data_tx.senders
+    claim = Naming.create_claim(claim_hash, tx.name, identified_sender, block_height)
 
     updated_naming_chainstate =
       naming_state
-      |> NamingStateTree.delete(identified_pre_claim_commitment.value)
+      |> NamingStateTree.delete(pre_claim_commitment)
       |> NamingStateTree.put(claim_hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
@@ -131,7 +129,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     account_state = AccountStateTree.get(accounts, sender)
 
     {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
-    pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment.value)
+    pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
     claim = NamingStateTree.get(naming_state, claim_hash)
@@ -143,7 +141,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner != sender ->
+      pre_claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)

@@ -85,7 +85,6 @@ defmodule Aecore.Naming.NamingStateTree do
 
   defp deserialize(binary) do
     # TODO adjust deserializations
-    IO.inspect(Serialization.rlp_decode(binary), label: "Deserialized binary")
     Serialization.rlp_decode(binary)
   end
 end

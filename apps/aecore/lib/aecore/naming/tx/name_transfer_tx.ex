@@ -47,27 +47,10 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @spec init(payload()) :: t()
   # TODO integrate Identifiers
   def init(%{hash: hash, target: target}) do
-    name_hash =
-      case hash do
-        %Identifier{} ->
-          if validate_identifier(hash) == true do
-            hash
-          else
-            {:error,
-             "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
-               inspect(hash.value)
-             }"}
-          end
-
-        non_identfied_name_hash ->
-          {:ok, identified_name_hash} = Identifier.create_identity(non_identfied_name_hash, :name)
-
-          identified_name_hash
-      end
-
-    IO.inspect(target, label: "Init target in : #{__MODULE__}")
+    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+    {:ok, identified_target} = Identifier.create_identity(target, :account)
     # TODO inspect target and its representation and adjust it
-    %NameTransferTx{hash: name_hash, target: target}
+    %NameTransferTx{hash: identified_name_hash, target: identified_target}
   end
 
   @doc """
@@ -113,8 +96,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         _data_tx
       ) do
     claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
-    claim = %{claim_to_update | owner: tx.target.value}
-    # TODO check the method of storing keys in Naming PMT 
+    claim = %{claim_to_update | owner: tx.target}
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
@@ -141,7 +123,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -173,7 +155,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec validate_identifier(Identifier.t()) :: boolean()
+  @spec validate_identifier(payload()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
     {:ok, check_id} = Identifier.create_identity(id.value, :name)
     check_id == id

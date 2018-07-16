@@ -62,27 +62,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    orc_owner =
-      case oracle_address do
-        %Identifier{} ->
-          if validate_identifier(oracle_address) == true do
-            oracle_address
-          else
-            {:error,
-             "#{__MODULE__}: Invalid specified type: #{inspect(oracle_address.type)}, for given data: #{
-               inspect(oracle_address.value)
-             }"}
-          end
-
-        non_identfied_oracle_address ->
-          {:ok, identified_orc_address} =
-            Identifier.create_identity(non_identfied_oracle_address, :oracle)
-
-          identified_orc_address
-      end
+    {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
 
     %OracleQueryTx{
-      oracle_address: orc_owner,
+      oracle_address: identified_orc_address,
       query_data: query_data,
       query_fee: query_fee,
       query_ttl: query_ttl,

@@ -56,19 +56,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    identified_receiver =
-      case receiver do
-        %Identifier{} ->
-          if Identifier.check_identity(receiver, :account) == true do
-            receiver
-          else
-            {:error, "#{__MODULE__}: Incorrect id: #{inspect(receiver)}"}
-          end
-
-        non_identified_receiver ->
-          {:ok, identified_receiver} = Identifier.create_identity(receiver, :account)
-          identified_receiver
-      end
+    {:ok, identified_receiver} = Identifier.create_identity(receiver, :account)
 
     %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
   end

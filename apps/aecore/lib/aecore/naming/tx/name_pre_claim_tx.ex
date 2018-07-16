@@ -45,21 +45,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
-    identified_commitment =
-      case commitment do
-        %Identifier{} ->
-          if Identifier.check_identity(commitment, :commitment) == true do
-            commitment
-          else
-            {:error, "#{__MODULE__}: Incorrect id: #{inspect(commitment)}"}
-          end
-
-        non_identified_commitment ->
-          {:ok, identified_commitment} =
-            Identifier.create_identity(non_identified_commitment, :commitment)
-
-          identified_commitment
-      end
+    {:ok, identified_commitment} = Identifier.create_identity(commitment, :commitment)
 
     %NamePreClaimTx{commitment: identified_commitment}
   end
@@ -105,11 +91,17 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    [identified_sender] = data_tx.senders
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
     commitment =
-      Naming.create_commitment(tx.commitment.value, sender, block_height, commitment_expires)
+      Naming.create_commitment(
+        tx.commitment.value,
+        identified_sender,
+        block_height,
+        commitment_expires
+      )
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
@@ -154,12 +146,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
-  end
-
-  @spec validate_identifier(Identifier.t()) :: boolean()
-  defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identity(id.value, :commitment)
-    check_id == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

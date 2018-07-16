@@ -58,27 +58,10 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    name_hash =
-      case hash do
-        %Identifier{} ->
-          if validate_identifier(hash) == true do
-            hash
-          else
-            {:error,
-             "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
-               inspect(hash.value)
-             }"}
-          end
-
-        non_identfied_commitment_hash ->
-          {:ok, identified_commitment_hash} =
-            Identifier.create_identity(non_identfied_commitment_hash, :name)
-
-          identified_commitment_hash
-      end
+    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
 
     %NameUpdateTx{
-      hash: name_hash,
+      hash: identified_name_hash,
       expire_by: expire_by,
       client_ttl: client_ttl,
       pointers: pointers
@@ -137,7 +120,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         _data_tx
       ) do
     # TODO check the method of storing keys in Naming PMT 
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
+
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
 
     claim = %{
       claim_to_update
@@ -146,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         ttl: tx.client_ttl
     }
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -173,7 +157,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, tx.hash.value)
-    IO.inspect(claim)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -182,7 +165,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 

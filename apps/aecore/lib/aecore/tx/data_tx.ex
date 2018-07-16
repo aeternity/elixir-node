@@ -168,7 +168,7 @@ defmodule Aecore.Tx.DataTx do
   @spec payload(t()) :: map()
   def payload(%DataTx{payload: payload, type: type}) do
     if Enum.member?(valid_types(), type) do
-      type.init(payload)
+      payload
     else
       Logger.error("Call to DataTx payload with invalid transaction type")
       %{}
@@ -326,7 +326,6 @@ defmodule Aecore.Tx.DataTx do
 
   defp payload_validate(%DataTx{type: type, payload: payload} = data_tx) do
     payload
-    |> type.init()
     |> type.validate(data_tx)
   end
 
@@ -393,7 +392,9 @@ defmodule Aecore.Tx.DataTx do
       version,
       senders,
       tx.nonce,
+      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
+      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response_format),
       tx.payload.query_fee,
       ttl_type,
@@ -461,6 +462,7 @@ defmodule Aecore.Tx.DataTx do
       senders,
       tx.nonce,
       tx.payload.query_id,
+      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response),
       tx.fee,
       tx.ttl
@@ -620,13 +622,16 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_target} = Identifier.encode_data(tx.payload.target)
+    {:ok, encoded_name_hash} = Identifier.encode_data(tx.payload.hash)
+
     list = [
       tag,
       version,
       senders,
       tx.nonce,
-      tx.payload.hash,
-      tx.payload.target,
+      encoded_name_hash,
+      encoded_target,
       tx.fee,
       tx.ttl
     ]
@@ -943,7 +948,9 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp decode(NameTransferTx, [encoded_senders, nonce, hash, recipient, fee, ttl]) do
-    payload = %NameTransferTx{hash: hash, target: recipient}
+    {:ok, decoded_hash} = Identifier.decode_data(hash)
+    {:ok, decoded_recipient} = Identifier.decode_data(recipient)
+    payload = %NameTransferTx{hash: decoded_hash, target: decoded_recipient}
 
     senders =
       for sender <- encoded_senders do
