@@ -23,12 +23,15 @@ defmodule MultiNodeSyncTest do
     port1 = find_port(1)
     TestFramework.new_node("node1", port1)
 
+    :timer.sleep(2000)
     port2 = find_port(port1 + 1)
     TestFramework.new_node("node2", port2)
 
+    :timer.sleep(2000)
     port3 = find_port(port2 + 1)
     TestFramework.new_node("node3", port3)
 
+    :timer.sleep(2000)
     port4 = find_port(port3 + 1)
     TestFramework.new_node("node4", port4)
 
