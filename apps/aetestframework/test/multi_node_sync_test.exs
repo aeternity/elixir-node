@@ -75,7 +75,7 @@ defmodule MultiNodeSyncTest do
 
   def find_port(start_port) do
     if TestFramework.busy_port?("300#{start_port}") ||
-         TestFramework.busy_port?("400#{start_port}") do
+         IO.inspect TestFramework.busy_port?("400#{start_port}") do
       find_port(start_port + 1)
     else
       start_port
