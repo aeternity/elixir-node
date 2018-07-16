@@ -378,6 +378,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   end
 
   def busy_port?(port) do
+    IO.inspect(:os.cmd('lsof -i -P -n | grep -w #{port}'))
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
 
