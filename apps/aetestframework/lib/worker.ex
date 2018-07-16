@@ -412,12 +412,12 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   def handle_call({:update_oracle_interaction_objects_state, node_name}, _, state) do
     fun = fn decoded_data ->
-      {:ok, decoded_data} =
+      {:ok, int_obj} =
         decoded_data
         |> Base.decode32!()
         |> Serialization.rlp_decode()
 
-      decoded_data
+      int_obj
     end
 
     update_data(fun, state, node_name, :oracle_interaction_objects)
@@ -494,10 +494,13 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def handle_call({:delete_all_nodes}, _, state) do
     # killing all the processes and closing all of the ports of the nodes
     Enum.each(state, fn {_, val} ->
-      {:os_pid, _} = Port.info(val.process_port, :os_pid)
+      {:os_pid, pid} = Port.info(val.process_port, :os_pid)
       Port.close(val.process_port)
-      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-      System.cmd("make", ["killall"], cd: path)
+      System.cmd("kill", ["-9", "#{pid}"])
+      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> "/apps/aecore/priv/"
+      File.rm_rf(path <> "aewallet_#{val.port}")
+      File.rm_rf(path <> "peerkeys_#{val.port}")
+      File.rm_rf(path <> "rox_db_#{val.port}")
     end)
 
     {:reply, :ok, %{}}

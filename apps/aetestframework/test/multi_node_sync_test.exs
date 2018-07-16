@@ -20,13 +20,17 @@ defmodule MultiNodeSyncTest do
   @tag timeout: 120_000
   @tag :sync_test
   test "test nodes sync" do
-    TestFramework.new_node("node1", 1)
+    port1 = find_port(1)
+    TestFramework.new_node("node1", port1)
 
-    TestFramework.new_node("node2", 2)
+    port2 = find_port(port1 + 1)
+    TestFramework.new_node("node2", port2)
 
-    TestFramework.new_node("node3", 3)
+    port3 = find_port(port2 + 1)
+    TestFramework.new_node("node3", port3)
 
-    TestFramework.new_node("node4", 4)
+    port4 = find_port(port3 + 1)
+    TestFramework.new_node("node4", port4)
 
     :timer.sleep(2000)
 
@@ -66,10 +70,12 @@ defmodule MultiNodeSyncTest do
     assert :synced == TestFramework.compare_nodes_by_top_block("node4", "node1")
     assert :synced == TestFramework.compare_nodes_by_oracle_interaction_objects("node4", "node1")
 
+    TestFramework.delete_all_nodes()
   end
 
   def find_port(start_port) do
-    if TestFramework.busy_port?(start_port) do
+    if TestFramework.busy_port?("300#{start_port}") ||
+         TestFramework.busy_port?("400#{start_port}") do
       find_port(start_port + 1)
     else
       start_port
