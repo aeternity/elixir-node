@@ -20,17 +20,17 @@ defmodule MultiNodeSyncTest do
   @tag timeout: 120_000
   @tag :sync_test
   test "test nodes sync" do
-    port1 = find_port(1)
-    TestFramework.new_node("node1", port1)
+    # port1 = find_port(1)
+    TestFramework.new_node("node1", 25)
 
-    port2 = find_port(port1 + 1)
-    TestFramework.new_node("node2", port2)
+    # port2 = find_port(port1 + 1)
+    TestFramework.new_node("node2", 26)
 
-    port3 = find_port(port2 + 1)
-    TestFramework.new_node("node3", port3)
+    # port3 = find_port(port2 + 1)
+    TestFramework.new_node("node3", 27)
 
-    port4 = find_port(port3 + 1)
-    TestFramework.new_node("node4", port4)
+    # port4 = find_port(port3 + 1)
+    TestFramework.new_node("node4", 28)
 
     :timer.sleep(2000)
 
