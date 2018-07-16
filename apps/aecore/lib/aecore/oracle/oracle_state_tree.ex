@@ -6,7 +6,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.OracleStateTree
 
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
@@ -28,43 +27,43 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   @spec enter_oracle(oracles_state(), map()) :: oracles_state()
-  def enter_oracle(oracles_state, oracle) do
-    add_oracle(oracles_state, oracle, :enter)
+  def enter_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :enter)
   end
 
   @spec insert_oracle(oracles_state(), map()) :: oracles_state()
-  def insert_oracle(oracles_state, oracle) do
-    add_oracle(oracles_state, oracle, :insert)
+  def insert_oracle(tree, oracle) do
+    add_oracle(tree, oracle, :insert)
   end
 
   @spec get_oracle(oracles_state(), binary()) :: map()
-  def get_oracle(oracles_state, key) do
-    get(oracles_state.oracle_tree, key)
+  def get_oracle(tree, key) do
+    get(tree.oracle_tree, key)
   end
 
   @spec exists_oracle?(oracles_state(), binary()) :: boolean()
-  def exists_oracle?(oracles_state, key) do
-    exists?(oracles_state, key, :oracle)
+  def exists_oracle?(tree, key) do
+    exists?(tree, key, :oracle)
   end
 
   @spec enter_query(oracles_state(), map()) :: oracles_state()
-  def enter_query(oracles_state, query) do
-    add_query(oracles_state, query, :enter)
+  def enter_query(tree, query) do
+    add_query(tree, query, :enter)
   end
 
   @spec insert_query(oracles_state(), map()) :: oracles_state()
-  def insert_query(oracles_state, query) do
-    add_query(oracles_state, query, :insert)
+  def insert_query(tree, query) do
+    add_query(tree, query, :insert)
   end
 
   @spec get_query(oracles_state(), binary()) :: map()
-  def get_query(oracles_state, key) do
-    get(oracles_state.oracle_tree, key)
+  def get_query(tree, key) do
+    get(tree.oracle_tree, key)
   end
 
   @spec exists_query?(oracles_state(), binary()) :: boolean()
-  def exists_query?(oracles_state, key) do
-    exists?(oracles_state, key, :oracle_query)
+  def exists_query?(tree, key) do
+    exists?(tree, key, :oracle_query)
   end
 
   defp initialize_deletion({oracles_state, _accounts_state} = trees, expires) do
@@ -110,40 +109,30 @@ defmodule Aecore.Oracle.OracleStateTree do
     }
   end
 
-  defp add_oracle(oracles_state, oracle, how) do
+  defp add_oracle(tree, oracle, how) do
     id = oracle.owner
     expires = oracle.expires
     serialized = Serialization.rlp_encode(oracle, :oracle)
-    oracle_cache_tree = oracles_state.oracle_cache_tree
 
     new_oracle_tree =
       case how do
         :insert ->
-          insert(oracles_state.oracle_tree, id, serialized)
+          insert(tree.oracle_tree, id, serialized)
 
         :enter ->
-          enter(oracles_state.oracle_tree, id, serialized)
+          enter(tree.oracle_tree, id, serialized)
       end
 
     new_oracle_cache_tree =
-      if exists_key?(oracle_cache_tree, id) do
-        old_oracle = OracleStateTree.get_oracle(oracles_state, id)
-        old_expires = old_oracle.expires
-        cashe_key = create_cache_key({:oracle, id}, old_expires)
-
-        oracle_cache_tree
-        |> delete(cashe_key)
-        |> cache_push({:oracle, id}, expires)
-      else
-        cache_push(oracle_cache_tree, {:oracle, id}, expires)
-      end
+      %{tree | oracle_tree: new_oracle_tree}
+      |> init_pop_stale_cache()
+      |> cache_push({:oracle, id}, expires)
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
 
-  defp add_query(oracles_state, query, how) do
+  defp add_query(tree, query, how) do
     oracle_id = query.oracle_address
-    oracle_cache_tree = oracles_state.oracle_cache_tree
 
     id =
       OracleQueryTx.id(
@@ -159,24 +148,16 @@ defmodule Aecore.Oracle.OracleStateTree do
     new_oracle_tree =
       case how do
         :insert ->
-          insert(oracles_state.oracle_tree, tree_id, serialized)
+          insert(tree.oracle_tree, tree_id, serialized)
 
         :enter ->
-          enter(oracles_state.oracle_tree, tree_id, serialized)
+          enter(tree.oracle_tree, tree_id, serialized)
       end
 
     new_oracle_cache_tree =
-      if exists_key?(oracle_cache_tree, id) do
-        old_query = OracleStateTree.get_query(oracles_state, tree_id)
-        old_expires = old_query.expires
-        cashe_key = create_cache_key({:query, id}, old_expires)
-
-        oracle_cache_tree
-        |> delete(cashe_key)
-        |> cache_push({:query, id}, expires)
-      else
-        cache_push(oracle_cache_tree, {:query, id}, expires)
-      end
+      %{tree | oracle_tree: new_oracle_tree}
+      |> init_pop_stale_cache()
+      |> cache_push({:query, oracle_id, id}, expires)
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
@@ -193,8 +174,8 @@ defmodule Aecore.Oracle.OracleStateTree do
     PatriciaMerkleTree.delete(tree, key)
   end
 
-  defp exists?(oracles_state, key, where) do
-    oracles_state
+  defp exists?(tree, key, where) do
+    tree
     |> which_tree(where)
     |> get(key) !== :none
   end
@@ -210,31 +191,49 @@ defmodule Aecore.Oracle.OracleStateTree do
     end
   end
 
-  defp which_tree(oracles_state, :oracle), do: oracles_state.oracle_tree
-  defp which_tree(oracles_state, :oracle_query), do: oracles_state.oracle_tree
-  defp which_tree(oracles_state, _where), do: oracles_state.oracle_tree
-
-  defp exists_key?(oracle_cache_tree, id) do
-    all_keys =
-      oracle_cache_tree
-      |> PatriciaMerkleTree.all_keys()
-
-    Enum.any?(all_keys, fn key ->
-      {_, {_, deserialized_keys}} = Serialization.cache_key_decode(key)
-      deserialized_keys == id
-    end)
-  end
+  defp which_tree(tree, :oracle), do: tree.oracle_tree
+  defp which_tree(tree, :oracle_query), do: tree.oracle_tree
+  defp which_tree(tree, _where), do: tree.oracle_tree
 
   defp cache_push(oracle_cache_tree, key, expires) do
     encoded = Serialization.cache_key_encode(key, expires)
     enter(oracle_cache_tree, encoded, @dummy_val)
   end
 
-  defp create_cache_key({:query, id}, expires) do
-    Serialization.cache_key_encode({:query, id}, expires)
+  defp init_pop_stale_cache(oracles_state) do
+    %{oracle_cache_tree: cache_tree} =
+      oracles_state.oracle_cache_tree
+      |> PatriciaMerkleTree.all_keys()
+      |> Enum.reduce(oracles_state, fn key, new_state ->
+        new_cache_tree =
+          key
+          |> Serialization.cache_key_decode()
+          |> pop_stale_cache(key, new_state)
+
+        %{new_state | oracle_cache_tree: new_cache_tree}
+      end)
+
+    cache_tree
   end
 
-  defp create_cache_key({:oracle, id}, expires) do
-    Serialization.cache_key_encode({:oracle, id}, expires)
+  defp pop_stale_cache({exp, {:oracle, id}}, stale_cache_key, oracles_state) do
+    oracel = get(oracles_state.oracle_tree, id)
+
+    if oracel.expires > exp do
+      delete(oracles_state.oracle_cache_tree, stale_cache_key)
+    else
+      oracles_state.oracle_cache_tree
+    end
+  end
+
+  defp pop_stale_cache({exp, {:query, oracle_id, id}}, stale_cache_key, oracles_state) do
+    query_id = oracle_id <> id
+    query = get(oracles_state.oracle_tree, query_id)
+
+    if query.expires > exp do
+      delete(oracles_state.oracle_cache_tree, stale_cache_key)
+    else
+      oracles_state.oracle_cache_tree
+    end
   end
 end
