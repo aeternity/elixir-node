@@ -125,7 +125,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
     new_oracle_cache_tree =
       %{oracles_state | oracle_tree: new_oracle_tree}
-      |> init_pop_stale_cache()
+      |> init_expired_cache_key_removal()
       |> cache_push({:oracle, id}, expires)
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
@@ -156,7 +156,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
     new_oracle_cache_tree =
       %{oracles_state | oracle_tree: new_oracle_tree}
-      |> init_pop_stale_cache()
+      |> init_expired_cache_key_removal()
       |> cache_push({:query, oracle_id, id}, expires)
 
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
@@ -200,7 +200,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     enter(oracle_cache_tree, encoded, @dummy_val)
   end
 
-  defp init_pop_stale_cache(oracles_state) do
+  defp init_expired_cache_key_removal(oracles_state) do
     %{oracle_cache_tree: cache_tree} =
       oracles_state.oracle_cache_tree
       |> PatriciaMerkleTree.all_keys()
@@ -208,7 +208,7 @@ defmodule Aecore.Oracle.OracleStateTree do
         new_cache_tree =
           key
           |> Serialization.cache_key_decode()
-          |> pop_stale_cache(key, new_state)
+          |> remove_expired_cache_key(key, new_state)
 
         %{new_state | oracle_cache_tree: new_cache_tree}
       end)
@@ -216,22 +216,22 @@ defmodule Aecore.Oracle.OracleStateTree do
     cache_tree
   end
 
-  defp pop_stale_cache({exp, {:oracle, id}}, stale_cache_key, oracles_state) do
-    oracel = get(oracles_state.oracle_tree, id)
+  defp remove_expired_cache_key({exp, {:oracle, id}}, expired_cache_key, oracles_state) do
+    oracle = get(oracles_state.oracle_tree, id)
 
-    if oracel.expires > exp do
-      delete(oracles_state.oracle_cache_tree, stale_cache_key)
+    if oracle.expires > exp do
+      delete(oracles_state.oracle_cache_tree, expired_cache_key)
     else
       oracles_state.oracle_cache_tree
     end
   end
 
-  defp pop_stale_cache({exp, {:query, oracle_id, id}}, stale_cache_key, oracles_state) do
+  defp remove_expired_cache_key({exp, {:query, oracle_id, id}}, expired_cache_key, oracles_state) do
     query_id = oracle_id <> id
     query = get(oracles_state.oracle_tree, query_id)
 
     if query.expires > exp do
-      delete(oracles_state.oracle_cache_tree, stale_cache_key)
+      delete(oracles_state.oracle_cache_tree, expired_cache_key)
     else
       oracles_state.oracle_cache_tree
     end
