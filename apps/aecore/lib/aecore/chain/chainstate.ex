@@ -21,7 +21,7 @@ defmodule Aecore.Chain.Chainstate do
   @type oracles :: Oracle.t()
   @type naming :: NamingStateTree.namings_state()
   @type channels :: ChannelStateTree.channel_state()
-  @type chain_state_types :: :accounts | :oracles | :naming | :none
+  @type chain_state_types :: :accounts | :oracles | :naming | :channels
 
   @type t :: %Chainstate{
           accounts: accounts,
