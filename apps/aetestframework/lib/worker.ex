@@ -378,7 +378,6 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   end
 
   def busy_port?(port) do
-    IO.inspect(:os.cmd('lsof -i -P -n | grep -w #{port}'))
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
 
@@ -573,10 +572,10 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
       true ->
         # Running the new elixir-node using Port
-        path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
+        IO.inspect path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
         process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, cd: path])
-        port = String.to_integer("400#{iex_num}")
-        sync_port = String.to_integer("300#{iex_num}")
+        IO.inspect port = String.to_integer("400#{iex_num}")
+        IO.inspect sync_port = String.to_integer("300#{iex_num}")
 
         new_state =
           Map.put(state, node_name, %{
