@@ -5,8 +5,10 @@ defmodule Aecore.Naming.NamingStateTree do
   alias Aecore.Naming.Naming
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
+  alias MerklePatriciaTree.Trie
 
   @type namings_state() :: Trie.t()
+  @type hash :: binary()
 
   @spec init_empty() :: Trie.t()
   def init_empty do
@@ -31,9 +33,14 @@ defmodule Aecore.Naming.NamingStateTree do
     end
   end
 
-  @spec delete(Trie.t(), binary()) :: Trie.t()
+  @spec delete(namings_state(), binary()) :: namings_state()
   def delete(tree, key) do
     PatriciaMerkleTree.delete(tree, key)
+  end
+
+  @spec root_hash(namings_state()) :: hash()
+  def root_hash(tree) do
+    PatriciaMerkleTree.root_hash(tree)
   end
 
   defp serialize(

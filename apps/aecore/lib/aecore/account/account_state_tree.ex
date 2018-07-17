@@ -9,7 +9,6 @@ defmodule Aecore.Account.AccountStateTree do
   alias MerklePatriciaTree.Trie
 
   @type accounts_state :: Trie.t()
-
   @type hash :: binary()
 
   @spec init_empty() :: Trie.t()
