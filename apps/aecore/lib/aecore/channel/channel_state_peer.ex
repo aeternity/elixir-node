@@ -420,27 +420,36 @@ defmodule Aecore.Channel.ChannelStatePeer do
             responder_amount: responder_amount
           }
         } = peer_state,
-        fee,
+        [fee_initiator, fee_responder],
         nonce,
         priv_key
       ) do
-    close_tx =
-      DataTx.init(
-        ChannelCloseMutalTx,
-        %{
-          channel_id: id,
-          initiator_amount: initiator_amount,
-          responder_amount: responder_amount
-        },
-        [initiator_pubkey, responder_pubkey],
-        fee,
-        nonce
-      )
+    cond do
+      fee_initiator > initiator_amount ->
+        {:error, "#{__MODULE__}: Initiator fee bigger then initiator balance"}
 
-    {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, node_pubkey(peer_state), priv_key)
-    new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+      fee_responder > responder_amount ->
+        {:error, "#{__MODULE__}: Responder fee bigger then responder balance"}
 
-    {:ok, new_peer_state, close_signed_tx}
+      true ->
+        close_tx =
+          DataTx.init(
+            ChannelCloseMutalTx,
+            %{
+              channel_id: id,
+              initiator_amount: initiator_amount - fee_initiator,
+              responder_amount: responder_amount - fee_responder
+            },
+            [initiator_pubkey, responder_pubkey],
+            fee_initiator + fee_responder,
+            nonce
+          )
+
+        {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, node_pubkey(peer_state), priv_key)
+        new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
+
+        {:ok, new_peer_state, close_signed_tx}
+    end
   end
 
   def close(%ChannelStatePeer{} = state) do
@@ -450,8 +459,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Handles incoming channel close tx. If our highest state matches the incoming signs the tx and blocks any new transfers. Returns altered ChannelStatePeer and signed ChannelCloseMutalTx
   """
-  @spec recv_close_tx(ChannelStatePeer.t(), SignedTx.t(), Wallet.privkey()) ::
-          {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  @spec recv_close_tx(
+          ChannelStatePeer.t(),
+          SignedTx.t(),
+          list(non_neg_integer()),
+          Wallet.privkey()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def recv_close_tx(
         %ChannelStatePeer{
           fsm_state: :open,
@@ -464,6 +477,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           }
         } = peer_state,
         half_signed_tx,
+        [fee_initiator, fee_responder],
         priv_key
       ) do
     data_tx = SignedTx.data_tx(half_signed_tx)
@@ -481,11 +495,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
       tx_id != correct_id ->
         {:error, "#{__MODULE__}: Invalid id"}
 
-      tx_initiator_amount != correct_initiator_amount ->
-        {:error, "#{__MODULE__}: Invalid initiator_amount"}
+      tx_initiator_amount != correct_initiator_amount - fee_initiator ->
+        {:error, "#{__MODULE__}: Invalid initiator_amount (check fee)"}
 
-      tx_responder_amount != correct_responder_amount ->
-        {:error, "#{__MODULE__}: Invalid responder_amount"}
+      tx_responder_amount != correct_responder_amount - fee_responder ->
+        {:error, "#{__MODULE__}: Invalid responder_amount (check fee)"}
 
       true ->
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
@@ -497,7 +511,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_close_tx(%ChannelStatePeer{} = state) do
+  def recv_close_tx(%ChannelStatePeer{} = state, _, [_, _], _) do
     {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{state.fsm_state}"}
   end
 

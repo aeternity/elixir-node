@@ -86,8 +86,8 @@ defmodule AecoreChannelTest do
     assert 30 == signed_state2.responder_amount
     assert 2 == signed_state2.sequence
 
-    {:ok, close_tx} = call_s1({:close, id, 10, 2, ctx.sk1})
-    {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, ctx.sk2})
+    {:ok, close_tx} = call_s1({:close, id, [5, 5], 2, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, [5, 5], ctx.sk2})
     assert :closing == get_fsm_state_s1(id)
     assert :closing == get_fsm_state_s2(id)
 

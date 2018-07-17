@@ -180,18 +180,19 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Creates channel close transaction. This also blocks any new transactions from happening on channel.
   """
-  @spec close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec close(binary(), list(non_neg_integer()), non_neg_integer(), Wallet.privkey()) ::
           {:ok, SignedTx.t()} | error()
-  def close(channel_id, fee, nonce, priv_key) do
-    GenServer.call(__MODULE__, {:close, channel_id, fee, nonce, priv_key})
+  def close(channel_id, fees, nonce, priv_key) do
+    GenServer.call(__MODULE__, {:close, channel_id, fees, nonce, priv_key})
   end
 
   @doc """
   Handles received half signed close tx. If it validates returns fully signed close tx and adds it to Pool.
   """
-  @spec recv_close_tx(binary(), SignedTx.t(), Wallet.privkey()) :: {:ok, SignedTx.t()} | error()
-  def recv_close_tx(channel_id, close_tx, priv_key) do
-    GenServer.call(__MODULE__, {:recv_close_tx, channel_id, close_tx, priv_key})
+  @spec recv_close_tx(binary(), SignedTx.t(), list(non_neg_integer()), Wallet.privkey()) ::
+          {:ok, SignedTx.t()} | error()
+  def recv_close_tx(channel_id, close_tx, fees, priv_key) do
+    GenServer.call(__MODULE__, {:recv_close_tx, channel_id, close_tx, fees, priv_key})
   end
 
   @doc """
@@ -365,11 +366,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:close, id, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:close, id, fees, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
     with {:ok, new_peer_state, close_tx} <-
-           ChannelStatePeer.close(peer_state, fee, nonce, priv_key) do
+           ChannelStatePeer.close(peer_state, fees, nonce, priv_key) do
       {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
     else
       {:error, reason} ->
@@ -377,11 +378,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:recv_close_tx, id, close_tx, priv_key}, _from, state) do
+  def handle_call({:recv_close_tx, id, close_tx, fees, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
     with {:ok, new_peer_state, signed_close_tx} <-
-           ChannelStatePeer.recv_close_tx(peer_state, close_tx, priv_key),
+           ChannelStatePeer.recv_close_tx(peer_state, close_tx, fees, priv_key),
          :ok <- Pool.add_transaction(signed_close_tx) do
       {:reply, {:ok, signed_close_tx}, Map.put(state, id, new_peer_state)}
     else

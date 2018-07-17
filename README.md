@@ -319,9 +319,9 @@ For normal channel operation procedure should be followed:
     c. Second party calls `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
     c. Second party sends back `signed_state`
     d. First party calls `{:ok, nil} = Channel.recv_state(signed_state)`
-9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, fee, nonce, priv_key`
+9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, [initiator_fee, responder_fee], nonce, priv_key`
 10. First party sends `half_signed_close_tx` to second party
-11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, priv_key)`
+11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, [initiator_fee, responder_fee], priv_key)`
 12. Second party sends `fully_signed_close_tx` to first party
 13. When channel status changes to `:closed` channel is fully closed
 

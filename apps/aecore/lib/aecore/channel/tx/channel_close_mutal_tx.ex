@@ -125,29 +125,27 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           DataTx.t()
         ) :: :ok
   def preprocess_check(
-        accounts,
+        _accounts,
         channels,
         _block_height,
         %ChannelCloseMutalTx{} = tx,
         data_tx
       ) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     fee = DataTx.fee(data_tx)
     channel = ChannelStateTree.get(channels, tx.channel_id)
 
     cond do
-      AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + 1) / 2 +
-        tx.initiator_amount < 0 ->
+      tx.initiator_amount < 0 ->
         {:error, "#{__MODULE__}: Negative initiator balance"}
 
-      AccountStateTree.get(accounts, responder_pubkey).balance - fee / 2 + tx.responder_amount < 0 ->
+      tx.responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       channel.initiator_amount + channel.responder_amount !=
-          tx.initiator_amount + tx.responder_amount ->
+          tx.initiator_amount + tx.responder_amount + fee ->
         {:error, "#{__MODULE__}: Wrong total balance"}
 
       true ->
@@ -162,16 +160,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           DataTx.t(),
           non_neg_integer()
         ) :: ChainState.account()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-
+  def deduct_fee(accounts, _block_height, _tx, _data_tx, _fee) do
+    # Fee is deducted from channel
     accounts
-    |> AccountStateTree.update(initiator_pubkey, fn acc ->
-      Account.apply_transfer!(acc, block_height, -1 * div(fee + 1, 2))
-    end)
-    |> AccountStateTree.update(responder_pubkey, fn acc ->
-      Account.apply_transfer!(acc, block_height, -1 * div(fee, 2))
-    end)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
