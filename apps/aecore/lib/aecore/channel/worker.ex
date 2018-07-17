@@ -18,6 +18,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
+  alias Aeutil.Events
 
   use GenServer
 
@@ -37,31 +38,32 @@ defmodule Aecore.Channel.Worker do
   end
 
   def init(_args) do
+    Events.subscribe(:new_top_block)
     {:ok, %{}}
   end
 
   @doc """
   Notifies channel manager about new mined tx
   """
-  def new_tx_mined(%ChannelCreateTx{} = tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCreateTx}} = tx) do
     opened(tx)
   end
 
-  def new_tx_mined(%ChannelCloseMutalTx{} = tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseMutalTx}} = tx) do
     closed(tx)
   end
 
-  def new_tx_mined(%ChannelCloseSoloTx{} = _tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseSoloTx}} = _tx) do
     # TODO
     :ok
   end
 
-  def new_tx_mined(%ChannelSlashTx{} = _tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSlashTx}} = _tx) do
     # TODO
     :ok
   end
 
-  def new_tx_mined(%ChannelSettleTx{} = tx) do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSettleTx}} = tx) do
     closed(tx)
   end
 
@@ -507,5 +509,17 @@ defmodule Aecore.Channel.Worker do
     else
       {:reply, {:error, "#{__MODULE__}: No such channel"}, state}
     end
+  end
+
+  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+    case event do
+      # info is a block
+      :new_top_block ->
+        spawn(fn ->
+          Enum.each(info.txs, fn tx -> new_tx_mined(tx) end)
+        end)
+    end
+
+    {:noreply, state}
   end
 end

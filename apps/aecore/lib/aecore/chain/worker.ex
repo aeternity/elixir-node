@@ -13,8 +13,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Events
+  alias Aeutil.Events
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Keys.Wallet
   alias Aehttpserver.Web.Notify
@@ -27,7 +26,6 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Channel.Worker, as: Channel
 
   require Logger
 
@@ -423,12 +421,7 @@ defmodule Aecore.Chain.Worker do
         :total_diff => %{:total_difficulty => new_total_diff}
       })
 
-      ## We send the block to others only if it extends the longest chain
-      if Enum.empty?(Peers.all_pids()) do
-        Logger.debug(fn -> "Peer list empty" end)
-      else
-        Events.publish(:block_created, new_block)
-      end
+      Events.publish(:new_top_block, new_block)
 
       # Broadcasting notifications for new block added to chain and new mined transaction
       Notify.broadcast_new_block_added_to_chain_and_new_mined_tx(new_block)

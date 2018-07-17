@@ -879,7 +879,7 @@ defmodule Aecore.Tx.DataTx do
     }
 
     DataTx.init(
-      NameTransferTx,
+      ChannelCloseMutalTx,
       payload,
       senders,
       Serialization.transform_item(fee, :int),
@@ -894,7 +894,7 @@ defmodule Aecore.Tx.DataTx do
     }
 
     DataTx.init(
-      NameTransferTx,
+      ChannelCloseSoloTx,
       payload,
       senders,
       Serialization.transform_item(fee, :int),
@@ -919,7 +919,7 @@ defmodule Aecore.Tx.DataTx do
     }
 
     DataTx.init(
-      NameTransferTx,
+      ChannelCreateTx,
       payload,
       senders,
       Serialization.transform_item(fee, :int),
@@ -932,7 +932,7 @@ defmodule Aecore.Tx.DataTx do
     payload = %ChannelSettleTx{channel_id: channel_id}
 
     DataTx.init(
-      NameTransferTx,
+      ChannelSettleTx,
       payload,
       senders,
       Serialization.transform_item(fee, :int),
@@ -945,7 +945,7 @@ defmodule Aecore.Tx.DataTx do
     payload = %ChannelSlashTx{state: ChannelStateOffChain.decode(state)}
 
     DataTx.init(
-      NameTransferTx,
+      ChannelSlashTx,
       payload,
       senders,
       Serialization.transform_item(fee, :int),
@@ -959,7 +959,7 @@ defmodule Aecore.Tx.DataTx do
      "#{__MODULE__}: Unknown DataTx structure: #{inspect(tx_type)}, TX's data: #{inspect(tx_data)} "}
   end
 
-  # Optional function-workaround:
+  # Optional function-workaroud:
   # As we have differences in value types in some fields,
   # which means that we encode these fields different apart from what Epoch does,
   # we need to recognize the origins of this value.

@@ -15,7 +15,7 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Peers.Events
+  alias Aeutil.Events
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Hash
   alias Aeutil.Serialization
