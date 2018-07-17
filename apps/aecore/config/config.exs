@@ -63,8 +63,8 @@ config :aecore, :rlp_tags,
   account_state: 10,
   signed_tx: 11,
   spend_tx: 12,
-  registered_orc_state: 20,
-  interaction_obj_state: 21,
+  oracle_state: 20,
+  oracle_query_state: 21,
   oracle_reg_tx: 22,
   oracle_query_tx: 23,
   oracle_response_tx: 24,
@@ -90,7 +90,7 @@ config :aecore, :bytes_size,
 
 config :aecore, :signed_tx, sign_max_size: 72
 
-config :aecore, :oracle_response_tx, query_id: 32
+config :aecore, :oracle_response_tx, query_id: 65
 
 config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
@@ -101,6 +101,8 @@ config :aecore, :naming,
 config :aecore, :aewallet,
   pass: aewallet_pass,
   path: Path.absname(aewallet_path)
+
+config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),

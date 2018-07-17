@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -73,15 +73,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
-        %{interaction_objects: interaction_objects} = oracle_state,
+        oracles,
         block_height,
         %OracleResponseTx{} = tx,
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-
-    interaction_object = interaction_objects[tx.query_id]
-    query_fee = interaction_object.fee
+    interaction_objects = OracleStateTree.get_query(oracles, tx.query_id)
+    query_fee = interaction_objects.fee
 
     updated_accounts_state =
       accounts
@@ -89,18 +88,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         Account.apply_transfer!(acc, block_height, query_fee)
       end)
 
-    updated_interaction_objects =
-      Map.put(interaction_objects, tx.query_id, %{
-        interaction_object
-        | response: tx.response,
-          expires: interaction_object.expires + interaction_object.response_ttl,
-          has_response: true
-      })
-
-    updated_oracle_state = %{
-      oracle_state
-      | interaction_objects: updated_interaction_objects
+    updated_interaction_objects = %{
+      interaction_objects
+      | response: tx.response,
+        expires: interaction_objects.expires + interaction_objects.response_ttl,
+        has_response: true
     }
+
+    updated_oracle_state = OracleStateTree.enter_query(oracles, updated_interaction_objects)
 
     {:ok, {updated_accounts_state, updated_oracle_state}}
   end
@@ -114,7 +109,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
-        %{registered_oracles: registered_oracles, interaction_objects: interaction_objects},
+        oracles,
         _block_height,
         tx,
         data_tx
@@ -126,22 +121,22 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
-      !Map.has_key?(registered_oracles, sender) ->
+      !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
       !Oracle.data_valid?(
-        registered_oracles[sender].response_format,
+        OracleStateTree.get_oracle(oracles, sender).response_format,
         tx.response
       ) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
-      !Map.has_key?(interaction_objects, tx.query_id) ->
+      !OracleStateTree.exists_query?(oracles, tx.query_id) ->
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tx.query_id)}"}
 
-      interaction_objects[tx.query_id].response != :undefined ->
+      OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      interaction_objects[tx.query_id].oracle_address != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
@@ -165,8 +160,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
-    referenced_query_response_ttl = Chain.oracle_interaction_objects()[tx.query_id].response_ttl
-
+    oracles = Chain.chain_state().oracles
+    referenced_query_response_ttl = OracleStateTree.get_query(oracles, tx.query_id).response_ttl
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end
 

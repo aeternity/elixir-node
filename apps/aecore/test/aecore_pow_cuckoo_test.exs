@@ -22,14 +22,14 @@ defmodule AecoreCuckooTest do
     end)
   end
 
-  @tag timeout: 60000
+  @tag timeout: 60_000
   @tag :cuckoo
   test "Generate solution with a winning nonce and high target threshold", setup do
     %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
     assert found_solution == wining_solution()
   end
 
-  @tag timeout: 60000
+  @tag timeout: 60_000
   @tag :cuckoo
   test "Verify solution with a high target threshold", setup do
     header = Cuckoo.generate(block_candidate().header)
@@ -38,48 +38,48 @@ defmodule AecoreCuckooTest do
 
   defp wining_solution do
     [
-      526,
-      1720,
-      3463,
-      3841,
-      5225,
-      6487,
-      6660,
-      7467,
-      9404,
-      9483,
-      11730,
-      12200,
-      13764,
-      14827,
-      15211,
-      15420,
-      16209,
-      17703,
-      18165,
-      18873,
-      19092,
-      19286,
-      19438,
-      19619,
-      19875,
-      20227,
-      21014,
-      22067,
-      22885,
-      23112,
-      23251,
-      24112,
-      24448,
-      25053,
-      25259,
-      25486,
-      26774,
-      26864,
-      27696,
-      28183,
-      29677,
-      31797
+      16,
+      1900,
+      2342,
+      2865,
+      4474,
+      5395,
+      7328,
+      7797,
+      8750,
+      9149,
+      9590,
+      10_293,
+      11_413,
+      11_471,
+      12_320,
+      12_875,
+      12_885,
+      14_599,
+      14_779,
+      15_204,
+      15_531,
+      16_750,
+      16_843,
+      18_449,
+      18_562,
+      18_904,
+      19_599,
+      19_988,
+      20_686,
+      21_807,
+      23_437,
+      23_788,
+      24_989,
+      26_006,
+      27_427,
+      27_679,
+      28_421,
+      28_605,
+      29_687,
+      30_388,
+      31_001,
+      31_655
     ]
   end
 
@@ -103,7 +103,7 @@ defmodule AecoreCuckooTest do
     %Block{
       header: %Header{
         height: 5,
-        nonce: 67,
+        nonce: 161,
         pow_evidence: List.duplicate(0, 42),
         prev_hash: prev_hash,
         root_hash: root_hash,

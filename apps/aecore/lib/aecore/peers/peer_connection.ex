@@ -11,6 +11,8 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
+  alias Aecore.Peers.Sync
+  alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
@@ -44,7 +46,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   @peer_share_count 32
 
-  @first_ping_timeout 30000
+  @first_ping_timeout 30_000
 
   def start_link(ref, socket, transport, opts) do
     args = [ref, socket, transport, opts]
@@ -145,7 +147,7 @@ defmodule Aecore.Peers.PeerConnection do
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
   def send_new_tx(tx, pid) when is_pid(pid) do
     @tx
-    |> pack_msg(%{tx: tx})
+    |> pack_msg(tx)
     |> send_msg_no_response(pid)
   end
 
@@ -226,19 +228,21 @@ defmodule Aecore.Peers.PeerConnection do
         :inet.setopts(socket, active: true)
 
         case :enoise.connect(socket, noise_opts) do
-          {:ok, noise_socket, _} ->
+          {:ok, noise_socket, _status} ->
             new_state = Map.put(state, :status, {:connected, noise_socket})
             peer = %{host: host, pubkey: r_pubkey, port: port, connection: self()}
             :ok = do_ping(new_state)
             Peers.add_peer(peer)
             {:noreply, new_state}
 
-          {:error, _reason} ->
+          {:error, reason} ->
+            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end
@@ -291,6 +295,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def handle_info({:tcp_closed, _}, state) do
     Logger.info("Connection interrupted by peer - #{inspect(state)}")
+
     Peers.remove_peer(state.r_pubkey)
     {:stop, :normal, state}
   end
@@ -402,12 +407,12 @@ defmodule Aecore.Peers.PeerConnection do
           # don't sync - same top block
           :ok
 
-        local_top_difficulty() > difficulty ->
+        Chain.total_difficulty() > difficulty ->
           # don't sync - our difficulty is higher
           :ok
 
         true ->
-          # start sync
+          Sync.start_sync(conn_pid, best_hash)
           :ok
       end
 
@@ -417,8 +422,8 @@ defmodule Aecore.Peers.PeerConnection do
         end
       end)
 
-      {:ok, %{txs: txs}} = get_mempool(conn_pid)
-      Enum.each(txs, fn tx -> Pool.add_transaction(tx) end)
+      Sync.fetch_mempool(conn_pid)
+      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -452,7 +457,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_hash(payload, pid) do
     hash = payload.hash
-    result = Chain.get_header(hash)
+    result = Chain.get_header_by_hash(hash)
     send_response(result, @header, pid)
   end
 
@@ -471,10 +476,11 @@ defmodule Aecore.Peers.PeerConnection do
         {:ok, headers} ->
           header_hashes =
             Enum.map(headers, fn header ->
+              {header.height, BlockValidation.block_header_hash(header)}
               <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
             end)
 
-          {:ok, header_hashes}
+          {:ok, Enum.reverse(header_hashes)}
 
         {:error, reason} ->
           {:error, reason}
@@ -490,9 +496,8 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp handle_get_mempool(pid) do
-    pool = Map.values(Pool.get_pool())
-    encoded_txs = Enum.map(pool, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
-    send_response({:ok, %{txs: encoded_txs}}, @mempool, pid)
+    txs = Map.values(Pool.get_pool())
+    send_response({:ok, %{txs: txs}}, @mempool, pid)
   end
 
   defp handle_new_block(payload) do
@@ -503,11 +508,6 @@ defmodule Aecore.Peers.PeerConnection do
   defp handle_new_tx(payload) do
     tx = payload.tx
     Pool.add_transaction(tx)
-  end
-
-  defp local_top_difficulty do
-    top_block = Chain.top_block()
-    top_block.header.target
   end
 
   defp local_ping_object do
@@ -527,7 +527,7 @@ defmodule Aecore.Peers.PeerConnection do
       share: 32,
       genesis_hash: Block.genesis_hash(),
       best_hash: Chain.top_block_hash(),
-      difficulty: local_top_difficulty(),
+      difficulty: Chain.total_difficulty(),
       peers: peers,
       port: Supervisor.sync_port()
     }
@@ -552,11 +552,11 @@ defmodule Aecore.Peers.PeerConnection do
   # RLP for peer messages
 
   # fragments aren't encoded
-  defp rlp_encode(@msg_fragment, fragment) do
+  def rlp_encode(@msg_fragment, fragment) do
     fragment
   end
 
-  defp rlp_encode(@p2p_response, %{result: result, type: type, object: object, reason: reason}) do
+  def rlp_encode(@p2p_response, %{result: result, type: type, object: object, reason: reason}) do
     serialized_result = bool_bin(result)
 
     serialized_reason = to_string(reason)
@@ -579,42 +579,42 @@ defmodule Aecore.Peers.PeerConnection do
     ])
   end
 
-  defp rlp_encode(@ping, %{
-         share: share,
-         genesis_hash: genesis_hash,
-         best_hash: best_hash,
-         difficulty: difficulty,
-         peers: peers,
-         port: port
-       }) do
+  def rlp_encode(@ping, %{
+        share: share,
+        genesis_hash: genesis_hash,
+        best_hash: best_hash,
+        difficulty: difficulty,
+        peers: peers,
+        port: port
+      }) do
     ExRLP.encode([
       @p2p_msg_version,
       port,
       share,
       genesis_hash,
-      difficulty,
+      :erlang.float_to_binary(difficulty),
       best_hash,
       Peers.rlp_encode_peers(peers)
     ])
   end
 
-  defp rlp_encode(@get_header_by_hash, %{hash: hash}) do
+  def rlp_encode(@get_header_by_hash, %{hash: hash}) do
     ExRLP.encode([@p2p_msg_version, hash])
   end
 
-  defp rlp_encode(@get_header_by_height, %{height: height}) do
+  def rlp_encode(@get_header_by_height, %{height: height}) do
     ExRLP.encode([@p2p_msg_version, height])
   end
 
-  defp rlp_encode(@header, header) do
+  def rlp_encode(@header, header) do
     header_binary = Serialization.header_to_binary(header)
     ExRLP.encode([@p2p_msg_version, header_binary])
   end
 
-  defp rlp_encode(@get_n_successors, %{
-         hash: hash,
-         n: n
-       }) do
+  def rlp_encode(@get_n_successors, %{
+        hash: hash,
+        n: n
+      }) do
     ExRLP.encode([
       @p2p_msg_version,
       hash,
@@ -622,35 +622,36 @@ defmodule Aecore.Peers.PeerConnection do
     ])
   end
 
-  defp rlp_encode(@header_hashes, header_hashes) do
+  def rlp_encode(@header_hashes, header_hashes) do
     ExRLP.encode([@p2p_msg_version, header_hashes])
   end
 
-  defp rlp_encode(@get_block, %{hash: hash}) do
+  def rlp_encode(@get_block, %{hash: hash}) do
     ExRLP.encode([@p2p_msg_version, hash])
   end
 
-  defp rlp_encode(@block, block) do
+  def rlp_encode(@block, block) do
     ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(block, :block)])
   end
 
-  defp rlp_encode(@tx, tx) do
+  def rlp_encode(@tx, tx) do
     ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(tx, :signedtx)])
   end
 
-  defp rlp_encode(@get_mempool, _data) do
+  def rlp_encode(@get_mempool, _data) do
     ExRLP.encode([@p2p_msg_version])
   end
 
-  defp rlp_encode(@mempool, %{txs: mempool}) do
-    ExRLP.encode([@p2p_msg_version, mempool])
+  def rlp_encode(@mempool, %{txs: txs}) do
+    encoded_txs = Enum.map(txs, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
+    ExRLP.encode([@p2p_msg_version, encoded_txs])
   end
 
-  defp rlp_decode(@msg_fragment, fragment) do
+  def rlp_decode(@msg_fragment, fragment) do
     fragment
   end
 
-  defp rlp_decode(@p2p_response, encoded_response) do
+  def rlp_decode(@p2p_response, encoded_response) do
     [_vsn, result, type, reason, object] = ExRLP.decode(encoded_response)
     deserialized_result = bool_bin(result)
 
@@ -682,7 +683,7 @@ defmodule Aecore.Peers.PeerConnection do
     }
   end
 
-  defp rlp_decode(@ping, encoded_ping) do
+  def rlp_decode(@ping, encoded_ping) do
     [
       _vsn,
       port,
@@ -697,23 +698,23 @@ defmodule Aecore.Peers.PeerConnection do
       port: :binary.decode_unsigned(port),
       share: :binary.decode_unsigned(share),
       genesis_hash: genesis_hash,
-      difficulty: :binary.decode_unsigned(difficulty),
+      difficulty: :erlang.binary_to_float(difficulty),
       best_hash: best_hash,
       peers: Peers.rlp_decode_peers(peers)
     }
   end
 
-  defp rlp_decode(@get_header_by_hash, encoded_get_header_by_hash) do
+  def rlp_decode(@get_header_by_hash, encoded_get_header_by_hash) do
     [_vsn, hash] = ExRLP.decode(encoded_get_header_by_hash)
     %{hash: hash}
   end
 
-  defp rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
+  def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
     %{height: :binary.decode_unsigned(height)}
   end
 
-  defp rlp_decode(@header, encoded_header) do
+  def rlp_decode(@header, encoded_header) do
     [
       _vsn,
       header_binary
@@ -723,7 +724,7 @@ defmodule Aecore.Peers.PeerConnection do
     %{header: deserialized_header}
   end
 
-  defp rlp_decode(@get_n_successors, encoded_get_n_successors) do
+  def rlp_decode(@get_n_successors, encoded_get_n_successors) do
     [
       _vsn,
       hash,
@@ -736,7 +737,7 @@ defmodule Aecore.Peers.PeerConnection do
     }
   end
 
-  defp rlp_decode(@header_hashes, encoded_header_hashes) do
+  def rlp_decode(@header_hashes, encoded_header_hashes) do
     [
       _vsn,
       header_hashes
@@ -748,7 +749,7 @@ defmodule Aecore.Peers.PeerConnection do
     %{hashes: deserialized_hashes}
   end
 
-  defp rlp_decode(@get_block, encoded_block_hash) do
+  def rlp_decode(@get_block, encoded_block_hash) do
     [
       _vsn,
       block_hash
@@ -757,7 +758,7 @@ defmodule Aecore.Peers.PeerConnection do
     %{hash: block_hash}
   end
 
-  defp rlp_decode(@block, encoded_block) do
+  def rlp_decode(@block, encoded_block) do
     [
       _vsn,
       block
@@ -767,7 +768,7 @@ defmodule Aecore.Peers.PeerConnection do
     %{block: deserialized_block}
   end
 
-  defp rlp_decode(@tx, encoded_tx) do
+  def rlp_decode(@tx, encoded_tx) do
     [
       _vsn,
       tx
@@ -777,11 +778,11 @@ defmodule Aecore.Peers.PeerConnection do
     %{tx: deserialized_tx}
   end
 
-  defp rlp_decode(@get_mempool, _data) do
+  def rlp_decode(@get_mempool, _data) do
     []
   end
 
-  defp rlp_decode(@mempool, encoded_pool) do
+  def rlp_decode(@mempool, encoded_pool) do
     [_vsn, pool] = ExRLP.decode(encoded_pool)
     txs = Enum.map(pool, fn encoded_tx -> Serialization.rlp_decode(encoded_tx) end)
     %{txs: txs}
