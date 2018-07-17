@@ -216,24 +216,18 @@ defmodule Aecore.Oracle.OracleStateTree do
     cache_tree
   end
 
-  defp remove_expired_cache_key({exp, {:oracle, id}}, expired_cache_key, oracles_state) do
-    oracle = get(oracles_state.oracle_tree, id)
+  defp remove_expired_cache_key({exp, data}, expired_cache_key, oracles_state) do
+    record_key = extract_record_key(data)
+    record = get(oracles_state.oracle_tree, record_key)
 
-    if oracle.expires > exp do
+    if record.expires > exp do
       delete(oracles_state.oracle_cache_tree, expired_cache_key)
     else
       oracles_state.oracle_cache_tree
     end
   end
 
-  defp remove_expired_cache_key({exp, {:query, oracle_id, id}}, expired_cache_key, oracles_state) do
-    query_id = oracle_id <> id
-    query = get(oracles_state.oracle_tree, query_id)
+  defp extract_record_key({:oracle, id}), do: id
+  defp extract_record_key({:query, oracle_id, id}), do: oracle_id <> id
 
-    if query.expires > exp do
-      delete(oracles_state.oracle_cache_tree, expired_cache_key)
-    else
-      oracles_state.oracle_cache_tree
-    end
-  end
 end
