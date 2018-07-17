@@ -207,7 +207,7 @@ defmodule AecoreChannelTest do
     tmp_id = <<123>>
     assert :ok == call_s1({:initialize, tmp_id, [ctx.pk1, ctx.pk2], [150, 150], :initiator, 10})
     assert :ok == call_s2({:initialize, tmp_id, [ctx.pk1, ctx.pk2], [150, 150], :responder, 10})
-    {:ok, id, half_open_tx} = call_s1({:create_open, tmp_id, 2, 10, 1, ctx.sk1})
+    {:ok, id, half_open_tx} = call_s1({:open, tmp_id, 2, 10, 1, ctx.sk1})
     assert :half_signed == get_fsm_state_s1(id)
     {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, half_open_tx, ctx.sk2})
     assert :signed == get_fsm_state_s2(id)

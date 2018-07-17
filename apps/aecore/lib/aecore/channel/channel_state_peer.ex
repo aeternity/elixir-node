@@ -151,14 +151,14 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates channel open tx. Can only be called in initialized state by initiator. Changes fsm state to half_signed. Specified fee and nonce are for the created tx. Returns altered ChannelPeerState, generated channel id, open tx.
   """
-  @spec create_open(
+  @spec open(
           ChannelStatePeer.t(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           Wallet.privkey()
         ) :: {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
-  def create_open(
+  def open(
         %ChannelStatePeer{
           fsm_state: :initialized,
           role: :initiator,
@@ -206,7 +206,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def create_open(%ChannelStatePeer{}) do
+  def open(%ChannelStatePeer{}) do
     {:error, "#{__MODULE__}: Invalid call"}
   end
 

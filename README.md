@@ -305,13 +305,13 @@ For normal channel operation procedure should be followed:
 0. Parties negotiate channel properties (founds, accounts involved, locktime, channel\_reserve, temporary\_id)
 1. Initiator calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :initiator, channel_reserve)`
 2. Responder calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :responder, channel_reserve)`
-3. Initiator calls `{:ok, channel_id, half_signed_open_tx} = Channel.create_open(temporary_id, locktime, fee, nonce, priv_key)`
+3. Initiator calls `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, locktime, fee, nonce, priv_key)`
 4. Initiator sends `half_signed_open_tx` to Responder
 5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = sign_open(temporary_id, half_signed_open_tx, priv_key)`
 6. Responder sends back `fully_signed_open_tx` to Initiator
 7. Both parties await the transaction to be mined. Status of channel will get changed to `:open`
 8. Both parties can create transactions as follows:
-    
+
     a. First party calls `{:ok, half_signed_state} = Channel.transfer(channel_id, amount, priv_key)`
     b. First party sendd `half_signed_state` to second party.
     c. Second party calls `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`

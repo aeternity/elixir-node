@@ -122,15 +122,15 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Creates open transaction. Can only be called once per channel by :initiator. Returns pair: generated channelID, half signed SignedTx.
   """
-  @spec create_open(
+  @spec open(
           binary(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
           Wallet.privkey()
         ) :: {:ok, binary(), SignedTx.t()} | error()
-  def create_open(temporary_id, locktime, fee, nonce, priv_key) do
-    GenServer.call(__MODULE__, {:create_open, temporary_id, locktime, fee, nonce, priv_key})
+  def open(temporary_id, locktime, fee, nonce, priv_key) do
+    GenServer.call(__MODULE__, {:open, temporary_id, locktime, fee, nonce, priv_key})
   end
 
   @doc """
@@ -288,11 +288,11 @@ defmodule Aecore.Channel.Worker do
     {:reply, :ok, Map.put(state, temporary_id, peer_state)}
   end
 
-  def handle_call({:create_open, temporary_id, locktime, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:open, temporary_id, locktime, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
     {:ok, new_peer_state, new_id, open_tx} =
-      ChannelStatePeer.create_open(peer_state, locktime, fee, nonce, priv_key)
+      ChannelStatePeer.open(peer_state, locktime, fee, nonce, priv_key)
 
     new_state =
       state
