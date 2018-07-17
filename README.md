@@ -309,7 +309,7 @@ For normal channel operation procedure should be followed:
 2. Responder calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :responder, channel_reserve)`
 3. Initiator calls `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, locktime, fee, nonce, priv_key)`
 4. Initiator sends `half_signed_open_tx` to Responder
-5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = sign_open(temporary_id, half_signed_open_tx, priv_key)`
+5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, half_signed_open_tx, priv_key)`
 6. Responder sends back `fully_signed_open_tx` to Initiator
 7. Both parties await the transaction to be mined. Status of channel will get changed to `:open`
 8. Both parties can create transactions as follows:
