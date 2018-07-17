@@ -229,5 +229,4 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp extract_record_key({:oracle, id}), do: id
   defp extract_record_key({:query, oracle_id, id}), do: oracle_id <> id
-
 end
