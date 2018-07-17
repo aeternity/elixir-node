@@ -138,7 +138,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -148,7 +148,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
       # TODO print claim represent.
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 

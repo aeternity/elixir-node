@@ -596,12 +596,14 @@ defmodule Aecore.Tx.DataTx do
         end
       end
 
+    {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
+
     list = [
       tag,
       version,
       senders,
       tx.nonce,
-      tx.payload.hash,
+      encoded_hash,
       tx.fee,
       tx.ttl
     ]
@@ -926,7 +928,8 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
-  defp decode(NameRevokeTx, [encoded_senders, nonce, hash, fee, ttl]) do
+  defp decode(NameRevokeTx, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
+    {:ok, hash} = Identifier.decode_data(encoded_hash)
     payload = %NameRevokeTx{hash: hash}
 
     senders =
