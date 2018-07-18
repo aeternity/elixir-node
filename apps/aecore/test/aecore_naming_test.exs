@@ -29,7 +29,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "test naming workflow", setup do
+  test "test naming workflow" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
@@ -115,7 +115,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "not pre-claimed name not claimable", setup do
+  test "not pre-claimed name not claimable" do
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
     Miner.mine_sync_block_to_chain()
@@ -127,7 +127,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "name not claimable with incorrect salt", setup do
+  test "name not claimable with incorrect salt" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
@@ -151,8 +151,6 @@ defmodule AecoreNamingTest do
     naming_state = Chain.chain_state().naming
 
     assert 1 == naming_state |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    {:ok, claim_hash} = NameUtil.normalized_namehash("test.aet")
-    first_name_claim = NamingStateTree.get(naming_state, claim_hash)
 
     assert {:ok, Wallet.get_public_key()} ==
              naming_state |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
@@ -161,7 +159,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "name not claimable from different account", setup do
+  test "name not claimable from different account" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
@@ -200,7 +198,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "name not updatable from different account", setup do
+  test "name not updatable from different account" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
@@ -253,7 +251,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "name not transferable from different account", setup do
+  test "name not transferable from different account" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)
@@ -330,7 +328,7 @@ defmodule AecoreNamingTest do
   end
 
   @tag :naming
-  test "name not revokable from different account", setup do
+  test "name not revokable from different account" do
     Miner.mine_sync_block_to_chain()
     {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(pre_claim)

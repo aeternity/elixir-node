@@ -8,13 +8,12 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
 
-  setup wallet do
+  setup _wallet do
     Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 

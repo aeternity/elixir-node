@@ -15,7 +15,6 @@ defmodule AecoreTxTest do
   alias Aecore.Keys.Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
-  alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
   setup do
@@ -34,7 +33,7 @@ defmodule AecoreTxTest do
     end)
   end
 
-  setup tx do
+  setup _tx do
     sender_acc = Wallet.get_public_key()
 
     [
@@ -68,7 +67,6 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"some payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-    priv_key = Wallet.get_private_key()
 
     assert {:error, "#{SpendTx}: The amount cannot be a negative number"} ==
              DataTx.validate(tx_data)
@@ -137,7 +135,7 @@ defmodule AecoreTxTest do
     {:error, _} = DataTx.validate(data_tx)
   end
 
-  test "receiver pub_key is too small", tx do
+  test "receiver pub_key is too small" do
     sender = Wallet.get_public_key()
     amount = 100
     fee = 50

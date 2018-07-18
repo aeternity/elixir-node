@@ -8,13 +8,8 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
@@ -36,7 +31,7 @@ defmodule AecoreValidationTest do
     end)
   end
 
-  setup ctx do
+  setup _ctx do
     Miner.mine_sync_block_to_chain()
 
     [
@@ -78,7 +73,6 @@ defmodule AecoreValidationTest do
   end
 
   @tag :validation
-  @timeout 10_000_000
   test "validate block header time", ctx do
     Miner.mine_sync_block_to_chain()
 
@@ -121,7 +115,6 @@ defmodule AecoreValidationTest do
              )
   end
 
-  @timeout 10_000
   test "validate transactions in a block", ctx do
     sender = Wallet.get_public_key()
     amount = 5
@@ -146,7 +139,7 @@ defmodule AecoreValidationTest do
   def get_new_block(receiver) do
     sender = Wallet.get_public_key()
     amount = 100
-    nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
+    # nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     fee = 10
 
     priv_key = Wallet.get_private_key()

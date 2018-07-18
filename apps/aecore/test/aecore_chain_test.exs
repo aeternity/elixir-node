@@ -13,7 +13,6 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
-  alias Aecore.Chain.Target
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys.Wallet
 
@@ -32,7 +31,7 @@ defmodule AecoreChainTest do
 
   @tag timeout: 100_000
   @tag :chain
-  test "add block", setup do
+  test "add block" do
     Miner.mine_sync_block_to_chain()
 
     top_block = Chain.top_block()
