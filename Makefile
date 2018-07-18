@@ -75,6 +75,9 @@ iex-2: iex-node
 iex-3: NODE_NUMBER=3
 iex-3: iex-node
 
+iex-n: NODE_NUMBER=$(IEX_NUM)
+iex-n: iex-node
+
 clean:
 	@rm -rf deps
 	@rm -rf _build
@@ -97,5 +100,5 @@ killall:
 	multinode-build, multinode-start, multinode-stop, multinode-clean \
 	dev-build, dev-start, dev-stop, dev-attach, dev-clean \
 	prod-build, prod-start, prod-stop, prod-attach, prod-clean \
-	iex-0, iex-1, iex-2, iex-3 \
+	iex-0, iex-1, iex-2, iex-3, iex-n \
  	clean, clean-deps, killall \

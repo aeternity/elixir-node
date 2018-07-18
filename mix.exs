@@ -60,6 +60,7 @@ defmodule EpochElixir.Mixfile do
       {:msgpax, "~> 2.1.1"},
       {:bip0173, "~> 0.1.2"},
       {:erl_base58, "~> 0.0.1"},
+      {:temp, "~> 0.4"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
