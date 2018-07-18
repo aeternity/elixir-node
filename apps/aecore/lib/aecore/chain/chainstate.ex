@@ -112,10 +112,8 @@ defmodule Aecore.Chain.Chainstate do
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
-      ##      NamingStateTree.root_hash(chainstate.naming),
-      ##      OracleStateTree.root_hash(chainstate.oracles)
-      <<0::size(@state_hash_bytes)-unit(8)>>,
-      <<0::size(@state_hash_bytes)-unit(8)>>
+      NamingStateTree.root_hash(chainstate.naming),
+      OracleStateTree.root_hash(chainstate.oracles)
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)
@@ -124,7 +122,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   defp pad_empty(root_hash_binary)
-      when is_binary(root_hash_binary) and byte_size(root_hash_binary) === @state_hash_bytes do
+       when is_binary(root_hash_binary) and byte_size(root_hash_binary) === @state_hash_bytes do
     root_hash_binary
   end
 
