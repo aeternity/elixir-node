@@ -10,7 +10,7 @@ defmodule Aecore.Naming.NamingStateTree do
   @type namings_state() :: Trie.t()
   @type hash :: binary()
 
-  @spec init_empty() :: Trie.t()
+  @spec init_empty() :: namings_state()
   def init_empty do
     PatriciaMerkleTree.new(:naming)
   end

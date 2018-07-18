@@ -11,21 +11,21 @@ defmodule Aecore.Account.AccountStateTree do
   @type accounts_state :: Trie.t()
   @type hash :: binary()
 
-  @spec init_empty() :: Trie.t()
+  @spec init_empty() :: accounts_state()
   def init_empty do
     PatriciaMerkleTree.new(:accounts)
   end
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
-  def put(trie, key, value) do
+  def put(tree, key, value) do
     account_state_updated = Map.put(value, :pubkey, key)
     serialized_account_state = Serialization.rlp_encode(account_state_updated, :account_state)
-    PatriciaMerkleTree.enter(trie, key, serialized_account_state)
+    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
   @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
-  def get(trie, key) do
-    case PatriciaMerkleTree.lookup(trie, key) do
+  def get(tree, key) do
+    case PatriciaMerkleTree.lookup(tree, key) do
       :none ->
         Account.empty()
 
@@ -42,12 +42,12 @@ defmodule Aecore.Account.AccountStateTree do
   end
 
   @spec has_key?(accounts_state(), Wallet.pubkey()) :: boolean()
-  def has_key?(trie, key) do
-    PatriciaMerkleTree.lookup(trie, key) != :none
+  def has_key?(tree, key) do
+    PatriciaMerkleTree.lookup(tree, key) != :none
   end
 
   @spec root_hash(accounts_state()) :: hash()
-  def root_hash(trie) do
-    PatriciaMerkleTree.root_hash(trie)
+  def root_hash(tree) do
+    PatriciaMerkleTree.root_hash(tree)
   end
 end
