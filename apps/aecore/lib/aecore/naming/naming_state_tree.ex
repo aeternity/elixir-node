@@ -47,7 +47,7 @@ defmodule Aecore.Naming.NamingStateTree do
               identified_name_hash
           end
 
-        Map.put(naming, :id, identified_hash)
+        Map.put(naming, :hash, identified_hash)
 
       _ ->
         :none

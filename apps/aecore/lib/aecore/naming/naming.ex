@@ -157,7 +157,6 @@ defmodule Aecore.Naming.Naming do
           binary() | {:error, String.t()}
   # 1st elem - hash
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
-    IO.inspect(naming_state)
     {:ok, encoded_owner} = Identifier.encode_data(naming_state.owner)
 
     list = [
@@ -181,7 +180,6 @@ defmodule Aecore.Naming.Naming do
   def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
     # {:ok, encoded_commitment_hash} = Identifier.encode_data(name_commitment.hash)
     # {:ok, encoded_owner} = Identifier.create_identity(, :account)
-    IO.inspect(name_commitment)
     {:ok, encoded_identified_owner} = Identifier.encode_data(name_commitment.owner)
 
     list = [
