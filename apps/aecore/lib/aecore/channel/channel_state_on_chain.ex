@@ -82,20 +82,20 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     Hash.hash_blake2b(binary_data)
   end
 
-  @spec amounts(ChannelStateOnChain.t()) :: list(non_neg_integer())
+  @spec amounts(ChannelStateOnChain.t()) :: {non_neg_integer(), non_neg_integer()}
   def amounts(%ChannelStateOnChain{
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
       }) do
-    [initiator_amount, responder_amount]
+    {initiator_amount, responder_amount}
   end
 
-  @spec pubkeys(ChannelStateOnChain.t()) :: list(Wallet.pubkey())
+  @spec pubkeys(ChannelStateOnChain.t()) :: {Wallet.pubkey(), Wallet.pubkey()}
   def pubkeys(%ChannelStateOnChain{
         initiator_pubkey: initiator_pubkey,
         responder_pubkey: responder_pubkey
       }) do
-    [initiator_pubkey, responder_pubkey]
+    {initiator_pubkey, responder_pubkey}
   end
 
   @doc """

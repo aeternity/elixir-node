@@ -14,7 +14,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
           sequence: non_neg_integer(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer(),
-          signatures: list(binary())
+          signatures: {binary(), binary()}
         }
 
   @type error :: {:error, binary()}
@@ -29,6 +29,8 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   use ExConstructor
 
+  require Logger
+
   @spec create(
           binary(),
           non_neg_integer(),
@@ -41,7 +43,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       sequence: sequence,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      signatures: [<<>>, <<>>]
+      signatures: {<<>>, <<>>}
     }
   end
 
@@ -67,18 +69,24 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         sequence: sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount,
-        signatures: signatures
+        signatures: {initiator_sig, responder_sig}
       }) do
-    [channel_id, sequence, initiator_amount, responder_amount, signatures]
+    [channel_id, sequence, initiator_amount, responder_amount, [initiator_sig, responder_sig]]
   end
 
-  def decode([channel_id, sequence, initiator_amount, responder_amount, [_, _] = signatures]) do
+  def decode([
+        channel_id,
+        sequence,
+        initiator_amount,
+        responder_amount,
+        [initiator_sig, responder_sig]
+      ]) do
     %ChannelStateOffChain{
       channel_id: channel_id,
       sequence: Serialization.transform_item(sequence, :int),
       initiator_amount: Serialization.transform_item(initiator_amount, :int),
       responder_amount: Serialization.transform_item(responder_amount, :int),
-      signatures: signatures
+      signatures: {initiator_sig, responder_sig}
     }
   end
 
@@ -97,11 +105,11 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Validates ChannelStateOffChain signatures.
   """
-  @spec validate(ChannelStateOffChain.t(), list(Wallet.pubkey())) :: :ok | error()
-  def validate(%ChannelStateOffChain{signatures: [_, _]} = state, [
+  @spec validate(ChannelStateOffChain.t(), {Wallet.pubkey(), Wallet.pubkey()}) :: :ok | error()
+  def validate(%ChannelStateOffChain{signatures: {_, _}} = state, {
         initiator_pubkey,
         responder_pubkey
-      ]) do
+      }) do
     cond do
       !valid_initiator?(state, initiator_pubkey) ->
         {:error, "#{__MODULE__}: Invalid initiator signature"}
@@ -124,10 +132,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @spec validate_half_update(
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
-          list(Wallet.pubkey()),
+          {Wallet.pubkey(), Wallet.pubkey()},
           Channel.role()
         ) :: :ok | error()
-  def validate_half_update(prev_state, new_state, [initiator_pubkey, responder_pubkey], role) do
+  def validate_half_update(prev_state, new_state, {initiator_pubkey, responder_pubkey}, role) do
     cond do
       new_state.sequence <= prev_state.sequence ->
         {:error, "#{__MODULE__}: Invalid sequence"}
@@ -162,7 +170,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @spec validate_full_update(
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
-          list(Wallet.pubkey())
+          {Wallet.pubkey(), Wallet.pubkey()}
         ) :: :ok | error()
   def validate_full_update(prev_state, new_state, pubkeys) do
     cond do
@@ -185,12 +193,12 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   Validates initiator signature
   """
   @spec valid_initiator?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
-  def valid_initiator?(%ChannelStateOffChain{signatures: [<<>>, _]}, _) do
+  def valid_initiator?(%ChannelStateOffChain{signatures: {<<>>, _}}, _) do
     false
   end
 
   def valid_initiator?(
-        %ChannelStateOffChain{signatures: [initiator_sig, _]} = state,
+        %ChannelStateOffChain{signatures: {initiator_sig, _}} = state,
         initiator_pubkey
       ) do
     binary_form = signing_form(state)
@@ -198,6 +206,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   def valid_initiator?(%ChannelStateOffChain{}, _) do
+    Logger.error("#{__MODULE__}: Wrong ChannelStateOffChain signatures structure")
     false
   end
 
@@ -205,12 +214,12 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   Validates responder signature
   """
   @spec valid_responder?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
-  def valid_responder?(%ChannelStateOffChain{signatures: [_, <<>>]}, _) do
+  def valid_responder?(%ChannelStateOffChain{signatures: {_, <<>>}}, _) do
     false
   end
 
   def valid_responder?(
-        %ChannelStateOffChain{signatures: [_, responder_sig]} = state,
+        %ChannelStateOffChain{signatures: {_, responder_sig}} = state,
         responder_pubkey
       ) do
     binary_form = signing_form(state)
@@ -218,6 +227,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   def valid_responder?(%ChannelStateOffChain{}, _) do
+    Logger.error("#{__MODULE__}: Wrong ChannelStateOffChain signatures structure")
     false
   end
 
@@ -235,22 +245,22 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   """
   @spec sign(ChannelStateOffChain.t(), Channel.role(), Wallet.privkey()) ::
           ChannelStateOffChain.t()
-  def sign(%ChannelStateOffChain{signatures: [_, responder_sig]} = state, :initiator, priv_key) do
+  def sign(%ChannelStateOffChain{signatures: {_, responder_sig}} = state, :initiator, priv_key) do
     initiator_sig =
       state
       |> signing_form()
       |> Signing.sign(priv_key)
 
-    %ChannelStateOffChain{state | signatures: [initiator_sig, responder_sig]}
+    %ChannelStateOffChain{state | signatures: {initiator_sig, responder_sig}}
   end
 
-  def sign(%ChannelStateOffChain{signatures: [initiator_sig, _]} = state, :responder, priv_key) do
+  def sign(%ChannelStateOffChain{signatures: {initiator_sig, _}} = state, :responder, priv_key) do
     responder_sig =
       state
       |> signing_form()
       |> Signing.sign(priv_key)
 
-    %ChannelStateOffChain{state | signatures: [initiator_sig, responder_sig]}
+    %ChannelStateOffChain{state | signatures: {initiator_sig, responder_sig}}
   end
 
   @doc """
@@ -279,7 +289,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       | initiator_amount: initiator_amount - amount,
         responder_amount: responder_amount + amount,
         sequence: sequence + 1,
-        signatures: [<<>>, <<>>]
+        signatures: {<<>>, <<>>}
     }
 
     {:ok, new_state}

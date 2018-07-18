@@ -122,15 +122,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec initialize(
           binary(),
-          list(Wallet.pubkey()),
-          list(non_neg_integer()),
+          {{Wallet.pubkey(), non_neg_integer()}, {Wallet.pubkey(), non_neg_integer()}},
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
   def initialize(
         temporary_id,
-        [initiator_pubkey, responder_pubkey],
-        [initiator_amount, responder_amount],
+        {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}},
         channel_reserve,
         role
       ) do
@@ -349,7 +347,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
          } = peer_state,
          new_state
        ) do
-    pubkeys = [peer_state.initiator_pubkey, peer_state.responder_pubkey]
+    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
 
     with :ok <-
            ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
@@ -375,7 +373,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
          new_state,
          priv_key
        ) do
-    pubkeys = [peer_state.initiator_pubkey, peer_state.responder_pubkey]
+    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
 
     with :ok <-
            ChannelStateOffChain.validate_half_update(
@@ -407,8 +405,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates mutal close tx for open channel. This blocks any new transfers on channel. Returns: altered ChannelStatePeer and ChannelCloseMutalTx
   """
-  @spec close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
-          {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  @spec close(
+          ChannelStatePeer.t(),
+          {non_neg_integer(), non_neg_integer()},
+          non_neg_integer(),
+          Wallet.privkey()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def close(
         %ChannelStatePeer{
           fsm_state: :open,
@@ -420,7 +422,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
             responder_amount: responder_amount
           }
         } = peer_state,
-        [fee_initiator, fee_responder],
+        {fee_initiator, fee_responder},
         nonce,
         priv_key
       ) do
@@ -462,7 +464,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec recv_close_tx(
           ChannelStatePeer.t(),
           SignedTx.t(),
-          list(non_neg_integer()),
+          {non_neg_integer(), non_neg_integer()},
           Wallet.privkey()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def recv_close_tx(
@@ -477,7 +479,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           }
         } = peer_state,
         half_signed_tx,
-        [fee_initiator, fee_responder],
+        {fee_initiator, fee_responder},
         priv_key
       ) do
     data_tx = SignedTx.data_tx(half_signed_tx)
@@ -511,7 +513,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_close_tx(%ChannelStatePeer{} = state, _, [_, _], _) do
+  def recv_close_tx(%ChannelStatePeer{} = state, _, {_, _}, _) do
     {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{state.fsm_state}"}
   end
 

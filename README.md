@@ -307,8 +307,8 @@ Names will follow IDNA2008 normalization and have a maximum length of 253 charac
 For normal channel operation following procedure should be followed:
 
 0. Parties negotiate channel properties (founds, accounts involved, locktime, channel\_reserve, temporary\_id)
-1. Initiator calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :initiator, channel_reserve)`
-2. Responder calls `Channel.initialize(temporary_id, [initiator_pubkey, responder_pubkey], [initiator_amount, responder_amount], :responder, channel_reserve)`
+1. Initiator calls `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :initiator, channel_reserve)`
+2. Responder calls `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :responder, channel_reserve)`
 3. Initiator calls `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, locktime, fee, nonce, priv_key)`
 4. Initiator sends `half_signed_open_tx` to Responder
 5. Responder calls `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, half_signed_open_tx, priv_key)`
@@ -321,9 +321,9 @@ For normal channel operation following procedure should be followed:
     c. Second party calls `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
     c. Second party sends back `signed_state`
     d. First party calls `{:ok, nil} = Channel.recv_state(signed_state)`
-9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, [initiator_fee, responder_fee], nonce, priv_key`
+9. When parties negotiate that they want to close the channel any party (we will call it first party) calls `{:ok, half_signed_close_tx} = Channel.close(channel_id, {initiator_fee, responder_fee}, nonce, priv_key)`
 10. First party sends `half_signed_close_tx` to second party
-11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, [initiator_fee, responder_fee], priv_key)`
+11. Second party calls `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {initiator_fee, responder_fee}, priv_key)`
 12. Second party sends `fully_signed_close_tx` to first party
 13. When channel status changes to `:closed` channel is fully closed
 

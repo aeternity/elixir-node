@@ -109,15 +109,14 @@ defmodule Aecore.Channel.Worker do
   """
   @spec initialize(
           binary(),
-          list(Wallet.pubkey()),
-          list(non_neg_integer()),
+          {{Wallet.pubkey(), non_neg_integer()}, {Wallet.pubkey(), non_neg_integer()}},
           role(),
           non_neg_integer()
         ) :: :ok | error()
-  def initialize(temporary_id, pubkeys, amounts, role, channel_reserve) do
+  def initialize(temporary_id, parties, role, channel_reserve) do
     GenServer.call(
       __MODULE__,
-      {:initialize, temporary_id, pubkeys, amounts, role, channel_reserve}
+      {:initialize, temporary_id, parties, role, channel_reserve}
     )
   end
 
@@ -180,8 +179,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Creates channel close transaction. This also blocks any new transactions from happening on channel.
   """
-  @spec close(binary(), list(non_neg_integer()), non_neg_integer(), Wallet.privkey()) ::
-          {:ok, SignedTx.t()} | error()
+  @spec close(
+          binary(),
+          {non_neg_integer(), non_neg_integer()},
+          non_neg_integer(),
+          Wallet.privkey()
+        ) :: {:ok, SignedTx.t()} | error()
   def close(channel_id, fees, nonce, priv_key) do
     GenServer.call(__MODULE__, {:close, channel_id, fees, nonce, priv_key})
   end
@@ -189,8 +192,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received half signed close tx. If it validates returns fully signed close tx and adds it to Pool.
   """
-  @spec recv_close_tx(binary(), SignedTx.t(), list(non_neg_integer()), Wallet.privkey()) ::
-          {:ok, SignedTx.t()} | error()
+  @spec recv_close_tx(
+          binary(),
+          SignedTx.t(),
+          {non_neg_integer(), non_neg_integer()},
+          Wallet.privkey()
+        ) :: {:ok, SignedTx.t()} | error()
   def recv_close_tx(channel_id, close_tx, fees, priv_key) do
     GenServer.call(__MODULE__, {:recv_close_tx, channel_id, close_tx, fees, priv_key})
   end
@@ -281,12 +288,11 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:initialize, temporary_id, pubkeys, amounts, role, channel_reserve},
+        {:initialize, temporary_id, parties, role, channel_reserve},
         _from,
         state
       ) do
-    peer_state =
-      ChannelStatePeer.initialize(temporary_id, pubkeys, amounts, channel_reserve, role)
+    peer_state = ChannelStatePeer.initialize(temporary_id, parties, channel_reserve, role)
 
     {:reply, :ok, Map.put(state, temporary_id, peer_state)}
   end
