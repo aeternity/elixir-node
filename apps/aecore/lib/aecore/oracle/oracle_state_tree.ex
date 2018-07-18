@@ -6,7 +6,9 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
+  alias MerklePatriciaTree.Trie
 
+  @type hash :: binary()
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
   @dummy_val <<0>>
 
@@ -64,6 +66,11 @@ defmodule Aecore.Oracle.OracleStateTree do
   @spec exists_query?(oracles_state(), binary()) :: boolean()
   def exists_query?(tree, key) do
     exists?(tree, key, :oracle_query)
+  end
+
+  @spec root_hash(oracles_state()) :: hash()
+  def root_hash(oracles_state) do
+    PatriciaMerkleTree.root_hash(oracles_state.oracle_tree)
   end
 
   defp initialize_deletion({oracles_state, _accounts_state} = trees, expires) do
