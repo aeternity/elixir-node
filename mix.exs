@@ -45,11 +45,15 @@ defmodule EpochElixir.Mixfile do
   # and cannot be accessed from applications inside the apps folder
   defp deps do
     [
+      {:credo, "~> 0.9.2", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
       {:gen_state_machine, "~> 2.0.1"},
       {:logger_file_backend, "~> 0.0.10"},
+      {:excoveralls, "~> 0.8.1", only: :test},
+      {:ex_json_schema, "~> 0.5.4"},
       {:aewallet, github: "aeternity/elixir-wallet", ref: "3f2f9df", override: true},
       {:erl_base58, "~> 0.0.1"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
@@ -60,6 +64,7 @@ defmodule EpochElixir.Mixfile do
        github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
       {:jobs, "~> 0.7.1"},
       {:gproc, "~> 0.6.1"},
+      {:ex_rlp, "~> 0.2.1"},
       {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
     ]
   end
