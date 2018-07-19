@@ -26,6 +26,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -549,7 +550,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.rlp_encode(filtered_tx, :signedtx)
+          tx_bin = SignedTx.rlp_encode(filtered_tx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)

@@ -95,12 +95,12 @@ defmodule Aecore.Chain.Header do
     >>
   end
 
-  def header_to_binary(_) do
+  def encode_to_binary(_) do
     {:error, "#{__MODULE__}: Illegal header structure serialization"}
   end
 
-  @spec binary_to_header(binary()) :: {:ok, Header.t()} | {:error, String.t()}
-  def binary_to_header(<<
+  @spec decode_from_binary(binary()) :: {:ok, Header.t()} | {:error, String.t()}
+  def decode_from_binary(<<
         version::64,
         height::64,
         prev_hash::binary-size(@header_hash_size),
@@ -132,7 +132,7 @@ defmodule Aecore.Chain.Header do
     end
   end
 
-  def binary_to_header(_) do
+  def decode_from_binary(_) do
     {:error, "#{__MODULE__}: binary_to_header: Invalid header binary serialization"}
   end
 

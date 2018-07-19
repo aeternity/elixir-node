@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
+  alias Aeutil.Serialization
 
   require Logger
 

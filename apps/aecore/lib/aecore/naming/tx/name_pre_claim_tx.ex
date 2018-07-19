@@ -8,12 +8,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.{NameCommitment, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -94,7 +95,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
-    commitment = Naming.create_commitment(tx.commitment, sender, block_height, commitment_expires)
+    commitment = NameCommitment.create(tx.commitment, sender, block_height, commitment_expires)
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment, commitment)
 

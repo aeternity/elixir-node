@@ -19,8 +19,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
+  alias Aecore.Naming.{NameClaim, NameCommitment, NameUtil}
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants
@@ -138,7 +137,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
-    case Naming.create_commitment_hash(name, name_salt) do
+    case NameCommitment.hash(name, name_salt) do
       {:ok, commitment} ->
         payload = %{commitment: commitment}
         build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)
@@ -372,5 +371,13 @@ defmodule Aecore.Account.Account do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  def rlp_encode(%Account{} = account) do
+    Serialization.rlp_encode(account)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, Account)
   end
 end

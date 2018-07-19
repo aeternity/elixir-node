@@ -191,7 +191,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
-        {:ok, deserialized} = Serialization.rlp_decode(serialized)
+        {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
         deserialized
 
       _ ->

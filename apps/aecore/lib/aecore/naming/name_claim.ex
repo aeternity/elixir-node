@@ -113,4 +113,12 @@ defmodule Aecore.Naming.NameClaim do
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
+
+  def rlp_encode(%NameClaim{} = name_claim) do
+    Serialization.rlp_encode(name_claim)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, NameClaim)
+  end
 end

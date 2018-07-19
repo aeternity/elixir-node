@@ -5,7 +5,10 @@ defmodule Aecore.Naming.NameCommitment do
 
   @behaviour Aeutil.Serializable
 
-  alias Aecore.Naming.NameCommitment
+  alias Aecore.Naming.{NameCommitment, NameUtil}
+  alias Aeutil.Bits
+  alias Aeutil.Hash
+  alias Aeutil.Serialization
 
   @version 1
 
@@ -84,5 +87,13 @@ defmodule Aecore.Naming.NameCommitment do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  def rlp_encode(%NameCommitment{} = name_commitment) do
+    Serialization.rlp_encode(name_commitment)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, NameCommitment)
   end
 end

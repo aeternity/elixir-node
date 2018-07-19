@@ -14,6 +14,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Serialization
 
   require Logger
 

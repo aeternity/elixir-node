@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.ChainState
   alias Aecore.Channel.ChannelStateTree
+  alias Aeutil.Serialization
 
   require Logger
 

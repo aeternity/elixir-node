@@ -233,4 +233,12 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
+
+  def rlp_encode(%ChannelStateOnChain{} = channel) do
+    Serialization.rlp_encode(channel)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, ChannelStateOnChain)
+  end
 end

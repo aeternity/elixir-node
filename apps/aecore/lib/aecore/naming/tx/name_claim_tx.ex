@@ -8,11 +8,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.{NameClaim, NameCommitment, NamingStateTree}
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -62,7 +63,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      byte_size(name_salt) != Naming.get_name_salt_byte_size() ->
+      byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
         {:error,
          "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
 
@@ -96,9 +97,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = Naming.create_claim(claim_hash, tx.name, sender, block_height)
+    claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
 
     updated_naming_chainstate =
       naming_state
@@ -130,7 +131,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)

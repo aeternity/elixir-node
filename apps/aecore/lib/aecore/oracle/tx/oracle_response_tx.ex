@@ -14,6 +14,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
 
   @version 1
 

@@ -17,6 +17,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
 
   @version 1
 

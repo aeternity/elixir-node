@@ -52,7 +52,7 @@ defmodule Aecore.Chain.Block do
 
     [
       block.header.version,
-      Serialization.header_to_binary(block.header),
+      Header.encode_to_binary(block.header),
       txs
     ]
   end
@@ -92,5 +92,13 @@ defmodule Aecore.Chain.Block do
       {:error, _} = error ->
         error
     end
+  end
+
+  def rlp_encode(%Block{} = block) do
+    Serialization.rlp_encode(block)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, Block)
   end
 end

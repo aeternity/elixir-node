@@ -14,6 +14,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 

@@ -20,7 +20,7 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec put(channel_state(), ChannelSteteOnChain.id(), ChannelSteteOnChain.t()) :: channel_state()
   def put(trie, key, value) do
-    serialized_account_state = Serialization.rlp_encode(value, :channel_onchain)
+    serialized_account_state = Serialization.rlp_encode(value)
     PatriciaMerkleTree.enter(trie, key, serialized_account_state)
   end
 
@@ -31,7 +31,9 @@ defmodule Aecore.Channel.ChannelStateTree do
         :none
 
       {:ok, channel_state_on_chain} ->
-        {:ok, channel} = Serialization.rlp_decode(channel_state_on_chain)
+        {:ok, channel} =
+          Serialization.rlp_decode_only(channel_state_on_chain, ChannelSteteOnChain)
+
         channel
     end
   end

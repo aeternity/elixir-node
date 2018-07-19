@@ -89,7 +89,7 @@ defmodule Aecore.Tx.SignedTx do
   def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
     new_signature =
       data
-      |> Serialization.rlp_encode(:tx)
+      |> DataTx.rlp_encode()
       |> Signing.sign(priv_key)
 
     {success, new_sigs_reversed} =
@@ -122,7 +122,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec hash_tx(SignedTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
-    Hash.hash(Serialization.rlp_encode(data, :tx))
+    Hash.hash(DataTx.rlp_encode(data))
   end
 
   @spec reward(DataTx.t(), Account.t()) :: Account.t()
@@ -216,7 +216,7 @@ defmodule Aecore.Tx.SignedTx do
       Logger.error("Wrong signature count")
       false
     else
-      data_binary = Serialization.rlp_encode(data, :tx)
+      data_binary = DataTx.rlp_encode(data)
 
       sigs
       |> Enum.zip(DataTx.senders(data))
@@ -245,7 +245,7 @@ defmodule Aecore.Tx.SignedTx do
     [
       @version,
       tx.signatures,
-      Serialization.rlp_encode(tx.data)
+      DataTx.rlp_encode(tx.data)
     ]
   end
 

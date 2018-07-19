@@ -114,7 +114,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.header_to_binary(header)
+    block_header_bin = Header.encode_to_binary(header)
     Hash.hash(block_header_bin)
   end
 
@@ -142,7 +142,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = Serialization.rlp_encode(transaction.data, :tx)
+          transaction_data_bin = SignedTx.rlp_encode(transaction.data)
           {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 

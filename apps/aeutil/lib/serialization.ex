@@ -5,28 +5,15 @@ defmodule Aeutil.Serialization do
 
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.NameCommitment
+  alias Aecore.Naming.NameClaim
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Channel.Tx.ChannelCloseMutalTx
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
-  alias Aecore.Channel.Tx.ChannelSlashTx
-  alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Channel.ChannelStateOnChain
 
   require Logger
@@ -224,13 +211,13 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :serialize)
 
       :commitment ->
-        Naming.base58c_encode_commitment(value)
+        NameCommitment.base58c_encode_commitment(value)
 
       :name_salt ->
         base64_binary(value, :serialize)
 
       :hash ->
-        Naming.base58c_encode_hash(value)
+        NameClaim.base58c_encode_hash(value)
 
       _ ->
         value
@@ -324,13 +311,13 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :deserialize)
 
       :commitment ->
-        Naming.base58c_decode_commitment(value)
+        NameCommitment.base58c_decode_commitment(value)
 
       :name_salt ->
         base64_binary(value, :deserialize)
 
       :hash ->
-        Naming.base58c_decode_hash(value)
+        NameClaim.base58c_decode_hash(value)
 
       :name ->
         value
@@ -428,10 +415,10 @@ defmodule Aeutil.Serialization do
       [tag_bin, ver_bin | rest_data] ->
         actual_type =
           tag_bin
-          |> Serialization.transform_item(:int)
+          |> transform_item(:int)
           |> tag_to_type
 
-        version = Serialization.transform_item(ver_bin, :int)
+        version = transform_item(ver_bin, :int)
 
         if actual_type == type || type == :any do
           actual_type.decode_from_list(version, rest_data)
@@ -474,7 +461,7 @@ defmodule Aeutil.Serialization do
   # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
   @spec decode_format(binary()) :: binary()
   def decode_format(<<"$æx", binary::binary>>) do
-    Serialization.transform_item(binary, :binary)
+    transform_item(binary, :binary)
   end
 
   def decode_format(binary) when is_binary(binary) do

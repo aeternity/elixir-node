@@ -13,6 +13,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
 
   @version 1
 

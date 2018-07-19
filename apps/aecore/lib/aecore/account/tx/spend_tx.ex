@@ -14,6 +14,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 

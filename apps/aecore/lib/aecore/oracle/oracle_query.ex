@@ -9,6 +9,7 @@ defmodule Aecore.Oracle.OracleQuery do
   alias Aecore.Keys.Wallet
   alias Aeutil.Parser
   alias Aecore.Tx.DataTx
+  alias Aeutil.Serialization
 
   @version 1
 
@@ -35,6 +36,7 @@ defmodule Aecore.Oracle.OracleQuery do
     :sender_address,
     :sender_nonce
   ]
+
   use ExConstructor
 
   def encode_to_list(%OracleQuery{} = oracle_query) do
@@ -111,5 +113,13 @@ defmodule Aecore.Oracle.OracleQuery do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  def rlp_encode(%OracleQuery{} = oracle_query) do
+    Serialization.rlp_encode(oracle_query)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, OracleQuery)
   end
 end

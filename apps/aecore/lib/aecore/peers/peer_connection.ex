@@ -607,7 +607,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_encode(@header, header) do
-    header_binary = Serialization.header_to_binary(header)
+    header_binary = Header.encode_to_binary(header)
     ExRLP.encode([@p2p_msg_version, header_binary])
   end
 
@@ -631,11 +631,11 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_encode(@block, block) do
-    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(block, :block)])
+    ExRLP.encode([@p2p_msg_version, Block.rlp_encode(block)])
   end
 
   def rlp_encode(@tx, tx) do
-    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(tx, :signedtx)])
+    ExRLP.encode([@p2p_msg_version, SignedTx.rlp_encode(tx)])
   end
 
   def rlp_encode(@get_mempool, _data) do
@@ -643,7 +643,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_encode(@mempool, %{txs: txs}) do
-    encoded_txs = Enum.map(txs, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
+    encoded_txs = Enum.map(txs, fn tx -> SignedTx.rlp_encode(tx) end)
     ExRLP.encode([@p2p_msg_version, encoded_txs])
   end
 
@@ -720,7 +720,7 @@ defmodule Aecore.Peers.PeerConnection do
       header_binary
     ] = ExRLP.decode(encoded_header)
 
-    deserialized_header = Serialization.binary_to_header(header_binary)
+    {:ok, deserialized_header} = Header.decode_from_binary(header_binary)
     %{header: deserialized_header}
   end
 
@@ -764,7 +764,7 @@ defmodule Aecore.Peers.PeerConnection do
       block
     ] = ExRLP.decode(encoded_block)
 
-    deserialized_block = Serialization.rlp_decode(block)
+    {:ok, deserialized_block} = Serialization.rlp_decode_only(block, Block)
     %{block: deserialized_block}
   end
 
@@ -774,7 +774,7 @@ defmodule Aecore.Peers.PeerConnection do
       tx
     ] = ExRLP.decode(encoded_tx)
 
-    deserialized_tx = Serialization.rlp_decode(tx)
+    {:ok, deserialized_tx} = SignedTx.rlp_decode(tx)
     %{tx: deserialized_tx}
   end
 
@@ -784,7 +784,13 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@mempool, encoded_pool) do
     [_vsn, pool] = ExRLP.decode(encoded_pool)
-    txs = Enum.map(pool, fn encoded_tx -> Serialization.rlp_decode(encoded_tx) end)
+
+    txs =
+      Enum.map(pool, fn encoded_tx ->
+        {:ok, tx} = SignedTx.rlp_decode(encoded_tx)
+        tx
+      end)
+
     %{txs: txs}
   end
 
