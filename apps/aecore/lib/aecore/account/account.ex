@@ -3,7 +3,10 @@ defmodule Aecore.Account.Account do
   Aecore structure of a transaction data.
   """
 
+  @behaviour Aeutil.Serializable
+
   require Logger
+
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
@@ -21,6 +24,8 @@ defmodule Aecore.Account.Account do
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants
+
+  @version 1
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -341,29 +346,18 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
-  def rlp_encode(tag, version, %Account{} = account) do
-    list = [
-      tag,
-      version,
+  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  def encode_to_list(%Account{} = account) do
+    [
+      @version,
       account.pubkey,
       account.nonce,
       account.balance
     ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
   end
 
-  def rlp_encode(data) do
-    {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
-  end
-
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([pubkey, nonce, balance]) do
+  @spec decode_from_list(integer(), list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def decode_from_list(@version, [pubkey, nonce, balance]) do
     {:ok,
      %Account{
        pubkey: pubkey,
@@ -372,7 +366,11 @@ defmodule Aecore.Account.Account do
      }}
   end
 
-  def rlp_decode(data) do
-    {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

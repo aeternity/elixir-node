@@ -2,7 +2,8 @@ defmodule Aecore.Naming.NamingStateTree do
   @moduledoc """
   Top level naming state tree.
   """
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.NameClaim
+  alias Aecore.Naming.NameCommitment
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
@@ -15,17 +16,17 @@ defmodule Aecore.Naming.NamingStateTree do
     PatriciaMerkleTree.new(:naming)
   end
 
-  @spec put(namings_state(), binary(), Naming.t()) :: namings_state()
+  @spec put(namings_state(), binary(), NameClaim.t() | NameCommitment.t()) :: namings_state()
   def put(tree, key, value) do
-    serialized = serialize(value)
+    serialized = Serialization.rlp_encode(value)
     PatriciaMerkleTree.enter(tree, key, serialized)
   end
 
-  @spec get(namings_state(), binary()) :: Naming.t() | :none
+  @spec get(namings_state(), binary()) :: NameClaim.t() | NameCommitment.t() | :none
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, value} ->
-        {:ok, naming} = deserialize(value)
+        {:ok, naming} = Serialization.rlp_decode_anything(value)
         naming
 
       _ ->
@@ -43,31 +44,13 @@ defmodule Aecore.Naming.NamingStateTree do
     PatriciaMerkleTree.root_hash(tree)
   end
 
-  defp serialize(
-         %{
-           hash: _hash,
-           owner: _owner,
-           created: _created,
-           expires: _expires
-         } = term
-       ) do
-    Serialization.rlp_encode(term, :name_commitment)
-  end
+  @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
+  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
+    updated_naming_state =
+      naming_state
+      |> Enum.filter(fn {_hash, name_state} -> name_state.expires > block_height end)
+      |> Enum.into(%{})
 
-  defp serialize(
-         %{
-           hash: _hash,
-           owner: _owner,
-           expires: _expires,
-           status: _status,
-           ttl: _ttl,
-           pointers: _pointers
-         } = term
-       ) do
-    Serialization.rlp_encode(term, :naming_state)
-  end
-
-  defp deserialize(binary) do
-    Serialization.rlp_decode(binary)
+    %{chainstate | naming: updated_naming_state}
   end
 end

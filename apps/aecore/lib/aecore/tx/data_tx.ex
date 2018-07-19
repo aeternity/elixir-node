@@ -366,17 +366,22 @@ defmodule Aecore.Tx.DataTx do
     {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
   end
 
-  def decode_from_list([tag | data]) do
-    Serialization.tag_to_type(tag).decode_from_list(data)
+  def decode_from_list([tag_bin, ver_bin | data]) do
+    tag = Serialization.transform_item(tag_bin, :int)
+    version = Serialization.transform_item(ver_bin, :int)
+    Serialization.tag_to_type(tag).decode_from_list(version, data)
   end
 
   def rlp_decode(binary) do
-    result = Serialization.rlp_decode_anything(binary)
+    case Serialization.rlp_decode_anything(binary) do
+      %DataTx{} = datatx ->
+        datatx
 
-    if result.__struct__ == DataTx do
-      result
-    else
-      {:error, "#{__MODULE__}: Invalid binary"}
+      {:error, _} = error ->
+        error
+
+      _ ->
+        {:error, "#{__MODULE__}: Invalid type"}
     end
   end
 end

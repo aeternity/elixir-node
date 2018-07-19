@@ -3,6 +3,9 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
+  @behaviour Aeutil.Serializable
+
+  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleResponseTx
@@ -21,6 +24,8 @@ defmodule Aecore.Oracle.Oracle do
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
+  @version 1
+
   require Logger
 
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
@@ -31,6 +36,17 @@ defmodule Aecore.Oracle.Oracle do
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
+
+  @type t :: %Oracle{
+          owner: Wallet.pubkey(),
+          query_format: binary(),
+          response_format: binary(),
+          query_fee: integer(),
+          expires: integer()
+        }
+
+  defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
+  use ExConstructor
 
   @spec register(
           json_schema(),
@@ -270,77 +286,25 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  @spec rlp_encode(
-          non_neg_integer(),
-          non_neg_integer(),
-          map(),
-          :oracle | :oracle_query
-        ) :: binary()
-  def rlp_encode(tag, version, %{} = oracle, :oracle) do
-    list = [
-      tag,
-      version,
+  @spec encode_to_list(t()) :: list()
+  def encode_to_list(%Oracle{} = oracle) do
+    [
+      @version,
       oracle.owner,
       Serialization.transform_item(oracle.query_format),
       Serialization.transform_item(oracle.response_format),
       oracle.query_fee,
       oracle.expires
     ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
   end
 
-  def rlp_encode(tag, version, %{} = oracle_query, :oracle_query) do
-    has_response =
-      case oracle_query.has_response do
-        true -> 1
-        false -> 0
-      end
-
-    response =
-      case oracle_query.response do
-        :undefined -> Parser.to_string(:undefined)
-        %{} = data -> Poison.encode!(data)
-        %DataTx{type: OracleResponseTx} = data -> data
-      end
-
-    list = [
-      tag,
-      version,
-      oracle_query.sender_address,
-      oracle_query.sender_nonce,
-      oracle_query.oracle_address,
-      Serialization.transform_item(oracle_query.query),
-      has_response,
-      response,
-      oracle_query.expires,
-      oracle_query.response_ttl,
-      oracle_query.fee
-    ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
-  end
-
-  def rlp_encode(data) do
-    {:error, "#{__MODULE__}: Invalid Oracle struct #{inspect(data)}"}
-  end
-
-  @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
-          {:ok, map()} | {:error, String.t()}
-  def rlp_decode(
-        [orc_owner, query_format, response_format, query_fee, expires],
-        :oracle
+  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  def decode_from_list(
+        @version,
+        [orc_owner, query_format, response_format, query_fee, expires]
       ) do
     {:ok,
-     %{
+     %Oracle{
        owner: orc_owner,
        query_format: Serialization.transform_item(query_format, :binary),
        response_format: Serialization.transform_item(response_format, :binary),
@@ -349,48 +313,11 @@ defmodule Aecore.Oracle.Oracle do
      }}
   end
 
-  def rlp_decode(
-        [
-          sender_address,
-          sender_nonce,
-          oracle_address,
-          query,
-          has_response,
-          response,
-          expires,
-          response_ttl,
-          fee
-        ],
-        :oracle_query
-      ) do
-    has_response =
-      case Serialization.transform_item(has_response, :int) do
-        1 -> true
-        0 -> false
-      end
-
-    new_response =
-      case response do
-        "undefined" -> String.to_atom(response)
-        _ -> Serialization.transform_item(response, :binary)
-      end
-
-    {:ok,
-     %{
-       expires: Serialization.transform_item(expires, :int),
-       fee: Serialization.transform_item(fee, :int),
-       has_response: has_response,
-       oracle_address: oracle_address,
-       query: Serialization.transform_item(query, :binary),
-       response: new_response,
-       response_ttl: Serialization.transform_item(response_ttl, :int),
-       sender_address: sender_address,
-       sender_nonce: Serialization.transform_item(sender_nonce, :int)
-     }}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
   end
 
-  def rlp_decode(_) do
-    {:error,
-     "#{__MODULE__}Illegal Registered oracle state / Oracle interaction object serialization"}
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

@@ -390,95 +390,7 @@ defmodule Aeutil.Serialization do
     Enum.reverse(acc)
   end
 
-  @spec rlp_encode(
-          Account.t() | DataTx.t() | map(),
-          :account_state
-          | :registered_oracle
-          | :interaction_object
-          | :naming_state
-          | :name_commitment
-          | :channel_onchain
-          | :block
-        ) :: binary | {:error, String.t()}
-
-  def rlp_encode(%Account{} = term, :account_state) when is_map(term) do
-    with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, version} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, version, term) do
-      data
-    else
-      error ->
-        {:error, "#{__MODULE__} : Invalid Account state serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%{} = term, :oracle_query) do
-    with {:ok, tag} <- type_to_tag(OracleQuery),
-         {:ok, version} <- get_version(OracleQuery),
-         data <- Oracle.rlp_encode(tag, version, term, :oracle_query) do
-      data
-    else
-      error ->
-        {:error,
-         "#{__MODULE__} : Invalid Interaction Object state serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%{} = term, :oracle) when is_map(term) do
-    with {:ok, tag} <- type_to_tag(Oracle),
-         {:ok, version} <- get_version(Oracle),
-         data <- Oracle.rlp_encode(tag, version, term, :oracle) do
-      data
-    else
-      error ->
-        {:error,
-         "#{__MODULE__} : Invalid Registered Oracle state serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%{} = term, :naming_state) when is_map(term) do
-    with {:ok, tag} <- type_to_tag(Name),
-         {:ok, version} <- get_version(Name),
-         data <- Naming.rlp_encode(tag, version, term, :naming_state) do
-      data
-    else
-      error -> {:error, "#{__MODULE__} : Invalid Naming State serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%{} = term, :name_commitment) when is_map(term) do
-    with {:ok, tag} <- type_to_tag(NameCommitment),
-         {:ok, version} <- get_version(NameCommitment),
-         data <- Naming.rlp_encode(tag, version, term, :name_commitment) do
-      data
-    else
-      error ->
-        {:error, "#{__MODULE__} : Invalid Name Commitment State serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%ChannelStateOnChain{} = term, :channel_onchain) when is_map(term) do
-    with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, version} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, version, term) do
-      data
-    else
-      error ->
-        {:error,
-         "#{__MODULE__} : Invalid Channel on-chain state serialization: #{inspect(error)}"}
-    end
-  end
-
-  def rlp_encode(%Block{} = term, :block) do
-    with {:ok, tag} <- type_to_tag(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, 1, term) do
-      data
-    else
-      error ->
-        {:error, "#{__MODULE__} : Invalid Block structure serialization : #{inspect(error)}"}
-    end
-  end
-
+  @spec rlp_encode(map()) :: binary | {:error, String.t()}
   def rlp_encode(structure) when is_map(structure) do
     with {:ok, tag} <- type_to_tag(structure.__struct__) do
       ExRLP.encode([tag | structure.__struct__.encode_to_list(structure)])
@@ -489,39 +401,7 @@ defmodule Aeutil.Serialization do
   end
 
   def rlp_encode(data) do
-    {:error, "#{__MODULE__}: Illegal serialization attempt: #{inspect(error)}"}
-  end
-
-  defp rlp_decode(Block, _version, block_data) do
-    Block.rlp_decode(block_data)
-  end
-
-  defp rlp_decode(Name, _version, name_data) do
-    Naming.rlp_decode(name_data, :name)
-  end
-
-  defp rlp_decode(NameCommitment, _version, name_commitment) do
-    Naming.rlp_decode(name_commitment, :name_commitment)
-  end
-
-  defp rlp_decode(Oracle, _version, oracle) do
-    Oracle.rlp_decode(oracle, :oracle)
-  end
-
-  defp rlp_decode(OracleQuery, _version, oracle_query) do
-    Oracle.rlp_decode(oracle_query, :oracle_query)
-  end
-
-  defp rlp_decode(Account, _version, account_state) do
-    Account.rlp_decode(account_state)
-  end
-
-  defp rlp_decode(SignedTx, _version, signedtx) do
-    SignedTx.rlp_decode(signedtx)
-  end
-
-  defp rlp_decode(ChannelStateOnChain, _version, channel_state_on_chain) do
-    ChannelStateOnChain.rlp_decode(channel_state_on_chain)
+    {:error, "#{__MODULE__}: Illegal serialization attempt: #{inspect(data)}"}
   end
 
   @spec rlp_decode_anything(binary()) :: term() | {:error, binary()}
@@ -545,20 +425,22 @@ defmodule Aeutil.Serialization do
       end
 
     case result do
-      [tag_bin | rest_data] ->
+      [tag_bin, ver_bin | rest_data] ->
         actual_type =
           tag_bin
           |> Serialization.transform_item(:int)
           |> tag_to_type
 
+        version = Serialization.transform_item(ver_bin, :int)
+
         if actual_type == type || type == :any do
-          actual_type.decode_from_list(rest_data)
+          actual_type.decode_from_list(version, rest_data)
         else
           {:error, "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}"}
         end
 
       [] ->
-        {:error, "#{__MODULE__}: rlp_decode: IEmpty encoding"}
+        {:error, "#{__MODULE__}: rlp_decode: Empty encoding"}
 
       {:error, _} = error ->
         error
@@ -582,85 +464,6 @@ defmodule Aeutil.Serialization do
   def decode_ttl_type(1), do: :absolute
   def decode_ttl_type(0), do: :relative
 
-  @spec header_to_binary(Header.t()) :: binary
-  def header_to_binary(%Header{} = header) do
-    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
-    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
-    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
-    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
-
-    pow_to_binary =
-      if header.pow_evidence != :no_value do
-        pow_to_binary(header.pow_evidence)
-      else
-        pow_to_binary(List.duplicate(0, 42))
-      end
-
-    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
-    miner_pubkey_size = 33
-
-    <<
-      header.version::64,
-      header.height::64,
-      header.prev_hash::binary-size(header_prev_hash_size),
-      header.txs_hash::binary-size(header_txs_hash_size),
-      header.root_hash::binary-size(header_root_hash_size),
-      header.target::64,
-      pow_to_binary::binary-size(pow_evidence_size),
-      header.nonce::64,
-      header.time::64,
-      # pubkey should be adjusted to 32 bytes.
-      header.miner::binary-size(miner_pubkey_size)
-    >>
-  end
-
-  def header_to_binary(_) do
-    {:error, "#{__MODULE__} : Illegal header structure serialization"}
-  end
-
-  @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
-  def binary_to_header(binary) when is_binary(binary) do
-    # Application.get_env(:aecore, :aewallet)[:pub_key_size]
-    miner_pubkey_size = 33
-    header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
-    header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
-    header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
-    pow_evidence_size = Application.get_env(:aecore, :bytes_size)[:pow_total_size]
-
-    <<
-      version::64,
-      height::64,
-      prev_hash::binary-size(header_prev_hash_size),
-      txs_hash::binary-size(header_txs_hash_size),
-      root_hash::binary-size(header_root_hash_size),
-      target::64,
-      pow_evidence_bin::binary-size(pow_evidence_size),
-      nonce::64,
-      # pubkey should be adjusted to 32 bytes.
-      time::64,
-      miner::binary-size(miner_pubkey_size)
-    >> = binary
-
-    pow_evidence = binary_to_pow(pow_evidence_bin)
-
-    %Header{
-      height: height,
-      nonce: nonce,
-      pow_evidence: pow_evidence,
-      prev_hash: prev_hash,
-      root_hash: root_hash,
-      target: target,
-      time: time,
-      txs_hash: txs_hash,
-      version: version,
-      miner: miner
-    }
-  end
-
-  def binary_to_header(_) do
-    {:error, "#{__MODULE__} : Illegal header to binary serialization"}
-  end
-
   # Optional function-workaroud:
   # As we have differences in value types in some fields,
   # which means that we encode these fields different apart from what Epoch does,
@@ -670,110 +473,80 @@ defmodule Aeutil.Serialization do
   # this prefix will allow us to know, how the data should be handled.
   # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
   @spec decode_format(binary()) :: binary()
-  defp decode_format(<<"$æx", binary::binary>>) do
+  def decode_format(<<"$æx", binary::binary>>) do
     Serialization.transform_item(binary, :binary)
   end
 
-  defp decode_format(binary) when is_binary(binary) do
+  def decode_format(binary) when is_binary(binary) do
     binary
-  end
-
-  @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
-  defp serialize_pow(pow, acc) when pow != <<>> do
-    <<elem::binary-size(4), rest::binary>> = pow
-    serialize_pow(rest, acc <> elem)
-  end
-
-  defp serialize_pow(<<>>, acc) do
-    acc
-  end
-
-  @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
-  def pow_to_binary(pow) do
-    if is_list(pow) and Enum.count(pow) == 42 do
-      list_of_pows =
-        for evidence <- pow, into: <<>> do
-          <<evidence::32>>
-        end
-
-      serialize_pow(list_of_pows, <<>>)
-    else
-      List.duplicate(0, 42)
-    end
-  end
-
-  @spec binary_to_pow(binary()) :: list() | {:error, atom()}
-  def binary_to_pow(<<pow_bin_list::binary-size(168)>>) do
-    deserialize_pow(pow_bin_list, [])
-  end
-
-  def binary_to_pow(_) do
-    {:error, "#{__MODULE__} : Illegal PoW serialization"}
-  end
-
-  defp deserialize_pow(<<pow::32, rest::binary>>, acc) do
-    deserialize_pow(rest, List.insert_at(acc, -1, pow))
-  end
-
-  defp deserialize_pow(<<>>, acc) do
-    if Enum.count(Enum.filter(acc, fn x -> is_integer(x) and x >= 0 end)) == 42 do
-      acc
-    else
-      {:error, "#{__MODULE__} : Illegal PoW serialization"}
-    end
   end
 
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
   def tag_to_type(10), do: Account
-  def tag_to_type(30), do: Name
-  def tag_to_type(31), do: NameCommitment
-  def tag_to_type(40), do: ChannelStateOnChain
+  def tag_to_type(11), do: SignedTx
+  def tag_to_type(12), do: SpendTx
   def tag_to_type(20), do: Oracle
   def tag_to_type(21), do: OracleQuery
-  def tag_to_type(11), do: SignedTx
-  def tag_to_type(100), do: Block
-
-  def tag_to_type(12), do: SpendTx
   def tag_to_type(22), do: OracleRegistrationTx
   def tag_to_type(23), do: OracleQueryTx
   def tag_to_type(24), do: OracleResponseTx
   def tag_to_type(25), do: OracleExtendTx
+  def tag_to_type(30), do: Name
   def tag_to_type(31), do: NameCommitment
   def tag_to_type(32), do: NameClaimTx
   def tag_to_type(33), do: NamePreClaimTx
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
+  # Contract 	40
+  # Contract call 	41
+  # Contract create transaction 	42
+  # Contract call transaction 	43
   def tag_to_type(50), do: ChannelCreateTx
+  # Channel deposit transaction 	51
+  # Channel withdraw transaction 	52
   def tag_to_type(53), do: ChannelCloseMutalTx
   def tag_to_type(54), do: ChannelCloseSoloTx
   def tag_to_type(55), do: ChannelSlashTx
   def tag_to_type(57), do: ChannelSettleTx
-  def tag_to_type(tag), do: {:error, "#{__MODULE__} : Unknown TX Tag: #{inspect(tag)}"}
+  def tag_to_type(58), do: ChannelStateOnChain
+  # Channel snapshot transaction 	59
+  # POI 	60
+  # NON EPOCH TAG
+  def tag_to_type(100), do: Block
+  def tag_to_type(tag), do: {:error, "#{__MODULE__}: Unknown tag: #{inspect(tag)}"}
 
   @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
+  def type_to_tag(Account), do: 10
+  def type_to_tag(SignedTx), do: 11
   def type_to_tag(SpendTx), do: 12
+  def type_to_tag(Oracle), do: 20
+  def type_to_tag(OracleQuery), do: 21
   def type_to_tag(OracleRegistrationTx), do: 22
   def type_to_tag(OracleQueryTx), do: 23
   def type_to_tag(OracleResponseTx), do: 24
   def type_to_tag(OracleExtendTx), do: 25
+  def type_to_tag(Name), do: 30
+  def type_to_tag(NameCommitment), do: 31
   def type_to_tag(NameClaimTx), do: 32
   def type_to_tag(NamePreClaimTx), do: 33
   def type_to_tag(NameUpdateTx), do: 34
   def type_to_tag(NameRevokeTx), do: 35
   def type_to_tag(NameTransferTx), do: 36
+  # Contract 	40
+  # Contract call 	41
+  # Contract create transaction 	42
+  # Contract call transaction 	43
   def type_to_tag(ChannelCreateTx), do: 50
+  # Channel deposit transaction 	51
+  # Channel withdraw transaction 	52
   def type_to_tag(ChannelCloseMutalTx), do: 53
   def type_to_tag(ChannelCloseSoloTx), do: 54
   def type_to_tag(ChannelSlashTx), do: 55
   def type_to_tag(ChannelSettleTx), do: 57
-  def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
-
-  @spec get_version(atom()) :: non_neg_integer() | {:error, String.t()}
-  def get_version(Name), do: {:ok, 1}
-  def get_version(NameCommitment), do: {:ok, 1}
-  def get_version(ChannelStateOnChain), do: {:ok, 1}
-  def get_version(Account), do: {:ok, 1}
-  def get_version(Oracle), do: {:ok, 1}
-  def get_version(OracleQuery), do: {:ok, 1}
+  # Channel snapshot transaction 	59
+  # POI 	60
+  # NON EPOCH TAG
+  def type_to_tag(Block), do: 100
+  def type_to_tag(type), do: {:error, "#{__MODULE__}: Non serializable type: #{type}"}
 end

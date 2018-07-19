@@ -4,6 +4,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  @behaviour Aeutil.Serializable
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx

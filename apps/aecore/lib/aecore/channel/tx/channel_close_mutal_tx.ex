@@ -4,6 +4,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  @behaviour Aeutil.Serializable
+
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}

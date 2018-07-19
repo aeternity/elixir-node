@@ -4,6 +4,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  @behaviour Aeutil.Serializable
+
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree

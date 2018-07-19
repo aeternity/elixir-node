@@ -4,6 +4,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  @behaviour Aeutil.Serializable
+
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
