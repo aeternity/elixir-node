@@ -2,9 +2,6 @@ defmodule Aecore.Account.Account do
   @moduledoc """
   Aecore structure of a transaction data.
   """
-
-  @behaviour Aeutil.Serializable
-
   require Logger
 
   alias Aecore.Keys.Wallet
@@ -48,6 +45,8 @@ defmodule Aecore.Account.Account do
   - nonce: Out transaction count
   """
   defstruct [:balance, :nonce, :pubkey]
+  use ExConstructor
+  use Aeutil.Serializable
 
   def empty, do: %Account{balance: 0, nonce: 0, pubkey: <<>>}
 
@@ -371,13 +370,5 @@ defmodule Aecore.Account.Account do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
-  end
-
-  def rlp_encode(%Account{} = account) do
-    Serialization.rlp_encode(account)
-  end
-
-  def rlp_decode(binary) do
-    Serialization.rlp_decode_only(binary, Account)
   end
 end

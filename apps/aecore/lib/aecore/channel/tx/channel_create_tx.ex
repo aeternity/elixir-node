@@ -4,7 +4,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
 
   @behaviour Aecore.Tx.Transaction
-  @behaviour Aeutil.Serializable
 
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.DataTx

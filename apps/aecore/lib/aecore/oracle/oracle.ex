@@ -3,8 +3,6 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
-  @behaviour Aeutil.Serializable
-
   alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleQueryTx
@@ -47,6 +45,7 @@ defmodule Aecore.Oracle.Oracle do
 
   defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
   use ExConstructor
+  use Aeutil.Serializable
 
   @spec register(
           json_schema(),

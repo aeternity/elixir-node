@@ -3,8 +3,6 @@ defmodule Aecore.Oracle.OracleQuery do
   Defines oracle query structure
   """
 
-  @behaviour Aeutil.Serializable
-
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys.Wallet
   alias Aeutil.Parser
@@ -38,6 +36,7 @@ defmodule Aecore.Oracle.OracleQuery do
   ]
 
   use ExConstructor
+  use Aeutil.Serializable
 
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =

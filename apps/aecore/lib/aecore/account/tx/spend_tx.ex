@@ -4,7 +4,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   """
 
   @behaviour Aecore.Tx.Transaction
-  @behaviour Aeutil.Serializable
 
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx

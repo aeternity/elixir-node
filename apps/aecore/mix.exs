@@ -62,7 +62,8 @@ defmodule Aecore.Mixfile do
       {:excoveralls, "~> 0.8.1", only: :test},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"}
+      {:gproc, "~> 0.6.1"},
+      {:aeutil, in_umbrella: true}
     ]
   end
 end

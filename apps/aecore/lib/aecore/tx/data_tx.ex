@@ -91,6 +91,7 @@ defmodule Aecore.Tx.DataTx do
   """
   defstruct [:type, :payload, :senders, :fee, :nonce, :ttl]
   use ExConstructor
+  use Aeutil.Serializable
 
   def valid_types do
     [

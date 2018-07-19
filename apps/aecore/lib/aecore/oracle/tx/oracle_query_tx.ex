@@ -5,7 +5,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   """
 
   @behaviour Aecore.Tx.Transaction
-  @behaviour Aeutil.Serializable
 
   alias __MODULE__
   alias Aecore.Tx.DataTx

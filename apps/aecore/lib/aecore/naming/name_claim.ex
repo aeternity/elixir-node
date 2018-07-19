@@ -3,8 +3,6 @@ defmodule Aecore.Naming.NameClaim do
   Aecore naming name claim structure
   """
 
-  @behaviour Aeutil.Serializable
-
   alias Aecore.Keys.Wallet
   alias Aeutil.Bits
   alias Aeutil.Serialization
@@ -33,6 +31,7 @@ defmodule Aecore.Naming.NameClaim do
 
   defstruct [:hash, :name, :owner, :expires, :status, :ttl, :pointers]
   use ExConstructor
+  use Aeutil.Serializable
 
   @spec create(
           binary(),
@@ -112,13 +111,5 @@ defmodule Aecore.Naming.NameClaim do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
-  end
-
-  def rlp_encode(%NameClaim{} = name_claim) do
-    Serialization.rlp_encode(name_claim)
-  end
-
-  def rlp_decode(binary) do
-    Serialization.rlp_decode_only(binary, NameClaim)
   end
 end
