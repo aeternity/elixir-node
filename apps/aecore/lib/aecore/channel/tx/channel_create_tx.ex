@@ -202,8 +202,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     ]
   end
 
-  def decode_from_list([
-        version,
+  def decode_from_list(@version, [
         senders,
         nonce,
         initiator_amount,
@@ -218,17 +217,22 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       locktime: Serialization.transform_item(locktime, :int)
     }
 
-    DataTx.init(
-      ChannelCreateTx,
-      payload,
-      senders,
-      Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int),
-      Serialization.transform_item(ttl, :int)
-    )
+    {:ok,
+     DataTx.init(
+       ChannelCreateTx,
+       payload,
+       senders,
+       Serialization.transform_item(fee, :int),
+       Serialization.transform_item(nonce, :int),
+       Serialization.transform_item(ttl, :int)
+     )}
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__}: Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

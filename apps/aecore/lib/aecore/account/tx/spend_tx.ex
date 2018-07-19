@@ -169,23 +169,28 @@ defmodule Aecore.Account.Tx.SpendTx do
     ]
   end
 
-  def decode_from_list([version, senders, receiver, amount, fee, ttl, nonce, payload]) do
-    DataTx.init(
-      SpendTx,
-      %{
-        receiver: receiver,
-        amount: Serialization.transform_item(amount, :int),
-        version: version,
-        payload: payload
-      },
-      senders,
-      Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int),
-      Serialization.transform_item(ttl, :int)
-    )
+  def decode_from_list(@version, [senders, receiver, amount, fee, ttl, nonce, payload]) do
+    {:ok,
+     DataTx.init(
+       SpendTx,
+       %{
+         receiver: receiver,
+         amount: Serialization.transform_item(amount, :int),
+         version: @version,
+         payload: payload
+       },
+       senders,
+       Serialization.transform_item(fee, :int),
+       Serialization.transform_item(nonce, :int),
+       Serialization.transform_item(ttl, :int)
+     )}
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__}: Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

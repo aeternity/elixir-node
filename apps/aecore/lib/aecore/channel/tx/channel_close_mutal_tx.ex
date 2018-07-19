@@ -188,8 +188,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     ]
   end
 
-  def decode_from_list([
-        version,
+  def decode_from_list(@version, [
         senders,
         nonce,
         channel_id,
@@ -204,17 +203,22 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       responder_amount: Serialization.transform_item(responder_amount, :int)
     }
 
-    DataTx.init(
-      ChannelCloseMutalTx,
-      payload,
-      senders,
-      Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int),
-      Serialization.transform_item(ttl, :int)
-    )
+    {:ok,
+     DataTx.init(
+       ChannelCloseMutalTx,
+       payload,
+       senders,
+       Serialization.transform_item(fee, :int),
+       Serialization.transform_item(nonce, :int),
+       Serialization.transform_item(ttl, :int)
+     )}
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__}: Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

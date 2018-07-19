@@ -170,20 +170,25 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     ]
   end
 
-  def decode_from_list([version, senders, nonce, hash, fee, ttl]) do
+  def decode_from_list(@version, [senders, nonce, hash, fee, ttl]) do
     payload = %NameRevokeTx{hash: hash}
 
-    DataTx.init(
-      NameRevokeTx,
-      payload,
-      senders,
-      Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int),
-      Serialization.transform_item(ttl, :int)
-    )
+    {:ok,
+     DataTx.init(
+       NameRevokeTx,
+       payload,
+       senders,
+       Serialization.transform_item(fee, :int),
+       Serialization.transform_item(nonce, :int),
+       Serialization.transform_item(ttl, :int)
+     )}
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__}: Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

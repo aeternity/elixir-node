@@ -205,7 +205,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     ]
   end
 
-  def decode_from_list([version, senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
+  def decode_from_list(@version, [senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
     payload = %NameUpdateTx{
       client_ttl: Serialization.transform_item(client_ttl, :int),
       expire_by: Serialization.transform_item(expire_by, :int),
@@ -213,17 +213,22 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       pointers: pointers
     }
 
-    DataTx.init(
-      NameUpdateTx,
-      payload,
-      senders,
-      Serialization.transform_item(fee, :int),
-      Serialization.transform_item(nonce, :int),
-      Serialization.transform_item(ttl, :int)
-    )
+    {:ok,
+     DataTx.init(
+       NameUpdateTx,
+       payload,
+       senders,
+       Serialization.transform_item(fee, :int),
+       Serialization.transform_item(nonce, :int),
+       Serialization.transform_item(ttl, :int)
+     )}
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__}: Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

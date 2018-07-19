@@ -21,7 +21,6 @@ defmodule Aecore.Tx.SignedTx do
           signatures: list(Wallet.pubkey())
         }
 
-  @tag 11
   @version 1
 
   defstruct [:data, :signatures]
