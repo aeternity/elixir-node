@@ -91,7 +91,6 @@ defmodule Aecore.Tx.DataTx do
   """
   defstruct [:type, :payload, :senders, :fee, :nonce, :ttl]
   use ExConstructor
-  use Aeutil.Serializable
 
   def valid_types do
     [
@@ -363,26 +362,16 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  def rlp_encode(data) do
-    {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
-  end
-
-  def decode_from_list([tag_bin, ver_bin | data]) do
-    tag = Serialization.transform_item(tag_bin, :int)
-    version = Serialization.transform_item(ver_bin, :int)
-    Serialization.tag_to_type(tag).decode_from_list(version, data)
-  end
-
   def rlp_decode(binary) do
     case Serialization.rlp_decode_anything(binary) do
-      %DataTx{} = datatx ->
-        datatx
+      {:ok, %DataTx{}} = result ->
+        result
+
+      {:ok, _} ->
+        {:error, "#{__MODULE__}: Invalid type"}
 
       {:error, _} = error ->
         error
-
-      _ ->
-        {:error, "#{__MODULE__}: Invalid type"}
     end
   end
 end
