@@ -1,8 +1,17 @@
 defmodule State do
   @moduledoc """
-    Module for handling state
+    Module for handling and accessing values from the VM's internal state.
   """
 
+  @doc """
+  Initialize the VM's internal state.
+
+  `exec`      - transaction information
+  `env`       - environmental Information
+  `pre`       - previous world state (mapping between addresses and accounts)
+  `calldepth` - the current call's depth
+  `opts`      - VM options
+  """
   @spec init_vm(map(), map(), map(), integer(), map()) :: map()
   def init_vm(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
@@ -37,11 +46,13 @@ defmodule State do
 
       :calldepth => calldepth,
 
-      # opts
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
   end
 
+  @doc """
+  Initialize a state for CALL instruction
+  """
   @spec init_for_call(
           integer(),
           integer(),
@@ -249,6 +260,9 @@ defmodule State do
     end
   end
 
+  @doc """
+  Convert given `bytecode` to binary
+  """
   def bytecode_to_bin(bytecode) do
     bytecode
     |> String.replace("0x", "")

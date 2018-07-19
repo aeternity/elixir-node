@@ -1,6 +1,7 @@
 defmodule Gas do
   @moduledoc """
-    Module for calculating the gas of a contract
+    Module for updating the current gas value and calculating
+    the additional costs for the opcodes, based on dynamic data
   """
 
   use Bitwise
@@ -8,6 +9,9 @@ defmodule Gas do
   require OpCodesUtil
   require GasCodes
 
+  @doc """
+  Subtract a given `gas_cost` from the current gas in the state
+  """
   @spec update_gas(integer(), map()) :: map() | {:error, String.t(), map()}
   def update_gas(gas_cost, state) do
     curr_gas = State.gas(state)
@@ -20,12 +24,18 @@ defmodule Gas do
     end
   end
 
+  @doc """
+  Get the initial gas cost for a given `op_code`
+  """
   @spec op_gas_cost(char()) :: integer()
   def op_gas_cost(op_code) do
     {_name, _pushed, _popped, op_gas_price} = OpCodesUtil.opcode(op_code)
     op_gas_price
   end
 
+  @doc """
+  Calculate the fee for the expanded memory
+  """
   @spec memory_gas_cost(map(), map()) :: integer()
   def memory_gas_cost(state_with_ops, state_without) do
     words1 = Memory.memory_size_words(state_with_ops)
@@ -41,6 +51,9 @@ defmodule Gas do
     end
   end
 
+  @doc """
+  Calculate gas cost for a given opcode, based on some dynamic data
+  """
   @spec dynamic_gas_cost(String.t(), map()) :: integer()
   def dynamic_gas_cost("CALL", state) do
     dynamic_call_cost(state)
@@ -110,6 +123,9 @@ defmodule Gas do
     0
   end
 
+  @doc """
+  Determine the gas cost for a CALL instruction
+  """
   defp dynamic_call_cost(state) do
     gas_cost = GasCodes._GCALL()
 

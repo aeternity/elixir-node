@@ -20,12 +20,18 @@ defmodule AevmUtil do
     }
   end
 
+  @doc """
+  Stop execution by setting the program counter past the last instruction
+  """
   @spec stop_exec(map()) :: map()
   def stop_exec(state) do
     code = State.code(state)
     State.set_pc(byte_size(code), state)
   end
 
+  @doc """
+  Perform signed division operation
+  """
   def sdiv(_value1, 0), do: 0
   def sdiv(0, -1), do: AevmConst.neg2to255()
 
@@ -36,6 +42,9 @@ defmodule AevmUtil do
     div(svalue1, svalue2) &&& AevmConst.mask256()
   end
 
+  @doc """
+  Perform signed modulo operation
+  """
   @spec smod(integer(), integer()) :: non_neg_integer()
   def smod(value1, value2) do
     <<svalue1::integer-signed-256>> = <<value1::integer-unsigned-256>>
@@ -44,33 +53,26 @@ defmodule AevmUtil do
     result &&& AevmConst.mask256()
   end
 
-  def pow(op1, op2) when is_non_neg_integer(op1) and is_non_neg_integer(op2), do: pow(1, op1, op2)
-
-  def pow(n, _, 0), do: n
-  def pow(n, op1, 1), do: op1 * n
-
-  @spec pow(integer(), non_neg_integer(), non_neg_integer()) :: non_neg_integer()
-  def pow(n, op1, op2) do
-    square = op1 * op1 &&& AevmConst.mask256()
-    exp = op2 >>> 1
-
-    case op2 &&& 1 do
-      0 -> pow(n, square, exp)
-      _ -> pow(op1 * n, square, exp)
-    end
-  end
-
+  @doc """
+  Perform exponential operation
+  """
   @spec exp(integer(), integer()) :: integer()
   def exp(op1, op2) do
     pow(op1, op2) &&& AevmConst.mask256()
   end
 
+  @doc """
+  Convert unsigned integer to signed integer
+  """
   @spec signed(integer()) :: integer()
   def signed(value) do
     <<svalue::integer-signed-256>> = <<value::integer-unsigned-256>>
     svalue
   end
 
+  @doc """
+  Extract byte at a given position from a 32-byte integer
+  """
   @spec byte(integer(), integer()) :: integer()
   def byte(byte, value) when byte < 32 do
     byte_pos = 256 - 8 * (byte + 1)
@@ -80,6 +82,9 @@ defmodule AevmUtil do
 
   def byte(_, _), do: 0
 
+  @doc """
+  Get the opcode, corresponding to the value of the program counter
+  """
   @spec get_op_code(map()) :: integer()
   def get_op_code(state) do
     pc = State.pc(state)
@@ -91,6 +96,9 @@ defmodule AevmUtil do
     op_code
   end
 
+  @doc """
+  Increase program counter with n `bytes` (instructions)
+  """
   @spec move_pc_n_bytes(integer(), map()) :: {integer(), map()}
   def move_pc_n_bytes(bytes, state) do
     old_pc = State.pc(state)
@@ -126,6 +134,9 @@ defmodule AevmUtil do
     {0xDEADC0DE, state}
   end
 
+  @doc """
+  Copy `n` bytes from a given binary, starting at a given byte position
+  """
   @spec copy_bytes(integer(), integer(), binary()) :: binary()
   def copy_bytes(from_byte, n, bin_data) do
     size = byte_size(bin_data)
@@ -150,6 +161,9 @@ defmodule AevmUtil do
     end
   end
 
+  @doc """
+  Extract 32-byte integer from the input data, starting at a given `address`
+  """
   @spec value_from_data(integer(), map()) :: integer()
   def value_from_data(address, state) do
     data = State.data(state)
@@ -164,6 +178,12 @@ defmodule AevmUtil do
     :sha3.hash(hash_bit_length, data)
   end
 
+  @doc """
+  Load valid jump destinations and store them in the state.
+  Requires preprocessing of the code
+  (the byte that stands for JUMPDEST shouldn't be
+  positioned inside the value of a PUSHn instruction)
+  """
   def load_jumpdests(%{pc: pc, code: code} = state) when pc >= byte_size(code) do
     State.set_pc(0, state)
   end
@@ -192,6 +212,11 @@ defmodule AevmUtil do
     load_jumpdests(updated_pc_state)
   end
 
+  @doc """
+  Generate a log entry with given `topics`, together with extracted area
+  from the memory, by given position and number of bytes,
+  and add it to the state
+  """
   @spec log(list(), integer(), integer(), map()) :: map()
   def log(topics, from_pos, nbytes, state) do
     account = State.address(state)
@@ -208,6 +233,9 @@ defmodule AevmUtil do
     State.set_logs([log | logs], state1)
   end
 
+  @doc """
+  Perform a sign extension operation
+  """
   @spec signextend(integer(), integer()) :: integer()
   def signextend(op1, op2) do
     extend_to = 256 - 8 * (op1 + 1 &&& 255) &&& 255
@@ -224,6 +252,9 @@ defmodule AevmUtil do
     val
   end
 
+  @doc """
+  Execute a CALL instruction
+  """
   @spec call(integer(), map()) :: {integer(), map()}
   def call(op_code, state) do
     if State.calldepth(state) < @call_depth_limit do
@@ -233,6 +264,30 @@ defmodule AevmUtil do
     end
   end
 
+  defp pow(op1, op2) when is_non_neg_integer(op1) and is_non_neg_integer(op2), do: pow(1, op1, op2)
+
+  defp pow(n, _, 0), do: n
+  defp pow(n, op1, 1), do: op1 * n
+
+  defp pow(n, op1, op2) do
+    square = op1 * op1 &&& AevmConst.mask256()
+    exp = op2 >>> 1
+
+    case op2 &&& 1 do
+      0 -> pow(n, square, exp)
+      _ -> pow(op1 * n, square, exp)
+    end
+  end
+
+  @doc """
+  Perform a CALL instruction.
+  Determines the needed data for the execution, based on the `op_code` provided,
+  then makes a new instance of the VM with this data, and a fresh copy of
+  memory and stack, but with the same storage.
+
+  Returns a tuple, containing the result from the CALL instruction
+  and the upgraded outer `state`
+  """
   defp execute_call(op_code, state) do
     {gas, to, value, input_offset, input_size, output_offset, output_size,
      state_popped_call_params} = get_call_params(op_code, state)
@@ -304,6 +359,9 @@ defmodule AevmUtil do
     end
   end
 
+  @doc """
+  Extract the needed call parameters from the `state`, based on the given `op_code`
+  """
   defp get_call_params(op_code, state) do
     {gas, state_popped_gas} = Stack.pop(state)
     {to, state_popped_to} = Stack.pop(state_popped_gas)
@@ -369,6 +427,9 @@ defmodule AevmUtil do
     end
   end
 
+  @doc """
+  Adjust the `gas`, provided for the inner CALL instruction
+  """
   defp adjust_call_gas(gas, value) do
     if value != 0 do
       gas + GasCodes._GCALLSTIPEND()

@@ -1,6 +1,11 @@
 defmodule Memory do
   @moduledoc """
-    Module for working with the VM's internal memory
+    Module for working with the VM's internal memory.
+
+    The VM's internal memory is indexed (chunked) every 32 bytes,
+    thus represented with a mapping between index and a 32-byte integer (word).
+
+    Data from the memory can be accessed at byte level.
   """
 
   use Bitwise
@@ -8,6 +13,9 @@ defmodule Memory do
   @chunk_size 32
   @word_size 256
 
+  @doc """
+  Read a word from the memory, starting at a given `address`.
+  """
   @spec load(integer(), map()) :: {integer(), map()}
   def load(address, state) do
     memory = State.memory(state)
@@ -25,6 +33,9 @@ defmodule Memory do
     {binary_word_to_integer(value_binary), State.set_memory(memory1, state)}
   end
 
+  @doc """
+  Write a word (32 bytes) to the memory, starting at a given `address`
+  """
   @spec store(integer(), integer(), map()) :: map()
   def store(address, value, state) do
     memory = State.memory(state)
@@ -58,6 +69,9 @@ defmodule Memory do
     State.set_memory(memory3, state)
   end
 
+  @doc """
+  Write 1 byte to the memory, at a given `address`
+  """
   @spec store8(integer(), integer(), map()) :: map()
   def store8(address, value, state) do
     memory = State.memory(state)
@@ -73,18 +87,27 @@ defmodule Memory do
     State.set_memory(memory2, state)
   end
 
+  @doc """
+  Get the current size of the memory, in chunks
+  """
   @spec memory_size_words(map()) :: non_neg_integer()
   def memory_size_words(state) do
     memory = State.memory(state)
     Map.get(memory, :size)
   end
 
+  @doc """
+  Get the current size of the memory, in bytes
+  """
   @spec memory_size_bytes(map()) :: non_neg_integer()
   def memory_size_bytes(state) do
     memory_size_words = memory_size_words(state)
     memory_size_words * @chunk_size
   end
 
+  @doc """
+  Get n bytes (area) from the memory, starting at a given address
+  """
   @spec get_area(integer(), integer(), map()) :: {binary(), map()}
   def get_area(from, bytes, state) do
     memory = State.memory(state)
@@ -96,6 +119,9 @@ defmodule Memory do
     {area, State.set_memory(memory1, state)}
   end
 
+  @doc """
+  Write n bytes (area) to the memory, starting at a given address
+  """
   @spec write_area(integer(), integer(), map()) :: map()
   def write_area(from, bytes, state) do
     memory = State.memory(state)
@@ -107,6 +133,10 @@ defmodule Memory do
     State.set_memory(memory2, state)
   end
 
+  @doc """
+  Read n bytes from the memory (may be bigger than 32 bytes),
+  starting at a given address in the memory
+  """
   defp read(read_value, 0, _bit_position, _memory_index, _memory) do
     read_value
   end
@@ -137,6 +167,10 @@ defmodule Memory do
     read(new_read_value, new_bytes_left, 0, memory_index + @chunk_size, memory)
   end
 
+  @doc """
+  Write n bytes to the memory (may be bigger than 32 bytes),
+  starting at a given address in the memory
+  """
   defp write(<<>>, _bit_position, _memory_index, memory) do
     memory
   end
@@ -175,6 +209,9 @@ defmodule Memory do
     write(bytes_left, 0, memory_index + @chunk_size, memory1)
   end
 
+  @doc """
+  Get the index in memory, in which the `address` is positioned
+  """
   defp get_index_in_memory(address) do
     memory_index = trunc(Float.floor(address / @chunk_size) * @chunk_size)
     bit_position = rem(address, @chunk_size) * 8
@@ -182,17 +219,27 @@ defmodule Memory do
     {memory_index, bit_position}
   end
 
+  @doc """
+  Write given binary to a given memory chunk
+  """
   defp write_part(bit_position, value_binary, size_bits, chunk_binary) do
     <<prev::size(bit_position), _::size(size_bits), next::binary>> = chunk_binary
     <<prev::size(bit_position)>> <> value_binary <> next
   end
 
+  @doc """
+  Get the integer value of a `word`
+  """
   defp binary_word_to_integer(word) do
     <<word_integer::size(256), _::binary>> = word
 
     word_integer
   end
 
+  @doc """
+  Update the size of the memory, if the given `address` is positioned
+  outside of the biggest allocated chunk
+  """
   defp update_memory_size(address, memory) do
     {memory_index, _} = get_index_in_memory(address)
     current_mem_size_words = Map.get(memory, :size)
