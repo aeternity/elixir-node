@@ -15,6 +15,8 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
           receiver: Wallet.pubkey(),
@@ -150,4 +152,37 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
+
+  def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      tx.receiver,
+      tx.amount,
+      datatx.fee,
+      datatx.ttl,
+      datatx.nonce,
+      tx.payload
+    ]
+  end
+
+  def decode_from_list([version, senders, receiver, amount, fee, ttl, nonce, payload]) do
+    DataTx.init(
+      SpendTx,
+      %{
+        receiver: receiver,
+        amount: Serialization.transform_item(amount, :int),
+        version: version,
+        payload: payload
+      },
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
+  end
 end

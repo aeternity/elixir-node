@@ -12,6 +12,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
           initiator_amount: non_neg_integer(),
@@ -182,5 +184,48 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.initiator_amount,
+      tx.responder_amount,
+      tx.locktime,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([
+        version,
+        senders,
+        nonce,
+        initiator_amount,
+        responder_amount,
+        locktime,
+        fee,
+        ttl
+      ]) do
+    payload = %ChannelCreateTx{
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int),
+      locktime: Serialization.transform_item(locktime, :int)
+    }
+
+    DataTx.init(
+      ChannelCreateTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

@@ -16,6 +16,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
           hash: binary(),
@@ -185,5 +187,41 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.hash,
+      tx.client_ttl,
+      tx.pointers,
+      tx.expire_by,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
+    payload = %NameUpdateTx{
+      client_ttl: Serialization.transform_item(client_ttl, :int),
+      expire_by: Serialization.transform_item(expire_by, :int),
+      hash: hash,
+      pointers: pointers
+    }
+
+    DataTx.init(
+      NameUpdateTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

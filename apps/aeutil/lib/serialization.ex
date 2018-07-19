@@ -392,25 +392,14 @@ defmodule Aeutil.Serialization do
 
   @spec rlp_encode(
           Account.t() | DataTx.t() | map(),
-          :tx
-          | :account_state
+          :account_state
           | :registered_oracle
           | :interaction_object
           | :naming_state
           | :name_commitment
           | :channel_onchain
           | :block
-          | :signedtx
         ) :: binary | {:error, String.t()}
-  def rlp_encode(%DataTx{} = term, :tx) do
-    with {:ok, tag} <- type_to_tag(term.type),
-         {:ok, version} <- get_version(term.type),
-         data <- term.__struct__.rlp_encode(tag, version, term) do
-      data
-    else
-      error -> {:error, "#{__MODULE__} : Invalid DataTx serialization: #{inspect(error)}"}
-    end
-  end
 
   def rlp_encode(%Account{} = term, :account_state) when is_map(term) do
     with {:ok, tag} <- type_to_tag(term.__struct__),
@@ -490,41 +479,17 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_encode(%SignedTx{} = term, :signedtx) do
-    with {:ok, tag} <- type_to_tag(term.__struct__),
-         {:ok, version} <- get_version(term.__struct__),
-         data <- term.__struct__.rlp_encode(tag, version, term) do
-      data
+  def rlp_encode(structure) when is_map(structure) do
+    with {:ok, tag} <- type_to_tag(structure.__struct__) do
+      ExRLP.encode([tag | structure.__struct__.encode_to_list(structure)])
     else
-      error -> {:error, "#{__MODULE__} : Invalid Tx serialization: #{inspect(error)}"}
+      error ->
+        error
     end
   end
 
-  def rlp_encode(error) do
-    {:error, "#{__MODULE__} : Illegal serialization attempt: #{inspect(error)}"}
-  end
-
-  def rlp_decode(binary) when is_binary(binary) do
-    result =
-      try do
-        ExRLP.decode(binary)
-      rescue
-        e -> {:error, Exception.message(e)}
-      end
-
-    case result do
-      [tag_bin, ver_bin | rest_data] ->
-        tag = transform_item(tag_bin, :int)
-        ver = transform_item(ver_bin, :int)
-        rlp_decode(tag_to_type(tag), ver, rest_data)
-
-      {:error, reason} ->
-        {:error, "#{__MODULE__}: Illegal deserialization, reason : #{reason}"}
-    end
-  end
-
-  def rlp_decode(data) do
-    {:error, "#{__MODULE__}: Illegal deserialization: #{inspect(data)}"}
+  def rlp_encode(data) do
+    {:error, "#{__MODULE__}: Illegal serialization attempt: #{inspect(error)}"}
   end
 
   defp rlp_decode(Block, _version, block_data) do
@@ -559,8 +524,45 @@ defmodule Aeutil.Serialization do
     ChannelStateOnChain.rlp_decode(channel_state_on_chain)
   end
 
-  defp rlp_decode(payload, _version, datatx) do
-    DataTx.rlp_decode(payload, datatx)
+  @spec rlp_decode_anything(binary()) :: term() | {:error, binary()}
+  def rlp_decode_anything(binary) do
+    rlp_decode(binary)
+  end
+
+  @spec rlp_decode_only(binary(), atom()) :: term() | {:error, binary()}
+  def rlp_decode_only(binary, type) do
+    rlp_decode(binary, type)
+  end
+
+  @spec rlp_decode(binary(), atom()) :: term() | {:error, binary()}
+  defp rlp_decode(binary, type \\ :any) when is_binary(binary) do
+    result =
+      try do
+        ExRLP.decode(binary)
+      rescue
+        e ->
+          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+      end
+
+    case result do
+      [tag_bin | rest_data] ->
+        actual_type =
+          tag_bin
+          |> Serialization.transform_item(:int)
+          |> tag_to_type
+
+        if actual_type == type || type == :any do
+          actual_type.decode_from_list(rest_data)
+        else
+          {:error, "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}"}
+        end
+
+      [] ->
+        {:error, "#{__MODULE__}: rlp_decode: IEmpty encoding"}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   # Should be changed after some adjustments in oracle structures
@@ -579,6 +581,7 @@ defmodule Aeutil.Serialization do
   def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
   def decode_ttl_type(1), do: :absolute
   def decode_ttl_type(0), do: :relative
+
   @spec header_to_binary(Header.t()) :: binary
   def header_to_binary(%Header{} = header) do
     header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
@@ -658,6 +661,33 @@ defmodule Aeutil.Serialization do
     {:error, "#{__MODULE__} : Illegal header to binary serialization"}
   end
 
+  # Optional function-workaroud:
+  # As we have differences in value types in some fields,
+  # which means that we encode these fields different apart from what Epoch does,
+  # we need to recognize the origins of this value.
+  # My proposal is (until the problem is solved) to add
+  # specific prefix to the data before encodings, for example, "$æx"
+  # this prefix will allow us to know, how the data should be handled.
+  # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
+  @spec decode_format(binary()) :: binary()
+  defp decode_format(<<"$æx", binary::binary>>) do
+    Serialization.transform_item(binary, :binary)
+  end
+
+  defp decode_format(binary) when is_binary(binary) do
+    binary
+  end
+
+  @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
+  defp serialize_pow(pow, acc) when pow != <<>> do
+    <<elem::binary-size(4), rest::binary>> = pow
+    serialize_pow(rest, acc <> elem)
+  end
+
+  defp serialize_pow(<<>>, acc) do
+    acc
+  end
+
   @spec pow_to_binary(list()) :: binary() | list() | {:error, String.t()}
   def pow_to_binary(pow) do
     if is_list(pow) and Enum.count(pow) == 42 do
@@ -670,16 +700,6 @@ defmodule Aeutil.Serialization do
     else
       List.duplicate(0, 42)
     end
-  end
-
-  @spec serialize_pow(binary(), binary()) :: binary() | {:error, String.t()}
-  defp serialize_pow(pow, acc) when pow != <<>> do
-    <<elem::binary-size(4), rest::binary>> = pow
-    serialize_pow(rest, acc <> elem)
-  end
-
-  defp serialize_pow(<<>>, acc) do
-    acc
   end
 
   @spec binary_to_pow(binary()) :: list() | {:error, atom()}
@@ -703,110 +723,57 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
-  def type_to_tag(Account), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:account_state]}
-  def type_to_tag(SignedTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:signed_tx]}
-  def type_to_tag(SpendTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:spend_tx]}
-
-  def type_to_tag(OracleRegistrationTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_reg_tx]}
-
-  def type_to_tag(OracleQueryTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_tx]}
-
-  def type_to_tag(OracleResponseTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_response_tx]}
-
-  def type_to_tag(OracleExtendTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_extend_tx]}
-
-  def type_to_tag(Name), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:naming_state]}
-
-  def type_to_tag(NameCommitment),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_commitment_state]}
-
-  def type_to_tag(NameClaimTx), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_claim_tx]}
-
-  def type_to_tag(NamePreClaimTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_pre_claim_tx]}
-
-  def type_to_tag(NameUpdateTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_update_tx]}
-
-  def type_to_tag(NameRevokeTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_revoke_tx]}
-
-  def type_to_tag(NameTransferTx),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:name_transfer_tx]}
-
-  def type_to_tag(Oracle), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_state]}
-
-  def type_to_tag(OracleQuery),
-    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_state]}
-
-  def type_to_tag(ChannelStateOnChain), do: {:ok, 40}
-
-  def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
-
-  def type_to_tag(ChannelCloseSoloTx), do: {:ok, 42}
-
-  def type_to_tag(ChannelCreateTx), do: {:ok, 43}
-
-  def type_to_tag(ChannelSettleTx), do: {:ok, 44}
-
-  def type_to_tag(ChannelSlashTx), do: {:ok, 45}
-
-  def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
-  def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
-
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
   def tag_to_type(10), do: Account
+  def tag_to_type(30), do: Name
+  def tag_to_type(31), do: NameCommitment
+  def tag_to_type(40), do: ChannelStateOnChain
+  def tag_to_type(20), do: Oracle
+  def tag_to_type(21), do: OracleQuery
+  def tag_to_type(11), do: SignedTx
+  def tag_to_type(100), do: Block
+
   def tag_to_type(12), do: SpendTx
   def tag_to_type(22), do: OracleRegistrationTx
   def tag_to_type(23), do: OracleQueryTx
   def tag_to_type(24), do: OracleResponseTx
   def tag_to_type(25), do: OracleExtendTx
-  def tag_to_type(30), do: Name
   def tag_to_type(31), do: NameCommitment
   def tag_to_type(32), do: NameClaimTx
   def tag_to_type(33), do: NamePreClaimTx
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
-  def tag_to_type(40), do: ChannelStateOnChain
-  def tag_to_type(41), do: ChannelCloseMutalTx
-  def tag_to_type(42), do: ChannelCloseSoloTx
-  def tag_to_type(43), do: ChannelCreateTx
-  def tag_to_type(44), do: ChannelSettleTx
-  def tag_to_type(45), do: ChannelSlashTx
-  def tag_to_type(20), do: Oracle
-  def tag_to_type(21), do: OracleQuery
-  def tag_to_type(11), do: SignedTx
-  def tag_to_type(100), do: Block
+  def tag_to_type(50), do: ChannelCreateTx
+  def tag_to_type(53), do: ChannelCloseMutalTx
+  def tag_to_type(54), do: ChannelCloseSoloTx
+  def tag_to_type(55), do: ChannelSlashTx
+  def tag_to_type(57), do: ChannelSettleTx
   def tag_to_type(tag), do: {:error, "#{__MODULE__} : Unknown TX Tag: #{inspect(tag)}"}
 
+  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
+  def type_to_tag(SpendTx), do: 12
+  def type_to_tag(OracleRegistrationTx), do: 22
+  def type_to_tag(OracleQueryTx), do: 23
+  def type_to_tag(OracleResponseTx), do: 24
+  def type_to_tag(OracleExtendTx), do: 25
+  def type_to_tag(NameClaimTx), do: 32
+  def type_to_tag(NamePreClaimTx), do: 33
+  def type_to_tag(NameUpdateTx), do: 34
+  def type_to_tag(NameRevokeTx), do: 35
+  def type_to_tag(NameTransferTx), do: 36
+  def type_to_tag(ChannelCreateTx), do: 50
+  def type_to_tag(ChannelCloseMutalTx), do: 53
+  def type_to_tag(ChannelCloseSoloTx), do: 54
+  def type_to_tag(ChannelSlashTx), do: 55
+  def type_to_tag(ChannelSettleTx), do: 57
+  def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
+
   @spec get_version(atom()) :: non_neg_integer() | {:error, String.t()}
-  def get_version(SpendTx), do: {:ok, 1}
-  def get_version(OracleRegistrationTx), do: {:ok, 1}
-  def get_version(OracleQueryTx), do: {:ok, 1}
-  def get_version(OracleResponseTx), do: {:ok, 1}
-  def get_version(OracleExtendTx), do: {:ok, 1}
   def get_version(Name), do: {:ok, 1}
   def get_version(NameCommitment), do: {:ok, 1}
-  def get_version(NameClaimTx), do: {:ok, 1}
-  def get_version(NamePreClaimTx), do: {:ok, 1}
-  def get_version(NameUpdateTx), do: {:ok, 1}
-  def get_version(NameRevokeTx), do: {:ok, 1}
-  def get_version(NameTransferTx), do: {:ok, 1}
   def get_version(ChannelStateOnChain), do: {:ok, 1}
-  def get_version(ChannelCloseMutalTx), do: {:ok, 1}
-  def get_version(ChannelCloseSoloTx), do: {:ok, 1}
-  def get_version(ChannelCreateTx), do: {:ok, 1}
-  def get_version(ChannelSettleTx), do: {:ok, 1}
-  def get_version(ChannelSlashTx), do: {:ok, 1}
   def get_version(Account), do: {:ok, 1}
   def get_version(Oracle), do: {:ok, 1}
   def get_version(OracleQuery), do: {:ok, 1}
-  def get_version(SignedTx), do: {:ok, 1}
-  def get_version(ver), do: {:error, "#{__MODULE__} : Unknown Struct version: #{inspect(ver)}"}
 end

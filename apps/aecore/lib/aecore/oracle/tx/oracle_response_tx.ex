@@ -14,6 +14,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
+  @version 1
+
   @type payload :: %{
           query_id: binary(),
           response: map()
@@ -170,5 +172,40 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_response_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.query_id,
+      "$æx" <> Serialization.transform_item(tx.response),
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, encoded_query_id, encoded_response, fee, ttl]) do
+    query_id = Serialization.decode_format(encoded_query_id)
+    response = Serialization.decode_format(encoded_response)
+
+    payload = %{
+      query_id: query_id,
+      response: response
+    }
+
+    DataTx.init(
+      OracleResponseTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

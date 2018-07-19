@@ -13,6 +13,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
+  @version 1
+
   @type payload :: %{
           query_format: Oracle.json_schema(),
           response_format: Oracle.json_schema(),
@@ -197,5 +199,64 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_registration_base_fee]
 
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
+    ttl_type = Serialization.encode_ttl_type(tx.ttl)
+
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      "$æx" <> Serialization.transform_item(tx.query_format),
+      "$æx" <> Serialization.transform_item(tx.response_format),
+      tx.query_fee,
+      ttl_type,
+      tx.ttl.ttl,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([
+        version,
+        senders,
+        nonce,
+        encoded_query_format,
+        encoded_response_format,
+        query_fee,
+        encoded_ttl_type,
+        ttl_value,
+        fee,
+        ttl
+      ]) do
+    ttl_type =
+      encoded_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    query_format = Serialization.decode_format(encoded_query_format)
+
+    response_format = Serialization.decode_format(encoded_response_format)
+
+    payload = %{
+      query_format: query_format,
+      response_format: response_format,
+      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_type},
+      query_fee: Serialization.transform_item(query_fee, :int)
+    }
+
+    DataTx.init(
+      OracleRegistrationTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

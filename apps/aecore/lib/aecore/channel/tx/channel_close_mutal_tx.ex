@@ -12,6 +12,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the ChannelCloseMutal Transaction"
   @type payload :: %{
           channel_id: binary(),
@@ -168,5 +170,48 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.channel_id,
+      tx.initiator_amount,
+      tx.responder_amount,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([
+        version,
+        senders,
+        nonce,
+        channel_id,
+        initiator_amount,
+        responder_amount,
+        fee,
+        ttl
+      ]) do
+    payload = %ChannelCloseMutalTx{
+      channel_id: channel_id,
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int)
+    }
+
+    DataTx.init(
+      ChannelCloseMutalTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

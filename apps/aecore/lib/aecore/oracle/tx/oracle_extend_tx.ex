@@ -14,6 +14,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   require Logger
 
+  @version 1
+
   @type payload :: %{
           ttl: non_neg_integer()
         }
@@ -122,5 +124,35 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.ttl,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, ttl_value, fee, ttl]) do
+    payload = %{
+      ttl: Serialization.transform_item(ttl_value, :int)
+    }
+
+    DataTx.init(
+      OracleExtendTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

@@ -12,6 +12,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
           state: map()
@@ -156,5 +158,35 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      ChannelStateOffChain.encode(tx.state),
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, state, fee, ttl]) do
+    payload = %ChannelCloseSoloTx{
+      state: ChannelStateOffChain.decode(state)
+    }
+
+    DataTx.init(
+      ChannelCloseSoloTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

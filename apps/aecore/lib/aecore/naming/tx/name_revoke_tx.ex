@@ -16,6 +16,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Revoke Transaction"
   @type payload :: %{
           hash: binary()
@@ -153,5 +155,33 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.hash,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, hash, fee, ttl]) do
+    payload = %NameRevokeTx{hash: hash}
+
+    DataTx.init(
+      NameRevokeTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

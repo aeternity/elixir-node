@@ -21,6 +21,9 @@ defmodule Aecore.Tx.SignedTx do
           signatures: list(Wallet.pubkey())
         }
 
+  @tag 11
+  @version 1
+
   defstruct [:data, :signatures]
   use ExConstructor
 
@@ -238,27 +241,33 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
-  def rlp_encode(tag, version, %SignedTx{} = tx) do
+  def encode_to_list(%SignedTx{} = tx) do
     [
-      tag,
-      version,
+      @version,
       tx.signatures,
-      Serialization.rlp_encode(tx.data, :tx)
+      Serialization.rlp_encode(tx.data)
     ]
-    |> ExRLP.encode()
   end
 
-  def rlp_encode(tx) do
-    {:error, "#{__MODULE__} : Invalid SignedTx data #{inspect(tx)}"}
+  def decode_from_list([version_bin, signatures, data]) do
+    version = Serialization.transform_item(version_bin, :int)
+
+    if version == @version do
+      %SignedTx{data: DataTx.rlp_decode(data), signatures: signatures}
+    else
+      {:error, "#{__MODULE__}: Wrong version"}
+    end
   end
 
-  @spec rlp_decode(list()) :: SignedTx.t() | atom()
-  def rlp_decode([signatures, tx_data]) do
-    %SignedTx{data: Serialization.rlp_decode(tx_data), signatures: signatures}
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__} : Invalid structure"}
   end
 
-  def rlp_decode(_) do
-    {:error, "#{__MODULE__} : Invalid SignedTx serialization "}
+  def rlp_encode(%SignedTx{} = tx) do
+    Serialization.rlp_encode(tx)
+  end
+
+  def rlp_decode(binary) do
+    Serialization.rlp_decode_only(binary, SignedTx)
   end
 end

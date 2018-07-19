@@ -15,6 +15,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
           name: String.t(),
@@ -168,5 +170,34 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.name,
+      tx.name_salt,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, name, name_salt, fee, ttl]) do
+    payload = %NameClaimTx{name: name, name_salt: name_salt}
+
+    DataTx.init(
+      NameClaimTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

@@ -17,6 +17,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
+  @version 1
+
   @type id :: binary()
 
   @type payload :: %{
@@ -256,5 +258,76 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleQueryTx{} = tx, %DataTx{} = datatx) do
+    ttl_type_q = Serialization.encode_ttl_type(tx.query_ttl)
+    ttl_type_r = Serialization.encode_ttl_type(tx.response_ttl)
+
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      datatx.payload.oracle_address,
+      "$æx" <> Serialization.transform_item(tx.query_data),
+      tx.query_fee,
+      ttl_type_q,
+      tx.query_ttl.ttl,
+      ttl_type_r,
+      tx.response_ttl.ttl,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([
+        version,
+        senders,
+        nonce,
+        oracle_address,
+        encoded_query_data,
+        query_fee,
+        encoded_query_ttl_type,
+        query_ttl_value,
+        encoded_response_ttl_type,
+        response_ttl_value,
+        fee,
+        ttl
+      ]) do
+    query_ttl_type =
+      encoded_query_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    response_ttl_type =
+      encoded_response_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    query_data = Serialization.decode_format(encoded_query_data)
+
+    payload = %{
+      oracle_address: oracle_address,
+      query_data: query_data,
+      query_fee: Serialization.transform_item(query_fee, :int),
+      query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: query_ttl_type},
+      response_ttl: %{
+        ttl: Serialization.transform_item(response_ttl_value, :int),
+        type: response_ttl_type
+      }
+    }
+
+    DataTx.init(
+      OracleQueryTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end

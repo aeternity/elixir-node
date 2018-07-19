@@ -16,6 +16,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   require Logger
 
+  @version 1
+
   @type commitment_hash :: binary()
 
   @typedoc "Expected structure for the Pre Claim Transaction"
@@ -141,5 +143,33 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      datatx.senders,
+      datatx.nonce,
+      tx.commitment,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list([version, senders, nonce, commitment, fee, ttl]) do
+    payload = %NamePreClaimTx{commitment: commitment}
+
+    DataTx.init(
+      NamePreClaimTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__}: Invalid structure"}
   end
 end
