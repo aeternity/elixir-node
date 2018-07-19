@@ -10,7 +10,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Target
   alias Aeutil.Hash
-  alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
   alias Aecore.Governance.GovernanceConstants
 

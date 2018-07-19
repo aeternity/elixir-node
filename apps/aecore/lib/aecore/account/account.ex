@@ -16,7 +16,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.{NameClaim, NameCommitment, NameUtil}
+  alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants

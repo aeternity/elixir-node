@@ -5,6 +5,9 @@ defmodule Aeutil.Serializable do
   defmacro __using__(_) do
     quote location: :keep do
       @behaviour Aeutil.Serializable
+
+      alias Aeutil.Serialization
+
       @spec rlp_encode(%__MODULE__{}) :: binary()
       def rlp_encode(%__MODULE__{} = structure) do
         Serialization.rlp_encode(structure)

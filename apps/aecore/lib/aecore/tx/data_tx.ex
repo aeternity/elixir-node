@@ -10,23 +10,6 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Channel.Tx.ChannelCloseMutalTx
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
-  alias Aecore.Channel.Tx.ChannelSlashTx
-  alias Aecore.Channel.Tx.ChannelSettleTx
-  alias Aecore.Channel.ChannelStateOffChain
 
   require Logger
 
@@ -348,10 +331,8 @@ defmodule Aecore.Tx.DataTx do
   end
 
   def encode_to_list(%DataTx{} = tx) do
-    [
-      Serialization.type_to_tag(tx.type)
-      | tx.type.encode_to_list(tx.payload, tx)
-    ]
+    {:ok, tag} = Serialization.type_to_tag(tx.type)
+    [tag | tx.type.encode_to_list(tx.payload, tx)]
   end
 
   def rlp_encode(%DataTx{} = tx) do

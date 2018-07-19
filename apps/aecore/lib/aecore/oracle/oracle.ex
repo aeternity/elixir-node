@@ -18,7 +18,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aeutil.Parser
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 

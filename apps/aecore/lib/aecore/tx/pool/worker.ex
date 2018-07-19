@@ -18,7 +18,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Events
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Hash
-  alias Aeutil.Serialization
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 

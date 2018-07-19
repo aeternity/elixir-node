@@ -12,9 +12,7 @@ defmodule Aeutil.Serialization do
   alias Aeutil.Parser
   alias Aecore.Account.Account
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Channel.ChannelStateOnChain
 
   require Logger
 
@@ -413,19 +411,19 @@ defmodule Aeutil.Serialization do
 
     case result do
       [tag_bin, ver_bin | rest_data] ->
-        actual_type =
-          tag_bin
-          |> transform_item(:int)
-          |> tag_to_type
+        case tag_to_type(transform_item(tag_bin, :int)) do
+          {:ok, actual_type} ->
 
-        version = transform_item(ver_bin, :int)
+            version = transform_item(ver_bin, :int)
 
-        if actual_type == type || type == :any do
-          actual_type.decode_from_list(version, rest_data)
-        else
-          {:error, "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}"}
+            if actual_type == type || type == :any do
+              actual_type.decode_from_list(version, rest_data)
+            else
+              {:error, "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}"}
+            end
+          {:error, _} = error ->
+            error
         end
-
       [] ->
         {:error, "#{__MODULE__}: rlp_decode: Empty encoding"}
 
@@ -468,72 +466,73 @@ defmodule Aeutil.Serialization do
     binary
   end
 
-  @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
-  def tag_to_type(10), do: Account
-  def tag_to_type(11), do: SignedTx
-  def tag_to_type(12), do: SpendTx
-  def tag_to_type(20), do: Oracle
-  def tag_to_type(21), do: OracleQuery
-  def tag_to_type(22), do: OracleRegistrationTx
-  def tag_to_type(23), do: OracleQueryTx
-  def tag_to_type(24), do: OracleResponseTx
-  def tag_to_type(25), do: OracleExtendTx
-  def tag_to_type(30), do: Name
-  def tag_to_type(31), do: NameCommitment
-  def tag_to_type(32), do: NameClaimTx
-  def tag_to_type(33), do: NamePreClaimTx
-  def tag_to_type(34), do: NameUpdateTx
-  def tag_to_type(35), do: NameRevokeTx
-  def tag_to_type(36), do: NameTransferTx
+  @spec tag_to_type(non_neg_integer()) :: {:ok, atom()} | {:error, String.t()}
+  def tag_to_type(10), do: {:ok, Aecore.Account.Account}
+  def tag_to_type(11), do: {:ok, Aecore.Tx.SignedTx}
+  def tag_to_type(12), do: {:ok, Aecore.Account.Tx.SpendTx}
+  def tag_to_type(20), do: {:ok, Aecore.Oracle.Oracle}
+  def tag_to_type(21), do: {:ok, Aecore.Oracle.OracleQuery}
+  def tag_to_type(22), do: {:ok, Aecore.Oracle.Tx.OracleRegistrationTx}
+  def tag_to_type(23), do: {:ok, Aecore.Oracle.Tx.OracleQueryTx}
+  def tag_to_type(24), do: {:ok, Aecore.Oracle.Tx.OracleResponseTx}
+  def tag_to_type(25), do: {:ok, Aecore.Oracle.Tx.OracleExtendTx}
+  def tag_to_type(30), do: {:ok, Aecore.Naming.Name}
+  def tag_to_type(31), do: {:ok, Aecore.Naming.NameCommitment}
+  def tag_to_type(32), do: {:ok, Aecore.Naming.Tx.NameClaimTx}
+  def tag_to_type(33), do: {:ok, Aecore.Naming.Tx.NamePreClaimTx}
+  def tag_to_type(34), do: {:ok, Aecore.Naming.Tx.NameUpdateTx}
+  def tag_to_type(35), do: {:ok, Aecore.Naming.Tx.NameRevokeTx}
+  def tag_to_type(36), do: {:ok, Aecore.Naming.Tx.NameTransferTx}
   # Contract 	40
   # Contract call 	41
   # Contract create transaction 	42
   # Contract call transaction 	43
-  def tag_to_type(50), do: ChannelCreateTx
+  def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
   # Channel deposit transaction 	51
   # Channel withdraw transaction 	52
-  def tag_to_type(53), do: ChannelCloseMutalTx
-  def tag_to_type(54), do: ChannelCloseSoloTx
-  def tag_to_type(55), do: ChannelSlashTx
-  def tag_to_type(57), do: ChannelSettleTx
-  def tag_to_type(58), do: ChannelStateOnChain
+  def tag_to_type(53), do: {:ok, Aecore.Channel.Tx.ChannelCloseMutalTx}
+  def tag_to_type(54), do: {:ok, Aecore.Channel.Tx.ChannelCloseSoloTx}
+  def tag_to_type(55), do: {:ok, Aecore.Channel.Tx.ChannelSlashTx}
+  def tag_to_type(57), do: {:ok, Aecore.Channel.Tx.ChannelSettleTx}
+  def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
   # Channel snapshot transaction 	59
   # POI 	60
   # NON EPOCH TAG
-  def tag_to_type(100), do: Block
+  def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
   def tag_to_type(tag), do: {:error, "#{__MODULE__}: Unknown tag: #{inspect(tag)}"}
 
-  @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
-  def type_to_tag(Account), do: 10
-  def type_to_tag(SignedTx), do: 11
-  def type_to_tag(SpendTx), do: 12
-  def type_to_tag(Oracle), do: 20
-  def type_to_tag(OracleQuery), do: 21
-  def type_to_tag(OracleRegistrationTx), do: 22
-  def type_to_tag(OracleQueryTx), do: 23
-  def type_to_tag(OracleResponseTx), do: 24
-  def type_to_tag(OracleExtendTx), do: 25
-  def type_to_tag(Name), do: 30
-  def type_to_tag(NameCommitment), do: 31
-  def type_to_tag(NameClaimTx), do: 32
-  def type_to_tag(NamePreClaimTx), do: 33
-  def type_to_tag(NameUpdateTx), do: 34
-  def type_to_tag(NameRevokeTx), do: 35
-  def type_to_tag(NameTransferTx), do: 36
+  @spec type_to_tag(atom()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def type_to_tag(Aecore.Account.Account), do: {:ok, 10}
+  def type_to_tag(Aecore.Tx.SignedTx), do: {:ok, 11}
+  def type_to_tag(Aecore.Account.Tx.SpendTx), do: {:ok, 12}
+  def type_to_tag(Aecore.Oracle.Oracle), do: {:ok, 20}
+  def type_to_tag(Aecore.Oracle.OracleQuery), do: {:ok, 21}
+  def type_to_tag(Aecore.Oracle.OracleRegistrationTx), do: {:ok, 22}
+  def type_to_tag(Aecore.Oracle.OracleQueryTx), do: {:ok, 23}
+  def type_to_tag(Aecore.Oracle.OracleResponseTx), do: {:ok, 24}
+  def type_to_tag(Aecore.Oracle.OracleExtendTx), do: {:ok, 25}
+  def type_to_tag(Aecore.Naming.Name), do: {:ok, 30}
+  def type_to_tag(Aecore.Naming.NameCommitment), do: {:ok, 31}
+  def type_to_tag(Aecore.Naming.Tx.NameClaimTx), do: {:ok, 32}
+  def type_to_tag(Aecore.Naming.Tx.NamePreClaimTx), do: {:ok, 33}
+  def type_to_tag(Aecore.Naming.Tx.NameUpdateTx), do: {:ok, 34}
+  def type_to_tag(Aecore.Naming.Tx.NameRevokeTx), do: {:ok, 35}
+  def type_to_tag(Aecore.Naming.Tx.NameTransferTx), do: {:ok, 36}
   # Contract 	40
   # Contract call 	41
   # Contract create transaction 	42
   # Contract call transaction 	43
-  def type_to_tag(ChannelCreateTx), do: 50
+  def type_to_tag(Aecore.Channel.Tx.ChannelCreateTx), do: {:ok, 50}
   # Channel deposit transaction 	51
   # Channel withdraw transaction 	52
-  def type_to_tag(ChannelCloseMutalTx), do: 53
-  def type_to_tag(ChannelCloseSoloTx), do: 54
-  def type_to_tag(ChannelSlashTx), do: 55
-  def type_to_tag(ChannelSettleTx), do: 57
+  def type_to_tag(Aecore.Channel.Tx.ChannelCloseMutalTx), do: {:ok, 53}
+  def type_to_tag(Aecore.Channel.Tx.ChannelCloseSoloTx), do: {:ok, 54}
+  def type_to_tag(Aecore.Channel.Tx.ChannelSlashTx), do: {:ok, 55}
+  def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 57}
+  def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, }
   # Channel snapshot transaction 	59
   # POI 	60
   # NON EPOCH TAG
-  def type_to_tag(Block), do: 100
+  def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}
   def type_to_tag(type), do: {:error, "#{__MODULE__}: Non serializable type: #{type}"}
 end
