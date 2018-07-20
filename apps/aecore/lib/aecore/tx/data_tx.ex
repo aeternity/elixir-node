@@ -270,6 +270,10 @@ defmodule Aecore.Tx.DataTx do
 
   @spec serialize(map()) :: map()
   def serialize(%DataTx{} = tx) do
+    # payload needs adjustments
+    # serialized_receiver = Serialization.serialize_value(tx.payload.receiver)
+    # Map.put(tx.payload, "receiver", tx.payload.receiver.value)
+
     map_without_senders = %{
       "type" => Serialization.serialize_value(tx.type),
       "payload" => Serialization.serialize_value(tx.payload),

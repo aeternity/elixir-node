@@ -97,10 +97,12 @@ defmodule Aecore.Miner.Worker do
   ## Server side
 
   def handle_call({:mining, :stop}, _from, state) do
+    Logger.info("#{__MODULE__}: stopping miner")
     {:reply, :ok, mining(%{state | miner_state: :idle, block_candidate: nil})}
   end
 
   def handle_call({:mining, :start}, _from, state) do
+    Logger.info("#{__MODULE__}: starting miner")
     {:reply, :ok, mining(%{state | miner_state: :running})}
   end
 
