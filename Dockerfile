@@ -45,9 +45,7 @@ ENV SHELL=/bin/sh
 # install hex dependencies
 RUN mix local.hex --force
 RUN mix local.rebar --force
-RUN mix deps.get
-RUN mix deps.compile
-RUN mix compile
+RUN make clean-deps-compile
 
 # set entrypoint
 EXPOSE 4000

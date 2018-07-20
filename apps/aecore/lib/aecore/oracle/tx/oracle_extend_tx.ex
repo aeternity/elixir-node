@@ -69,7 +69,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
     updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl))
-    updated_oracle_state = OracleStateTree.insert_oracle(oracles, updated_registered_oracle)
+    updated_oracle_state = OracleStateTree.enter_oracle(oracles, updated_registered_oracle)
 
     {:ok, {accounts, updated_oracle_state}}
   end

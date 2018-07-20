@@ -132,9 +132,11 @@ The DataTx strucure hold:
 
   `Peers.all_peers()`
 
-- Connect to a peer by specifying the address (host), port (SYNC_PORT) and peer pubkey (different from the keypair which is used for transaction signing):
+- Connect to a peer by specifying the address (host, has to be in single quotes i.e. 'localhost'), port (SYNC_PORT) and peer pubkey (different from the keypair which is used for transaction signing):
 
   `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})`
+
+- Connecting to a peer can also be done by using `Peers.get_info_try_connect(uri)` which gets the peer info from a phoenix endpoint (peer that is being added needs to have the phoenix server running).
 
 ##### Transaction Pool:
 
