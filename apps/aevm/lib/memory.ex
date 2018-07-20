@@ -133,10 +133,9 @@ defmodule Memory do
     State.set_memory(memory2, state)
   end
 
-  @doc """
-  Read n bytes from the memory (may be bigger than 32 bytes),
-  starting at a given address in the memory
-  """
+  # Read n bytes from the memory (may be bigger than 32 bytes),
+  # starting at a given address in the memory
+
   defp read(read_value, 0, _bit_position, _memory_index, _memory) do
     read_value
   end
@@ -167,10 +166,9 @@ defmodule Memory do
     read(new_read_value, new_bytes_left, 0, memory_index + @chunk_size, memory)
   end
 
-  @doc """
-  Write n bytes to the memory (may be bigger than 32 bytes),
-  starting at a given address in the memory
-  """
+  # Write n bytes to the memory (may be bigger than 32 bytes),
+  # starting at a given address in the memory
+
   defp write(<<>>, _bit_position, _memory_index, memory) do
     memory
   end
@@ -209,9 +207,8 @@ defmodule Memory do
     write(bytes_left, 0, memory_index + @chunk_size, memory1)
   end
 
-  @doc """
-  Get the index in memory, in which the `address` is positioned
-  """
+  # Get the index in memory, in which the `address` is positioned
+
   defp get_index_in_memory(address) do
     memory_index = trunc(Float.floor(address / @chunk_size) * @chunk_size)
     bit_position = rem(address, @chunk_size) * 8
@@ -219,27 +216,24 @@ defmodule Memory do
     {memory_index, bit_position}
   end
 
-  @doc """
-  Write given binary to a given memory chunk
-  """
+  # Write given binary to a given memory chunk
+
   defp write_part(bit_position, value_binary, size_bits, chunk_binary) do
     <<prev::size(bit_position), _::size(size_bits), next::binary>> = chunk_binary
     <<prev::size(bit_position)>> <> value_binary <> next
   end
 
-  @doc """
-  Get the integer value of a `word`
-  """
+  # Get the integer value of a `word`
+
   defp binary_word_to_integer(word) do
     <<word_integer::size(256), _::binary>> = word
 
     word_integer
   end
 
-  @doc """
-  Update the size of the memory, if the given `address` is positioned
-  outside of the biggest allocated chunk
-  """
+  # Update the size of the memory, if the given `address` is positioned
+  # outside of the biggest allocated chunk
+
   defp update_memory_size(address, memory) do
     {memory_index, _} = get_index_in_memory(address)
     current_mem_size_words = Map.get(memory, :size)

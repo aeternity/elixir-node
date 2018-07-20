@@ -123,9 +123,9 @@ defmodule Gas do
     0
   end
 
-  @doc """
-  Determine the gas cost for a CALL instruction
-  """
+
+  # Determine the gas cost for a CALL instruction
+
   defp dynamic_call_cost(state) do
     gas_cost = GasCodes._GCALL()
 

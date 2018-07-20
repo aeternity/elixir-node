@@ -264,7 +264,8 @@ defmodule AevmUtil do
     end
   end
 
-  defp pow(op1, op2) when is_non_neg_integer(op1) and is_non_neg_integer(op2), do: pow(1, op1, op2)
+  defp pow(op1, op2) when is_non_neg_integer(op1) and is_non_neg_integer(op2),
+    do: pow(1, op1, op2)
 
   defp pow(n, _, 0), do: n
   defp pow(n, op1, 1), do: op1 * n
@@ -279,15 +280,14 @@ defmodule AevmUtil do
     end
   end
 
-  @doc """
-  Perform a CALL instruction.
-  Determines the needed data for the execution, based on the `op_code` provided,
-  then makes a new instance of the VM with this data, and a fresh copy of
-  memory and stack, but with the same storage.
+  # Perform a CALL instruction.
+  # Determines the needed data for the execution, based on the `op_code` provided,
+  # then makes a new instance of the VM with this data, and a fresh copy of
+  # memory and stack, but with the same storage.
+  #
+  # Returns a tuple, containing the result from the CALL instruction
+  # and the upgraded outer `state`
 
-  Returns a tuple, containing the result from the CALL instruction
-  and the upgraded outer `state`
-  """
   defp execute_call(op_code, state) do
     {gas, to, value, input_offset, input_size, output_offset, output_size,
      state_popped_call_params} = get_call_params(op_code, state)
@@ -359,9 +359,8 @@ defmodule AevmUtil do
     end
   end
 
-  @doc """
-  Extract the needed call parameters from the `state`, based on the given `op_code`
-  """
+  # Extract the needed call parameters from the `state`, based on the given `op_code`
+
   defp get_call_params(op_code, state) do
     {gas, state_popped_gas} = Stack.pop(state)
     {to, state_popped_to} = Stack.pop(state_popped_gas)
@@ -427,9 +426,8 @@ defmodule AevmUtil do
     end
   end
 
-  @doc """
-  Adjust the `gas`, provided for the inner CALL instruction
-  """
+  # Adjust the `gas`, provided for the inner CALL instruction
+
   defp adjust_call_gas(gas, value) do
     if value != 0 do
       gas + GasCodes._GCALLSTIPEND()
