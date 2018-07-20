@@ -3,8 +3,6 @@ defmodule Aecore.Chain.Block do
   Structure of the block
   """
 
-  @behaviour Aeutil.Serializable
-
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
@@ -21,6 +19,7 @@ defmodule Aecore.Chain.Block do
 
   defstruct [:header, :txs]
   use ExConstructor
+  use Aeutil.Serializable
 
   @spec current_block_version() :: non_neg_integer()
   def current_block_version do
@@ -41,6 +40,27 @@ defmodule Aecore.Chain.Block do
   def genesis_block do
     header = genesis_header()
     %Block{header: header, txs: []}
+  end
+
+  @spec encode_to_map(Block.t()) :: map()
+  def encode_to_map(%Block{} = block) do
+    serialized_header = Serialization.serialize_value(block.header)
+    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
+
+    Map.put(serialized_header, "transactions", serialized_txs)
+  end
+
+  @spec decode_from_map(map()) :: Block.t()
+  def decode_from_map(%{} = block) do
+    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
+
+    built_header =
+      block
+      |> Map.delete("transactions")
+      |> Serialization.deserialize_value()
+      |> Header.new()
+
+    Block.new(header: built_header, txs: txs)
   end
 
   @spec encode_to_list(Block.t()) :: list()
@@ -92,13 +112,5 @@ defmodule Aecore.Chain.Block do
       {:error, _} = error ->
         error
     end
-  end
-
-  def rlp_encode(%Block{} = block) do
-    Serialization.rlp_encode(block)
-  end
-
-  def rlp_decode(binary) do
-    Serialization.rlp_decode_only(binary, Block)
   end
 end

@@ -30,6 +30,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   ]
 
   use ExConstructor
+  use Aeutil.Serializable
 
   require Logger
 
@@ -268,14 +269,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   defp signing_form(%ChannelStateOffChain{} = state) do
-    map = %{
-      channel_id: state.channel_id,
-      initiator_amount: state.initiator_amount,
-      responder_amount: state.responder_amount,
-      sequence: state.sequence
-    }
-
-    Serialization.pack_binary(map)
+    rlp_encode(%ChannelStateOffChain{state | signatures: {<<>>, <<>>}})
   end
 
   def encode_to_list(%ChannelStateOffChain{

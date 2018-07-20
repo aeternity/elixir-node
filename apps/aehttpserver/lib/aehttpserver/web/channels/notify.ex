@@ -7,11 +7,11 @@ defmodule Aehttpserver.Web.Notify do
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aeutil.Serialization
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Endpoint
   alias Aecore.Account.Account
   alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Chain.Block
 
   def broadcast_new_transaction_in_the_pool(tx) do
     broadcast_tx(tx, true)
@@ -33,7 +33,7 @@ defmodule Aehttpserver.Web.Notify do
     end)
 
     Endpoint.broadcast!("room:notifications", "new_block_added_to_chain", %{
-      "body" => Serialization.block(block, :serialize)
+      "body" => Block.encode_to_map(block)
     })
   end
 

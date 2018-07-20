@@ -3,7 +3,6 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Naming.NameCommitment
@@ -34,46 +33,6 @@ defmodule Aeutil.Serialization do
           type: atom()
         }
 
-  @spec block(Block.t(), :serialize) :: map()
-  def block(%Block{} = block, :serialize) do
-    serialized_header = serialize_value(block.header)
-    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
-
-    Map.put(serialized_header, "transactions", serialized_txs)
-  end
-
-  @spec block(map(), :deserialize) :: Block.t()
-  def block(%{} = block, :deserialize) do
-    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
-
-    built_header =
-      block
-      |> Map.delete("transactions")
-      |> deserialize_value()
-      |> Header.new()
-
-    Block.new(header: built_header, txs: txs)
-  end
-
-  @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
-          binary() | :none | Account.t()
-  def account_state(account_state, :serialize) do
-    account_state
-    |> serialize_value()
-    |> Msgpax.pack!()
-  end
-
-  def account_state(:none, :deserialize), do: :none
-
-  def account_state(encoded_account_state, :deserialize) do
-    {:ok, account_state} = Msgpax.unpack(encoded_account_state)
-
-    {:ok,
-     account_state
-     |> deserialize_value()
-     |> Account.new()}
-  end
-
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
   def hex_binary(data, :deserialize) when data != nil, do: Base.decode16!(data)
@@ -99,13 +58,6 @@ defmodule Aeutil.Serialization do
       acc = [serialize_value(head, :proof) | acc]
       merkle_proof(tail, acc)
     end
-  end
-
-  @spec pack_binary(term()) :: binary()
-  def pack_binary(term) do
-    term
-    |> remove_struct()
-    |> Msgpax.pack!(iodata: false)
   end
 
   @doc """
@@ -342,7 +294,7 @@ defmodule Aeutil.Serialization do
 
   defp serialize_txs_info_to_json([h | t], acc) do
     tx = DataTx.init(h.type, h.payload, h.senders, h.fee, h.nonce, h.ttl)
-    tx_hash = SignedTx.hash_tx(%SignedTx{data: tx, signatures: []})
+    tx_hash = SignedTx.hash_tx(tx)
 
     senders_list =
       for sender <- h.senders do
@@ -501,6 +453,7 @@ defmodule Aeutil.Serialization do
   # POI 	60
   # NON EPOCH TAG
   def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
+  def tag_to_type(101), do: {:ok, Aecore.Channel.ChannelStateOffChain}
   def tag_to_type(tag), do: {:error, "#{__MODULE__}: Unknown tag: #{inspect(tag)}"}
 
   @spec type_to_tag(atom()) :: {:ok, non_neg_integer()} | {:error, String.t()}
@@ -536,5 +489,6 @@ defmodule Aeutil.Serialization do
   # POI 	60
   # NON EPOCH TAG
   def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}
+  def type_to_tag(Aecore.Channel.ChannelStateOffChain), do: {:ok, 101}
   def type_to_tag(type), do: {:error, "#{__MODULE__}: Non serializable type: #{type}"}
 end

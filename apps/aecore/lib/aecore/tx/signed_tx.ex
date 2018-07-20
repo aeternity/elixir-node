@@ -120,8 +120,12 @@ defmodule Aecore.Tx.SignedTx do
     Application.get_env(:aecore, :signed_tx)[:sign_max_size]
   end
 
-  @spec hash_tx(SignedTx.t()) :: binary()
+  @spec hash_tx(SignedTx.t() | DataTx.t()) :: binary()
   def hash_tx(%SignedTx{data: data}) do
+    hash_tx(data)
+  end
+
+  def hash_tx(%DataTx{} = data) do
     Hash.hash(DataTx.rlp_encode(data))
   end
 
