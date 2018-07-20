@@ -11,7 +11,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias Aecore.Account.Account
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
@@ -127,7 +127,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    query = %{
+    query = %OracleQuery{
       sender_address: sender,
       sender_nonce: nonce,
       oracle_address: tx.oracle_address,

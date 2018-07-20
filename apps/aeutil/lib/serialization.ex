@@ -413,17 +413,19 @@ defmodule Aeutil.Serialization do
       [tag_bin, ver_bin | rest_data] ->
         case tag_to_type(transform_item(tag_bin, :int)) do
           {:ok, actual_type} ->
-
             version = transform_item(ver_bin, :int)
 
             if actual_type == type || type == :any do
               actual_type.decode_from_list(version, rest_data)
             else
-              {:error, "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}"}
+              {:error,
+               "#{__MODULE__}: rlp_decode: Invalid type: #{actual_type}, but wanted: #{type}"}
             end
+
           {:error, _} = error ->
             error
         end
+
       [] ->
         {:error, "#{__MODULE__}: rlp_decode: Empty encoding"}
 
@@ -476,7 +478,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(23), do: {:ok, Aecore.Oracle.Tx.OracleQueryTx}
   def tag_to_type(24), do: {:ok, Aecore.Oracle.Tx.OracleResponseTx}
   def tag_to_type(25), do: {:ok, Aecore.Oracle.Tx.OracleExtendTx}
-  def tag_to_type(30), do: {:ok, Aecore.Naming.Name}
+  def tag_to_type(30), do: {:ok, Aecore.Naming.NameClaim}
   def tag_to_type(31), do: {:ok, Aecore.Naming.NameCommitment}
   def tag_to_type(32), do: {:ok, Aecore.Naming.Tx.NameClaimTx}
   def tag_to_type(33), do: {:ok, Aecore.Naming.Tx.NamePreClaimTx}
@@ -507,11 +509,11 @@ defmodule Aeutil.Serialization do
   def type_to_tag(Aecore.Account.Tx.SpendTx), do: {:ok, 12}
   def type_to_tag(Aecore.Oracle.Oracle), do: {:ok, 20}
   def type_to_tag(Aecore.Oracle.OracleQuery), do: {:ok, 21}
-  def type_to_tag(Aecore.Oracle.OracleRegistrationTx), do: {:ok, 22}
-  def type_to_tag(Aecore.Oracle.OracleQueryTx), do: {:ok, 23}
-  def type_to_tag(Aecore.Oracle.OracleResponseTx), do: {:ok, 24}
-  def type_to_tag(Aecore.Oracle.OracleExtendTx), do: {:ok, 25}
-  def type_to_tag(Aecore.Naming.Name), do: {:ok, 30}
+  def type_to_tag(Aecore.Oracle.Tx.OracleRegistrationTx), do: {:ok, 22}
+  def type_to_tag(Aecore.Oracle.Tx.OracleQueryTx), do: {:ok, 23}
+  def type_to_tag(Aecore.Oracle.Tx.OracleResponseTx), do: {:ok, 24}
+  def type_to_tag(Aecore.Oracle.Tx.OracleExtendTx), do: {:ok, 25}
+  def type_to_tag(Aecore.Naming.NameClaim), do: {:ok, 30}
   def type_to_tag(Aecore.Naming.NameCommitment), do: {:ok, 31}
   def type_to_tag(Aecore.Naming.Tx.NameClaimTx), do: {:ok, 32}
   def type_to_tag(Aecore.Naming.Tx.NamePreClaimTx), do: {:ok, 33}
@@ -529,7 +531,7 @@ defmodule Aeutil.Serialization do
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseSoloTx), do: {:ok, 54}
   def type_to_tag(Aecore.Channel.Tx.ChannelSlashTx), do: {:ok, 55}
   def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 57}
-  def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, }
+  def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
   # Channel snapshot transaction 	59
   # POI 	60
   # NON EPOCH TAG

@@ -167,26 +167,32 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       @version,
       datatx.senders,
       datatx.nonce,
-      ChannelStateOffChain.encode(tx.state),
+      ChannelStateOffChain.encode_to_list(tx.state),
       datatx.fee,
       datatx.ttl
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, state, fee, ttl]) do
-    payload = %ChannelCloseSoloTx{
-      state: ChannelStateOffChain.decode(state)
-    }
+  def decode_from_list(@version, [senders, nonce, [state_ver_bin | state], fee, ttl]) do
+    state_ver = Serialization.transform_item(state_ver_bin, :int)
 
-    {:ok,
-     DataTx.init(
-       ChannelCloseSoloTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    case ChannelStateOffChain.decode_from_list(state_ver, state) do
+      {:ok, state} ->
+        payload = %ChannelCloseSoloTx{state: state}
+
+        {:ok,
+         DataTx.init(
+           ChannelCloseSoloTx,
+           payload,
+           senders,
+           Serialization.transform_item(fee, :int),
+           Serialization.transform_item(nonce, :int),
+           Serialization.transform_item(ttl, :int)
+         )}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do

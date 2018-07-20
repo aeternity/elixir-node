@@ -114,7 +114,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    oracle = %{
+    oracle = %Oracle{
       owner: sender,
       query_format: tx.query_format,
       response_format: tx.response_format,

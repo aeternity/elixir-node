@@ -6,7 +6,7 @@ defmodule AecoreSerializationTest do
   """
   alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.{OracleQuery, Oracle}
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Tx.OracleRegistrationTx
   alias Aecore.Oracle.Tx.OracleExtendTx
@@ -22,7 +22,8 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
-  alias Aecore.Naming.Naming
+  alias Aecore.Naming.{NameClaim, NameCommitment}
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx.NameTransferTx}
   alias Aeutil.Serialization
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.BlockValidation
@@ -48,10 +49,10 @@ defmodule AecoreSerializationTest do
     Miner.mine_sync_block_to_chain()
     signedtx = create_data(SignedTx, :elixir)
 
-    deserialized_signedtx =
+    {:ok, deserialized_signedtx} =
       signedtx
-      |> Serialization.rlp_encode(:signedtx)
-      |> Serialization.rlp_decode()
+      |> SignedTx.rlp_encode()
+      |> SignedTx.rlp_decode()
 
     assert deserialized_signedtx = signedtx
   end
@@ -61,10 +62,10 @@ defmodule AecoreSerializationTest do
     Miner.mine_sync_block_to_chain()
     spendtx = create_data(SpendTx, :elixir)
 
-    deserialized_spendtx =
+    {:ok, deserialized_spendtx} =
       spendtx
-      |> Serialization.rlp_encode(:tx)
-      |> Serialization.rlp_decode()
+      |> DataTx.rlp_encode()
+      |> DataTx.rlp_decode()
 
     assert deserialized_spendtx = spendtx
   end
@@ -72,60 +73,60 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Block serialization", setup do
     block = create_data(Block, :elixir)
-    serialized_block = Serialization.rlp_encode(block, :block)
-    deserialized_block = Block.rlp_decode(serialized_block)
+    serialized_block = Block.rlp_encode(block)
+    {:ok, deserialized_block} = Block.rlp_decode(serialized_block)
     assert deserialized_block = block
   end
 
   @tag :rlp_test
   test "Oracle interaction objects serialization", setup do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
-    serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :oracle_query)
-    {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
+    serialized_orc_obj = OracleQuery.rlp_encode(oracle_query_chainstate)
+    {:ok, deserialized_orc_obj} = OracleQuery.rlp_decode(serialized_orc_obj)
     assert oracle_query_chainstate = deserialized_orc_obj
   end
 
   @tag :rlp_test
   test "Registered oracles serialization", setup do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
-    serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :oracle)
-    {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
+    serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate)
+    {:ok, deserialized_orc} = Oracle.rlp_decode(serialized_orc)
     assert oracle_registered_chainstate = deserialized_orc
   end
 
   @tag :rlp_test
   test "Naming System TX's serialization", setup do
-    naming_pre_claim_tx = create_data(NameClaimTx, :elixir)
-    serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
-    deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
+    naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
+    serialized_preclaim_tx = DataTx.rlp_encode(naming_pre_claim_tx)
+    {:ok, deserialized_preclaim_tx} = DataTx.rlp_decode(serialized_preclaim_tx)
     assert naming_pre_claim_tx = deserialized_preclaim_tx
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
-    serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
-    deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
+    serialized_claim_tx = DataTx.rlp_encode(naming_claim_tx)
+    {:ok, deserialized_claim_tx} = DataTx.rlp_decode(serialized_claim_tx)
     assert naming_claim_tx = deserialized_claim_tx
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
-    serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
-    deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
+    serialized_update_tx = DataTx.rlp_encode(naming_update_tx)
+    {:ok, deserialized_update_tx} = DataTx.rlp_decode(serialized_update_tx)
     assert naming_update_tx = deserialized_update_tx
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
-    serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
-    deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
+    serialized_transfer_tx = DataTx.rlp_encode(naming_transfer_tx)
+    {:ok, deserialized_transfer_tx} = DataTx.rlp_decode(serialized_transfer_tx)
     assert naming_transfer_tx = deserialized_transfer_tx
   end
 
   @tag :rlp_test
   test "Naming System chainstate structures serialization", setup do
-    name_state = create_data(Name, :elixir)
-    serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
-    deserialized_name_state = Serialization.rlp_decode(serialized_name_state)
+    name_state = create_data(NameClaim, :elixir)
+    serialized_name_state = NameClaim.rlp_encode(name_state)
+    {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
     assert deserialized_name_state = name_state
 
     name_commitment = create_data(NameCommitment, :elixir)
-    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
-    deserialized_name_commitment = Serialization.rlp_decode(serialized_name_commitment)
+    serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
+    {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
     assert deserialized_name_commitment = name_commitment
   end
 
@@ -155,7 +156,7 @@ defmodule AecoreSerializationTest do
         signed_tx
 
       Oracle ->
-        %{
+        %Oracle{
           expires: 10,
           owner:
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
@@ -172,7 +173,7 @@ defmodule AecoreSerializationTest do
         }
 
       OracleQuery ->
-        %{
+        %OracleQuery{
           expires: 9,
           fee: 5,
           has_response: false,
@@ -205,7 +206,8 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
           ],
-          type: Aecore.Naming.Tx.NamePreClaimTx
+          type: Aecore.Naming.Tx.NamePreClaimTx,
+          ttl: 0
         }
 
       NameClaimTx ->
@@ -222,7 +224,8 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
           ],
-          type: Aecore.Naming.Tx.NameClaimTx
+          type: Aecore.Naming.Tx.NameClaimTx,
+          ttl: 0
         }
 
       NameUpdateTx ->
@@ -241,7 +244,8 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
           ],
-          type: Aecore.Naming.Tx.NameUpdateTx
+          type: Aecore.Naming.Tx.NameUpdateTx,
+          ttl: 0
         }
 
       NameTransferTx ->
@@ -260,7 +264,8 @@ defmodule AecoreSerializationTest do
             <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
               181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
           ],
-          type: Aecore.Naming.Tx.NameTransferTx
+          type: Aecore.Naming.Tx.NameTransferTx,
+          ttl: 0
         }
 
       NameRevokeTx ->
@@ -276,11 +281,12 @@ defmodule AecoreSerializationTest do
             <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
               81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
           ],
-          type: Aecore.Naming.Tx.NameRevokeTx
+          type: Aecore.Naming.Tx.NameRevokeTx,
+          ttl: 0
         }
 
-      Name ->
-        %{
+      NameClaim ->
+        %NameClaim{
           expires: 50_003,
           hash:
             <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
@@ -294,7 +300,7 @@ defmodule AecoreSerializationTest do
         }
 
       NameCommitment ->
-        %{
+        %NameCommitment{
           hash:
             <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
               186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,

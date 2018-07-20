@@ -336,11 +336,9 @@ defmodule Aecore.Tx.DataTx do
   end
 
   def rlp_encode(%DataTx{} = tx) do
-    try do
-      ExRLP.encode(encode_to_list(tx))
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
+    tx
+    |> encode_to_list()
+    |> ExRLP.encode()
   end
 
   def rlp_decode(binary) do

@@ -31,8 +31,7 @@ defmodule Aecore.Channel.ChannelStateTree do
         :none
 
       {:ok, channel_state_on_chain} ->
-        {:ok, channel} =
-          Serialization.rlp_decode_only(channel_state_on_chain, ChannelSteteOnChain)
+        {:ok, channel} = ChannelStateOnChain.rlp_decode(channel_state_on_chain)
 
         channel
     end

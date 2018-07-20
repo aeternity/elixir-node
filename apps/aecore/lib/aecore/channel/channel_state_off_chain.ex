@@ -9,6 +9,8 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
+  @version 1
+
   @type t :: %ChannelStateOffChain{
           channel_id: binary(),
           sequence: non_neg_integer(),
@@ -62,36 +64,6 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       responder_amount: responder_amount,
       signatures: signatures
     }
-  end
-
-  def encode(%ChannelStateOffChain{
-        channel_id: channel_id,
-        sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount,
-        signatures: {initiator_sig, responder_sig}
-      }) do
-    [channel_id, sequence, initiator_amount, responder_amount, [initiator_sig, responder_sig]]
-  end
-
-  def decode([
-        channel_id,
-        sequence,
-        initiator_amount,
-        responder_amount,
-        [initiator_sig, responder_sig]
-      ]) do
-    %ChannelStateOffChain{
-      channel_id: channel_id,
-      sequence: Serialization.transform_item(sequence, :int),
-      initiator_amount: Serialization.transform_item(initiator_amount, :int),
-      responder_amount: Serialization.transform_item(responder_amount, :int),
-      signatures: {initiator_sig, responder_sig}
-    }
-  end
-
-  def decode(data) do
-    {:error, "#{__MODULE__}: Unknown ChannelStateOffChain structure: #{inspect(data)} "}
   end
 
   @spec total_amount(ChannelStateOffChain.t()) :: non_neg_integer()
@@ -304,5 +276,47 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     }
 
     Serialization.pack_binary(map)
+  end
+
+  def encode_to_list(%ChannelStateOffChain{
+        channel_id: channel_id,
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        signatures: {initiator_sig, responder_sig}
+      }) do
+    [
+      @version,
+      channel_id,
+      sequence,
+      initiator_amount,
+      responder_amount,
+      [initiator_sig, responder_sig]
+    ]
+  end
+
+  def decode_from_list(@version, [
+        channel_id,
+        sequence,
+        initiator_amount,
+        responder_amount,
+        [initiator_sig, responder_sig]
+      ]) do
+    {:ok,
+     %ChannelStateOffChain{
+       channel_id: channel_id,
+       sequence: Serialization.transform_item(sequence, :int),
+       initiator_amount: Serialization.transform_item(initiator_amount, :int),
+       responder_amount: Serialization.transform_item(responder_amount, :int),
+       signatures: {initiator_sig, responder_sig}
+     }}
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

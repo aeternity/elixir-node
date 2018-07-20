@@ -7,6 +7,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Target
   alias Aeutil.Hash
@@ -141,7 +142,7 @@ defmodule Aecore.Chain.BlockValidation do
     else
       merkle_tree =
         for transaction <- txs do
-          transaction_data_bin = SignedTx.rlp_encode(transaction.data)
+          transaction_data_bin = DataTx.rlp_encode(transaction.data)
           {Hash.hash(transaction_data_bin), transaction_data_bin}
         end
 

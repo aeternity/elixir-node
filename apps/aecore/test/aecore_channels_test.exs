@@ -9,7 +9,6 @@ defmodule AecoreChannelTest do
   alias Aecore.Channel.Worker, as: Channels
 
   alias Aecore.Channel.{
-    ChannelStateOffChain,
     ChannelStateOnChain,
     ChannelStatePeer,
     ChannelStateTree

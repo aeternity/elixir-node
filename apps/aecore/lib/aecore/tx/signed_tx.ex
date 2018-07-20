@@ -25,6 +25,7 @@ defmodule Aecore.Tx.SignedTx do
 
   defstruct [:data, :signatures]
   use ExConstructor
+  use Aeutil.Serializable
 
   @spec create(DataTx.t(), list(Wallet.pubkey())) :: t()
   def create(data, signatures \\ []) do
@@ -248,25 +249,21 @@ defmodule Aecore.Tx.SignedTx do
     ]
   end
 
-  def decode_from_list([version_bin, signatures, data]) do
-    version = Serialization.transform_item(version_bin, :int)
+  def decode_from_list(@version, [signatures, data]) do
+    case DataTx.rlp_decode(data) do
+      {:ok, data} ->
+        {:ok, %SignedTx{data: data, signatures: signatures}}
 
-    if version == @version do
-      %SignedTx{data: DataTx.rlp_decode(data), signatures: signatures}
-    else
-      {:error, "#{__MODULE__}: Wrong version"}
+      {:error, _} = error ->
+        error
     end
   end
 
-  def decode_from_list(_) do
-    {:error, "#{__MODULE__} : Invalid structure"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
   end
 
-  def rlp_encode(%SignedTx{} = tx) do
-    Serialization.rlp_encode(tx)
-  end
-
-  def rlp_decode(binary) do
-    Serialization.rlp_decode_only(binary, SignedTx)
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

@@ -11,7 +11,7 @@ defmodule AecoreNamingTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.{NameCommitment, NamingStateTree}
   alias Aecore.Naming.NameUtil
   alias Aeutil.PatriciaMerkleTree
 
@@ -41,8 +41,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
@@ -139,8 +138,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
@@ -173,8 +171,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
@@ -212,8 +209,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
@@ -265,8 +261,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 
@@ -342,8 +337,7 @@ defmodule AecoreNamingTest do
     commitment = pre_claim.data.payload.commitment
     first_name_pre_claim = NamingStateTree.get(naming_state, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
-             Naming.create_commitment_hash("test.aet", <<1::256>>)
+    assert {:ok, first_name_pre_claim.hash} == NameCommitment.hash("test.aet", <<1::256>>)
 
     assert first_name_pre_claim.owner == Wallet.get_public_key()
 

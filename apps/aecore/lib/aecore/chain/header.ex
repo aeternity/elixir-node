@@ -152,7 +152,7 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()}
-  def binary_to_pow(<<pow_bin_list::@pow_size>>) do
+  def binary_to_pow(<<pow_bin_list::binary-size(@pow_size)>>) do
     deserialize_pow(pow_bin_list, [])
   end
 
