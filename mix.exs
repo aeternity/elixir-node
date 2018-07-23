@@ -66,10 +66,12 @@ defmodule EpochElixir.Mixfile do
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:ranch,
        github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
+      {:ex_parameterized, "~> 1.3.1"},
       {:jobs, "~> 0.7.1"},
       {:gproc, "~> 0.6.1"},
       {:ex_rlp, "~> 0.2.1"},
       {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
+
     ]
   end
 end
