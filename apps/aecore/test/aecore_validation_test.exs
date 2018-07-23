@@ -139,7 +139,6 @@ defmodule AecoreValidationTest do
   def get_new_block(receiver) do
     sender = Wallet.get_public_key()
     amount = 100
-    # nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
     fee = 10
 
     priv_key = Wallet.get_private_key()
