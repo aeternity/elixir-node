@@ -95,7 +95,7 @@
         {Credo.Check.Refactor.DoubleBooleanNegation, exit_status: 0},
         {Credo.Check.Refactor.CondStatements, priority: :higher},
         {Credo.Check.Refactor.CyclomaticComplexity, exit_status: 0},
-        {Credo.Check.Refactor.FunctionArity, exit_status: 0, max_arity: 7},
+        {Credo.Check.Refactor.FunctionArity, exit_status: 0, max_arity: 10},
         {Credo.Check.Refactor.LongQuoteBlocks, exit_status: 0},
         {Credo.Check.Refactor.MatchInCondition, priority: :higher},
         {Credo.Check.Refactor.NegatedConditionsInUnless, priority: :high},
@@ -130,7 +130,11 @@
 
         # Deprecated checks (these will be deleted after a grace period)
         #
-        {Credo.Check.Readability.Specs, false}
+        {Credo.Check.Readability.Specs, false},
+        {Credo.Check.Warning.NameRedeclarationByAssignment, false},
+        {Credo.Check.Warning.NameRedeclarationByCase, false},
+        {Credo.Check.Warning.NameRedeclarationByDef, false},
+        {Credo.Check.Warning.NameRedeclarationByFn, false}
 
         # Custom checks can be created using `mix credo.gen.check`.
         #
