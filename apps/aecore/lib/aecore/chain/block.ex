@@ -80,8 +80,8 @@ defmodule Aecore.Chain.Block do
     end
   end
 
-  def rlp_decode(_) do
-    {:error, "#{__MODULE__} : Illegal block serialization"}
+  def rlp_decode(data) do
+    {:error, "#{__MODULE__} : Illegal block serialization: #{inspect(data)} "}
   end
 
   @spec txs_list_valid?(list()) :: boolean()
