@@ -20,6 +20,10 @@ defmodule Aecore.Chain.Chainstate do
   @protocol_version_field_size 64
   @protocol_version 17
 
+  @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
+                         228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
+                         192>>
+
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
@@ -121,13 +125,13 @@ defmodule Aecore.Chain.Chainstate do
     |> Hash.hash_blake2b()
   end
 
+  defp pad_empty(@canonical_root_hash) do
+    <<0::size(@state_hash_bytes)-unit(8)>>
+  end
+
   defp pad_empty(root_hash_binary)
        when is_binary(root_hash_binary) and byte_size(root_hash_binary) === @state_hash_bytes do
     root_hash_binary
-  end
-
-  defp pad_empty(_) do
-    <<0::size(@state_hash_bytes)-unit(8)>>
   end
 
   @doc """
