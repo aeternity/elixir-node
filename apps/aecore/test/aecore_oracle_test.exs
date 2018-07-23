@@ -25,22 +25,22 @@ defmodule AecoreOracleTest do
   test "register and query an oracle, check response, check if invalid transactions are filtered out" do
     Pool.get_and_empty_pool()
     Miner.mine_sync_block_to_chain()
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
+    oracle_tree_1 = Chain.chain_state().oracles.oracle_tree
 
-    assert oracle_tree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
+    assert oracle_tree_1 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
     register_oracle(:valid)
 
     Miner.mine_sync_block_to_chain()
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    assert oracle_tree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
+    oracle_tree_2 = Chain.chain_state().oracles.oracle_tree
+    assert oracle_tree_2 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
 
     Miner.mine_sync_block_to_chain()
     pub_key = Wallet.get_public_key()
 
     assert %{} == Pool.get_and_empty_pool()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    assert oracle_tree |> PatriciaMerkleTree.all_keys() |> Enum.member?(pub_key) == true
+    oracle_tree_3 = Chain.chain_state().oracles.oracle_tree
+    assert oracle_tree_3 |> PatriciaMerkleTree.all_keys() |> Enum.member?(pub_key) == true
 
     query_oracle(:valid)
     Miner.mine_sync_block_to_chain()
@@ -51,8 +51,8 @@ defmodule AecoreOracleTest do
 
     assert %{} == Pool.get_and_empty_pool()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+    oracle_tree_4 = Chain.chain_state().oracles.oracle_tree
+    query_id = oracle_tree_4 |> PatriciaMerkleTree.all_keys() |> List.last()
     interaction_object = OracleStateTree.get_query(Chain.chain_state().oracles, query_id)
     assert nil != interaction_object.response
     Chain.clear_state()
@@ -63,16 +63,16 @@ defmodule AecoreOracleTest do
     register_oracle(:invalid, :ttl)
     Miner.mine_sync_block_to_chain()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    assert oracle_tree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
+    oracle_tree_5 = Chain.chain_state().oracles.oracle_tree
+    assert oracle_tree_5 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == true
 
     Chain.clear_state()
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    assert oracle_tree |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
+    oracle_tree_6 = Chain.chain_state().oracles.oracle_tree
+    assert oracle_tree_6 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
 
     query_oracle(:invalid, :address)
     query_oracle(:invalid, :query_data)
@@ -89,18 +89,18 @@ defmodule AecoreOracleTest do
     oracle_respond(:invalid, :response_data)
     Miner.mine_sync_block_to_chain()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    query_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
-    query = OracleStateTree.get_query(Chain.chain_state().oracles, query_key)
-    assert query.response == :undefined
+    oracle_tree_7 = Chain.chain_state().oracles.oracle_tree
+    query_key_1 = oracle_tree_7 |> PatriciaMerkleTree.all_keys() |> List.last()
+    query_1 = OracleStateTree.get_query(Chain.chain_state().oracles, query_key_1)
+    assert query_1.response == :undefined
 
     oracle_respond(:valid)
     Miner.mine_sync_block_to_chain()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    query_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
-    query = OracleStateTree.get_query(Chain.chain_state().oracles, query_key)
-    assert query.response != :undefined
+    oracle_tree_8 = Chain.chain_state().oracles.oracle_tree
+    query_key_2 = oracle_tree_8 |> PatriciaMerkleTree.all_keys() |> List.last()
+    query_2 = OracleStateTree.get_query(Chain.chain_state().oracles, query_key_2)
+    assert query_2.response != :undefined
 
     Chain.clear_state()
     register_oracle(:valid)
@@ -109,8 +109,8 @@ defmodule AecoreOracleTest do
     Oracle.extend(3, 10)
     Miner.mine_sync_block_to_chain()
 
-    oracle_tree = Chain.chain_state().oracles.oracle_tree
-    oracle_key = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
+    oracle_tree_9 = Chain.chain_state().oracles.oracle_tree
+    oracle_key = oracle_tree_9 |> PatriciaMerkleTree.all_keys() |> List.first()
     oracle = OracleStateTree.get_oracle(Chain.chain_state().oracles, oracle_key)
     assert oracle.expires == 15
 
