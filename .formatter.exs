@@ -1,6 +1,16 @@
 [
   inputs: [
-    "apps/*/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aecore/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aehttpclient/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aehttpserver/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aeutil/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aevm/config/**/*.exs",
+    "apps/aevm/lib/aevm_util.ex",
+    "apps/aevm/lib/aevm.ex.ex",
+    "apps/aevm/lib/gas.ex",
+    "apps/aevm/lib/memory.ex",
+    "apps/aevm/lib/stack.ex",
+    "apps/aevm/lib/storage.ex",
     "apps/*/mix.exs",
     "mix.exs",
     ".credo.exs",
