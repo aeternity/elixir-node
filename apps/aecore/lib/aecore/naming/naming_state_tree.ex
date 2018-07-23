@@ -73,7 +73,6 @@ defmodule Aecore.Naming.NamingStateTree do
            expires: _expires
          } = term
        ) do
-    # TODO adjust serializations 
     Serialization.rlp_encode(term, :name_commitment)
   end
 
@@ -86,12 +85,10 @@ defmodule Aecore.Naming.NamingStateTree do
            pointers: _pointers
          } = term
        ) do
-    # TODO adjust serializations 
     Serialization.rlp_encode(term, :naming_state)
   end
 
   defp deserialize(binary) do
-    # TODO adjust deserializations
     Serialization.rlp_decode(binary)
   end
 end

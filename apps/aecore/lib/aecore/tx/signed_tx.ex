@@ -183,9 +183,14 @@ defmodule Aecore.Tx.SignedTx do
         %{"data" => DataTx.serialize(tx.data), "signature" => signature_serialized}
 
       _ ->
+        serialized_signatures =
+          for signature <- tx.signatures do
+            Serialization.serialize_value(signature, :signature)
+          end
+
         %{
           "data" => DataTx.serialize(tx.data),
-          "signature" => Serialization.serialize_value(:signature)
+          "signatures" => serialized_signatures
         }
     end
   end

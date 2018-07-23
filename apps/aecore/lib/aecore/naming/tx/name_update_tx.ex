@@ -119,8 +119,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         %NameUpdateTx{} = tx,
         _data_tx
       ) do
-    # TODO check the method of storing keys in Naming PMT 
-
     claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
 
     claim = %{

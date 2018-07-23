@@ -14,7 +14,6 @@ defmodule AeutilSerializationTest do
     block = get_block()
 
     serialized_block = Serialization.block(block, :serialize)
-
     assert serialized_block == get_block_map()
     assert Serialization.block(serialized_block, :deserialize) == block
   end
@@ -86,7 +85,7 @@ defmodule AeutilSerializationTest do
             "type" => "Elixir.Aecore.Account.Tx.SpendTx",
             "ttl" => 0
           },
-          "signature" => "AQID"
+          "signature" => "sg$3DUz7ncyT"
         }
       ],
       "height" => 105,

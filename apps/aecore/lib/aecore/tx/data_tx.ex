@@ -270,10 +270,6 @@ defmodule Aecore.Tx.DataTx do
 
   @spec serialize(map()) :: map()
   def serialize(%DataTx{} = tx) do
-    # payload needs adjustments
-    # serialized_receiver = Serialization.serialize_value(tx.payload.receiver)
-    # Map.put(tx.payload, "receiver", tx.payload.receiver.value)
-
     map_without_senders = %{
       "type" => Serialization.serialize_value(tx.type),
       "payload" => Serialization.serialize_value(tx.payload),
@@ -289,7 +285,16 @@ defmodule Aecore.Tx.DataTx do
         Serialization.serialize_value(main_sender(tx), :sender)
       )
     else
-      Map.put(map_without_senders, "senders", Serialization.serialize_value(tx.senders, :sender))
+      new_senders =
+        for sender <- tx.senders do
+          sender.value
+        end
+
+      Map.put(
+        map_without_senders,
+        "senders",
+        Serialization.serialize_value(new_senders, :senders)
+      )
     end
   end
 
