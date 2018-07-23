@@ -13,7 +13,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
 
-  setup _wallet do
+  setup do
     Code.require_file("test_utils.ex", "./test")
     path = Application.get_env(:aecore, :persistence)[:path]
 

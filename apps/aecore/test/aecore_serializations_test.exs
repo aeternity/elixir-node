@@ -61,11 +61,11 @@ defmodule AecoreSerializationTest do
   end
 
   @tag :rlp_test
-  test "Block serialization", setup do
+  test "Block serialization" do
     block = create_data(Block, :elixir)
     serialized_block = Serialization.rlp_encode(block, :block)
     deserialized_block = Serialization.rlp_decode(serialized_block)
-    assert deserialized_block == block
+    assert match?(^deserialized_block, block)
   end
 
   @tag :rlp_test
@@ -81,43 +81,43 @@ defmodule AecoreSerializationTest do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
     serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :oracle)
     {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
-    assert oracle_registered_chainstate == deserialized_orc
+    assert match?(^oracle_registered_chainstate, deserialized_orc)
   end
 
   @tag :rlp_test
-  test "Naming System TX's serialization", setup do
+  test "Naming System TX's serialization" do
     naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
     serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
     deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
-    assert naming_pre_claim_tx == deserialized_preclaim_tx
+    assert match?(^naming_pre_claim_tx, deserialized_preclaim_tx)
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
     serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
     deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
-    assert naming_claim_tx == deserialized_claim_tx
+    assert match?(^naming_claim_tx, deserialized_claim_tx)
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
     serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
     deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
-    assert naming_update_tx == deserialized_update_tx
+    assert match?(^naming_update_tx, deserialized_update_tx)
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
     serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
     deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
-    assert naming_transfer_tx == deserialized_transfer_tx
+    assert match?(^naming_transfer_tx, deserialized_transfer_tx)
   end
 
   @tag :rlp_test
-  test "Naming System chainstate structures serialization", setup do
+  test "Naming System chainstate structures serialization" do
     name_state = create_data(Name, :elixir)
     serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
     {:ok, deserialized_name_state} = Serialization.rlp_decode(serialized_name_state)
-    assert deserialized_name_state == name_state
+    assert match?(^deserialized_name_state, name_state)
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
     {:ok, deserialized_name_commitment} = Serialization.rlp_decode(serialized_name_commitment)
-    assert deserialized_name_commitment == name_commitment
+    assert match?(^deserialized_name_commitment, name_commitment)
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519

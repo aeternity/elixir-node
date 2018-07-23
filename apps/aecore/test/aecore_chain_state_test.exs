@@ -20,7 +20,7 @@ defmodule AecoreChainstateTest do
     end)
   end
 
-  setup _wallet do
+  setup do
     [
       a_pub_key: Wallet.get_public_key(),
       b_pub_key: Wallet.get_public_key("M/0"),
