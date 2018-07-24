@@ -19,14 +19,14 @@ defmodule Aecore.Channel.ChannelStateTree do
   end
 
   @spec put(channel_state(), ChannelSteteOnChain.id(), ChannelSteteOnChain.t()) :: channel_state()
-  def put(trie, key, value) do
+  def put(tree, key, value) do
     serialized_account_state = Serialization.rlp_encode(value, :channel_onchain)
-    PatriciaMerkleTree.enter(trie, key, serialized_account_state)
+    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
   @spec get(channel_state(), ChannelSteteOnChain.id()) :: :none | ChannelSteteOnChain.t()
-  def get(trie, key) do
-    case PatriciaMerkleTree.lookup(trie, key) do
+  def get(tree, key) do
+    case PatriciaMerkleTree.lookup(tree, key) do
       :none ->
         :none
 
@@ -37,8 +37,8 @@ defmodule Aecore.Channel.ChannelStateTree do
   end
 
   @spec delete(channel_state(), ChannelStateOnChain.id()) :: channel_state()
-  def delete(trie, key) do
-    PatriciaMerkleTree.delete(trie, key)
+  def delete(tree, key) do
+    PatriciaMerkleTree.delete(tree, key)
   end
 
   @spec update!(
@@ -57,12 +57,12 @@ defmodule Aecore.Channel.ChannelStateTree do
   end
 
   @spec has_key?(channel_state(), ChannelSteteOnChain.id()) :: boolean()
-  def has_key?(trie, key) do
-    PatriciaMerkleTree.lookup(trie, key) != :none
+  def has_key?(tree, key) do
+    PatriciaMerkleTree.lookup(tree, key) != :none
   end
 
   @spec root_hash(channel_state()) :: hash()
-  def root_hash(trie) do
-    PatriciaMerkleTree.root_hash(trie)
+  def root_hash(tree) do
+    PatriciaMerkleTree.root_hash(tree)
   end
 end
