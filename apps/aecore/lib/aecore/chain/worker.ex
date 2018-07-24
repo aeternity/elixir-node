@@ -512,7 +512,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp remove_old_block_data_from_map(block_map, top_hash) do
-    if block_map[top_hash].block.header.height > number_of_blocks_in_memory() do
+    if block_map[top_hash].block.header.height + 1 > number_of_blocks_in_memory() do
       hash_to_remove = get_nth_prev_hash(number_of_blocks_in_memory(), top_hash, block_map)
       Logger.info("#{__MODULE__}: Block ##{hash_to_remove} has been removed from memory")
 
