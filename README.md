@@ -350,3 +350,43 @@ Channel status can be checked with:
 {:ok, state} = Channel.get_channel(channel_id)
 state.fsm_state
 ```
+
+#### **VM usage**
+
+Initial implementation of the AEVM (Aeternity Virtual Machine) that contains all of the functionalities of the EVM (Ethereum Virtual Vachine).
+
+To run the VM you can use the following command:
+```
+Aevm.loop(
+    State.init_vm(
+      %{
+        :code => State.bytecode_to_bin("0x60013b"),
+        :address => 0,
+        :caller => 0,
+        :data => <<0::256, 42::256>>,
+        :gas => 100_000,
+        :gasPrice => 1,
+        :origin => 0,
+        :value => 0
+      },
+      %{
+        :currentCoinbase => 0,
+        :currentDifficulty => 0,
+        :currentGasLimit => 10000,
+        :currentNumber => 0,
+        :currentTimestamp => 0
+      },
+      %{},
+      0,
+      %{:execute_calls => true}
+    )
+  )
+```
+
+Where :code is the bytecode in hex that is going to be execute instruction by instruction
+
+You can find each instruction(OP code) either from the file `op_codes.ex`,  [solidity opcodes section](http://solidity.readthedocs.io/en/v0.4.24/assembly.html) or from the tests.
+
+Currently 629 tests pass from the official [EVM tests](http://ethereum-tests.readthedocs.io/en/latest/test_types/vm_tests.html)
+
+Use command `make aevm-test-deps` to clone ethereum tests locally.
