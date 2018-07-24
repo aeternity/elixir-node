@@ -138,7 +138,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         channels,

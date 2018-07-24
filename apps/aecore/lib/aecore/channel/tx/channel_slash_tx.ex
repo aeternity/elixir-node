@@ -115,7 +115,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           non_neg_integer(),
           ChannelSlashTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         channels,

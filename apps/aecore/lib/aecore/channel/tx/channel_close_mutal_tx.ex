@@ -123,7 +123,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         _accounts,
         channels,
