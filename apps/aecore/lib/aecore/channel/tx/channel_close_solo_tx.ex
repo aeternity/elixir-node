@@ -7,7 +7,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
 
   require Logger
@@ -75,12 +75,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Performs channel slash
   """
   @spec process_chainstate(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
+        ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -106,7 +106,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
@@ -143,12 +143,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

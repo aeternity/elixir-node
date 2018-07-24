@@ -7,7 +7,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
 
   require Logger
@@ -79,12 +79,12 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   Slashes channel.
   """
   @spec process_chainstate(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSlashTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
+        ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -110,7 +110,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSlashTx.t(),
@@ -144,12 +144,12 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           ChannelSlashTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
