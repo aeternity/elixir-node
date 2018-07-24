@@ -126,23 +126,23 @@ defmodule Gas do
   # Determine the gas cost for a CALL instruction
 
   defp dynamic_call_cost(state) do
-    gas_cost = GasCodes._GCALL()
+    gas_cost_0 = GasCodes._GCALL()
 
     gas_state = State.gas(state)
     gas = Stack.peek(0, state)
     value = Stack.peek(2, state)
 
-    gas_cost =
-      gas_cost +
+    gas_cost_1 =
+      gas_cost_0 +
         if value !== 0 do
           GasCodes._GCALLVALUE()
         else
           0
         end
 
-    gas_cost +
-      if gas_state >= gas_cost do
-        gas_one_64_substracted = substract_one_64(gas_state - gas_cost)
+    gas_cost_1 +
+      if gas_state >= gas_cost_1 do
+        gas_one_64_substracted = substract_one_64(gas_state - gas_cost_1)
 
         if gas < gas_one_64_substracted do
           gas

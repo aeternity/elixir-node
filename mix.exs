@@ -45,7 +45,7 @@ defmodule EpochElixir.Mixfile do
   # and cannot be accessed from applications inside the apps folder
   defp deps do
     [
-      {:credo, "~> 0.9.2", only: [:dev, :test], runtime: false},
+      {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
@@ -71,7 +71,6 @@ defmodule EpochElixir.Mixfile do
       {:gproc, "~> 0.6.1"},
       {:ex_rlp, "~> 0.2.1"},
       {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
-
     ]
   end
 end

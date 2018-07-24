@@ -57,41 +57,41 @@ defmodule Aevm do
   # 0x01 ADD
   # Addition operation.
   defp exec(OpCodes._ADD(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 + op2 &&& AevmConst.mask256()
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x02 MUL
   # Multiplication operation.
   defp exec(OpCodes._MUL(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 * op2 &&& AevmConst.mask256()
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x03 SUB
   # Subtraction operation.
   defp exec(OpCodes._SUB(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 - op2 &&& AevmConst.mask256()
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x04 DIV
   # Integer division operation.
   defp exec(OpCodes._DIV(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op2 == 0 do
@@ -102,15 +102,15 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_2)
   end
 
   # 0x05 SDIV
   # Signed integer division operation (truncated).
   # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SDIV(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op2 == 0 do
@@ -121,14 +121,14 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_2)
   end
 
   # 0x06 MOD
   # Modulo remainder operation.
   defp exec(OpCodes._MOD(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op2 == 0 do
@@ -139,15 +139,15 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_2)
   end
 
   # 0x07 SMOD
   # Signed modulo remainder operation.
   # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SMOD(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op2 == 0 do
@@ -158,7 +158,7 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_2)
   end
 
   # 0x08 ADDMOD
@@ -166,9 +166,9 @@ defmodule Aevm do
   # All intermediate calculations of this operation are not
   # subject to the 2^256 modulo.
   defp exec(OpCodes._ADDMOD(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
-    {op3, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
+    {op3, state_3} = Stack.pop(state_2)
 
     result =
       if op3 == 0 do
@@ -179,7 +179,7 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_3)
   end
 
   # 0x09 MULMOD
@@ -187,9 +187,9 @@ defmodule Aevm do
   # All intermediate calculations of this operation are not
   # subject to the 2^256 modulo.
   defp exec(OpCodes._MULMOD(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
-    {op3, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
+    {op3, state_3} = Stack.pop(state_2)
 
     result =
       if op3 == 0 do
@@ -200,29 +200,29 @@ defmodule Aevm do
 
     masked = result &&& AevmConst.mask256()
 
-    Stack.push(masked, state)
+    Stack.push(masked, state_3)
   end
 
   # 0x0a EXP
   # Exponential operation.
   defp exec(OpCodes._EXP(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = AevmUtil.exp(op1, op2)
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x0b SIGNEXTEND
   # Extend length of two’s complement signed integer.
   defp exec(OpCodes._SIGNEXTEND(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = AevmUtil.signextend(op1, op2)
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 10s: Comparison & Bitwise Logic Operations
@@ -230,8 +230,8 @@ defmodule Aevm do
   # 0x10 LT
   # Less-than comparison.
   defp exec(OpCodes._LT(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op1 < op2 do
@@ -240,14 +240,14 @@ defmodule Aevm do
         0
       end
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x11 GT
   # Greater-than comparison.
   defp exec(OpCodes._GT(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result =
       if op1 > op2 do
@@ -256,15 +256,15 @@ defmodule Aevm do
         0
       end
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x12 SLT
   # Signed less-than comparison.
   # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SLT(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     sop1 = AevmUtil.signed(op1)
     sop2 = AevmUtil.signed(op2)
@@ -276,15 +276,15 @@ defmodule Aevm do
         0
       end
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x13 SGT
   # Signed greater-than comparison.
   # Where all values are treated as two’s complement signed 256-bit integers.
   defp exec(OpCodes._SGT(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     sop1 = AevmUtil.signed(op1)
     sop2 = AevmUtil.signed(op2)
@@ -296,14 +296,14 @@ defmodule Aevm do
         0
       end
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x14 EQ
   # Equality comparison.
   defp exec(OpCodes._EQ(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     sop1 = AevmUtil.signed(op1)
     sop2 = AevmUtil.signed(op2)
@@ -315,7 +315,7 @@ defmodule Aevm do
         0
       end
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x15 ISZERO
@@ -336,34 +336,34 @@ defmodule Aevm do
   # 0x16 AND
   # Bitwise AND operation.
   defp exec(OpCodes._AND(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 &&& op2
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x17 OR
   # Bitwise OR operation.
   defp exec(OpCodes._OR(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 ||| op2
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x18 XOR
   # Bitwise XOR operation.
   defp exec(OpCodes._XOR(), state) do
-    {op1, state} = Stack.pop(state)
-    {op2, state} = Stack.pop(state)
+    {op1, state_1} = Stack.pop(state)
+    {op2, state_2} = Stack.pop(state_1)
 
     result = op1 ^^^ op2
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 0x19 NOT
@@ -381,12 +381,12 @@ defmodule Aevm do
   # For the Nth byte, we count from the left
   # (i.e. N=0 would be the most significant in big endian).
   defp exec(OpCodes._BYTE(), state) do
-    {byte, state} = Stack.pop(state)
-    {value, state} = Stack.pop(state)
+    {byte, state_1} = Stack.pop(state)
+    {value, state_2} = Stack.pop(state_1)
 
     result = AevmUtil.byte(byte, value)
 
-    Stack.push(result, state)
+    Stack.push(result, state_2)
   end
 
   # 20s: SHA3
@@ -633,19 +633,19 @@ defmodule Aevm do
   # 0x52 MSTORE
   # Save word to memory.
   defp exec(OpCodes._MSTORE(), state) do
-    {address, state} = Stack.pop(state)
-    {value, state} = Stack.pop(state)
+    {address, state_1} = Stack.pop(state)
+    {value, state_2} = Stack.pop(state_1)
 
-    Memory.store(address, value, state)
+    Memory.store(address, value, state_2)
   end
 
   # 0x53 MSTORE8
   # Save byte to memory.
   defp exec(OpCodes._MSTORE8(), state) do
-    {address, state} = Stack.pop(state)
-    {value, state} = Stack.pop(state)
+    {address, state_1} = Stack.pop(state)
+    {value, state_2} = Stack.pop(state_1)
 
-    Memory.store8(address, value, state)
+    Memory.store8(address, value, state_2)
   end
 
   # 0x54 SLOAD
@@ -661,9 +661,9 @@ defmodule Aevm do
   # 0x55 SSTORE
   # Save word to storage.
   defp exec(OpCodes._SSTORE(), state) do
-    {key, state} = Stack.pop(state)
-    {value, state} = Stack.pop(state)
-    Storage.sstore(key, value, state)
+    {key, state_1} = Stack.pop(state)
+    {value, state_2} = Stack.pop(state_1)
+    Storage.sstore(key, value, state_2)
   end
 
   # 0x56 JUMP
@@ -684,21 +684,21 @@ defmodule Aevm do
   # 0x57 JUMPI
   # Conditionally alter the program counter.
   defp exec(OpCodes._JUMPI(), state) do
-    {position, state} = Stack.pop(state)
-    {condition, state} = Stack.pop(state)
+    {position, state_1} = Stack.pop(state)
+    {condition, state_2} = Stack.pop(state_1)
 
-    jumpdests = State.jumpdests(state)
+    jumpdests = State.jumpdests(state_2)
 
     if condition !== 0 do
       if Enum.member?(jumpdests, position) do
         jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
-        state1 = Gas.update_gas(jumpdest_cost, state)
-        State.set_pc(position, state1)
+        state_3 = Gas.update_gas(jumpdest_cost, state_2)
+        State.set_pc(position, state_3)
       else
-        throw({:error, "invalid_jump_dest, #{position}", state})
+        throw({:error, "invalid_jump_dest, #{position}", state_2})
       end
     else
-      state
+      state_2
     end
   end
 
@@ -1239,13 +1239,13 @@ defmodule Aevm do
   # 0xf3 RETURN
   # Halt execution returning output data.
   defp exec(OpCodes._RETURN(), state) do
-    {from_pos, state} = Stack.pop(state)
-    {nbytes, state} = Stack.pop(state)
+    {from_pos, state_1} = Stack.pop(state)
+    {nbytes, state_2} = Stack.pop(state_1)
 
-    {result, state1} = Memory.get_area(from_pos, nbytes, state)
+    {result, state_3} = Memory.get_area(from_pos, nbytes, state_2)
 
-    state2 = State.set_out(result, state1)
-    AevmUtil.stop_exec(state2)
+    state_4 = State.set_out(result, state_3)
+    AevmUtil.stop_exec(state_4)
   end
 
   # 0xf4 DELEGATECALL

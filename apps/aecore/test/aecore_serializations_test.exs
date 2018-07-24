@@ -4,16 +4,10 @@ defmodule AecoreSerializationTest do
   @moduledoc """
   Unit test for RLP data serialization/deserialization
   """
-  alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
@@ -22,10 +16,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
-  alias Aecore.Naming.Naming
   alias Aeutil.Serialization
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.BlockValidation
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -44,7 +35,7 @@ defmodule AecoreSerializationTest do
   end
 
   @tag :rlp_test
-  test "SignedTx with DataTx inside serialization", setup do
+  test "SignedTx with DataTx inside serialization" do
     Miner.mine_sync_block_to_chain()
     signedtx = create_data(SignedTx, :elixir)
 
@@ -53,11 +44,11 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:signedtx)
       |> Serialization.rlp_decode()
 
-    assert deserialized_signedtx == signedtx
+    assert match?(^deserialized_signedtx, signedtx)
   end
 
   @tag :rlp_test
-  test "DataTx(SpendTx) serialization", setup do
+  test "DataTx(SpendTx) serialization" do
     Miner.mine_sync_block_to_chain()
     spendtx = create_data(SpendTx, :elixir)
 
@@ -66,67 +57,67 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:tx)
       |> Serialization.rlp_decode()
 
-    assert deserialized_spendtx == spendtx
+    assert match?(^deserialized_spendtx, spendtx)
   end
 
   @tag :rlp_test
-  test "Block serialization", setup do
+  test "Block serialization" do
     block = create_data(Block, :elixir)
     serialized_block = Serialization.rlp_encode(block, :block)
     deserialized_block = Serialization.rlp_decode(serialized_block)
-    assert deserialized_block == block
+    assert match?(^deserialized_block, block)
   end
 
   @tag :rlp_test
-  test "Oracle interaction objects serialization", setup do
+  test "Oracle interaction objects serialization" do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
     serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :oracle_query)
     {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
-    assert oracle_query_chainstate == deserialized_orc_obj
+    assert match?(^oracle_query_chainstate, deserialized_orc_obj)
   end
 
   @tag :rlp_test
-  test "Registered oracles serialization", setup do
+  test "Registered oracles serialization" do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
     serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :oracle)
     {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
-    assert oracle_registered_chainstate == deserialized_orc
+    assert match?(^oracle_registered_chainstate, deserialized_orc)
   end
 
   @tag :rlp_test
-  test "Naming System TX's serialization", setup do
+  test "Naming System TX's serialization" do
     naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
     serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
     deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
-    assert naming_pre_claim_tx == deserialized_preclaim_tx
+    assert match?(^naming_pre_claim_tx, deserialized_preclaim_tx)
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
     serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
     deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
-    assert naming_claim_tx == deserialized_claim_tx
+    assert match?(^naming_claim_tx, deserialized_claim_tx)
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
     serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
     deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
-    assert naming_update_tx == deserialized_update_tx
+    assert match?(^naming_update_tx, deserialized_update_tx)
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
     serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
     deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
-    assert naming_transfer_tx == deserialized_transfer_tx
+    assert match?(^naming_transfer_tx, deserialized_transfer_tx)
   end
 
   @tag :rlp_test
-  test "Naming System chainstate structures serialization", setup do
+  test "Naming System chainstate structures serialization" do
     name_state = create_data(Name, :elixir)
     serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
     {:ok, deserialized_name_state} = Serialization.rlp_decode(serialized_name_state)
-    assert deserialized_name_state == name_state
+    assert match?(^deserialized_name_state, name_state)
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
     {:ok, deserialized_name_commitment} = Serialization.rlp_decode(serialized_name_commitment)
-    assert deserialized_name_commitment == name_commitment
+    assert match?(^deserialized_name_commitment, name_commitment)
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519
