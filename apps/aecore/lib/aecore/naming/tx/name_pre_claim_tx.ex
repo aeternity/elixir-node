@@ -90,7 +90,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         %NamePreClaimTx{} = tx,
         data_tx
       ) do
-    sender = DataTx.main_sender(data_tx)
     [identified_sender] = data_tx.senders
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()

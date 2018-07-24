@@ -13,7 +13,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
 
   @type payload :: %{
           query_id: binary(),
@@ -117,7 +116,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
-    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

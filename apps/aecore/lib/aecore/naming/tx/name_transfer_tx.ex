@@ -155,12 +155,6 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec validate_identifier(payload()) :: boolean()
-  defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identity(id.value, :name)
-    check_id == id
-  end
-
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]

@@ -192,13 +192,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec validate_identifier(Identifier.t()) :: boolean()
-  defp validate_identifier(%Identifier{} = id) do
-    # :name???
-    {:ok, check_id} = Identifier.create_identity(id.value, :name)
-    check_id == id
-  end
-
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]

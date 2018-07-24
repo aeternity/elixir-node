@@ -5,7 +5,6 @@ defmodule Aecore.Naming.NameUtil do
 
   alias Aeutil.Hash
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Chain.Identifier
 
   @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
   def normalized_namehash(name) do

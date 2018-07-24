@@ -74,8 +74,6 @@ defmodule Aecore.Tx.DataTx do
   - nonce: An integer bigger then current nonce of main sender Account. (see senders)
   """
 
-  @account_bin_id Application.get_env(:aecore, :binary_ids)[:account]
-
   defstruct [:type, :payload, :senders, :fee, :nonce, :ttl]
   use ExConstructor
 
@@ -921,7 +919,7 @@ defmodule Aecore.Tx.DataTx do
     {:ok, decoded_hash} = Identifier.decode_data(hash)
 
     payload = %NameUpdateTx{
-      client_ttl: Serialization.transform_item(ttl, :int),
+      client_ttl: Serialization.transform_item(client_ttl, :int),
       expire_by: Serialization.transform_item(expire_by, :int),
       hash: decoded_hash,
       pointers: pointers

@@ -146,8 +146,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
-
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}

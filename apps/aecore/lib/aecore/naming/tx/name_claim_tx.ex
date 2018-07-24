@@ -12,7 +12,6 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
 
   require Logger
 

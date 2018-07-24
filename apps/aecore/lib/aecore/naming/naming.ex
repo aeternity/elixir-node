@@ -75,7 +75,7 @@ defmodule Aecore.Naming.Naming do
     {:ok, identified_hash} = Identifier.create_identity(hash, :name)
 
     %{
-      :hash => hash,
+      :hash => identified_hash,
       :name => name,
       :owner => owner,
       :expires => expire_by,

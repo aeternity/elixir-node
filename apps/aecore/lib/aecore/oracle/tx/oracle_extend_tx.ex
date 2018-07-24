@@ -11,7 +11,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -92,7 +91,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
-    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

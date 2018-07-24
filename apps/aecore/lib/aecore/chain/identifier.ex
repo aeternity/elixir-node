@@ -43,6 +43,11 @@ defmodule Aecore.Chain.Identifier do
     end
   end
 
+  def create_identity(data, type) do
+    {:error,
+     "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
+  end
+
   def check_identity(%Identifier{} = id, type) do
     case create_identity(id.value, type) do
       {:ok, check_id} -> check_id == id
@@ -54,14 +59,9 @@ defmodule Aecore.Chain.Identifier do
     {:error, "#{__MODULE__}: Invalid ID"}
   end
 
-  def create_identity(data, type) do
-    {:error,
-     "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
-  end
-
   # ==============API needed for RLP===============
-  # @spec encode_data(%Identifier.t()) :: value() | {:error, String.t()}
-  # byte_size(data.value) == 32 #TODO data should be stricted to 32 bytes only
+  # byte_size(data.value) == 32 # data should be stricted to 32 bytes only
+  @spec encode_data(Identifier.t()) :: {:error, String.t()} | {:ok, binary()}
   def encode_data(%Identifier{} = data) do
     case Application.get_env(:aecore, :binary_ids)[data.type] do
       nil ->
@@ -70,14 +70,14 @@ defmodule Aecore.Chain.Identifier do
            inspect(data)
          }"}
 
-      # TODO data should be stricted to 32 bytes only
+      # data should be stricted to 32 bytes only
       tag ->
         {:ok, <<tag::unsigned-integer-size(8), data.value::binary>>}
     end
   end
 
+  # byte_size(data) == 33 # data should be stricted to 32 bytes only
   @spec decode_data(binary()) :: tuple() | {:error, String.t()}
-  # byte_size(data) == 33 #TODO data should be stricted to 32 bytes only
   def decode_data(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do
     case specify_data(tag) do
@@ -90,7 +90,7 @@ defmodule Aecore.Chain.Identifier do
   end
 
   @spec specify_data(non_neg_integer()) :: tuple() | {:error, String.t()}
-  # TODO data should be stricted to 32 bytes only
+  # data should be stricted to 32 bytes only
   defp specify_data(tag) when is_integer(tag) do
     error_message = {:error, "#{__MODULE__}: Tag doesn't exist: #{inspect(tag)}"}
 
