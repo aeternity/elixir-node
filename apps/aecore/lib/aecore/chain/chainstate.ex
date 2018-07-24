@@ -20,9 +20,12 @@ defmodule Aecore.Chain.Chainstate do
   @protocol_version_field_size 64
   @protocol_version 17
 
-  @doc """ This is the canonical root hash of an empty Patricia merkle tree """
-  @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56, 228,
-                    235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193, 192>>
+  @doc """
+  This is the canonical root hash of an empty Patricia merkle tree
+  """
+  @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
+                         228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
+                         192>>
 
   @state_hash_bytes 32
 
