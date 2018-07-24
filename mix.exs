@@ -71,7 +71,6 @@ defmodule EpochElixir.Mixfile do
       {:gproc, "~> 0.6.1"},
       {:ex_rlp, "~> 0.2.1"},
       {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
-
     ]
   end
 end
