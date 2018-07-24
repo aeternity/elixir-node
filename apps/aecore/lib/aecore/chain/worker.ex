@@ -489,22 +489,24 @@ defmodule Aecore.Chain.Worker do
       if is_empty_block_info do
         state.blocks_data_map
       else
-        blocks_info =
-          Map.merge(blocks_info, blocks_map, fn _hash, info, block ->
-            Map.put(info, :block, block)
-          end)
+        blocks_info
+        |> Enum.map(fn {hash, %{refs: refs}} ->
+          block = Map.get(blocks_map, hash, nil)
 
-        Enum.reduce(Map.keys(blocks_info), blocks_info, fn hash, acc_info ->
-          Map.update!(acc_info, hash, fn info ->
-            ch_states =
-              struct(
-                Chainstate,
-                transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
-              )
-            ## TODO: fix the adding of a block: nil
-            Map.put(info, :chain_state, ch_states)
-          end)
+          chain_state =
+            if(block == nil) do
+              nil
+            else
+              ch_states =
+                struct(
+                  Chainstate,
+                  transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
+                )
+            end
+
+          {hash, %{refs: refs, block: block, chain_state: chain_state}}
         end)
+        |> Enum.into(%{})
       end
 
     {:noreply,
