@@ -66,7 +66,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    # ? {:ok, identified_oracle} = Identifier.create_identity(sender, :oracle)
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
     updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl))
