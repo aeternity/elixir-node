@@ -48,7 +48,6 @@ defmodule EpochElixir.Mixfile do
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.2.0", only: :test},
-      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
       {:gen_state_machine, "~> 2.0.1"},

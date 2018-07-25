@@ -13,6 +13,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.PatriciaMerkleTree
 
   @type tree :: :gb_merkle_trees.tree()
 
@@ -124,33 +125,23 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_txs_hash([]) :: binary()
-  def calculate_txs_hash(txs) when txs == [] do
-    <<0::256>>
-  end
+  def calculate_txs_hash([]), do: <<0::256>>
 
   @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
   def calculate_txs_hash(txs) do
     txs
     |> build_merkle_tree()
-    |> :gb_merkle_trees.root_hash()
+    |> PatriciaMerkleTree.root_hash()
   end
 
   @spec build_merkle_tree(list(SignedTx.t())) :: tree()
-  def build_merkle_tree(txs) do
-    if Enum.empty?(txs) do
-      <<0::256>>
-    else
-      merkle_tree =
-        for transaction <- txs do
-          transaction_data_bin = Serialization.rlp_encode(transaction.data, :tx)
-          {Hash.hash(transaction_data_bin), transaction_data_bin}
-        end
+  def build_merkle_tree([]), do: <<0::256>>
 
-      merkle_tree
-      |> List.foldl(:gb_merkle_trees.empty(), fn node, merkle_tree ->
-        :gb_merkle_trees.enter(elem(node, 0), elem(node, 1), merkle_tree)
-      end)
-    end
+  def build_merkle_tree(txs) do
+    Enum.reduce(txs, PatriciaMerkleTree.new(:txs), fn tx, trie ->
+      encoded_tx = tx.data |> Serialization.rlp_encode(:tx)
+      PatriciaMerkleTree.enter(trie, encoded_tx |> Hash.hash(), encoded_tx)
+    end)
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()

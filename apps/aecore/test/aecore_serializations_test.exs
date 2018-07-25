@@ -54,7 +54,7 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:signedtx)
       |> Serialization.rlp_decode()
 
-    assert deserialized_signedtx = signedtx
+    assert deserialized_signedtx == signedtx
   end
 
   @tag :rlp_test
@@ -67,15 +67,15 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:tx)
       |> Serialization.rlp_decode()
 
-    assert deserialized_spendtx = spendtx
+    assert deserialized_spendtx == spendtx
   end
 
   @tag :rlp_test
   test "Block serialization", setup do
     block = create_data(Block, :elixir)
     serialized_block = Serialization.rlp_encode(block, :block)
-    deserialized_block = Block.rlp_decode(serialized_block)
-    assert deserialized_block = block
+    deserialized_block = Serialization.rlp_decode(serialized_block)
+    assert deserialized_block == block
   end
 
   @tag :rlp_test
@@ -83,7 +83,18 @@ defmodule AecoreSerializationTest do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
     serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :oracle_query)
     {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
-    assert oracle_query_chainstate = deserialized_orc_obj
+
+    {:ok, identified_owner} =
+      Identifier.create_identity(deserialized_orc_obj.oracle_address, :oracle)
+
+    {:ok, identified_sender} =
+      Identifier.create_identity(deserialized_orc_obj.sender_address, :account)
+
+    assert oracle_query_chainstate == %{
+             deserialized_orc_obj
+             | oracle_address: identified_owner,
+               sender_address: identified_sender
+           }
   end
 
   @tag :rlp_test
@@ -91,43 +102,34 @@ defmodule AecoreSerializationTest do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
     serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :oracle)
     {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
-    assert oracle_registered_chainstate = deserialized_orc
+
+    # {:ok, identified_orc_address} = Identifier.create_identity( deserialized_orc.oracle_address, :oracle)
+    # {:ok, identified_sender_address} = Identifier.create_identity( deserialized_orc.sender_address, :account)
+    # | oracle_address: identified_orc_address, sender_address: identified_sender_address}
+    assert oracle_registered_chainstate == deserialized_orc
   end
 
   @tag :rlp_test
   test "Naming System TX's serialization", setup do
-    naming_pre_claim_tx = create_data(NameClaimTx, :elixir)
+    naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
     serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
     deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
-    assert naming_pre_claim_tx = deserialized_preclaim_tx
+    assert naming_pre_claim_tx == deserialized_preclaim_tx
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
     serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
     deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
-    assert naming_claim_tx = deserialized_claim_tx
+    assert naming_claim_tx == deserialized_claim_tx
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
     serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
     deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
-    assert naming_update_tx = deserialized_update_tx
+    assert naming_update_tx == deserialized_update_tx
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
     serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
     deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
-    assert naming_transfer_tx = deserialized_transfer_tx
-  end
-
-  @tag :rlp_test
-  test "Naming System chainstate structures serialization", setup do
-    name_state = create_data(Name, :elixir)
-    serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
-    deserialized_name_state = Serialization.rlp_decode(serialized_name_state)
-    assert deserialized_name_state = name_state
-
-    name_commitment = create_data(NameCommitment, :elixir)
-    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
-    deserialized_name_commitment = Serialization.rlp_decode(serialized_name_commitment)
-    assert deserialized_name_commitment = name_commitment
+    assert naming_transfer_tx == deserialized_transfer_tx
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519
@@ -158,9 +160,7 @@ defmodule AecoreSerializationTest do
       Oracle ->
         %{
           expires: 10,
-          owner:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          owner: %Identifier{value: "", type: :oracle},
           query_fee: 5,
           query_format: %{
             "properties" => %{"currency" => %{"type" => "string"}},
@@ -174,25 +174,25 @@ defmodule AecoreSerializationTest do
 
       OracleQuery ->
         %{
-          expires: 24,
+          expires: 9,
           fee: 5,
-          has_response: true,
-          oracle_address: %Aecore.Chain.Identifier{
-            type: :oracle,
+          has_response: false,
+          oracle_address: %Identifier{
             value:
-              <<3, 239, 132, 130, 113, 104, 39, 133, 32, 81, 42, 101, 59, 120, 49, 48, 148, 180,
-                81, 168, 88, 87, 5, 43, 44, 242, 49, 137, 92, 13, 162, 72, 219>>
+              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+            type: :oracle
           },
           query: %{"currency" => "USD"},
-          response: %{"currency" => "BGN"},
-          response_ttl: 10,
-          sender_address: %Aecore.Chain.Identifier{
-            type: :account,
+          response: :undefined,
+          response_ttl: 86_000,
+          sender_address: %Identifier{
             value:
-              <<3, 239, 132, 130, 113, 104, 39, 133, 32, 81, 42, 101, 59, 120, 49, 48, 148, 180,
-                81, 168, 88, 87, 5, 43, 44, 242, 49, 137, 92, 13, 162, 72, 219>>
+              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+            type: :account
           },
-          sender_nonce: 2
+          sender_nonce: 4
         }
 
       Block ->
@@ -200,69 +200,70 @@ defmodule AecoreSerializationTest do
         Chain.top_block()
 
       NamePreClaimTx ->
-        {:ok, pre_claim_tx} = Account.pre_claim("pre_claim.aet", <<"pre_claim_salt">>, 5)
-        pre_claim_tx.data
+        {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 50)
+        pre_claim.data
 
       NameClaimTx ->
-        {:ok, claim_tx} = Account.claim("pre_claim.aet", <<"pre_claim_salt">>, 5)
-        claim_tx.data
+        {:ok, claim} = Account.claim("test.aet", <<1::256>>, 50)
+        claim.data
 
       NameUpdateTx ->
-        {:ok, name_update_tx} = Account.name_update("name_update.aet", "{\"test\": 2}", 5)
-        name_update_tx.data
+        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50)
+        update.data
 
       NameTransferTx ->
-        {:ok, name_transfer} =
-          Account.name_transfer("name_update.aet", Wallet.get_public_key("M/0/1"), 5)
+        transfer_to_priv = Wallet.get_private_key("m/0/1")
 
-        name_transfer.data
+        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+
+        {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 50)
+        transfer.data
 
       NameRevokeTx ->
-        {:ok, name_revoke} = Account.name_revoke("pre_claim.aet", 10)
-        name_revoke.data
+        transfer_to_priv = Wallet.get_private_key("m/0/1")
+
+        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
+
+        {:ok, revoke} =
+          Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce)
+
+        revoke.data
 
       Name ->
-        {:ok, identified_hash} =
-          Identifier.create_identity(
-            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            :name
-          )
-
-        {:ok, identified_owner} =
-          Identifier.create_identity(
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
-            :account
-          )
-
         %{
           expires: 50_003,
-          hash: identified_hash,
-          owner: identified_owner,
+          hash: %Identifier{
+            value:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            type: :name
+          },
+          owner: %Identifier{
+            value:
+              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+            type: :account
+          },
           pointers: [],
           status: :claimed,
           ttl: 86_400
         }
 
       NameCommitment ->
-        {:ok, identified_commitment_hash} =
-          Identifier.create_identity(
-            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            :commitment
-          )
-
-        {:ok, identified_owner} =
-          Identifier.create_identity(
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
-            :account
-          )
-
         %{
-          hash: identified_commitment_hash,
-          owner: identified_owner,
+          hash: %Identifier{
+            value:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            type: :name
+          },
+          owner: %Identifier{
+            value:
+              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
+                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+            type: :account
+          },
           created: 8500,
           expires: 86_400
         }
