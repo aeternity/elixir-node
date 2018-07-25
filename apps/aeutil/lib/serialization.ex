@@ -771,30 +771,4 @@ defmodule Aeutil.Serialization do
   def get_version(OracleQuery), do: {:ok, 1}
   def get_version(SignedTx), do: {:ok, 1}
   def get_version(ver), do: {:error, "#{__MODULE__} : Unknown Struct version: #{inspect(ver)}"}
-
-  # @spec add_id(id(), binary()) :: binary() | {:error, String.t()}
-  # # TODO: Binary_data's (which is being concatenated with id here) size should be strict and have a length of 32 bytes. Therefore must be adjusted to 32 bytes to match current state of Epoch's implementation
-  # def add_id(type, <<binary_data::binary>>) do
-  #   case Application.get_env(:aecore, :binary_ids)[type] do
-  #     nil ->
-  #       {:error, "#{__MODULE__}: Id for the given type: #{type} doesn't exist"}
-
-  #     # TODO: same problem as mentioned at 762 line
-  #     id ->
-  #       {:ok, <<id::unsigned-integer-size(8), binary_data::binary>>}
-  #   end
-  # end
-
-  # def add_id(_, _), do: {:error, "#{__MODULE__} Illegal data id addition"}
-
-  # @spec extract_id(binary()) :: binary() | {:error, String.t()}
-  # # TODO same problem as mentioned at 762 line as previous comment
-  # def extract_id(<<id::unsigned-integer-size(8), rest_binary_data::binary>>) do
-  #   {:ok, rest_binary_data}
-  # end
-
-  # # def extract_id(<<id::size(8), data::binary>>),
-  # #   do: {:error, "#{__MODULE__}: Incorrect or corrupted data: #{inspect(data)}"} #TODO this error case should be returned after all adjustments
-
-  # def extract_id(_, _), do: {:error, "#{__MODULE__}: Illegal data extraction"}
 end

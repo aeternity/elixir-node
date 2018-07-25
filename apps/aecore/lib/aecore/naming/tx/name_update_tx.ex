@@ -50,7 +50,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   # Callbacks
 
-  # TODO integrate Identifiers
   @spec init(payload()) :: t()
   def init(%{
         hash: hash,

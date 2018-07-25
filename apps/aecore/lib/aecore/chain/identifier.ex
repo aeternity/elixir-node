@@ -28,7 +28,7 @@ defmodule Aecore.Chain.Identifier do
   use ExConstructor
 
   @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
-  # byte_size(data) == 32 #TODO data should be stricted to 32 bytes only
+  # byte_size(data) == 32 data should be stricted to 32 bytes only
   def create_identity(value, type) when is_atom(type) and is_binary(value) do
     case Application.get_env(:aecore, :binary_ids)[type] do
       nil ->

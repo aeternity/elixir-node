@@ -45,11 +45,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   # Callbacks
 
   @spec init(payload()) :: t()
-  # TODO integrate Identifiers
   def init(%{hash: hash, target: target}) do
     {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
     {:ok, identified_target} = Identifier.create_identity(target, :account)
-    # TODO inspect target and its representation and adjust it
     %NameTransferTx{hash: identified_name_hash, target: identified_target}
   end
 

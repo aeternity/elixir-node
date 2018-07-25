@@ -42,7 +42,6 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   # Callbacks
 
   @spec init(payload()) :: t()
-  # TODO integrate Identifiers
   def init(%{hash: hash}) do
     name_hash =
       case hash do
@@ -147,7 +146,6 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      # TODO print claim represent.
       claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
