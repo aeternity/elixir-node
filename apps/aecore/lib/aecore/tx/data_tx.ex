@@ -399,9 +399,9 @@ defmodule Aecore.Tx.DataTx do
       version,
       senders,
       tx.nonce,
-      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
+      # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
-      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
+      # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response_format),
       tx.payload.query_fee,
       ttl_type,
@@ -469,7 +469,7 @@ defmodule Aecore.Tx.DataTx do
       senders,
       tx.nonce,
       tx.payload.query_id,
-      # TODO workarounds, adjustments should be made as soon as fields types are adjusted
+      # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response),
       tx.fee,
       tx.ttl
