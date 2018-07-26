@@ -10,7 +10,7 @@ defmodule PersistenceTest do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
 
-  setup persistance_state do
+  setup do
     Persistence.start_link([])
     Miner.start_link([])
 
@@ -57,7 +57,7 @@ defmodule PersistenceTest do
       |> Account.balance(persistance_state.account1)
 
     ## For specific account
-    assert %{balance: correct_balance} = get_account_state(persistance_state.account1)
+    assert match?(%{balance: ^correct_balance}, get_account_state(persistance_state.account1))
 
     ## Non existant accounts are empty
     assert :not_found = get_account_state(persistance_state.account2)
