@@ -1,4 +1,4 @@
-defmodule Aecore.Peers.Events do
+defmodule Aeutil.Events do
   @moduledoc """
    Module for event handling
   """

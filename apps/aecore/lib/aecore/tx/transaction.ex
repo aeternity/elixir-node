@@ -3,36 +3,28 @@ defmodule Aecore.Tx.Transaction do
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
   """
-  alias Aecore.Structures.SpendTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Chain.Chainstate
-
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
 
   @typedoc "Structure of a custom transaction"
   @type tx_types ::
-          SpendTx.t()
-          | OracleExtendTx.t()
-          | OracleQueryTx.t()
-          | OracleRegistrationTx.t()
-          | OracleResponseTx.t()
-          | NamePreClaimTx.t()
-          | NameClaimTx.t()
-          | NameUpdateTx.t()
-          | NameTransferTx.t()
-          | NameRevokeTx.t()
+          Aecore.Account.Tx.SpendTx.t()
+          | Aecore.Oracle.Tx.OracleExtendTx.t()
+          | Aecore.Oracle.Tx.OracleRegistrationTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Naming.Tx.NamePreClaimTx.t()
+          | Aecore.Naming.Tx.NameClaimTx.t()
+          | Aecore.Naming.Tx.NameUpdateTx.t()
+          | Aecore.Naming.Tx.NameTransferTx.t()
+          | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Channel.Tx.ChannelCreateTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
+          | Aecore.Channel.Tx.ChannelSlashTx.t()
+          | Aecore.Channel.Tx.ChannelSettleTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
