@@ -272,8 +272,15 @@ defmodule Aecore.Persistence.Worker do
     {:reply, Rox.put(total_diff_family, key, new_total_difficulty, write_options()), state}
   end
 
-  def handle_call({:get_block_by_hash, hash}, _from, %{blocks_family: blocks_family} = state) do
-    {:reply, Rox.get(blocks_family, hash), state}
+  def handle_call(
+        {:get_block_by_hash, block_hash},
+        _from,
+        %{blocks_family: blocks_family} = state
+      ) do
+    case Rox.get(blocks_family, block_hash) do
+      {:ok, block} = data -> {:reply, data, state}
+      _ -> {:reply, {:error, "Can't find block for hash: #{inspect(block_hash)}"}, state}
+    end
   end
 
   def handle_call({:get_blocks, blocks_num}, _from, state)
@@ -364,8 +371,8 @@ defmodule Aecore.Persistence.Worker do
         %{chain_state_family: chain_state_family} = state
       ) do
     case Rox.get(chain_state_family, block_hash) do
-      {:ok, chainstate} -> {:reply, chainstate, state}
-      _ -> {:reply, %{}, state}
+      {:ok, chainstate} = data -> {:reply, data, state}
+      _ -> {:reply, {:error, "Can't find chainstate for hash: #{inspect(block_hash)}"}, state}
     end
   end
 

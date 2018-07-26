@@ -159,7 +159,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
-    case get_block_info_by_height(height, nil) do
+    case get_block_info_by_height(height, nil, :block) do
       {:error, :chain_too_short} -> {:error, :chain_too_short}
       info -> {:ok, info.block.header}
     end
@@ -190,7 +190,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
           {:ok, Block.t()} | {:error, binary()}
   def get_block_by_height(height, chain_hash \\ nil) do
-    case get_block_info_by_height(height, chain_hash) do
+    case get_block_info_by_height(height, chain_hash, :block) do
       {:error, _} = error -> error
       info -> {:ok, info.block}
     end
@@ -217,7 +217,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_chain_state_by_height(non_neg_integer(), binary() | nil) ::
           Chainstate.t() | {:error, String.t()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
-    case get_block_info_by_height(height, chain_hash) do
+    case get_block_info_by_height(height, chain_hash, :chainstate) do
       {:error, _} = error ->
         error
 
@@ -414,7 +414,7 @@ defmodule Aecore.Chain.Worker do
         ## Transfrom from chain state
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+            transfrom_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
@@ -446,7 +446,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+            transfrom_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
@@ -620,14 +620,11 @@ defmodule Aecore.Chain.Worker do
     {:ok, headers}
   end
 
-  defp get_block_info_by_height(height, chain_hash) do
-    begin_hash =
-      if chain_hash == nil do
-        top_block_hash()
-      else
-        chain_hash
-      end
+  defp get_block_info_by_height(height, nil, info) do
+    get_block_info_by_height(height, top_block_hash(), info)
+  end
 
+  defp get_block_info_by_height(height, begin_hash, info) do
     blocks_data_map = GenServer.call(__MODULE__, :blocks_data_map)
     n = blocks_data_map[begin_hash].block.header.height - height
 
@@ -636,14 +633,29 @@ defmodule Aecore.Chain.Worker do
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 
-      case blocks_data_map[block_hash] do
-        %{block: nil} = block_info ->
+      case {info, blocks_data_map[block_hash]} do
+        {:block, %{block: nil} = block_info} ->
           case Persistence.get_block_by_hash(block_hash) do
             {:ok, block} -> %{block_info | block: block}
             _ -> block_info
           end
 
-        block_info ->
+        {:chainstate, %{chain_state: nil} = block_info} ->
+          case Persistence.get_all_chainstates(block_hash) do
+            {:ok, chainstate} ->
+              ch_state =
+                struct(
+                  Chainstate,
+                  transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(block_hash))
+                )
+              
+              %{block_info | chain_state: ch_state}
+
+            _ ->
+              block_info
+          end
+
+        {_, block_info} ->
           block_info
       end
     end
@@ -678,7 +690,9 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def transfrom_chainstate(strategy, chainstate) do
+  def transfrom_chainstate(strategy, {:error, reason}), do: %{}
+
+  def transfrom_chainstate(strategy, {:ok, chainstate}) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
   end
 
