@@ -749,8 +749,6 @@ defmodule Aecore.Tx.DataTx do
       tx.ttl
     ]
 
-    IO.inspect(list)
-
     try do
       ExRLP.encode(list)
     rescue
