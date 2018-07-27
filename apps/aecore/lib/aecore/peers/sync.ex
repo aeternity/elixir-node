@@ -10,7 +10,8 @@ defmodule Aecore.Peers.Sync do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Peers.PeerConnection
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Peers.{Jobs, Events}
+  alias Aecore.Peers.Jobs
+  alias Aeutil.Events
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Scientific
 
@@ -53,7 +54,7 @@ defmodule Aecore.Peers.Sync do
   end
 
   def init(state) do
-    Events.subscribe(:block_created)
+    Events.subscribe(:new_top_block)
     Events.subscribe(:tx_created)
     Events.subscribe(:top_changed)
 
@@ -246,10 +247,19 @@ defmodule Aecore.Peers.Sync do
 
   def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
     case event do
-      :block_created -> enqueue(:forward, %{status: :created, block: info})
-      :tx_created -> enqueue(:forward, %{status: :created, tx: info})
-      :top_changed -> enqueue(:forward, %{status: :top_changed, block: info})
-      :tx_received -> enqueue(:forward, %{status: :received, tx: info})
+      :new_top_block ->
+        if not Enum.empty?(Peers.all_pids()) do
+          enqueue(:forward, %{status: :created, block: info})
+        end
+
+      :tx_created ->
+        enqueue(:forward, %{status: :created, tx: info})
+
+      :top_changed ->
+        enqueue(:forward, %{status: :top_changed, block: info})
+
+      :tx_received ->
+        enqueue(:forward, %{status: :received, tx: info})
     end
 
     Jobs.dequeue(:sync_jobs)

@@ -89,7 +89,7 @@ defmodule Aecore.Tx.SignedTx do
       |> Serialization.rlp_encode(:tx)
       |> Signing.sign(priv_key)
 
-    {success, new_sigs} =
+    {success, new_sigs_reversed} =
       sigs
       |> Enum.zip(DataTx.senders(data))
       |> Enum.reduce({false, []}, fn {sig, sender}, {success, acc} ->
@@ -99,6 +99,8 @@ defmodule Aecore.Tx.SignedTx do
           {success, [sig | acc]}
         end
       end)
+
+    new_sigs = Enum.reverse(new_sigs_reversed)
 
     if success do
       {:ok, %SignedTx{data: data, signatures: new_sigs}}
@@ -184,7 +186,7 @@ defmodule Aecore.Tx.SignedTx do
       _ ->
         %{
           "data" => DataTx.serialize(tx.data),
-          "signature" => Serialization.serialize_value(:signature)
+          "signatures" => Serialization.serialize_value(tx.signatures, :signature)
         }
     end
   end

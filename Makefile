@@ -1,3 +1,6 @@
+
+export AEVM_EXTERNAL_TEST_DIR=aevm_external
+
 #
 # build commands
 #
@@ -102,3 +105,12 @@ killall:
 	prod-build, prod-start, prod-stop, prod-attach, prod-clean \
 	iex-0, iex-1, iex-2, iex-3, iex-n \
  	clean, clean-deps, killall \
+
+	#
+	# AEVM
+	#
+aevm-test-deps: $(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests
+
+$(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests:
+	@git clone https://github.com/ethereum/tests.git $(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests
+	@cd $(AEVM_EXTERNAL_TEST_DIR)/ethereum_tests && git checkout 1b019db88522abacfbd7ca03382f2bbffa5ae8f0

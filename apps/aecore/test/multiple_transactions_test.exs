@@ -9,10 +9,6 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys.Wallet
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants

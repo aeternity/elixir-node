@@ -2,52 +2,69 @@ defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Aecore structure of a transaction data.
   """
+  alias Aecore.Tx.DataTx
+  alias Aeutil.Serialization
+  alias Aeutil.Bits
+  alias Aecore.Account.Account
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Keys.Wallet
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Oracle.Tx.OracleExtendTx
+  alias Aecore.Oracle.Tx.OracleRegistrationTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleResponseTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.Tx.NameClaimTx
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
-  alias Aeutil.Serialization
-  alias Aeutil.Bits
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Keys.Wallet
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Channel.Tx.ChannelCloseMutalTx
+  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Channel.Tx.ChannelSlashTx
+  alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.ChannelStateOffChain
 
   require Logger
 
   @typedoc "Name of the specified transaction module"
   @type tx_types ::
-          SpendTx
-          | OracleExtendTx
-          | OracleRegistrationTx
-          | OracleQueryTx
-          | OracleResponseTx
-          | NamePreClaimTx
-          | NameClaimTx
-          | NameUpdateTx
-          | NameTransferTx
-          | NameRevokeTx
+          Aecore.Account.Tx.SpendTx
+          | Aecore.Oracle.Tx.OracleExtendTx
+          | Aecore.Oracle.Tx.OracleRegistrationTx
+          | Aecore.Oracle.Tx.OracleResponseTx
+          | Aecore.Oracle.Tx.OracleResponseTx
+          | Aecore.Naming.Tx.NamePreClaimTx
+          | Aecore.Naming.Tx.NameClaimTx
+          | Aecore.Naming.Tx.NameUpdateTx
+          | Aecore.Naming.Tx.NameTransferTx
+          | Aecore.Naming.Tx.NameRevokeTx
+          | Aecore.Channel.Tx.ChannelCreateTx
+          | Aecore.Channel.Tx.ChannelCloseMutalTx
+          | Aecore.Channel.Tx.ChannelCloseSoloTx
+          | Aecore.Channel.Tx.ChannelSlashTx
+          | Aecore.Channel.Tx.ChannelSettleTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
-          SpendTx.t()
-          | OracleExtendTx.t()
-          | OracleQueryTx.t()
-          | OracleRegistrationTx.t()
-          | OracleResponseTx.t()
-          | NamePreClaimTx.t()
-          | NameClaimTx.t()
-          | NameUpdateTx.t()
-          | NameTransferTx.t()
-          | NameRevokeTx.t()
+          Aecore.Account.Tx.SpendTx.t()
+          | Aecore.Oracle.Tx.OracleExtendTx.t()
+          | Aecore.Oracle.Tx.OracleRegistrationTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Oracle.Tx.OracleResponseTx.t()
+          | Aecore.Naming.Tx.NamePreClaimTx.t()
+          | Aecore.Naming.Tx.NameClaimTx.t()
+          | Aecore.Naming.Tx.NameUpdateTx.t()
+          | Aecore.Naming.Tx.NameTransferTx.t()
+          | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Channel.Tx.ChannelCreateTx.t()
+          | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
+          | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
+          | Aecore.Channel.Tx.ChannelSlashTx.t()
+          | Aecore.Channel.Tx.ChannelSettleTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -86,7 +103,12 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Naming.Tx.NamePreClaimTx,
       Aecore.Naming.Tx.NameRevokeTx,
       Aecore.Naming.Tx.NameTransferTx,
-      Aecore.Naming.Tx.NameUpdateTx
+      Aecore.Naming.Tx.NameUpdateTx,
+      Aecore.Channel.Tx.ChannelCreateTx,
+      Aecore.Channel.Tx.ChannelCloseSoloTx,
+      Aecore.Channel.Tx.ChannelCloseMutalTx,
+      Aecore.Channel.Tx.ChannelSlashTx,
+      Aecore.Channel.Tx.ChannelSettleTx
     ]
   end
 
@@ -533,6 +555,100 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  defp encode(tag, version, %DataTx{type: ChannelCloseMutalTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.channel_id,
+      tx.payload.initiator_amount,
+      tx.payload.responder_amount,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelCloseSoloTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      ChannelStateOffChain.encode(tx.payload.state),
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelCreateTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.initiator_amount,
+      tx.payload.responder_amount,
+      tx.payload.locktime,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelSettleTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      tx.payload.channel_id,
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelSlashTx} = tx) do
+    list = [
+      tag,
+      version,
+      tx.senders,
+      tx.nonce,
+      ChannelStateOffChain.encode(tx.payload.state),
+      tx.fee,
+      tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
   def rlp_encode(data) do
     {:error, "#{__MODULE__} : Invalid DataTx serializations: #{inspect(data)}"}
   end
@@ -747,12 +863,103 @@ defmodule Aecore.Tx.DataTx do
     )
   end
 
+  defp decode(ChannelCloseMutalTx, [
+         senders,
+         nonce,
+         channel_id,
+         initiator_amount,
+         responder_amount,
+         fee,
+         ttl
+       ]) do
+    payload = %ChannelCloseMutalTx{
+      channel_id: channel_id,
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int)
+    }
+
+    DataTx.init(
+      ChannelCloseMutalTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelCloseSoloTx, [senders, nonce, state, fee, ttl]) do
+    payload = %ChannelCloseSoloTx{
+      state: ChannelStateOffChain.decode(state)
+    }
+
+    DataTx.init(
+      ChannelCloseSoloTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelCreateTx, [
+         senders,
+         nonce,
+         initiator_amount,
+         responder_amount,
+         locktime,
+         fee,
+         ttl
+       ]) do
+    payload = %ChannelCreateTx{
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int),
+      locktime: Serialization.transform_item(locktime, :int)
+    }
+
+    DataTx.init(
+      ChannelCreateTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelSettleTx, [senders, nonce, channel_id, fee, ttl]) do
+    payload = %ChannelSettleTx{channel_id: channel_id}
+
+    DataTx.init(
+      ChannelSettleTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
+  defp decode(ChannelSlashTx, [senders, nonce, state, fee, ttl]) do
+    payload = %ChannelSlashTx{state: ChannelStateOffChain.decode(state)}
+
+    DataTx.init(
+      ChannelSlashTx,
+      payload,
+      senders,
+      Serialization.transform_item(fee, :int),
+      Serialization.transform_item(nonce, :int),
+      Serialization.transform_item(ttl, :int)
+    )
+  end
+
   defp decode(tx_type, tx_data) do
     {:error,
      "#{__MODULE__}: Unknown DataTx structure: #{inspect(tx_type)}, TX's data: #{inspect(tx_data)} "}
   end
 
-  # Optional function-workaround:
+  # Optional function-workaroud:
   # As we have differences in value types in some fields,
   # which means that we encode these fields different apart from what Epoch does,
   # we need to recognize the origins of this value.
