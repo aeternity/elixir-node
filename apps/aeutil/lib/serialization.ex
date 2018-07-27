@@ -130,6 +130,13 @@ defmodule Aeutil.Serialization do
     :sext.decode(key)
   end
 
+  @spec pack_binary(term()) :: binary()
+  def pack_binary(term) do
+    term
+    |> remove_struct()
+    |> Msgpax.pack!(iodata: false)
+  end
+
   @doc """
   Initializing function to the recursive functionality of serializing a strucure
   """
