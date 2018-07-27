@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
   alias Aecore.Governance.GovernanceConstants
@@ -32,14 +33,21 @@ defmodule Aecore.Chain.Chainstate do
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: OracleStateTree.oracles_state()
   @type naming :: NamingStateTree.namings_state()
-  @type chain_state_types :: :accounts | :oracles | :naming | :none
+  @type channels :: ChannelStateTree.channel_state()
+  @type chain_state_types :: :accounts | :oracles | :naming | :channels
 
-  @type t :: %Chainstate{accounts: accounts(), oracles: oracles(), naming: naming()}
+  @type t :: %Chainstate{
+          accounts: accounts(),
+          oracles: oracles(),
+          naming: naming(),
+          channels: channels()
+        }
 
   defstruct [
     :accounts,
     :oracles,
-    :naming
+    :naming,
+    :channels
   ]
 
   @spec init :: t()
@@ -47,7 +55,8 @@ defmodule Aecore.Chain.Chainstate do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
       :oracles => OracleStateTree.init_empty(),
-      :naming => NamingStateTree.init_empty()
+      :naming => NamingStateTree.init_empty(),
+      :channels => ChannelStateTree.init_empty()
     }
   end
 

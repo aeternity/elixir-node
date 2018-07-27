@@ -22,6 +22,12 @@ defmodule Aeutil.Serialization do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
+  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Channel.Tx.ChannelCloseMutalTx
+  alias Aecore.Channel.Tx.ChannelCloseSoloTx
+  alias Aecore.Channel.Tx.ChannelSlashTx
+  alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.ChannelStateOnChain
 
   require Logger
 
@@ -65,24 +71,7 @@ defmodule Aeutil.Serialization do
     Block.new(header: built_header, txs: txs)
   end
 
-  @spec account_state(Account.t() | :none | binary(), :serialize | :deserialize) ::
-          binary() | :none | Account.t()
-  def account_state(account_state, :serialize) do
-    account_state
-    |> serialize_value()
-    |> Msgpax.pack!()
-  end
-
   def account_state(:none, :deserialize), do: :none
-
-  def account_state(encoded_account_state, :deserialize) do
-    {:ok, account_state} = Msgpax.unpack(encoded_account_state)
-
-    {:ok,
-     account_state
-     |> deserialize_value()
-     |> Account.new()}
-  end
 
   @spec hex_binary(binary(), :serialize | :deserialize) :: binary()
   def hex_binary(data, :serialize) when data != nil, do: Base.encode16(data)
@@ -396,6 +385,7 @@ defmodule Aeutil.Serialization do
           | :interaction_object
           | :naming_state
           | :name_commitment
+          | :channel_onchain
           | :block
           | :signedtx
         ) :: binary | {:error, String.t()}
@@ -462,6 +452,18 @@ defmodule Aeutil.Serialization do
     else
       error ->
         {:error, "#{__MODULE__} : Invalid Name Commitment State serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%ChannelStateOnChain{} = term, :channel_onchain) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(term.__struct__),
+         {:ok, version} <- get_version(term.__struct__),
+         data <- term.__struct__.rlp_encode(tag, version, term) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid Channel on-chain state serialization: #{inspect(error)}"}
     end
   end
 
@@ -543,6 +545,10 @@ defmodule Aeutil.Serialization do
 
   defp rlp_decode(SignedTx, _version, signedtx) do
     SignedTx.rlp_decode(signedtx)
+  end
+
+  defp rlp_decode(ChannelStateOnChain, _version, channel_state_on_chain) do
+    ChannelStateOnChain.rlp_decode(channel_state_on_chain)
   end
 
   defp rlp_decode(payload, _version, datatx) do
@@ -730,6 +736,18 @@ defmodule Aeutil.Serialization do
   def type_to_tag(OracleQuery),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_state]}
 
+  def type_to_tag(ChannelStateOnChain), do: {:ok, 40}
+
+  def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
+
+  def type_to_tag(ChannelCloseSoloTx), do: {:ok, 42}
+
+  def type_to_tag(ChannelCreateTx), do: {:ok, 43}
+
+  def type_to_tag(ChannelSettleTx), do: {:ok, 44}
+
+  def type_to_tag(ChannelSlashTx), do: {:ok, 45}
+
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
   def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
 
@@ -747,6 +765,12 @@ defmodule Aeutil.Serialization do
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
+  def tag_to_type(40), do: ChannelStateOnChain
+  def tag_to_type(41), do: ChannelCloseMutalTx
+  def tag_to_type(42), do: ChannelCloseSoloTx
+  def tag_to_type(43), do: ChannelCreateTx
+  def tag_to_type(44), do: ChannelSettleTx
+  def tag_to_type(45), do: ChannelSlashTx
   def tag_to_type(20), do: Oracle
   def tag_to_type(21), do: OracleQuery
   def tag_to_type(11), do: SignedTx
@@ -766,6 +790,12 @@ defmodule Aeutil.Serialization do
   def get_version(NameUpdateTx), do: {:ok, 1}
   def get_version(NameRevokeTx), do: {:ok, 1}
   def get_version(NameTransferTx), do: {:ok, 1}
+  def get_version(ChannelStateOnChain), do: {:ok, 1}
+  def get_version(ChannelCloseMutalTx), do: {:ok, 1}
+  def get_version(ChannelCloseSoloTx), do: {:ok, 1}
+  def get_version(ChannelCreateTx), do: {:ok, 1}
+  def get_version(ChannelSettleTx), do: {:ok, 1}
+  def get_version(ChannelSlashTx), do: {:ok, 1}
   def get_version(Account), do: {:ok, 1}
   def get_version(Oracle), do: {:ok, 1}
   def get_version(OracleQuery), do: {:ok, 1}
