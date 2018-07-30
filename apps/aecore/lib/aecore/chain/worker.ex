@@ -481,11 +481,10 @@ defmodule Aecore.Chain.Worker do
             if block == nil do
               nil
             else
-              ch_states =
-                struct(
-                  Chainstate,
-                  transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
-                )
+              struct(
+                Chainstate,
+                transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
+              )
             end
 
           {hash, %{refs: refs, block: block, chain_state: chain_state}}
@@ -632,7 +631,7 @@ defmodule Aecore.Chain.Worker do
                   Chainstate,
                   transfrom_chainstate(
                     :to_chainstate,
-                    Persistence.get_all_chainstates(block_hash)
+                    chainstate
                   )
                 )
 
@@ -677,7 +676,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def transfrom_chainstate(strategy, {:error, reason}), do: %{}
+  def transfrom_chainstate(_, {:error, _}), do: %{}
 
   def transfrom_chainstate(strategy, {:ok, chainstate}) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
