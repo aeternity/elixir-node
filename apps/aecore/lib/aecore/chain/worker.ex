@@ -369,23 +369,6 @@ defmodule Aecore.Chain.Worker do
 
     new_refs = refs(@max_refs, blocks_data_map, new_block.header.prev_hash)
 
-    # new_refs =
-    #   0..@max_refs
-    #   |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-    #     with true <- Map.has_key?(blocks_data_map, prev),
-    #          {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
-    #       [hash | acc]
-    #     else
-    #       :error ->
-    #         acc
-
-    #       _ ->
-    #         Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
-    #         acc
-    #     end
-    #   end)
-    #   |> Enum.reverse()
-
     updated_blocks_data_map =
       Map.put(blocks_data_map, new_block_hash, %{
         block: new_block,
@@ -478,8 +461,9 @@ defmodule Aecore.Chain.Worker do
       [block_hash] = Map.keys(state.blocks_data_map)
       genesis_block = state.blocks_data_map[block_hash].block
       genesis_chainstate = state.blocks_data_map[block_hash].chain_state
-      spawn(fn () ->
-         add_validated_block(genesis_block, genesis_chainstate)
+
+      spawn(fn ->
+        add_validated_block(genesis_block, genesis_chainstate)
       end)
     end
 
@@ -646,9 +630,12 @@ defmodule Aecore.Chain.Worker do
               ch_state =
                 struct(
                   Chainstate,
-                  transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(block_hash))
+                  transfrom_chainstate(
+                    :to_chainstate,
+                    Persistence.get_all_chainstates(block_hash)
+                  )
                 )
-              
+
               %{block_info | chain_state: ch_state}
 
             _ ->
@@ -736,6 +723,7 @@ defmodule Aecore.Chain.Worker do
   defp build_chain_state, do: Chainstate.init()
 
   defp refs(_, _, <<0::32-unit(8)>>), do: []
+
   defp refs(max_refs, blocks_data_map, prev_hash) do
     refs_num = min(max_refs, length(blocks_data_map[prev_hash].refs) + 1)
     get_refs(refs_num, blocks_data_map, prev_hash)
@@ -745,7 +733,7 @@ defmodule Aecore.Chain.Worker do
     0..num_refs
     |> Enum.reduce([prev_hash], fn i, [prev | _] = acc ->
       with true <- Map.has_key?(blocks_data_map, prev),
-      {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
+           {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
         [hash | acc]
       else
         :error ->
@@ -753,7 +741,7 @@ defmodule Aecore.Chain.Worker do
 
         _ ->
           Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
-        acc
+          acc
       end
     end)
     |> Enum.reverse()
