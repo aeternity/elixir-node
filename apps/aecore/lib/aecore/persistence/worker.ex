@@ -278,7 +278,7 @@ defmodule Aecore.Persistence.Worker do
         %{blocks_family: blocks_family} = state
       ) do
     case Rox.get(blocks_family, block_hash) do
-      {:ok, block} = data -> {:reply, data, state}
+      {:ok, _block} = data -> {:reply, data, state}
       _ -> {:reply, {:error, "Can't find block for hash: #{inspect(block_hash)}"}, state}
     end
   end
@@ -371,7 +371,7 @@ defmodule Aecore.Persistence.Worker do
         %{chain_state_family: chain_state_family} = state
       ) do
     case Rox.get(chain_state_family, block_hash) do
-      {:ok, chainstate} = data -> {:reply, data, state}
+      {:ok, _chainstate} = data -> {:reply, data, state}
       _ -> {:reply, {:error, "Can't find chainstate for hash: #{inspect(block_hash)}"}, state}
     end
   end
