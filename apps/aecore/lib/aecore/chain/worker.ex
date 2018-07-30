@@ -478,7 +478,7 @@ defmodule Aecore.Chain.Worker do
           block = Map.get(blocks_map, hash, nil)
 
           chain_state =
-            if(block == nil) do
+            if block == nil do
               nil
             else
               ch_states =
