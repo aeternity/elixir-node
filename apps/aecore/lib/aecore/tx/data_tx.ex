@@ -376,13 +376,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: SpendTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     {:ok, encoded_receiver} = Identifier.encode_data(tx.payload.receiver)
 
@@ -408,13 +402,7 @@ defmodule Aecore.Tx.DataTx do
   defp encode(tag, version, %DataTx{type: OracleRegistrationTx} = tx) do
     ttl_type = Serialization.encode_ttl_type(tx.payload.ttl)
 
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -443,13 +431,7 @@ defmodule Aecore.Tx.DataTx do
     ttl_type_q = Serialization.encode_ttl_type(tx.payload.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.payload.response_ttl)
 
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     {:ok, encoded_oracle_address} = Identifier.encode_data(tx.payload.oracle_address)
 
@@ -477,13 +459,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: OracleResponseTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -505,13 +481,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: OracleExtendTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -531,14 +501,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NamePreClaimTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
-
+    senders = Serialization.serialize_identity(tx.senders)
     {:ok, encoded_commitment} = Identifier.encode_data(tx.payload.commitment)
 
     list = [
@@ -559,13 +522,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameClaimTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -586,14 +543,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameUpdateTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
-
+    senders = Serialization.serialize_identity(tx.senders)
     {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
 
     list = [
@@ -617,13 +567,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameRevokeTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
 
@@ -645,14 +589,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: NameTransferTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
-
+    senders = Serialization.serialize_identity(tx.senders)
     {:ok, encoded_target} = Identifier.encode_data(tx.payload.target)
     {:ok, encoded_name_hash} = Identifier.encode_data(tx.payload.hash)
 
@@ -675,13 +612,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: ChannelCloseMutalTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -703,13 +634,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: ChannelCloseSoloTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -729,13 +654,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: ChannelCreateTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -757,13 +676,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: ChannelSettleTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -783,13 +696,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp encode(tag, version, %DataTx{type: ChannelSlashTx} = tx) do
-    senders =
-      for acc <- tx.senders do
-        case Identifier.encode_data(acc) do
-          {:ok, tagged_pub_key} -> tagged_pub_key
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.serialize_identity(tx.senders)
 
     list = [
       tag,
@@ -828,13 +735,7 @@ defmodule Aecore.Tx.DataTx do
        ]) do
     {:ok, vsn} = Serialization.get_version(SpendTx)
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     {:ok, receiver} = Identifier.decode_data(encoded_receiver)
 
@@ -866,13 +767,7 @@ defmodule Aecore.Tx.DataTx do
          fee,
          ttl
        ]) do
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     {:ok, oracle_address} = Identifier.decode_data(encoded_oracle_address)
 
@@ -920,13 +815,7 @@ defmodule Aecore.Tx.DataTx do
          fee,
          ttl
        ]) do
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     ttl_type =
       encoded_ttl_type
@@ -965,13 +854,7 @@ defmodule Aecore.Tx.DataTx do
     query_id = decode_format(encoded_query_id)
     response = decode_format(encoded_response)
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     payload = %{
       query_id: query_id,
@@ -993,13 +876,7 @@ defmodule Aecore.Tx.DataTx do
       ttl: Serialization.transform_item(ttl_value, :int)
     }
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       OracleExtendTx,
@@ -1015,13 +892,7 @@ defmodule Aecore.Tx.DataTx do
     {:ok, decoded_commitment} = Identifier.decode_data(encoded_commitment)
     payload = %NamePreClaimTx{commitment: decoded_commitment}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       NamePreClaimTx,
@@ -1036,13 +907,7 @@ defmodule Aecore.Tx.DataTx do
   defp decode(NameClaimTx, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       NameClaimTx,
@@ -1064,13 +929,7 @@ defmodule Aecore.Tx.DataTx do
          fee,
          ttl
        ]) do
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     {:ok, decoded_hash} = Identifier.decode_data(hash)
 
@@ -1095,13 +954,7 @@ defmodule Aecore.Tx.DataTx do
     {:ok, hash} = Identifier.decode_data(encoded_hash)
     payload = %NameRevokeTx{hash: hash}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       NameRevokeTx,
@@ -1118,13 +971,7 @@ defmodule Aecore.Tx.DataTx do
     {:ok, decoded_recipient} = Identifier.decode_data(recipient)
     payload = %NameTransferTx{hash: decoded_hash, target: decoded_recipient}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       NameTransferTx,
@@ -1151,13 +998,7 @@ defmodule Aecore.Tx.DataTx do
       responder_amount: Serialization.transform_item(responder_amount, :int)
     }
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       ChannelCloseMutalTx,
@@ -1174,13 +1015,7 @@ defmodule Aecore.Tx.DataTx do
       state: ChannelStateOffChain.decode(state)
     }
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       ChannelCloseSoloTx,
@@ -1207,13 +1042,7 @@ defmodule Aecore.Tx.DataTx do
       locktime: Serialization.transform_item(locktime, :int)
     }
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       ChannelCreateTx,
@@ -1228,13 +1057,7 @@ defmodule Aecore.Tx.DataTx do
   defp decode(ChannelSettleTx, [encoded_senders, nonce, channel_id, fee, ttl]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       ChannelSettleTx,
@@ -1249,13 +1072,7 @@ defmodule Aecore.Tx.DataTx do
   defp decode(ChannelSlashTx, [encoded_senders, nonce, state, fee, ttl]) do
     payload = %ChannelSlashTx{state: ChannelStateOffChain.decode(state)}
 
-    senders =
-      for sender <- encoded_senders do
-        case Identifier.decode_data(sender) do
-          {:ok, extracted_data} -> extracted_data
-          {:error, msg} -> {:error, msg}
-        end
-      end
+    senders = Serialization.deserialize_identity(encoded_senders)
 
     DataTx.init(
       ChannelSlashTx,

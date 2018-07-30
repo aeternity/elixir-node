@@ -28,7 +28,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Channel.ChannelStateOnChain
-
+  alias Aecore.Chain.Identifier
   require Logger
 
   @type id :: :account | :name | :commitment | :oracle | :contract | :channel
@@ -693,6 +693,44 @@ defmodule Aeutil.Serialization do
     else
       {:error, "#{__MODULE__} : Illegal PoW serialization"}
     end
+  end
+
+  @spec serialize_identity(Identifier.t() | list(Identifier.t())) :: List.t()
+  def serialize_identity(id) do
+    serialize_id(id, [])
+  end
+
+  defp serialize_id([], acc) do
+    Enum.reverse(acc)
+  end
+
+  defp serialize_id([id | ids], acc) do
+    {:ok, serialized_id} = Identifier.encode_data(id)
+    serialize_id(ids, [serialized_id | acc])
+  end
+
+  defp serialize_id(%Identifier{} = id, acc) do
+    {:ok, serialized_id} = Identifier.encode_data(id)
+    serialize_id([], [serialized_id | acc])
+  end
+
+  @spec deserialize_identity(binary() | list(binary())) :: List.t()
+  def deserialize_identity(deserialized_id) do
+    deserialize_id(deserialized_id, [])
+  end
+
+  defp deserialize_id([], acc) do
+    Enum.reverse(acc)
+  end
+
+  defp deserialize_id([bin | bins], acc) do
+    {:ok, deserialized_id} = Identifier.decode_data(bin)
+    deserialize_id(bins, [deserialized_id | acc])
+  end
+
+  defp deserialize_id(bin, acc) when is_binary(bin) do
+    {:ok, deserialized_id} = Identifier.decode_data(bin)
+    deserialize_id([], [deserialized_id | acc])
   end
 
   @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}
