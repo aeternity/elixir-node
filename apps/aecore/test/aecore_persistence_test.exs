@@ -97,7 +97,7 @@ defmodule PersistenceTest do
 
   defp get_account_state(account) do
     root_hashes_map = Persistence.get_all_chainstates(Chain.top_block_hash())
-    chainstate = Chain.transfrom_chainstate(:to_chainstate, root_hashes_map)
+    chainstate = Chain.transform_chainstate(:to_chainstate, root_hashes_map)
     empty_account = Account.empty()
 
     case AccountStateTree.get(chainstate.accounts, account) do
