@@ -116,6 +116,16 @@ config :aecore, :peers,
   ranch_acceptors: 10,
   sync_port: sync_port
 
+channel_port =
+  case System.get_env("CHANNEL_PORT") do
+    nil -> 3014
+    env -> String.to_integer(env)
+  end
+
+config :aecore, :channels,
+  ranch_acceptors: 10,
+  channel_port: channel_port
+
 config :aecore, :miner, resumed_by_default: false
 
 config :aecore, :tx_data,

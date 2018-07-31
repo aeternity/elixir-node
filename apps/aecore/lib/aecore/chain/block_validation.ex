@@ -125,7 +125,7 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_txs_hash([]) :: binary()
-  def calculate_txs_hash([]), do:  <<0::256>>
+  def calculate_txs_hash([]), do: <<0::256>>
 
   @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
   def calculate_txs_hash(txs) do
