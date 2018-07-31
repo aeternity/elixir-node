@@ -32,66 +32,101 @@ defmodule MultiNodeSyncTest do
     end)
   end
 
-  @tag timeout: 120_000
   @tag :sync_test
-  test "test nodes sync" do
-
+  test "spend_tx test" do
     TestFramework.sync_two_nodes("node1", "node2")
-    TestFramework.get_all_peers("node1")
-    TestFramework.get_all_peers("node2")
-
 
     TestFramework.sync_two_nodes("node2", "node3")
-    TestFramework.get_all_peers("node3")
 
     TestFramework.sync_two_nodes("node3", "node4")
-    TestFramework.get_all_peers("node4")
 
     TestFramework.mine_sync_block("node1")
     TestFramework.spend_tx("node1")
     TestFramework.mine_sync_block("node1")
 
-    # :timer.sleep(2000)
+    TestFramework.get_node_top_block_hash("node1")
 
-    # TestFramework.mine_sync_block("node2")
-    # TestFramework.register_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
+    TestFramework.get_node_top_block_hash("node4")
 
-    # TestFramework.extend_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
-
-
-    # TestFramework.mine_sync_block("node3")
-    # TestFramework.spend_tx("node3")
-    # TestFramework.mine_sync_block("node3")
-
-    # :timer.sleep(2000)
-
-    # TestFramework.mine_sync_block("node4")
-    # TestFramework.query_oracle("node4")
-    # TestFramework.mine_sync_block("node4")
-
-    # TestFramework.mine_sync_block("node2")
-    # TestFramework.respond_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
-
-
-    TestFramework.get_node_top_block_hash "node1"
-
-    TestFramework.get_node_top_block_hash "node2"
-    :timer.sleep 5000
-
-    # assert :synced == TestFramework.compare_nodes_by_top_block("node1", "node2")
-
-    # assert :synced == TestFramework.compare_nodes_by_top_block("node2", "node3")
-
-    # assert :synced == TestFramework.compare_nodes_by_top_block("node3", "node4")
-    IO.inspect TestFramework.get_state
+    :timer.sleep(2000)
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
+    TestFramework.delete_all_nodes()
+  end
 
-    IO.inspect TestFramework.get_state
+  @tag :sync_test
+  test "oracles test" do
+    TestFramework.sync_two_nodes("node1", "node2")
 
+    TestFramework.sync_two_nodes("node2", "node3")
+
+    TestFramework.sync_two_nodes("node3", "node4")
+
+    TestFramework.mine_sync_block("node2")
+    TestFramework.register_oracle("node2")
+    TestFramework.mine_sync_block("node2")
+
+    # :timer.sleep 3000
+
+    TestFramework.extend_oracle("node2")
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.mine_sync_block("node4")
+    TestFramework.query_oracle("node4")
+    TestFramework.mine_sync_block("node4")
+
+    TestFramework.mine_sync_block("node2")
+    TestFramework.respond_oracle("node2")
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.get_node_top_block("node1")
+
+    TestFramework.get_node_top_block("node4")
+
+    :timer.sleep(2000)
+
+    assert :synced == TestFramework.compare_nodes_by_top_block("node1", "node4")
+
+    TestFramework.delete_all_nodes()
+  end
+
+  @tag :sync_test
+  test "namings test" do
+    TestFramework.sync_two_nodes("node1", "node2")
+
+    TestFramework.sync_two_nodes("node2", "node3")
+
+    TestFramework.sync_two_nodes("node3", "node4")
+
+    TestFramework.mine_sync_block("node2")
+    TestFramework.naming_pre_claim("node2")
+    TestFramework.mine_sync_block("node2")
+
+    # :timer.sleep 3000
+
+    TestFramework.naming_claim("node2")
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.mine_sync_block("node4")
+    TestFramework.mine_sync_block("node4")
+    TestFramework.naming_update("node4")
+    TestFramework.mine_sync_block("node4")
+
+    TestFramework.mine_sync_block("node2")
+    TestFramework.naming_transfer("node2")
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.mine_sync_block("node2")
+    TestFramework.naming_revoke("node2")
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.get_node_top_block_hash("node1")
+
+    TestFramework.get_node_top_block_hash("node4")
+
+    :timer.sleep(2000)
+
+    assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
     TestFramework.delete_all_nodes()
   end
 

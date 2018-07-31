@@ -30,6 +30,12 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
   end
 
+  def get_balance(node_name) do
+    send_command(node_name, "pk = Wallet.get_public_key")
+    send_command(node_name, "{:acc_balance, Account.balance(Chain.chain_state().accounts, pk)}")
+    send_command(node_name, "")
+  end
+
   @doc """
     Updates top block state for 2 nodes and compares them.
     If top block of each node is equal - they are synced
@@ -72,12 +78,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def send_command(node_name, cmd) do
     # adding \n to cmd to imitate pressing enter in iex shell
     cmd = cmd <> "\n"
-    GenServer.call(__MODULE__, {:send_command, node_name, cmd})
-  end
-
-  @spec get_pool(String.t()) :: :ok | :unknown_node
-  def get_pool(node_name) do
-    send_command(node_name, "Pool.get_pool()")
+    GenServer.call(__MODULE__, {:send_command, node_name, cmd}, 10_000)
   end
 
   @doc """
@@ -90,11 +91,6 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   def delete_all_nodes do
     GenServer.call(__MODULE__, {:delete_all_nodes}, 20_000)
-  end
-
-  @spec update_peers_map(String.t()) :: :ok
-  defp update_peers_map(node_name) do
-    GenServer.call(__MODULE__, {:update_peers_map, node_name})
   end
 
   # oracles
@@ -122,6 +118,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
       node_name,
       "{:respond_oracle_int_obj, encoded_int_object}"
     )
+
+    send_command(node_name, " ")
   end
 
   @doc """
@@ -190,6 +188,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   @spec mine_sync_block(String.t()) :: :ok | :unknown_node
   def mine_sync_block(node_name) do
     send_command(node_name, "Miner.mine_sync_block_to_chain()")
+    get_balance(node_name)
   end
 
   # chain
@@ -204,16 +203,19 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
     send_command(
       node_name,
-      "serialized_block = Base.encode32(rlp_top_block)"
+      "{:respond_top_block, Base.encode32(rlp_top_block)}"
     )
 
-    send_command(node_name, "{:respond_top_block, serialized_block}")
+    send_command(node_name, " ")
+
+    # send_command(node_name, "{:respond_top_block, serialized_block}")
   end
 
   @spec get_node_top_block_hash(String.t()) :: :ok | :unknown_node
   def get_node_top_block_hash(node_name) do
     send_command(node_name, "block_hash = Chain.top_block_hash() |> Base.encode32")
     send_command(node_name, "{:respond_hash, block_hash}")
+    send_command(node_name, " ")
   end
 
   # naming txs
@@ -317,58 +319,36 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
 
-  # defp update_data(fun, state, node_name, key) do
-  #   with true <- Map.has_key?(state, node_name),
-  #        path <- String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, ""),
-  #        file <- path <> "/result.json",
-  #        {:ok, data} <- File.read(file),
-  #        {:ok, decoded_data} <- Poison.decode(data) do
-  #     # decoding all the keys and the data to it's initial state
-  #     decoded_data = fun.(decoded_data)
-
-  #     # updating the state and removing the json file
-  #     new_state = put_in(state[node_name][key], decoded_data)
-  #     File.rm(file)
-  #     {:reply, :ok, new_state}
-  #   else
-  #     false -> {:reply, :no_such_node, state}
-  #     {:error, reason} -> {:reply, reason, state}
-  #   end
-  # end
-
   defp update_data(state, result, node, :peers) do
 
-    # one_line_res = String.replace(result, "\n", "")
-    # respond_res = Regex.run(~r/({:respond_peers}.*)/, one_line_res) |> List.last()
-    # if !Regex.match?(~r/({:respond_peers, \[\])/, one_line_res) do
-      res = Regex.run(~r/{(:respond_peers,) .*}/, result)
+    res = Regex.run(~r/{(:respond_peers,) .*}/, result)
 
-      res = List.first(res)
-      [host] = Regex.run(~r/(?<=host: )[^,]*/, res)
-      [port] = Regex.run(~r/(?<=port: )[^,]*/, res)
-      [pubkey] = Regex.run(~r/(?<=pubkey: )[^}]*/, res)
-      formatted_host = host |> String.replace("\'", "") |> String.replace("\"", "")
-      formatted_port = String.to_integer(port)
-      formatted_pubkey = pubkey |> String.replace("\"", "") |> String.trim() |> Base.decode32!()
+    res = List.first(res)
+    [host] = Regex.run(~r/(?<=host: )[^,]*/, res)
+    [port] = Regex.run(~r/(?<=port: )[^,]*/, res)
+    [pubkey] = Regex.run(~r/(?<=pubkey: )[^}]*/, res)
+    formatted_host = host |> String.replace("\'", "") |> String.replace("\"", "")
+    formatted_port = String.to_integer(port)
+    formatted_pubkey = pubkey |> String.replace("\"", "") |> String.trim() |> Base.decode32!()
 
-      peers_map = %{
-        host: formatted_host,
-        port: formatted_port,
-        pubkey: formatted_pubkey
-      }
+    peers_map = %{
+      host: formatted_host,
+      port: formatted_port,
+      pubkey: formatted_pubkey
+    }
 
-      new_state = put_in(state[node].peers, peers_map)
-      {:noreply, new_state}
+    new_state = put_in(state[node].peers, peers_map)
+    {:reply, :ok, new_state}
   end
 
   defp update_data(state, result, respond, port, :top_block_hash) do
-    {node, _} = Enum.find(state, fn { _, value} -> value.process_port == port end)
-    IO.inspect one_line_res = String.replace(result, "\n", "")
+    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+    one_line_res = String.replace(result, "\n", "")
     respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res) |> List.last()
-    IO.inspect res = Regex.run(~r/"(.*)"/, respond_res) |> List.last()
-    IO.inspect base_decoded = Base.decode32!(res)
+    res = Regex.run(~r/"(.*)"/, respond_res) |> List.last()
+    base_decoded = Base.decode32!(res)
     new_state = put_in(state[node].top_block_hash, base_decoded)
-    {:noreply, new_state}
+    {:reply, :ok, new_state}
   end
 
   defp update_data(state, result, respond, port, type) do
@@ -377,15 +357,21 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res) |> List.last()
     res = Regex.run(~r/"(.*)"/, respond_res) |> List.last()
     base_decoded = Base.decode32!(res)
-    rlp_decoded = Serialization.rlp_decode(base_decoded)
+
+    if(type == :oracle_interaction_objects) do
+      {:ok, rlp_decoded} = Serialization.rlp_decode(base_decoded)
+    else
+      rlp_decoded = Serialization.rlp_decode(base_decoded)
+    end
+
     new_state = put_in(state[node][type], rlp_decoded)
-    {:noreply, new_state}
+    # {:noreply, new_state}
+    {:reply, :ok, new_state}
   end
 
   def check_peers(state, node, result) do
     one_line_res = String.replace(result, "\n", "")
     if Regex.match?(~r/({:respond_peers, \[\])/, one_line_res) do
-      get_all_peers(node)
       {:noreply, state}
     else
       update_data(state, one_line_res, node, :peers)
@@ -394,35 +380,45 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info({port, {:data, result}}, state) do
-    cond do
-      result =~ ":respond_top_block" ->
-        update_data(state, result, ":respond_top_block", port, :top_block)
-
-      result =~ ":respond_oracle_int_obj" ->
-        update_data(state, result, ":respond_oracle_int_obj", port, :oracle_interaction_objects)
-
-      result =~ ":respond_peers" ->
-        {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-        check_peers(state, node, result)
-
-      result =~ ":respond_hash" ->
-
-        update_data(state, result, ":respond_hash", port, :top_block_hash)
-
-      result =~ ":error" ->
-        Logger.error(fn -> result end)
-        {:noreply, state}
-
-      true ->
-        {:noreply, state}
-    end
+  def handle_info(res, state) do
+    {:noreply, state}
   end
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
     if Map.has_key?(state, node_name) do
-      Port.command(state[node_name].process_port, cmd)
-      {:reply, :ok, state}
+      port = state[node_name].process_port
+      Port.command(port, cmd)
+      receive do
+        {^port, {:data, result}} ->
+
+          cond do
+            result =~ ":respond_top_block" ->
+              update_data(state, result, ":respond_top_block", port, :top_block)
+
+            result =~ ":respond_hash" ->
+              update_data(state, result, ":respond_hash", port, :top_block_hash)
+
+            result =~ ":respond_oracle_int_obj" ->
+              update_data(state, result, ":respond_oracle_int_obj", port, :oracle_interaction_objects)
+
+            result =~ ":respond_peers" ->
+              {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+              check_peers(state, node, result)
+
+            result =~ ":acc_balance" ->
+              {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+              {balance, _} = Regex.run(~r/\d+/, result) |> List.first() |> Integer.parse()
+              new_state = put_in(state[node].balance, balance)
+              {:reply, result, new_state}
+
+            result =~ ":error" ->
+              Logger.error(fn -> result end)
+              {:reply, :error, state}
+
+            true ->
+              {:reply, :ok, state}
+          end
+      end
     else
       {:reply, :unknown_node, state}
     end
@@ -501,7 +497,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     block1 = state[node_name1].top_block
     block2 = state[node_name2].top_block
 
-    if block1 == block2 do
+    if block1 != nil && block2 != nil && block1 == block2 do
       {:reply, :synced, state}
     else
       {:reply, :not_synced, state}
@@ -512,7 +508,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     hash1 = state[node_name1].top_block_hash
     hash2 = state[node_name2].top_block_hash
 
-    if hash1 == hash2 do
+    if hash1 != nil && hash2 != nil && hash1 == hash2 do
       {:reply, :synced, state}
     else
       {:reply, :not_synced, state}
@@ -541,6 +537,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
             sync_port: sync_port,
             top_block: nil,
             top_block_hash: nil,
+            balance: 0,
             peers: %{},
             oracle_interaction_objects: %{}
           })
