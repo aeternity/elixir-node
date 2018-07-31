@@ -397,7 +397,7 @@ defmodule Aecore.Chain.Worker do
         ## Transfrom from chain state
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
+            transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
@@ -429,7 +429,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
+            transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
@@ -483,7 +483,7 @@ defmodule Aecore.Chain.Worker do
             else
               struct(
                 Chainstate,
-                transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
+                transform_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
               )
             end
 
@@ -629,7 +629,7 @@ defmodule Aecore.Chain.Worker do
               ch_state =
                 struct(
                   Chainstate,
-                  transfrom_chainstate(
+                  transform_chainstate(
                     :to_chainstate,
                     chainstate
                   )
@@ -676,9 +676,9 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def transfrom_chainstate(_, {:error, _}), do: %{}
+  def transform_chainstate(_, {:error, _}), do: %{}
 
-  def transfrom_chainstate(strategy, {:ok, chainstate}) do
+  def transform_chainstate(strategy, {:ok, chainstate}) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
   end
 
