@@ -55,6 +55,12 @@ peerkeys_path =
     env -> env
   end
 
+accounts_path =
+  case System.get_env("ACCOUNTS_PATH") do
+    nil -> "apps/aecore/config/genesis/"
+    env -> env
+  end
+
 config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
@@ -103,6 +109,8 @@ config :aecore, :aewallet,
   path: Path.absname(aewallet_path)
 
 config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
+
+config :aecore, :account_path, path: Path.absname(accounts_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),

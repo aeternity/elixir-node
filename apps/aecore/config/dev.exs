@@ -38,6 +38,14 @@ config :aecore, :persistence,
   path: Path.absname(persistence_path),
   write_options: [sync: true, disable_wal: false]
 
+accounts_path =
+  case System.get_env("ACCOUNTS_PATH") do
+    nil -> "apps/aecore/config/genesis/"
+    env -> env
+  end
+
+config :aecore, :account_path, path: Path.absname(accounts_path)
+
 new_candidate_nonce_count =
   case System.get_env("NEW_CANDIDATE_NONCE_COUNT") do
     nil -> 10
