@@ -39,7 +39,39 @@ defmodule Aecore.Channel.Session do
     end
   end
 
-  def handle_info(:timeout, %{host: host, port: port}) do
+  def open_channel(
+        channel_info,
+        pid
+      ) do
+    1
+    |> encode(channel_info)
+    |> send_msg(pid)
+  end
+
+  def encode(1, %{
+        chain_hash: chain_hash,
+        channel_id: channel_id,
+        lock_period: lock_period,
+        push_amount: push_amount,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        channel_reserve: channel_reserve,
+        initiator_pubkey: initiator_pubkey
+      }) do
+    <<1::8, chain_hash::256, channel_id::256, lock_period::16, push_amount::64, initiator_amount::64,
+      responder_amount::64, channel_reserve::64, initiator_pubkey::256>>
+  end
+
+  defp send_msg(msg, pid) do
+          IO.inspect(msg, limit: :infinity)
+    GenServer.call(pid, {:send_msg, msg})
+  end
+  def handle_call({:send_msg,msg},_from,%{connection: socket} = state) do
+    :ok = :enoise.send(socket, msg)
+    {:noreply, state}
+  end
+
+    def handle_info(:timeout, %{host: host, port: port}) do
     case :gen_tcp.connect(host, port, [:binary, reuseaddr: true, active: true]) do
       {:ok, socket} ->
         noise_opts = P2PUtils.noise_opts()
@@ -59,6 +91,11 @@ defmodule Aecore.Channel.Session do
         Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, %{}}
     end
+  end
+
+  def handle_info({:noise,_,msg}, state) do
+    IO.inspect(msg,limit: :infinity)
+    {:noreply,state}
   end
 
   def handle_info({:tcp_closed, _}, state) do
