@@ -787,6 +787,9 @@ defmodule Aeutil.Serialization do
   def type_to_tag(ChannelSlashTx), do: {:ok, 45}
 
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
+
+  # 101 is reserved for ChannelStateOffChain signing
+
   def type_to_tag(type), do: {:error, "#{__MODULE__} : Unknown TX Type: #{type}"}
 
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
@@ -813,6 +816,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(21), do: OracleQuery
   def tag_to_type(11), do: SignedTx
   def tag_to_type(100), do: Block
+  # 101 is reserved for ChannelStateOffChain signing
   def tag_to_type(tag), do: {:error, "#{__MODULE__} : Unknown TX Tag: #{inspect(tag)}"}
 
   @spec get_version(atom()) :: non_neg_integer() | {:error, String.t()}
