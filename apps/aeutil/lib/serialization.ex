@@ -100,13 +100,6 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  @spec pack_binary(term()) :: binary()
-  def pack_binary(term) do
-    term
-    |> remove_struct()
-    |> Msgpax.pack!(iodata: false)
-  end
-
   @doc """
   Loops through a structure are simplifies it. Removes all the strucutured maps
   """

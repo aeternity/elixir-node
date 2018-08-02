@@ -40,7 +40,9 @@ defmodule Aecore.Chain.Identifier do
 
       _ ->
         {:error,
-         "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
+         "Could not create an id, reason: Invalid value: #{inspect(value)} or type: #{
+           inspect(type)
+         }"}
     end
   end
 
