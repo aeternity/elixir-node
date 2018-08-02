@@ -39,13 +39,19 @@ persistence_path =
 
 aewallet_pass =
   case System.get_env("AEWALLET_PASS") do
-    nil -> " "
+    nil -> <<>>
     env -> env
   end
 
 aewallet_path =
   case System.get_env("AEWALLET_PATH") do
     nil -> "apps/aecore/priv/aewallet"
+    env -> env
+  end
+
+peer_keys_pass =
+  case System.get_env("PEER_KEYS_PASS") do
+    nil -> <<>>
     env -> env
   end
 
@@ -102,7 +108,9 @@ config :aecore, :aewallet,
   pass: aewallet_pass,
   path: Path.absname(aewallet_path)
 
-config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
+config :aecore, :peer_keys,
+  pass: peer_keys_pass,
+  path: Path.absname(peerkeys_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
