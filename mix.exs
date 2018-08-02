@@ -58,7 +58,6 @@ defmodule EpochElixir.Mixfile do
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
-      {:msgpax, "~> 2.1.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:ranch,
        github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},

@@ -39,7 +39,8 @@ defmodule Aecore.Chain.Identifier do
         {:ok, %Identifier{type: type, value: value}}
 
       _ ->
-        create_identity(value, type)
+        {:error,
+         "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
     end
   end
 
