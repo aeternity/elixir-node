@@ -9,7 +9,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
-  @signing_tag 101
+  @signing_tag 102
 
   @version 1
 

@@ -403,14 +403,7 @@ defmodule Aeutil.Serialization do
   def decode_ttl_type(1), do: :absolute
   def decode_ttl_type(0), do: :relative
 
-  # Optional function-workaroud:
-  # As we have differences in value types in some fields,
-  # which means that we encode these fields different apart from what Epoch does,
-  # we need to recognize the origins of this value.
-  # My proposal is (until the problem is solved) to add
-  # specific prefix to the data before encodings, for example, "$æx"
-  # this prefix will allow us to know, how the data should be handled.
-  # But it also makes problems and inconsistency in Epoch, because they dont handle these prefixes.
+  # Temporary workaround for encoding inconsistances
   @spec decode_format(binary()) :: binary()
   def decode_format(<<"$æx", binary::binary>>) do
     transform_item(binary, :binary)
@@ -437,23 +430,24 @@ defmodule Aeutil.Serialization do
   def tag_to_type(34), do: {:ok, Aecore.Naming.Tx.NameUpdateTx}
   def tag_to_type(35), do: {:ok, Aecore.Naming.Tx.NameRevokeTx}
   def tag_to_type(36), do: {:ok, Aecore.Naming.Tx.NameTransferTx}
-  # Contract 	40
-  # Contract call 	41
-  # Contract create transaction 	42
-  # Contract call transaction 	43
+  # Contract - 40
+  # Contract call - 41
+  # Contract create transaction - 42
+  # Contract call transaction - 43
   def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
-  # Channel deposit transaction 	51
-  # Channel withdraw transaction 	52
+  # Channel deposit transaction - 51
+  # Channel withdraw transaction - 52
   def tag_to_type(53), do: {:ok, Aecore.Channel.Tx.ChannelCloseMutalTx}
   def tag_to_type(54), do: {:ok, Aecore.Channel.Tx.ChannelCloseSoloTx}
   def tag_to_type(55), do: {:ok, Aecore.Channel.Tx.ChannelSlashTx}
   def tag_to_type(57), do: {:ok, Aecore.Channel.Tx.ChannelSettleTx}
   def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
-  # Channel snapshot transaction 	59
-  # POI 	60
-  # NON EPOCH TAG
+  # Channel snapshot transaction - 59
+  # POI - 60
+  # Non Epoch tags:
   def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
   def tag_to_type(101), do: {:ok, Aecore.Channel.ChannelStateOffChain}
+  # ChannelStateOffChain signing_form 102
   def tag_to_type(tag), do: {:error, "#{__MODULE__}: Unknown tag: #{inspect(tag)}"}
 
   @spec type_to_tag(atom()) :: {:ok, non_neg_integer()} | {:error, String.t()}
@@ -473,22 +467,23 @@ defmodule Aeutil.Serialization do
   def type_to_tag(Aecore.Naming.Tx.NameUpdateTx), do: {:ok, 34}
   def type_to_tag(Aecore.Naming.Tx.NameRevokeTx), do: {:ok, 35}
   def type_to_tag(Aecore.Naming.Tx.NameTransferTx), do: {:ok, 36}
-  # Contract 	40
-  # Contract call 	41
-  # Contract create transaction 	42
-  # Contract call transaction 	43
+  # Contract - 40
+  # Contract call - 41
+  # Contract create transaction - 42
+  # Contract call transaction - 43
   def type_to_tag(Aecore.Channel.Tx.ChannelCreateTx), do: {:ok, 50}
-  # Channel deposit transaction 	51
-  # Channel withdraw transaction 	52
+  # Channel deposit transaction - 51
+  # Channel withdraw transaction - 52
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseMutalTx), do: {:ok, 53}
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseSoloTx), do: {:ok, 54}
   def type_to_tag(Aecore.Channel.Tx.ChannelSlashTx), do: {:ok, 55}
   def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 57}
   def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
-  # Channel snapshot transaction 	59
-  # POI 	60
-  # NON EPOCH TAG
+  # Channel snapshot transaction - 59
+  # POI - 60
+  # Non Epoch tags
   def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}
   def type_to_tag(Aecore.Channel.ChannelStateOffChain), do: {:ok, 101}
+  # ChannelStateOffChain signing_form 102
   def type_to_tag(type), do: {:error, "#{__MODULE__}: Non serializable type: #{type}"}
 end

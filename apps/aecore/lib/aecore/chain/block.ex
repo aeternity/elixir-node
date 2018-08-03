@@ -9,7 +9,6 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.BlockValidation
   alias Aeutil.Serialization
 
-  # FIXME: Duplicateof header version
   @version 14
 
   @type t :: %Block{
