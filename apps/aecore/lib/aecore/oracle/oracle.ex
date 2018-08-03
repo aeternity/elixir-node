@@ -18,6 +18,8 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
+  alias Aeutil.Parser
+  alias Aecore.Chain.Identifier
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
 
@@ -247,7 +249,7 @@ defmodule Aecore.Oracle.Oracle do
           AccountStateTree.accounts_state()
   def refund_sender(query, accounts_state) do
     if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+      AccountStateTree.update(accounts_state, query.sender_address.value, fn account ->
         Map.update!(account, :balance, &(&1 + query.fee))
       end)
     else
@@ -288,7 +290,6 @@ defmodule Aecore.Oracle.Oracle do
   def encode_to_list(%Oracle{} = oracle) do
     [
       @version,
-      oracle.owner,
       Serialization.transform_item(oracle.query_format),
       Serialization.transform_item(oracle.response_format),
       oracle.query_fee,
@@ -303,7 +304,7 @@ defmodule Aecore.Oracle.Oracle do
       ) do
     {:ok,
      %Oracle{
-       owner: orc_owner,
+       owner: %Identifier{type: :oracle},
        query_format: Serialization.transform_item(query_format, :binary),
        response_format: Serialization.transform_item(response_format, :binary),
        query_fee: Serialization.transform_item(query_fee, :int),
@@ -317,13 +318,5 @@ defmodule Aecore.Oracle.Oracle do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
-  end
-
-  def rlp_encode(%Oracle{} = oracle) do
-    Serialization.rlp_encode(oracle)
-  end
-
-  def rlp_decode(binary) do
-    Serialization.rlp_decode_only(binary, Oracle)
   end
 end

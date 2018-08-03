@@ -105,19 +105,30 @@ defmodule Aecore.Tx.DataTx do
         ) :: t()
   def init(type, payload, senders, fee, nonce, ttl \\ 0) do
     if is_list(senders) do
+      identified_senders =
+        for sender <- senders do
+          with {:ok, identified_senders} <- Identifier.create_identity(sender, :account) do
+            identified_senders
+          else
+            {:error, msg} -> {:error, msg}
+          end
+        end
+
       %DataTx{
         type: type,
         payload: type.init(payload),
-        senders: senders,
+        senders: identified_senders,
         nonce: nonce,
         fee: fee,
         ttl: ttl
       }
     else
+      {:ok, sender} = Identifier.create_identity(senders, :account)
+
       %DataTx{
         type: type,
         payload: type.init(payload),
-        senders: [senders],
+        senders: [sender],
         nonce: nonce,
         fee: fee,
         ttl: ttl
@@ -132,7 +143,9 @@ defmodule Aecore.Tx.DataTx do
 
   @spec senders(t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
-    senders
+    for sender <- senders do
+      sender.value
+    end
   end
 
   @spec main_sender(t()) :: binary() | nil
@@ -156,7 +169,7 @@ defmodule Aecore.Tx.DataTx do
   @spec payload(t()) :: map()
   def payload(%DataTx{payload: payload, type: type}) do
     if Enum.member?(valid_types(), type) do
-      type.init(payload)
+      payload
     else
       Logger.error("Call to DataTx payload with invalid transaction type")
       %{}
@@ -273,7 +286,16 @@ defmodule Aecore.Tx.DataTx do
         Serialization.serialize_value(main_sender(tx), :sender)
       )
     else
-      Map.put(map_without_senders, "senders", Serialization.serialize_value(tx.senders, :sender))
+      new_senders =
+        for sender <- tx.senders do
+          sender.value
+        end
+
+      Map.put(
+        map_without_senders,
+        "senders",
+        Serialization.serialize_value(new_senders, :senders)
+      )
     end
   end
 
@@ -319,7 +341,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp senders_pubkeys_size_valid?([sender | rest]) do
-    if Wallet.key_size_valid?(sender) do
+    if Wallet.key_size_valid?(sender.value) do
       senders_pubkeys_size_valid?(rest)
     else
       false

@@ -63,7 +63,7 @@ defmodule PersistenceTest do
     assert :not_found = get_account_state(persistance_state.account2)
 
     ## For all accounts
-    all_accounts = Persistence.get_all_chainstates(Chain.top_block_hash())
+    {:ok, all_accounts} = Persistence.get_all_chainstates(Chain.top_block_hash())
     assert false == Enum.empty?(Map.keys(all_accounts))
   end
 
@@ -71,8 +71,6 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
-
-    Map.values(Persistence.get_blocks(2))
 
     [block1, block2] =
       Enum.sort(Map.values(Persistence.get_blocks(2)), fn b1, b2 ->
@@ -99,7 +97,7 @@ defmodule PersistenceTest do
 
   defp get_account_state(account) do
     root_hashes_map = Persistence.get_all_chainstates(Chain.top_block_hash())
-    chainstate = Chain.transfrom_chainstate(:to_chainstate, root_hashes_map)
+    chainstate = Chain.transform_chainstate(:to_chainstate, root_hashes_map)
     empty_account = Account.empty()
 
     case AccountStateTree.get(chainstate.accounts, account) do

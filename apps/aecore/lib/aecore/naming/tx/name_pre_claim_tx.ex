@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Serialization
 
@@ -47,7 +48,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec init(payload()) :: t()
   def init(%{commitment: commitment} = _payload) do
-    %NamePreClaimTx{commitment: commitment}
+    {:ok, identified_commitment} = Identifier.create_identity(commitment, :commitment)
+
+    %NamePreClaimTx{commitment: identified_commitment}
   end
 
   @doc """
@@ -58,7 +61,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(commitment) != Hash.get_hash_bytes_size() ->
+      byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
          "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}
 
@@ -94,9 +97,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
-    commitment = NameCommitment.create(tx.commitment, sender, block_height, commitment_expires)
+    commitment = NameCommitment.create(tx.commitment.value, sender, block_height, commitment_expires)
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment, commitment)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end

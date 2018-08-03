@@ -13,6 +13,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
   alias Aeutil.Serialization
 
   require Logger
@@ -59,7 +60,9 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @spec init(payload()) :: t()
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    %SpendTx{receiver: receiver, amount: amount, payload: payload, version: version}
+    {:ok, identified_receiver} = Identifier.create_identity(receiver, :account)
+
+    %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
   end
 
   @doc """
@@ -76,7 +79,7 @@ defmodule Aecore.Account.Tx.SpendTx do
       tx.version != get_tx_version() ->
         {:error, "#{__MODULE__}: Invalid version"}
 
-      !Wallet.key_size_valid?(receiver) ->
+      !Wallet.key_size_valid?(receiver.value) ->
         {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       length(senders) != 1 ->
@@ -109,7 +112,7 @@ defmodule Aecore.Account.Tx.SpendTx do
       |> AccountStateTree.update(sender, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.amount * -1)
       end)
-      |> AccountStateTree.update(tx.receiver, fn acc ->
+      |> AccountStateTree.update(tx.receiver.value, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.amount)
       end)
 

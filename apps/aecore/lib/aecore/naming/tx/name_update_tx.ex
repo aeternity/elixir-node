@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Serialization
 
@@ -59,7 +60,14 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    %NameUpdateTx{hash: hash, expire_by: expire_by, client_ttl: client_ttl, pointers: pointers}
+    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+
+    %NameUpdateTx{
+      hash: identified_name_hash,
+      expire_by: expire_by,
+      client_ttl: client_ttl,
+      pointers: pointers
+    }
   end
 
   @doc """
@@ -68,7 +76,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
-          hash: hash,
+          hash: identified_hash,
           expire_by: _expire_by,
           client_ttl: client_ttl,
           pointers: _pointers
@@ -81,8 +89,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       client_ttl > GovernanceConstants.client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
 
-      byte_size(hash) != Hash.get_hash_bytes_size() ->
-        {:error, "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(hash))}"}
+      byte_size(identified_hash.value) != Hash.get_hash_bytes_size() ->
+        {:error,
+         "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(identified_hash.value))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -112,7 +121,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         %NameUpdateTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
 
     claim = %{
       claim_to_update
@@ -121,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         ttl: tx.client_ttl
     }
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -147,7 +156,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -156,7 +165,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 

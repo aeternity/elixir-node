@@ -46,7 +46,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   # Callbacks
 
   @spec init(payload()) :: t()
-  def init(%{name: name, name_salt: name_salt} = _payload) do
+  def init(%{name: name, name_salt: name_salt}) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
 
@@ -143,7 +143,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner != sender ->
+      pre_claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)

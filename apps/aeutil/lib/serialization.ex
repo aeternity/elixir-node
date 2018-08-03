@@ -12,9 +12,11 @@ defmodule Aeutil.Serialization do
   alias Aecore.Account.Account
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Chain.Identifier
 
   require Logger
 
+  @type id :: :account | :name | :commitment | :oracle | :contract | :channel
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
@@ -115,7 +117,10 @@ defmodule Aeutil.Serialization do
     value
     |> remove_struct()
     |> Enum.reduce(%{}, fn {key, val}, new_val ->
-      Map.put(new_val, serialize_value(key), serialize_value(val, key))
+      case key do
+        :receiver -> Map.put(new_val, serialize_value(key), serialize_value(val.value, key))
+        _ -> Map.put(new_val, serialize_value(key), serialize_value(val, key))
+      end
     end)
   end
 
@@ -152,10 +157,10 @@ defmodule Aeutil.Serialization do
         OracleQueryTx.base58c_encode(value)
 
       :signature ->
-        base64_binary(value, :serialize)
+        SignedTx.base58c_encode_signature(value)
 
       :signatures ->
-        base64_binary(value, :serialize)
+        SignedTx.base58c_encode_signature(value)
 
       :proof ->
         base64_binary(value, :serialize)
@@ -252,10 +257,10 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :signature ->
-        base64_binary(value, :deserialize)
+        SignedTx.base58c_decode_signature(value)
 
       :signatures ->
-        base64_binary(value, :deserialize)
+        SignedTx.base58c_decode_signature(value)
 
       :proof ->
         base64_binary(value, :deserialize)
