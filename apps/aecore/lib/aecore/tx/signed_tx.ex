@@ -3,14 +3,13 @@ defmodule Aecore.Tx.SignedTx do
   Aecore structure of a signed transaction.
   """
 
-  alias Aecore.Keys.Wallet
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aewallet.Signing
   alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
+  alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Bits
   alias Aeutil.Hash
 
@@ -18,13 +17,13 @@ defmodule Aecore.Tx.SignedTx do
 
   @type t :: %SignedTx{
           data: DataTx.t(),
-          signatures: list(Wallet.pubkey())
+          signatures: list(Keys.pubkey())
         }
 
   defstruct [:data, :signatures]
   use ExConstructor
 
-  @spec create(DataTx.t(), list(Wallet.pubkey())) :: t()
+  @spec create(DataTx.t(), list(Keys.pubkey())) :: t()
   def create(data, signatures \\ []) do
     %SignedTx{data: data, signatures: signatures}
   end
@@ -87,8 +86,8 @@ defmodule Aecore.Tx.SignedTx do
     new_signature =
       data
       |> Serialization.rlp_encode(:tx)
-      |> Signing.sign(priv_key)
-
+      |> Keys.sign(priv_key)
+    
     {success, new_sigs_reversed} =
       sigs
       |> Enum.zip(DataTx.senders(data))
@@ -223,11 +222,11 @@ defmodule Aecore.Tx.SignedTx do
             Logger.error("Missing signature of #{acc}")
             false
 
-          !Wallet.key_size_valid?(acc) ->
+          !Keys.key_size_valid?(acc) ->
             Logger.error("Wrong sender size")
             false
 
-          Signing.verify(data_binary, sig, acc) ->
+          Keys.verify(data_binary, sig, acc) ->
             validity
 
           true ->

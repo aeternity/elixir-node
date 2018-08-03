@@ -5,11 +5,10 @@ defmodule AecoreChannelTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Channel.Worker, as: Channels
 
   alias Aecore.Channel.{
-    ChannelStateOffChain,
     ChannelStateOnChain,
     ChannelStatePeer,
     ChannelStateTree
@@ -32,12 +31,12 @@ defmodule AecoreChannelTest do
       TestUtils.clean_blockchain()
     end)
 
-    pk1 = Wallet.get_public_key("M/1")
-    pk2 = Wallet.get_public_key("M/2")
+    %{public: pk1, secret: prk1} = :enacl.sign_keypair()
+    %{public: pk2, secret: prk2} = :enacl.sign_keypair()
 
     for _ <- 1..5, do: Miner.mine_sync_block_to_chain()
 
-    TestUtils.spend_list(Wallet.get_public_key(), Wallet.get_private_key(), [
+    TestUtils.spend_list(Keys.sign_pubkey(), Keys.sign_privkey(), [
       {pk1, 200},
       {pk2, 200}
     ])
@@ -54,9 +53,9 @@ defmodule AecoreChannelTest do
 
     %{
       pk1: pk1,
-      sk1: Wallet.get_private_key("m/1"),
+      sk1: prk1,
       pk2: pk2,
-      sk2: Wallet.get_private_key("m/2")
+      sk2: prk2
     }
   end
 

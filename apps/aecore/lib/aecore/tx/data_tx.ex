@@ -7,7 +7,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
@@ -336,7 +336,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp senders_pubkeys_size_valid?([sender | rest]) do
-    if Wallet.key_size_valid?(sender) do
+    if Keys.key_size_valid?(sender) do
       senders_pubkeys_size_valid?(rest)
     else
       false

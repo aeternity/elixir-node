@@ -11,8 +11,7 @@ defmodule Aecore.Keys.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      #Aecore.Keys.Worker
-      Aecore.Keys.WorkerNew
+      Aecore.Keys.Worker
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

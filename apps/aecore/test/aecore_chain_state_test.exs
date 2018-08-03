@@ -8,7 +8,6 @@ defmodule AecoreChainstateTest do
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Wallet
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
@@ -21,12 +20,15 @@ defmodule AecoreChainstateTest do
   end
 
   setup do
+    %{public: a_pub_key} = :enacl.sign_keypair()
+    %{public: b_pub_key, secret: b_priv_key} = :enacl.sign_keypair()
+    %{public: c_pub_key, secret: c_priv_key} = :enacl.sign_keypair()
     [
-      a_pub_key: Wallet.get_public_key(),
-      b_pub_key: Wallet.get_public_key("M/0"),
-      b_priv_key: Wallet.get_private_key("m/0"),
-      c_pub_key: Wallet.get_public_key("M/1"),
-      c_priv_key: Wallet.get_private_key("m/1")
+      a_pub_key: a_pub_key,
+      b_pub_key: b_pub_key,
+      b_priv_key: b_priv_key,
+      c_pub_key: c_pub_key,
+      c_priv_key: c_priv_key
     ]
   end
 

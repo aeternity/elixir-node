@@ -12,9 +12,8 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Keys.Wallet
 
   setup do
     # Persistence.delete_all_blocks()
@@ -44,7 +43,7 @@ defmodule AecoreChainTest do
         [],
         chain_state,
         2,
-        Wallet.get_public_key()
+        Keys.sign_pubkey()
       )
 
     new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
@@ -57,7 +56,7 @@ defmodule AecoreChainTest do
         root_hash: new_root_hash,
         target: 553_713_663,
         nonce: 0,
-        miner: Wallet.get_public_key(),
+        miner: Keys.sign_pubkey(),
         time: System.system_time(:milliseconds),
         version: 14
       },

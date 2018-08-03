@@ -1,128 +1,273 @@
 defmodule Aecore.Keys.Worker do
   @moduledoc """
-  Module for handling the creation of a Wallet file
+  Module for handling the Wallet (signing) keys and Peer keys.
+  Keys are created on first run of the project and saved in respective dirs.
+  Public sign key and Peer keys are kept in GenServer state.
+  Sign privkey is always loaded/decrypted from it's local file for security.
   """
 
   use GenServer
 
-  alias Aewallet.Wallet, as: AeternityWallet
-  alias Aewallet.KeyPair
-  alias Aecore.Keys.Wallet
-  alias Aecore.Keys.Peer, as: PeerKeys
-  alias Aecore.Keys.Utils
+  @typedoc "Public key for signing or for peers - 32 bytes in size"
+  @type pubkey :: binary()
 
-  @typedoc "Public key representing an account"
-  @type pubkey() :: binary()
+  @typedoc "Private key for signing - 64 bytes in size"
+  @type sign_priv_key :: binary()
 
-  @typedoc "Private key of the account"
-  @type privkey() :: binary()
+  @typedoc "Private key for peers - 32 bytes in size"
+  @type peer_priv_key :: binary()
+  
+  @pub_size 32
+  @priv_sign_size 64
+  @priv_peer_size 32
 
-  @typedoc "Wallet type"
-  @type wallet_type :: :ae | :btc
-
-  @typedoc "Options for network"
-  @type opts :: :mainnet | :testnet
-
-  ## Client API
+  @filename_sign_pub "sign_key.pub"
+  @filename_sign_priv "sign_key"
+  
+  @filename_peer_pub "peer_key.pub"
+  @filename_peer_priv "peer_key"
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{wallet_pubkey: nil, peer_keys: nil}, name: __MODULE__)
+    GenServer.start_link(
+      __MODULE__,
+      %{sign_pubkey: <<>>,
+        sign_priv_file: <<>>,
+        peer_pubkey: <<>>,
+        peer_privkey: <<>>},
+      name: __MODULE__)
   end
 
   def init(state) do
-    with :ok <- Wallet.get_wallet(),
-         :ok <- PeerKeys.create_keypair() do
-      {:ok, state}
+    with {:ok, sign_pubkey, sign_priv_file} <- setup_sign_keys(pwd(:sign), dir(:sign)),
+         {:ok, peer_pubkey, peer_privkey} <- setup_peer_keys(pwd(:peer), dir(:peer)) do
+      {:ok, %{sign_pubkey: sign_pubkey,
+              sign_priv_file: sign_priv_file,
+              peer_pubkey: peer_pubkey,
+              peer_privkey: peer_privkey}}
     else
-      {:error, reason} ->
-        {:stop, "Failed due to #{reason} error.."}
+      _ ->
+      {:stop, :reason} ##Check this! Here we should crash maybe.
+    end
+    
+  end
+
+  @doc """
+  Returns the public key for signing
+  """
+  @spec sign_pubkey() :: pubkey()
+  def sign_pubkey do
+    GenServer.call(__MODULE__, :sign_pubkey)
+  end
+
+  @doc """
+  Returns the private key for signing.
+  """
+  @spec sign_privkey() :: sign_priv_key()
+  def sign_privkey do
+    GenServer.call(__MODULE__, :sign_privkey)
+  end
+
+  @doc """
+  Returns the public key for Nodes peer communication
+  """
+  @spec peer_keypair() :: {pubkey(), peer_priv_key()}
+  def peer_keypair do
+    GenServer.call(__MODULE__, :peer_keypair)
+  end
+
+  @doc """
+  Returns a signed version of the given binary
+  """
+  @spec sign(binary()) :: binary()
+  def sign(message) when is_binary(message) do
+    sign(message, sign_privkey())
+  end
+
+  @spec sign(binary(), sign_priv_key()) :: binary()
+  def sign(message, privkey)
+  when is_binary(message) and is_binary(privkey) do
+    :enacl.sign_detached(message, privkey)
+  end
+
+  @doc """
+  Checks if the message is signed with the given public key
+  """
+  @spec verify(binary(), binary()) :: true | false
+  def verify(message, sign) do
+    verify(message, sign, Keys.sign_pubkey())
+  end
+  
+  @spec verify(binary(), binary(), pub_key()) :: true | false
+  def verify(message, sign, pubkey)
+    when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
+    case :enacl.sign_verify_detached(sign, message, pubkey) do
+      {:ok, _} -> true
+      _ -> false
     end
   end
 
-  @spec get_peer_keypair() :: PeerKeys.t()
-  def get_peer_keypair do
-    GenServer.call(__MODULE__, :get_peer_keys)
+  @spec key_size_valid?(binary()) :: true | false
+  def key_size_valid?(pubkey) when byte_size(pubkey) == @pub_size, do: true
+  def key_size_valid?(_), do: false
+
+  def handle_call(:sign_pubkey, _from, %{sign_pubkey: pubkey} = state) do
+    {:reply, pubkey, state}
   end
 
-  @spec get_wallet_pubkey(String.t(), String.t(), opts()) :: binary()
-  def get_wallet_pubkey(derivation_path, password, network) do
-    GenServer.call(__MODULE__, {:get_wallet_pubkey, {derivation_path, password, network}})
+  def handle_call(:sign_privkey, _from, %{sign_priv_file: file} = state) do
+    privkey =
+      case File.read(file) do
+        {:ok, encr_priv} ->
+          {:ok, key} = decrypt_key(encr_priv, pwd(:sign), @priv_sign_size)
+          key
+        _ ->
+          {:error, :enoent}
+    end
+    {:reply, privkey, state}
   end
 
-  @spec get_wallet_privkey(String.t(), String.t(), opts()) :: binary()
-  def get_wallet_privkey(derivation_path, password, network) do
-    GenServer.call(__MODULE__, {:get_wallet_privkey, {derivation_path, password, network}})
+  def handle_call(:peer_keypair, _from, %{peer_pubkey: pub, peer_privkey: priv} = state) do
+    {:reply, {pub, priv}, state}
   end
 
-  ## Server Callbacks
+  ## Internal functions
 
-  def handle_call(:get_peer_keys, _from, %{peer_keys: nil} = state) do
-    keypair = PeerKeys.load_keypair()
-    {:reply, keypair, %{state | peer_keys: keypair}}
+  defp setup_sign_keys(pwd, keys_dir) do
+    {pub_file, priv_file} = gen_sign_filename(keys_dir)
+    case read_keys(pwd, pub_file, priv_file, @pub_size, @priv_sign_size) do
+      {:error, :enoent} ->
+        gen_new_sign(pwd, pub_file, priv_file)
+      
+      {pubkey, privkey} ->
+        ## Check validity
+        if check_sign_keys(pubkey, privkey) do
+          {:ok, pubkey, priv_file}
+        else
+          ## Do something
+        end
+    end
   end
 
-  def handle_call(:get_peer_keys, _from, %{peer_keys: keys} = state) do
-    {:reply, keys, state}
+  defp setup_peer_keys(pwd, keys_dir) do
+    {pub_file, priv_file} = gen_peer_filename(keys_dir)
+    case read_keys(pwd, pub_file, priv_file, @pub_size, @priv_peer_size) do
+      {:error, :enoent} ->
+        gen_new_peer(pwd, pub_file, priv_file)
+      
+      {pubkey, privkey} ->
+        ## Check validity
+        if check_peer_keys(pubkey, privkey) do
+          {:ok, pubkey, privkey}
+        else
+          ## Do something
+        end
+    end
   end
 
-  def handle_call(
-        {:get_wallet_pubkey, {derivation_path, password, network}},
-        _from,
-        %{wallet_pubkey: nil} = state
-      ) do
-    pub_key =
-      if derivation_path == "" do
-        {:ok, pub_key} =
-          Wallet.aewallet_dir()
-          |> Utils.get_file_name()
-          |> AeternityWallet.get_public_key(password, network: network)
-
-        pub_key
-      else
-        key = Wallet.derive_key(derivation_path, password)
-        KeyPair.compress(key.key)
-      end
-
-    pub_key_state =
-      if derivation_path == "" do
-        pub_key
-      else
-        nil
-      end
-
-    {:reply, pub_key, %{state | wallet_pubkey: pub_key_state}}
+    defp gen_new_sign(pwd, pub_file, priv_file) do
+    %{public: pubkey, secret: privkey} = :enacl.sign_keypair()
+    if check_sign_keys(pubkey, privkey) do
+      :ok = save_keys(pwd, pub_file, pubkey, priv_file, privkey)
+      {:ok, pubkey, priv_file}
+    else
+      gen_new_sign(pwd, pub_file, priv_file) ## Why do we check the lib here?
+    end
   end
 
-  def handle_call(
-        {:get_wallet_pubkey, {derivation_path, password, _network}},
-        _from,
-        %{wallet_pubkey: pub_key} = state
-      ) do
-    pub_key =
-      if derivation_path == "" do
-        pub_key
-      else
-        key = Wallet.derive_key(derivation_path, password)
-        KeyPair.compress(key.key)
-      end
+  defp gen_new_peer(pwd, pub_file, priv_file) do
+    %{public: sign_pubkey, secret: sign_privkey} = :enacl.sign_keypair()
+    pubkey = :enacl.crypto_sign_ed25519_public_to_curve25519(sign_pubkey)
+    privkey = :enacl.crypto_sign_ed25519_secret_to_curve25519(sign_privkey)
 
-    {:reply, pub_key, state}
+    if check_peer_keys(pubkey, privkey) do
+      :ok = save_keys(pwd, pub_file, pubkey, priv_file, privkey)
+      {:ok, pubkey, privkey}
+    else
+      gen_new_peer(pwd, pub_file, priv_file) ## Why do we check the lib here?
+    end
+  end
+  
+  defp gen_sign_filename(keys_dir) do
+    gen_filename(keys_dir, @filename_sign_pub, @filename_sign_priv)
   end
 
-  def handle_call({:get_wallet_privkey, {derivation_path, password, network}}, _from, state) do
-    priv_key =
-      if derivation_path == "" do
-        {:ok, priv_key} =
-          Wallet.aewallet_dir()
-          |> Utils.get_file_name()
-          |> AeternityWallet.get_private_key(password, network: network)
+  defp gen_peer_filename(keys_dir) do
+    gen_filename(keys_dir, @filename_peer_pub, @filename_peer_priv)
+  end
 
-        priv_key
-      else
-        key = Wallet.derive_key(derivation_path, password)
-        key.key
-      end
+  defp gen_filename(keys_dir, pub_file, priv_file) do
+    :ok = gen_dir(File.dir?(keys_dir), keys_dir)
+    pub_file = Path.join(keys_dir, pub_file)
+    priv_file = Path.join(keys_dir, priv_file)
+    {pub_file, priv_file}
+  end
 
-    {:reply, priv_key, state}
+  defp gen_dir(false, keys_dir), do: File.mkdir!(keys_dir)
+  defp gen_dir(true, _), do: :ok
+
+  ## Reads the keys from their respectve directory and returns
+  ## their decrypted result. If the either of the file is not readable
+  ## return an error
+  defp read_keys(pwd, pub_file, priv_file, pub_size, priv_size) do
+    case {File.read(pub_file), File.read(priv_file)} do
+      {{:ok, encr_pub}, {:ok, encr_priv}} ->
+        {:ok, pubkey} = decrypt_key(encr_pub, pwd, pub_size)
+        {:ok, privkey} = decrypt_key(encr_priv, pwd, priv_size)
+        {pubkey, privkey}
+        
+      _ ->
+        {:error, :enoent}
+    end
+  end
+
+  defp save_keys(pwd, pub_file, pubkey, priv_file, privkey) do
+    encrypted_pub = encrypt_key(pubkey, pwd)
+    encrypted_priv = encrypt_key(privkey, pwd)
+    
+    File.write!(pub_file, encrypted_pub)
+    File.write!(priv_file, encrypted_priv)
+  end
+
+  defp encrypt_key(key, pwd) do
+    ## Put leading 0s to ensure on decryption we are using the correct password
+    :crypto.block_encrypt(:aes_ecb, hash(pwd), <<0::128, key::binary()>>) ## Fix magic 0s
+  end
+  
+  defp decrypt_key(encrypted, pwd, size) do
+    <<0::128, key::binary-size(size)>> =
+      :crypto.block_decrypt(:aes_ecb, hash(pwd), encrypted)
+    {:ok, key}
+  end
+
+  defp hash(binary), do: :crypto.hash(:sha256, binary)
+
+  ## Checks weather the keypairs are working accordingly
+  defp check_sign_keys(pubkey, privkey) do
+    sample_msg = <<"sample message">>
+    signature = :enacl.sign_detached(sample_msg, privkey)
+    {:ok, sample_msg} == :enacl.sign_verify_detached(signature, sample_msg, pubkey)
+  end
+
+  defp check_peer_keys(pubkey, privkey) do
+    pubkey == :enacl.curve25519_scalarmult_base(privkey)
+  end
+
+
+  ## Change get_env with fetch_env! ??
+  
+  defp pwd(:sign) do
+    Application.get_env(:aecore, :sign_keys)[:pass]
+  end
+
+  defp pwd(:peer) do
+    Application.get_env(:aecore, :peer_keys)[:pass]
+  end
+  
+  defp dir(:sign) do
+    Application.get_env(:aecore, :sign_keys)[:path]
+  end
+  
+  defp dir(:peer) do
+    Application.get_env(:aecore, :peer_keys)[:path]
   end
 end

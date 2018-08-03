@@ -569,8 +569,7 @@ defmodule Aeutil.Serialization do
         pow_to_binary(List.duplicate(0, 42))
       end
 
-    # Application.get_env(:aecore, :aewallet)[:pub_key_size] should be used instead of hardcoded value
-    miner_pubkey_size = 33
+    miner_pubkey_size = Application.get_env(:aecore, :sign_keys)[:pubkey_size]
 
     <<
       header.version::64,
@@ -582,7 +581,6 @@ defmodule Aeutil.Serialization do
       pow_to_binary::binary-size(pow_evidence_size),
       header.nonce::64,
       header.time::64,
-      # pubkey should be adjusted to 32 bytes.
       header.miner::binary-size(miner_pubkey_size)
     >>
   end

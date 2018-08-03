@@ -15,7 +15,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Oracle.Oracle
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Governance.GovernanceConstants
 
   require Logger
@@ -239,7 +239,7 @@ defmodule Aecore.Miner.Worker do
     valid_txs_by_fee =
       filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
 
-    miner_pubkey = Wallet.get_public_key()
+    miner_pubkey = Keys.sign_pubkey()
 
     create_block(top_block, chain_state, target, valid_txs_by_fee, timestamp, miner_pubkey)
   end

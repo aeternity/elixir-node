@@ -37,14 +37,14 @@ persistence_path =
     env -> env
   end
 
-aewallet_pass =
-  case System.get_env("AEWALLET_PASS") do
+sign_keys_pass =
+  case System.get_env("SIGN_KEYS_PASS") do
     nil -> <<>>
     env -> env
   end
 
-aewallet_path =
-  case System.get_env("AEWALLET_PATH") do
+sign_keys_path =
+  case System.get_env("SIGN_KEYS_PATH") do
     nil -> "apps/aecore/priv/aewallet"
     env -> env
   end
@@ -63,7 +63,7 @@ peerkeys_path =
 
 config :aecore, :spend_tx, version: 1
 
-config :aecore, :aewallet, pub_key_size: 33
+config :aecore, :sign_keys, pubkey_size: 32
 
 config :aecore, :rlp_tags,
   account_state: 10,
@@ -104,9 +104,9 @@ config :aecore, :naming,
   max_label_length: 63,
   max_name_length: 253
 
-config :aecore, :aewallet,
-  pass: aewallet_pass,
-  path: Path.absname(aewallet_path)
+config :aecore, :sign_keys,
+  pass: sign_keys_pass,
+  path: Path.absname(sign_keys_path)
 
 config :aecore, :peer_keys,
   pass: peer_keys_pass,
