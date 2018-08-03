@@ -115,7 +115,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.header_to_binary(header)
+    block_header_bin = Header.encode_to_binary(header)
     Hash.hash(block_header_bin)
   end
 
@@ -125,7 +125,7 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec calculate_txs_hash([]) :: binary()
-  def calculate_txs_hash([]), do:  <<0::256>>
+  def calculate_txs_hash([]), do: <<0::256>>
 
   @spec calculate_txs_hash(nonempty_list(SignedTx.t())) :: binary()
   def calculate_txs_hash(txs) do
