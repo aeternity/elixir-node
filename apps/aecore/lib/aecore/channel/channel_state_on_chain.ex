@@ -49,7 +49,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   ]
 
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec create(Wallet.pubkey(), Wallet.pubkey(), integer(), integer(), non_neg_integer()) ::
           ChannelStateOnChain.t()

@@ -31,7 +31,7 @@ defmodule Aecore.Naming.NameClaim do
 
   defstruct [:hash, :name, :owner, :expires, :status, :ttl, :pointers]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec create(
           binary(),

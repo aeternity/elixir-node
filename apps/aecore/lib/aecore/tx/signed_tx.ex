@@ -25,7 +25,7 @@ defmodule Aecore.Tx.SignedTx do
 
   defstruct [:data, :signatures]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec create(DataTx.t(), list(Wallet.pubkey())) :: t()
   def create(data, signatures \\ []) do

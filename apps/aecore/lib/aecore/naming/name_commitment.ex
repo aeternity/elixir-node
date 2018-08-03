@@ -21,7 +21,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   defstruct [:hash, :owner, :created, :expires]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec create(
           binary(),

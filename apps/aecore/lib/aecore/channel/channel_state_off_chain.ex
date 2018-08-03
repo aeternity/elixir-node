@@ -32,7 +32,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   ]
 
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   require Logger
 

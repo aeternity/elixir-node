@@ -1,10 +1,10 @@
-defmodule Aeutil.Serializable do
+defmodule Aecore.Util.Serializable do
   @moduledoc """
   Library that defines functions necessery for structure serialization
   """
   defmacro __using__(_) do
     quote location: :keep do
-      @behaviour Aeutil.Serializable
+      @behaviour Aecore.Util.Serializable
 
       alias Aeutil.Serialization
 

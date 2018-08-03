@@ -46,7 +46,7 @@ defmodule Aecore.Account.Account do
   """
   defstruct [:balance, :nonce, :pubkey]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   def empty, do: %Account{balance: 0, nonce: 0, pubkey: <<>>}
 

@@ -19,7 +19,7 @@ defmodule Aecore.Chain.Block do
 
   defstruct [:header, :txs]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec current_block_version() :: non_neg_integer()
   def current_block_version do

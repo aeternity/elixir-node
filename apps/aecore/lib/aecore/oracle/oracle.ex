@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Oracle do
 
   defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   @spec register(
           json_schema(),

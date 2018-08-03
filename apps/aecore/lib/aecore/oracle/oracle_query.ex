@@ -36,7 +36,7 @@ defmodule Aecore.Oracle.OracleQuery do
   ]
 
   use ExConstructor
-  use Aeutil.Serializable
+  use Aecore.Util.Serializable
 
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
