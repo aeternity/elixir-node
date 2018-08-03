@@ -162,14 +162,8 @@ defmodule AecoreSerializationTest do
           expires: 10,
           owner: %Identifier{value: "", type: :oracle},
           query_fee: 5,
-          query_format: %{
-            "properties" => %{"currency" => %{"type" => "string"}},
-            "type" => "object"
-          },
-          response_format: %{
-            "properties" => %{"currency" => %{"type" => "string"}},
-            "type" => "object"
-          }
+          query_format: "foo: bar",
+          response_format: "boolean"
         }
 
       OracleQuery ->
@@ -183,7 +177,7 @@ defmodule AecoreSerializationTest do
                 181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
             type: :oracle
           },
-          query: %{"currency" => "USD"},
+          query: "foo: bar",
           response: :undefined,
           response_ttl: 86_000,
           sender_address: %Identifier{

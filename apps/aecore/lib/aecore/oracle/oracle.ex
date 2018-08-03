@@ -19,23 +19,18 @@ defmodule Aecore.Oracle.Oracle do
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aecore.Chain.Identifier
-  alias ExJsonSchema.Schema, as: JsonSchema
-  alias ExJsonSchema.Validator, as: JsonValidator
 
   require Logger
 
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
-
-  @type json_schema :: map()
-  @type json :: any()
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
 
   @spec register(
-          json_schema(),
-          json_schema(),
+          String.t(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -69,7 +64,7 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec query(
           Wallet.pubkey(),
-          json(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -109,7 +104,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
-  @spec respond(binary(), any(), non_neg_integer(), non_neg_integer()) :: :ok | :error
+  @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee, tx_ttl \\ 0) do
     payload = %{
       query_id: query_id,
@@ -148,20 +143,6 @@ defmodule Aecore.Oracle.Oracle do
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
-  end
-
-  @spec data_valid?(map(), map()) :: true | false
-  def data_valid?(format, data) do
-    schema = JsonSchema.resolve(format)
-
-    case JsonValidator.validate(schema, data) do
-      :ok ->
-        true
-
-      {:error, [{message, _}]} ->
-        Logger.error(fn -> "#{__MODULE__}: " <> message end)
-        false
-    end
   end
 
   @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
@@ -281,8 +262,8 @@ defmodule Aecore.Oracle.Oracle do
     list = [
       tag,
       version,
-      Serialization.transform_item(oracle.query_format),
-      Serialization.transform_item(oracle.response_format),
+      oracle.query_format,
+      oracle.response_format,
       oracle.query_fee,
       oracle.expires
     ]
@@ -304,8 +285,8 @@ defmodule Aecore.Oracle.Oracle do
     response =
       case oracle_query.response do
         :undefined -> Parser.to_string(:undefined)
-        %{} = data -> Poison.encode!(data)
         %DataTx{type: OracleResponseTx} = data -> data
+        _ -> oracle_query.response
       end
 
     {:ok, encoded_sender} = Identifier.encode_data(oracle_query.sender_address)
@@ -317,7 +298,7 @@ defmodule Aecore.Oracle.Oracle do
       encoded_sender,
       oracle_query.sender_nonce,
       encoded_oracle_owner,
-      Serialization.transform_item(oracle_query.query),
+      oracle_query.query,
       has_response,
       response,
       oracle_query.expires,
@@ -345,8 +326,8 @@ defmodule Aecore.Oracle.Oracle do
     {:ok,
      %{
        owner: %Identifier{type: :oracle},
-       query_format: Serialization.transform_item(query_format, :binary),
-       response_format: Serialization.transform_item(response_format, :binary),
+       query_format: query_format,
+       response_format: response_format,
        query_fee: Serialization.transform_item(query_fee, :int),
        expires: Serialization.transform_item(expires, :int)
      }}
@@ -378,7 +359,7 @@ defmodule Aecore.Oracle.Oracle do
     new_response =
       case response do
         "undefined" -> String.to_atom(response)
-        _ -> Serialization.transform_item(response, :binary)
+        _ -> response
       end
 
     {:ok,
@@ -387,7 +368,7 @@ defmodule Aecore.Oracle.Oracle do
        fee: Serialization.transform_item(fee, :int),
        has_response: has_response,
        oracle_address: decoded_orc_owner,
-       query: Serialization.transform_item(query, :binary),
+       query: query,
        response: new_response,
        response_ttl: Serialization.transform_item(response_ttl, :int),
        sender_address: decoded_sender_address,
