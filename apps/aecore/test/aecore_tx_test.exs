@@ -14,7 +14,6 @@ defmodule AecoreTxTest do
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Keys.Wallet
   alias Aewallet.Signing
-  alias Aeutil.Serialization
   alias Aecore.Account.Account
 
   setup do

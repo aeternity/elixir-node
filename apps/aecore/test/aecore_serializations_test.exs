@@ -4,16 +4,10 @@ defmodule AecoreSerializationTest do
   @moduledoc """
   Unit test for RLP data serialization/deserialization
   """
-  alias Aecore.Chain.Header
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.{OracleQuery, Oracle}
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
@@ -24,9 +18,6 @@ defmodule AecoreSerializationTest do
   alias Aecore.Chain.Block
   alias Aecore.Naming.{NameClaim, NameCommitment}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx.NameTransferTx}
-  alias Aeutil.Serialization
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.BlockValidation
 
   setup do
     Code.require_file("test_utils.ex", "./test")
