@@ -571,7 +571,7 @@ defmodule Aecore.Peers.PeerConnection do
       end
 
     ExRLP.encode([
-      @p2p_msg_version,
+      Serialization.transform_item(@p2p_msg_version),
       serialized_result,
       type,
       serialized_reason,
@@ -588,9 +588,9 @@ defmodule Aecore.Peers.PeerConnection do
         port: port
       }) do
     ExRLP.encode([
-      @p2p_msg_version,
-      port,
-      share,
+      Serialization.transform_item(@p2p_msg_version),
+      Serialization.transform_item(port),
+      Serialization.transform_item(share),
       genesis_hash,
       :erlang.float_to_binary(difficulty),
       best_hash,
@@ -599,16 +599,19 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_encode(@get_header_by_hash, %{hash: hash}) do
-    ExRLP.encode([@p2p_msg_version, hash])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version), hash])
   end
 
   def rlp_encode(@get_header_by_height, %{height: height}) do
-    ExRLP.encode([@p2p_msg_version, height])
+    ExRLP.encode([
+      Serialization.transform_item(@p2p_msg_version),
+      Serialization.transform_item(height)
+    ])
   end
 
   def rlp_encode(@header, header) do
     header_binary = Serialization.header_to_binary(header)
-    ExRLP.encode([@p2p_msg_version, header_binary])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version), header_binary])
   end
 
   def rlp_encode(@get_n_successors, %{
@@ -616,35 +619,41 @@ defmodule Aecore.Peers.PeerConnection do
         n: n
       }) do
     ExRLP.encode([
-      @p2p_msg_version,
+      Serialization.transform_item(@p2p_msg_version),
       hash,
-      n
+      Serialization.transform_item(n)
     ])
   end
 
   def rlp_encode(@header_hashes, header_hashes) do
-    ExRLP.encode([@p2p_msg_version, header_hashes])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version), header_hashes])
   end
 
   def rlp_encode(@get_block, %{hash: hash}) do
-    ExRLP.encode([@p2p_msg_version, hash])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version), hash])
   end
 
   def rlp_encode(@block, block) do
-    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(block, :block)])
+    ExRLP.encode([
+      Serialization.transform_item(@p2p_msg_version),
+      Serialization.rlp_encode(block, :block)
+    ])
   end
 
   def rlp_encode(@tx, tx) do
-    ExRLP.encode([@p2p_msg_version, Serialization.rlp_encode(tx, :signedtx)])
+    ExRLP.encode([
+      Serialization.transform_item(@p2p_msg_version),
+      Serialization.rlp_encode(tx, :signedtx)
+    ])
   end
 
   def rlp_encode(@get_mempool, _data) do
-    ExRLP.encode([@p2p_msg_version])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version)])
   end
 
   def rlp_encode(@mempool, %{txs: txs}) do
     encoded_txs = Enum.map(txs, fn tx -> Serialization.rlp_encode(tx, :signedtx) end)
-    ExRLP.encode([@p2p_msg_version, encoded_txs])
+    ExRLP.encode([Serialization.transform_item(@p2p_msg_version), encoded_txs])
   end
 
   def rlp_decode(@msg_fragment, fragment) do
@@ -652,10 +661,11 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_decode(@p2p_response, encoded_response) do
+    # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
     [_vsn, result, type, reason, object] = ExRLP.decode(encoded_response)
     deserialized_result = bool_bin(result)
 
-    deserialized_type = :binary.decode_unsigned(type)
+    deserialized_type = Serialization.transform_item(type, :int)
 
     deserialized_reason =
       case reason do
@@ -685,6 +695,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@ping, encoded_ping) do
     [
+      # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
       _vsn,
       port,
       share,
@@ -695,8 +706,8 @@ defmodule Aecore.Peers.PeerConnection do
     ] = ExRLP.decode(encoded_ping)
 
     %{
-      port: :binary.decode_unsigned(port),
-      share: :binary.decode_unsigned(share),
+      port: Serialization.transform_item(port, :int),
+      share: Serialization.transform_item(share, :int),
       genesis_hash: genesis_hash,
       difficulty: :erlang.binary_to_float(difficulty),
       best_hash: best_hash,
@@ -705,17 +716,20 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_decode(@get_header_by_hash, encoded_get_header_by_hash) do
+    # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
     [_vsn, hash] = ExRLP.decode(encoded_get_header_by_hash)
     %{hash: hash}
   end
 
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
+    # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
     [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
-    %{height: :binary.decode_unsigned(height)}
+    %{height: Serialization.transform_item(height, :int)}
   end
 
   def rlp_decode(@header, encoded_header) do
     [
+      # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
       _vsn,
       header_binary
     ] = ExRLP.decode(encoded_header)
@@ -726,6 +740,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_n_successors, encoded_get_n_successors) do
     [
+      # vsn should be addititonaly decoded with Serialization.transform_item(vsn,:int)
       _vsn,
       hash,
       n
@@ -733,7 +748,7 @@ defmodule Aecore.Peers.PeerConnection do
 
     %{
       hash: hash,
-      n: :binary.decode_unsigned(n)
+      n: Serialization.transform_item(n, :int)
     }
   end
 

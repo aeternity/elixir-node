@@ -279,12 +279,12 @@ defmodule Aecore.Oracle.Oracle do
         ) :: binary()
   def rlp_encode(tag, version, %{} = oracle, :oracle) do
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       Serialization.transform_item(oracle.query_format),
       Serialization.transform_item(oracle.response_format),
-      oracle.query_fee,
-      oracle.expires
+      Serialization.transform_item(oracle.query_fee),
+      Serialization.transform_item(oracle.expires)
     ]
 
     try do
@@ -312,17 +312,17 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, encoded_oracle_owner} = Identifier.encode_data(oracle_query.oracle_address)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       encoded_sender,
-      oracle_query.sender_nonce,
+      Serialization.transform_item(oracle_query.sender_nonce),
       encoded_oracle_owner,
       Serialization.transform_item(oracle_query.query),
       has_response,
       response,
-      oracle_query.expires,
-      oracle_query.response_ttl,
-      oracle_query.fee
+      Serialization.transform_item(oracle_query.expires),
+      Serialization.transform_item(oracle_query.response_ttl),
+      Serialization.transform_item(oracle_query.fee)
     ]
 
     try do

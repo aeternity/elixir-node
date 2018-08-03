@@ -548,6 +548,10 @@ defmodule Aeutil.Serialization do
     DataTx.rlp_decode(payload, datatx)
   end
 
+  def transform_item(item) when is_integer(item) do
+    :binary.encode_unsigned(item)
+  end
+
   # Should be changed after some adjustments in oracle structures
   def transform_item(item) do
     Poison.encode!(item)

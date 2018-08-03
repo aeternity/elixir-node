@@ -381,14 +381,14 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_receiver} = Identifier.encode_data(tx.payload.receiver)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
       encoded_receiver,
-      tx.payload.amount,
-      tx.fee,
-      tx.ttl,
-      tx.nonce,
+      Serialization.transform_item(tx.payload.amount),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl),
+      Serialization.transform_item(tx.nonce),
       tx.payload.payload
     ]
 
@@ -405,19 +405,19 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.query_format),
       # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response_format),
-      tx.payload.query_fee,
+      Serialization.transform_item(tx.payload.query_fee),
       ttl_type,
-      tx.payload.ttl.ttl,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.payload.ttl.ttl),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -436,19 +436,19 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_oracle_address} = Identifier.encode_data(tx.payload.oracle_address)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       encoded_oracle_address,
       "$æx" <> Serialization.transform_item(tx.payload.query_data),
-      tx.payload.query_fee,
+      Serialization.transform_item(tx.payload.query_fee),
       ttl_type_q,
-      tx.payload.query_ttl.ttl,
+      Serialization.transform_item(tx.payload.query_ttl.ttl),
       ttl_type_r,
-      tx.payload.response_ttl.ttl,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.payload.response_ttl.ttl),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -462,15 +462,15 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       tx.payload.query_id,
       # Workarounds, adjustments should be made as soon as fields types are adjusted
       "$æx" <> Serialization.transform_item(tx.payload.response),
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -484,13 +484,13 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
-      tx.payload.ttl,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.nonce),
+      Serialization.transform_item(tx.payload.ttl),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -505,13 +505,13 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_commitment} = Identifier.encode_data(tx.payload.commitment)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       encoded_commitment,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -525,14 +525,14 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       tx.payload.name,
       tx.payload.name_salt,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -547,16 +547,16 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       encoded_hash,
-      tx.payload.client_ttl,
+      Serialization.transform_item(tx.payload.client_ttl),
       tx.payload.pointers,
-      tx.payload.expire_by,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.payload.expire_by),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -572,13 +572,13 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_hash} = Identifier.encode_data(tx.payload.hash)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       encoded_hash,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -594,14 +594,14 @@ defmodule Aecore.Tx.DataTx do
     {:ok, encoded_name_hash} = Identifier.encode_data(tx.payload.hash)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       encoded_name_hash,
       encoded_target,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -615,15 +615,15 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       tx.payload.channel_id,
-      tx.payload.initiator_amount,
-      tx.payload.responder_amount,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.payload.initiator_amount),
+      Serialization.transform_item(tx.payload.responder_amount),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -637,13 +637,13 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       ChannelStateOffChain.encode(tx.payload.state),
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -657,15 +657,15 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
-      tx.payload.initiator_amount,
-      tx.payload.responder_amount,
-      tx.payload.locktime,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.nonce),
+      Serialization.transform_item(tx.payload.initiator_amount),
+      Serialization.transform_item(tx.payload.responder_amount),
+      Serialization.transform_item(tx.payload.locktime),
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -679,13 +679,13 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       tx.payload.channel_id,
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do
@@ -699,13 +699,13 @@ defmodule Aecore.Tx.DataTx do
     senders = Serialization.serialize_identity(tx.senders)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       senders,
-      tx.nonce,
+      Serialization.transform_item(tx.nonce),
       ChannelStateOffChain.encode(tx.payload.state),
-      tx.fee,
-      tx.ttl
+      Serialization.transform_item(tx.fee),
+      Serialization.transform_item(tx.ttl)
     ]
 
     try do

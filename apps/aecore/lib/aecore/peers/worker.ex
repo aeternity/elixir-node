@@ -10,6 +10,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
   alias Aehttpclient.Client
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -79,7 +80,7 @@ defmodule Aecore.Peers.Worker do
 
   def rlp_encode_peers(peers) do
     Enum.map(peers, fn %{host: host, port: port, pubkey: pubkey} ->
-      list = [to_string(host), :binary.encode_unsigned(port), pubkey]
+      list = [to_string(host), Serialization.transform_item(port), pubkey]
       ExRLP.encode(list)
     end)
   end
@@ -87,7 +88,12 @@ defmodule Aecore.Peers.Worker do
   def rlp_decode_peers(encoded_peers) do
     Enum.map(encoded_peers, fn encoded_peer ->
       [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
-      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
+
+      %{
+        host: to_charlist(host),
+        port: Serialization.transform_item(port_bin, :int),
+        pubkey: pubkey
+      }
     end)
   end
 

@@ -188,15 +188,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, %ChannelStateOnChain{} = channel) do
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       channel.initiator_pubkey,
       channel.responder_pubkey,
-      channel.initiator_amount,
-      channel.responder_amount,
-      channel.lock_period,
-      channel.slash_close,
-      channel.slash_sequence
+      Serialization.transform_item(channel.initiator_amount),
+      Serialization.transform_item(channel.responder_amount),
+      Serialization.transform_item(channel.lock_period),
+      Serialization.transform_item(channel.slash_close),
+      Serialization.transform_item(channel.slash_sequence)
     ]
 
     try do

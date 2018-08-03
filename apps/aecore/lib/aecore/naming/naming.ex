@@ -155,12 +155,12 @@ defmodule Aecore.Naming.Naming do
     {:ok, encoded_owner} = Identifier.encode_data(naming_state.owner)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       encoded_owner,
-      naming_state.expires,
+      Serialization.transform_item(naming_state.expires),
       Atom.to_string(naming_state.status),
-      naming_state.ttl,
+      Serialization.transform_item(naming_state.ttl),
       naming_state.pointers
     ]
 
@@ -175,11 +175,11 @@ defmodule Aecore.Naming.Naming do
     {:ok, encoded_identified_owner} = Identifier.encode_data(name_commitment.owner)
 
     list = [
-      tag,
-      version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
       encoded_identified_owner,
-      name_commitment.created,
-      name_commitment.expires
+      Serialization.transform_item(name_commitment.created),
+      Serialization.transform_item(name_commitment.expires)
     ]
 
     try do

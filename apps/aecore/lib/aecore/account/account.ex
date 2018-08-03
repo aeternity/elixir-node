@@ -347,10 +347,10 @@ defmodule Aecore.Account.Account do
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, %Account{} = account) do
     list = [
-      tag,
-      version,
-      account.nonce,
-      account.balance
+      Serialization.transform_item(tag),
+      Serialization.transform_item(version),
+      Serialization.transform_item(account.nonce),
+      Serialization.transform_item(account.balance)
     ]
 
     try do

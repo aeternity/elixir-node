@@ -50,8 +50,8 @@ defmodule Aecore.Chain.Block do
       end
 
     list = [
-      tag,
-      block.header.version,
+      Serialization.transform_item(tag),
+      Serialization.transform_item(block.header.version),
       header_bin,
       txs
     ]
