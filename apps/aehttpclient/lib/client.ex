@@ -7,7 +7,6 @@ defmodule Aehttpclient.Client do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Keys.Peer, as: PeerKeys
   alias Aeutil.Serialization
 
@@ -48,58 +47,9 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @spec get_raw_blocks({term(), binary(), binary()}) :: {:ok, term()} | {:error, binary()}
-  def get_raw_blocks({uri, from_block_hash, to_block_hash}) do
-    from_block_hash = Header.base58c_encode(from_block_hash)
-    to_block_hash = Header.base58c_encode(to_block_hash)
-
-    uri =
-      uri <> "/raw_blocks?" <> "from_block=" <> from_block_hash <> "&to_block=" <> to_block_hash
-
-    get(uri, :raw_blocks)
-  end
-
-  def get_pool_txs(uri) do
-    get(uri <> "/pool_txs", :pool_txs)
-  end
-
-  @spec send_block(Block.t(), list(binary())) :: :ok
-  def send_block(block, peers) do
-    data = Serialization.block(block, :serialize)
-    post_to_peers("block", data, peers)
-  end
-
-  @spec send_tx(map(), list(binary())) :: :ok
-  def send_tx(tx, peers) do
-    data = SignedTx.serialize(tx)
-    post_to_peers("tx", data, peers)
-  end
-
-  @spec post_to_peers(String.t(), map(), list(String.t())) :: :ok
-  defp post_to_peers(uri, data, peers) do
-    Enum.each(peers, fn peer ->
-      post(peer, data, uri)
-    end)
-  end
-
-  defp post(peer, data, uri) do
-    send_to_peer(data, "#{peer}/#{uri}")
-  end
-
   @spec get_peers(term()) :: {:ok, list()}
   def get_peers(uri) do
     get(uri <> "/peers")
-  end
-
-  @spec get_and_add_peers(term()) :: :ok
-  def get_and_add_peers(uri) do
-    {:ok, peers} = get_peers(uri)
-    Enum.each(peers, fn {peer, _} -> Peers.add_peer(peer) end)
-  end
-
-  @spec get_account_balance({binary(), binary()}) :: {:ok, binary()} | :error
-  def get_account_balance({uri, acc}) do
-    get(uri <> "/balance/#{acc}")
   end
 
   @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
@@ -177,11 +127,5 @@ defmodule Aehttpclient.Client do
 
         {:error, "Unexpected error"}
     end
-  end
-
-  defp send_to_peer(data, uri) do
-    HTTPoison.post(uri, Poison.encode!(data), [
-      {"Content-Type", "application/json"}
-    ])
   end
 end
