@@ -9,6 +9,8 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
+  @signing_tag 101
+
   @version 1
 
   @type t :: %ChannelStateOffChain{
@@ -269,7 +271,16 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   defp signing_form(%ChannelStateOffChain{} = state) do
-    rlp_encode(%ChannelStateOffChain{state | signatures: {<<>>, <<>>}})
+    list_form = [
+      @signing_tag,
+      @version,
+      state.channel_id,
+      state.initiator_amount,
+      state.responder_amount,
+      state.sequence
+    ]
+
+    ExRLP.encode(list_form)
   end
 
   def encode_to_list(%ChannelStateOffChain{

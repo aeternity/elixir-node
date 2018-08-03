@@ -45,7 +45,7 @@ defmodule AecoreSerializationTest do
   end
 
   @tag :rlp_test
-  test "SignedTx with DataTx inside serialization", setup do
+  test "SignedTx with DataTx inside serialization" do
     Miner.mine_sync_block_to_chain()
     signedtx = create_data(SignedTx, :elixir)
 
@@ -54,11 +54,11 @@ defmodule AecoreSerializationTest do
       |> SignedTx.rlp_encode()
       |> SignedTx.rlp_decode()
 
-    assert deserialized_signedtx = signedtx
+    assert match?(^deserialized_signedtx, signedtx)
   end
 
   @tag :rlp_test
-  test "DataTx(SpendTx) serialization", setup do
+  test "DataTx(SpendTx) serialization" do
     Miner.mine_sync_block_to_chain()
     spendtx = create_data(SpendTx, :elixir)
 
@@ -67,67 +67,67 @@ defmodule AecoreSerializationTest do
       |> DataTx.rlp_encode()
       |> DataTx.rlp_decode()
 
-    assert deserialized_spendtx = spendtx
+    assert match?(^deserialized_spendtx, spendtx)
   end
 
   @tag :rlp_test
-  test "Block serialization", setup do
+  test "Block serialization" do
     block = create_data(Block, :elixir)
     serialized_block = Block.rlp_encode(block)
     {:ok, deserialized_block} = Block.rlp_decode(serialized_block)
-    assert deserialized_block = block
+    assert match?(^deserialized_block, block)
   end
 
   @tag :rlp_test
-  test "Oracle interaction objects serialization", setup do
+  test "Oracle interaction objects serialization" do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
     serialized_orc_obj = OracleQuery.rlp_encode(oracle_query_chainstate)
     {:ok, deserialized_orc_obj} = OracleQuery.rlp_decode(serialized_orc_obj)
-    assert oracle_query_chainstate = deserialized_orc_obj
+    assert match?(^oracle_query_chainstate, deserialized_orc_obj)
   end
 
   @tag :rlp_test
-  test "Registered oracles serialization", setup do
+  test "Registered oracles serialization" do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
     serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate)
     {:ok, deserialized_orc} = Oracle.rlp_decode(serialized_orc)
-    assert oracle_registered_chainstate = deserialized_orc
+    assert match?(^oracle_registered_chainstate, deserialized_orc)
   end
 
   @tag :rlp_test
-  test "Naming System TX's serialization", setup do
+  test "Naming System TX's serialization" do
     naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
     serialized_preclaim_tx = DataTx.rlp_encode(naming_pre_claim_tx)
     {:ok, deserialized_preclaim_tx} = DataTx.rlp_decode(serialized_preclaim_tx)
-    assert naming_pre_claim_tx = deserialized_preclaim_tx
+    assert match?(^naming_pre_claim_tx, deserialized_preclaim_tx)
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
     serialized_claim_tx = DataTx.rlp_encode(naming_claim_tx)
     {:ok, deserialized_claim_tx} = DataTx.rlp_decode(serialized_claim_tx)
-    assert naming_claim_tx = deserialized_claim_tx
+    assert match?(^naming_claim_tx, deserialized_claim_tx)
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
     serialized_update_tx = DataTx.rlp_encode(naming_update_tx)
     {:ok, deserialized_update_tx} = DataTx.rlp_decode(serialized_update_tx)
-    assert naming_update_tx = deserialized_update_tx
+    assert match?(^naming_update_tx, deserialized_update_tx)
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
     serialized_transfer_tx = DataTx.rlp_encode(naming_transfer_tx)
     {:ok, deserialized_transfer_tx} = DataTx.rlp_decode(serialized_transfer_tx)
-    assert naming_transfer_tx = deserialized_transfer_tx
+    assert match?(^naming_transfer_tx, deserialized_transfer_tx)
   end
 
   @tag :rlp_test
-  test "Naming System chainstate structures serialization", setup do
+  test "Naming System chainstate structures serialization" do
     name_state = create_data(NameClaim, :elixir)
     serialized_name_state = NameClaim.rlp_encode(name_state)
     {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    assert deserialized_name_state = name_state
+    assert match?(^deserialized_name_state, name_state)
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
-    assert deserialized_name_commitment = name_commitment
+    assert match?(^deserialized_name_commitment, name_commitment)
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519
@@ -194,96 +194,35 @@ defmodule AecoreSerializationTest do
         Chain.top_block()
 
       NamePreClaimTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 1,
-          payload: %Aecore.Naming.Tx.NamePreClaimTx{
-            commitment:
-              <<1, 168, 130, 92, 49, 3, 219, 12, 26, 208, 240, 226, 92, 7, 216, 30, 22, 168, 99,
-                121, 127, 147, 123, 47, 116, 13, 204, 240, 229, 180, 128, 222>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NamePreClaimTx,
-          ttl: 0
-        }
+        {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 50)
+        pre_claim.data
 
       NameClaimTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 2,
-          payload: %Aecore.Naming.Tx.NameClaimTx{
-            name: "test.aet",
-            name_salt:
-              <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 1>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameClaimTx,
-          ttl: 0
-        }
+        {:ok, claim} = Account.claim("test.aet", <<1::256>>, 50)
+        claim.data
 
       NameUpdateTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 3,
-          payload: %Aecore.Naming.Tx.NameUpdateTx{
-            client_ttl: 86_400,
-            expire_by: 50_003,
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            pointers: "{\"test\": 2}"
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameUpdateTx,
-          ttl: 0
-        }
+        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50)
+        update.data
 
       NameTransferTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 4,
-          payload: %Aecore.Naming.Tx.NameTransferTx{
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-            target:
-              <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240,
-                209, 81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
-          },
-          senders: [
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>
-          ],
-          type: Aecore.Naming.Tx.NameTransferTx,
-          ttl: 0
-        }
+        transfer_to_priv = Wallet.get_private_key("m/0/1")
+
+        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+
+        {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 50)
+        transfer.data
 
       NameRevokeTx ->
-        %Aecore.Tx.DataTx{
-          fee: 5,
-          nonce: 1,
-          payload: %Aecore.Naming.Tx.NameRevokeTx{
-            hash:
-              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>
-          },
-          senders: [
-            <<3, 205, 248, 121, 87, 10, 174, 234, 93, 138, 204, 195, 19, 139, 145, 177, 240, 209,
-              81, 28, 50, 184, 33, 185, 198, 195, 193, 6, 245, 133, 117, 141, 39>>
-          ],
-          type: Aecore.Naming.Tx.NameRevokeTx,
-          ttl: 0
-        }
+        transfer_to_priv = Wallet.get_private_key("m/0/1")
+
+        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
+
+        {:ok, revoke} =
+          Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce)
+
+        revoke.data
 
       NameClaim ->
         %NameClaim{

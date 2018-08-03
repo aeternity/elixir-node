@@ -67,7 +67,7 @@ defmodule Aecore.Channel.Worker do
     closed(tx)
   end
 
-  def new_tx_mined(_) do
+  def new_tx_mined(%SignedTx{}) do
     # We don't care about this tx
     :ok
   end
@@ -76,7 +76,7 @@ defmodule Aecore.Channel.Worker do
   Imports channels from ChannelStatePeer object. Useful for storage
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
-  def import_channel(channel_state) do
+  def import_channel(%ChannelStatePeer{} = channel_state) do
     id = ChannelStatePeer.id(channel_state)
     GenServer.call(__MODULE__, {:import_channel, id, channel_state})
   end
@@ -85,7 +85,8 @@ defmodule Aecore.Channel.Worker do
   Import channel from open tx. Assumes no transactions were made
   """
   @spec import_from_open(SignedTx.t(), non_neg_integer(), role()) :: :ok | error()
-  def import_from_open(open_tx, reserve, role) do
+  def import_from_open(%SignedTx{} = open_tx, reserve, role)
+      when is_integer(reserve) and is_atom(role) do
     peer_state = ChannelStatePeer.from_open(open_tx, reserve, role)
     import_channel(peer_state)
   end
@@ -99,7 +100,13 @@ defmodule Aecore.Channel.Worker do
           non_neg_integer(),
           role()
         ) :: :ok | error()
-  def import_from_open_and_state(open_tx, state, reserve, role) do
+  def import_from_open_and_state(
+        %SignedTx{} = open_tx,
+        %ChannelStateOffChain{} = state,
+        reserve,
+        role
+      )
+      when is_integer(reserve) and is_atom(role) do
     peer_state = ChannelStatePeer.from_open_and_state(open_tx, state, reserve, role)
     import_channel(peer_state)
   end
@@ -113,7 +120,8 @@ defmodule Aecore.Channel.Worker do
           role(),
           non_neg_integer()
         ) :: :ok | error()
-  def initialize(temporary_id, parties, role, channel_reserve) do
+  def initialize(temporary_id, {{_, _}, {_, _}} = parties, role, channel_reserve)
+      when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) do
     GenServer.call(
       __MODULE__,
       {:initialize, temporary_id, parties, role, channel_reserve}
@@ -130,7 +138,9 @@ defmodule Aecore.Channel.Worker do
           non_neg_integer(),
           Wallet.privkey()
         ) :: {:ok, binary(), SignedTx.t()} | error()
-  def open(temporary_id, locktime, fee, nonce, priv_key) do
+  def open(temporary_id, locktime, fee, nonce, priv_key)
+      when is_binary(temporary_id) and is_integer(locktime) and is_integer(fee) and
+             is_integer(nonce) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:open, temporary_id, locktime, fee, nonce, priv_key})
   end
 
@@ -139,7 +149,8 @@ defmodule Aecore.Channel.Worker do
   """
   @spec sign_open(binary(), SignedTx.t(), Wallet.privkey()) ::
           {:ok, binary(), SignedTx.t()} | error()
-  def sign_open(temporary_id, open_tx, priv_key) do
+  def sign_open(temporary_id, %SignedTx{} = open_tx, priv_key)
+      when is_binary(temporary_id) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:sign_open, temporary_id, open_tx, priv_key})
   end
 
@@ -147,7 +158,7 @@ defmodule Aecore.Channel.Worker do
   Notifies Channels Manager about confirmed channel open tx. Called by block validation stack.
   """
   @spec opened(SignedTx.t()) :: :ok
-  def opened(open_tx) do
+  def opened(%SignedTx{} = open_tx) do
     case GenServer.call(__MODULE__, {:opened, open_tx}) do
       :ok ->
         :ok
@@ -163,7 +174,8 @@ defmodule Aecore.Channel.Worker do
   """
   @spec transfer(binary(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, ChannelStateOffChain.t()} | error()
-  def transfer(channel_id, amount, priv_key) do
+  def transfer(channel_id, amount, priv_key)
+      when is_binary(channel_id) and is_integer(amount) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:transfer, channel_id, amount, priv_key})
   end
 
@@ -172,7 +184,7 @@ defmodule Aecore.Channel.Worker do
   """
   @spec recv_state(ChannelStateOffChain.t(), Wallet.privkey()) ::
           {:ok, ChannelStateOffChain.t() | nil} | error()
-  def recv_state(recv_state, priv_key) do
+  def recv_state(%ChannelStateOffChain{} = recv_state, priv_key) when is_binary(priv_key) do
     GenServer.call(__MODULE__, {:recv_state, recv_state, priv_key})
   end
 
@@ -185,7 +197,8 @@ defmodule Aecore.Channel.Worker do
           non_neg_integer(),
           Wallet.privkey()
         ) :: {:ok, SignedTx.t()} | error()
-  def close(channel_id, fees, nonce, priv_key) do
+  def close(channel_id, {_, _} = fees, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(nonce) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:close, channel_id, fees, nonce, priv_key})
   end
 
@@ -198,7 +211,8 @@ defmodule Aecore.Channel.Worker do
           {non_neg_integer(), non_neg_integer()},
           Wallet.privkey()
         ) :: {:ok, SignedTx.t()} | error()
-  def recv_close_tx(channel_id, close_tx, fees, priv_key) do
+  def recv_close_tx(channel_id, %SignedTx{} = close_tx, {_, _} = fees, priv_key)
+      when is_binary(channel_id) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:recv_close_tx, channel_id, close_tx, fees, priv_key})
   end
 
@@ -206,7 +220,7 @@ defmodule Aecore.Channel.Worker do
   Notifies Channel Manager about close tx being mined.
   """
   @spec closed(SignedTx.t()) :: :ok | error()
-  def closed(close_tx) do
+  def closed(%SignedTx{} = close_tx) do
     GenServer.call(__MODULE__, {:closed, close_tx})
   end
 
@@ -215,7 +229,8 @@ defmodule Aecore.Channel.Worker do
   """
   @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           :ok | error()
-  def solo_close(channel_id, fee, nonce, priv_key) do
+  def solo_close(channel_id, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:solo_close, channel_id, fee, nonce, priv_key})
   end
 
@@ -224,7 +239,9 @@ defmodule Aecore.Channel.Worker do
   """
   @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) ::
           :ok | error()
-  def slash(channel_id, fee, nonce, pubkey, priv_key) do
+  def slash(channel_id, fee, nonce, pubkey, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and
+             is_binary(priv_key) do
     GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, pubkey, priv_key})
   end
 
@@ -238,7 +255,8 @@ defmodule Aecore.Channel.Worker do
           Wallet.pubkey(),
           Wallet.privkey()
         ) :: :ok | error()
-  def slashed(slash_tx, fee, nonce, pubkey, priv_key) do
+  def slashed(%SignedTx{} = slash_tx, fee, nonce, pubkey, priv_key)
+      when is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pubkey, priv_key})
   end
 
@@ -247,7 +265,8 @@ defmodule Aecore.Channel.Worker do
   """
   @spec settle(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           :ok | :error | error()
-  def settle(channel_id, fee, nonce, priv_key) do
+  def settle(channel_id, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
     with {:ok, peer_state} <- get_channel(channel_id),
          {:ok, tx} <- ChannelStatePeer.settle(peer_state, fee, nonce, priv_key) do
       Pool.add_transaction(tx)
@@ -261,7 +280,7 @@ defmodule Aecore.Channel.Worker do
   Notifies channel manager about mined settle tx.
   """
   @spec settled(SignedTx.t()) :: :ok | error()
-  def settled(settle_tx) do
+  def settled(%SignedTx{} = settle_tx) do
     GenServer.call(__MODULE__, {:settled, settle_tx})
   end
 
@@ -277,7 +296,7 @@ defmodule Aecore.Channel.Worker do
   Returns channel peer state of channel with specified id.
   """
   @spec get_channel(binary()) :: {:ok, ChannelStatePeer.t()} | error()
-  def get_channel(channel_id) do
+  def get_channel(channel_id) when is_binary(channel_id) do
     GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
 

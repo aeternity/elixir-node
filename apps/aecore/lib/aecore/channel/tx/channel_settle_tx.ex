@@ -8,7 +8,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.ChainState
+  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
   alias Aeutil.Serialization
 
@@ -67,12 +67,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Changes the account state (balance) of both parties and closes channel (drops channel object)
   """
   @spec process_chainstate(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
-        ) :: {:ok, {ChainState.accounts(), ChannelStateTree.t()}}
+        ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
@@ -101,12 +101,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   before the transaction is executed.
   """
   @spec preprocess_check(
-          ChainState.account(),
+          Chainstate.account(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
-        ) :: :ok
+        ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         channels,
@@ -135,12 +135,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @spec deduct_fee(
-          ChainState.accounts(),
+          Chainstate.accounts(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: ChainState.account()
+        ) :: Chainstate.account()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end

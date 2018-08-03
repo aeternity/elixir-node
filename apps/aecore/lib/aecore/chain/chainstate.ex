@@ -14,8 +14,21 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Hash
 
   require Logger
+
+  @protocol_version_field_size 64
+  @protocol_version 17
+
+  @doc """
+  This is the canonical root hash of an empty Patricia merkle tree
+  """
+  @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
+                         228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
+                         192>>
+
+  @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: OracleStateTree.oracles_state()
@@ -113,7 +126,24 @@ defmodule Aecore.Chain.Chainstate do
   """
   @spec calculate_root_hash(t()) :: binary()
   def calculate_root_hash(chainstate) do
-    AccountStateTree.root_hash(chainstate.accounts)
+    [
+      AccountStateTree.root_hash(chainstate.accounts),
+      NamingStateTree.root_hash(chainstate.naming),
+      OracleStateTree.root_hash(chainstate.oracles)
+    ]
+    |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
+      acc <> pad_empty(root_hash)
+    end)
+    |> Hash.hash_blake2b()
+  end
+
+  defp pad_empty(@canonical_root_hash) do
+    <<0::size(@state_hash_bytes)-unit(8)>>
+  end
+
+  defp pad_empty(root_hash_binary)
+       when is_binary(root_hash_binary) and byte_size(root_hash_binary) === @state_hash_bytes do
+    root_hash_binary
   end
 
   @doc """
