@@ -136,7 +136,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address.value != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->

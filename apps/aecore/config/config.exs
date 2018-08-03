@@ -88,6 +88,14 @@ config :aecore, :bytes_size,
   root_hash: 32,
   pow_total_size: 168
 
+config :aecore, :binary_ids,
+  account: 1,
+  name: 2,
+  commitment: 3,
+  oracle: 4,
+  contract: 5,
+  channel: 6
+
 config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 65

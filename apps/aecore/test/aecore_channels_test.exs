@@ -60,6 +60,7 @@ defmodule AecoreChannelTest do
     }
   end
 
+  @tag :channels
   @tag timeout: 120_000
   test "create channel, treansfer funds, mutal close channel", ctx do
     id = create_channel(ctx)
@@ -105,7 +106,8 @@ defmodule AecoreChannelTest do
     assert %{} == Pool.get_and_empty_pool()
   end
 
-  @tag timeout: 120_000
+  @tag :channels
+  @tag timeout: 240_000
   test "create channel, transfer twice, slash with old, slash with corrent and settle", ctx do
     id = create_channel(ctx)
 
@@ -169,6 +171,7 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
   end
 
+  @tag :channels
   @tag timeout: 120_000
   test "create channel, responder dissapears, solo close", ctx do
     id = create_channel(ctx)

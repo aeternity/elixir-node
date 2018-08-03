@@ -10,15 +10,16 @@ defmodule Aecore.Naming.Naming do
   alias Aeutil.Bits
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Chain.Identifier
 
   @name_salt_byte_size 32
 
   @type name_status() :: :claimed | :revoked
 
   @type claim :: %{
-          hash: binary(),
-          name: binary(),
-          owner: Wallet.pubkey(),
+          hash: Identifier.t(),
+          name: Identifier.t(),
+          owner: Identifier.t(),
           expires: non_neg_integer(),
           status: name_status(),
           ttl: non_neg_integer(),
@@ -26,8 +27,8 @@ defmodule Aecore.Naming.Naming do
         }
 
   @type commitment :: %{
-          hash: binary(),
-          owner: Wallet.pubkey(),
+          hash: Identifier.t(),
+          owner: Identifier.t(),
           created: non_neg_integer(),
           expires: non_neg_integer()
         }
@@ -51,13 +52,16 @@ defmodule Aecore.Naming.Naming do
           non_neg_integer(),
           non_neg_integer()
         ) :: commitment()
-  def create_commitment(hash, owner, created, expires),
-    do: %{
-      :hash => hash,
+  def create_commitment(hash, owner, created, expires) do
+    {:ok, identified_hash} = Identifier.create_identity(hash, :commitment)
+
+    %{
+      :hash => identified_hash,
       :owner => owner,
       :created => created,
       :expires => expires
     }
+  end
 
   @spec create_claim(
           binary(),
@@ -67,9 +71,11 @@ defmodule Aecore.Naming.Naming do
           non_neg_integer(),
           list()
         ) :: claim()
-  def create_claim(hash, name, owner, expire_by, client_ttl, pointers),
-    do: %{
-      :hash => hash,
+  def create_claim(hash, name, owner, expire_by, client_ttl, pointers) do
+    {:ok, identified_hash} = Identifier.create_identity(hash, :name)
+
+    %{
+      :hash => identified_hash,
       :name => name,
       :owner => owner,
       :expires => expire_by,
@@ -77,11 +83,14 @@ defmodule Aecore.Naming.Naming do
       :ttl => client_ttl,
       :pointers => pointers
     }
+  end
 
   @spec create_claim(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
-  def create_claim(hash, name, owner, height),
-    do: %{
-      :hash => hash,
+  def create_claim(hash, name, owner, height) do
+    {:ok, identified_hash} = Identifier.create_identity(hash, :name)
+
+    %{
+      :hash => identified_hash,
       :name => name,
       :owner => owner,
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
@@ -89,6 +98,7 @@ defmodule Aecore.Naming.Naming do
       :ttl => GovernanceConstants.client_ttl_limit(),
       :pointers => []
     }
+  end
 
   @spec create_commitment_hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
   def create_commitment_hash(name, name_salt) when is_binary(name_salt) do
@@ -140,12 +150,14 @@ defmodule Aecore.Naming.Naming do
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), map(), :naming_state | :name_commitment) ::
           binary() | {:error, String.t()}
+
   def rlp_encode(tag, version, %{} = naming_state, :naming_state) do
+    {:ok, encoded_owner} = Identifier.encode_data(naming_state.owner)
+
     list = [
       tag,
       version,
-      naming_state.hash,
-      naming_state.owner,
+      encoded_owner,
       naming_state.expires,
       Atom.to_string(naming_state.status),
       naming_state.ttl,
@@ -160,11 +172,12 @@ defmodule Aecore.Naming.Naming do
   end
 
   def rlp_encode(tag, version, %{} = name_commitment, :name_commitment) do
+    {:ok, encoded_identified_owner} = Identifier.encode_data(name_commitment.owner)
+
     list = [
       tag,
       version,
-      name_commitment.hash,
-      name_commitment.owner,
+      encoded_identified_owner,
       name_commitment.created,
       name_commitment.expires
     ]
@@ -181,11 +194,13 @@ defmodule Aecore.Naming.Naming do
   end
 
   @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode([hash, owner, expires, status, ttl, pointers], :name) do
+  def rlp_decode([encoded_owner, expires, status, ttl, pointers], :name) do
+    {:ok, decoded_owner} = Identifier.decode_data(encoded_owner)
+    {:ok, identified_decoded_owner} = Identifier.create_identity(decoded_owner, :account)
+
     {:ok,
      %{
-       hash: hash,
-       owner: owner,
+       owner: identified_decoded_owner,
        expires: Serialization.transform_item(expires, :int),
        status: String.to_atom(status),
        ttl: Serialization.transform_item(ttl, :int),
@@ -193,11 +208,13 @@ defmodule Aecore.Naming.Naming do
      }}
   end
 
-  def rlp_decode([hash, owner, created, expires], :name_commitment) do
+  def rlp_decode([owner, created, expires], :name_commitment) do
+    {:ok, decoded_owner} = Identifier.decode_data(owner)
+    {:ok, identified_decoded_owner} = Identifier.create_identity(decoded_owner, :account)
+
     {:ok,
      %{
-       hash: hash,
-       owner: owner,
+       owner: identified_decoded_owner,
        created: Serialization.transform_item(created, :int),
        expires: Serialization.transform_item(expires, :int)
      }}
