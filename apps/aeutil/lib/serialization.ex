@@ -591,8 +591,7 @@ defmodule Aeutil.Serialization do
 
   @spec binary_to_header(binary()) :: Header.t() | {:error, String.t()}
   def binary_to_header(binary) when is_binary(binary) do
-    # Application.get_env(:aecore, :aewallet)[:pub_key_size]
-    miner_pubkey_size = 33
+    miner_pubkey_size = Application.get_env(:aecore, :aewallet)[:pub_key_size]
     header_prev_hash_size = Application.get_env(:aecore, :bytes_size)[:header_hash]
     header_txs_hash_size = Application.get_env(:aecore, :bytes_size)[:txs_hash]
     header_root_hash_size = Application.get_env(:aecore, :bytes_size)[:root_hash]
@@ -607,7 +606,6 @@ defmodule Aeutil.Serialization do
       target::64,
       pow_evidence_bin::binary-size(pow_evidence_size),
       nonce::64,
-      # pubkey should be adjusted to 32 bytes.
       time::64,
       miner::binary-size(miner_pubkey_size)
     >> = binary

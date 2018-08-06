@@ -12,7 +12,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
@@ -120,28 +120,30 @@ defmodule AecoreSerializationTest do
     assert match?(^deserialized_name_commitment, name_commitment)
   end
 
-  # Uncomment this check after the pubkey is implemented with :ed25519
-  # @tag :rlp_test
-  # @tag timeout: 120_000
-  # test "Epoch RLP-encoded block deserialization", setup do
-  # epoch_serialized_block = create_data(Block, :erlang)
-  # deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
-  # assert %Block{} = deserialized_epoch_block
-  # end
+  #Uncomment this check after the pubkey is implemented with :ed25519
+  @tag :rlp_test
+  @tag timeout: 120_000
+  test "Epoch RLP-encoded block deserialization"do
+    epoch_serialized_block = create_data(Block, :erlang)
+    deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
+    assert %Block{} = deserialized_epoch_block
+  end
 
   def create_data(data_type, :elixir) do
+    %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
+    
     case data_type do
       SpendTx ->
         DataTx.init(
           data_type,
           %{amount: 100, receiver: <<1, 2, 3>>, version: 1, payload: <<"payload">>},
-          Wallet.get_public_key(),
+          Keys.sign_pubkey(),
           100,
           Chain.lowest_valid_nonce()
         )
 
       SignedTx ->
-        {:ok, signed_tx} = Account.spend(Wallet.get_public_key("M/0/1"), 100, 20, <<"payload">>)
+        {:ok, signed_tx} = Account.spend(acc2_pub, 100, 20, <<"payload">>)
 
         signed_tx
 
@@ -196,17 +198,14 @@ defmodule AecoreSerializationTest do
         update.data
 
       NameTransferTx ->
-        transfer_to_priv = Wallet.get_private_key("m/0/1")
-
-        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        transfer_to_pub = acc2_pub
 
         {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 50)
         transfer.data
 
       NameRevokeTx ->
-        transfer_to_priv = Wallet.get_private_key("m/0/1")
-
-        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        transfer_to_priv = acc2_priv
+        transfer_to_pub = acc2_pub
         next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
         {:ok, revoke} =

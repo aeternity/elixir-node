@@ -5,7 +5,7 @@ defmodule Aecore.Naming.Naming do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Hash
   alias Aeutil.Bits
   alias Aeutil.Serialization
@@ -18,7 +18,7 @@ defmodule Aecore.Naming.Naming do
   @type claim :: %{
           hash: binary(),
           name: binary(),
-          owner: Wallet.pubkey(),
+          owner: Keys.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
           ttl: non_neg_integer(),
@@ -27,7 +27,7 @@ defmodule Aecore.Naming.Naming do
 
   @type commitment :: %{
           hash: binary(),
-          owner: Wallet.pubkey(),
+          owner: Keys.pubkey(),
           created: non_neg_integer(),
           expires: non_neg_integer()
         }
@@ -47,7 +47,7 @@ defmodule Aecore.Naming.Naming do
 
   @spec create_commitment(
           binary(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: commitment()
@@ -62,7 +62,7 @@ defmodule Aecore.Naming.Naming do
   @spec create_claim(
           binary(),
           binary(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           list()
@@ -78,7 +78,7 @@ defmodule Aecore.Naming.Naming do
       :pointers => pointers
     }
 
-  @spec create_claim(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: claim()
+  @spec create_claim(binary(), binary(), Keys.pubkey(), non_neg_integer()) :: claim()
   def create_claim(hash, name, owner, height),
     do: %{
       :hash => hash,

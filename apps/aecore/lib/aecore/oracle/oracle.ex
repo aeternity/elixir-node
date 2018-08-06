@@ -12,7 +12,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
@@ -52,13 +52,13 @@ defmodule Aecore.Oracle.Oracle do
       DataTx.init(
         OracleRegistrationTx,
         payload,
-        Wallet.get_public_key(),
+        Keys.sign_pubkey(),
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
     Pool.add_transaction(tx)
   end
 
@@ -88,7 +88,7 @@ defmodule Aecore.Oracle.Oracle do
       DataTx.init(
         OracleQueryTx,
         payload,
-        Wallet.get_public_key(),
+        Keys.sign_pubkey(),
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
@@ -97,8 +97,8 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, tx} =
       SignedTx.sign_tx(
         tx_data,
-        Wallet.get_public_key(),
-        Wallet.get_private_key()
+        Keys.sign_pubkey(),
+        Keys.sign_privkey()
       )
 
     Pool.add_transaction(tx)
@@ -119,13 +119,13 @@ defmodule Aecore.Oracle.Oracle do
       DataTx.init(
         OracleResponseTx,
         payload,
-        Wallet.get_public_key(),
+        Keys.sign_pubkey(),
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
     Pool.add_transaction(tx)
   end
 
@@ -139,13 +139,13 @@ defmodule Aecore.Oracle.Oracle do
       DataTx.init(
         OracleExtendTx,
         payload,
-        Wallet.get_public_key(),
+        Keys.sign_pubkey(),
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
     Pool.add_transaction(tx)
   end
 

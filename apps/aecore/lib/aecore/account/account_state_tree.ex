@@ -3,7 +3,7 @@ defmodule Aecore.Account.AccountStateTree do
   Top level account state tree.
   """
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
@@ -16,14 +16,14 @@ defmodule Aecore.Account.AccountStateTree do
     PatriciaMerkleTree.new(:accounts)
   end
 
-  @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
+  @spec put(accounts_state(), Keys.pubkey(), Account.t()) :: accounts_state()
   def put(tree, key, value) do
     account_state_updated = Map.put(value, :pubkey, key)
     serialized_account_state = Serialization.rlp_encode(account_state_updated, :account_state)
     PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
-  @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
+  @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
       :none ->
@@ -35,13 +35,13 @@ defmodule Aecore.Account.AccountStateTree do
     end
   end
 
-  @spec update(accounts_state(), Wallet.pubkey(), (Account.t() -> Account.t())) ::
+  @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) ::
           accounts_state()
   def update(tree, key, fun) do
     put(tree, key, fun.(get(tree, key)))
   end
 
-  @spec has_key?(accounts_state(), Wallet.pubkey()) :: boolean()
+  @spec has_key?(accounts_state(), Keys.pubkey()) :: boolean()
   def has_key?(tree, key) do
     PatriciaMerkleTree.lookup(tree, key) != :none
   end

@@ -12,7 +12,7 @@ defmodule AecoreValidationTest do
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
 
@@ -33,9 +33,9 @@ defmodule AecoreValidationTest do
 
   setup _ctx do
     Miner.mine_sync_block_to_chain()
-
+    %{public: receiver} = :enacl.sign_keypair()
     [
-      receiver: Wallet.get_public_key("M/0")
+      receiver: receiver
     ]
   end
 
@@ -116,11 +116,11 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block", ctx do
-    sender = Wallet.get_public_key()
+    sender = Keys.sign_pubkey()
     amount = 5
     fee = 1
 
-    priv_key = Wallet.get_private_key()
+    priv_key = Keys.sign_privkey()
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
 
     {:ok, signed_tx1} =
@@ -137,11 +137,11 @@ defmodule AecoreValidationTest do
   end
 
   def get_new_block(receiver) do
-    sender = Wallet.get_public_key()
+    sender = Keys.sign_pubkey()
     amount = 100
     fee = 10
 
-    priv_key = Wallet.get_private_key()
+    priv_key = Keys.sign_privkey()
 
     {:ok, signed_tx} =
       Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)

@@ -7,11 +7,11 @@ defmodule AehttpclientTest do
   alias Aecore.Chain.Header
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
 
   @tag :http_client
   test "Client functions" do
-    account = Wallet.get_public_key()
+    account = Keys.sign_pubkey()
     hex_acc = Account.base58c_encode(account)
     base58_encoded_top_block_hash = Header.base58c_encode(Chain.top_block_hash())
     Pool.get_and_empty_pool()

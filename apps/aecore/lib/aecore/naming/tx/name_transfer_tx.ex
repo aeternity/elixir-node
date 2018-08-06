@@ -9,7 +9,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
@@ -19,7 +19,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @typedoc "Expected structure for the Transfer Transaction"
   @type payload :: %{
           hash: binary(),
-          target: Wallet.pubkey()
+          target: Keys.pubkey()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
@@ -29,7 +29,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @typedoc "Structure of the NameTransferTx Transaction type"
   @type t :: %NameTransferTx{
           hash: binary(),
-          target: Wallet.pubkey()
+          target: Keys.pubkey()
         }
 
   @doc """
@@ -59,7 +59,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
-      !Wallet.key_size_valid?(target) ->
+      !Keys.key_size_valid?(target) ->
         {:error, "#{__MODULE__}: target size invalid"}
 
       length(senders) != 1 ->

@@ -9,7 +9,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aeutil.Bits
@@ -20,7 +20,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @type id :: binary()
 
   @type payload :: %{
-          oracle_address: Wallet.pubkey(),
+          oracle_address: Keys.pubkey(),
           query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
@@ -28,7 +28,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         }
 
   @type t :: %OracleQueryTx{
-          oracle_address: Wallet.pubkey(),
+          oracle_address: Keys.pubkey(),
           query_data: Oracle.json(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
@@ -90,7 +90,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !match?(%{type: :relative}, response_ttl) ->
         {:error, "#{__MODULE__}: Invalid ttl type"}
 
-      !Wallet.key_size_valid?(oracle_address) ->
+      !Keys.key_size_valid?(oracle_address) ->
         {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
@@ -232,7 +232,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Wallet.pubkey(), non_neg_integer(), Wallet.pubkey()) :: binary()
+  @spec id(Keys.pubkey(), non_neg_integer(), Keys.pubkey()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)

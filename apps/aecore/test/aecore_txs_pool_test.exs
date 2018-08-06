@@ -10,7 +10,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
   alias Aecore.Account.Account
 
   setup do
@@ -28,11 +28,11 @@ defmodule AecoreTxsPoolTest do
       Chain.clear_state()
       :ok
     end)
-
+    %{public: b_pub_key} = :enacl.sign_keypair()
     [
-      a_pub_key: Wallet.get_public_key(),
-      priv_key: Wallet.get_private_key(),
-      b_pub_key: Wallet.get_public_key("M/0")
+      a_pub_key: Keys.sign_pubkey(),
+      priv_key: Keys.sign_privkey(),
+      b_pub_key: b_pub_key
     ]
   end
 

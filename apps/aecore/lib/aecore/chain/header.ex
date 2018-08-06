@@ -5,7 +5,7 @@ defmodule Aecore.Chain.Header do
 
   alias Aecore.Chain.Header
   alias Aeutil.Bits
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys.Worker, as: Keys
 
   @type t :: %Header{
           height: non_neg_integer(),
@@ -15,7 +15,7 @@ defmodule Aecore.Chain.Header do
           target: non_neg_integer(),
           nonce: non_neg_integer(),
           time: non_neg_integer(),
-          miner: Wallet.pubkey(),
+          miner: Keys.pubkey(),
           version: non_neg_integer()
         }
 
@@ -42,7 +42,7 @@ defmodule Aecore.Chain.Header do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer()
         ) :: Header.t()
 

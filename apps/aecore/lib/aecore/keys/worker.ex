@@ -37,7 +37,7 @@ defmodule Aecore.Keys.Worker do
       name: __MODULE__)
   end
 
-  def init(state) do
+  def init(_state) do
     with {:ok, sign_pubkey, sign_priv_file} <- setup_sign_keys(pwd(:sign), dir(:sign)),
          {:ok, peer_pubkey, peer_privkey} <- setup_peer_keys(pwd(:peer), dir(:peer)) do
       {:ok, %{sign_pubkey: sign_pubkey,
@@ -97,7 +97,7 @@ defmodule Aecore.Keys.Worker do
     verify(message, sign, Keys.sign_pubkey())
   end
   
-  @spec verify(binary(), binary(), pub_key()) :: true | false
+  @spec verify(binary(), binary(), pubkey()) :: true | false
   def verify(message, sign, pubkey)
     when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
     case :enacl.sign_verify_detached(sign, message, pubkey) do
