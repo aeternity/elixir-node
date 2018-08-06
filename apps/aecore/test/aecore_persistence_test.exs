@@ -7,8 +7,7 @@ defmodule PersistenceTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
 
   setup do
     Persistence.start_link([])
