@@ -5,17 +5,16 @@ defmodule AecoreTxTest do
 
   use ExUnit.Case
 
+  alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Keys.Wallet
   alias Aewallet.Signing
   alias Aeutil.Serialization
-  alias Aecore.Account.Account
 
   setup do
     Code.require_file("test_utils.ex", "./test")
