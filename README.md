@@ -232,9 +232,7 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 **Registering an oracle:**
   `Oracle.register(query_format, response_format, query_fee, fee, ttl)`
-  The query and response formats are strings. The query fee is the minimum fee that will be required for queries made to the
-  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
-  for the response fee he had to pay.
+  The query and response formats are string descriptions of what the input for those should be. The query fee is the minimum fee that will be required for queries made to the oracle. If the oracle responds to the query on time, he will receive that fee as a compensation for the response fee he had to pay.
 
 **Querying an oracle:**
   `Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
