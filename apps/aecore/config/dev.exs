@@ -59,7 +59,7 @@ config :aecore, :pow,
   max_target_change: 1,
   genesis_header: %{
     height: 0,
-    prev_hash: <<0::256>>,
+    prev_hxash: <<0::256>>,
     txs_hash: <<0::256>>,
     root_hash: <<0::256>>,
     time: 1_507_275_094_308,

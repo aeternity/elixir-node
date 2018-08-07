@@ -7,6 +7,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Block
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -53,7 +54,7 @@ defmodule Aecore.Chain.Chainstate do
   @spec init :: t()
   def init do
     %Chainstate{
-      :accounts => AccountStateTree.init_empty(),
+      :accounts => Block.genesis_populated_tree(),
       :oracles => OracleStateTree.init_empty(),
       :naming => NamingStateTree.init_empty(),
       :channels => ChannelStateTree.init_empty()
