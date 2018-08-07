@@ -53,15 +53,4 @@ defmodule Aecore.Naming.NamingStateTree do
   def root_hash(tree) do
     PatriciaMerkleTree.root_hash(tree)
   end
-
-  # TODO check if this is used
-  @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
-  def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
-    updated_naming_state =
-      naming_state
-      |> Enum.filter(fn {_hash, name_state} -> name_state.expires > block_height end)
-      |> Enum.into(%{})
-
-    %{chainstate | naming: updated_naming_state}
-  end
 end
