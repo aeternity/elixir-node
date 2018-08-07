@@ -19,8 +19,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
-  alias ExJsonSchema.Schema, as: JsonSchema
-  alias ExJsonSchema.Validator, as: JsonValidator
 
   @version 1
 
@@ -48,8 +46,8 @@ defmodule Aecore.Oracle.Oracle do
   use Aecore.Util.Serializable
 
   @spec register(
-          json_schema(),
-          json_schema(),
+          String.t(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -83,7 +81,7 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec query(
           Wallet.pubkey(),
-          json(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -123,7 +121,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
-  @spec respond(binary(), any(), non_neg_integer(), non_neg_integer()) :: :ok | :error
+  @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee, tx_ttl \\ 0) do
     payload = %{
       query_id: query_id,
@@ -162,20 +160,6 @@ defmodule Aecore.Oracle.Oracle do
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
-  end
-
-  @spec data_valid?(map(), map()) :: true | false
-  def data_valid?(format, data) do
-    schema = JsonSchema.resolve(format)
-
-    case JsonValidator.validate(schema, data) do
-      :ok ->
-        true
-
-      {:error, [{message, _}]} ->
-        Logger.error(fn -> "#{__MODULE__}: " <> message end)
-        false
-    end
   end
 
   @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
@@ -289,8 +273,8 @@ defmodule Aecore.Oracle.Oracle do
   def encode_to_list(%Oracle{} = oracle) do
     [
       @version,
-      Serialization.transform_item(oracle.query_format),
-      Serialization.transform_item(oracle.response_format),
+      oracle.query_format,
+      oracle.response_format,
       oracle.query_fee,
       oracle.expires
     ]
@@ -304,8 +288,8 @@ defmodule Aecore.Oracle.Oracle do
     {:ok,
      %Oracle{
        owner: %Identifier{type: :oracle},
-       query_format: Serialization.transform_item(query_format, :binary),
-       response_format: Serialization.transform_item(response_format, :binary),
+       query_format: query_format,
+       response_format: response_format,
        query_fee: Serialization.transform_item(query_fee, :int),
        expires: Serialization.transform_item(expires, :int)
      }}

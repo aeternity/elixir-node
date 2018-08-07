@@ -232,34 +232,7 @@ the log can be found in the source folder under:`apps/aecore/logs`
 
 **Registering an oracle:**
   `Oracle.register(query_format, response_format, query_fee, fee, ttl)`
-  The query and response formats are treated as json schemas by which the queries and responses
-  are validated. The query fee is the minimum fee that will be required for queries made to the
-  oracle. If the oracle responds to the query on time, he will receive that fee as a compensation
-  for the response fee he had to pay.
-
-  example format schema -
-    ```
-    %{
-      "type" =>
-        "object",
-      "properties" => %{
-        "base" => %{
-          "type" =>
-          "string"
-        },
-        "date" => %{
-          "type" =>
-            "string"
-        },
-        "rates" => %{
-          "type" =>
-            "object"
-        }
-      }
-    }
-    ```
-
-  To list all registered oracles -  `Chain.registered_oracles()`
+  The query and response formats are string descriptions of what the input for those should be. The query fee is the minimum fee that will be required for queries made to the oracle. If the oracle responds to the query on time, he will receive that fee as a compensation for the response fee he had to pay.
 
 **Querying an oracle:**
   `Oracle.query(oracle_address, query_data, query_fee, fee, query_ttl, response_ttl)`
@@ -269,10 +242,7 @@ the log can be found in the source folder under:`apps/aecore/logs`
   ```
   Oracle.query(
     "ak$5oyDtV2JbBpZxTCS5JacVfPQHKjxCdoRaxRS93tPHcwvqTtyvz",
-    %{
-      "currency" =>
-        "USD"
-     },
+    "currency => USD",
      5,
      10,
      %{ttl: 10, type: :absolute},

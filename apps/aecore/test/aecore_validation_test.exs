@@ -8,8 +8,7 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
