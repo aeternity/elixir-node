@@ -5,7 +5,7 @@ defmodule Aehttpserver.Web.NewTxController do
   alias Aeutil.HTTPUtil
   alias Aecore.Tx.Pool.Worker, as: Pool
 
-  def new_tx(conn, _params) do
+  def post_tx(conn, _params) do
     deserialized_tx = SignedTx.deserialize(conn.body_params)
 
     case Pool.add_transaction(deserialized_tx) do
