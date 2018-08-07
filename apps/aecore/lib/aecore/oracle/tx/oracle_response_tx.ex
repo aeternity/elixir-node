@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -16,12 +16,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @type payload :: %{
           query_id: binary(),
-          response: map()
+          response: String.t()
         }
 
   @type t :: %OracleResponseTx{
           query_id: binary(),
-          response: map()
+          response: String.t()
         }
 
   @type tx_type_state() :: Chainstate.oracles()
@@ -124,10 +124,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
-      !Oracle.data_valid?(
-        OracleStateTree.get_oracle(oracles, sender).response_format,
-        tx.response
-      ) ->
+      !is_binary(tx.response) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !OracleStateTree.exists_query?(oracles, tx.query_id) ->

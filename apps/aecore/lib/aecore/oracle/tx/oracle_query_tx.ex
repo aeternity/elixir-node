@@ -22,7 +22,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @type payload :: %{
           oracle_address: Identifier.t(),
-          query_data: Oracle.json(),
+          query_data: String.t(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
           response_ttl: Oracle.ttl()
@@ -30,7 +30,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @type t :: %OracleQueryTx{
           oracle_address: Identifier.t(),
-          query_data: Oracle.json(),
+          query_data: String.t(),
           query_fee: non_neg_integer(),
           query_ttl: Oracle.ttl(),
           response_ttl: Oracle.ttl()
@@ -177,10 +177,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         {:error, "#{__MODULE__}: No oracle registered with the address:
          #{inspect(tx.oracle_address)}"}
 
-      !Oracle.data_valid?(
-        OracleStateTree.get_oracle(oracles, tx.oracle_address.value).query_format,
-        tx.query_data
-      ) ->
+      !is_binary(tx.query_data) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(tx.query_data)}"}
 
       tx.query_fee < OracleStateTree.get_oracle(oracles, tx.oracle_address.value).query_fee ->
