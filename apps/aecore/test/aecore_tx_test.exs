@@ -35,6 +35,7 @@ defmodule AecoreTxTest do
   setup _tx do
     sender_acc = Keys.sign_pubkey()
     %{public: receiver} = :enacl.sign_keypair()
+
     [
       nonce: Map.get(Chain.chain_state(), sender_acc, %{nonce: 0}).nonce + 1,
       receiver: receiver

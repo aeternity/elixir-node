@@ -120,10 +120,10 @@ defmodule AecoreSerializationTest do
     assert match?(^deserialized_name_commitment, name_commitment)
   end
 
-  #Uncomment this check after the pubkey is implemented with :ed25519
+  # Uncomment this check after the pubkey is implemented with :ed25519
   @tag :rlp_test
   @tag timeout: 120_000
-  test "Epoch RLP-encoded block deserialization"do
+  test "Epoch RLP-encoded block deserialization" do
     epoch_serialized_block = create_data(Block, :erlang)
     deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
     assert %Block{} = deserialized_epoch_block
@@ -131,7 +131,7 @@ defmodule AecoreSerializationTest do
 
   def create_data(data_type, :elixir) do
     %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
-    
+
     case data_type do
       SpendTx ->
         DataTx.init(

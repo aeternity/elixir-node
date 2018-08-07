@@ -18,7 +18,7 @@ defmodule Aecore.Keys.Worker do
 
   @typedoc "Private key for peers - 32 bytes in size"
   @type peer_priv_key :: binary()
-  
+
   @pub_size 32
   @priv_sign_size 64
   @priv_peer_size 32
@@ -28,32 +28,33 @@ defmodule Aecore.Keys.Worker do
 
   @filename_sign_pub "sign_key.pub"
   @filename_sign_priv "sign_key"
-  
+
   @filename_peer_pub "peer_key.pub"
   @filename_peer_priv "peer_key"
 
   def start_link(_args) do
     GenServer.start_link(
       __MODULE__,
-      %{sign_pubkey: <<>>,
-        sign_priv_file: <<>>,
-        peer_pubkey: <<>>,
-        peer_privkey: <<>>},
-      name: __MODULE__)
+      %{sign_pubkey: <<>>, sign_priv_file: <<>>, peer_pubkey: <<>>, peer_privkey: <<>>},
+      name: __MODULE__
+    )
   end
 
   def init(_state) do
     with {:ok, sign_pubkey, sign_priv_file} <- setup_sign_keys(pwd(:sign), dir(:sign)),
          {:ok, peer_pubkey, peer_privkey} <- setup_peer_keys(pwd(:peer), dir(:peer)) do
-      {:ok, %{sign_pubkey: sign_pubkey,
-              sign_priv_file: sign_priv_file,
-              peer_pubkey: peer_pubkey,
-              peer_privkey: peer_privkey}}
+      {:ok,
+       %{
+         sign_pubkey: sign_pubkey,
+         sign_priv_file: sign_priv_file,
+         peer_pubkey: peer_pubkey,
+         peer_privkey: peer_privkey
+       }}
     else
       _ ->
-      {:stop, :reason} ##Check this! Here we should crash maybe.
+        ## Check this! Here we should crash maybe.
+        {:stop, :reason}
     end
-    
   end
 
   @doc """
@@ -106,7 +107,7 @@ defmodule Aecore.Keys.Worker do
 
   @spec sign(binary(), sign_priv_key()) :: binary()
   def sign(message, privkey)
-  when is_binary(message) and is_binary(privkey) do
+      when is_binary(message) and is_binary(privkey) do
     :enacl.sign_detached(message, privkey)
   end
 
@@ -117,10 +118,10 @@ defmodule Aecore.Keys.Worker do
   def verify(message, sign) do
     verify(message, sign, Keys.sign_pubkey())
   end
-  
+
   @spec verify(binary(), binary(), pubkey()) :: true | false
   def verify(message, sign, pubkey)
-    when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
+      when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
     case :enacl.sign_verify_detached(sign, message, pubkey) do
       {:ok, _} -> true
       _ -> false
@@ -141,9 +142,11 @@ defmodule Aecore.Keys.Worker do
         {:ok, encr_priv} ->
           {:ok, key} = decrypt_key(encr_priv, pwd(:sign), @priv_sign_size)
           key
+
         _ ->
           {:error, :enoent}
-    end
+      end
+
     {:reply, privkey, state}
   end
 
@@ -155,10 +158,11 @@ defmodule Aecore.Keys.Worker do
 
   defp setup_sign_keys(pwd, keys_dir) do
     {pub_file, priv_file} = gen_sign_filename(keys_dir)
+
     case read_keys(pwd, pub_file, priv_file, @pub_size, @priv_sign_size) do
       {:error, :enoent} ->
         gen_new_sign(pwd, pub_file, priv_file)
-      
+
       {pubkey, privkey} ->
         ## Check validity
         if check_sign_keys(pubkey, privkey) do
@@ -171,10 +175,11 @@ defmodule Aecore.Keys.Worker do
 
   defp setup_peer_keys(pwd, keys_dir) do
     {pub_file, priv_file} = gen_peer_filename(keys_dir)
+
     case read_keys(pwd, pub_file, priv_file, @pub_size, @priv_peer_size) do
       {:error, :enoent} ->
         gen_new_peer(pwd, pub_file, priv_file)
-      
+
       {pubkey, privkey} ->
         ## Check validity
         if check_peer_keys(pubkey, privkey) do
@@ -185,13 +190,15 @@ defmodule Aecore.Keys.Worker do
     end
   end
 
-    defp gen_new_sign(pwd, pub_file, priv_file) do
+  defp gen_new_sign(pwd, pub_file, priv_file) do
     %{public: pubkey, secret: privkey} = :enacl.sign_keypair()
+
     if check_sign_keys(pubkey, privkey) do
       :ok = save_keys(pwd, pub_file, pubkey, priv_file, privkey)
       {:ok, pubkey, priv_file}
     else
-      gen_new_sign(pwd, pub_file, priv_file) ## Why do we check the lib here?
+      ## Why do we check the lib here?
+      gen_new_sign(pwd, pub_file, priv_file)
     end
   end
 
@@ -204,10 +211,11 @@ defmodule Aecore.Keys.Worker do
       :ok = save_keys(pwd, pub_file, pubkey, priv_file, privkey)
       {:ok, pubkey, privkey}
     else
-      gen_new_peer(pwd, pub_file, priv_file) ## Why do we check the lib here?
+      ## Why do we check the lib here?
+      gen_new_peer(pwd, pub_file, priv_file)
     end
   end
-  
+
   defp gen_sign_filename(keys_dir) do
     gen_filename(keys_dir, @filename_sign_pub, @filename_sign_priv)
   end
@@ -235,7 +243,7 @@ defmodule Aecore.Keys.Worker do
         {:ok, pubkey} = decrypt_key(encr_pub, pwd, pub_size)
         {:ok, privkey} = decrypt_key(encr_priv, pwd, priv_size)
         {pubkey, privkey}
-        
+
       _ ->
         {:error, :enoent}
     end
@@ -244,19 +252,19 @@ defmodule Aecore.Keys.Worker do
   defp save_keys(pwd, pub_file, pubkey, priv_file, privkey) do
     encrypted_pub = encrypt_key(pubkey, pwd)
     encrypted_priv = encrypt_key(privkey, pwd)
-    
+
     File.write!(pub_file, encrypted_pub)
     File.write!(priv_file, encrypted_priv)
   end
 
   defp encrypt_key(key, pwd) do
     ## Put leading 0s to ensure on decryption we are using the correct password
-    :crypto.block_encrypt(:aes_ecb, hash(pwd), <<0::128, key::binary()>>) ## Fix magic 0s
+    ## Fix magic 0s
+    :crypto.block_encrypt(:aes_ecb, hash(pwd), <<0::128, key::binary()>>)
   end
-  
+
   defp decrypt_key(encrypted, pwd, size) do
-    <<0::128, key::binary-size(size)>> =
-      :crypto.block_decrypt(:aes_ecb, hash(pwd), encrypted)
+    <<0::128, key::binary-size(size)>> = :crypto.block_decrypt(:aes_ecb, hash(pwd), encrypted)
     {:ok, key}
   end
 
@@ -273,9 +281,8 @@ defmodule Aecore.Keys.Worker do
     pubkey == :enacl.curve25519_scalarmult_base(privkey)
   end
 
-
   ## Change get_env with fetch_env! ??
-  
+
   defp pwd(:sign) do
     Application.get_env(:aecore, :sign_keys)[:pass]
   end
@@ -283,11 +290,11 @@ defmodule Aecore.Keys.Worker do
   defp pwd(:peer) do
     Application.get_env(:aecore, :peer_keys)[:pass]
   end
-  
+
   defp dir(:sign) do
     Application.get_env(:aecore, :sign_keys)[:path]
   end
-  
+
   defp dir(:peer) do
     Application.get_env(:aecore, :peer_keys)[:path]
   end

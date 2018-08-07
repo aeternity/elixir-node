@@ -34,6 +34,7 @@ defmodule AecoreValidationTest do
   setup _ctx do
     Miner.mine_sync_block_to_chain()
     %{public: receiver} = :enacl.sign_keypair()
+
     [
       receiver: receiver
     ]

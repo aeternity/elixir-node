@@ -29,6 +29,7 @@ defmodule AecoreNamingTest do
 
     %{public: a_pub_key, secret: a_priv_key} = :enacl.sign_keypair()
     %{public: b_pub_key, secret: b_priv_key} = :enacl.sign_keypair()
+
     [
       a_pub_key: a_pub_key,
       a_priv_key: a_priv_key,

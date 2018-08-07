@@ -23,6 +23,7 @@ defmodule AecoreChainstateTest do
     %{public: a_pub_key} = :enacl.sign_keypair()
     %{public: b_pub_key, secret: b_priv_key} = :enacl.sign_keypair()
     %{public: c_pub_key, secret: c_priv_key} = :enacl.sign_keypair()
+
     [
       a_pub_key: a_pub_key,
       b_pub_key: b_pub_key,

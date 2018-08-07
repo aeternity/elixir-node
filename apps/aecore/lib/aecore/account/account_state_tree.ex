@@ -35,8 +35,7 @@ defmodule Aecore.Account.AccountStateTree do
     end
   end
 
-  @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) ::
-          accounts_state()
+  @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) :: accounts_state()
   def update(tree, key, fun) do
     put(tree, key, fun.(get(tree, key)))
   end

@@ -87,7 +87,7 @@ defmodule Aecore.Tx.SignedTx do
       data
       |> Serialization.rlp_encode(:tx)
       |> Keys.sign(priv_key)
-    
+
     {success, new_sigs_reversed} =
       sigs
       |> Enum.zip(DataTx.senders(data))

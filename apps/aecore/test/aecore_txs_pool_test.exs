@@ -28,7 +28,9 @@ defmodule AecoreTxsPoolTest do
       Chain.clear_state()
       :ok
     end)
+
     %{public: b_pub_key} = :enacl.sign_keypair()
+
     [
       a_pub_key: Keys.sign_pubkey(),
       priv_key: Keys.sign_privkey(),

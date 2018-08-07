@@ -27,6 +27,7 @@ defmodule MultipleTransactionsTest do
     %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
     %{public: acc3_pub, secret: acc3_priv} = :enacl.sign_keypair()
     %{public: acc4_pub, secret: acc4_priv} = :enacl.sign_keypair()
+
     [
       account: {Keys.sign_pubkey(), Keys.sign_privkey()},
       account2: {acc2_pub, acc2_priv},

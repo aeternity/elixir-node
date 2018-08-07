@@ -30,7 +30,7 @@ defmodule GetTxsForAddressTest do
     %{public: receiver} = :enacl.sign_keypair()
 
     {:ok, signed_tx} = Account.spend(sender_pub, sender_priv, receiver, 2, 1, 2, <<"payload">>)
-    
+
     assert :ok = Pool.add_transaction(signed_tx)
 
     :ok = Miner.mine_sync_block_to_chain()
