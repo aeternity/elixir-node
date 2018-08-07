@@ -16,11 +16,6 @@ defmodule Aeutil.Serialization do
 
   require Logger
 
-  @type id :: :account | :name | :commitment | :oracle | :contract | :channel
-  @type transaction_types :: SpendTx.t() | DataTx.t()
-
-  @type hash_types :: :chainstate | :header | :txs
-
   @type value :: list() | map() | atom() | binary()
 
   @type raw_data :: %{

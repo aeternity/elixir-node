@@ -49,7 +49,6 @@ defmodule Aecore.Chain.Identifier do
   @spec encode_to_binary(Identifier.t()) :: binary()
   def encode_to_binary(%Identifier{} = data) do
     tag = type_to_tag(data.type)
-    # data should be restricted to 32 bytes only
     <<tag::unsigned-integer-size(8), data.value::binary>>
   end
 
@@ -57,7 +56,6 @@ defmodule Aecore.Chain.Identifier do
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
   def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do
-    # data should be stricted to 32 bytes only
     case tag_to_type(tag) do
       {:error, msg} ->
         {:error, msg}
