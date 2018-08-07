@@ -7,7 +7,6 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.OracleQuery
-  alias Aecore.Chain.Identifier
   alias MerklePatriciaTree.Trie
 
   @type hash :: binary()
@@ -193,40 +192,7 @@ defmodule Aecore.Oracle.OracleStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
         {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
-#FIXME adjust this
-        case deserialized do
-          %{
-            owner: %Identifier{type: :oracle},
-            query_format: _,
-            response_format: _,
-            query_fee: _,
-            expires: _
-          } ->
-            {:ok, identified_orc_owner} = Identifier.create_identity(key, :oracle)
-            %{deserialized | owner: identified_orc_owner}
-
-          %{
-            expires: _,
-            fee: _,
-            has_response: _,
-            oracle_address: oracle_address,
-            query: _,
-            response: _,
-            response_ttl: _,
-            sender_address: sender_address,
-            sender_nonce: _
-          } ->
-            {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
-
-            {:ok, identified_sender_address} =
-              Identifier.create_identity(sender_address, :account)
-
-            %{
-              deserialized
-              | oracle_address: identified_orc_address,
-                sender_address: identified_sender_address
-            }
-        end
+        deserialized
 
       _ ->
         :none

@@ -114,7 +114,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
+    identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
     oracle = %Oracle{
       owner: identified_oracle_owner,
@@ -209,7 +209,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       "$æx" <> Serialization.transform_item(tx.query_format),
       "$æx" <> Serialization.transform_item(tx.response_format),
@@ -222,7 +222,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   def decode_from_list(@version, [
-        senders,
+        encoded_senders,
         nonce,
         encoded_query_format,
         encoded_response_format,
@@ -248,15 +248,19 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_fee: Serialization.transform_item(query_fee, :int)
     }
 
-    {:ok,
-     DataTx.init(
-       OracleRegistrationTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+      {:ok,
+       DataTx.init(
+         OracleRegistrationTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:eror, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

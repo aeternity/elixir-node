@@ -47,9 +47,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   # Callbacks
 
   @spec init(payload()) :: t()
-  def init(%{commitment: commitment} = _payload) do
-    {:ok, identified_commitment} = Identifier.create_identity(commitment, :commitment)
+  def init(%{commitment: %Identifier{} = identified_commitment} = _payload) do
+    %NamePreClaimTx{commitment: identified_commitment}
+  end
 
+  def init(%{commitment: commitment} = _payload) do
+    identified_commitment = Identifier.create_identity(commitment, :commitment)
     %NamePreClaimTx{commitment: identified_commitment}
   end
 
@@ -97,7 +100,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
-    commitment = NameCommitment.create(tx.commitment.value, sender, block_height, commitment_expires)
+    commitment =
+      NameCommitment.create(tx.commitment.value, sender, block_height, commitment_expires)
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
@@ -152,26 +156,31 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      tx.commitment,
+      Identifier.encode_data(tx.commitment),
       datatx.fee,
       datatx.ttl
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, commitment, fee, ttl]) do
-    payload = %NamePreClaimTx{commitment: commitment}
+  def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+         {:ok, commitment} <- Identifier.decode_data(encoded_commitment) do
+      payload = %NamePreClaimTx{commitment: commitment}
 
-    {:ok,
-     DataTx.init(
-       NamePreClaimTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+      {:ok,
+       DataTx.init(
+         NamePreClaimTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

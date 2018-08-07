@@ -10,6 +10,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Keys.Wallet
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -107,10 +108,12 @@ defmodule Aecore.Tx.DataTx do
     if is_list(senders) do
       identified_senders =
         for sender <- senders do
-          with {:ok, identified_senders} <- Identifier.create_identity(sender, :account) do
-            identified_senders
-          else
-            {:error, msg} -> {:error, msg}
+          case sender do
+            %Identifier{} ->
+              sender
+
+            address ->
+              Identifier.create_identity(address, :account)
           end
         end
 
@@ -123,7 +126,7 @@ defmodule Aecore.Tx.DataTx do
         ttl: ttl
       }
     else
-      {:ok, sender} = Identifier.create_identity(senders, :account)
+      sender = Identifier.create_identity(senders, :account)
 
       %DataTx{
         type: type,
@@ -335,9 +338,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp payload_validate(%DataTx{type: type, payload: payload} = data_tx) do
-    payload
-    |> type.init()
-    |> type.validate(data_tx)
+    type.validate(payload, data_tx)
   end
 
   defp senders_pubkeys_size_valid?([sender | rest]) do

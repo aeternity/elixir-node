@@ -28,29 +28,16 @@ defmodule Aecore.Naming.NamingStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, value} ->
         {:ok, naming} = Serialization.rlp_decode_anything(value)
-#FIXME adjust this
-        identified_hash =
-          case naming do
-            %{
-              owner: _owner,
-              created: _created,
-              expires: _expires
-            } ->
-              {:ok, identified_commitment_hash} = Identifier.create_identity(key, :commitment)
-              identified_commitment_hash
 
-            %{
-              owner: _owner,
-              expires: _expires,
-              status: _status,
-              ttl: _ttl,
-              pointers: _pointers
-            } ->
-              {:ok, identified_name_hash} = Identifier.create_identity(key, :name)
-              identified_name_hash
-          end
+        case naming do
+          %NameClaim{} ->
+            hash = Identifier.create_identity(key, :name)
+            %NameClaim{naming | hash: hash}
 
-        Map.put(naming, :hash, identified_hash)
+          %NameCommitment{} ->
+            hash = Identifier.create_identity(key, :commitment)
+            %NameCommitment{naming | hash: hash}
+        end
 
       _ ->
         :none
@@ -67,7 +54,7 @@ defmodule Aecore.Naming.NamingStateTree do
     PatriciaMerkleTree.root_hash(tree)
   end
 
-#TODO check if this is used
+  # TODO check if this is used
   @spec apply_block_height_on_state!(Chainstate.t(), integer()) :: Chainstate.t()
   def apply_block_height_on_state!(%{naming: naming_state} = chainstate, block_height) do
     updated_naming_state =

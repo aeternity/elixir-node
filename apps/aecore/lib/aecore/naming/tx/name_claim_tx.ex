@@ -13,6 +13,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -176,7 +177,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       tx.name,
       tx.name_salt,
@@ -185,18 +186,22 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, name, name_salt, fee, ttl]) do
+  def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
 
-    {:ok,
-     DataTx.init(
-       NameClaimTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+      {:ok,
+       DataTx.init(
+         NameClaimTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

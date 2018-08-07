@@ -53,7 +53,7 @@ defmodule Aecore.Account.Account do
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
-    {:ok, id} = Identifier.create_identity(pubkey, :account)
+    id = Identifier.create_identity(pubkey, :account)
 
     %Account{
       balance: balance,

@@ -48,9 +48,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+  def init(%{hash: %Identifier{} = identified_hash, target: %Identifier{} = identified_target}) do
+    %NameTransferTx{hash: identified_hash, target: identified_target}
+  end
+
   def init(%{hash: hash, target: target}) do
-    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
-    {:ok, identified_target} = Identifier.create_identity(target, :account)
+    identified_name_hash = Identifier.create_identity(hash, :name)
+    identified_target = Identifier.create_identity(target, :account)
     %NameTransferTx{hash: identified_name_hash, target: identified_target}
   end
 
@@ -164,27 +168,40 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      tx.hash,
-      tx.target,
+      Identifier.encode_data(tx.hash),
+      Identifier.encode_data(tx.target),
       datatx.fee,
       datatx.ttl
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, hash, recipient, fee, ttl]) do
-    payload = %NameTransferTx{hash: hash, target: recipient}
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_hash,
+        encoded_recipient,
+        fee,
+        ttl
+      ]) do
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+         {:ok, hash} <- Identifier.decode_data(encoded_hash),
+         {:ok, recipient} <- Identifier.decode_data(encoded_recipient) do
+      payload = %NameTransferTx{hash: hash, target: recipient}
 
-    {:ok,
-     DataTx.init(
-       NameTransferTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+      {:ok,
+       DataTx.init(
+         NameTransferTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

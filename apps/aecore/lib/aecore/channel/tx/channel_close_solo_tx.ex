@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -165,7 +166,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       ChannelStateOffChain.encode_to_list(tx.state),
       datatx.fee,
@@ -173,23 +174,23 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, [state_ver_bin | state], fee, ttl]) do
+  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
     state_ver = Serialization.transform_item(state_ver_bin, :int)
 
-    case ChannelStateOffChain.decode_from_list(state_ver, state) do
-      {:ok, state} ->
-        payload = %ChannelCloseSoloTx{state: state}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+         {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state) do
+      payload = %ChannelCloseSoloTx{state: state}
 
-        {:ok,
-         DataTx.init(
-           ChannelCloseSoloTx,
-           payload,
-           senders,
-           Serialization.transform_item(fee, :int),
-           Serialization.transform_item(nonce, :int),
-           Serialization.transform_item(ttl, :int)
-         )}
-
+      {:ok,
+       DataTx.init(
+         ChannelCloseSoloTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
       {:error, _} = error ->
         error
     end

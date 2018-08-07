@@ -12,7 +12,6 @@ defmodule Aeutil.Serialization do
   alias Aecore.Account.Account
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Chain.Identifier
 
   require Logger
 

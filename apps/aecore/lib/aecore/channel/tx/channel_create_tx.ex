@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -191,7 +192,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       tx.initiator_amount,
       tx.responder_amount,
@@ -202,7 +203,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   def decode_from_list(@version, [
-        senders,
+        encoded_senders,
         nonce,
         initiator_amount,
         responder_amount,
@@ -216,15 +217,19 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       locktime: Serialization.transform_item(locktime, :int)
     }
 
-    {:ok,
-     DataTx.init(
-       ChannelCreateTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+      {:ok,
+       DataTx.init(
+         ChannelCreateTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

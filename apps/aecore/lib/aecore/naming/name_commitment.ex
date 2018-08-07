@@ -7,6 +7,7 @@ defmodule Aecore.Naming.NameCommitment do
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -29,13 +30,17 @@ defmodule Aecore.Naming.NameCommitment do
           non_neg_integer(),
           non_neg_integer()
         ) :: t()
-  def create(hash, owner, created, expires),
-    do: %NameCommitment{
-      :hash => hash,
-      :owner => owner,
+  def create(hash, owner, created, expires) do
+    identified_hash = Identifier.create_identity(hash, :commitment)
+    identified_owner = Identifier.create_identity(owner, :account)
+
+    %NameCommitment{
+      :hash => identified_hash,
+      :owner => identified_owner,
       :created => created,
       :expires => expires
     }
+  end
 
   @spec hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
   def hash(name, name_salt) when is_binary(name_salt) do
@@ -63,21 +68,23 @@ defmodule Aecore.Naming.NameCommitment do
   def encode_to_list(%NameCommitment{} = name_commitment) do
     [
       @version,
-      name_commitment.hash,
-      name_commitment.owner,
+      Identifier.encode_data(name_commitment.owner),
       name_commitment.created,
       name_commitment.expires
     ]
   end
 
-  def decode_from_list(@version, [hash, owner, created, expires]) do
-    {:ok,
-     %NameCommitment{
-       hash: hash,
-       owner: owner,
-       created: Serialization.transform_item(created, :int),
-       expires: Serialization.transform_item(expires, :int)
-     }}
+  def decode_from_list(@version, [encoded_owner, created, expires]) do
+    with {:ok, owner} <- Identifier.decode_data(encoded_owner) do
+      {:ok,
+       %NameCommitment{
+         owner: owner,
+         created: Serialization.transform_item(created, :int),
+         expires: Serialization.transform_item(expires, :int)
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

@@ -8,6 +8,7 @@ defmodule Aecore.Naming.NameClaim do
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.NameClaim
+  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -41,28 +42,36 @@ defmodule Aecore.Naming.NameClaim do
           non_neg_integer(),
           list()
         ) :: t()
-  def create(hash, name, owner, expire_by, client_ttl, pointers),
-    do: %NameClaim{
-      :hash => hash,
+  def create(hash, name, owner, expire_by, client_ttl, pointers) do
+    identified_hash = Identifier.create_identity(hash, :name)
+    identified_owner = Identifier.create_identity(owner, :account)
+
+    %NameClaim{
+      :hash => identified_hash,
       :name => name,
-      :owner => owner,
+      :owner => identified_owner,
       :expires => expire_by,
       :status => :claimed,
       :ttl => client_ttl,
       :pointers => pointers
     }
+  end
 
   @spec create(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: t()
-  def create(hash, name, owner, height),
-    do: %NameClaim{
-      :hash => hash,
+  def create(hash, name, owner, height) do
+    identified_hash = Identifier.create_identity(hash, :name)
+    identified_owner = Identifier.create_identity(owner, :account)
+
+    %NameClaim{
+      :hash => identified_hash,
       :name => name,
-      :owner => owner,
+      :owner => identified_owner,
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
       :status => :claimed,
       :ttl => GovernanceConstants.client_ttl_limit(),
       :pointers => []
     }
+  end
 
   @spec get_name_salt_byte_size() :: non_neg_integer()
   def get_name_salt_byte_size, do: @name_salt_byte_size
@@ -83,8 +92,7 @@ defmodule Aecore.Naming.NameClaim do
   def encode_to_list(%NameClaim{} = naming_state) do
     [
       @version,
-      naming_state.hash,
-      naming_state.owner,
+      Identifier.encode_data(naming_state.owner),
       naming_state.expires,
       Atom.to_string(naming_state.status),
       naming_state.ttl,
@@ -93,16 +101,19 @@ defmodule Aecore.Naming.NameClaim do
   end
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
-  def decode_from_list(@version, [hash, owner, expires, status, ttl, pointers]) do
-    {:ok,
-     %NameClaim{
-       hash: hash,
-       owner: owner,
-       expires: Serialization.transform_item(expires, :int),
-       status: String.to_atom(status),
-       ttl: Serialization.transform_item(ttl, :int),
-       pointers: pointers
-     }}
+  def decode_from_list(@version, [encoded_owner, expires, status, ttl, pointers]) do
+    with {:ok, owner} <- Identifier.decode_data(encoded_owner) do
+      {:ok,
+       %NameClaim{
+         owner: owner,
+         expires: Serialization.transform_item(expires, :int),
+         status: String.to_atom(status),
+         ttl: Serialization.transform_item(ttl, :int),
+         pointers: pointers
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

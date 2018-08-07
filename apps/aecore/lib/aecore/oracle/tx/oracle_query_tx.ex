@@ -57,6 +57,23 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: t()
+
+  def init(%{
+        oracle_address: %Identifier{} = identified_oracle_address,
+        query_data: query_data,
+        query_fee: query_fee,
+        query_ttl: query_ttl,
+        response_ttl: response_ttl
+      }) do
+    %OracleQueryTx{
+      oracle_address: identified_oracle_address,
+      query_data: query_data,
+      query_fee: query_fee,
+      query_ttl: query_ttl,
+      response_ttl: response_ttl
+    }
+  end
+
   def init(%{
         oracle_address: oracle_address,
         query_data: query_data,
@@ -64,7 +81,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
+    identified_orc_address = Identifier.create_identity(oracle_address, :oracle)
 
     %OracleQueryTx{
       oracle_address: identified_orc_address,
@@ -133,7 +150,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
+    identified_sender = Identifier.create_identity(sender, :account)
 
     query = %OracleQuery{
       sender_address: identified_sender,
@@ -263,8 +280,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identity(id.value, :oracle)
-    check_id == id
+    Identifier.create_identity(id.value, :oracle) == id
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
@@ -281,9 +297,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      datatx.payload.oracle_address,
+      Identifier.encode_data(tx.oracle_address),
       "$æx" <> Serialization.transform_item(tx.query_data),
       tx.query_fee,
       ttl_type_q,
@@ -296,9 +312,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   def decode_from_list(@version, [
-        senders,
+        encoded_senders,
         nonce,
-        oracle_address,
+        encoded_oracle_address,
         encoded_query_data,
         query_fee,
         encoded_query_ttl_type,
@@ -320,26 +336,34 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     query_data = Serialization.decode_format(encoded_query_data)
 
-    payload = %{
-      oracle_address: oracle_address,
-      query_data: query_data,
-      query_fee: Serialization.transform_item(query_fee, :int),
-      query_ttl: %{ttl: Serialization.transform_item(query_ttl_value, :int), type: query_ttl_type},
-      response_ttl: %{
-        ttl: Serialization.transform_item(response_ttl_value, :int),
-        type: response_ttl_type
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+         {:ok, oracle_address} <- Identifier.decode_data(encoded_oracle_address) do
+      payload = %{
+        oracle_address: oracle_address,
+        query_data: query_data,
+        query_fee: Serialization.transform_item(query_fee, :int),
+        query_ttl: %{
+          ttl: Serialization.transform_item(query_ttl_value, :int),
+          type: query_ttl_type
+        },
+        response_ttl: %{
+          ttl: Serialization.transform_item(response_ttl_value, :int),
+          type: response_ttl_type
+        }
       }
-    }
 
-    {:ok,
-     DataTx.init(
-       OracleQueryTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+      {:ok,
+       DataTx.init(
+         OracleQueryTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

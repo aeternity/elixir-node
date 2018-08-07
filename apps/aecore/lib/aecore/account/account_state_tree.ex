@@ -32,7 +32,7 @@ defmodule Aecore.Account.AccountStateTree do
       {:ok, account_state} ->
         {:ok, acc} = Serialization.rlp_decode_only(account_state, Account)
 
-        {:ok, id} = Identifier.create_identity(key, :account)
+        id = Identifier.create_identity(key, :account)
         %Account{acc | id: id}
     end
   end

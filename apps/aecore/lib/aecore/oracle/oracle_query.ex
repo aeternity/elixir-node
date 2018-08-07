@@ -8,6 +8,7 @@ defmodule Aecore.Oracle.OracleQuery do
   alias Aeutil.Parser
   alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -54,9 +55,9 @@ defmodule Aecore.Oracle.OracleQuery do
 
     [
       @version,
-      oracle_query.sender_address,
+      Identifier.encode_data(oracle_query.sender_address),
       oracle_query.sender_nonce,
-      oracle_query.oracle_address,
+      Identifier.encode_data(oracle_query.oracle_address),
       Serialization.transform_item(oracle_query.query),
       has_response,
       response,
@@ -69,9 +70,9 @@ defmodule Aecore.Oracle.OracleQuery do
   def decode_from_list(
         @version,
         [
-          sender_address,
+          encoded_sender_address,
           sender_nonce,
-          oracle_address,
+          encoded_oracle_address,
           query,
           has_response,
           response,
@@ -92,18 +93,23 @@ defmodule Aecore.Oracle.OracleQuery do
         _ -> Serialization.transform_item(response, :binary)
       end
 
-    {:ok,
-     %OracleQuery{
-       expires: Serialization.transform_item(expires, :int),
-       fee: Serialization.transform_item(fee, :int),
-       has_response: has_response,
-       oracle_address: oracle_address,
-       query: Serialization.transform_item(query, :binary),
-       response: new_response,
-       response_ttl: Serialization.transform_item(response_ttl, :int),
-       sender_address: sender_address,
-       sender_nonce: Serialization.transform_item(sender_nonce, :int)
-     }}
+    with {:ok, oracle_address} <- Identifier.decode_data(encoded_oracle_address),
+         {:ok, sender_address} <- Identifier.decode_data(encoded_sender_address) do
+      {:ok,
+       %OracleQuery{
+         expires: Serialization.transform_item(expires, :int),
+         fee: Serialization.transform_item(fee, :int),
+         has_response: has_response,
+         oracle_address: oracle_address,
+         query: Serialization.transform_item(query, :binary),
+         response: new_response,
+         response_ttl: Serialization.transform_item(response_ttl, :int),
+         sender_address: sender_address,
+         sender_nonce: Serialization.transform_item(sender_nonce, :int)
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

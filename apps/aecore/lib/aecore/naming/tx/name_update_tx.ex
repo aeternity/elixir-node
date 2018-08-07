@@ -54,13 +54,28 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+
+  def init(%{
+        hash: %Identifier{} = identified_hash,
+        expire_by: expire_by,
+        client_ttl: client_ttl,
+        pointers: pointers
+      }) do
+    %NameUpdateTx{
+      hash: identified_hash,
+      expire_by: expire_by,
+      client_ttl: client_ttl,
+      pointers: pointers
+    }
+  end
+
   def init(%{
         hash: hash,
         expire_by: expire_by,
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+    identified_name_hash = Identifier.create_identity(hash, :name)
 
     %NameUpdateTx{
       hash: identified_name_hash,
@@ -202,9 +217,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      tx.hash,
+      Identifier.encode_data(tx.hash),
       tx.client_ttl,
       tx.pointers,
       tx.expire_by,
@@ -213,23 +228,37 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, hash, client_ttl, pointers, expire_by, fee, ttl]) do
-    payload = %NameUpdateTx{
-      client_ttl: Serialization.transform_item(client_ttl, :int),
-      expire_by: Serialization.transform_item(expire_by, :int),
-      hash: hash,
-      pointers: pointers
-    }
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_hash,
+        client_ttl,
+        pointers,
+        expire_by,
+        fee,
+        ttl
+      ]) do
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+         {:ok, hash} <- Identifier.decode_data(encoded_hash) do
+      payload = %NameUpdateTx{
+        client_ttl: Serialization.transform_item(client_ttl, :int),
+        expire_by: Serialization.transform_item(expire_by, :int),
+        hash: hash,
+        pointers: pointers
+      }
 
-    {:ok,
-     DataTx.init(
-       NameUpdateTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+      {:ok,
+       DataTx.init(
+         NameUpdateTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

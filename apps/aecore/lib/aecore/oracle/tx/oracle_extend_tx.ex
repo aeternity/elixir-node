@@ -12,6 +12,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -130,7 +131,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       tx.ttl,
       datatx.fee,
@@ -138,20 +139,24 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, ttl_value, fee, ttl]) do
+  def decode_from_list(@version, [encoded_senders, nonce, ttl_value, fee, ttl]) do
     payload = %{
       ttl: Serialization.transform_item(ttl_value, :int)
     }
 
-    {:ok,
-     DataTx.init(
-       OracleExtendTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+      {:ok,
+       DataTx.init(
+         OracleExtendTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

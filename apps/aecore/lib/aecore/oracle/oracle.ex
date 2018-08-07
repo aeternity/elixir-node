@@ -18,7 +18,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-  alias Aeutil.Parser
   alias Aecore.Chain.Identifier
   alias ExJsonSchema.Schema, as: JsonSchema
   alias ExJsonSchema.Validator, as: JsonValidator
@@ -300,7 +299,7 @@ defmodule Aecore.Oracle.Oracle do
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
   def decode_from_list(
         @version,
-        [orc_owner, query_format, response_format, query_fee, expires]
+        [query_format, response_format, query_fee, expires]
       ) do
     {:ok,
      %Oracle{

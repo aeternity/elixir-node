@@ -14,6 +14,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -178,7 +179,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      datatx.senders,
+      Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
       tx.query_id,
       "$æx" <> Serialization.transform_item(tx.response),
@@ -187,7 +188,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     ]
   end
 
-  def decode_from_list(@version, [senders, nonce, encoded_query_id, encoded_response, fee, ttl]) do
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_query_id,
+        encoded_response,
+        fee,
+        ttl
+      ]) do
     query_id = Serialization.decode_format(encoded_query_id)
     response = Serialization.decode_format(encoded_response)
 
@@ -196,15 +204,19 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       response: response
     }
 
-    {:ok,
-     DataTx.init(
-       OracleResponseTx,
-       payload,
-       senders,
-       Serialization.transform_item(fee, :int),
-       Serialization.transform_item(nonce, :int),
-       Serialization.transform_item(ttl, :int)
-     )}
+    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+      {:ok,
+       DataTx.init(
+         OracleResponseTx,
+         payload,
+         senders,
+         Serialization.transform_item(fee, :int),
+         Serialization.transform_item(nonce, :int),
+         Serialization.transform_item(ttl, :int)
+       )}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
