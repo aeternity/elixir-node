@@ -2,11 +2,11 @@ defmodule Aehttpserver.Web.PeersController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Keys.Worker, as: Keys
 
   def info(conn, _params) do
     sync_port = Application.get_env(:aecore, :peers)[:sync_port]
-    peer_pubkey = PeerKeys.keypair() |> elem(0) |> PeerKeys.base58c_encode()
+    peer_pubkey = Keys.peer_keypair() |> elem(0) |> Keys.peer_encode()
     json(conn, %{port: sync_port, pubkey: peer_pubkey})
   end
 

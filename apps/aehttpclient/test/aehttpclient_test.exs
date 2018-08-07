@@ -36,12 +36,12 @@ defmodule AehttpclientTest do
 
   def add_txs_to_pool do
     Miner.mine_sync_block_to_chain()
-    receiver = Wallet.get_public_key()
+    receiver = Keys.sign_pubkey()
     sender = receiver
 
     init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
 
-    priv_key = Wallet.get_private_key()
+    priv_key = Keys.sign_privkey()
 
     {:ok, signed_tx1} =
       Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 1, <<"payload">>)

@@ -8,6 +8,8 @@ defmodule Aecore.Keys.Worker do
 
   use GenServer
 
+  alias Aeutil.Bits
+
   @typedoc "Public key for signing or for peers - 32 bytes in size"
   @type pubkey :: binary()
 
@@ -20,6 +22,9 @@ defmodule Aecore.Keys.Worker do
   @pub_size 32
   @priv_sign_size 64
   @priv_peer_size 32
+
+  @peer_key_encode "pp"
+  @peer_key_decode "pp$"
 
   @filename_sign_pub "sign_key.pub"
   @filename_sign_priv "sign_key"
@@ -73,6 +78,22 @@ defmodule Aecore.Keys.Worker do
   @spec peer_keypair() :: {pubkey(), peer_priv_key()}
   def peer_keypair do
     GenServer.call(__MODULE__, :peer_keypair)
+  end
+
+  @doc """
+  Returns encoded version of a Peer key, public or private
+  """
+  @spec peer_encode(pubkey() | peer_priv_key()) :: binary()
+  def peer_encode(key) do
+    Bits.encode58c(@peer_key_encode, key)
+  end
+
+  @doc """
+  Returns decoded version of a Peer key, public or private
+  """
+  @spec peer_decode(binary()) :: pubkey() | peer_priv_key()
+  def peer_decode(<<@peer_key_decode, payload::binary>>) do
+    Bits.decode58(payload)
   end
 
   @doc """
