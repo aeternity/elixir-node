@@ -11,6 +11,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
+  alias Aeutil.TypeToTag
 
   require Logger
 
@@ -372,7 +373,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   def encode_to_list(%DataTx{} = tx) do
-    {:ok, tag} = Serialization.type_to_tag(tx.type)
+    {:ok, tag} = TypeToTag.type_to_tag(tx.type)
     [tag | tx.type.encode_to_list(tx.payload, tx)]
   end
 
