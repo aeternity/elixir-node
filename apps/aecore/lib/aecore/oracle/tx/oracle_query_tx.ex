@@ -297,7 +297,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       Identifier.encode_to_binary(tx.oracle_address),
-      "$æx" <> Serialization.transform_item(tx.query_data),
+      tx.query_data,
       tx.query_fee,
       ttl_type_q,
       tx.query_ttl.ttl,
@@ -312,7 +312,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         encoded_senders,
         nonce,
         encoded_oracle_address,
-        encoded_query_data,
+        query_data,
         query_fee,
         encoded_query_ttl_type,
         query_ttl_value,
@@ -330,8 +330,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       encoded_response_ttl_type
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
-
-    query_data = Serialization.decode_format(encoded_query_data)
 
     with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address) do
       payload = %{

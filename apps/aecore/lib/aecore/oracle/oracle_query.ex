@@ -5,7 +5,6 @@ defmodule Aecore.Oracle.OracleQuery do
 
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys.Wallet
-  alias Aeutil.Parser
   alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
@@ -48,9 +47,9 @@ defmodule Aecore.Oracle.OracleQuery do
 
     response =
       case oracle_query.response do
-        :undefined -> Parser.to_string(:undefined)
-        %DataTx{type: OracleResponseTx} = data -> DataTx.rlp_encode(data)
-        %{} = data -> Poison.encode!(data)
+        :undefined -> "undefined"
+        %DataTx{type: OracleResponseTx} = data -> data
+        _ -> oracle_query.response
       end
 
     [
@@ -58,7 +57,7 @@ defmodule Aecore.Oracle.OracleQuery do
       Identifier.encode_to_binary(oracle_query.sender_address),
       oracle_query.sender_nonce,
       Identifier.encode_to_binary(oracle_query.oracle_address),
-      Serialization.transform_item(oracle_query.query),
+      oracle_query.query,
       has_response,
       response,
       oracle_query.expires,
@@ -89,8 +88,8 @@ defmodule Aecore.Oracle.OracleQuery do
 
     new_response =
       case response do
-        "undefined" -> String.to_atom(response)
-        _ -> Serialization.transform_item(response, :binary)
+        "undefined" -> :undefined
+        _ -> response
       end
 
     with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address),
@@ -101,7 +100,7 @@ defmodule Aecore.Oracle.OracleQuery do
          fee: Serialization.transform_item(fee, :int),
          has_response: has_response,
          oracle_address: oracle_address,
-         query: Serialization.transform_item(query, :binary),
+         query: query,
          response: new_response,
          response_ttl: Serialization.transform_item(response_ttl, :int),
          sender_address: sender_address,
