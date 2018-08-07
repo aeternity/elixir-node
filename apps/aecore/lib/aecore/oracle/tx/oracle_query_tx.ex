@@ -299,7 +299,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       @version,
       Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      Identifier.encode_data(tx.oracle_address),
+      Identifier.encode_to_binary(tx.oracle_address),
       "$æx" <> Serialization.transform_item(tx.query_data),
       tx.query_fee,
       ttl_type_q,
@@ -337,7 +337,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     query_data = Serialization.decode_format(encoded_query_data)
 
     with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
-         {:ok, oracle_address} <- Identifier.decode_data(encoded_oracle_address) do
+         {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address) do
       payload = %{
         oracle_address: oracle_address,
         query_data: query_data,

@@ -185,7 +185,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
       @version,
       Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      Identifier.encode_data(tx.hash),
+      Identifier.encode_to_binary(tx.hash),
       datatx.fee,
       datatx.ttl
     ]
@@ -193,7 +193,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
     with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
-         {:ok, hash} <- Identifier.decode_data(encoded_hash) do
+         {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
       payload = %NameRevokeTx{hash: hash}
 
       {:ok,

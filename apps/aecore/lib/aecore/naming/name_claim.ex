@@ -92,7 +92,7 @@ defmodule Aecore.Naming.NameClaim do
   def encode_to_list(%NameClaim{} = naming_state) do
     [
       @version,
-      Identifier.encode_data(naming_state.owner),
+      Identifier.encode_to_binary(naming_state.owner),
       naming_state.expires,
       Atom.to_string(naming_state.status),
       naming_state.ttl,
@@ -102,7 +102,7 @@ defmodule Aecore.Naming.NameClaim do
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
   def decode_from_list(@version, [encoded_owner, expires, status, ttl, pointers]) do
-    with {:ok, owner} <- Identifier.decode_data(encoded_owner) do
+    with {:ok, owner} <- Identifier.decode_from_binary(encoded_owner) do
       {:ok,
        %NameClaim{
          owner: owner,

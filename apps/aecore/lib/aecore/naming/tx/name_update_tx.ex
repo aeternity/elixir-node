@@ -219,7 +219,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       @version,
       Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      Identifier.encode_data(tx.hash),
+      Identifier.encode_to_binary(tx.hash),
       tx.client_ttl,
       tx.pointers,
       tx.expire_by,
@@ -239,7 +239,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         ttl
       ]) do
     with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
-         {:ok, hash} <- Identifier.decode_data(encoded_hash) do
+         {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
       payload = %NameUpdateTx{
         client_ttl: Serialization.transform_item(client_ttl, :int),
         expire_by: Serialization.transform_item(expire_by, :int),

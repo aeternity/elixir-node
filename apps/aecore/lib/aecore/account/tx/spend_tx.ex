@@ -171,7 +171,7 @@ defmodule Aecore.Account.Tx.SpendTx do
     [
       @version,
       Identifier.serialize_identity(datatx.senders),
-      Identifier.encode_data(tx.receiver),
+      Identifier.encode_to_binary(tx.receiver),
       tx.amount,
       datatx.fee,
       datatx.ttl,
@@ -189,7 +189,7 @@ defmodule Aecore.Account.Tx.SpendTx do
         nonce,
         payload
       ]) do
-    with {:ok, receiver} <- Identifier.decode_data(encoded_receiver),
+    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver),
          {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
       {:ok,
        DataTx.init(

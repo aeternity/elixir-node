@@ -170,8 +170,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       @version,
       Identifier.serialize_identity(datatx.senders),
       datatx.nonce,
-      Identifier.encode_data(tx.hash),
-      Identifier.encode_data(tx.target),
+      Identifier.encode_to_binary(tx.hash),
+      Identifier.encode_to_binary(tx.target),
       datatx.fee,
       datatx.ttl
     ]
@@ -186,8 +186,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         ttl
       ]) do
     with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
-         {:ok, hash} <- Identifier.decode_data(encoded_hash),
-         {:ok, recipient} <- Identifier.decode_data(encoded_recipient) do
+         {:ok, hash} <- Identifier.decode_from_binary(encoded_hash),
+         {:ok, recipient} <- Identifier.decode_from_binary(encoded_recipient) do
       payload = %NameTransferTx{hash: hash, target: recipient}
 
       {:ok,

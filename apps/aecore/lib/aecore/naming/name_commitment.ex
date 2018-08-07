@@ -68,14 +68,14 @@ defmodule Aecore.Naming.NameCommitment do
   def encode_to_list(%NameCommitment{} = name_commitment) do
     [
       @version,
-      Identifier.encode_data(name_commitment.owner),
+      Identifier.encode_to_binary(name_commitment.owner),
       name_commitment.created,
       name_commitment.expires
     ]
   end
 
   def decode_from_list(@version, [encoded_owner, created, expires]) do
-    with {:ok, owner} <- Identifier.decode_data(encoded_owner) do
+    with {:ok, owner} <- Identifier.decode_from_binary(encoded_owner) do
       {:ok,
        %NameCommitment{
          owner: owner,

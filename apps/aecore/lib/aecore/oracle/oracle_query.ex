@@ -55,9 +55,9 @@ defmodule Aecore.Oracle.OracleQuery do
 
     [
       @version,
-      Identifier.encode_data(oracle_query.sender_address),
+      Identifier.encode_to_binary(oracle_query.sender_address),
       oracle_query.sender_nonce,
-      Identifier.encode_data(oracle_query.oracle_address),
+      Identifier.encode_to_binary(oracle_query.oracle_address),
       Serialization.transform_item(oracle_query.query),
       has_response,
       response,
@@ -93,8 +93,8 @@ defmodule Aecore.Oracle.OracleQuery do
         _ -> Serialization.transform_item(response, :binary)
       end
 
-    with {:ok, oracle_address} <- Identifier.decode_data(encoded_oracle_address),
-         {:ok, sender_address} <- Identifier.decode_data(encoded_sender_address) do
+    with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address),
+         {:ok, sender_address} <- Identifier.decode_from_binary(encoded_sender_address) do
       {:ok,
        %OracleQuery{
          expires: Serialization.transform_item(expires, :int),

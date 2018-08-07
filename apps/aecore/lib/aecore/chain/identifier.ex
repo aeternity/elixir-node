@@ -46,16 +46,16 @@ defmodule Aecore.Chain.Identifier do
 
   # ==============API needed for RLP===============
   # byte_size(data.value) == 32 # data should be stricted to 32 bytes only
-  @spec encode_data(Identifier.t()) :: binary()
-  def encode_data(%Identifier{} = data) do
+  @spec encode_to_binary(Identifier.t()) :: binary()
+  def encode_to_binary(%Identifier{} = data) do
     tag = type_to_tag(data.type)
     # data should be restricted to 32 bytes only
     <<tag::unsigned-integer-size(8), data.value::binary>>
   end
 
   # byte_size(data) == 33 # data should be stricted to 32 bytes only
-  @spec decode_data(binary()) :: tuple() | {:error, String.t()}
-  def decode_data(<<tag::unsigned-integer-size(8), data::binary>>)
+  @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
+  def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do
     # data should be stricted to 32 bytes only
     case tag_to_type(tag) do
@@ -78,12 +78,12 @@ defmodule Aecore.Chain.Identifier do
   end
 
   defp serialize_id([id | ids], acc) do
-    serialized_id = encode_data(id)
+    serialized_id = encode_to_binary(id)
     serialize_id(ids, [serialized_id | acc])
   end
 
   defp serialize_id(%Identifier{} = id, acc) do
-    serialized_id = encode_data(id)
+    serialized_id = decode_from_binary(id)
     serialize_id([], [serialized_id | acc])
   end
 
@@ -97,7 +97,7 @@ defmodule Aecore.Chain.Identifier do
   end
 
   defp deserialize_id([bin | bins], acc) do
-    case decode_data(bin) do
+    case decode_from_binary(bin) do
       {:ok, deserialized_id} ->
         deserialize_id(bins, [deserialized_id | acc])
 
@@ -107,7 +107,7 @@ defmodule Aecore.Chain.Identifier do
   end
 
   defp deserialize_id(bin, acc) when is_binary(bin) do
-    case decode_data(bin) do
+    case decode_from_binary(bin) do
       {:ok, deserialized_id} ->
         deserialize_id([], [deserialized_id | acc])
 
