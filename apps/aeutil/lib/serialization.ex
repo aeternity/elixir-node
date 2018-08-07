@@ -45,23 +45,6 @@ defmodule Aeutil.Serialization do
   def base64_binary(data, :deserialize) when data != nil, do: Base.decode64!(data)
   def base64_binary(_, _), do: nil
 
-  def merkle_proof(proof, acc) when is_tuple(proof) do
-    proof
-    |> Tuple.to_list()
-    |> merkle_proof(acc)
-  end
-
-  def merkle_proof([], acc), do: acc
-
-  def merkle_proof([head | tail], acc) do
-    if is_tuple(head) do
-      merkle_proof(Tuple.to_list(head), acc)
-    else
-      acc = [serialize_value(head, :proof) | acc]
-      merkle_proof(tail, acc)
-    end
-  end
-
   @doc """
   Loops through a structure are simplifies it. Removes all the strucutured maps
   """
