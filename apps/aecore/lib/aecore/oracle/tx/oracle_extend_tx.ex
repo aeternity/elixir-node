@@ -131,7 +131,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       tx.ttl,
       datatx.fee,
@@ -144,7 +144,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       ttl: Serialization.transform_item(ttl_value, :int)
     }
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          OracleExtendTx,

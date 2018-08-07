@@ -67,52 +67,26 @@ defmodule Aecore.Chain.Identifier do
     end
   end
 
-  # TODO better names
-  @spec serialize_identity(Identifier.t() | list(Identifier.t())) :: List.t()
-  def serialize_identity(id) do
-    serialize_id(id, [])
+  @spec encode_list_to_binary(list(t())) :: list(binary())
+  def encode_list_to_binary([]) do
+    []
   end
 
-  defp serialize_id([], acc) do
-    Enum.reverse(acc)
+  def encode_list_to_binary([head | rest]) do
+    [encode_to_binary(head) | encode_list_to_binary(rest)]
   end
 
-  defp serialize_id([id | ids], acc) do
-    serialized_id = encode_to_binary(id)
-    serialize_id(ids, [serialized_id | acc])
+  @spec decode_list_from_binary(list(binary())) :: {:ok, list(t())} | {:error, String.t()}
+  def decode_list_from_binary([]) do
+    {:ok, []}
   end
 
-  defp serialize_id(%Identifier{} = id, acc) do
-    serialized_id = decode_from_binary(id)
-    serialize_id([], [serialized_id | acc])
-  end
-
-  @spec deserialize_identity(binary() | list(binary())) :: {:ok, List.t()} | {:error, String.t()}
-  def deserialize_identity(deserialized_id) do
-    deserialize_id(deserialized_id, [])
-  end
-
-  defp deserialize_id([], acc) do
-    {:ok, Enum.reverse(acc)}
-  end
-
-  defp deserialize_id([bin | bins], acc) do
-    case decode_from_binary(bin) do
-      {:ok, deserialized_id} ->
-        deserialize_id(bins, [deserialized_id | acc])
-
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  defp deserialize_id(bin, acc) when is_binary(bin) do
-    case decode_from_binary(bin) do
-      {:ok, deserialized_id} ->
-        deserialize_id([], [deserialized_id | acc])
-
-      {:error, _} = error ->
-        error
+  def decode_list_from_binary([head | rest]) do
+    with {:ok, head_decoded} <- decode_from_binary(head),
+         {:ok, rest_decoded} <- decode_list_from_binary(rest) do
+      {:ok, [head_decoded | rest_decoded]}
+    else
+      {:error, _} = error -> error
     end
   end
 

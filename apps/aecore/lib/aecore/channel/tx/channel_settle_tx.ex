@@ -154,7 +154,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       tx.channel_id,
       datatx.fee,
@@ -165,7 +165,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          ChannelSettleTx,

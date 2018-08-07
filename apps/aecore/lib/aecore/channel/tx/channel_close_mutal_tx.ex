@@ -178,7 +178,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       tx.channel_id,
       tx.initiator_amount,
@@ -203,7 +203,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       responder_amount: Serialization.transform_item(responder_amount, :int)
     }
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          ChannelCloseMutalTx,

@@ -156,7 +156,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       Identifier.encode_to_binary(tx.commitment),
       datatx.fee,
@@ -165,7 +165,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
          {:ok, commitment} <- Identifier.decode_from_binary(encoded_commitment) do
       payload = %NamePreClaimTx{commitment: commitment}
 

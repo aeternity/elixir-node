@@ -217,7 +217,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       Identifier.encode_to_binary(tx.hash),
       tx.client_ttl,
@@ -238,7 +238,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         fee,
         ttl
       ]) do
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
          {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
       payload = %NameUpdateTx{
         client_ttl: Serialization.transform_item(client_ttl, :int),

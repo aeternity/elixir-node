@@ -166,7 +166,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       ChannelStateOffChain.encode_to_list(tx.state),
       datatx.fee,
@@ -177,7 +177,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
     state_ver = Serialization.transform_item(state_ver_bin, :int)
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders),
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
          {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state) do
       payload = %ChannelCloseSoloTx{state: state}
 

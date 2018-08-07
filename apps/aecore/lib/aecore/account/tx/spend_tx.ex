@@ -170,7 +170,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       Identifier.encode_to_binary(tx.receiver),
       tx.amount,
       datatx.fee,
@@ -190,7 +190,7 @@ defmodule Aecore.Account.Tx.SpendTx do
         payload
       ]) do
     with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver),
-         {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+         {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          SpendTx,

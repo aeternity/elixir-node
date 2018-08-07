@@ -192,7 +192,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       tx.initiator_amount,
       tx.responder_amount,
@@ -217,7 +217,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       locktime: Serialization.transform_item(locktime, :int)
     }
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          ChannelCreateTx,

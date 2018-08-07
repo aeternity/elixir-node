@@ -209,7 +209,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
     [
       @version,
-      Identifier.serialize_identity(datatx.senders),
+      Identifier.encode_list_to_binary(datatx.senders),
       datatx.nonce,
       "$æx" <> Serialization.transform_item(tx.query_format),
       "$æx" <> Serialization.transform_item(tx.response_format),
@@ -248,7 +248,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_fee: Serialization.transform_item(query_fee, :int)
     }
 
-    with {:ok, senders} <- Identifier.deserialize_identity(encoded_senders) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
        DataTx.init(
          OracleRegistrationTx,
