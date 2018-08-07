@@ -14,7 +14,6 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -185,20 +184,18 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         fee,
         ttl
       ]) do
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
-         {:ok, hash} <- Identifier.decode_from_binary(encoded_hash),
+    with {:ok, hash} <- Identifier.decode_from_binary(encoded_hash),
          {:ok, recipient} <- Identifier.decode_from_binary(encoded_recipient) do
       payload = %NameTransferTx{hash: hash, target: recipient}
 
-      {:ok,
-       DataTx.init(
-         NameTransferTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
+      DataTx.init_binary(
+        NameTransferTx,
+        payload,
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
     else
       {:error, _} = error -> error
     end

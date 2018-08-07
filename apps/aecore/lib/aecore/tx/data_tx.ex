@@ -139,6 +139,24 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @spec init_binary(tx_types(), map(), list(binary()), binary(), binary(), binary()) ::
+          {:ok, t()} | {:error, String.t()}
+  def init_binary(type, payload, encoded_senders, fee, nonce, ttl) do
+    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
+      {:ok,
+       %DataTx{
+         type: type,
+         payload: type.init(payload),
+         senders: senders,
+         fee: Serialization.transform_item(fee, :int),
+         nonce: Serialization.transform_item(nonce, :int),
+         ttl: Serialization.transform_item(ttl, :int)
+       }}
+    else
+      {:error, _} = error -> error
+    end
+  end
+
   @spec fee(t()) :: non_neg_integer()
   def fee(%DataTx{fee: fee}) do
     fee

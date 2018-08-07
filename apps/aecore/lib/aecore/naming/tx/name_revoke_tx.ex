@@ -14,7 +14,6 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -192,19 +191,17 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
-         {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
+    with {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
       payload = %NameRevokeTx{hash: hash}
 
-      {:ok,
-       DataTx.init(
-         NameRevokeTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
+      DataTx.init_binary(
+        NameRevokeTx,
+        payload,
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
     else
       {:error, _} = error -> error
     end

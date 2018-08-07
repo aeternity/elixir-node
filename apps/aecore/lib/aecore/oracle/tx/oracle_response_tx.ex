@@ -204,19 +204,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       response: response
     }
 
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
-      {:ok,
-       DataTx.init(
-         OracleResponseTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
-    else
-      {:error, _} = error -> error
-    end
+    DataTx.init_binary(
+      OracleResponseTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
   end
 
   def decode_from_list(@version, data) do

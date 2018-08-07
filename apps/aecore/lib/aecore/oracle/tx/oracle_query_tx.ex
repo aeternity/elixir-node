@@ -336,8 +336,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     query_data = Serialization.decode_format(encoded_query_data)
 
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
-         {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address) do
+    with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address) do
       payload = %{
         oracle_address: oracle_address,
         query_data: query_data,
@@ -352,15 +351,14 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         }
       }
 
-      {:ok,
-       DataTx.init(
-         OracleQueryTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
+      DataTx.init_binary(
+        OracleQueryTx,
+        payload,
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
     else
       {:error, _} = error -> error
     end

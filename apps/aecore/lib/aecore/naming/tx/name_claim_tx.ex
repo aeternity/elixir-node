@@ -12,7 +12,6 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -189,19 +188,14 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
 
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
-      {:ok,
-       DataTx.init(
-         NameClaimTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
-    else
-      {:error, _} = error -> error
-    end
+    DataTx.init_binary(
+      NameClaimTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
   end
 
   def decode_from_list(@version, data) do

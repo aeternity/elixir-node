@@ -189,22 +189,20 @@ defmodule Aecore.Account.Tx.SpendTx do
         nonce,
         payload
       ]) do
-    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver),
-         {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
-      {:ok,
-       DataTx.init(
-         SpendTx,
-         %{
-           receiver: receiver,
-           amount: Serialization.transform_item(amount, :int),
-           version: @version,
-           payload: payload
-         },
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
+    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver) do
+      DataTx.init_binary(
+        SpendTx,
+        %{
+          receiver: receiver,
+          amount: Serialization.transform_item(amount, :int),
+          version: @version,
+          payload: payload
+        },
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
     else
       {:error, _} = error -> error
     end

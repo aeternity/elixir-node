@@ -14,7 +14,6 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -165,19 +164,17 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
-         {:ok, commitment} <- Identifier.decode_from_binary(encoded_commitment) do
+    with {:ok, commitment} <- Identifier.decode_from_binary(encoded_commitment) do
       payload = %NamePreClaimTx{commitment: commitment}
 
-      {:ok,
-       DataTx.init(
-         NamePreClaimTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
+      DataTx.init_binary(
+        NamePreClaimTx,
+        payload,
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
     else
       {:error, _} = error -> error
     end
