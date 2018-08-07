@@ -8,6 +8,7 @@ defmodule Aecore.Keys.Worker do
 
   use GenServer
 
+  alias Aecore.Keys.Worker, as: Keys
   alias Aeutil.Bits
 
   @typedoc "Public key for signing or for peers - 32 bytes in size"

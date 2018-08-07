@@ -17,7 +17,6 @@ defmodule Aecore.Channel.Worker do
 
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Wallet
   alias Aeutil.Events
 
   use GenServer
