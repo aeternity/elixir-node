@@ -7,6 +7,7 @@ defmodule Aecore.Account.AccountStateTree do
   alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
+  alias Aecore.Chain.Identifier
 
   @type accounts_state :: Trie.t()
   @type hash :: binary()
@@ -17,10 +18,9 @@ defmodule Aecore.Account.AccountStateTree do
   end
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
-  def put(tree, key, value) do
-    account_state_updated = Map.put(value, :pubkey, key)
-    serialized_account_state = Serialization.rlp_encode(account_state_updated, :account_state)
-    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
+  def put(trie, key, value) do
+    serialized_account_state = Serialization.rlp_encode(value, :account_state)
+    PatriciaMerkleTree.enter(trie, key, serialized_account_state)
   end
 
   @spec get(accounts_state(), Wallet.pubkey()) :: Account.t()
@@ -31,7 +31,9 @@ defmodule Aecore.Account.AccountStateTree do
 
       {:ok, account_state} ->
         {:ok, acc} = Serialization.rlp_decode(account_state)
-        acc
+
+        {:ok, id} = Identifier.create_identity(key, :account)
+        %Account{acc | id: id}
     end
   end
 

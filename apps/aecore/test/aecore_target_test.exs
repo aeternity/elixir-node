@@ -4,8 +4,7 @@ defmodule TargetTest do
   doctest Aecore.Chain.Target
 
   alias Aecore.Chain.Target, as: Target
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header}
 
   @tag :target
   test "target calculation genesis block only" do

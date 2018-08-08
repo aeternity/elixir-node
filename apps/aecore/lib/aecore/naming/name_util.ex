@@ -33,6 +33,7 @@ defmodule Aecore.Naming.NameUtil do
       <<0::256>>
     else
       {label, remainder} = partition_name(name)
+
       Hash.hash(namehash(remainder) <> Hash.hash(label))
     end
   end

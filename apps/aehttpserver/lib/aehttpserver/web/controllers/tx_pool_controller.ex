@@ -4,6 +4,7 @@ defmodule Aehttpserver.Web.TxPoolController do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.Account
+  alias Aecore.Tx.DataTx
 
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool())
@@ -24,7 +25,7 @@ defmodule Aehttpserver.Web.TxPoolController do
 
   def get_acc_txs(pool_txs, acc) do
     Enum.filter(pool_txs, fn tx ->
-      tx.data.senders == [acc] || tx.data.receiver == acc
+      DataTx.main_sender(tx.data) == acc || tx.data.receiver.value == acc
     end)
   end
 end

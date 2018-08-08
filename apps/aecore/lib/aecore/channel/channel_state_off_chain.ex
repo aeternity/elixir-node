@@ -9,6 +9,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
+  @signing_tag 101
+
+  @version 1
+
   @type t :: %ChannelStateOffChain{
           channel_id: binary(),
           sequence: non_neg_integer(),
@@ -296,13 +300,15 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   defp signing_form(%ChannelStateOffChain{} = state) do
-    map = %{
-      channel_id: state.channel_id,
-      initiator_amount: state.initiator_amount,
-      responder_amount: state.responder_amount,
-      sequence: state.sequence
-    }
+    list_form = [
+      @signing_tag,
+      @version,
+      state.channel_id,
+      state.initiator_amount,
+      state.responder_amount,
+      state.sequence
+    ]
 
-    Serialization.pack_binary(map)
+    ExRLP.encode(list_form)
   end
 end
