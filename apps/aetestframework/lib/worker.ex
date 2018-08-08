@@ -4,6 +4,9 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   """
 
   alias Aeutil.Serialization
+  alias Aehttpclient.Client
+  alias Aecore.Account.Account
+  alias String.Chars
 
   require Logger
   use GenServer
@@ -30,10 +33,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:sync_two_nodes, node_name1, node_name2})
   end
 
-  def get_balance(node_name) do
-    send_command(node_name, "pk = Wallet.get_public_key")
-    send_command(node_name, "{:acc_balance, Account.balance(Chain.chain_state().accounts, pk)}")
-    send_command(node_name, "")
+  def update_pubkeys_state do
+    GenServer.call(__MODULE__, {:update_pubkeys_state})
   end
 
   @doc """
@@ -64,6 +65,10 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     )
   end
 
+  def update_top_block(new_top_block) do
+    GenServer.call(__MODULE__, {:update_top_block, new_top_block})
+  end
+
   @doc """
     Gets the process ports info.
   """
@@ -81,6 +86,14 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     GenServer.call(__MODULE__, {:send_command, node_name, cmd}, 10_000)
   end
 
+  def send_tokens(node1, node2, amount) do
+    GenServer.call(__MODULE__, {:send_tokens, node1, node2, amount})
+  end
+
+  def get_balance(node) do
+    GenServer.call(__MODULE__, {:get_balance, node})
+  end
+
   @doc """
     Kills the process, releases the port and removes the folder of the node
   """
@@ -91,6 +104,69 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   def delete_all_nodes do
     GenServer.call(__MODULE__, {:delete_all_nodes}, 20_000)
+  end
+
+  def busy_port?(port) do
+    :os.cmd('lsof -i -P -n | grep -w #{port}') != []
+  end
+
+  defp update_data(state, result, node, :peers) do
+    regex_res = Regex.run(~r/{(:respond_peers,) .*}/, result)
+    res = List.first(regex_res)
+    [host] = Regex.run(~r/(?<=host: )[^,]*/, res)
+    [port] = Regex.run(~r/(?<=port: )[^,]*/, res)
+    [pubkey] = Regex.run(~r/(?<=pubkey: )[^}]*/, res)
+    formatted_host = host |> String.replace("\'", "") |> String.replace("\"", "")
+    formatted_port = String.to_integer(port)
+    formatted_pubkey = pubkey |> String.replace("\"", "") |> String.trim() |> Base.decode32!()
+
+    peers_map = %{
+      host: formatted_host,
+      port: formatted_port,
+      pubkey: formatted_pubkey
+    }
+
+    put_in(state[node].peers, peers_map)
+  end
+
+  defp update_data(state, result, respond, port, :top_block_hash) do
+    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+    one_line_res = String.replace(result, "\n", "")
+    respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
+    res = Regex.run(~r/"(.*)"/, List.last(respond_res))
+    base_decoded = Base.decode32!(List.last(res))
+    put_in(state[node].top_block_hash, base_decoded)
+  end
+
+  defp update_data(state, result, respond, port, type) do
+    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+    one_line_res = String.replace(result, "\n", "")
+    respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
+    res = Regex.run(~r/"(.*)"/, List.last(respond_res))
+    base_decoded = Base.decode32!(List.last(res))
+
+    if type == :oracle_interaction_objects do
+      {:ok, rlp_decoded} = Serialization.rlp_decode(base_decoded)
+    else
+      rlp_decoded = Serialization.rlp_decode(base_decoded)
+    end
+
+    put_in(state[node][type], rlp_decoded)
+  end
+
+  def check_peers(state, node, result) do
+    one_line_res = String.replace(result, "\n", "")
+    if Regex.match?(~r/({:respond_peers, \[\])/, one_line_res) do
+      state
+    else
+      update_data(state, one_line_res, node, :peers)
+    end
+  end
+
+  def update_balance(node_name) do
+    send_command(node_name, "pk = Wallet.get_public_key")
+    send_command(node_name, "{:acc_balance, Account.balance(Chain.chain_state().accounts, pk)}")
+    send_command(node_name, "")
   end
 
   # oracles
@@ -188,7 +264,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   @spec mine_sync_block(String.t()) :: :ok | :unknown_node
   def mine_sync_block(node_name) do
     send_command(node_name, "Miner.mine_sync_block_to_chain()")
-    get_balance(node_name)
+    update_balance(node_name)
   end
 
   # chain
@@ -295,7 +371,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   @spec chainstate_naming(String.t()) :: :ok | :unknown_node
   def chainstate_naming(node_name) do
-    send_command(node_name, "Chain.chain_state().naming")
+    send_command(node_name, "naming_state = Chain.chain_state().naming")
+    send_command(node_name, "naming_state = Chain.chain_state().naming")
   end
 
   @doc """
@@ -307,7 +384,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
     send_command(
       node_name,
-      "peers_encoded = Enum.reduce(peers, [], fn (peer), acc ->
+      "peers_encoded = Enum.reduce(peers, [], fn peer, acc ->
                                 acc ++ [put_in(peer.pubkey, Base.encode32(peer.pubkey))]
                               end)"
     )
@@ -315,127 +392,107 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     send_command(node_name, "{:respond_peers, peers_encoded}")
   end
 
-  def busy_port?(port) do
-    :os.cmd('lsof -i -P -n | grep -w #{port}') != []
-  end
-
-  defp update_data(state, result, node, :peers) do
-
-    res = Regex.run(~r/{(:respond_peers,) .*}/, result)
-
-    res = List.first(res)
-    [host] = Regex.run(~r/(?<=host: )[^,]*/, res)
-    [port] = Regex.run(~r/(?<=port: )[^,]*/, res)
-    [pubkey] = Regex.run(~r/(?<=pubkey: )[^}]*/, res)
-    formatted_host = host |> String.replace("\'", "") |> String.replace("\"", "")
-    formatted_port = String.to_integer(port)
-    formatted_pubkey = pubkey |> String.replace("\"", "") |> String.trim() |> Base.decode32!()
-
-    peers_map = %{
-      host: formatted_host,
-      port: formatted_port,
-      pubkey: formatted_pubkey
-    }
-
-    new_state = put_in(state[node].peers, peers_map)
-    {:reply, :ok, new_state}
-  end
-
-  defp update_data(state, result, respond, port, :top_block_hash) do
-    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-    one_line_res = String.replace(result, "\n", "")
-    respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res) |> List.last()
-    res = Regex.run(~r/"(.*)"/, respond_res) |> List.last()
-    base_decoded = Base.decode32!(res)
-    new_state = put_in(state[node].top_block_hash, base_decoded)
-    {:reply, :ok, new_state}
-  end
-
-  defp update_data(state, result, respond, port, type) do
-    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-    one_line_res = String.replace(result, "\n", "")
-    respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res) |> List.last()
-    res = Regex.run(~r/"(.*)"/, respond_res) |> List.last()
-    base_decoded = Base.decode32!(res)
-
-    if(type == :oracle_interaction_objects) do
-      {:ok, rlp_decoded} = Serialization.rlp_decode(base_decoded)
-    else
-      rlp_decoded = Serialization.rlp_decode(base_decoded)
-    end
-
-    new_state = put_in(state[node][type], rlp_decoded)
-    # {:noreply, new_state}
-    {:reply, :ok, new_state}
-  end
-
-  def check_peers(state, node, result) do
-    one_line_res = String.replace(result, "\n", "")
-    if Regex.match?(~r/({:respond_peers, \[\])/, one_line_res) do
-      {:noreply, state}
-    else
-      update_data(state, one_line_res, node, :peers)
-    end
-  end
-
   # server
 
-  def handle_info(res, state) do
+  def handle_info(result, state) do
     {:noreply, state}
+  end
+
+  def receive_result(state) do
+    receive do
+      {port, {:data, result}} ->
+        cond do
+          result =~ ":respond_top_block" ->
+            new_state = update_data(state, result, ":respond_top_block", port, :top_block)
+            {:reply, :ok, new_state}
+
+          result =~ ":respond_hash" ->
+            new_state = update_data(state, result, ":respond_hash", port, :top_block_hash)
+            {:reply, :ok, new_state}
+
+          result =~ ":respond_oracle_int_obj" ->
+            new_state = update_data(state, result, ":respond_oracle_int_obj", port, :oracle_interaction_objects)
+            {:reply, :ok, new_state}
+
+          result =~ ":respond_peers" ->
+            {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+            new_state = check_peers(state, node, result)
+            {:reply, :ok, new_state}
+
+          result =~ ":acc_balance" ->
+            {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+            balance_str = Regex.run(~r/\d+/, result)
+            {balance, _} = balance_str |> List.first() |> Integer.parse()
+            new_state = put_in(state[node].miner_balance, balance)
+            {:reply, result, new_state}
+
+          result =~ "error" ->
+            Logger.error(fn -> result end)
+            {:reply, :error, state}
+
+          true ->
+            receive_result(state)
+        end
+    after
+      1_000 ->
+        {:reply, :different_res, state}
+    end
+  end
+
+  def handle_call({:send_tokens, node1, node2, amount}, _, state) do
+    sender = state[node1].miner_pubkey |> Account.base58c_encode
+    receiver = state[node2].miner_pubkey |> Account.base58c_encode
+    port = state[node1].process_port
+    Port.command(port, "sender_priv_key = Wallet.get_private_key()\n")
+    Port.command(port, "pubkey_sender = \"#{sender}\"\n")
+    Port.command(port, "pubkey_receiver = \"#{receiver}\"\n")
+    Port.command(port, "nonce = Account.nonce(Chain.chain_state().accounts, Account.base58c_decode(pubkey_sender)) + 1\n")
+    Port.command(port, "ttl = Chain.top_height() + 1\n")
+    Port.command(port, "{:ok, tx} = Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\", 20)\n")
+    Port.command(port, "Pool.add_transaction(tx)\n")
+
+    {:reply, :ok, state}
   end
 
   def handle_call({:send_command, node_name, cmd}, _, state) do
     if Map.has_key?(state, node_name) do
       port = state[node_name].process_port
       Port.command(port, cmd)
-      receive do
-        {^port, {:data, result}} ->
-
-          cond do
-            result =~ ":respond_top_block" ->
-              update_data(state, result, ":respond_top_block", port, :top_block)
-
-            result =~ ":respond_hash" ->
-              update_data(state, result, ":respond_hash", port, :top_block_hash)
-
-            result =~ ":respond_oracle_int_obj" ->
-              update_data(state, result, ":respond_oracle_int_obj", port, :oracle_interaction_objects)
-
-            result =~ ":respond_peers" ->
-              {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-              check_peers(state, node, result)
-
-            result =~ ":acc_balance" ->
-              {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-              {balance, _} = Regex.run(~r/\d+/, result) |> List.first() |> Integer.parse()
-              new_state = put_in(state[node].balance, balance)
-              {:reply, result, new_state}
-
-            result =~ ":error" ->
-              Logger.error(fn -> result end)
-              {:reply, :error, state}
-
-            true ->
-              {:reply, :ok, state}
-          end
-      end
+      receive_result(state)
     else
       {:reply, :unknown_node, state}
     end
+  end
+
+  def handle_call({:get_balance, node}, _, state) do
+    {:reply, state[node].miner_balance, state}
+  end
+
+  def handle_call({:update_pubkeys_state}, _, state) do
+
+    new_state = Enum.reduce(state, state, fn(node, acc) ->
+      {node_name, _} = node
+      port = state[node_name].port
+      {:ok, peer_info} = Client.get_info("localhost:#{port}")
+      pubkey = peer_info.public_key
+      put_in(acc[node_name].miner_pubkey, Account.base58c_decode(pubkey))
+    end)
+
+    {:reply, :ok, new_state}
   end
 
   def handle_call({:sync_two_nodes, node_name1, node_name2}, _, state) do
     port = state[node_name2].port
     sync_port = state[node_name2].sync_port
 
-    cmd = "{:ok, peer_info} = Client.get_info(\"localhost:#{port}\")\n"
-    Port.command(state[node_name1].process_port, cmd)
+    cmd1 = "{:ok, peer_info} = Client.get_info(\"localhost:#{port}\")\n"
+    Port.command(state[node_name1].process_port, cmd1)
 
-    cmd = "pub_key = Map.get(peer_info, :peer_pubkey) |> PeerKeys.base58c_decode()\n"
-    Port.command(state[node_name1].process_port, cmd)
+    cmd2 = "pub_key = Map.get(peer_info, :peer_pubkey) |> PeerKeys.base58c_decode()\n"
+    Port.command(state[node_name1].process_port, cmd2)
 
-    cmd = "Peers.try_connect(%{host: 'localhost', port: #{sync_port}, pubkey: pub_key})\n"
-    Port.command(state[node_name1].process_port, cmd)
+    cmd3 = "Peers.try_connect(%{host: 'localhost', port: #{sync_port}, pubkey: pub_key})\n"
+    Port.command(state[node_name1].process_port, cmd3)
 
     {:reply, :ok, state}
   end
@@ -447,9 +504,11 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def handle_call({:delete_all_nodes}, _, state) do
     # killing all the processes and closing all of the ports of the nodes
     Enum.each(state, fn {_, val} ->
-      {:os_pid, pid} = Port.info(val.process_port, :os_pid)
+      port = val.port
       Port.close(val.process_port)
-      System.cmd("kill", ["-9", "#{pid}"])
+      pid_str = :os.cmd('lsof -ti tcp:#{port}')
+      pid = pid_str |> Chars.to_string() |> String.trim()
+      System.cmd("kill", ["-9", pid])
       path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> "/apps/aecore/priv/"
       File.rm_rf(path <> "aewallet_#{val.port}")
       File.rm_rf(path <> "peerkeys_#{val.port}")
@@ -462,10 +521,11 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def handle_call({:delete_node, node_name}, _, state) do
     if Map.has_key?(state, node_name) do
       # kills the process, closes the port
-      {:os_pid, pid} = Port.info(state[node_name].process_port, :os_pid)
+      port = state[node_name].port
       Port.close(state[node_name].process_port)
-
-      System.cmd("kill", ["#{pid}"])
+      pid_str = :os.cmd('lsof -ti tcp:#{port}')
+      pid = pid_str |> Chars.to_string() |> String.trim()
+      System.cmd("kill", ["-9", pid])
       new_state = Map.delete(state, node_name)
       {:reply, :ok, new_state}
     else
@@ -526,7 +586,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
       true ->
         # Running the new elixir-node using Port
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-        process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, cd: path])
+        process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, :stream, cd: path])
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
@@ -537,7 +597,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
             sync_port: sync_port,
             top_block: nil,
             top_block_hash: nil,
-            balance: 0,
+            miner_pubkey: nil,
+            miner_balance: 0,
             peers: %{},
             oracle_interaction_objects: %{}
           })

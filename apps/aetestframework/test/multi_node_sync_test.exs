@@ -2,6 +2,7 @@ defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
   alias Aetestframework.MultiNodeTestFramework.Worker, as: TestFramework
+  alias Aetestframework.MultiNodeTestFramework.Commands, as: Commands
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Tx.Pool.Worker, as: Pool
 
@@ -48,13 +49,13 @@ defmodule MultiNodeSyncTest do
 
     TestFramework.get_node_top_block_hash("node4")
 
-    :timer.sleep(2000)
-
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
+
     TestFramework.delete_all_nodes()
   end
 
   @tag :sync_test
+  @tag timeout: 100_000
   test "oracles test" do
     TestFramework.sync_two_nodes("node1", "node2")
 
@@ -65,8 +66,6 @@ defmodule MultiNodeSyncTest do
     TestFramework.mine_sync_block("node2")
     TestFramework.register_oracle("node2")
     TestFramework.mine_sync_block("node2")
-
-    # :timer.sleep 3000
 
     TestFramework.extend_oracle("node2")
     TestFramework.mine_sync_block("node2")
@@ -79,18 +78,17 @@ defmodule MultiNodeSyncTest do
     TestFramework.respond_oracle("node2")
     TestFramework.mine_sync_block("node2")
 
-    TestFramework.get_node_top_block("node1")
+    TestFramework.get_node_top_block_hash("node1")
 
-    TestFramework.get_node_top_block("node4")
+    TestFramework.get_node_top_block_hash("node4")
 
-    :timer.sleep(2000)
-
-    assert :synced == TestFramework.compare_nodes_by_top_block("node1", "node4")
+    assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
     TestFramework.delete_all_nodes()
   end
 
   @tag :sync_test
+  @tag timeout: 100_000
   test "namings test" do
     TestFramework.sync_two_nodes("node1", "node2")
 
@@ -102,15 +100,12 @@ defmodule MultiNodeSyncTest do
     TestFramework.naming_pre_claim("node2")
     TestFramework.mine_sync_block("node2")
 
-    # :timer.sleep 3000
-
     TestFramework.naming_claim("node2")
     TestFramework.mine_sync_block("node2")
 
-    TestFramework.mine_sync_block("node4")
-    TestFramework.mine_sync_block("node4")
-    TestFramework.naming_update("node4")
-    TestFramework.mine_sync_block("node4")
+    TestFramework.mine_sync_block("node2")
+    TestFramework.naming_update("node2")
+    TestFramework.mine_sync_block("node1")
 
     TestFramework.mine_sync_block("node2")
     TestFramework.naming_transfer("node2")
@@ -124,9 +119,41 @@ defmodule MultiNodeSyncTest do
 
     TestFramework.get_node_top_block_hash("node4")
 
-    :timer.sleep(2000)
-
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
+
+    TestFramework.delete_all_nodes()
+  end
+
+  @tag :sync_test
+  test "balance test" do
+    TestFramework.sync_two_nodes("node1", "node2")
+
+    TestFramework.sync_two_nodes("node2", "node3")
+
+    TestFramework.sync_two_nodes("node3", "node4")
+
+    TestFramework.update_pubkeys_state()
+
+    TestFramework.mine_sync_block("node1")
+    TestFramework.mine_sync_block("node1")
+    TestFramework.send_tokens("node1", "node3", 50)
+    TestFramework.mine_sync_block("node1")
+
+    TestFramework.send_tokens("node3", "node2", 20)
+    TestFramework.mine_sync_block("node3")
+    TestFramework.send_tokens("node2", "node4", 10)
+    TestFramework.mine_sync_block("node2")
+
+    TestFramework.update_balance("node1")
+
+    TestFramework.update_balance("node2")
+
+    TestFramework.update_balance("node3")
+
+    TestFramework.update_balance("node4")
+
+    assert TestFramework.get_balance("node4") == 10
+
     TestFramework.delete_all_nodes()
   end
 
