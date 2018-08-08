@@ -130,7 +130,7 @@ defmodule AecoreSerializationTest do
   # @tag timeout: 120_000
   # test "Epoch RLP-encoded block deserialization", setup do
   # epoch_serialized_block = create_data(Block, :erlang)
-  # deserialized_epoch_block = Serialization.rlp_decode(epoch_serialized_block)
+  # deserialized_epoch_block = Block.rlp_decode(epoch_serialized_block)
   # assert %Block{} = deserialized_epoch_block
   # end
 

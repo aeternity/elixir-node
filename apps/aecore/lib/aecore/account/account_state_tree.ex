@@ -4,7 +4,6 @@ defmodule Aecore.Account.AccountStateTree do
   """
   alias Aecore.Account.Account
   alias Aecore.Keys.Wallet
-  alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
   alias Aecore.Chain.Identifier
@@ -19,7 +18,7 @@ defmodule Aecore.Account.AccountStateTree do
 
   @spec put(accounts_state(), Wallet.pubkey(), Account.t()) :: accounts_state()
   def put(trie, key, value) do
-    serialized_account_state = Serialization.rlp_encode(value)
+    serialized_account_state = Account.rlp_encode(value)
     PatriciaMerkleTree.enter(trie, key, serialized_account_state)
   end
 
@@ -30,7 +29,7 @@ defmodule Aecore.Account.AccountStateTree do
         Account.empty()
 
       {:ok, account_state} ->
-        {:ok, acc} = Serialization.rlp_decode_only(account_state, Account)
+        {:ok, acc} = Account.rlp_decode(account_state)
 
         id = Identifier.create_identity(key, :account)
         %Account{acc | id: id}

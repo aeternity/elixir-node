@@ -120,7 +120,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   defp add_oracle(oracles_state, oracle, how) do
     id = oracle.owner
     expires = oracle.expires
-    serialized = Serialization.rlp_encode(oracle)
+    serialized = Oracle.rlp_encode(oracle)
 
     new_oracle_tree =
       case how do
@@ -151,7 +151,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
     tree_id = oracle_id <> id
     expires = query.expires
-    serialized = Serialization.rlp_encode(query)
+    serialized = OracleQuery.rlp_encode(query)
 
     new_oracle_tree =
       case how do

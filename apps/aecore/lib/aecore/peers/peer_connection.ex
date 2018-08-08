@@ -15,7 +15,6 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -764,7 +763,7 @@ defmodule Aecore.Peers.PeerConnection do
       block
     ] = ExRLP.decode(encoded_block)
 
-    {:ok, deserialized_block} = Serialization.rlp_decode_only(block, Block)
+    {:ok, deserialized_block} = Block.rlp_decode(block)
     %{block: deserialized_block}
   end
 
