@@ -28,3 +28,6 @@ cache:
     - $HOME/.cargo
     - deps
     - _build
+    - aevm_external
+    - apps/aecore/src/cuckoo/c_src
+    - apps/aecore/priv/cuckoo
