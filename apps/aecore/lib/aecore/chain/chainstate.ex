@@ -12,7 +12,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Hash
 

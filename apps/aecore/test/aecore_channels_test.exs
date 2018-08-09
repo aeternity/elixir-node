@@ -5,7 +5,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Channel.Worker, as: Channels
 
   alias Aecore.Channel.{
@@ -36,7 +36,9 @@ defmodule AecoreChannelTest do
 
     for _ <- 1..5, do: Miner.mine_sync_block_to_chain()
 
-    TestUtils.spend_list(Keys.sign_pubkey(), Keys.sign_privkey(), [
+    {pubkey, privkey} = Keys.keypair(:sign)
+
+    TestUtils.spend_list(pubkey, privkey, [
       {pk1, 200},
       {pk2, 200}
     ])

@@ -9,7 +9,7 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
 
@@ -27,9 +27,10 @@ defmodule MultipleTransactionsTest do
     %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
     %{public: acc3_pub, secret: acc3_priv} = :enacl.sign_keypair()
     %{public: acc4_pub, secret: acc4_priv} = :enacl.sign_keypair()
+    {pubkey, privkey} = Keys.keypair(:sign)
 
     [
-      account: {Keys.sign_pubkey(), Keys.sign_privkey()},
+      account: {pubkey, privkey},
       account2: {acc2_pub, acc2_priv},
       account3: {acc3_pub, acc3_priv},
       account4: {acc4_pub, acc4_priv}

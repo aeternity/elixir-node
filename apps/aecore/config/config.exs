@@ -39,19 +39,19 @@ persistence_path =
 
 sign_keys_pass =
   case System.get_env("SIGN_KEYS_PASS") do
-    nil -> <<>>
+    nil -> <<"Secret">>
     env -> env
   end
 
 sign_keys_path =
   case System.get_env("SIGN_KEYS_PATH") do
-    nil -> "apps/aecore/priv/aewallet"
+    nil -> "apps/aecore/priv/sign_keys"
     env -> env
   end
 
 peer_keys_pass =
   case System.get_env("PEER_KEYS_PASS") do
-    nil -> <<>>
+    nil -> <<"Secret">>
     env -> env
   end
 

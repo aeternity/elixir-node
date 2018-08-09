@@ -5,7 +5,7 @@ defmodule Aecore.Naming.Naming do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.NameUtil
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aeutil.Hash
   alias Aeutil.Bits
   alias Aeutil.Serialization

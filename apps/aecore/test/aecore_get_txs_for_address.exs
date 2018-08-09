@@ -5,7 +5,7 @@ defmodule GetTxsForAddressTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.Tx.SpendTx, as: SpendTx
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.Serialization

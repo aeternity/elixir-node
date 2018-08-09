@@ -12,7 +12,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
@@ -137,7 +137,7 @@ defmodule AecoreSerializationTest do
         DataTx.init(
           data_type,
           %{amount: 100, receiver: <<1, 2, 3>>, version: 1, payload: <<"payload">>},
-          Keys.sign_pubkey(),
+          elem(Keys.keypair(:sign), 0),
           100,
           Chain.lowest_valid_nonce()
         )

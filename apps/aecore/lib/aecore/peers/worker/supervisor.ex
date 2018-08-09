@@ -9,7 +9,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Peers.Jobs
 
   def start_link(_args) do
@@ -17,7 +17,7 @@ defmodule Aecore.Peers.Worker.Supervisor do
   end
 
   def init(:ok) do
-    {pubkey, privkey} = Keys.peer_keypair()
+    {pubkey, privkey} = Keys.keypair(:peer)
 
     children = [
       Jobs,

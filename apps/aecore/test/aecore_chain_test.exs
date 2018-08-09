@@ -12,7 +12,7 @@ defmodule AecoreChainTest do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
 
   setup do
@@ -43,7 +43,7 @@ defmodule AecoreChainTest do
         [],
         chain_state,
         2,
-        Keys.sign_pubkey()
+        elem(Keys.keypair(:sign), 0)
       )
 
     new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
@@ -56,7 +56,7 @@ defmodule AecoreChainTest do
         root_hash: new_root_hash,
         target: 553_713_663,
         nonce: 0,
-        miner: Keys.sign_pubkey(),
+        miner: elem(Keys.keypair(:sign), 0),
         time: System.system_time(:milliseconds),
         version: 14
       },

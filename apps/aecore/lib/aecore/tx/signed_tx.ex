@@ -9,7 +9,7 @@ defmodule Aecore.Tx.SignedTx do
   alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aeutil.Bits
   alias Aeutil.Hash
 

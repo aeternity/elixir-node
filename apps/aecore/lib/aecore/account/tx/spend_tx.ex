@@ -7,7 +7,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate

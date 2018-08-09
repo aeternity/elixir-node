@@ -12,7 +12,7 @@ defmodule AecoreTxTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aeutil.Serialization
   alias Aecore.Account.Account
 
@@ -33,7 +33,7 @@ defmodule AecoreTxTest do
   end
 
   setup _tx do
-    sender_acc = Keys.sign_pubkey()
+    {sender_acc, _} = Keys.keypair(:sign)
     %{public: receiver} = :enacl.sign_keypair()
 
     [
@@ -43,14 +43,14 @@ defmodule AecoreTxTest do
   end
 
   test "positive tx valid", tx do
-    sender = Keys.sign_pubkey()
+    {sender, _} = Keys.keypair(:sign)
     amount = 5
     fee = 1
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    priv_key = Keys.sign_privkey()
+    {_, priv_key} = Keys.keypair(:sign)
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
     assert :ok = SignedTx.validate(signed_tx)
@@ -61,7 +61,7 @@ defmodule AecoreTxTest do
 
   @tag :test_test
   test "negative DataTx invalid", tx do
-    sender = Keys.sign_pubkey()
+    {sender, _} = Keys.keypair(:sign)
     amount = -5
     fee = 1
 
@@ -73,58 +73,56 @@ defmodule AecoreTxTest do
   end
 
   test "invalid spend transaction", tx do
-    sender = Keys.sign_pubkey()
+    {sender, priv_key} = Keys.keypair(:sign)
     amount = 200
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-    assert Account.balance(Chain.chain_state().accounts, Keys.sign_pubkey()) == 100
+    assert Account.balance(Chain.chain_state().accounts, sender) == 100
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    priv_key = Keys.sign_privkey()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(Chain.chain_state().accounts, Keys.sign_pubkey()) == 200
+    assert Account.balance(Chain.chain_state().accounts, sender) == 200
 
     :ok = Miner.mine_sync_block_to_chain()
     # At this poing the sender should have 300 tokens,
     # enough to mine the transaction in the pool
 
-    assert Account.balance(Chain.chain_state().accounts, Keys.sign_pubkey()) == 300
+    assert Account.balance(Chain.chain_state().accounts, sender) == 300
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(TestUtils.get_accounts_chainstate(), Keys.sign_pubkey()) == 200
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 200
     assert Account.balance(Chain.chain_state().accounts, tx.receiver) == 200
   end
 
   test "nonce is too small", tx do
-    sender = Keys.sign_pubkey()
+    {sender, priv_key} = Keys.keypair(:sign)
     amount = 200
     fee = 50
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
-    priv_key = Keys.sign_privkey()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
-    assert Account.balance(TestUtils.get_accounts_chainstate(), Keys.sign_pubkey()) == 100
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 100
   end
 
   test "sender pub_key is too small", tx do
     # Use private as public key for sender to get error that sender key is not 33 bytes
-    sender = Keys.sign_privkey()
-    refute byte_size(sender) == 33
+    {_, sender} = Keys.keypair(:sign)
+    refute byte_size(sender) == 32
     amount = 100
     fee = 50
 
@@ -136,12 +134,12 @@ defmodule AecoreTxTest do
   end
 
   test "receiver pub_key is too small" do
-    sender = Keys.sign_pubkey()
+    {sender, _} = Keys.keypair(:sign)
     amount = 100
     fee = 50
 
-    # Use private as public key for receiver to get error that receiver key is not 33 bytes
-    receiver = Keys.sign_privkey()
+    # Use private as public key for receiver to get error that receiver key is not 32 bytes
+    {_, receiver} = Keys.keypair(:sign)
     refute byte_size(receiver) == 32
     :ok = Miner.mine_sync_block_to_chain()
     payload = %{receiver: receiver, amount: amount, version: 1, payload: <<"payload">>}
@@ -151,7 +149,7 @@ defmodule AecoreTxTest do
   end
 
   test "sum of amount and fee more than balance", tx do
-    sender = Keys.sign_pubkey()
+    {sender, priv_key} = Keys.keypair(:sign)
     %{public: acc1, secret: priv_key2} = :enacl.sign_keypair()
     %{public: acc2} = :enacl.sign_keypair()
     amount = 80
@@ -163,7 +161,6 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: acc1, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-    priv_key = Keys.sign_privkey()
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)

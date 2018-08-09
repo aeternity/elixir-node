@@ -5,7 +5,7 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aeutil.PatriciaMerkleTree
 
@@ -35,7 +35,7 @@ defmodule AecoreOracleTest do
     assert oracle_tree_2 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
 
     Miner.mine_sync_block_to_chain()
-    pub_key = Keys.sign_pubkey()
+    pub_key = elem(Keys.keypair(:sign), 0)
 
     assert %{} == Pool.get_and_empty_pool()
 

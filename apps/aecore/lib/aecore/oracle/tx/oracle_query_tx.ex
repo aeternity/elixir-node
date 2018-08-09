@@ -9,7 +9,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aeutil.Bits

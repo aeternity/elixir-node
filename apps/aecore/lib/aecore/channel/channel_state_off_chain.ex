@@ -5,7 +5,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aeutil.Serialization
 
   @signing_tag 101

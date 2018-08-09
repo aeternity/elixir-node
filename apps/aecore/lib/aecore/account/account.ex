@@ -4,7 +4,7 @@ defmodule Aecore.Account.Account do
   """
 
   require Logger
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
@@ -78,8 +78,7 @@ defmodule Aecore.Account.Account do
   @spec spend(Keys.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def spend(receiver, amount, fee, payload, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload, ttl)
   end
@@ -114,8 +113,7 @@ defmodule Aecore.Account.Account do
   @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -149,8 +147,7 @@ defmodule Aecore.Account.Account do
   @spec claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(name, name_salt, fee, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -184,8 +181,7 @@ defmodule Aecore.Account.Account do
   @spec name_update(String.t(), String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_update(name, pointers, fee, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl)
   end
@@ -225,8 +221,7 @@ defmodule Aecore.Account.Account do
   @spec name_transfer(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(name, target, fee, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl)
   end
@@ -260,8 +255,7 @@ defmodule Aecore.Account.Account do
   @spec name_revoke(String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(name, fee, ttl \\ 0) do
-    sender = Keys.sign_pubkey()
-    sender_priv_key = Keys.sign_privkey()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce, ttl)
   end

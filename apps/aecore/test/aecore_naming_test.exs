@@ -9,7 +9,7 @@ defmodule AecoreNamingTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Naming.NameUtil
@@ -54,7 +54,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -66,7 +66,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Keys.sign_pubkey()
+    assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -80,7 +80,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Keys.sign_pubkey()
+    assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
@@ -152,7 +152,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     {:ok, claim} = Account.claim("test.aet", <<2::256>>, 5)
     Pool.add_transaction(claim)
@@ -162,7 +162,7 @@ defmodule AecoreNamingTest do
 
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
 
-    assert {:ok, Keys.sign_pubkey()} ==
+    assert {:ok, elem(Keys.keypair(:sign), 0)} ==
              naming_state_2 |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
 
     assert false == naming_state_2 |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
@@ -184,7 +184,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     claim_priv = setup.a_priv_key
     claim_pub = setup.a_pub_key
@@ -201,7 +201,7 @@ defmodule AecoreNamingTest do
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash)
     assert :none == first_name_claim
 
-    assert {:ok, Keys.sign_pubkey()} ==
+    assert {:ok, elem(Keys.keypair(:sign), 0)} ==
              naming_state_2 |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
 
     assert false == naming_state_2 |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
@@ -223,7 +223,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -235,7 +235,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Keys.sign_pubkey()
+    assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -255,7 +255,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Keys.sign_pubkey()
+    assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == []
   end
@@ -276,7 +276,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -288,7 +288,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Keys.sign_pubkey()
+    assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -302,7 +302,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Keys.sign_pubkey()
+    assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
@@ -331,7 +331,7 @@ defmodule AecoreNamingTest do
     hash = transfer.data.payload.hash
     first_name_transfer = NamingStateTree.get(naming_state_4, hash)
     assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.owner == Keys.sign_pubkey()
+    assert first_name_transfer.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
   end
@@ -352,7 +352,7 @@ defmodule AecoreNamingTest do
     assert {:ok, first_name_pre_claim.hash} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Keys.sign_pubkey()
+    assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -364,7 +364,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
     assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Keys.sign_pubkey()
+    assert first_name_claim.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -378,7 +378,7 @@ defmodule AecoreNamingTest do
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
     assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Keys.sign_pubkey()
+    assert first_name_update.owner == elem(Keys.keypair(:sign), 0)
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 

@@ -8,7 +8,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Peers.Worker, as: Peers
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aeutil.Serialization
 
   require Logger

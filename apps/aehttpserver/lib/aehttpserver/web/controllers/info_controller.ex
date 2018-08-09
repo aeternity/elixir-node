@@ -5,7 +5,7 @@ defmodule Aehttpserver.Web.InfoController do
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Account.Account
 
   require Logger
@@ -25,10 +25,10 @@ defmodule Aehttpserver.Web.InfoController do
       |> BlockValidation.block_header_hash()
       |> Header.base58c_encode()
 
-    pubkey = Keys.sign_pubkey()
-    pubkey_hex = Account.base58c_encode(pubkey)
+    {sign_pubkey, _} = Keys.keypair(:sign)
+    pubkey_hex = Account.base58c_encode(sign_pubkey)
 
-    {peer_pubkey, _} = Keys.peer_keypair()
+    {peer_pubkey, _} = Keys.keypair(:peer)
     peer_pubkey_hex = Keys.peer_encode(peer_pubkey)
 
     json(conn, %{
@@ -43,6 +43,12 @@ defmodule Aehttpserver.Web.InfoController do
   end
 
   def public_key(conn, _params) do
-    json(conn, %{pubkey: Account.base58c_encode(Keys.sign_pubkey())})
+    json(conn, %{
+      pubkey:
+        :sign
+        |> Keys.keypair()
+        |> elem(0)
+        |> Account.base58c_encode()
+    })
   end
 end

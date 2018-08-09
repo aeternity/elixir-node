@@ -12,7 +12,7 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Worker, as: Keys
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
@@ -48,17 +48,19 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
+    {pubkey, privkey} = Keys.keypair(:sign)
+
     tx_data =
       DataTx.init(
         OracleRegistrationTx,
         payload,
-        Keys.sign_pubkey(),
+        pubkey,
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
   end
 
@@ -84,11 +86,13 @@ defmodule Aecore.Oracle.Oracle do
       response_ttl: response_ttl
     }
 
+    {pubkey, privkey} = Keys.keypair(:sign)
+
     tx_data =
       DataTx.init(
         OracleQueryTx,
         payload,
-        Keys.sign_pubkey(),
+        pubkey,
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
@@ -97,8 +101,8 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, tx} =
       SignedTx.sign_tx(
         tx_data,
-        Keys.sign_pubkey(),
-        Keys.sign_privkey()
+        pubkey,
+        privkey
       )
 
     Pool.add_transaction(tx)
@@ -115,17 +119,19 @@ defmodule Aecore.Oracle.Oracle do
       response: response
     }
 
+    {pubkey, privkey} = Keys.keypair(:sign)
+
     tx_data =
       DataTx.init(
         OracleResponseTx,
         payload,
-        Keys.sign_pubkey(),
+        pubkey,
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
   end
 
@@ -135,17 +141,19 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
+    {pubkey, privkey} = Keys.keypair(:sign)
+
     tx_data =
       DataTx.init(
         OracleExtendTx,
         payload,
-        Keys.sign_pubkey(),
+        pubkey,
         fee,
         Chain.lowest_valid_nonce(),
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, Keys.sign_pubkey(), Keys.sign_privkey())
+    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
   end
 
