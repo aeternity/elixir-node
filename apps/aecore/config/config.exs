@@ -45,7 +45,7 @@ sign_keys_pass =
 
 sign_keys_path =
   case System.get_env("SIGN_KEYS_PATH") do
-    nil -> "apps/aecore/priv/sign_keys"
+    nil -> "apps/aecore/priv/signkeys"
     env -> env
   end
 
