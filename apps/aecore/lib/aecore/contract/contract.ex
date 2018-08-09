@@ -74,13 +74,14 @@ defmodule Aecore.Contract.Contract do
         1 -> true
       end
 
-    decoded_referers =
+    raw_decoded_referers =
       Enum.reduce(referers, [], fn referer, acc ->
         {:ok, decoded_referer} = Identifier.decode_data(referer)
 
         [decoded_referer | acc]
       end)
-      |> Enum.reverse()
+
+    decoded_referers = raw_decoded_referers |> Enum.reverse()
 
     {:ok,
      %{
