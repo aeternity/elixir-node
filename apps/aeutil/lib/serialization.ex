@@ -314,6 +314,9 @@ defmodule Aeutil.Serialization do
       :payload ->
         value
 
+      :query_data ->
+        value
+
       _ ->
         Parser.to_atom(value)
     end

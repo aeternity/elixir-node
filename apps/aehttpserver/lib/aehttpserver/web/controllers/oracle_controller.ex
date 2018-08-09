@@ -42,17 +42,15 @@ defmodule Aehttpserver.Web.OracleController do
   end
 
   def oracle_query(conn, _params) do
-    body = conn.body_params
-    binary_oracle_address = Bits.decode58(body["address"])
-    parsed_query = Poison.decode!(~s(#{body["query"]}))
+    deserialized_oracle = Oracle.deserialize(conn.body_params)
 
     case Oracle.query(
-           binary_oracle_address,
-           parsed_query,
-           body["query_fee"],
-           body["fee"],
-           body["query_ttl"],
-           body["response_ttl"]
+           deserialized_oracle.data.payload.oracle_address,
+           deserialized_oracle.data.payload.query_data,
+           deserialized_oracle.data.payload.query_fee,
+           deserialized_oracle.data.fee,
+           deserialized_oracle.data.payload.query_ttl,
+           deserialized_oracle.data.payload.response_ttl
          ) do
       :ok ->
         json(conn, %{:status => :ok})

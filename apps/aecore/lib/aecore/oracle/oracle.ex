@@ -104,6 +104,17 @@ defmodule Aecore.Oracle.Oracle do
     Pool.add_transaction(tx)
   end
 
+  def serialize(tx) do
+    map = %{
+      "data" => DataTx.serialize(tx.data),
+      "signatures" => Serialization.serialize_value(tx.signatures, :signature)
+    }
+  end
+
+  def deserialize(tx) do
+    Serialization.deserialize_value(tx)
+  end
+
   @doc """
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
