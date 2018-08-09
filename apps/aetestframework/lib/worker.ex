@@ -206,7 +206,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def register_oracle(node_name) do
     send_command(
       node_name,
-      "Oracle.register(%{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, %{\"type\" => \"object\", \"properties\" => %{\"currency\" => %{\"type\" => \"string\"}}}, 5, 5, %{:ttl => 10, :type => :relative})"
+      "Oracle.register(\"foo: bar\", \"foo: bar\", 5, 5, %{ttl: 10, type: :relative})"
     )
   end
 
@@ -229,7 +229,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
     send_command(
       node_name,
-      "Oracle.query(oracle_address, %{\"currency\" => \"USD\"}, 5, 10, %{:ttl => 10, :type => :relative}, %{:ttl => 10, :type => :relative})"
+      "Oracle.query(oracle_address, \"foo: bar\", 5, 10, %{ttl: 10, type: :relative}, %{ttl: 10, type: :relative})"
     )
   end
 
@@ -245,7 +245,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
       "query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
     )
 
-    send_command(node_name, "Oracle.respond(query_id, %{\"currency\" => \"BGN\"}, 5)")
+    send_command(node_name, "Oracle.respond(query_id, \"boolean\", 5)")
   end
 
   # spend_tx
