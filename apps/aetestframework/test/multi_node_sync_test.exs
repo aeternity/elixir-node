@@ -10,25 +10,25 @@ defmodule MultiNodeSyncTest do
     TestFramework.start_link(%{})
     Chain.clear_state()
     Pool.get_and_empty_pool()
-    port1 = find_port(1)
+    port1 = find_port(10)
     TestFramework.new_node("node1", port1)
     :timer.sleep 2000
-    IO.inspect :os.cmd('lsof -i -P -n | grep -w beam')
+    IO.inspect :os.cmd('lsof -i -P -n | grep -w port1')
 
     port2 = find_port(port1 + 1)
     TestFramework.new_node("node2", port2)
     :timer.sleep 2000
-    IO.inspect :os.cmd('lsof -i -P -n | grep -w beam')
+    IO.inspect :os.cmd('lsof -i -P -n | grep -w port2')
 
     port3 = find_port(port2 + 1)
     TestFramework.new_node("node3", port3)
     :timer.sleep 2000
-    IO.inspect :os.cmd('lsof -i -P -n | grep -w beam')
+    IO.inspect :os.cmd('lsof -i -P -n | grep -w port3')
 
     port4 = find_port(port3 + 1)
     TestFramework.new_node("node4", port4)
     :timer.sleep 2000
-    IO.inspect :os.cmd('lsof -i -P -n | grep -w beam')
+    IO.inspect :os.cmd('lsof -i -P -n | grep -w port4')
 
     on_exit(fn ->
       Chain.clear_state()
