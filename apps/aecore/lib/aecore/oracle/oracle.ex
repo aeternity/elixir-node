@@ -18,23 +18,19 @@ defmodule Aecore.Oracle.Oracle do
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aeutil.Parser
-  alias ExJsonSchema.Schema, as: JsonSchema
-  alias ExJsonSchema.Validator, as: JsonValidator
+  alias Aecore.Chain.Identifier
 
   require Logger
 
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
-
-  @type json_schema :: map()
-  @type json :: any()
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
 
   @spec register(
-          json_schema(),
-          json_schema(),
+          String.t(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -68,7 +64,7 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec query(
           Wallet.pubkey(),
-          json(),
+          String.t(),
           non_neg_integer(),
           non_neg_integer(),
           ttl(),
@@ -108,7 +104,7 @@ defmodule Aecore.Oracle.Oracle do
   Creates an oracle response transaction with the query referenced by its
   transaction hash and the data of the response.
   """
-  @spec respond(binary(), any(), non_neg_integer(), non_neg_integer()) :: :ok | :error
+  @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee, tx_ttl \\ 0) do
     payload = %{
       query_id: query_id,
@@ -147,20 +143,6 @@ defmodule Aecore.Oracle.Oracle do
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, Wallet.get_public_key(), Wallet.get_private_key())
     Pool.add_transaction(tx)
-  end
-
-  @spec data_valid?(map(), map()) :: true | false
-  def data_valid?(format, data) do
-    schema = JsonSchema.resolve(format)
-
-    case JsonValidator.validate(schema, data) do
-      :ok ->
-        true
-
-      {:error, [{message, _}]} ->
-        Logger.error(fn -> "#{__MODULE__}: " <> message end)
-        false
-    end
   end
 
   @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
@@ -233,7 +215,7 @@ defmodule Aecore.Oracle.Oracle do
           AccountStateTree.accounts_state()
   def refund_sender(query, accounts_state) do
     if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address, fn account ->
+      AccountStateTree.update(accounts_state, query.sender_address.value, fn account ->
         Map.update!(account, :balance, &(&1 + query.fee))
       end)
     else
@@ -280,9 +262,8 @@ defmodule Aecore.Oracle.Oracle do
     list = [
       tag,
       version,
-      oracle.owner,
-      Serialization.transform_item(oracle.query_format),
-      Serialization.transform_item(oracle.response_format),
+      oracle.query_format,
+      oracle.response_format,
       oracle.query_fee,
       oracle.expires
     ]
@@ -304,17 +285,20 @@ defmodule Aecore.Oracle.Oracle do
     response =
       case oracle_query.response do
         :undefined -> Parser.to_string(:undefined)
-        %{} = data -> Poison.encode!(data)
         %DataTx{type: OracleResponseTx} = data -> data
+        _ -> oracle_query.response
       end
+
+    {:ok, encoded_sender} = Identifier.encode_data(oracle_query.sender_address)
+    {:ok, encoded_oracle_owner} = Identifier.encode_data(oracle_query.oracle_address)
 
     list = [
       tag,
       version,
-      oracle_query.sender_address,
+      encoded_sender,
       oracle_query.sender_nonce,
-      oracle_query.oracle_address,
-      Serialization.transform_item(oracle_query.query),
+      encoded_oracle_owner,
+      oracle_query.query,
       has_response,
       response,
       oracle_query.expires,
@@ -336,14 +320,14 @@ defmodule Aecore.Oracle.Oracle do
   @spec rlp_decode(list(), :registered_oracle | :interaction_object) ::
           {:ok, map()} | {:error, String.t()}
   def rlp_decode(
-        [orc_owner, query_format, response_format, query_fee, expires],
+        [query_format, response_format, query_fee, expires],
         :oracle
       ) do
     {:ok,
      %{
-       owner: orc_owner,
-       query_format: Serialization.transform_item(query_format, :binary),
-       response_format: Serialization.transform_item(response_format, :binary),
+       owner: %Identifier{type: :oracle},
+       query_format: query_format,
+       response_format: response_format,
        query_fee: Serialization.transform_item(query_fee, :int),
        expires: Serialization.transform_item(expires, :int)
      }}
@@ -369,10 +353,13 @@ defmodule Aecore.Oracle.Oracle do
         0 -> false
       end
 
+    {:ok, decoded_sender_address} = Identifier.decode_data(sender_address)
+    {:ok, decoded_orc_owner} = Identifier.decode_data(oracle_address)
+
     new_response =
       case response do
         "undefined" -> String.to_atom(response)
-        _ -> Serialization.transform_item(response, :binary)
+        _ -> response
       end
 
     {:ok,
@@ -380,11 +367,11 @@ defmodule Aecore.Oracle.Oracle do
        expires: Serialization.transform_item(expires, :int),
        fee: Serialization.transform_item(fee, :int),
        has_response: has_response,
-       oracle_address: oracle_address,
-       query: Serialization.transform_item(query, :binary),
+       oracle_address: decoded_orc_owner,
+       query: query,
        response: new_response,
        response_ttl: Serialization.transform_item(response_ttl, :int),
-       sender_address: sender_address,
+       sender_address: decoded_sender_address,
        sender_nonce: Serialization.transform_item(sender_nonce, :int)
      }}
   end

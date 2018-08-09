@@ -158,7 +158,7 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
-    case get_block_info_by_height(height, nil) do
+    case get_block_info_by_height(height, nil, :block) do
       {:error, :chain_too_short} -> {:error, :chain_too_short}
       info -> {:ok, info.block.header}
     end
@@ -189,7 +189,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
           {:ok, Block.t()} | {:error, binary()}
   def get_block_by_height(height, chain_hash \\ nil) do
-    case get_block_info_by_height(height, chain_hash) do
+    case get_block_info_by_height(height, chain_hash, :block) do
       {:error, _} = error -> error
       info -> {:ok, info.block}
     end
@@ -216,7 +216,7 @@ defmodule Aecore.Chain.Worker do
   @spec get_chain_state_by_height(non_neg_integer(), binary() | nil) ::
           Chainstate.t() | {:error, String.t()}
   def get_chain_state_by_height(height, chain_hash \\ nil) do
-    case get_block_info_by_height(height, chain_hash) do
+    case get_block_info_by_height(height, chain_hash, :chainstate) do
       {:error, _} = error ->
         error
 
@@ -365,22 +365,8 @@ defmodule Aecore.Chain.Worker do
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
     # This allows for log n findning of block with given height.
-    new_refs =
-      0..@max_refs
-      |> Enum.reduce([new_block.header.prev_hash], fn i, [prev | _] = acc ->
-        with true <- Map.has_key?(blocks_data_map, prev),
-             {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
-          [hash | acc]
-        else
-          :error ->
-            acc
 
-          _ ->
-            Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
-            acc
-        end
-      end)
-      |> Enum.reverse()
+    new_refs = refs(@max_refs, blocks_data_map, new_block.header.prev_hash)
 
     updated_blocks_data_map =
       Map.put(blocks_data_map, new_block_hash, %{
@@ -410,7 +396,7 @@ defmodule Aecore.Chain.Worker do
         ## Transfrom from chain state
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+            transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :latest_block_info => %{
@@ -437,7 +423,7 @@ defmodule Aecore.Chain.Worker do
       Persistence.batch_write(%{
         :chain_state => %{
           new_block_hash =>
-            transfrom_chainstate(:from_chainstate, Map.from_struct(new_chain_state))
+            transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
         },
         :block => %{new_block_hash => new_block},
         :block_info => %{new_block_hash => %{refs: new_refs}}
@@ -467,7 +453,12 @@ defmodule Aecore.Chain.Worker do
 
     if Enum.empty?(blocks_map) do
       [block_hash] = Map.keys(state.blocks_data_map)
-      Persistence.add_block_by_hash(block_hash, state.blocks_data_map[block_hash])
+      genesis_block = state.blocks_data_map[block_hash].block
+      genesis_chainstate = state.blocks_data_map[block_hash].chain_state
+
+      spawn(fn ->
+        add_validated_block(genesis_block, genesis_chainstate)
+      end)
     end
 
     is_empty_block_info = blocks_info |> Serialization.remove_struct() |> Enum.empty?()
@@ -476,22 +467,23 @@ defmodule Aecore.Chain.Worker do
       if is_empty_block_info do
         state.blocks_data_map
       else
-        blocks_info =
-          Map.merge(blocks_info, blocks_map, fn _hash, info, block ->
-            Map.put(info, :block, block)
-          end)
+        blocks_info
+        |> Enum.map(fn {hash, %{refs: refs}} ->
+          block = Map.get(blocks_map, hash, nil)
 
-        Enum.reduce(Map.keys(blocks_info), blocks_info, fn hash, acc_info ->
-          Map.update!(acc_info, hash, fn info ->
-            ch_states =
+          chain_state =
+            if block == nil do
+              nil
+            else
               struct(
                 Chainstate,
-                transfrom_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
+                transform_chainstate(:to_chainstate, Persistence.get_all_chainstates(hash))
               )
+            end
 
-            Map.put(info, :chain_state, ch_states)
-          end)
+          {hash, %{refs: refs, block: block, chain_state: chain_state}}
         end)
+        |> Enum.into(%{})
       end
 
     {:noreply,
@@ -499,7 +491,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp remove_old_block_data_from_map(block_map, top_hash) do
-    if block_map[top_hash].block.header.height > number_of_blocks_in_memory() do
+    if block_map[top_hash].block.header.height + 1 > number_of_blocks_in_memory() do
       hash_to_remove = get_nth_prev_hash(number_of_blocks_in_memory(), top_hash, block_map)
       Logger.info("#{__MODULE__}: Block ##{hash_to_remove} has been removed from memory")
 
@@ -605,14 +597,11 @@ defmodule Aecore.Chain.Worker do
     {:ok, headers}
   end
 
-  defp get_block_info_by_height(height, chain_hash) do
-    begin_hash =
-      if chain_hash == nil do
-        top_block_hash()
-      else
-        chain_hash
-      end
+  defp get_block_info_by_height(height, nil, info) do
+    get_block_info_by_height(height, top_block_hash(), info)
+  end
 
+  defp get_block_info_by_height(height, begin_hash, info) do
     blocks_data_map = GenServer.call(__MODULE__, :blocks_data_map)
     n = blocks_data_map[begin_hash].block.header.height - height
 
@@ -621,14 +610,32 @@ defmodule Aecore.Chain.Worker do
     else
       block_hash = get_nth_prev_hash(n, begin_hash, blocks_data_map)
 
-      case blocks_data_map[block_hash] do
-        %{block: nil} = block_info ->
+      case {info, blocks_data_map[block_hash]} do
+        {:block, %{block: nil} = block_info} ->
           case Persistence.get_block_by_hash(block_hash) do
             {:ok, block} -> %{block_info | block: block}
             _ -> block_info
           end
 
-        block_info ->
+        {:chainstate, %{chain_state: nil} = block_info} ->
+          case Persistence.get_all_chainstates(block_hash) do
+            {:ok, chainstate} ->
+              ch_state =
+                struct(
+                  Chainstate,
+                  transform_chainstate(
+                    :to_chainstate,
+                    chainstate
+                  )
+                )
+
+              %{block_info | chain_state: ch_state}
+
+            _ ->
+              block_info
+          end
+
+        {_, block_info} ->
           block_info
       end
     end
@@ -663,7 +670,9 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def transfrom_chainstate(strategy, chainstate) do
+  def transform_chainstate(_, {:error, _}), do: %{}
+
+  def transform_chainstate(strategy, {:ok, chainstate}) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))
   end
 
@@ -711,4 +720,29 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp build_chain_state, do: Chainstate.init()
+
+  defp refs(_, _, <<0::32-unit(8)>>), do: []
+
+  defp refs(max_refs, blocks_data_map, prev_hash) do
+    refs_num = min(max_refs, length(blocks_data_map[prev_hash].refs) + 1)
+    get_refs(refs_num, blocks_data_map, prev_hash)
+  end
+
+  defp get_refs(num_refs, blocks_data_map, prev_hash) do
+    0..num_refs
+    |> Enum.reduce([prev_hash], fn i, [prev | _] = acc ->
+      with true <- Map.has_key?(blocks_data_map, prev),
+           {:ok, hash} <- Enum.fetch(blocks_data_map[prev].refs, i) do
+        [hash | acc]
+      else
+        :error ->
+          acc
+
+        _ ->
+          Logger.error("#{__MODULE__}: Missing block with hash #{prev}")
+          acc
+      end
+    end)
+    |> Enum.reverse()
+  end
 end

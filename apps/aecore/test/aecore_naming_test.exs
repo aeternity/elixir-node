@@ -38,13 +38,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -55,8 +55,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
-    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Wallet.get_public_key()
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.owner.value == Wallet.get_public_key()
+
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -69,8 +70,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
-    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Wallet.get_public_key()
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.owner.value == Wallet.get_public_key()
+
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
@@ -83,10 +85,11 @@ defmodule AecoreNamingTest do
     naming_state_4 = Chain.chain_state().naming
 
     assert 1 == naming_state_4 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    hash_1 = transfer.data.payload.hash
+    hash_1 = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash_1)
-    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.owner == transfer_to_pub
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.owner.value == transfer_to_pub
+
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
@@ -106,10 +109,11 @@ defmodule AecoreNamingTest do
     naming_state_5 = Chain.chain_state().naming
 
     assert 1 == naming_state_5 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    hash_2 = revoke.data.payload.hash
+    hash_2 = revoke.data.payload.hash.value
     first_name_revoke = NamingStateTree.get(naming_state_5, hash_2)
-    assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_revoke.owner == transfer_to_pub
+    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_revoke.owner.value == transfer_to_pub
+
     assert first_name_revoke.status == :revoked
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
   end
@@ -136,13 +140,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<2::256>>, 5)
     Pool.add_transaction(claim)
@@ -153,7 +157,10 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
 
     assert {:ok, Wallet.get_public_key()} ==
-             naming_state_2 |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
+             naming_state_2
+             |> NamingStateTree.get(commitment)
+             |> Map.get(:owner)
+             |> Map.fetch(:value)
 
     assert false == naming_state_2 |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
   end
@@ -168,13 +175,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     claim_priv = Wallet.get_private_key("m/0/1")
     claim_pub = Wallet.to_public_key(claim_priv)
@@ -192,7 +199,10 @@ defmodule AecoreNamingTest do
     assert :none == first_name_claim
 
     assert {:ok, Wallet.get_public_key()} ==
-             naming_state_2 |> NamingStateTree.get(commitment) |> Map.fetch(:owner)
+             naming_state_2
+             |> NamingStateTree.get(commitment)
+             |> Map.get(:owner)
+             |> Map.fetch(:value)
 
     assert false == naming_state_2 |> NamingStateTree.get(commitment) |> Map.has_key?(:name)
   end
@@ -207,13 +217,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -224,8 +234,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
-    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Wallet.get_public_key()
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.owner.value == Wallet.get_public_key()
+
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -244,8 +255,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
-    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Wallet.get_public_key()
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.owner.value == Wallet.get_public_key()
+
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == []
   end
@@ -260,13 +272,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -277,8 +289,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
-    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Wallet.get_public_key()
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.owner.value == Wallet.get_public_key()
+
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -291,8 +304,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
-    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Wallet.get_public_key()
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.owner.value == Wallet.get_public_key()
+
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
@@ -319,10 +333,11 @@ defmodule AecoreNamingTest do
     naming_state_4 = Chain.chain_state().naming
 
     assert 1 == naming_state_4 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    hash = transfer.data.payload.hash
+    hash = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash)
-    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.owner == Wallet.get_public_key()
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.owner.value == Wallet.get_public_key()
+
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
   end
@@ -337,13 +352,13 @@ defmodule AecoreNamingTest do
     naming_state_1 = Chain.chain_state().naming
 
     assert 1 == naming_state_1 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    commitment = pre_claim.data.payload.commitment
+    commitment = pre_claim.data.payload.commitment.value
     first_name_pre_claim = NamingStateTree.get(naming_state_1, commitment)
 
-    assert {:ok, first_name_pre_claim.hash} ==
+    assert {:ok, first_name_pre_claim.hash.value} ==
              Naming.create_commitment_hash("test.aet", <<1::256>>)
 
-    assert first_name_pre_claim.owner == Wallet.get_public_key()
+    assert first_name_pre_claim.owner.value == Wallet.get_public_key()
 
     {:ok, claim} = Account.claim("test.aet", <<1::256>>, 5)
     Pool.add_transaction(claim)
@@ -354,8 +369,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_2 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_1} = NameUtil.normalized_namehash("test.aet")
     first_name_claim = NamingStateTree.get(naming_state_2, claim_hash_1)
-    assert {:ok, first_name_claim.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_claim.owner == Wallet.get_public_key()
+    assert {:ok, first_name_claim.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_claim.owner.value == Wallet.get_public_key()
+
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == []
 
@@ -368,8 +384,9 @@ defmodule AecoreNamingTest do
     assert 1 == naming_state_3 |> PatriciaMerkleTree.all_keys() |> Enum.count()
     {:ok, claim_hash_2} = NameUtil.normalized_namehash("test.aet")
     first_name_update = NamingStateTree.get(naming_state_3, claim_hash_2)
-    assert {:ok, first_name_update.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_update.owner == Wallet.get_public_key()
+    assert {:ok, first_name_update.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_update.owner.value == Wallet.get_public_key()
+
     assert first_name_update.status == :claimed
     assert first_name_update.pointers == ["{\"test\": 2}"]
 
@@ -382,10 +399,11 @@ defmodule AecoreNamingTest do
     naming_state_4 = Chain.chain_state().naming
 
     assert 1 == naming_state_4 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    hash_1 = transfer.data.payload.hash
+    hash_1 = transfer.data.payload.hash.value
     first_name_transfer = NamingStateTree.get(naming_state_4, hash_1)
-    assert {:ok, first_name_transfer.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_transfer.owner == transfer_to_pub
+    assert {:ok, first_name_transfer.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_transfer.owner.value == transfer_to_pub
+
     assert first_name_transfer.status == :claimed
     assert first_name_transfer.pointers == ["{\"test\": 2}"]
 
@@ -407,10 +425,11 @@ defmodule AecoreNamingTest do
     naming_state_5 = Chain.chain_state().naming
 
     assert 1 == naming_state_5 |> PatriciaMerkleTree.all_keys() |> Enum.count()
-    hash_2 = revoke.data.payload.hash
+    hash_2 = revoke.data.payload.hash.value
     first_name_revoke = NamingStateTree.get(naming_state_5, hash_2)
-    assert {:ok, first_name_revoke.hash} == NameUtil.normalized_namehash("test.aet")
-    assert first_name_revoke.owner == transfer_to_pub
+    assert {:ok, first_name_revoke.hash.value} == NameUtil.normalized_namehash("test.aet")
+    assert first_name_revoke.owner.value == transfer_to_pub
+
     assert first_name_revoke.status == :claimed
     assert first_name_revoke.pointers == ["{\"test\": 2}"]
   end

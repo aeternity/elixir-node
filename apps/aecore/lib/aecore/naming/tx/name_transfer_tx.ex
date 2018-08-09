@@ -13,6 +13,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -45,7 +46,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @spec init(payload()) :: t()
   def init(%{hash: hash, target: target}) do
-    %NameTransferTx{hash: hash, target: target}
+    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+    {:ok, identified_target} = Identifier.create_identity(target, :account)
+    %NameTransferTx{hash: identified_name_hash, target: identified_target}
   end
 
   @doc """
@@ -56,10 +59,10 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash) != Hash.get_hash_bytes_size() ->
+      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
-      !Wallet.key_size_valid?(target) ->
+      !Wallet.key_size_valid?(target.value) ->
         {:error, "#{__MODULE__}: target size invalid"}
 
       length(senders) != 1 ->
@@ -90,9 +93,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         %NameTransferTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
     claim = %{claim_to_update | owner: tx.target}
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -118,7 +121,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -127,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 

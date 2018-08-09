@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aeutil.Serialization
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
+  alias Aecore.Chain.Identifier
   alias MerklePatriciaTree.Trie
 
   @type hash :: binary()
@@ -99,7 +100,7 @@ defmodule Aecore.Oracle.OracleStateTree do
 
   defp delete_expired({:oracle, oracle_id}, {oracles_state, accounts_state}) do
     {
-      %{oracles_state | oracle_tree: delete(oracles_state.oracle_tree, oracle_id)},
+      Map.put(oracles_state, :oracle_tree, delete(oracles_state.oracle_tree, oracle_id.value)),
       accounts_state
     }
   end
@@ -124,10 +125,10 @@ defmodule Aecore.Oracle.OracleStateTree do
     new_oracle_tree =
       case how do
         :insert ->
-          insert(oracles_state.oracle_tree, id, serialized)
+          insert(oracles_state.oracle_tree, id.value, serialized)
 
         :enter ->
-          enter(oracles_state.oracle_tree, id, serialized)
+          enter(oracles_state.oracle_tree, id.value, serialized)
       end
 
     new_oracle_cache_tree =
@@ -138,12 +139,12 @@ defmodule Aecore.Oracle.OracleStateTree do
     %{oracle_tree: new_oracle_tree, oracle_cache_tree: new_oracle_cache_tree}
   end
 
-  defp add_query(oracles_state, query, how) do
-    oracle_id = query.oracle_address
+  defp add_query(tree, query, how) do
+    oracle_id = query.oracle_address.value
 
     id =
       OracleQueryTx.id(
-        query.sender_address,
+        query.sender_address.value,
         query.sender_nonce,
         oracle_id
       )
@@ -155,14 +156,14 @@ defmodule Aecore.Oracle.OracleStateTree do
     new_oracle_tree =
       case how do
         :insert ->
-          insert(oracles_state.oracle_tree, tree_id, serialized)
+          insert(tree.oracle_tree, tree_id, serialized)
 
         :enter ->
-          enter(oracles_state.oracle_tree, tree_id, serialized)
+          enter(tree.oracle_tree, tree_id, serialized)
       end
 
     new_oracle_cache_tree =
-      %{oracles_state | oracle_tree: new_oracle_tree}
+      %{tree | oracle_tree: new_oracle_tree}
       |> init_expired_cache_key_removal()
       |> cache_push({:query, oracle_id, id}, expires)
 
@@ -191,7 +192,40 @@ defmodule Aecore.Oracle.OracleStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
         {:ok, deserialized} = Serialization.rlp_decode(serialized)
-        deserialized
+
+        case deserialized do
+          %{
+            owner: %Identifier{type: :oracle},
+            query_format: _,
+            response_format: _,
+            query_fee: _,
+            expires: _
+          } ->
+            {:ok, identified_orc_owner} = Identifier.create_identity(key, :oracle)
+            %{deserialized | owner: identified_orc_owner}
+
+          %{
+            expires: _,
+            fee: _,
+            has_response: _,
+            oracle_address: oracle_address,
+            query: _,
+            response: _,
+            response_ttl: _,
+            sender_address: sender_address,
+            sender_nonce: _
+          } ->
+            {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
+
+            {:ok, identified_sender_address} =
+              Identifier.create_identity(sender_address, :account)
+
+            %{
+              deserialized
+              | oracle_address: identified_orc_address,
+                sender_address: identified_sender_address
+            }
+        end
 
       _ ->
         :none
@@ -234,6 +268,6 @@ defmodule Aecore.Oracle.OracleStateTree do
     end
   end
 
-  defp extract_record_key({:oracle, id}), do: id
+  defp extract_record_key({:oracle, id}), do: id.value
   defp extract_record_key({:query, oracle_id, id}), do: oracle_id <> id
 end
