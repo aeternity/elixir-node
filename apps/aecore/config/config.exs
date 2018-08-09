@@ -49,6 +49,10 @@ config :aecore, :rlp_tags,
   name_update_tx: 34,
   name_revoke_tx: 35,
   name_transfer_tx: 36,
+  contract_state: 40,
+  contract_call_state: 41,
+  contract_create_tx: 42,
+  contract_call_tx: 43,
   block: 100
 
 config :aecore, :version, block: 14

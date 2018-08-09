@@ -28,6 +28,8 @@ defmodule Aeutil.Serialization do
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Contract.Contract
+  alias Aecore.Contract.Call
   alias Aecore.Chain.Identifier
   require Logger
 
@@ -381,6 +383,8 @@ defmodule Aeutil.Serialization do
           | :channel_onchain
           | :block
           | :signedtx
+          | :contract
+          | :call
         ) :: binary | {:error, String.t()}
   def rlp_encode(%DataTx{} = term, :tx) do
     with {:ok, tag} <- type_to_tag(term.type),
@@ -424,6 +428,30 @@ defmodule Aeutil.Serialization do
       error ->
         {:error,
          "#{__MODULE__} : Invalid Registered Oracle state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :contract) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(Contract),
+         {:ok, version} <- get_version(Contract),
+         data <- Contract.rlp_encode(tag, version, term) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid Registered Contract state serialization: #{inspect(error)}"}
+    end
+  end
+
+  def rlp_encode(%{} = term, :call) when is_map(term) do
+    with {:ok, tag} <- type_to_tag(Call),
+         {:ok, version} <- get_version(Call),
+         data <- Call.rlp_encode(tag, version, term) do
+      data
+    else
+      error ->
+        {:error,
+         "#{__MODULE__} : Invalid Registered Contract Call state serialization: #{inspect(error)}"}
     end
   end
 
@@ -529,6 +557,14 @@ defmodule Aeutil.Serialization do
   # storing logics should be overviewed
   defp rlp_decode(OracleQuery, _version, oracle_query) do
     Oracle.rlp_decode(oracle_query, :oracle_query)
+  end
+
+  defp rlp_decode(Contract, _version, contract) do
+    Contract.rlp_decode(contract)
+  end
+
+  defp rlp_decode(Call, _version, call) do
+    Call.rlp_decode(call)
   end
 
   # account decoding
@@ -767,6 +803,12 @@ defmodule Aeutil.Serialization do
   def type_to_tag(OracleQuery),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:oracle_query_state]}
 
+  def type_to_tag(Contract),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:contract_state]}
+
+  def type_to_tag(Call),
+    do: {:ok, Application.get_env(:aecore, :rlp_tags)[:contract_call_state]}
+
   def type_to_tag(ChannelStateOnChain), do: {:ok, 40}
 
   def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
@@ -799,12 +841,18 @@ defmodule Aeutil.Serialization do
   def tag_to_type(34), do: NameUpdateTx
   def tag_to_type(35), do: NameRevokeTx
   def tag_to_type(36), do: NameTransferTx
-  def tag_to_type(40), do: ChannelStateOnChain
-  def tag_to_type(41), do: ChannelCloseMutalTx
-  def tag_to_type(42), do: ChannelCloseSoloTx
-  def tag_to_type(43), do: ChannelCreateTx
-  def tag_to_type(44), do: ChannelSettleTx
-  def tag_to_type(45), do: ChannelSlashTx
+  def tag_to_type(40), do: Contract
+  def tag_to_type(41), do: Call
+  # def tag_to_type(42), do: ContractCreateTx
+  # def tag_to_type(43), do: ContractCallTx
+  def tag_to_type(50), do: ChannelCreateTx
+  # Channel deposit transaction - 51
+  # Channel withdraw transaction - 52
+  def tag_to_type(53), do: ChannelCloseMutalTx
+  def tag_to_type(54), do: ChannelCloseSoloTx
+  def tag_to_type(55), do: ChannelSlashTx
+  def tag_to_type(57), do: ChannelSettleTx
+  def tag_to_type(58), do: ChannelStateOnChain
   def tag_to_type(20), do: Oracle
   def tag_to_type(21), do: OracleQuery
   def tag_to_type(11), do: SignedTx
@@ -825,6 +873,8 @@ defmodule Aeutil.Serialization do
   def get_version(NameUpdateTx), do: {:ok, 1}
   def get_version(NameRevokeTx), do: {:ok, 1}
   def get_version(NameTransferTx), do: {:ok, 1}
+  def get_version(Contract), do: {:ok, 1}
+  def get_version(Call), do: {:ok, 1}
   def get_version(ChannelStateOnChain), do: {:ok, 1}
   def get_version(ChannelCloseMutalTx), do: {:ok, 1}
   def get_version(ChannelCloseSoloTx), do: {:ok, 1}
