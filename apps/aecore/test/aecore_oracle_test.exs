@@ -156,32 +156,32 @@ defmodule AecoreOracleTest do
         ttl = get_ttl(validity)
         oracle_tree = Chain.chain_state().oracles.oracle_tree
         oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
-        Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
+        Oracle.query(oracle_address, "foo: bar", 5, 10, ttl, ttl)
 
       :invalid ->
         case field do
           :address ->
             ttl = get_ttl(:valid)
             oracle_address = <<1, 2, 3>>
-            Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
+            Oracle.query(oracle_address, "foo: bar", 5, 10, ttl, ttl)
 
           :query_data ->
             ttl = get_ttl(:valid)
             oracle_tree = Chain.chain_state().oracles.oracle_tree
             oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
-            Oracle.query(oracle_address, %{"currency" => 5}, 5, 10, ttl, ttl)
+            Oracle.query(oracle_address, 6, 5, 10, ttl, ttl)
 
           :query_fee ->
             ttl = get_ttl(:valid)
             oracle_tree = Chain.chain_state().oracles.oracle_tree
             oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
-            Oracle.query(oracle_address, %{"currency" => "USD"}, 3, 10, ttl, ttl)
+            Oracle.query(oracle_address, "foo: bar", 3, 10, ttl, ttl)
 
           :ttl ->
             ttl = get_ttl(validity)
             oracle_tree = Chain.chain_state().oracles.oracle_tree
             oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()
-            Oracle.query(oracle_address, %{"currency" => "USD"}, 5, 10, ttl, ttl)
+            Oracle.query(oracle_address, "foo: bar", 5, 10, ttl, ttl)
         end
     end
   end
@@ -191,18 +191,18 @@ defmodule AecoreOracleTest do
       :valid ->
         oracle_tree = Chain.chain_state().oracles.oracle_tree
         query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
-        Oracle.respond(query_id, %{"currency" => "BGN"}, 5)
+        Oracle.respond(query_id, "boolean", 5)
 
       :invalid ->
         case field do
           :id ->
             query_id = <<1, 2, 3>>
-            Oracle.respond(query_id, %{"currency" => "BGN"}, 5)
+            Oracle.respond(query_id, "boolean", 5)
 
           :response_data ->
             oracle_tree = Chain.chain_state().oracles.oracle_tree
             query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
-            Oracle.respond(query_id, %{"currency" => 5}, 5)
+            Oracle.respond(query_id, 70, 5)
         end
     end
   end
@@ -220,16 +220,10 @@ defmodule AecoreOracleTest do
   def get_format(validity) do
     case validity do
       :valid ->
-        %{
-          "type" => "object",
-          "properties" => %{"currency" => %{"type" => "string"}}
-        }
+        "foo: bar"
 
       :invalid ->
-        %{
-          "type" => "something",
-          "properties" => %{"currency" => %{"type" => "else"}}
-        }
+        30
     end
   end
 end

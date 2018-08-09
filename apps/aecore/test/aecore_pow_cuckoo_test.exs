@@ -9,8 +9,7 @@ defmodule AecoreCuckooTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header}
 
   setup do
     on_exit(fn ->

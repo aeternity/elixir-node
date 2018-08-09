@@ -28,9 +28,10 @@ defmodule Aeutil.Serialization do
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Channel.ChannelStateOnChain
-
+  alias Aecore.Chain.Identifier
   require Logger
 
+  @type id :: :account | :name | :commitment | :oracle | :contract | :channel
   @type transaction_types :: SpendTx.t() | DataTx.t()
 
   @type hash_types :: :chainstate | :header | :txs
@@ -154,7 +155,10 @@ defmodule Aeutil.Serialization do
     value
     |> remove_struct()
     |> Enum.reduce(%{}, fn {key, val}, new_val ->
-      Map.put(new_val, serialize_value(key), serialize_value(val, key))
+      case key do
+        :receiver -> Map.put(new_val, serialize_value(key), serialize_value(val.value, key))
+        _ -> Map.put(new_val, serialize_value(key), serialize_value(val, key))
+      end
     end)
   end
 
@@ -191,10 +195,10 @@ defmodule Aeutil.Serialization do
         OracleQueryTx.base58c_encode(value)
 
       :signature ->
-        base64_binary(value, :serialize)
+        SignedTx.base58c_encode_signature(value)
 
       :signatures ->
-        base64_binary(value, :serialize)
+        SignedTx.base58c_encode_signature(value)
 
       :proof ->
         base64_binary(value, :serialize)
@@ -291,10 +295,10 @@ defmodule Aeutil.Serialization do
         Account.base58c_decode(value)
 
       :signature ->
-        base64_binary(value, :deserialize)
+        SignedTx.base58c_decode_signature(value)
 
       :signatures ->
-        base64_binary(value, :deserialize)
+        SignedTx.base58c_decode_signature(value)
 
       :proof ->
         base64_binary(value, :deserialize)
@@ -499,7 +503,7 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  def rlp_decode(data) do
+  def rlp_decode(data, _) do
     {:error, "#{__MODULE__}: Illegal deserialization: #{inspect(data)}"}
   end
 
@@ -507,22 +511,27 @@ defmodule Aeutil.Serialization do
     Block.rlp_decode(block_data)
   end
 
+  # logics should be overviewed
   defp rlp_decode(Name, _version, name_data) do
     Naming.rlp_decode(name_data, :name)
   end
 
+  # logics should be overviewed
   defp rlp_decode(NameCommitment, _version, name_commitment) do
     Naming.rlp_decode(name_commitment, :name_commitment)
   end
 
+  # storing logics should be overviewed
   defp rlp_decode(Oracle, _version, oracle) do
     Oracle.rlp_decode(oracle, :oracle)
   end
 
+  # storing logics should be overviewed
   defp rlp_decode(OracleQuery, _version, oracle_query) do
     Oracle.rlp_decode(oracle_query, :oracle_query)
   end
 
+  # account decoding
   defp rlp_decode(Account, _version, account_state) do
     Account.rlp_decode(account_state)
   end
@@ -673,6 +682,44 @@ defmodule Aeutil.Serialization do
     else
       {:error, "#{__MODULE__} : Illegal PoW serialization"}
     end
+  end
+
+  @spec serialize_identity(Identifier.t() | list(Identifier.t())) :: List.t()
+  def serialize_identity(id) do
+    serialize_id(id, [])
+  end
+
+  defp serialize_id([], acc) do
+    Enum.reverse(acc)
+  end
+
+  defp serialize_id([id | ids], acc) do
+    {:ok, serialized_id} = Identifier.encode_data(id)
+    serialize_id(ids, [serialized_id | acc])
+  end
+
+  defp serialize_id(%Identifier{} = id, acc) do
+    {:ok, serialized_id} = Identifier.encode_data(id)
+    serialize_id([], [serialized_id | acc])
+  end
+
+  @spec deserialize_identity(binary() | list(binary())) :: List.t()
+  def deserialize_identity(deserialized_id) do
+    deserialize_id(deserialized_id, [])
+  end
+
+  defp deserialize_id([], acc) do
+    Enum.reverse(acc)
+  end
+
+  defp deserialize_id([bin | bins], acc) do
+    {:ok, deserialized_id} = Identifier.decode_data(bin)
+    deserialize_id(bins, [deserialized_id | acc])
+  end
+
+  defp deserialize_id(bin, acc) when is_binary(bin) do
+    {:ok, deserialized_id} = Identifier.decode_data(bin)
+    deserialize_id([], [deserialized_id | acc])
   end
 
   @spec type_to_tag(atom()) :: non_neg_integer() | {:error, String.t()}

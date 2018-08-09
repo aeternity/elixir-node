@@ -4,19 +4,19 @@ defmodule AecoreSerializationTest do
   @moduledoc """
   Unit test for RLP data serialization/deserialization
   """
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.Account
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.Block
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aecore.Account.Account
+  alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Chain.Block
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -44,7 +44,7 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:signedtx)
       |> Serialization.rlp_decode()
 
-    assert match?(^deserialized_signedtx, signedtx)
+    assert deserialized_signedtx == signedtx
   end
 
   @tag :rlp_test
@@ -57,7 +57,7 @@ defmodule AecoreSerializationTest do
       |> Serialization.rlp_encode(:tx)
       |> Serialization.rlp_decode()
 
-    assert match?(^deserialized_spendtx, spendtx)
+    assert deserialized_spendtx == spendtx
   end
 
   @tag :rlp_test
@@ -65,7 +65,7 @@ defmodule AecoreSerializationTest do
     block = create_data(Block, :elixir)
     serialized_block = Serialization.rlp_encode(block, :block)
     deserialized_block = Serialization.rlp_decode(serialized_block)
-    assert match?(^deserialized_block, block)
+    assert deserialized_block == block
   end
 
   @tag :rlp_test
@@ -73,7 +73,18 @@ defmodule AecoreSerializationTest do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
     serialized_orc_obj = Serialization.rlp_encode(oracle_query_chainstate, :oracle_query)
     {:ok, deserialized_orc_obj} = Serialization.rlp_decode(serialized_orc_obj)
-    assert match?(^oracle_query_chainstate, deserialized_orc_obj)
+
+    {:ok, identified_owner} =
+      Identifier.create_identity(deserialized_orc_obj.oracle_address, :oracle)
+
+    {:ok, identified_sender} =
+      Identifier.create_identity(deserialized_orc_obj.sender_address, :account)
+
+    assert oracle_query_chainstate == %{
+             deserialized_orc_obj
+             | oracle_address: identified_owner,
+               sender_address: identified_sender
+           }
   end
 
   @tag :rlp_test
@@ -81,7 +92,11 @@ defmodule AecoreSerializationTest do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
     serialized_orc = Serialization.rlp_encode(oracle_registered_chainstate, :oracle)
     {:ok, deserialized_orc} = Serialization.rlp_decode(serialized_orc)
-    assert match?(^oracle_registered_chainstate, deserialized_orc)
+
+    # {:ok, identified_orc_address} = Identifier.create_identity( deserialized_orc.oracle_address, :oracle)
+    # {:ok, identified_sender_address} = Identifier.create_identity( deserialized_orc.sender_address, :account)
+    # | oracle_address: identified_orc_address, sender_address: identified_sender_address}
+    assert oracle_registered_chainstate == deserialized_orc
   end
 
   @tag :rlp_test
@@ -89,35 +104,22 @@ defmodule AecoreSerializationTest do
     naming_pre_claim_tx = create_data(NamePreClaimTx, :elixir)
     serialized_preclaim_tx = Serialization.rlp_encode(naming_pre_claim_tx, :tx)
     deserialized_preclaim_tx = Serialization.rlp_decode(serialized_preclaim_tx)
-    assert match?(^naming_pre_claim_tx, deserialized_preclaim_tx)
+    assert naming_pre_claim_tx == deserialized_preclaim_tx
 
     naming_claim_tx = create_data(NameClaimTx, :elixir)
     serialized_claim_tx = Serialization.rlp_encode(naming_claim_tx, :tx)
     deserialized_claim_tx = Serialization.rlp_decode(serialized_claim_tx)
-    assert match?(^naming_claim_tx, deserialized_claim_tx)
+    assert naming_claim_tx == deserialized_claim_tx
 
     naming_update_tx = create_data(NameUpdateTx, :elixir)
     serialized_update_tx = Serialization.rlp_encode(naming_update_tx, :tx)
     deserialized_update_tx = Serialization.rlp_decode(serialized_update_tx)
-    assert match?(^naming_update_tx, deserialized_update_tx)
+    assert naming_update_tx == deserialized_update_tx
 
     naming_transfer_tx = create_data(NameTransferTx, :elixir)
     serialized_transfer_tx = Serialization.rlp_encode(naming_transfer_tx, :tx)
     deserialized_transfer_tx = Serialization.rlp_decode(serialized_transfer_tx)
-    assert match?(^naming_transfer_tx, deserialized_transfer_tx)
-  end
-
-  @tag :rlp_test
-  test "Naming System chainstate structures serialization" do
-    name_state = create_data(Name, :elixir)
-    serialized_name_state = Serialization.rlp_encode(name_state, :naming_state)
-    {:ok, deserialized_name_state} = Serialization.rlp_decode(serialized_name_state)
-    assert match?(^deserialized_name_state, name_state)
-
-    name_commitment = create_data(NameCommitment, :elixir)
-    serialized_name_commitment = Serialization.rlp_encode(name_commitment, :name_commitment)
-    {:ok, deserialized_name_commitment} = Serialization.rlp_decode(serialized_name_commitment)
-    assert match?(^deserialized_name_commitment, name_commitment)
+    assert naming_transfer_tx == deserialized_transfer_tx
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519
@@ -150,18 +152,10 @@ defmodule AecoreSerializationTest do
       Oracle ->
         %{
           expires: 10,
-          owner:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          owner: %Identifier{value: "", type: :oracle},
           query_fee: 5,
-          query_format: %{
-            "properties" => %{"currency" => %{"type" => "string"}},
-            "type" => "object"
-          },
-          response_format: %{
-            "properties" => %{"currency" => %{"type" => "string"}},
-            "type" => "object"
-          }
+          query_format: "foo: bar",
+          response_format: "boolean"
         }
 
       OracleQuery ->
@@ -169,15 +163,21 @@ defmodule AecoreSerializationTest do
           expires: 9,
           fee: 5,
           has_response: false,
-          oracle_address:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
-          query: %{"currency" => "USD"},
+          oracle_address: %Identifier{
+            value:
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
+            type: :oracle
+          },
+          query: "foo: bar",
           response: :undefined,
           response_ttl: 86_000,
-          sender_address:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          sender_address: %Identifier{
+            value:
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
+            type: :account
+          },
           sender_nonce: 4
         }
 
@@ -216,12 +216,18 @@ defmodule AecoreSerializationTest do
       Name ->
         %{
           expires: 50_003,
-          hash:
-            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-          owner:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          hash: %Identifier{
+            value:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            type: :name
+          },
+          owner: %Identifier{
+            value:
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
+            type: :account
+          },
           pointers: [],
           status: :claimed,
           ttl: 86_400
@@ -229,12 +235,18 @@ defmodule AecoreSerializationTest do
 
       NameCommitment ->
         %{
-          hash:
-            <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
-              186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
-          owner:
-            <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-              181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+          hash: %Identifier{
+            value:
+              <<231, 243, 33, 35, 150, 21, 97, 180, 218, 143, 116, 2, 115, 40, 134, 218, 47, 133,
+                186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
+            type: :name
+          },
+          owner: %Identifier{
+            value:
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
+            type: :account
+          },
           created: 8500,
           expires: 86_400
         }

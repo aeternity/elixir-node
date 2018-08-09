@@ -9,20 +9,20 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.{Oracle, OracleStateTree}
-  alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Identifier
 
   @type payload :: %{
-          query_format: Oracle.json_schema(),
-          response_format: Oracle.json_schema(),
+          query_format: String.t(),
+          response_format: String.t(),
           query_fee: non_neg_integer(),
           ttl: Oracle.ttl()
         }
 
   @type t :: %OracleRegistrationTx{
-          query_format: map(),
-          response_format: map(),
+          query_format: String.t(),
+          response_format: String.t(),
           query_fee: non_neg_integer(),
           ttl: Oracle.ttl()
         }
@@ -67,21 +67,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ) do
     senders = DataTx.senders(data_tx)
 
-    formats_valid =
-      try do
-        JsonSchema.resolve(query_format)
-        JsonSchema.resolve(response_format)
-        true
-      rescue
-        _ ->
-          false
-      end
-
     cond do
       ttl <= 0 ->
         {:error, "#{__MODULE__}: Invalid ttl"}
 
-      !formats_valid ->
+      !is_binary(query_format) && !is_binary(response_format) ->
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
       !Oracle.ttl_is_valid?(ttl) ->
@@ -110,9 +100,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
+    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
 
     oracle = %{
-      owner: sender,
+      owner: identified_oracle_owner,
       query_format: tx.query_format,
       response_format: tx.response_format,
       query_fee: tx.query_fee,

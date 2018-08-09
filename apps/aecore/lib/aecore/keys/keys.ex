@@ -5,6 +5,7 @@ defmodule Aecore.Keys do
   """
 
   alias Aeutil.Bits
+  alias Aecore.Chain.Identifier
 
   @typedoc "Defines what type of keypair we could have"
   @type keypair_type :: :sign | :peer
@@ -19,8 +20,9 @@ defmodule Aecore.Keys do
   @type peer_priv_key :: binary()
 
   @type sign_keypair :: {pubkey(), sign_priv_key()}
-
   @type peer_keypair :: {pubkey(), peer_priv_key()}
+  @type message :: binary()
+  @type signature :: binary()
 
   @pub_size 32
 
@@ -36,13 +38,13 @@ defmodule Aecore.Keys do
   @doc """
   Returns a signed version of the given binary
   """
-  @spec sign(binary()) :: binary()
+  @spec sign(message()) :: signature()
   def sign(message) when is_binary(message) do
     {_, privkey} = keypair(:sign)
     sign(message, privkey)
   end
 
-  @spec sign(binary(), sign_priv_key()) :: binary()
+  @spec sign(message(), sign_priv_key()) :: signature()
   def sign(message, privkey) when is_binary(message) and is_binary(privkey) do
     :enacl.sign_detached(message, privkey)
   end
@@ -50,13 +52,13 @@ defmodule Aecore.Keys do
   @doc """
   Checks if the message is signed with the given public key
   """
-  @spec verify(binary(), binary()) :: true | false
+  @spec verify(message(), signature()) :: true | false
   def verify(message, sign) do
     {pubkey, _} = keypair(:sign)
     verify(message, sign, pubkey)
   end
 
-  @spec verify(binary(), binary(), pubkey()) :: true | false
+  @spec verify(message(), signature(), pubkey()) :: true | false
   def verify(message, sign, pubkey)
       when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
     case :enacl.sign_verify_detached(sign, message, pubkey) do
@@ -66,7 +68,14 @@ defmodule Aecore.Keys do
   end
 
   @spec key_size_valid?(binary()) :: true | false
-  def key_size_valid?(pubkey) when byte_size(pubkey) == @pub_size, do: true
+  def key_size_valid?(%Identifier{value: pubkey})
+      when byte_size(pubkey) == @pub_size,
+      do: true
+
+  def key_size_valid?(pubkey)
+      when byte_size(pubkey) == @pub_size,
+      do: true
+
   def key_size_valid?(_), do: false
 
   @spec keypair(keypair_type(), String.t()) :: sign_keypair() | peer_keypair()
