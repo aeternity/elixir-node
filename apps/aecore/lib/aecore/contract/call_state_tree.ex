@@ -1,9 +1,13 @@
 defmodule Aecore.Contract.CallStateTree do
+  @moduledoc """
+  Top level call state tree.
+  """
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
   alias MerklePatriciaTree.Trie
   alias Aecore.Chain.Chainstate
+  alias Aecore.Contract.Call
 
   @type calls_state() :: Trie.t()
   @type hash :: binary()

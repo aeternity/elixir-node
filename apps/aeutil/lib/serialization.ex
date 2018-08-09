@@ -809,17 +809,12 @@ defmodule Aeutil.Serialization do
   def type_to_tag(Call),
     do: {:ok, Application.get_env(:aecore, :rlp_tags)[:contract_call_state]}
 
-  def type_to_tag(ChannelStateOnChain), do: {:ok, 40}
-
-  def type_to_tag(ChannelCloseMutalTx), do: {:ok, 41}
-
-  def type_to_tag(ChannelCloseSoloTx), do: {:ok, 42}
-
-  def type_to_tag(ChannelCreateTx), do: {:ok, 43}
-
-  def type_to_tag(ChannelSettleTx), do: {:ok, 44}
-
-  def type_to_tag(ChannelSlashTx), do: {:ok, 45}
+  def type_to_tag(ChannelCreateTx), do: {:ok, 50}
+  def type_to_tag(ChannelCloseMutalTx), do: {:ok, 53}
+  def type_to_tag(ChannelCloseSoloTx), do: {:ok, 54}
+  def type_to_tag(ChannelSlashTx), do: {:ok, 55}
+  def type_to_tag(ChannelSettleTx), do: {:ok, 57}
+  def type_to_tag(ChannelStateOnChain), do: {:ok, 58}
 
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
 
@@ -829,7 +824,10 @@ defmodule Aeutil.Serialization do
 
   @spec tag_to_type(non_neg_integer()) :: atom() | {:error, String.t()}
   def tag_to_type(10), do: Account
+  def tag_to_type(11), do: SignedTx
   def tag_to_type(12), do: SpendTx
+  def tag_to_type(20), do: Oracle
+  def tag_to_type(21), do: OracleQuery
   def tag_to_type(22), do: OracleRegistrationTx
   def tag_to_type(23), do: OracleQueryTx
   def tag_to_type(24), do: OracleResponseTx
@@ -853,9 +851,6 @@ defmodule Aeutil.Serialization do
   def tag_to_type(55), do: ChannelSlashTx
   def tag_to_type(57), do: ChannelSettleTx
   def tag_to_type(58), do: ChannelStateOnChain
-  def tag_to_type(20), do: Oracle
-  def tag_to_type(21), do: OracleQuery
-  def tag_to_type(11), do: SignedTx
   def tag_to_type(100), do: Block
   # 101 is reserved for ChannelStateOffChain signing
   def tag_to_type(tag), do: {:error, "#{__MODULE__} : Unknown TX Tag: #{inspect(tag)}"}

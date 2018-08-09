@@ -1,4 +1,7 @@
 defmodule Aecore.Contract.Call do
+  @moduledoc """
+  Aecore call module implementation.
+  """
   alias Aecore.Chain.Identifier
   alias Aeutil.Serialization
   alias Aeutil.Parser
@@ -35,8 +38,7 @@ defmodule Aecore.Contract.Call do
     }
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map()) ::
-          binary() | {:error, String.t()}
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, %{} = call) do
     {:ok, encoded_caller_address} = Identifier.encode_data(call.caller_address)
     {:ok, encoded_contract_address} = Identifier.encode_data(call.contract_address)
