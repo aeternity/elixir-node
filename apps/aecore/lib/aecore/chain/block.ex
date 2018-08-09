@@ -9,7 +9,11 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.Header
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
+  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Channel.ChannelStateTree
   alias Aecore.Chain.BlockValidation
+  alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aeutil.Genesis
   alias Aeutil.Serialization
 
@@ -30,18 +34,17 @@ defmodule Aecore.Chain.Block do
 
   @spec genesis_header() :: Header.t()
   defp genesis_header do
-    header = Application.get_env(:aecore, :pow)[:genesis_header]
-    header1 = %{
-      height: 0,
-      prev_hash: <<0::256>>,
-      txs_hash: <<0::256>>,
-      root_hash: Chainstate.calculate_root_hash(Chain.chain_state),
-      time: 0,
-      nonce: 0,
-      miner: <<0::256>>,
-      pow_evidence: :no_value,
-      version: 15,
-      target: 0x2100FFFF
+    header = %{
+      height: Governance.genesis_height(),
+      prev_hash: Governance.genesis_prev_hash(),
+      txs_hash: Governance.genesis_txs_hash(),
+      root_hash: Chainstate.calculate_root_hash(genesis_populated_trees()),
+      time: Governance.genesis_time(),
+      nonce: Governance.genesis_nonce(),
+      miner: Governance.genesis_miner(),
+      pow_evidence: Governance.genesis_evidence(),
+      version: Governance.genesis_version(),
+      target: Governance.genesis_target()
     }
 
     struct(Header, header)
@@ -57,15 +60,24 @@ defmodule Aecore.Chain.Block do
     %Block{header: header, txs: []}
   end
 
-  def genesis_populated_tree() do
-    genesis_populated_tree(Genesis.preset_accounts)
+  def genesis_populated_trees() do
+    genesis_populated_trees(Genesis.preset_accounts())
   end
 
-  def genesis_populated_tree(accounts) do
-    Enum.reduce(
-      accounts,
-      AccountStateTree.init_empty(),
-      fn {k, v}, acc -> AccountStateTree.put(acc, k, Account.new(%{balance: v, nonce: 0, pubkey: k})) end
+  def genesis_populated_trees(accounts) do
+    chainstate_init = %Chainstate{
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => OracleStateTree.init_empty(),
+      :naming => NamingStateTree.init_empty(),
+      :channels => ChannelStateTree.init_empty()
+    }
+    Enum.reduce(accounts, chainstate_init,
+      fn {pubkey, balance}, new_trees ->
+        new_acounts =
+          new_trees.accounts
+          |> AccountStateTree.put(pubkey, Account.new(%{balance: balance, nonce: 0, pubkey: pubkey}))
+        struct(new_trees, accounts: new_acounts)
+      end
     )
   end
 

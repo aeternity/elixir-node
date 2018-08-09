@@ -53,12 +53,13 @@ defmodule Aecore.Chain.Chainstate do
 
   @spec init :: t()
   def init do
-    %Chainstate{
-      :accounts => Block.genesis_populated_tree(),
-      :oracles => OracleStateTree.init_empty(),
-      :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
-    }
+    # %Chainstate{
+    #   :accounts => AccountStateTree.init_empty(),
+    #   :oracles => OracleStateTree.init_empty(),
+    #   :naming => NamingStateTree.init_empty(),
+    #   :channels => ChannelStateTree.init_empty()
+    #}
+    Block.genesis_populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
@@ -130,7 +131,10 @@ defmodule Aecore.Chain.Chainstate do
     [
       AccountStateTree.root_hash(chainstate.accounts),
       NamingStateTree.root_hash(chainstate.naming),
-      OracleStateTree.root_hash(chainstate.oracles)
+      OracleStateTree.root_hash(chainstate.oracles),
+      @canonical_root_hash,
+      @canonical_root_hash,
+      @canonical_root_hash
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)
