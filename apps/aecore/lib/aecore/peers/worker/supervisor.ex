@@ -38,7 +38,6 @@ defmodule Aecore.Peers.Worker.Supervisor do
       )
     ]
 
-    IO.inspect sync_port()
     Supervisor.init(children, strategy: :one_for_all)
   end
 
