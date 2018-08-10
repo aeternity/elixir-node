@@ -81,6 +81,25 @@ defmodule Aecore.Keys do
 
   def key_size_valid?(_), do: false
 
+  @doc """
+  Returns a tuple with the specified keypair. If only the type of keypair is given
+  the function will return the miners :sign and :peer keypair. If a suffix is added,
+  additional keypairs are going to be returned.
+
+  The accepter keypair types are:
+    * `:sign` - returns a tuple with signing keys {pub, priv}
+    * `:peer` - returns a tuple with peers keys {pub, priv}
+
+  ## Examples
+      iex> keypair(:sign)
+      iex> {pubkey(), sign_priv_key()}
+
+      iex> keypair(:peer)
+      iex> {pubkey(), peer_priv_key()}
+
+      iex> keypair(:sign, "1")
+      iex> {pubkey(), sign_priv_key()}
+  """
   @spec keypair(keypair_type(), String.t()) :: sign_keypair() | peer_keypair()
   def keypair(type, suffix \\ "") do
     {pub_file, priv_file} = gen_filename(suffix, type)
