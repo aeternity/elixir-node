@@ -185,6 +185,49 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
+  @doc """
+  Executes snapshot on channel. The submitted offchain state should be validated before with validate_snapshot
+  """
+  @spec apply_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) :: ChannelStateOnChain.t()
+  def apply_snapshot(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
+  }) do
+    %ChannelStateOnChain{
+    channel
+    | slash_sequence: sequence,
+      initiator_amount: initiator_amount,
+      responder_amount: responder_amount
+    }
+  end
+
+  @doc """
+  Validates Snapshot states.
+  """
+  @spec validate_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
+          :ok | {:error, binary()}
+  def validate_snapshot(
+        %ChannelStateOnChain{} = channel,
+        %ChannelStateOffChain{sequence: 0} = offchain_state
+      ) do
+    {:error, "#{__MODULE__}: Cannot snapshot with initial offchain state"}
+  end
+
+  def validate_snapshot(%ChannelStateOnChain{} = channel, offchain_state) do
+    cond do
+      channel.slash_sequence >= offchain_state.sequence ->
+        {:error, "#{__MODULE__}: Offchain state is too old"}
+
+      channel.initiator_amount + channel.responder_amount !=
+          ChannelStateOffChain.total_amount(offchain_state) ->
+        {:error, "#{__MODULE__}: Invalid total amount"}
+
+      true ->
+        ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
+    end
+  end
+
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, %ChannelStateOnChain{} = channel) do
     list = [

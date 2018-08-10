@@ -27,6 +27,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.Tx.ChannelSnapshotSoloTx
   alias Aecore.Channel.ChannelStateOffChain
 
   require Logger
@@ -48,6 +49,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelCloseSoloTx
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
@@ -66,6 +68,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()
@@ -110,7 +113,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,
       Aecore.Channel.Tx.ChannelSlashTx,
-      Aecore.Channel.Tx.ChannelSettleTx
+      Aecore.Channel.Tx.ChannelSettleTx,
+      Aecore.Channel.Tx.ChannelSnapshotSoloTx
     ]
   end
 
@@ -703,6 +707,27 @@ defmodule Aecore.Tx.DataTx do
       ChannelStateOffChain.encode(tx.payload.state),
       tx.fee,
       tx.ttl
+    ]
+
+    try do
+      ExRLP.encode(list)
+    rescue
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
+    end
+  end
+
+  defp encode(tag, version, %DataTx{type: ChannelSnapshotSoloTx} = tx) do
+    senders = Serialization.serialize_identity(tx.senders)
+
+    list = [
+      tag,
+      version,
+      tx.payload.state.channel_id,
+      senders,
+      ChannelStateOffChain.encode(tx.payload.state),
+      tx.ttl,
+      tx.fee,
+      tx.nonce,
     ]
 
     try do

@@ -25,6 +25,7 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
+          | Aecore.Channel.Tx.ChannelSnapshotSoloTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

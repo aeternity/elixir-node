@@ -27,6 +27,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Channel.Tx.ChannelSettleTx
+  alias Aecore.Channel.Tx.ChannelSnapshotSoloTx
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Chain.Identifier
   require Logger
@@ -779,6 +780,8 @@ defmodule Aeutil.Serialization do
 
   def type_to_tag(ChannelSlashTx), do: {:ok, 45}
 
+  def type_to_tag(ChannelSnapshotSoloTx), do: {:ok, 46}
+
   def type_to_tag(Block), do: {:ok, Application.get_env(:aecore, :rlp_tags)[:block]}
 
   # 101 is reserved for ChannelStateOffChain signing
@@ -805,6 +808,7 @@ defmodule Aeutil.Serialization do
   def tag_to_type(43), do: ChannelCreateTx
   def tag_to_type(44), do: ChannelSettleTx
   def tag_to_type(45), do: ChannelSlashTx
+  def tag_to_type(46), do: ChannelSnapshotSoloTx
   def tag_to_type(20), do: Oracle
   def tag_to_type(21), do: OracleQuery
   def tag_to_type(11), do: SignedTx
@@ -831,6 +835,7 @@ defmodule Aeutil.Serialization do
   def get_version(ChannelCreateTx), do: {:ok, 1}
   def get_version(ChannelSettleTx), do: {:ok, 1}
   def get_version(ChannelSlashTx), do: {:ok, 1}
+  def get_version(ChannelSnapshotSoloTx), do: {:ok, 1}
   def get_version(Account), do: {:ok, 1}
   def get_version(Oracle), do: {:ok, 1}
   def get_version(OracleQuery), do: {:ok, 1}

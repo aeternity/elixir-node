@@ -204,6 +204,85 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
   end
 
+  @tag :channels
+  @tag timeout: 120_000
+  test "create channel, transfer funds twice, submit snapshot, tries to close channel with an outdated state, mutual close", ctx do
+    id = create_channel(ctx)
+
+    #transfer 1
+    {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
+    assert :update == get_fsm_state_s1(id)
+    {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
+    assert :open == get_fsm_state_s2(id)
+    {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
+    assert :open == get_fsm_state_s1(id)
+
+    assert 100 == signed_state1.initiator_amount
+    assert 200 == signed_state1.responder_amount
+    assert 1 == signed_state1.sequence
+
+    #second transfer
+    {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
+    {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
+    {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
+
+    assert 270 == signed_state2.initiator_amount
+    assert 30 == signed_state2.responder_amount
+    assert 2 == signed_state2.sequence
+
+    #submits snapshot
+    :ok = call_s1({:snapshot, id, 10, 2, ctx.sk1})
+    assert :open == get_fsm_state_s1(id)
+    assert :open == get_fsm_state_s2(id)
+
+    TestUtils.assert_transactions_mined()
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
+    channel = ChannelStateTree.get(Chain.chain_state().channels, id)
+    assert channel.slash_sequence == 2
+    assert ChannelStateOnChain.active?(channel) == true
+
+
+    #tries solo_close with outdated state
+    slash_data =
+      DataTx.init(
+        ChannelCloseSoloTx,
+        %{state: signed_state1},
+        ctx.pk2,
+        15,
+        1
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(slash_data, ctx.pk2, ctx.sk2)
+    assert :ok == Pool.add_transaction(tx)
+
+    #solo close fails
+    :ok = Miner.mine_sync_block_to_chain()
+    assert map_size(Pool.get_pool()) == 1
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
+             true
+
+   #mutual close
+    {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    assert :closing == get_fsm_state_s1(id)
+    assert :closing == get_fsm_state_s2(id)
+
+    :ok = Miner.mine_sync_block_to_chain()
+    assert map_size(Pool.get_pool()) == 1
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5 - 10)
+    TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
+
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
+    assert :closed == get_fsm_state_s1(id)
+    assert :closed == get_fsm_state_s2(id)
+
+  end
+
   defp create_channel(ctx) do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
 

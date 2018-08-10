@@ -67,6 +67,11 @@ defmodule Aecore.Channel.Worker do
     closed(tx)
   end
 
+  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSnapshotSoloTx}} = _tx) do
+    # TODO
+    :ok
+  end
+
   def new_tx_mined(%SignedTx{}) do
     # We don't care about this tx
     :ok
@@ -508,6 +513,25 @@ defmodule Aecore.Channel.Worker do
       end
     else
       {:reply, {:error, "#{__MODULE__}: Unknown channel"}, state}
+    end
+  end
+
+  @doc """
+    Submits a snapshot of the most recent state of a channel
+  """
+  def handle_call({:snapshot, channel_id, fee, nonce, priv_key}, _from, state) do
+    peer_state = Map.get(state, channel_id)
+
+    with {:ok, tx} <-
+      ChannelStatePeer.snapshot(peer_state, fee, nonce, priv_key),
+         :ok <- Pool.add_transaction(tx) do
+        {:reply, :ok, state}
+      else
+      {:error, reason} ->
+        {:error, reason}
+
+      :error ->
+        {:error, "#{__MODULE__}: Pool error"}
     end
   end
 
