@@ -281,10 +281,7 @@ defmodule Aecore.Oracle.Oracle do
   end
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
-  def decode_from_list(
-        @version,
-        [query_format, response_format, query_fee, expires]
-      ) do
+  def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
     {:ok,
      %Oracle{
        owner: %Identifier{type: :oracle},

@@ -66,20 +66,17 @@ defmodule Aecore.Oracle.OracleQuery do
     ]
   end
 
-  def decode_from_list(
-        @version,
-        [
-          encoded_sender_address,
-          sender_nonce,
-          encoded_oracle_address,
-          query,
-          has_response,
-          response,
-          expires,
-          response_ttl,
-          fee
-        ]
-      ) do
+  def decode_from_list(@version, [
+        encoded_sender_address,
+        sender_nonce,
+        encoded_oracle_address,
+        query,
+        has_response,
+        response,
+        expires,
+        response_ttl,
+        fee
+      ]) do
     has_response =
       case Serialization.transform_item(has_response, :int) do
         1 -> true
