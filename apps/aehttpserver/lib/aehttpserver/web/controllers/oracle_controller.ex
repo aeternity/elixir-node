@@ -33,11 +33,10 @@ defmodule Aehttpserver.Web.OracleController do
           Map.put(
             acc,
             Account.base58c_encode(address),
-            Map.put(registered_oracle_state, :owner, Account.base58c_encode(owner))
+            Map.put(registered_oracle_state, :owner, Account.base58c_encode(owner.value))
           )
         end)
       end
-
     json(conn, serialized_oracle_list)
   end
 
