@@ -20,18 +20,19 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
 
   @type t :: %Account{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          pubkey: Wallet.pubkey()
+          id: Identifier.t()
         }
 
   @type account_payload :: %{
           balance: non_neg_integer(),
           nonce: non_neg_integer(),
-          pubkey: Wallet.pubkey()
+          id: Identifier.t()
         }
 
   @type chain_state_name :: :accounts
@@ -43,16 +44,18 @@ defmodule Aecore.Account.Account do
   - balance: The acccount balance
   - nonce: Out transaction count
   """
-  defstruct [:balance, :nonce, :pubkey]
+  defstruct [:balance, :nonce, :id]
 
-  def empty, do: %Account{balance: 0, nonce: 0, pubkey: <<>>}
+  def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{type: :account}}
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
+    {:ok, id} = Identifier.create_identity(pubkey, :account)
+
     %Account{
       balance: balance,
       nonce: nonce,
-      pubkey: pubkey
+      id: id
     }
   end
 
@@ -346,7 +349,6 @@ defmodule Aecore.Account.Account do
     list = [
       tag,
       version,
-      account.pubkey,
       account.nonce,
       account.balance
     ]
@@ -363,10 +365,10 @@ defmodule Aecore.Account.Account do
   end
 
   @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([pubkey, nonce, balance]) do
+  def rlp_decode([nonce, balance]) do
     {:ok,
      %Account{
-       pubkey: pubkey,
+       id: %Identifier{type: :account},
        balance: Serialization.transform_item(balance, :int),
        nonce: Serialization.transform_item(nonce, :int)
      }}

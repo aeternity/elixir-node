@@ -12,6 +12,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
 
   require Logger
@@ -31,7 +32,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         }
 
   @doc """
-  Definition of Aecore NameRevokeTx structure
+  Definition of Aecore NameRevokeTx structure 
   ## Parameters
   - hash: hash of name to be revoked
   """
@@ -42,7 +43,25 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @spec init(payload()) :: t()
   def init(%{hash: hash}) do
-    %NameRevokeTx{hash: hash}
+    name_hash =
+      case hash do
+        %Identifier{} ->
+          if validate_identifier(hash) == true do
+            hash
+          else
+            {:error,
+             "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
+               inspect(hash.value)
+             }"}
+          end
+
+        non_identfied_name_hash ->
+          {:ok, identified_name_hash} = Identifier.create_identity(non_identfied_name_hash, :name)
+
+          identified_name_hash
+      end
+
+    %NameRevokeTx{hash: name_hash}
   end
 
   @doc """
@@ -53,8 +72,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash) != Hash.get_hash_bytes_size() ->
-        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
+      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
+        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash.value))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -84,7 +103,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         %NameRevokeTx{} = tx,
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash)
+    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
 
     claim = %{
       claim_to_update
@@ -92,7 +111,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         expires: block_height + GovernanceConstants.revoke_expiration_ttl()
     }
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -118,7 +137,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash)
+    claim = NamingStateTree.get(naming_state, tx.hash.value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -127,7 +146,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner != sender ->
+      claim.owner.value != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
@@ -148,6 +167,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec validate_identifier(Identifier.t()) :: boolean()
+  defp validate_identifier(%Identifier{} = id) do
+    {:ok, check_id} = Identifier.create_identity(id.value, :name)
+    check_id == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
