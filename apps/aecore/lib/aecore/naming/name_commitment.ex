@@ -75,15 +75,17 @@ defmodule Aecore.Naming.NameCommitment do
   end
 
   def decode_from_list(@version, [encoded_owner, created, expires]) do
-    with {:ok, owner} <- Identifier.decode_from_binary(encoded_owner) do
-      {:ok,
-       %NameCommitment{
-         owner: owner,
-         created: Serialization.transform_item(created, :int),
-         expires: Serialization.transform_item(expires, :int)
-       }}
-    else
-      {:error, _} = error -> error
+    case Identifier.decode_from_binary(encoded_owner) do
+      {:ok, owner} ->
+        {:ok,
+         %NameCommitment{
+           owner: owner,
+           created: Serialization.transform_item(created, :int),
+           expires: Serialization.transform_item(expires, :int)
+         }}
+
+      {:error, _} = error ->
+        error
     end
   end
 

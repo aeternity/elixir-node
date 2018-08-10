@@ -331,31 +331,33 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
-    with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address) do
-      payload = %{
-        oracle_address: oracle_address,
-        query_data: query_data,
-        query_fee: Serialization.transform_item(query_fee, :int),
-        query_ttl: %{
-          ttl: Serialization.transform_item(query_ttl_value, :int),
-          type: query_ttl_type
-        },
-        response_ttl: %{
-          ttl: Serialization.transform_item(response_ttl_value, :int),
-          type: response_ttl_type
+    case Identifier.decode_from_binary(encoded_oracle_address) do
+      {:ok, oracle_address} ->
+        payload = %{
+          oracle_address: oracle_address,
+          query_data: query_data,
+          query_fee: Serialization.transform_item(query_fee, :int),
+          query_ttl: %{
+            ttl: Serialization.transform_item(query_ttl_value, :int),
+            type: query_ttl_type
+          },
+          response_ttl: %{
+            ttl: Serialization.transform_item(response_ttl_value, :int),
+            type: response_ttl_type
+          }
         }
-      }
 
-      DataTx.init_binary(
-        OracleQueryTx,
-        payload,
-        encoded_senders,
-        fee,
-        nonce,
-        ttl
-      )
-    else
-      {:error, _} = error -> error
+        DataTx.init_binary(
+          OracleQueryTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
     end
   end
 

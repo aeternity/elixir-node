@@ -238,24 +238,26 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         fee,
         ttl
       ]) do
-    with {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
-      payload = %NameUpdateTx{
-        client_ttl: Serialization.transform_item(client_ttl, :int),
-        expire_by: Serialization.transform_item(expire_by, :int),
-        hash: hash,
-        pointers: pointers
-      }
+    case Identifier.decode_from_binary(encoded_hash) do
+      {:ok, hash} ->
+        payload = %NameUpdateTx{
+          client_ttl: Serialization.transform_item(client_ttl, :int),
+          expire_by: Serialization.transform_item(expire_by, :int),
+          hash: hash,
+          pointers: pointers
+        }
 
-      DataTx.init_binary(
-        NameUpdateTx,
-        payload,
-        encoded_senders,
-        fee,
-        nonce,
-        ttl
-      )
-    else
-      {:error, _} = error -> error
+        DataTx.init_binary(
+          NameUpdateTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
     end
   end
 

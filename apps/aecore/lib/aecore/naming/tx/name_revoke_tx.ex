@@ -191,19 +191,21 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
-    with {:ok, hash} <- Identifier.decode_from_binary(encoded_hash) do
-      payload = %NameRevokeTx{hash: hash}
+    case Identifier.decode_from_binary(encoded_hash) do
+      {:ok, hash} ->
+        payload = %NameRevokeTx{hash: hash}
 
-      DataTx.init_binary(
-        NameRevokeTx,
-        payload,
-        encoded_senders,
-        fee,
-        nonce,
-        ttl
-      )
-    else
-      {:error, _} = error -> error
+        DataTx.init_binary(
+          NameRevokeTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
     end
   end
 

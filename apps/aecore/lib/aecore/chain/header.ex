@@ -121,22 +121,24 @@ defmodule Aecore.Chain.Header do
         time::@header_time_size,
         miner::binary-size(@pubkey_size)
       >>) do
-    with {:ok, pow_evidence} <- binary_to_pow(pow_evidence_bin) do
-      {:ok,
-       %Header{
-         height: height,
-         nonce: nonce,
-         pow_evidence: pow_evidence,
-         prev_hash: prev_hash,
-         root_hash: root_hash,
-         target: target,
-         time: time,
-         txs_hash: txs_hash,
-         version: version,
-         miner: miner
-       }}
-    else
-      {:error, _} = error -> error
+    case binary_to_pow(pow_evidence_bin) do
+      {:ok, pow_evidence} ->
+        {:ok,
+         %Header{
+           height: height,
+           nonce: nonce,
+           pow_evidence: pow_evidence,
+           prev_hash: prev_hash,
+           root_hash: root_hash,
+           target: target,
+           time: time,
+           txs_hash: txs_hash,
+           version: version,
+           miner: miner
+         }}
+
+      {:error, _} = error ->
+        error
     end
   end
 

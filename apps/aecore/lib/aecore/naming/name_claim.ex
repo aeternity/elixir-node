@@ -102,17 +102,19 @@ defmodule Aecore.Naming.NameClaim do
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
   def decode_from_list(@version, [encoded_owner, expires, status, ttl, pointers]) do
-    with {:ok, owner} <- Identifier.decode_from_binary(encoded_owner) do
-      {:ok,
-       %NameClaim{
-         owner: owner,
-         expires: Serialization.transform_item(expires, :int),
-         status: String.to_atom(status),
-         ttl: Serialization.transform_item(ttl, :int),
-         pointers: pointers
-       }}
-    else
-      {:error, _} = error -> error
+    case Identifier.decode_from_binary(encoded_owner) do
+      {:ok, owner} ->
+        {:ok,
+         %NameClaim{
+           owner: owner,
+           expires: Serialization.transform_item(expires, :int),
+           status: String.to_atom(status),
+           ttl: Serialization.transform_item(ttl, :int),
+           pointers: pointers
+         }}
+
+      {:error, _} = error ->
+        error
     end
   end
 

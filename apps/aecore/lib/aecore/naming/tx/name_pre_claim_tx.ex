@@ -164,19 +164,21 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
-    with {:ok, commitment} <- Identifier.decode_from_binary(encoded_commitment) do
-      payload = %NamePreClaimTx{commitment: commitment}
+    case Identifier.decode_from_binary(encoded_commitment) do
+      {:ok, commitment} ->
+        payload = %NamePreClaimTx{commitment: commitment}
 
-      DataTx.init_binary(
-        NamePreClaimTx,
-        payload,
-        encoded_senders,
-        fee,
-        nonce,
-        ttl
-      )
-    else
-      {:error, _} = error -> error
+        DataTx.init_binary(
+          NamePreClaimTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
     end
   end
 
