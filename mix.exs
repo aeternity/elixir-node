@@ -55,7 +55,6 @@ defmodule EpochElixir.Mixfile do
       {:ex_json_schema, "~> 0.5.4"},
       {:aewallet, github: "aeternity/elixir-wallet", ref: "3f2f9df", override: true},
       {:erl_base58, "~> 0.0.1"},
-      {:temp, "~> 0.4"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},

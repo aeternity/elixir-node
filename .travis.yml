@@ -20,6 +20,9 @@ script:
   - mix compile --warnings-as-errors
   - mix compile.xref --warnings-as-errors
   - mix credo list
+  - make iex-1
+  - make iex-2
+  - make iex-3
   - mix test --only sync_test
   - mix dialyzer
 

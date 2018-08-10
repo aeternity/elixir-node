@@ -589,7 +589,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
       true ->
         # Running the new elixir-node using Port
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-        IO.inspect iex_num
+
         process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, cd: path])
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
