@@ -60,7 +60,7 @@ internal-attach:
 
 iex-node:
 	@rm -rf apps/aecore/priv/rox_db_400$(NODE_NUMBER)
-	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ AEWALLET_PATH=apps/aecore/priv/aewallet_400$(NODE_NUMBER)/ SYNC_PORT=300$(NODE_NUMBER) PORT=400$(NODE_NUMBER) iex -S mix phx.server
+	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ AEWALLET_PATH=apps/aecore/priv/aewallet_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
 
 #
 # utility
