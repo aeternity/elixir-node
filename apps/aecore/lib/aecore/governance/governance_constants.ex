@@ -8,7 +8,7 @@ defmodule Aecore.Governance.GovernanceConstants do
   # 30sec
   @expected_mine_rate_ms 30_000
 
-  @coinbase_transaction_amount 100
+  @coinbase_transaction_amount 10000000000000000000
 
   # 30min
   @time_validation_future_limit_ms 1_800_000

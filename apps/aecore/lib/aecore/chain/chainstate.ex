@@ -20,7 +20,7 @@ defmodule Aecore.Chain.Chainstate do
   require Logger
 
   @protocol_version_field_size 64
-  @protocol_version 17
+  @protocol_version 15
 
   @doc """
   This is the canonical root hash of an empty Patricia merkle tree
