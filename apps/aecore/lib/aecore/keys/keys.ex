@@ -36,7 +36,7 @@ defmodule Aecore.Keys do
   @filename_peer_priv "peer_key"
 
   @doc """
-  Returns a signed version of the given binary
+  Signs the given message and returns the signature
   """
   @spec sign(message()) :: signature()
   def sign(message) when is_binary(message) do
@@ -50,15 +50,18 @@ defmodule Aecore.Keys do
   end
 
   @doc """
-  Checks if the message is signed with the given public key
+  Checks if the message is signed with the miners key
   """
-  @spec verify(message(), signature()) :: true | false
+  @spec verify(message(), signature()) :: boolean()
   def verify(message, sign) do
     {pubkey, _} = keypair(:sign)
     verify(message, sign, pubkey)
   end
 
-  @spec verify(message(), signature(), pubkey()) :: true | false
+  @doc """
+  Checks if the message is signed with the given public key
+  """
+  @spec verify(message(), signature(), pubkey()) :: boolean()
   def verify(message, sign, pubkey)
       when is_binary(message) and is_binary(sign) and is_binary(pubkey) do
     case :enacl.sign_verify_detached(sign, message, pubkey) do
@@ -67,7 +70,7 @@ defmodule Aecore.Keys do
     end
   end
 
-  @spec key_size_valid?(binary()) :: true | false
+  @spec key_size_valid?(binary()) :: boolean()
   def key_size_valid?(%Identifier{value: pubkey})
       when byte_size(pubkey) == @pub_size,
       do: true
