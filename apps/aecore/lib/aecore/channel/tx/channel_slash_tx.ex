@@ -178,20 +178,19 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
     state_ver = Serialization.transform_item(state_ver_bin, :int)
 
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders),
-         {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state) do
-      payload = %ChannelSlashTx{state: state}
+    case ChannelStateOffChain.decode_from_list(state_ver, state) do
+      {:ok, state} ->
+        payload = %ChannelSlashTx{state: state}
 
-      {:ok,
-       DataTx.init(
-         ChannelSlashTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
-    else
+        DataTx.init_binary(
+          ChannelSlashTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
       {:error, _} = error ->
         error
     end

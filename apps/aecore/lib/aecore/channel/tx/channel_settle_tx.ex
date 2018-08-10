@@ -10,7 +10,6 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -165,19 +164,14 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 
-    with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
-      {:ok,
-       DataTx.init(
-         ChannelSettleTx,
-         payload,
-         senders,
-         Serialization.transform_item(fee, :int),
-         Serialization.transform_item(nonce, :int),
-         Serialization.transform_item(ttl, :int)
-       )}
-    else
-      {:error, _} = error -> error
-    end
+    DataTx.init_binary(
+      ChannelSettleTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
   end
 
   def decode_from_list(@version, data) do
