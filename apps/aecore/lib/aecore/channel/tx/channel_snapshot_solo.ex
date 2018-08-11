@@ -11,6 +11,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Chain.Identifier
+  alias Aeutil.Serialization
 
   require Logger
 

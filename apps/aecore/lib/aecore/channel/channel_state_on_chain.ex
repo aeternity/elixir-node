@@ -211,8 +211,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec validate_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
           :ok | {:error, binary()}
   def validate_snapshot(
-        %ChannelStateOnChain{} = channel,
-        %ChannelStateOffChain{sequence: 0} = offchain_state
+        %ChannelStateOnChain{} = _channel,
+        %ChannelStateOffChain{sequence: 0} = _offchain_state
       ) do
     {:error, "#{__MODULE__}: Cannot snapshot with initial offchain state"}
   end

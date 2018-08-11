@@ -527,8 +527,8 @@ defmodule Aecore.Channel.Worker do
          :ok <- Pool.add_transaction(tx) do
         {:reply, :ok, state}
       else
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _} = err ->
+        {:reply, err, state}
 
       :error ->
         {:error, "#{__MODULE__}: Pool error"}
