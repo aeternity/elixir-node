@@ -32,43 +32,6 @@ config :aecore, :spend_tx, version: 1
 
 config :aecore, :aewallet, pub_key_size: 33
 
-config :aecore, :rlp_tags,
-  account_state: 10,
-  signed_tx: 11,
-  spend_tx: 12,
-  oracle_state: 20,
-  oracle_query_state: 21,
-  oracle_reg_tx: 22,
-  oracle_query_tx: 23,
-  oracle_response_tx: 24,
-  oracle_extend_tx: 25,
-  naming_state: 30,
-  name_commitment_state: 31,
-  name_claim_tx: 32,
-  name_pre_claim_tx: 33,
-  name_update_tx: 34,
-  name_revoke_tx: 35,
-  name_transfer_tx: 36,
-  block: 100
-
-config :aecore, :version, block: 14
-
-config :aecore, :bytes_size,
-  txs_hash: 32,
-  state_hash: 32,
-  miner_pubkey: 32,
-  header_hash: 32,
-  root_hash: 32,
-  pow_total_size: 168
-
-config :aecore, :binary_ids,
-  account: 1,
-  name: 2,
-  commitment: 3,
-  oracle: 4,
-  contract: 5,
-  channel: 6
-
 config :aecore, :signed_tx, sign_max_size: 72
 
 config :aecore, :oracle_response_tx, query_id: 65

@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.{NameCommitment, NamingStateTree}
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -16,6 +16,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Governance.GovernanceConstants
 
   require Logger
+
+  @version 1
 
   @type commitment_hash :: binary()
 
@@ -44,9 +46,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   # Callbacks
 
   @spec init(payload()) :: t()
-  def init(%{commitment: commitment} = _payload) do
-    {:ok, identified_commitment} = Identifier.create_identity(commitment, :commitment)
+  def init(%{commitment: %Identifier{} = identified_commitment} = _payload) do
+    %NamePreClaimTx{commitment: identified_commitment}
+  end
 
+  def init(%{commitment: commitment} = _payload) do
+    identified_commitment = Identifier.create_identity(commitment, :commitment)
     %NamePreClaimTx{commitment: identified_commitment}
   end
 
@@ -90,17 +95,12 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         %NamePreClaimTx{} = tx,
         data_tx
       ) do
-    [identified_sender] = data_tx.senders
+    sender = DataTx.main_sender(data_tx)
 
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
     commitment =
-      Naming.create_commitment(
-        tx.commitment.value,
-        identified_sender,
-        block_height,
-        commitment_expires
-      )
+      NameCommitment.create(tx.commitment.value, sender, block_height, commitment_expires)
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.commitment.value, commitment)
 
@@ -150,5 +150,43 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      Identifier.encode_to_binary(tx.commitment),
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
+    case Identifier.decode_from_binary(encoded_commitment) do
+      {:ok, commitment} ->
+        payload = %NamePreClaimTx{commitment: commitment}
+
+        DataTx.init_binary(
+          NamePreClaimTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

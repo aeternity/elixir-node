@@ -11,7 +11,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+
+  @version 1
 
   @type payload :: %{
           query_format: String.t(),
@@ -100,9 +103,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
+    identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
-    oracle = %{
+    oracle = %Oracle{
       owner: identified_oracle_owner,
       query_format: tx.query_format,
       response_format: tx.response_format,
@@ -188,5 +191,63 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_registration_base_fee]
 
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
+    ttl_type = Serialization.encode_ttl_type(tx.ttl)
+
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      tx.query_format,
+      tx.response_format,
+      tx.query_fee,
+      ttl_type,
+      tx.ttl.ttl,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        query_format,
+        response_format,
+        query_fee,
+        encoded_ttl_type,
+        ttl_value,
+        fee,
+        ttl
+      ]) do
+    ttl_type =
+      encoded_ttl_type
+      |> Serialization.transform_item(:int)
+      |> Serialization.decode_ttl_type()
+
+    payload = %{
+      query_format: query_format,
+      response_format: response_format,
+      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_type},
+      query_fee: Serialization.transform_item(query_fee, :int)
+    }
+
+    DataTx.init_binary(
+      OracleRegistrationTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

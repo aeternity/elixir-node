@@ -14,8 +14,11 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Serialization
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
@@ -51,13 +54,28 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+
+  def init(%{
+        hash: %Identifier{} = identified_hash,
+        expire_by: expire_by,
+        client_ttl: client_ttl,
+        pointers: pointers
+      }) do
+    %NameUpdateTx{
+      hash: identified_hash,
+      expire_by: expire_by,
+      client_ttl: client_ttl,
+      pointers: pointers
+    }
+  end
+
   def init(%{
         hash: hash,
         expire_by: expire_by,
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+    identified_name_hash = Identifier.create_identity(hash, :name)
 
     %NameUpdateTx{
       hash: identified_name_hash,
@@ -194,5 +212,60 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      Identifier.encode_to_binary(tx.hash),
+      tx.client_ttl,
+      tx.pointers,
+      tx.expire_by,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_hash,
+        client_ttl,
+        pointers,
+        expire_by,
+        fee,
+        ttl
+      ]) do
+    case Identifier.decode_from_binary(encoded_hash) do
+      {:ok, hash} ->
+        payload = %NameUpdateTx{
+          client_ttl: Serialization.transform_item(client_ttl, :int),
+          expire_by: Serialization.transform_item(expire_by, :int),
+          hash: hash,
+          pointers: pointers
+        }
+
+        DataTx.init_binary(
+          NameUpdateTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end
