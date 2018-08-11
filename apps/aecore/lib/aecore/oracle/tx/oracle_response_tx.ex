@@ -13,6 +13,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Identifier
+
+  @version 1
 
   @type payload :: %{
           query_id: binary(),
@@ -167,5 +170,48 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_response_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      tx.query_id,
+      tx.response,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        query_id,
+        response,
+        fee,
+        ttl
+      ]) do
+    payload = %{
+      query_id: query_id,
+      response: response
+    }
+
+    DataTx.init_binary(
+      OracleResponseTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

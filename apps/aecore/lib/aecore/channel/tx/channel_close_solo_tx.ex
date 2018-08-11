@@ -4,13 +4,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
+  alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
@@ -156,5 +161,45 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      ChannelStateOffChain.encode_to_list(tx.state),
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
+    state_ver = Serialization.transform_item(state_ver_bin, :int)
+
+    case ChannelStateOffChain.decode_from_list(state_ver, state) do
+      {:ok, state} ->
+        payload = %ChannelCloseSoloTx{state: state}
+
+        DataTx.init_binary(
+          ChannelCloseSoloTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

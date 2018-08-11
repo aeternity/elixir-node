@@ -51,6 +51,9 @@ defmodule GetTxsForAddressTest do
     user_txs_with_proof = Pool.add_proof_to_txs(user_txs)
 
     for user_tx_with_proof <- user_txs_with_proof do
+      # For some reason this is never executed
+      assert false
+
       transaction =
         user_tx_with_proof
         |> Map.delete(:txs_hash)
@@ -61,7 +64,7 @@ defmodule GetTxsForAddressTest do
         |> SpendTx.new()
 
       key = SignedTx.hash_tx(transaction)
-      transaction_bin = Serialization.rlp_encode(transaction, :tx)
+      transaction_bin = SignedTx.rlp_encode(transaction)
       tx_block = Chain.get_block(user_tx_with_proof.block_hash)
 
       assert {:ok, :verified} =
