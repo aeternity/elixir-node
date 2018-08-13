@@ -68,7 +68,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelSnapshotSoloTx}} = _tx) do
-    # TODO
+    # ChannelSnapshotSoloTx requires no action
     :ok
   end
 
