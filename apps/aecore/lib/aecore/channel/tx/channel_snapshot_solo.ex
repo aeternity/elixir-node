@@ -71,7 +71,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
         {:error, "#{__MODULE__}: Invalid senders size"}
 
       sequence == 0 ->
-        {:error, "#{__MODULE__}: Can't slash with zero state"}
+        {:error, "#{__MODULE__}: Can't snapshot with initial state"}
 
       true ->
         :ok

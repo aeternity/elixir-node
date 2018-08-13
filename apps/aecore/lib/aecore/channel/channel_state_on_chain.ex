@@ -220,11 +220,12 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def validate_snapshot(%ChannelStateOnChain{} = channel, offchain_state) do
     cond do
       channel.slash_sequence >= offchain_state.sequence ->
-        {:error, "#{__MODULE__}: Offchain state is too old"}
+        {:error, "#{__MODULE__}: Offchain state is too old - latest known sequence is #{channel.slash_sequence} vs submitted #{offchain_state.sequence}"}
 
-      channel.initiator_amount + channel.responder_amount !=
-          ChannelStateOffChain.total_amount(offchain_state) ->
-        {:error, "#{__MODULE__}: Invalid total amount"}
+      channel.initiator_amount + channel.responder_amount != ChannelStateOffChain.total_amount(offchain_state) ->
+        onchain_balance = channel.initiator_amount + channel.responder_amount
+        offchain_balance = ChannelStateOffChain.total_amount(offchain_state)
+        {:error, "#{__MODULE__}: Invalid total amount. Onchain balance is #{onchain_balance} vs submitted offchain balance #{offchain_balance} "}
 
       true ->
         ChannelStateOffChain.validate(offchain_state, pubkeys(channel))

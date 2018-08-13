@@ -624,8 +624,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:ok, snapshot_tx}
   end
 
-  def snapshot(%ChannelStatePeer{}, _fee, _nonce, _priv_key) do
-    {:error, "#{__MODULE__}: Invalid peer state"}
+  def snapshot(%ChannelStatePeer{fsm_state: state}, _fee, _nonce, _priv_key) do
+    {:error, "#{__MODULE__}: Invalid peer state: #{state}"}
   end
 
   @doc """
