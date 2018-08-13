@@ -2,17 +2,12 @@ defmodule Aecore.Sync.SyncTest do
 
   use GenServer
 
-  alias Aecore.Peers.JobsTest, as: Jobs
+  alias Aecore.Sync.{Jobs, Chain, Task}
 
-  def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{sync_tasks: []}, name: __MODULE__)
-  end
-
-  def init(state) do
-    Jobs.init_jobs()
-    {:ok, state}
-  end
-
+  ###===================================================
+  ### API calls
+  ###===================================================
+  
   def start_sync(peer_id, remote_hash, remote_difficulty) do
     GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash, remote_difficulty})
   end
@@ -37,10 +32,21 @@ defmodule Aecore.Sync.SyncTest do
     GenServer.call(__MODULE__, {:next_work_item, task, peer_id, last_result})
   end
 
-  ## Handle Calls
-
   def handle_worker(task, action) do
     GenServer.cast(__MODULE__, {:handle_worker, task, action})
+  end
+
+  ###==================================================================
+  ### GenServer functions
+  ###==================================================================
+
+  def start_link(_args) do
+    GenServer.start_link(__MODULE__, %{sync_tasks: []}, name: __MODULE__)
+  end
+  
+  def init(state) do
+    Jobs.init_jobs()
+    {:ok, state}
   end
 
   def handle_call({:sync_in_progress, peer_id}, _from, state) do
@@ -115,14 +121,74 @@ defmodule Aecore.Sync.SyncTest do
         st = init_sync_task(chain)
         {{:new, chain, st.id}, set_sync_task(st, state)}
       
-      {:match, %{id: st_id, chain: chain2} = st} ->
+      {:match, %Task{id: st_id, chain: chain2} = st} ->
         new_chain = merge_chains(%Chain{chain_id: st_id}, chain2)
-        st1 = %{st | chain: new_chain}
+        st1 = %Task{st | chain: new_chain}
         {{:existing, stid}, set_sync_task(st1, state)}
 
       {:inconclusive, _, _} = res ->
         {res, state}
     end
   end
+
+  def handle_last_result(state, stid, last_result) do
+    case Task.get_sync_task(stid, state) do
+      {:ok, st} ->
+        st1 = handle_last_result(st, last_result)
+        maybe_end_sync_task(state, st1)
+      
+      {:error, :not_found} ->
+        state
+    end
+  end
+
+  def handle_last_result(st, :none), do: st
+  
+  def handle_last_result(%Task{agreed: :undefined} = st, {:agreed_height, agreed}), do: %Task{st | agreed: agreed}
+
+  def handle_last_result(%Task{pool: []} = st, {:hash_pool, hash_pool}) do
+    {height, hash, false} = List.last(hash_pool)
+    %Task{st | pool: hash_pool, agreed: %{height: height, hash: hash}}
+  end
+
+  def handle_last_result(%Task{} = st, {:hash_pool, _hash_pool}), do: st
+
+  def handle_last_result(
+        %Task{pool: pool} = st,
+        {:get_block, height, hash, peer_id, {:ok, block}}) do
+    pool1 =
+      Enum.map(pool, fn
+        {^height, _, _} -> {height, hash, {peer_id, block}}
+        elem -> elem
+      end)
+    %Task{st | pool: pool1}
+  end
+
+  def handle_last_result(%Task{} = st, {:post_blocks, :ok}), do: %Task{st | adding: []}
+
+  def handle_last_result(
+        %Task{adding: adds, pending: pends, pool: pool, chain: chain},
+        {:post_blocks, {:error, block_from_peer_id, height}}) do
+    ## Put back the blocks we did not manage to post, and schedule
+    ## failing block for another retraival
+    [{height, hash, _} | put_back] =
+      Enum.filter(adds, fn {h, _, _} -> h < height end) ++ pends
+
+    new_pool = [{height, hash, false} | put_back] ++ pool
+
+    %Task{st |
+          adding: [],
+          pending: [],
+          pool: new_pool,
+          chain: %Chain{chain | peers: chain.peers -- [blocked_from_peer_id]}}
+  end
+
+  def split_pool(pool), do: split_pool(pool, [])
+
+  def split_pool([{_, _, false} | _] = pool, acc), do: {List.reverse(acc), pool}
+
+  def split_pool([], acc), do: {List.reverse(acc), []}
+
+  def split_pool([p | pool], acc) -> split_pool(pool, [p | acc])
   
 end
