@@ -36,7 +36,8 @@ defmodule MultiNodeSyncTest do
   @tag :sync_test
   test "test" do
     IO.inspect path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-    IO.inspect process_port = Port.open({:spawn, "make iex-n IEX_NUM=11"}, [:binary, cd: path])
+    IO.inspect :os.cmd('lsof -i -n -P')
+    IO.inspect process_port = Port.open({:spawn, "make iex-3"}, [:binary, cd: path])
   end
 
   # @tag :sync_test
