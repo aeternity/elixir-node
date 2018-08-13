@@ -20,7 +20,7 @@ defmodule Aecore.Contract.ContractStateTree do
   @spec insert_contract(contracts_state(), map()) :: contracts_state()
   def insert_contract(contract_tree, contract) do
     id = contract.id
-    serialized = Serialization.rlp_encode(contract, :contract)
+    serialized = Serialization.rlp_encode(contract)
 
     new_contract_tree = PatriciaMerkleTree.insert(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
@@ -34,7 +34,7 @@ defmodule Aecore.Contract.ContractStateTree do
   @spec enter_contract(contracts_state(), map()) :: contracts_state()
   def enter_contract(contract_tree, contract) do
     id = contract.id
-    serialized = Serialization.rlp_encode(contract, :contract)
+    serialized = Serialization.rlp_encode(contract)
 
     updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
@@ -47,10 +47,10 @@ defmodule Aecore.Contract.ContractStateTree do
   def get_contract(contract_tree, key) do
     case PatriciaMerkleTree.lookup(contract_tree, key) do
       {:ok, serialized} ->
-        {:ok, deserialized} = Serialization.rlp_decode(serialized)
+        {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
 
-        {:ok, identified_id} = Identifier.create_identity(key, :contract)
-        {:ok, identified_owner} = Identifier.create_identity(deserialized.owner, :account)
+        identified_id = Identifier.create_identity(key, :contract)
+        # identified_owner = Identifier.create_identity(deserialized.owner, :account)
 
         raw_identified_referers =
           Enum.reduce(deserialized.referers, [], fn referer, acc ->
@@ -63,10 +63,9 @@ defmodule Aecore.Contract.ContractStateTree do
 
         store_id = Contract.store_id(%{deserialized | id: identified_id})
 
-        %{
+        %Contract{
           deserialized
           | id: identified_id,
-            owner: identified_owner,
             store: get_store(store_id, contract_tree),
             referers: identified_referers
         }

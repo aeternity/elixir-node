@@ -3,7 +3,6 @@ defmodule Aecore.Channel.ChannelStateTree do
   Top level channel state tree.
   """
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aeutil.Serialization
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
 
@@ -20,7 +19,7 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec put(channel_state(), ChannelSteteOnChain.id(), ChannelSteteOnChain.t()) :: channel_state()
   def put(tree, key, value) do
-    serialized_account_state = Serialization.rlp_encode(value, :channel_onchain)
+    serialized_account_state = ChannelStateOnChain.rlp_encode(value)
     PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
@@ -31,7 +30,7 @@ defmodule Aecore.Channel.ChannelStateTree do
         :none
 
       {:ok, channel_state_on_chain} ->
-        {:ok, channel} = Serialization.rlp_decode(channel_state_on_chain)
+        {:ok, channel} = ChannelStateOnChain.rlp_decode(channel_state_on_chain)
         channel
     end
   end

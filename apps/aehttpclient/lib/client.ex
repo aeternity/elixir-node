@@ -8,7 +8,6 @@ defmodule Aehttpclient.Client do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Keys.Peer, as: PeerKeys
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -40,7 +39,7 @@ defmodule Aehttpclient.Client do
 
     case get(uri <> "/block-by-hash?hash=#{hash}", :block) do
       {:ok, serialized_block} ->
-        {:ok, Serialization.block(serialized_block, :deserialize)}
+        {:ok, Block.decode_from_map(serialized_block)}
 
       {:error, reason} ->
         {:error, reason}
@@ -68,7 +67,7 @@ defmodule Aehttpclient.Client do
 
     deserialized_blocks =
       Enum.map(response, fn block ->
-        Serialization.block(block, :deserialize)
+        Block.decode_from_map(block)
       end)
 
     {:ok, deserialized_blocks}

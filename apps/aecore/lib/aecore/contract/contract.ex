@@ -2,14 +2,17 @@ defmodule Aecore.Contract.Contract do
   @moduledoc """
   Aecore contact module implementation.
   """
+  alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier
   alias Aeutil.Serialization
   alias Aecore.Keys.Wallet
   alias Aeutil.Hash
 
+  @version 1
+
   @store_prefix 16
 
-  @type contract :: %{
+  @type contract :: %Contract{
           id: Identifier.t(),
           owner: Identifier.t(),
           vm_version: byte(),
@@ -23,12 +26,15 @@ defmodule Aecore.Contract.Contract do
 
   @type t :: contract()
 
+  defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
+
   @spec new(Wallet.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
   def new(owner, nonce, vm_version, code, deposit) do
     contract_id = create_contract_id(owner, nonce)
-    {:ok, identified_contract} = Identifier.create_identity(contract_id, :contract)
-    {:ok, identified_owner} = Identifier.create_identity(owner, :account)
-    %{
+    identified_contract = Identifier.create_identity(contract_id, :contract)
+    identified_owner = Identifier.create_identity(owner, :account)
+
+    %Contract{
       id: identified_contract,
       owner: identified_owner,
       vm_version: vm_version,
@@ -41,10 +47,8 @@ defmodule Aecore.Contract.Contract do
     }
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), contract()) :: binary() | {:error, String.t()}
-  def rlp_encode(tag, version, contract) do
-    {:ok, encoded_owner} = Identifier.encode_data(contract.owner)
-
+  @spec encode_to_list(Contract.t()) :: list()
+  def encode_to_list(%Contract{} = contract) do
     active =
       case contract.active do
         true -> 1
@@ -53,16 +57,15 @@ defmodule Aecore.Contract.Contract do
 
     raw_encoded_referers =
       Enum.reduce(contract.referers, [], fn referer, acc ->
-        {:ok, encoded_referer} = Identifier.encode_data(referer)
+        encoded_referer = Identifier.encode_to_binary(referer)
         [encoded_referer | acc]
       end)
 
     encoded_referers = raw_encoded_referers |> Enum.reverse()
 
-    list = [
-      tag,
-      version,
-      encoded_owner,
+    [
+      @version,
+      Identifier.encode_to_binary(contract.owner),
       contract.vm_version,
       contract.code,
       contract.log,
@@ -70,16 +73,10 @@ defmodule Aecore.Contract.Contract do
       encoded_referers,
       contract.deposit
     ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
   end
 
-  @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode([
+  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  def decode_from_list(@version, [
         owner,
         vm_version,
         code,
@@ -88,7 +85,7 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    {:ok, decoded_owner_address} = Identifier.decode_data(owner)
+    {:ok, decoded_owner_address} = Identifier.decode_from_binary(owner)
 
     decoded_active =
       case Serialization.transform_item(active, :int) do
@@ -98,7 +95,7 @@ defmodule Aecore.Contract.Contract do
 
     raw_decoded_referers =
       Enum.reduce(referers, [], fn referer, acc ->
-        {:ok, decoded_referer} = Identifier.decode_data(referer)
+        {:ok, decoded_referer} = Identifier.decode_from_binary(referer)
 
         [decoded_referer | acc]
       end)
@@ -106,7 +103,7 @@ defmodule Aecore.Contract.Contract do
     decoded_referers = raw_decoded_referers |> Enum.reverse()
 
     {:ok,
-     %{
+     %Contract{
        id: %Identifier{type: :contract},
        owner: decoded_owner_address,
        vm_version: Serialization.transform_item(vm_version, :int),
@@ -119,7 +116,15 @@ defmodule Aecore.Contract.Contract do
      }}
   end
 
-  @spec store_id(contract()) :: binary()
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  @spec store_id(Contract.t()) :: binary()
   def store_id(contract) do
     id = contract.id
 

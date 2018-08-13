@@ -11,8 +11,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @type payload :: %{
           ttl: non_neg_integer()
@@ -122,5 +126,39 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      tx.ttl,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, ttl_value, fee, ttl]) do
+    payload = %{
+      ttl: Serialization.transform_item(ttl_value, :int)
+    }
+
+    DataTx.init_binary(
+      OracleExtendTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

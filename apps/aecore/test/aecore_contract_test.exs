@@ -36,33 +36,12 @@ defmodule AecoreContractTest do
   test "test create and get call" do
     tree = CallStateTree.init_empty()
 
-    caller_address = %Aecore.Chain.Identifier{
-      type: :contract,
-      value: <<1>>
-    }
-
-    contract_address = %Aecore.Chain.Identifier{
-      type: :contract,
-      value: <<2>>
-    }
-
-    caller_nonce = 1
-    height = 1
-    gas_price = 1
-
-    call =
-      Call.new(
-        caller_address,
-        caller_nonce,
-        height,
-        contract_address,
-        gas_price
-      )
+    call = create_call()
 
     call_id = Call.id(call)
     updated_tree = CallStateTree.insert_call(tree, call)
 
-    key = CallStateTree.construct_call_tree_id(contract_address, call_id)
+    key = CallStateTree.construct_call_tree_id(call.contract_address, call_id)
 
     get_call = CallStateTree.get_call(updated_tree, key)
 
@@ -91,6 +70,18 @@ defmodule AecoreContractTest do
     tree = ContractStateTree.enter_contract(tree, updated_storage_contract)
     updated_contract = ContractStateTree.get_contract(tree, updated_storage_contract.id.value)
     assert updated_storage_contract.store === updated_contract.store
+  end
+
+  defp create_call() do
+    pubkey = Wallet.get_public_key()
+
+    Call.new(
+      pubkey,
+      Account.nonce(TestUtils.get_accounts_chainstate(), pubkey) + 1,
+      Chain.top_height,
+      <<"THIS IS NOT AN ACTUALL CONTRACT ADDRESS">>,
+      1
+    )
   end
 
   defp create_contract() do

@@ -3,34 +3,49 @@ defmodule Aecore.Contract.Call do
   Aecore call module implementation.
   """
   alias Aecore.Chain.Identifier
+  alias Aecore.Contract.Call
   alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aeutil.Hash
 
-  @type call :: %{
-          caller_address: Identifier.t(),
+  @version 1
+
+  @type t :: %Call{
+          caller_address: Wallet.pubkey(),
           caller_nonce: integer(),
           height: integer(),
-          contract_address: Identifier.t(),
+          contract_address: Wallet.pubkey(),
           gas_price: non_neg_integer(),
           gas_used: non_neg_integer(),
           return_value: binary(),
           return_type: :ok | :error | :revert
         }
 
-  @type t :: call()
   @type hash :: binary()
+
+  defstruct [
+    :caller_address,
+    :caller_nonce,
+    :height,
+    :contract_address,
+    :gas_price,
+    :gas_used,
+    :return_value,
+    :return_type
+  ]
 
   @nonce_size 256
 
-  @spec new(hash(), non_neg_integer(), hash(), non_neg_integer(), non_neg_integer()) ::
-          call()
-  def new(caller, nonce, block_height, contract_address, gas_price) do
-    %{
-      :caller_address => caller,
+  @spec new(hash(), non_neg_integer(), hash(), non_neg_integer(), non_neg_integer()) :: t()
+  def new(caller_address, nonce, block_height, contract_address, gas_price) do
+    identified_caller_address = Identifier.create_identity(caller_address, :account)
+    identified_contract_address = Identifier.create_identity(contract_address, :contract)
+
+    %Call{
+      :caller_address => identified_caller_address,
       :caller_nonce => nonce,
       :height => block_height,
-      :contract_address => contract_address,
+      :contract_address => identified_contract_address,
       :gas_price => gas_price,
       :gas_used => 0,
       :return_value => <<>>,
@@ -38,33 +53,23 @@ defmodule Aecore.Contract.Call do
     }
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), map()) :: binary() | {:error, String.t()}
-  def rlp_encode(tag, version, %{} = call) do
-    {:ok, encoded_caller_address} = Identifier.encode_data(call.caller_address)
-    {:ok, encoded_contract_address} = Identifier.encode_data(call.contract_address)
-
-    list = [
-      tag,
-      version,
-      encoded_caller_address,
+  @spec encode_to_list(Call.t()) :: list()
+  def encode_to_list(%Call{} = call) do
+    [
+      @version,
+      Identifier.encode_to_binary(call.caller_address),
       call.caller_nonce,
       call.height,
-      encoded_contract_address,
+      Identifier.encode_to_binary(call.contract_address),
       call.gas_price,
       call.gas_used,
       call.return_value,
       Parser.to_string(call.return_type)
     ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}:" <> Exception.message(e)}
-    end
   end
 
-  @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
-  def rlp_decode([
+  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  def decode_from_list(@version, [
         encoded_caller_address,
         caller_nonce,
         height,
@@ -74,11 +79,11 @@ defmodule Aecore.Contract.Call do
         return_value,
         return_type
       ]) do
-    {:ok, decoded_caller_address} = Identifier.decode_data(encoded_caller_address)
-    {:ok, decoded_contract_address} = Identifier.decode_data(encoded_contract_address)
+    {:ok, decoded_caller_address} = Identifier.decode_from_binary(encoded_caller_address)
+    {:ok, decoded_contract_address} = Identifier.decode_from_binary(encoded_contract_address)
 
     {:ok,
-     %{
+     %Call{
        caller_address: decoded_caller_address,
        caller_nonce: Serialization.transform_item(caller_nonce, :int),
        height: Serialization.transform_item(height, :int),
@@ -90,11 +95,15 @@ defmodule Aecore.Contract.Call do
      }}
   end
 
-  def rlp_decode(_) do
-    {:error, "#{__MODULE__} : Invalid Caller State serialization"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
   end
 
-  @spec id(map()) :: binary()
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  @spec id(Call.t()) :: binary()
   def id(call), do: id(call.caller_address, call.caller_nonce, call.contract_address)
 
   @spec id(binary(), non_neg_integer(), binary()) :: binary()
