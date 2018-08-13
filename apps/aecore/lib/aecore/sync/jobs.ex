@@ -1,4 +1,4 @@
-defmodule JobsTest do
+defmodule Aecore.Sync.Jobs do
 
   @doc """
   Creates a new jobs queue for doing some work.

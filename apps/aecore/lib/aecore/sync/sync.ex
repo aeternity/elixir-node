@@ -1,4 +1,4 @@
-defmodule Aecore.Sync.SyncTest do
+defmodule Aecore.Sync.Sync do
 
   use GenServer
 
@@ -190,5 +190,181 @@ defmodule Aecore.Sync.SyncTest do
   def split_pool([], acc), do: {List.reverse(acc), []}
 
   def split_pool([p | pool], acc) -> split_pool(pool, [p | acc])
+
+  def get_next_work_item(state, stid, peer_id) do
+    with
+    {:ok, %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
+      true <- Enum.member?(peer_ids, peer_id) do
+      {action, st1} = get_next_work_item(st)
+      {action, Task.set_sync_task(stid, st1, state)}
+    else
+      _ ->
+      {:abort_work, state}
+    end
+  end
+
+  def get_next_work_item(%Task{adding: [], pending: [to_add | new_pending]} = st) do
+    {{:post_blocks, to_add}, %Task{st | adding: to_add, pending: new_pending}}
+  end
+
+  def get_next_work_item(%Task{chain: chain, agreed: :undefined} = st) do
+    {{:agree_on_height, chain}, st}
+  end
+
+  def get_next_work_item(%Task{pool: [], agreed: %{height: height, hash: last_hash}, chain: %Chain{chain: chain}}) do
+    target_hash = next_known_hash(chain, height + @max_headers_per_chunk)
+    {{:fill_pool, last_hash, target_hash}, st}
+  end
+
+  def get_next_work_item(%Task{pool: [{_, _, {_, _}} | _] = pool, adding: add, pending: pend} = st) do
+    {to_be_added, new_pool} = split_pool(pool)
+    case add do
+      [] ->
+        {{:post_blocks, to_be_added}, %Task{st | pool: new_pool, adding: to_be_added}}
+
+      _ when length(pend) < 10 || new_pool != [] ->
+        get_next_work_item(%Task{st | pool: new_pool, pending: pend ++ [to_be_added]})
+
+      _ ->
+        {:take_a_break, st}
+    end
+  end
+
+  def get_next_work_item(%Task{pool: [{_, _, false} | _] = pool} = st) do
+    pick_from = Enum.filter(pool, fn {_, _, elem} -> elem == false end)
+    random = :rand.uniform(length(pick_from))
+    {pick_height, pick_hash, false} = Enum.at(pick_from, random)
+
+    ## Get block at height: pick_height
+    {{:get_block, pick_height, pick_hash}, st}
+  end
+
+  def get_next_work_item(%Task{} = st) do
+    ## Nothing to do
+    {:take_a_break, st}
+  end
+
+  def do_handle_worker({:new_worker, peer_id, pid}, %Task{workers: ws} = st) do
+    case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
+      [] -> :ok
+      [{_, old}] -> :unfinished ## Peer already has worker
+    end
+    ## :erlang.link(pid)
+    %Task{st | workers: :unfinished} ## :list.keystore(...)
+  end
+
+  def do_handle_worker({:change_worker, peer_id, old_pid, new_pid}, %Task{workers: ws} = st) do
+    case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
+      [] -> :unfinished ## Log info
+      [{_, old_pid}] -> :ok
+      [{_, another_pid}] -> :unfinished ## Log info
+    end
+
+    ## :erlang.link(new_pid)
+    ## :erlang.unlink(old_pid)
+    ## Log info
+
+    %Task{st | workers: :unfinished} ## :list.keystore(...)
+  end
+
+  def do_terminate_worker(pid, %Sync{sync_tasks: sts} = state) do
+    case Enum.filter(sts, fn %{workers: {_, p}} -> p == pid end) do
+      [st] ->
+        pid
+        |> do_terminate_worker(st)
+        |> Task.set_sync_task(state)
+      
+      [] ->
+        state
+    end
+  end
+
+  def do_terminate_worker(pid, %Task{workers: ws} = st) do
+    [{peer, _}] = Enum.filter(ws, fn {_, p} -> p == pid end)
+    ## Log info
+    %Task{st | workers: Enum.filter(ws, fn {_, p} -> p != pid end)}
+  end
+
+  def ping_peer(peer_id) do
+    res = PeerConnection.ping(peer_id)
+    ## Log res
+    case res do
+      :ok -> :unfinished ## Log ping
+      {:error, _} -> :unfinished ## Log ping
+    end
+  end
+
+  def do_forward_block(block, peer_id) do
+    res = PeerConnection.send_block(peer_id, block)
+    ## Log res
+  end
+
+  def do_forward_tx(tx, peer_id) do
+    res = PeerConnection.send_tx(peer_id, tx)
+    ## Log res
+  end
+
+  def do_start_sync(peer_id, remote_hash) do
+    if sync_in_progress?(peer_id) do
+      :unfinished ## Log - Already syncing
+    else
+      do_start_sync1(peer_id, remote_hash)
+    end
+  end
+
+  def do_start_sync1(peerd_id, remote_hash) do
+    case PeerConnection.get_header_by_height(peer_id, remote_hash) do
+      {:ok, header} ->
+        ## Log -> New header received
+
+        ## We do try really hard to identify the same chain here...
+        chain = init_chain(peer_id, header)
+        case known_chain(chain) do
+          {:ok, task} ->
+            :unfinished ## Examine the self() part here
+            handle_worker(task, {:new_worker, peer_id, self()})
+            do_work_on_sync_task(peer_id, task)
+
+          {:error, reason} ->
+            ## Log -> Could not identify chain, aborting sync
+            :unfinished
+        end
+
+      {:error, reason} ->
+        ## Log -> fetching top block failed
+        :unfinished
+    end
+  end
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
 end

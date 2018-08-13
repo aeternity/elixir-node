@@ -1,10 +1,41 @@
 defmodule Aecore.Sync.Chain do
 
+  @type chain_id :: reference()
+  @type height :: non_neg_integer()
+  @type hash :: binary()
+  @type chain :: %{height: height(), hash: hash()}
+
+  @type t :: %Chain{
+    chain_id: chain_id(),
+    peers: list(),
+    chain: chain()}
+
   defstruct chain_id: nil,
             peers: nil,
             chain: %{height: nil, hash: nil}
-  
+  use ExConstructor
 
+  def init_chain(peer_id, header) do
+    init_chain(Kernel.make_ref(), [peer_id], header)
+  end
+
+  def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_h} = header) do
+    {:ok, hash} = BlockValidation.block_header_hash(header)
+    
+    prev_hash =
+    if height > 1 do
+      %{height: height - 1, hash: prev_h}
+    else
+      []
+    end
+    
+    %Chain{
+      chain_id: chain_id,
+      peers: peers,
+      chain: [%{height: height, hash: hash}] ++ prev_hash
+    }
+  end 
+  
   def merge_chains(
         %Chain{chain_id: cid, peer: ps1, chain: c1},
         %Chain{chain_id: cid, peer: ps2, chain: c2}) do

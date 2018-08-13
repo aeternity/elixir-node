@@ -1,8 +1,28 @@
 defmodule Aecore.Sync.Task do
 
   alias Aecore.Sync.Chain
+  alias Aecore.Sync.Sync
+  alias Aecore.Chain.Block
+
+  @type height :: non_neg_integer()
+  @type hash :: binary()
+  @type peer_id :: pid()
+  @type sync_task :: %Task{}
+  @type sync_tasks :: list(%Task{})
+  @type pool_elem :: {height(), hash(), {peer_id(), Block.t()}}
+  @type agreed :: %{height: height(), hash: hash()} | :undefined
+  @type worker :: {peer_id(), pid()}
+
+  @t :: %Task{
+    id: non_neg_integer(),
+    chain: Chain.t()
+    pool: list(pool_elem()),
+    agreed: agreed(),
+    adding: list(pool_elem()),
+    pending: list(pool_elem()),
+    workers: list(worker())}
   
-   defstruct id: nil,
+  defstruct id: nil,
     chain: nil,
     pool: [],
     agreed: nil,
@@ -11,9 +31,6 @@ defmodule Aecore.Sync.Task do
     workers: []
 
   use ExConstructor
-
-  @type sync_task :: %Task{}
-  @type sync_tasks :: list(%Task{})
   
   def get_sync_task(stid, %Sync{sync_tasks: sts}) do
     case Enum.find(sts, fn %{id: id} -> id == stid) do
