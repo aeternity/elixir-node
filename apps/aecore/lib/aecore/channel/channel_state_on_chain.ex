@@ -211,13 +211,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec validate_snapshot(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
           :ok | {:error, binary()}
   def validate_snapshot(
-        %ChannelStateOnChain{} = _channel,
-        %ChannelStateOffChain{sequence: 0} = _offchain_state
+        %ChannelStateOnChain{},
+        %ChannelStateOffChain{sequence: 0}
       ) do
     {:error, "#{__MODULE__}: Cannot snapshot with initial offchain state"}
   end
 
-  def validate_snapshot(%ChannelStateOnChain{} = channel, offchain_state) do
+  def validate_snapshot(%ChannelStateOnChain{} = channel, %ChannelStateOffChain{} = offchain_state) do
     cond do
       channel.slash_sequence >= offchain_state.sequence ->
         {:error, "#{__MODULE__}: Offchain state is too old - latest known sequence is #{channel.slash_sequence} vs submitted #{offchain_state.sequence}"}

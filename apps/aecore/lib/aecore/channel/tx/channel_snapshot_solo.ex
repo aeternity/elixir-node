@@ -10,8 +10,10 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
   alias Aeutil.Serialization
+  alias MerklePatriciaTree.Trie
 
   require Logger
 
@@ -55,7 +57,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   Creates the transaction from a channel offchain state
   """
   @spec create(ChannelStateOffChain.t()) :: ChannelSnapshotSoloTx.t()
-  def create(state) do
+  def create(%ChannelStateOffChain{} = state) do
     %ChannelSnapshotSoloTx{state: state}
   end
 
@@ -63,7 +65,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
   Checks transactions internal contents validity
   """
   @spec validate(ChannelSnapshotSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSnapshotSoloTx{state: %ChannelStateOffChain{sequence: sequence}}, data_tx) do
+  def validate(%ChannelSnapshotSoloTx{state: %ChannelStateOffChain{sequence: sequence}}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -89,8 +91,8 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
-        accounts,
-        channels,
+        %Trie{} = accounts,
+        %Trie{} = channels,
         _block_height,
         %ChannelSnapshotSoloTx{
           state:
@@ -98,7 +100,7 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
               channel_id: channel_id
             } = state
         },
-        _data_tx
+        %DataTx{}
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
@@ -120,16 +122,16 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
-        accounts,
-        channels,
+        %Trie{} = accounts,
+        %Trie{} = channels,
         _block_height,
-        %ChannelSnapshotSoloTx{state: state},
-        data_tx
+        %ChannelSnapshotSoloTx{state: %ChannelStateOffChain{channel_id: channel_id} = state},
+        %DataTx{} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    channel = ChannelStateTree.get(channels, state.channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -153,26 +155,28 @@ defmodule Aecore.Channel.Tx.ChannelSnapshotSoloTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.account()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(%Trie{} = accounts, block_height, %ChannelSnapshotSoloTx{}, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
+  def is_minimum_fee_met?(%SignedTx{} = tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
-  def encode_to_list(%ChannelSnapshotSoloTx{} = tx, %DataTx{} = datatx) do
+  @spec encode_to_list(ChannelSnapshotSoloTx.t(), DataTx.t()) :: list
+  def encode_to_list(%ChannelSnapshotSoloTx{} = tx, %DataTx{} = data_tx) do
     [
       @version,
-      Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      Identifier.encode_list_to_binary(data_tx.senders),
+      data_tx.nonce,
       ChannelStateOffChain.encode_to_list(tx.state),
-      datatx.fee,
-      datatx.ttl
+      data_tx.fee,
+      data_tx.ttl
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list(binary() | list(binary()))) :: DataTx.t()
   def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
     state_ver = Serialization.transform_item(state_ver_bin, :int)
 

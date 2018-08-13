@@ -246,7 +246,7 @@ defmodule AecoreChannelTest do
     assert ChannelStateOnChain.active?(channel) == true
 
     #tries solo_close with outdated state
-    slash_data =
+    snapshot_data =
       DataTx.init(
         ChannelCloseSoloTx,
         %{state: signed_state1},
@@ -255,7 +255,7 @@ defmodule AecoreChannelTest do
         1
       )
 
-    {:ok, tx} = SignedTx.sign_tx(slash_data, ctx.pk2, ctx.sk2)
+    {:ok, tx} = SignedTx.sign_tx(snapshot_data, ctx.pk2, ctx.sk2)
     assert :ok == Pool.add_transaction(tx)
 
     #solo close fails
@@ -324,7 +324,7 @@ defmodule AecoreChannelTest do
     assert ChannelStateOnChain.active?(channel) == true
 
     #tries snapshot with outdated state
-    slash_data =
+    snapshot_data =
       DataTx.init(
         ChannelSnapshotSoloTx,
         %{state: signed_state1},
@@ -333,7 +333,7 @@ defmodule AecoreChannelTest do
         1
       )
 
-    {:ok, tx} = SignedTx.sign_tx(slash_data, ctx.pk2, ctx.sk2)
+    {:ok, tx} = SignedTx.sign_tx(snapshot_data, ctx.pk2, ctx.sk2)
     assert :ok == Pool.add_transaction(tx)
 
     #snapshot fails

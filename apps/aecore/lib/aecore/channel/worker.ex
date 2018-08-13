@@ -531,7 +531,7 @@ defmodule Aecore.Channel.Worker do
         {:reply, err, state}
 
       :error ->
-        {:error, "#{__MODULE__}: Pool error"}
+        {:reply, {:error, "#{__MODULE__}: Pool error"}, state}
     end
   end
 
