@@ -72,7 +72,7 @@ defmodule AecoreContractTest do
     assert updated_storage_contract.store === updated_contract.store
   end
 
-  defp create_call() do
+  defp create_call do
     pubkey = Wallet.get_public_key()
 
     Call.new(
@@ -84,7 +84,7 @@ defmodule AecoreContractTest do
     )
   end
 
-  defp create_contract() do
+  defp create_contract do
     pubkey = Wallet.get_public_key()
 
     Contract.new(
