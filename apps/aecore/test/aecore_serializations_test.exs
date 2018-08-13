@@ -122,7 +122,12 @@ defmodule AecoreSerializationTest do
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
-    deserialized_name_commitment = %NameCommitment{deserialized_name_commitment | hash: name_commitment.hash}
+
+    deserialized_name_commitment = %NameCommitment{
+      deserialized_name_commitment
+      | hash: name_commitment.hash
+    }
+
     assert deserialized_name_commitment == name_commitment
   end
 

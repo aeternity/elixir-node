@@ -8,10 +8,13 @@ defmodule Aehttpserver.Web.OracleController do
   require Logger
 
   def oracle_response(conn, _params) do
-    body = conn.body_params
-    binary_query_id = Bits.decode58(body["query_id"])
+    deserialized_oracle = Oracle.deserialize(conn.body_params)
 
-    case Oracle.respond(binary_query_id, body["response"], body["fee"]) do
+    case Oracle.respond(
+           deserialized_oracle.data.payload.query_id,
+           deserialized_oracle.data.payload.query_id,
+           deserialized_oracle.data.fee
+         ) do
       :ok ->
         json(conn, %{:status => :ok})
 
@@ -37,6 +40,7 @@ defmodule Aehttpserver.Web.OracleController do
           )
         end)
       end
+
     json(conn, serialized_oracle_list)
   end
 
@@ -44,7 +48,7 @@ defmodule Aehttpserver.Web.OracleController do
     deserialized_oracle = Oracle.deserialize(conn.body_params)
 
     case Oracle.query(
-           deserialized_oracle.data.payload.oracle_address,
+           deserialized_oracle.data.payload.oracle_address.value,
            deserialized_oracle.data.payload.query_data,
            deserialized_oracle.data.payload.query_fee,
            deserialized_oracle.data.fee,
