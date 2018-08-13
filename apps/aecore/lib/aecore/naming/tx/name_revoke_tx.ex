@@ -17,6 +17,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Revoke Transaction"
   @type payload :: %{
           hash: binary()
@@ -32,7 +34,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         }
 
   @doc """
-  Definition of Aecore NameRevokeTx structure 
+  Definition of Aecore NameRevokeTx structure
   ## Parameters
   - hash: hash of name to be revoked
   """
@@ -56,9 +58,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           end
 
         non_identfied_name_hash ->
-          {:ok, identified_name_hash} = Identifier.create_identity(non_identfied_name_hash, :name)
-
-          identified_name_hash
+          Identifier.create_identity(non_identfied_name_hash, :name)
       end
 
     %NameRevokeTx{hash: name_hash}
@@ -171,12 +171,49 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identity(id.value, :name)
-    check_id == id
+    Identifier.create_identity(id.value, :name) == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      Identifier.encode_to_binary(tx.hash),
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
+    case Identifier.decode_from_binary(encoded_hash) do
+      {:ok, hash} ->
+        payload = %NameRevokeTx{hash: hash}
+
+        DataTx.init_binary(
+          NameRevokeTx,
+          payload,
+          encoded_senders,
+          fee,
+          nonce,
+          ttl
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

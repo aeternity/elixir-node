@@ -16,12 +16,13 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.Naming
-  alias Aecore.Naming.NameUtil
+  alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
+
+  @version 1
 
   @type t :: %Account{
           balance: non_neg_integer(),
@@ -45,12 +46,14 @@ defmodule Aecore.Account.Account do
   - nonce: Out transaction count
   """
   defstruct [:balance, :nonce, :id]
+  use ExConstructor
+  use Aecore.Util.Serializable
 
   def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{type: :account}}
 
   @spec new(account_payload()) :: Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
-    {:ok, id} = Identifier.create_identity(pubkey, :account)
+    id = Identifier.create_identity(pubkey, :account)
 
     %Account{
       balance: balance,
@@ -134,7 +137,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
-    case Naming.create_commitment_hash(name, name_salt) do
+    case NameCommitment.hash(name, name_salt) do
       {:ok, commitment} ->
         payload = %{commitment: commitment}
         build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)
@@ -338,28 +341,17 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec rlp_encode(non_neg_integer(), non_neg_integer(), t()) :: binary() | {:error, String.t()}
-  def rlp_encode(tag, version, %Account{} = account) do
-    list = [
-      tag,
-      version,
+  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  def encode_to_list(%Account{} = account) do
+    [
+      @version,
       account.nonce,
       account.balance
     ]
-
-    try do
-      ExRLP.encode(list)
-    rescue
-      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
-    end
   end
 
-  def rlp_encode(data) do
-    {:error, "#{__MODULE__}: Invalid Account structure: #{inspect(data)}"}
-  end
-
-  @spec rlp_decode(list()) :: {:ok, Account.t()} | {:error, String.t()}
-  def rlp_decode([nonce, balance]) do
+  @spec decode_from_list(integer(), list()) :: {:ok, Account.t()} | {:error, String.t()}
+  def decode_from_list(@version, [nonce, balance]) do
     {:ok,
      %Account{
        id: %Identifier{type: :account},
@@ -368,7 +360,11 @@ defmodule Aecore.Account.Account do
      }}
   end
 
-  def rlp_decode(data) do
-    {:error, "#{__MODULE__}: Invalid Account serialization #{inspect(data)}"}
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

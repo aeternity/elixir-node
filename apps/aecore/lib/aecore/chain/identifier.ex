@@ -1,10 +1,10 @@
 defmodule Aecore.Chain.Identifier do
   @moduledoc """
-  Utility module for interacting with identifiers. 
+  Utility module for interacting with identifiers.
 
   Our binaries like account pubkey or hashes will already be represented as encoded (with already specified tag) binaries, following  the next formula:
-   <<Tag:1/unsigned-integer-unit:8, Binary:32/binary-unit:8>>, Where 
-   Tag - is  a non-negative integer , a number from a range of 1..6 (at the current state of this documentation, for more info get in config.exs file and find :aecore, :binary_ids list), 
+   <<Tag:1/unsigned-integer-unit:8, Binary:32/binary-unit:8>>, Where
+   Tag - is  a non-negative integer , a number from a range of 1..6 (at the current state of this documentation, for more info get in config.exs file and find :aecore, :binary_ids list),
    Binary - is a regular binary , which byte size is 32 bytes.
   Example:
   Epoch has a separate structure for id's:
@@ -31,28 +31,11 @@ defmodule Aecore.Chain.Identifier do
   # @binary_size 32
   @tag_size 8
 
-  @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
+  @spec create_identity(type(), value()) :: Identifier.t()
+  # byte_size(data) == 32 data should be stricted to 32 bytes only
   def create_identity(value, type)
-      when is_binary(value) and is_atom(type) do
-    case Application.get_env(:aecore, :binary_ids)[type] do
-      nil ->
-        {:error,
-         "#{__MODULE__}: The following tag: #{inspect(type)} for given value: #{inspect(value)} doesn't exist"}
-
-      tag when is_integer(tag) ->
-        {:ok, %Identifier{type: type, value: value}}
-
-      _ ->
-        {:error,
-         "Could not create an id, reason: Invalid value: #{inspect(value)} or type: #{
-           inspect(type)
-         }"}
-    end
-  end
-
-  def create_identity(data, type) do
-    {:error,
-     "Could not create an id, reason: Invalid data: #{inspect(data)} or type: #{inspect(type)}"}
+      when is_atom(type) and is_binary(value) do
+    %Identifier{type: type, value: value}
   end
 
   def check_identity(%Identifier{} = id, type) do
@@ -67,39 +50,57 @@ defmodule Aecore.Chain.Identifier do
   end
 
   # ==============API needed for RLP===============
-  @spec encode_data(Identifier.t()) :: {:error, String.t()} | {:ok, binary()}
-  def encode_data(%Identifier{value: value, type: type} = data) do
-    case Application.get_env(:aecore, :binary_ids)[type] do
-      nil ->
-        {:error,
-         "Binary tag for the given type: #{inspect(type)} doesn't exist, or the data is corrupted: #{
-           inspect(data)
-         }"}
-
-      tag ->
-        {:ok, <<tag::unsigned-integer-size(@tag_size), value::binary>>}
-    end
+  # byte_size(data.value) == 32 # data should be stricted to 32 bytes only
+  @spec encode_to_binary(Identifier.t()) :: binary()
+  def encode_to_binary(%Identifier{} = data) do
+    tag = type_to_tag(data.type)
+    <<tag::unsigned-integer-size(8), data.value::binary>>
   end
 
-  @spec decode_data(binary()) :: tuple() | {:error, String.t()}
-  def decode_data(<<tag::unsigned-integer-size(@tag_size), data::binary()>>)
+  # byte_size(data) == 33 # data should be stricted to 32 bytes only
+  @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
+  def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do
-    case specify_data(tag) do
+    case tag_to_type(tag) do
       {:error, msg} ->
         {:error, msg}
 
-      {_type, _tag} ->
-        {:ok, data}
+      {:ok, type} ->
+        {:ok, %Identifier{type: type, value: data}}
     end
   end
 
-  @spec specify_data(non_neg_integer()) :: tuple() | {:error, String.t()}
-  defp specify_data(tag) when is_integer(tag) do
-    error_message = {:error, "#{__MODULE__}: Tag doesn't exist: #{inspect(tag)}"}
+  @spec encode_list_to_binary(list(t())) :: list(binary())
+  def encode_list_to_binary([]), do: []
 
-    Enum.find(Application.get_env(:aecore, :binary_ids), error_message, fn elem ->
-      {_known_type, known_tag} = elem
-      tag == known_tag
-    end)
+  def encode_list_to_binary([head | rest]) do
+    [encode_to_binary(head) | encode_list_to_binary(rest)]
   end
+
+  @spec decode_list_from_binary(list(binary())) :: {:ok, list(t())} | {:error, String.t()}
+  def decode_list_from_binary([]), do: {:ok, []}
+
+  def decode_list_from_binary([head | rest]) do
+    with {:ok, head_decoded} <- decode_from_binary(head),
+         {:ok, rest_decoded} <- decode_list_from_binary(rest) do
+      {:ok, [head_decoded | rest_decoded]}
+    else
+      {:error, _} = error -> error
+    end
+  end
+
+  defp type_to_tag(:account), do: 1
+  defp type_to_tag(:name), do: 2
+  defp type_to_tag(:commitment), do: 3
+  defp type_to_tag(:oracle), do: 4
+  defp type_to_tag(:contract), do: 5
+  defp type_to_tag(:channel), do: 6
+
+  defp tag_to_type(1), do: {:ok, :account}
+  defp tag_to_type(2), do: {:ok, :name}
+  defp tag_to_type(3), do: {:ok, :commitment}
+  defp tag_to_type(4), do: {:ok, :oracle}
+  defp tag_to_type(5), do: {:ok, :contract}
+  defp tag_to_type(6), do: {:ok, :channel}
+  defp tag_to_type(_), do: {:error, "#{__MODULE__}: Invalid tag"}
 end

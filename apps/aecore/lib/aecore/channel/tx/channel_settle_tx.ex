@@ -4,13 +4,17 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the ChannelSettle Transaction"
   @type payload :: %{
@@ -144,5 +148,37 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      tx.channel_id,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
+    payload = %ChannelSettleTx{channel_id: channel_id}
+
+    DataTx.init_binary(
+      ChannelSettleTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

@@ -5,15 +5,14 @@ defmodule AecoreTxTest do
 
   use ExUnit.Case
 
-  alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.Account
   alias Aecore.Keys
-  alias Aeutil.Serialization
 
   setup do
     Code.require_file("test_utils.ex", "./test")
@@ -54,7 +53,8 @@ defmodule AecoreTxTest do
 
     assert :ok = SignedTx.validate(signed_tx)
     [signature] = signed_tx.signatures
-    message = Serialization.rlp_encode(signed_tx.data, :tx)
+    
+    message = DataTx.rlp_encode(signed_tx.data)
     assert true = Keys.verify(message, signature, sender)
   end
 
