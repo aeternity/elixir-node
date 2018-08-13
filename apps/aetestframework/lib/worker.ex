@@ -591,9 +591,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
         IO.puts "***************"
         IO.inspect System.cwd()
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-        System.put_env "PORT", "400#{iex_num}"
+        IO.inspect "make iex-n IEX_NUM=#{iex_num}"
         IO.inspect process_port = Port.open({:spawn, "make iex-n IEX_NUM=#{iex_num}"}, [:binary, cd: path])
-        IO.inspect System.get_env "PORT"
         IO.puts "***************"
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")

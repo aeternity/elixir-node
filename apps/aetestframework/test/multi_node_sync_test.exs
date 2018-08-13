@@ -10,9 +10,9 @@ defmodule MultiNodeSyncTest do
     Chain.clear_state()
     Pool.get_and_empty_pool()
 
-    # port1 = find_port(1)
-    # TestFramework.new_node("node1", port1)
-    # :timer.sleep 2000
+    port1 = find_port(1)
+    TestFramework.new_node("node1", port1)
+    :timer.sleep 2000
 
     # port2 = find_port(port1 + 1)
     # TestFramework.new_node("node2", port2)
@@ -35,9 +35,7 @@ defmodule MultiNodeSyncTest do
 
   @tag :sync_test
   test "test" do
-    IO.inspect path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
     IO.inspect :os.cmd('lsof -i -n -P')
-    IO.inspect process_port = Port.open({:spawn, "make iex-3"}, [:binary, cd: path])
   end
 
   # @tag :sync_test
