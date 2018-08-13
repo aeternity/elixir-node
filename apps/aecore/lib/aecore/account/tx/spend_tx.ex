@@ -4,6 +4,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
@@ -13,8 +14,11 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
+  alias Aeutil.Serialization
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
@@ -55,8 +59,17 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_chain_state_name, do: :accounts
 
   @spec init(payload()) :: t()
+  def init(%{
+        receiver: %Identifier{} = identified_receiver,
+        amount: amount,
+        version: version,
+        payload: payload
+      }) do
+    %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
+  end
+
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    {:ok, identified_receiver} = Identifier.create_identity(receiver, :account)
+    identified_receiver = Identifier.create_identity(receiver, :account)
 
     %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
   end
@@ -153,4 +166,53 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
+
+  def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(tx.receiver),
+      tx.amount,
+      datatx.fee,
+      datatx.ttl,
+      datatx.nonce,
+      tx.payload
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        encoded_receiver,
+        amount,
+        fee,
+        ttl,
+        nonce,
+        payload
+      ]) do
+    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver) do
+      DataTx.init_binary(
+        SpendTx,
+        %{
+          receiver: receiver,
+          amount: Serialization.transform_item(amount, :int),
+          version: @version,
+          payload: payload
+        },
+        encoded_senders,
+        fee,
+        nonce,
+        ttl
+      )
+    else
+      {:error, _} = error -> error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
 end

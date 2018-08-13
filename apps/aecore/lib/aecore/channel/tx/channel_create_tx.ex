@@ -4,13 +4,18 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
+  alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
@@ -182,5 +187,51 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+    [
+      @version,
+      Identifier.encode_list_to_binary(datatx.senders),
+      datatx.nonce,
+      tx.initiator_amount,
+      tx.responder_amount,
+      tx.locktime,
+      datatx.fee,
+      datatx.ttl
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        initiator_amount,
+        responder_amount,
+        locktime,
+        fee,
+        ttl
+      ]) do
+    payload = %ChannelCreateTx{
+      initiator_amount: Serialization.transform_item(initiator_amount, :int),
+      responder_amount: Serialization.transform_item(responder_amount, :int),
+      locktime: Serialization.transform_item(locktime, :int)
+    }
+
+    DataTx.init_binary(
+      ChannelCreateTx,
+      payload,
+      encoded_senders,
+      fee,
+      nonce,
+      ttl
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end
