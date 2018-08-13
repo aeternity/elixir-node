@@ -321,6 +321,16 @@ Channel status can be checked with:
 state.fsm_state
 ```
 
+##### Channel snapshots
+```
+This transaction is not present in the 0.16 release of epoch but is present in the master branch of epoch - one can only use this transaction in the :test enviroment.
+To use this transaction start the application with `MIX_ENV=test iex -S mix phx.server`
+```
+
+If one of the parties wishes to submit a snapshot of the most recent `ChannelStateOffChain` to the blokchain then the party should call `Channel.snapshot(channel_id, fee, nonce, priv_key)`
+
+After a snapshot was submitted the channel cannot be closed with an older state. Snapshots can only be submitted when the channel is in the open state - to dispute a state use slash.
+
 #### **VM usage**
 
 Initial implementation of the AEVM (Aeternity Virtual Machine) that contains all of the functionalities of the EVM (Ethereum Virtual Vachine).

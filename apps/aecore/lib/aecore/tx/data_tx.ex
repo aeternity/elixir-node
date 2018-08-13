@@ -79,7 +79,11 @@ defmodule Aecore.Tx.DataTx do
   defstruct [:type, :payload, :senders, :fee, :nonce, :ttl]
   use ExConstructor
 
-  def valid_types do
+  defp future_types do
+    [Aecore.Channel.Tx.ChannelSnapshotSoloTx]
+  end
+
+  defp allowed_types do
     [
       Aecore.Account.Tx.SpendTx,
       Aecore.Oracle.Tx.OracleExtendTx,
@@ -95,9 +99,18 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,
       Aecore.Channel.Tx.ChannelSlashTx,
-      Aecore.Channel.Tx.ChannelSettleTx,
-      Aecore.Channel.Tx.ChannelSnapshotSoloTx
+      Aecore.Channel.Tx.ChannelSettleTx
     ]
+  end
+
+  if Mix.env == :test do
+    def valid_types do
+      allowed_types() ++ future_types()
+    end
+  else
+    def valid_types do
+      allowed_types()
+    end
   end
 
   @spec init(
