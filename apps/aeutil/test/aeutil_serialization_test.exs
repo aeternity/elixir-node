@@ -1,7 +1,6 @@
 defmodule AeutilSerializationTest do
   use ExUnit.Case
 
-  alias Aeutil.Serialization
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.Tx.SpendTx
@@ -13,9 +12,10 @@ defmodule AeutilSerializationTest do
   test "serialize a block" do
     block = get_block()
 
-    serialized_block = Serialization.block(block, :serialize)
+    serialized_block = Block.encode_to_map(block)
+
     assert serialized_block == get_block_map()
-    assert Serialization.block(serialized_block, :deserialize) == block
+    assert Block.decode_from_map(serialized_block) == block
   end
 
   def get_block do

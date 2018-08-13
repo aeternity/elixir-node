@@ -168,7 +168,7 @@ defmodule Aeutil.PatriciaMerkleTree do
     list = Inspector.all_values(trie)
 
     Enum.reduce(list, [], fn {key, val}, acc ->
-      [{key, elem(Serialization.rlp_decode(val), 1)} | acc]
+      [{key, elem(Serialization.rlp_decode_anything(val), 1)} | acc]
     end)
   end
 

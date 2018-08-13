@@ -8,20 +8,23 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Identifier
+
+  @version 1
 
   @type payload :: %{
           query_id: binary(),
-          response: map()
+          response: String.t()
         }
 
   @type t :: %OracleResponseTx{
           query_id: binary(),
-          response: map()
+          response: String.t()
         }
 
   @type tx_type_state() :: Chainstate.oracles()
@@ -124,10 +127,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
-      !Oracle.data_valid?(
-        OracleStateTree.get_oracle(oracles, sender).response_format,
-        tx.response
-      ) ->
+      !is_binary(tx.response) ->
         {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
 
       !OracleStateTree.exists_query?(oracles, tx.query_id) ->
@@ -170,5 +170,48 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_response_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.query_id,
+      tx.response,
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        query_id,
+        response,
+        fee,
+        ttl
+      ]) do
+    payload = %{
+      query_id: query_id,
+      response: response
+    }
+
+    DataTx.init_binary(
+      OracleResponseTx,
+      payload,
+      encoded_senders,
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

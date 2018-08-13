@@ -9,21 +9,23 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Oracle.{Oracle, OracleStateTree}
-  alias ExJsonSchema.Schema, as: JsonSchema
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
+  @version 1
+
   @type payload :: %{
-          query_format: Oracle.json_schema(),
-          response_format: Oracle.json_schema(),
+          query_format: String.t(),
+          response_format: String.t(),
           query_fee: non_neg_integer(),
           ttl: Oracle.ttl()
         }
 
   @type t :: %OracleRegistrationTx{
-          query_format: map(),
-          response_format: map(),
+          query_format: String.t(),
+          response_format: String.t(),
           query_fee: non_neg_integer(),
           ttl: Oracle.ttl()
         }
@@ -68,21 +70,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ) do
     senders = DataTx.senders(data_tx)
 
-    formats_valid =
-      try do
-        JsonSchema.resolve(query_format)
-        JsonSchema.resolve(response_format)
-        true
-      rescue
-        _ ->
-          false
-      end
-
     cond do
       ttl <= 0 ->
         {:error, "#{__MODULE__}: Invalid ttl"}
 
-      !formats_valid ->
+      !is_binary(query_format) && !is_binary(response_format) ->
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
       !Oracle.ttl_is_valid?(ttl) ->
@@ -111,9 +103,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    {:ok, identified_oracle_owner} = Identifier.create_identity(sender, :oracle)
+    identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
-    oracle = %{
+    oracle = %Oracle{
       owner: identified_oracle_owner,
       query_format: tx.query_format,
       response_format: tx.response_format,
@@ -199,5 +191,62 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_registration_base_fee]
 
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
+    ttl_type = Serialization.encode_ttl_type(tx.ttl)
+
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.query_format,
+      tx.response_format,
+      tx.query_fee,
+      ttl_type,
+      :binary.encode_unsigned(tx.ttl.ttl),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        query_format,
+        response_format,
+        query_fee,
+        encoded_ttl_type,
+        ttl_value,
+        fee,
+        ttl
+      ]) do
+    ttl_type =
+      encoded_ttl_type
+      |> Serialization.decode_ttl_type()
+
+    payload = %{
+      query_format: query_format,
+      response_format: response_format,
+      ttl: %{ttl: :binary.decode_unsigned(ttl_value), type: ttl_type},
+      query_fee: :binary.decode_unsigned(query_fee)
+    }
+
+    DataTx.init_binary(
+      OracleRegistrationTx,
+      payload,
+      encoded_senders,
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end
