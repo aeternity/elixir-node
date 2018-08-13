@@ -6,8 +6,6 @@ port =
     env -> env
   end
 
-  IO.inspect "PORT is: #{port}"
-
 config :aehttpserver, Aehttpserver.Web.Endpoint,
   http: [port: port],
   debug_errors: true,
