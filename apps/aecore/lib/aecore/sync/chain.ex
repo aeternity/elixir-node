@@ -34,7 +34,7 @@ defmodule Aecore.Sync.Chain do
       peers: peers,
       chain: [%{height: height, hash: hash}] ++ prev_hash
     }
-  end 
+  end
   
   def merge_chains(
         %Chain{chain_id: cid, peer: ps1, chain: c1},

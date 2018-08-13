@@ -336,9 +336,43 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
+  def known_chain(chain) do
+    chain
+    |> known_chain(:none)
+    |> idenify_chain()
+  end
+
+  def identify_chain({:existing, task}) do
+    ## Log info -> Already syncing chain
+    {:ok, task}
+  end
   
+  def identify_chain({:new, %Chain{chain: [target | _]}, task}) do
+    ## Log info -> Started new sync task with target
+    {:ok, task}
+  end
 
+  def identify_chain({:inconclusive, chain, {:get_eader, ch_id, peers, n}}) do
+    ## We need another hash for this chain, make sure whoever we ask
+    ## is still in this particular chain by including a known (at higher height) hash
+    known_hash = Chain.next_known_hash(chain.chain, n)
+    case do_get_header_by_height(peers, n, known_hash) do
+      {:ok, header} ->
+        chain
+        |> known_chain(Chain.init_chain(ch_id, peers, header))
+        |> identify_chain()
 
+      {:error, _} = err ->
+        ## Log info -> Fetching header at height: h from: peers failed
+        err
+    end
+  end
+
+  ## Get the next known hash at a height bigger than N; or
+  ## if no such hash exist, the hash at the highest known height.
+  def next_known_chain(cs, n) do
+    ## TODO: finish this function
+  end
 
 
 
