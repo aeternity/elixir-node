@@ -10,7 +10,6 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Keys.Peer, as: PeerKeys
   alias Aehttpclient.Client
-  alias Aeutil.Serialization
 
   require Logger
 
