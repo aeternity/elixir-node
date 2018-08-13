@@ -53,7 +53,7 @@ defmodule AecoreTxTest do
 
     assert :ok = SignedTx.validate(signed_tx)
     [signature] = signed_tx.signatures
-    
+
     message = DataTx.rlp_encode(signed_tx.data)
     assert true = Keys.verify(message, signature, sender)
   end
