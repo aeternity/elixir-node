@@ -54,12 +54,12 @@ defmodule Aecore.Chain.Identifier do
   @spec encode_to_binary(Identifier.t()) :: binary()
   def encode_to_binary(%Identifier{} = data) do
     tag = type_to_tag(data.type)
-    <<tag::unsigned-integer-size(8), data.value::binary>>
+    <<tag::unsigned-integer-size(@tag_size), data.value::binary>>
   end
 
   # byte_size(data) == 33 # data should be stricted to 32 bytes only
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
-  def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
+  def decode_from_binary(<<tag::unsigned-integer-size(@tag_size), data::binary>>)
       when is_binary(data) do
     case tag_to_type(tag) do
       {:error, msg} ->
