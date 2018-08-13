@@ -23,9 +23,9 @@ defmodule Aecore.Contract.Call do
 
   @nonce_size 256
 
-  @spec new_call(hash(), non_neg_integer(), hash(), non_neg_integer(), non_neg_integer()) ::
+  @spec new(hash(), non_neg_integer(), hash(), non_neg_integer(), non_neg_integer()) ::
           call()
-  def new_call(caller, nonce, block_height, contract_address, gas_price) do
+  def new(caller, nonce, block_height, contract_address, gas_price) do
     %{
       :caller_address => caller,
       :caller_nonce => nonce,

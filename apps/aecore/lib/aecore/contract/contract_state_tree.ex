@@ -7,6 +7,9 @@ defmodule Aecore.Contract.ContractStateTree do
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
 
+  @contract_key_size 32
+
+  @type hash :: binary()
   @type contracts_state() :: Trie.t()
 
   @spec init_empty() :: contracts_state()
@@ -14,6 +17,7 @@ defmodule Aecore.Contract.ContractStateTree do
     PatriciaMerkleTree.new(:contracts)
   end
 
+  @spec insert_contract(contracts_state(), map()) :: contracts_state()
   def insert_contract(contract_tree, contract) do
     id = contract.id
     serialized = Serialization.rlp_encode(contract, :contract)
@@ -27,6 +31,7 @@ defmodule Aecore.Contract.ContractStateTree do
     end)
   end
 
+  @spec enter_contract(contracts_state(), map()) :: contracts_state()
   def enter_contract(contract_tree, contract) do
     id = contract.id
     serialized = Serialization.rlp_encode(contract, :contract)
@@ -38,6 +43,7 @@ defmodule Aecore.Contract.ContractStateTree do
     update_store(store_id, old_contract_store, contract.store, updated_contract_tree)
   end
 
+  @spec get_contract(contracts_state(), binary()) :: map()
   def get_contract(contract_tree, key) do
     case PatriciaMerkleTree.lookup(contract_tree, key) do
       {:ok, serialized} ->
@@ -70,6 +76,11 @@ defmodule Aecore.Contract.ContractStateTree do
     end
   end
 
+  @spec root_hash(contracts_state()) :: hash()
+  def root_hash(contract_tree) do
+    PatriciaMerkleTree.root_hash(contract_tree)
+  end
+
   defp update_store(store_id, old_store, new_store, tree) do
     merged_store = Map.merge(old_store, new_store)
 
@@ -86,14 +97,15 @@ defmodule Aecore.Contract.ContractStateTree do
     end)
   end
 
-  def get_store(store_id, tree) do
+  defp get_store(store_id, tree) do
     keys = PatriciaMerkleTree.all_keys(tree)
+    store_id_bit_size = (@contract_key_size + 1) * 8
 
     Enum.reduce(keys, %{}, fn key, store_acc ->
-      if byte_size(key) >= Application.get_env(:aecore, :aewallet)[:pub_key_size] + 1 do
-        <<tree_store_id::size(272), s_key::binary>> = key
+      if byte_size(key) > @contract_key_size do
+        <<tree_store_id::size(store_id_bit_size), s_key::binary>> = key
 
-        if store_id == <<tree_store_id::size(272)>> do
+        if store_id == <<tree_store_id::size(store_id_bit_size)>> do
           {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
           Map.put(store_acc, s_key, s_value)
         else

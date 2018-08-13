@@ -4,6 +4,8 @@ defmodule Aecore.Contract.Contract do
   """
   alias Aecore.Chain.Identifier
   alias Aeutil.Serialization
+  alias Aecore.Keys.Wallet
+  alias Aeutil.Hash
 
   @store_prefix 16
 
@@ -21,6 +23,25 @@ defmodule Aecore.Contract.Contract do
 
   @type t :: contract()
 
+  @spec new(Wallet.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
+  def new(owner, nonce, vm_version, code, deposit) do
+    contract_id = create_contract_id(owner, nonce)
+    {:ok, identified_contract} = Identifier.create_identity(contract_id, :contract)
+    {:ok, identified_owner} = Identifier.create_identity(owner, :account)
+    %{
+      id: identified_contract,
+      owner: identified_owner,
+      vm_version: vm_version,
+      code: code,
+      store: %{},
+      log: <<>>,
+      active: true,
+      referers: [],
+      deposit: deposit
+    }
+  end
+
+  @spec rlp_encode(non_neg_integer(), non_neg_integer(), contract()) :: binary() | {:error, String.t()}
   def rlp_encode(tag, version, contract) do
     {:ok, encoded_owner} = Identifier.encode_data(contract.owner)
 
@@ -53,10 +74,11 @@ defmodule Aecore.Contract.Contract do
     try do
       ExRLP.encode(list)
     rescue
-      e -> {:errorrr, "#{__MODULE__}: " <> Exception.message(e)}
+      e -> {:error, "#{__MODULE__}: " <> Exception.message(e)}
     end
   end
 
+  @spec rlp_decode(list()) :: {:ok, map()} | {:error, String.t()}
   def rlp_decode([
         owner,
         vm_version,
@@ -97,9 +119,16 @@ defmodule Aecore.Contract.Contract do
      }}
   end
 
+  @spec store_id(contract()) :: binary()
   def store_id(contract) do
     id = contract.id
 
     <<id.value::binary, @store_prefix>>
+  end
+
+  defp create_contract_id(owner, nonce) do
+    nonce_binary = :binary.encode_unsigned(nonce)
+
+    Hash.hash(<<owner::binary, nonce_binary::binary>>)
   end
 end

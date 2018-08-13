@@ -35,7 +35,7 @@ defmodule Aecore.Contract.CallStateTree do
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)
   end
 
-  @spec get_call(calls_state(), map()) :: calls_state()
+  @spec get_call(calls_state(), binary()) :: calls_state()
   def get_call(calls_tree, key) do
     case PatriciaMerkleTree.lookup(calls_tree, key) do
       {:ok, value} ->
