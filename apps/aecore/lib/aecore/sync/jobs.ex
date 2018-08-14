@@ -1,5 +1,15 @@
 defmodule Aecore.Sync.Jobs do
+  @moduledoc"""
+  Handles the Job library
+  """
 
+  ## spawn() and :proc_lib.spawn() to be changed with Elixir func calls
+  ## Maybe use Task module ??
+
+  @type queue :: :sync_ping_workers
+  | :sing_task_workers
+  | :sing_gossip_worers
+  
   @doc """
   Creates a new jobs queue for doing some work.
   """
@@ -26,10 +36,18 @@ defmodule Aecore.Sync.Jobs do
   def enqueue(gossip, data, peer_ids) do
     spawn(fn ->
       case gossip do
-        :block -> Enum.map(peer_ids, fn id -> """do_forward_block(data, id)""" id end)
-        :tx -> Enum.map(peer_ids, fn id -> """do_forward_tx(data, id)""" id end)
+        :block ->
+          Enum.map(peer_ids, fn id ->
+            :jobs.run(:sync_gossip_workers,
+              Sync.do_forward_block(data, id))
+          end)
+          
+        :tx ->
+          Enum.map(peer_ids, fn id ->
+            :jobs.run(:sync_gossip_workers,
+              Sync.do_forward_tx(data, id))
+          end)
       end
     end)
-  end
-  
+  end  
 end

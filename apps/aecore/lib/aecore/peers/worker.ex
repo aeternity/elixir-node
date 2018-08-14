@@ -148,7 +148,8 @@ defmodule Aecore.Peers.Worker do
     {:reply, have_peer, state}
   end
 
-  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) d
+  o
     Enum.each(peers, fn {_pubkey, peer} ->
       PeerConnection.send_new_block(block, peer.connection)
     end)

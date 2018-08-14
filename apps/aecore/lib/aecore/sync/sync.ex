@@ -3,7 +3,13 @@ defmodule Aecore.Sync.Sync do
   use GenServer
 
   alias Aecore.Sync.{Jobs, Chain, Task}
+  alias Aecore.Chain.Worker, as: Chainstate
+  alias Aecore.Chain.BlockValidation
+  alias Aecore.Peers.PeerConnection
 
+  @max_headers_per_chunk 100
+  @genesis_height 0 ## maybe to be changed with another fun call
+  
   ###===================================================
   ### API calls
   ###===================================================
@@ -40,6 +46,26 @@ defmodule Aecore.Sync.Sync do
   ### GenServer functions
   ###==================================================================
 
+  
+  ## When we Ping a node with at least as much difficulty as we have,
+  ## then we are going to sync with it.
+  ## We already agree upon the genesis block and need to find the highest common
+  ## block we agree upon. We use a binary search to find out.
+  ## From the height we agree upon, we start asking for blocks to add to the chain.
+  ##
+  ## When an additional Ping arrives for which we agree upon genesis, we have
+  ## the following possibilities:
+  ## 1. It has worst top hash than our node, do not include in sync
+  ## 2. It has better top hash than our node
+  ##    We binary search for a block that we agree upon (could be genesis)
+  ## We add new node to sync pool to sync agreed block upto top of new
+  ## 1. If we are already synchronizing, we ignore it,
+  ##    the ongoing sync will pick that up later
+  ## 2. If we are not already synchronizing, we start doing so.
+  ##
+  ## We sync with several nodes at the same time and use as strategy
+  ## to pick a random hash from the hashes in the pool.
+  
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{sync_tasks: []}, name: __MODULE__)
   end
@@ -53,9 +79,23 @@ defmodule Aecore.Sync.Sync do
     {:reply, peer_in_sync(state, peer_id), state}
   end
 
-  def handle_call({:known_chain, %{chain_id: cid}}, _from, state) do
-    ## Do some work
-    ##{:reply, res, new_state}
+  def handle_call(
+        {:known_chain, %Chain{chain_id: cid} = chain, new_chain_info},
+        _from,
+        state) do
+    {new_chain, state1} =
+      case new_chain_info do
+        :none ->
+          {chain, cid}
+
+        %Chain{chain_id: c} when c == cid ->
+          {Chain.merge_chains(chain, new_chain_info), state}
+
+        %Chain{chain_id: _cid} ->
+          {chain, Chain.add_chain_info(new_chain_info, state)}
+      end
+    {res, new_state} = sync_task_for_chain(chain, state1)
+    {:reply, res, new_state}
   end
 
   def handle_call({:update_sync_task, update, st_id}, _from, state) do
@@ -312,7 +352,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  def do_start_sync1(peerd_id, remote_hash) do
+  defp do_start_sync1(peerd_id, remote_hash) do
     case PeerConnection.get_header_by_height(peer_id, remote_hash) do
       {:ok, header} ->
         ## Log -> New header received
@@ -336,23 +376,23 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  def known_chain(chain) do
+  defp known_chain(chain) do
     chain
     |> known_chain(:none)
     |> idenify_chain()
   end
 
-  def identify_chain({:existing, task}) do
+  defp identify_chain({:existing, task}) do
     ## Log info -> Already syncing chain
     {:ok, task}
   end
   
-  def identify_chain({:new, %Chain{chain: [target | _]}, task}) do
+  defp identify_chain({:new, %Chain{chain: [target | _]}, task}) do
     ## Log info -> Started new sync task with target
     {:ok, task}
   end
 
-  def identify_chain({:inconclusive, chain, {:get_eader, ch_id, peers, n}}) do
+  defp identify_chain({:inconclusive, chain, {:get_eader, ch_id, peers, n}}) do
     ## We need another hash for this chain, make sure whoever we ask
     ## is still in this particular chain by including a known (at higher height) hash
     known_hash = Chain.next_known_hash(chain.chain, n)
@@ -370,35 +410,230 @@ defmodule Aecore.Sync.Sync do
 
   ## Get the next known hash at a height bigger than N; or
   ## if no such hash exist, the hash at the highest known height.
-  def next_known_chain(cs, n) do
-    ## TODO: finish this function
+  defp next_known_chain(cs, n) do
+    %{hash: hash} =
+      case Enum.filter(cs, fn %{height: h} -> h > n end) do
+        [] -> Kernel.hd(cs)
+        cs1 -> List.last(cs1)
+      end
+    hash
+  end
+
+  defp do_get_header_by_height([], _n, _top_hash) do
+    {:error, :header_not_found}
+  end
+
+  defp do_get_header_by_height([peer_id | ids], n, top_hash) do
+    case PeerConnection.get_header_by_height(peer_id, n, top_hash) do
+      {:ok, header} ->
+        {:ok, header}
+
+      {:error, reason} ->
+        ## Log info -> Fetching header at height from peer: pid, failed
+        do_get_header_by_height(peer_ids, n, top_hash)
+    end
+  end
+
+  defp do_work_on_sync_task(peer_id, task) do
+    do_work_on_sync_task(peer_id, task, :none)
+  end
+
+  defp do_work_on_sync_task(peer_id, task, last_result) do
+    case next_work_item(task, peer_id, last_result) do
+      :take_a_break ->
+        fun = fn -> do_work_on_sync_task(peer_id, task) end
+        Jobs.delayed_run_job(peer_id, task, :sync_task_workers, fun, 250)
+
+      {:agree_on_height, chain} ->
+        %Chain{chain: [%{height: top_height, hash: top_hash} | _]} = chain
+        local_header = Chainstate.top_header()
+        local_height = Chainstate.top_height()
+        {:ok, genesis} = Chainstate.get_block_by_height(0)
+        min_agreed_hash = BlockValidation.block_header_hash(genesis)
+        max_agree = min(local_height, top_height)
+
+        case agree_on_height(peer_id, top_hash, top_height, max_agree, max_agree, @genesis_height, min_agreed_hash) do
+          {:ok, height, hash} ->
+            ## Log info -> Agreed upon height: height
+            agreement = {:agreed_height, %{height: height, hash: hash}}
+            do_work_on_sync_task(peer_id, task, agreement)
+
+          {:error, reason} ->
+            do_work_on_sync_task(peer_id, task, {:error, {:agree_on_height, reason}})
+        end
+
+      {:fill_pool, start_hash, target_hash} ->
+        fill_pool(peer_id, start_hash, target_hash, task)
+
+      {:post_blocks, blocks} ->
+        res = post_blocks(blocks)
+        do_work_on_sync_task(peer_id, task, {:post_blocks, res})
+
+      {:get_block, height, hash} ->
+        res =
+          case do_fetch_block(peer_id, hash) do
+            {:ok, false, _block} -> {:get_block, height, hash, peer_id, {:ok, :local}}
+            {:ok, true, block} -> {:get_block mheight, hash, peer_id, {:ok, block}}
+            {:error, reason} -> {:error, {:get_block, reason}}
+          end
+        do_work_on_sync_task(peer_id, task, res)
+
+      :abort_work ->
+        ## Log info -> Aborting sync work against peer: peer_id
+        schedule_ping(peer_id)
+    end
+  end
+
+  defp post_blocks([]), do: :ok
+  
+  defp post_blocks([{start_height, _, _} | _] = blocks) do
+    post_blocks(start_height, start_height, blocks)
+  end
+  
+  defp post_blocks(from, to, []) do
+    ## Log info -> Synced blocks [from, to]
+    :ok
+  end
+
+  defp post_blocks(from, _to, [{height, _hash, {_peer_id, :local}} | blocks]) do
+    post_blocks(from, height, blocks)
+  end
+
+  defp post_blocks(from, to, [{height, _hash, {peer_id, block}} | blocks]) do
+    case Chainstate.add_block(block) do
+      :ok ->
+        post_blocks(from, height, blocks)
+
+      {:error, reason} ->
+        ## Log info -> Failed to add synced block [height, reason]
+        {:error, peer_id, height}
+    end
+  end
+
+  defp agree_on_height(_peer_id, _rhash, _rh, _lh, min, min, agreed_hash) do
+    {:ok, min, agreed_hash}
   end
 
 
+  ## Ping logic makes sure they always agree on genesis header (height 0)
+  ## We look for the block that is bloth on remote highest chain and in our local
+  ## chain, connected to genesis (may be on a fork, but that fork
+  ## has now more dofficulty than our highest chain (otherwise we would not sync))
+  ##
+  ## agreed_hash is hash at height min (genesis hash)
+  defp agree_on_height(peer_id, rhash, rh, lh, max, min, agreed_hash) when rh == lh do
+    case Chainstate.get_block(rhash) do
+      {:ok, _} ->
+        ## We agree on block
+        middle = div((max + rh), 2)
+        case min < middle and middle < max do
+          true ->
+            agree_on_height(peer_id, rhash, rh, middle, max, rh, rhash)
+
+          false ->
+            {:ok, rh, rhash}
+        end
+
+      _ ->
+        ## We dissagree. Local on a fork compared to remote, check half-way
+        middle = div((min + rh), 2)
+        case min < middle and middle < max do
+          true ->
+            agree_on_height(peer_id, rhash, rh, middle, rh, min, agreed_hash)
+
+          false ->
+            {:ok, min, agreed_hash}
+        end
+    end
+  end
+
+  defp agree_on_height(peer_id, rhash, rh, lh, max, min, agreed_hash) when rh != lh do
+    case PeerConnection.get_header_by_height(peer_id, lh, rhash) do
+      {:ok, %{header: header}} ->
+        ## Log info -> New header received [header]
+        agree_on_height(peer_id, rhash, lh, lh, max, min, agreed_hash)
+
+      {:error, reason} ->
+        ## Log info -> Fetching header failed!
+        {:error, reason}
+    end
+  end
+
+  defp fill_pool(peer_id, start_hash, target_hash, %Task{} = st) do
+    case PeerConnection.get_n_successors(peer_id, start_hash, target_hsah, @max_headers_per_chunk) do
+      {:ok, []} ->
+        ## Log info -> Sync done according to [peer_id]
+        ## events:publish?
+        update_sync_task({:done, peer_id}, st)
+        :unfinished
+
+      {:ok, hashes} ->
+        hash_pool = Enum.map(hashes, fn {h, hash} -> {h, hash, false} end)
+        do_work_on_sync_task(peer_id, st, {:hash_pool, hash_pool})
+
+      {:error, _} = err ->
+        ## Log info -> Abort sync with [peer_id, reason]
+        Tsak.update_sync_task({:error, peer_id}, st)
+        {:error, :sync_abort}
+    end
+  end
 
 
+    # Check if we already have this block locally, is so
+  # take it from the chain
+  defp do_fetch_block(hash, peer_pid) do
+    case Chain.get_block(hash) do
+      {:ok, block} ->
+        Logger.debug(fn -> "#{__MODULE__}: We already have this block!" end)
+        {:ok, false, block}
 
+      {:error, _} ->
+        do_fetch_block_ext(hash, peer_pid)
+    end
+  end
 
+  # If we don't have the block locally, take it from the Remote Peer
+  defp do_fetch_block_ext(hash, peer_pid) do
+    case PeerConnection.get_block(hash, peer_pid) do
+      {:ok, %{block: block}} ->
+        case BlockValidation.block_header_hash(block.header) === hash do
+          true ->
+            Logger.debug(fn ->
+              "#{__MODULE__}: Block #{inspect(block)} fetched from #{inspect(peer_pid)}"
+            end)
 
+            {:ok, block}
 
+          false ->
+            {:error, :hash_mismatch}
+        end
 
+      err ->
+        Logger.debug(fn ->
+          "#{__MODULE__}: Failed to fetch the block from #{inspect(peer_pid)}"
+        end)
 
+        err
+    end
+  end
 
+  defp parse_peers(peers) do
+    Enum.map(peers, fn peer -> parse_peer(peer) end)
+  end
 
+  defp parse_peers(peer) do
+    ## parse_peer_address should be implemented!!
+    :unfinished 
+    case Peers.parse_peer_address(peer) do
+      {:ok, peer_info} -> [peer_info]
+      {:error, _} -> []
+    end
+  end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
+  ## Checks if peer is syncing??
+  defp peer_in_sync(%Sync{sync_tasks: sts}, peer_id) do
+    sts
+    |> Enum.map(fn %Sync{chain: %Chain{peers: peers}} -> peers end)
+    |> Enum.member?(peer_id)
+  end  
 end

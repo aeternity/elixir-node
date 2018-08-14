@@ -11,7 +11,7 @@ defmodule Aecore.Sync.Chain do
     chain: chain()}
 
   defstruct chain_id: nil,
-            peers: nil,
+            peers: [],
             chain: %{height: nil, hash: nil}
   use ExConstructor
 
