@@ -8,6 +8,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Block
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}

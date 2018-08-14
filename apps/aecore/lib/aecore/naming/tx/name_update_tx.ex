@@ -17,6 +17,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
           hash: binary(),
@@ -51,13 +53,28 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   # Callbacks
 
   @spec init(payload()) :: t()
+
+  def init(%{
+        hash: %Identifier{} = identified_hash,
+        expire_by: expire_by,
+        client_ttl: client_ttl,
+        pointers: pointers
+      }) do
+    %NameUpdateTx{
+      hash: identified_hash,
+      expire_by: expire_by,
+      client_ttl: client_ttl,
+      pointers: pointers
+    }
+  end
+
   def init(%{
         hash: hash,
         expire_by: expire_by,
         client_ttl: client_ttl,
         pointers: pointers
       }) do
-    {:ok, identified_name_hash} = Identifier.create_identity(hash, :name)
+    identified_name_hash = Identifier.create_identity(hash, :name)
 
     %NameUpdateTx{
       hash: identified_name_hash,
@@ -194,5 +211,60 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      Identifier.encode_to_binary(tx.hash),
+      :binary.encode_unsigned(tx.client_ttl),
+      tx.pointers,
+      :binary.encode_unsigned(tx.expire_by),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_hash,
+        client_ttl,
+        pointers,
+        expire_by,
+        fee,
+        ttl
+      ]) do
+    case Identifier.decode_from_binary(encoded_hash) do
+      {:ok, hash} ->
+        payload = %NameUpdateTx{
+          client_ttl: :binary.decode_unsigned(client_ttl),
+          expire_by: :binary.decode_unsigned(expire_by),
+          hash: hash,
+          pointers: pointers
+        }
+
+        DataTx.init_binary(
+          NameUpdateTx,
+          payload,
+          encoded_senders,
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

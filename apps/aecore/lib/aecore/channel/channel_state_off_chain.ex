@@ -9,7 +9,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   alias Aewallet.Signing
   alias Aeutil.Serialization
 
-  @signing_tag 101
+  @signing_tag 102
 
   @version 1
 
@@ -32,6 +32,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   ]
 
   use ExConstructor
+  use Aecore.Util.Serializable
 
   require Logger
 
@@ -66,36 +67,6 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       responder_amount: responder_amount,
       signatures: signatures
     }
-  end
-
-  def encode(%ChannelStateOffChain{
-        channel_id: channel_id,
-        sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount,
-        signatures: {initiator_sig, responder_sig}
-      }) do
-    [channel_id, sequence, initiator_amount, responder_amount, [initiator_sig, responder_sig]]
-  end
-
-  def decode([
-        channel_id,
-        sequence,
-        initiator_amount,
-        responder_amount,
-        [initiator_sig, responder_sig]
-      ]) do
-    %ChannelStateOffChain{
-      channel_id: channel_id,
-      sequence: Serialization.transform_item(sequence, :int),
-      initiator_amount: Serialization.transform_item(initiator_amount, :int),
-      responder_amount: Serialization.transform_item(responder_amount, :int),
-      signatures: {initiator_sig, responder_sig}
-    }
-  end
-
-  def decode(data) do
-    {:error, "#{__MODULE__}: Unknown ChannelStateOffChain structure: #{inspect(data)} "}
   end
 
   @spec total_amount(ChannelStateOffChain.t()) :: non_neg_integer()
@@ -301,14 +272,56 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   defp signing_form(%ChannelStateOffChain{} = state) do
     list_form = [
-      @signing_tag,
-      @version,
+      :binary.encode_unsigned(@signing_tag),
+      :binary.encode_unsigned(@version),
       state.channel_id,
-      state.initiator_amount,
-      state.responder_amount,
-      state.sequence
+      :binary.encode_unsigned(state.initiator_amount),
+      :binary.encode_unsigned(state.responder_amount),
+      :binary.encode_unsigned(state.sequence)
     ]
 
     ExRLP.encode(list_form)
+  end
+
+  def encode_to_list(%ChannelStateOffChain{
+        channel_id: channel_id,
+        sequence: sequence,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        signatures: {initiator_sig, responder_sig}
+      }) do
+    [
+      :binary.encode_unsigned(@version),
+      channel_id,
+      :binary.encode_unsigned(sequence),
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      [initiator_sig, responder_sig]
+    ]
+  end
+
+  def decode_from_list(@version, [
+        channel_id,
+        sequence,
+        initiator_amount,
+        responder_amount,
+        [initiator_sig, responder_sig]
+      ]) do
+    {:ok,
+     %ChannelStateOffChain{
+       channel_id: channel_id,
+       sequence: :binary.decode_unsigned(sequence),
+       initiator_amount: :binary.decode_unsigned(initiator_amount),
+       responder_amount: :binary.decode_unsigned(responder_amount),
+       signatures: {initiator_sig, responder_sig}
+     }}
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

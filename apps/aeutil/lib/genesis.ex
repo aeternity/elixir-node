@@ -7,7 +7,7 @@ defmodule Aeutil.Genesis do
 
   @spec preset_accounts() :: list()
   def preset_accounts do
-    case read_presets do
+    case read_presets() do
       {:error, reason} ->
         {:error, reason}
 
