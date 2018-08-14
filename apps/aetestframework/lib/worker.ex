@@ -399,13 +399,13 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   # server
 
   def handle_info(result, state) do
-    IO.inspect result
     {:noreply, state}
   end
 
   def receive_result(state) do
     receive do
       {port, {:data, result}} ->
+        IO.inspect result
         cond do
           result =~ ":respond_top_block" ->
             new_state = update_data(state, result, ":respond_top_block", port, :top_block)
