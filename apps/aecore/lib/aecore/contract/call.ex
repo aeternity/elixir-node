@@ -8,7 +8,11 @@ defmodule Aecore.Contract.Call do
   alias Aeutil.Parser
   alias Aeutil.Hash
 
+  require Logger
+
   @version 1
+
+  @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @type t :: %Call{
           caller_address: Wallet.pubkey(),

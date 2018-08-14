@@ -20,6 +20,7 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Naming.Tx.NameUpdateTx.t()
           | Aecore.Naming.Tx.NameTransferTx.t()
           | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
           | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
