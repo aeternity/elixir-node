@@ -9,7 +9,7 @@ defmodule Aecore.Naming.NameUtil do
   @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
   def normalized_namehash(name) do
     case normalize_and_validate_name(name) do
-      {:ok, normalized_name} -> {:ok, namehash(normalized_name)}
+      {:ok, normalized_name} -> {:ok, Hash.hash(normalized_name)}
       err -> err
     end
   end
@@ -28,20 +28,23 @@ defmodule Aecore.Naming.NameUtil do
   def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
 
   @spec namehash(String.t()) :: binary()
-  defp namehash(name) do
+  def namehash(name) do
     if name == "" do
       <<0::256>>
     else
-      {label, remainder} = partition_name(name)
-
-      Hash.hash(namehash(remainder) <> Hash.hash(label))
+      name
+      |> String.split(GovernanceConstants.split_name_symbol())
+      |> Enum.reverse()
+      |> hash_labels()
     end
   end
 
-  @spec partition_name(String.t()) :: {String.t(), String.t()}
-  defp partition_name(name) do
-    [label | remainder] = split_name(name)
-    {label, Enum.join(remainder, GovernanceConstants.split_name_symbol())}
+  defp hash_labels([]), do: <<0::256>>
+
+  defp hash_labels([label | rest]) do
+    label_hash = Hash.hash(label)
+    rest_hash = hash_labels(rest)
+    Hash.hash(<<rest_hash::binary, label_hash::binary>>)
   end
 
   @spec validate_normalized_name(String.t()) :: :ok | {:error, String.t()}

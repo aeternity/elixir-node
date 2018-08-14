@@ -119,7 +119,17 @@ defmodule Aecore.Account.Account do
   @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
-    {sender, sender_priv_key} = Keys.keypair(:sign)
+    # {sender, sender_priv_key} = Keys.keypair(:sign)
+    sender =
+      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
+        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
+
+    sender_priv_key =
+      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
+        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
+        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
+        121, 64, 28, 8>>
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -137,7 +147,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
-    case NameCommitment.hash(name, name_salt) do
+    case NameCommitment.commitment_hash(name, name_salt) do
       {:ok, commitment} ->
         payload = %{commitment: commitment}
         build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)

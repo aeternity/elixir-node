@@ -96,7 +96,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
     claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
 
@@ -130,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
