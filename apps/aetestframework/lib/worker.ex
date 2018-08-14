@@ -145,13 +145,17 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     res = Regex.run(~r/"(.*)"/, List.last(respond_res))
     base_decoded = Base.decode32!(List.last(res))
 
-    if type == :oracle_interaction_objects do
-      {:ok, rlp_decoded} = Serialization.rlp_decode(base_decoded)
-    else
-      rlp_decoded = Serialization.rlp_decode(base_decoded)
-    end
+    oracle_int_objects =
+      case type do
+        :oracle_interaction_objects ->
+          {:ok, data} = Serialization.rlp_decode(base_decoded)
+          data
 
-    put_in(state[node][type], rlp_decoded)
+        _ ->
+          Serialization.rlp_decode(base_decoded)
+      end
+
+    put_in(state[node][type], oracle_int_objects)
   end
 
   def check_peers(state, node, result) do
@@ -394,7 +398,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info(result, state) do
+  def handle_info(_, state) do
     {:noreply, state}
   end
 
