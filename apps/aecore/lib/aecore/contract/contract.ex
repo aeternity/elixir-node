@@ -4,7 +4,6 @@ defmodule Aecore.Contract.Contract do
   """
   alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier
-  alias Aecore.Keys.Wallet
   alias Aeutil.Hash
 
   @version 1
