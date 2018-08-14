@@ -323,8 +323,7 @@ state.fsm_state
 
 ##### Channel snapshots
 ```
-This transaction is not present in the 0.16 release of epoch but is present in the master branch of epoch - one can only use this transaction in the :test enviroment.
-To use this transaction start the application with `MIX_ENV=test iex -S mix phx.server`
+This transaction is not present in the 0.16 release of epoch but is present in the master branch of epoch - one can only use this transaction only the version cloned from the master-channels branch.
 ```
 
 If one of the parties wishes to submit a snapshot of the most recent `ChannelStateOffChain` to the blokchain then the party should call `Channel.snapshot(channel_id, fee, nonce, priv_key)`

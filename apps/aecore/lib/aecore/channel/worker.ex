@@ -296,12 +296,7 @@ defmodule Aecore.Channel.Worker do
           :ok | error()
   def snapshot(channel_id, fee, nonce, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
-    if Mix.env == :test do
       GenServer.call(__MODULE__, {:snapshot, channel_id, fee, nonce, priv_key})
-    else
-      {:error, "#{__MODULE__} Snapshots are available only in the test enviroment"}
-
-    end
   end
 
   @doc """
