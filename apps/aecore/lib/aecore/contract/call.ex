@@ -4,7 +4,6 @@ defmodule Aecore.Contract.Call do
   """
   alias Aecore.Chain.Identifier
   alias Aecore.Contract.Call
-  alias Aeutil.Serialization
   alias Aeutil.Parser
   alias Aeutil.Hash
 
@@ -58,11 +57,11 @@ defmodule Aecore.Contract.Call do
     [
       @version,
       Identifier.encode_to_binary(call.caller_address),
-      call.caller_nonce,
-      call.height,
+      :binary.encode_unsigned(call.caller_nonce),
+      :binary.encode_unsigned(call.height),
       Identifier.encode_to_binary(call.contract_address),
-      call.gas_price,
-      call.gas_used,
+      :binary.encode_unsigned(call.gas_price),
+      :binary.encode_unsigned(call.gas_used),
       call.return_value,
       Parser.to_string(call.return_type)
     ]
@@ -85,11 +84,11 @@ defmodule Aecore.Contract.Call do
     {:ok,
      %Call{
        caller_address: decoded_caller_address,
-       caller_nonce: Serialization.transform_item(caller_nonce, :int),
-       height: Serialization.transform_item(height, :int),
+       caller_nonce: :binary.decode_unsigned(caller_nonce),
+       height: :binary.decode_unsigned(height),
        contract_address: decoded_contract_address,
-       gas_price: Serialization.transform_item(gas_price, :int),
-       gas_used: Serialization.transform_item(gas_used, :int),
+       gas_price: :binary.decode_unsigned(gas_price),
+       gas_used: :binary.decode_unsigned(gas_used),
        return_value: return_value,
        return_type: String.to_atom(return_type)
      }}
@@ -104,11 +103,16 @@ defmodule Aecore.Contract.Call do
   end
 
   @spec id(Call.t()) :: binary()
-  def id(call), do: id(call.caller_address, call.caller_nonce, call.contract_address)
-
-  @spec id(binary(), non_neg_integer(), binary()) :: binary()
-  def id(caller, nonce, contract) do
-    binary = <<caller.value::binary, nonce::size(@nonce_size), contract.value::binary>>
+  def id(
+        %Call{
+          caller_address: caller_address,
+          caller_nonce: caller_nonce,
+          contract_address: contract_address
+        } = _call
+      ) do
+    binary =
+      <<caller_address.value::binary, caller_nonce::size(@nonce_size),
+        contract_address.value::binary>>
 
     Hash.hash(binary)
   end

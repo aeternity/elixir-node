@@ -4,7 +4,6 @@ defmodule Aecore.Contract.Contract do
   """
   alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier
-  alias Aeutil.Serialization
   alias Aecore.Keys.Wallet
   alias Aeutil.Hash
 
@@ -66,12 +65,12 @@ defmodule Aecore.Contract.Contract do
     [
       @version,
       Identifier.encode_to_binary(contract.owner),
-      contract.vm_version,
+      :binary.encode_unsigned(contract.vm_version),
       contract.code,
       contract.log,
       active,
       encoded_referers,
-      contract.deposit
+      :binary.encode_unsigned(contract.deposit)
     ]
   end
 
@@ -88,7 +87,7 @@ defmodule Aecore.Contract.Contract do
     {:ok, decoded_owner_address} = Identifier.decode_from_binary(owner)
 
     decoded_active =
-      case Serialization.transform_item(active, :int) do
+      case :binary.decode_unsigned(active) do
         0 -> false
         1 -> true
       end
@@ -106,13 +105,13 @@ defmodule Aecore.Contract.Contract do
      %Contract{
        id: %Identifier{type: :contract},
        owner: decoded_owner_address,
-       vm_version: Serialization.transform_item(vm_version, :int),
+       vm_version: :binary.decode_unsigned(vm_version),
        code: code,
        store: %{},
        log: log,
        active: decoded_active,
        referers: decoded_referers,
-       deposit: Serialization.transform_item(deposit, :int)
+       deposit: :binary.decode_unsigned(deposit)
      }}
   end
 
@@ -125,7 +124,7 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec store_id(Contract.t()) :: binary()
-  def store_id(%Contract{id: id} = contract), do: <<id.value::binary, @store_prefix>>
+  def store_id(%Contract{id: id} = _contract), do: <<id.value::binary, @store_prefix>>
 
   defp create_contract_id(owner, nonce) do
     nonce_binary = :binary.encode_unsigned(nonce)

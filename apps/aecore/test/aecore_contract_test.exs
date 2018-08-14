@@ -15,7 +15,7 @@ defmodule AecoreContractTest do
   alias Aecore.Contract.CallStateTree, as: CallStateTree
   alias Aecore.Contract.Contract
   alias Aecore.Contract.ContractStateTree
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
 
   setup do
@@ -76,7 +76,7 @@ defmodule AecoreContractTest do
   end
 
   defp create_call do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _privkey} = Keys.keypair(:sign)
 
     Call.new(
       pubkey,
@@ -88,7 +88,7 @@ defmodule AecoreContractTest do
   end
 
   defp create_contract do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _privkey} = Keys.keypair(:sign)
 
     Contract.new(
       pubkey,
