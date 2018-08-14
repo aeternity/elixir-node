@@ -62,9 +62,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
-        {:error,
-         "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+      # byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
+      #   {:error,
+      #    "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -143,7 +143,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner.value != sender ->
+      pre_claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)
