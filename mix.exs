@@ -53,7 +53,6 @@ defmodule EpochElixir.Mixfile do
       {:logger_file_backend, "~> 0.0.10"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:ex_json_schema, "~> 0.5.4"},
-      {:aewallet, github: "aeternity/elixir-wallet", ref: "3f2f9df", override: true},
       {:erl_base58, "~> 0.0.1"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},

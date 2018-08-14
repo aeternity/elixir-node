@@ -112,7 +112,6 @@ defmodule Aecore.Tx.Pool.Worker do
   @doc """
   A function that adds a merkle proof for every single transaction
   """
-
   @spec add_proof_to_txs(list()) :: list()
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
