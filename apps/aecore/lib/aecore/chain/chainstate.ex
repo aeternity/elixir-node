@@ -6,8 +6,7 @@ defmodule Aecore.Chain.Chainstate do
 
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Block
+  alias Aecore.Chain.{Chainstate, Block, Genesis}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
@@ -54,7 +53,7 @@ defmodule Aecore.Chain.Chainstate do
 
   @spec init :: t()
   def init do
-    Block.genesis_populated_trees()
+    Genesis.populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
