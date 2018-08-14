@@ -8,7 +8,7 @@ defmodule AecoreValidationTest do
 
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.{Block, Header}
+  alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys
@@ -128,7 +128,7 @@ defmodule AecoreValidationTest do
     {:ok, signed_tx2} =
       Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
-    block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
+    block = %{Genesis.block() | txs: [signed_tx1, signed_tx2]}
 
     assert block
            |> BlockValidation.validate_block_transactions()
