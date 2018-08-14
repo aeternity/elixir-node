@@ -8,7 +8,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
-  alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Keys
   alias Aehttpclient.Client
 
   require Logger
@@ -16,7 +16,7 @@ defmodule Aecore.Peers.Worker do
   def start_link(_args) do
     peers = %{}
 
-    {pubkey, privkey} = PeerKeys.keypair()
+    {pubkey, privkey} = Keys.keypair(:peer)
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}

@@ -5,8 +5,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.Worker, as: Channel
-  alias Aecore.Keys.Wallet
-  alias Aewallet.Signing
+  alias Aecore.Keys
   alias Aeutil.Serialization
 
   @signing_tag 102
@@ -80,7 +79,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Validates ChannelStateOffChain signatures.
   """
-  @spec validate(ChannelStateOffChain.t(), {Wallet.pubkey(), Wallet.pubkey()}) :: :ok | error()
+  @spec validate(ChannelStateOffChain.t(), {Keys.pubkey(), Keys.pubkey()}) :: :ok | error()
   def validate(%ChannelStateOffChain{signatures: {_, _}} = state, {
         initiator_pubkey,
         responder_pubkey
@@ -107,7 +106,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @spec validate_half_update(
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
-          {Wallet.pubkey(), Wallet.pubkey()},
+          {Keys.pubkey(), Keys.pubkey()},
           Channel.role()
         ) :: :ok | error()
   def validate_half_update(prev_state, new_state, {initiator_pubkey, responder_pubkey}, role) do
@@ -145,7 +144,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @spec validate_full_update(
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
-          {Wallet.pubkey(), Wallet.pubkey()}
+          {Keys.pubkey(), Keys.pubkey()}
         ) :: :ok | error()
   def validate_full_update(prev_state, new_state, pubkeys) do
     cond do
@@ -167,7 +166,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Validates initiator signature
   """
-  @spec valid_initiator?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
+  @spec valid_initiator?(ChannelStateOffChain.t(), Keys.pubkey()) :: boolean()
   def valid_initiator?(%ChannelStateOffChain{signatures: {<<>>, _}}, _) do
     false
   end
@@ -177,7 +176,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         initiator_pubkey
       ) do
     binary_form = signing_form(state)
-    Signing.verify(binary_form, initiator_sig, initiator_pubkey)
+    Keys.verify(binary_form, initiator_sig, initiator_pubkey)
   end
 
   def valid_initiator?(%ChannelStateOffChain{}, _) do
@@ -188,7 +187,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Validates responder signature
   """
-  @spec valid_responder?(ChannelStateOffChain.t(), Wallet.pubkey()) :: boolean()
+  @spec valid_responder?(ChannelStateOffChain.t(), Keys.pubkey()) :: boolean()
   def valid_responder?(%ChannelStateOffChain{signatures: {_, <<>>}}, _) do
     false
   end
@@ -198,7 +197,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         responder_pubkey
       ) do
     binary_form = signing_form(state)
-    Signing.verify(binary_form, responder_sig, responder_pubkey)
+    Keys.verify(binary_form, responder_sig, responder_pubkey)
   end
 
   def valid_responder?(%ChannelStateOffChain{}, _) do
@@ -218,13 +217,13 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Signs a state.
   """
-  @spec sign(ChannelStateOffChain.t(), Channel.role(), Wallet.privkey()) ::
+  @spec sign(ChannelStateOffChain.t(), Channel.role(), Keys.sign_priv_key()) ::
           ChannelStateOffChain.t()
   def sign(%ChannelStateOffChain{signatures: {_, responder_sig}} = state, :initiator, priv_key) do
     initiator_sig =
       state
       |> signing_form()
-      |> Signing.sign(priv_key)
+      |> Keys.sign(priv_key)
 
     %ChannelStateOffChain{state | signatures: {initiator_sig, responder_sig}}
   end
@@ -233,7 +232,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     responder_sig =
       state
       |> signing_form()
-      |> Signing.sign(priv_key)
+      |> Keys.sign(priv_key)
 
     %ChannelStateOffChain{state | signatures: {initiator_sig, responder_sig}}
   end

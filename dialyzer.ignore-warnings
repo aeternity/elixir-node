@@ -1,13 +1,3 @@
-:0: Unknown function 'Elixir.Aewallet.KeyPair':compress/1
-:0: Unknown function 'Elixir.Aewallet.KeyPair':derive/2
-:0: Unknown function 'Elixir.Aewallet.KeyPair':generate_master_key/1
-:0: Unknown function 'Elixir.Aewallet.KeyPair':generate_pub_key/1
-:0: Unknown function 'Elixir.Aewallet.Signing':sign/2
-:0: Unknown function 'Elixir.Aewallet.Signing':verify/3
-:0: Unknown function 'Elixir.Aewallet.Wallet':create_wallet/2
-:0: Unknown function 'Elixir.Aewallet.Wallet':get_private_key/3
-:0: Unknown function 'Elixir.Aewallet.Wallet':get_public_key/3
-:0: Unknown function 'Elixir.Aewallet.Wallet':get_seed/2
 :0: Unknown function 'Elixir.ExJsonSchema.Schema':resolve/1
 :0: Unknown function 'Elixir.ExJsonSchema.Validator':validate/2
 :0: Unknown function 'Elixir.ExRLP':decode/1
@@ -60,6 +50,19 @@
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':key/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':t/0
 :0: Unknown type 'Elixir.MerklePatriciaTree.Trie':value/0
+:0: Unknown function enacl:sign_detached/2
+:0: Unknown function enacl:sign_verify_detached/3
+:0: Unknown function sext:decode/1
+:0: Unknown function sext:encode/1
+:0: Unknown type 'Elixir.Aecore.Chain.Chainstate':account/0
+:0: Unknown type 'Elixir.Aecore.Keys.Wallet':privkey/0
+:0: Unknown type 'Elixir.Aecore.Keys.Wallet':pubkey/0
+:0: Unknown type 'Elixir.Chainstate':t/0
+:0: Unknown type 'Elixir.ChannelSteteOnChain':id/0
+:0: Unknown type 'Elixir.ChannelSteteOnChain':t/0
+:0: Unknown type 'Elixir.Keys':pubkey/0
+:0: Unknown type 'Elixir.Keys':sign_priv_key/0
+:0: Unknown type 'Elixir.Wallet':pubkey/0
 Function put/3 has no local return
 Function update/3 has no local return
 Function process_chainstate/5 has no local return
