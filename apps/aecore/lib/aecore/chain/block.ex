@@ -4,14 +4,10 @@ defmodule Aecore.Chain.Block do
   """
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
-  alias Aecore.Oracle.OracleStateTree
-  alias Aecore.Naming.NamingStateTree
-  alias Aecore.Channel.ChannelStateTree
   alias Aecore.Chain.BlockValidation
   alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aeutil.Genesis
@@ -60,25 +56,24 @@ defmodule Aecore.Chain.Block do
     %Block{header: header, txs: []}
   end
 
-  def genesis_populated_trees() do
+  def genesis_populated_trees do
     genesis_populated_trees(Genesis.preset_accounts())
   end
 
   def genesis_populated_trees(accounts) do
-    chainstate_init = %Chainstate{
-      :accounts => AccountStateTree.init_empty(),
-      :oracles => OracleStateTree.init_empty(),
-      :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
-    }
-    Enum.reduce(accounts, chainstate_init,
-      fn {pubkey, balance}, new_trees ->
-        new_acounts =
-          new_trees.accounts
-          |> AccountStateTree.put(pubkey, Account.new(%{balance: balance, nonce: 0, pubkey: pubkey}))
-        struct(new_trees, accounts: new_acounts)
-      end
-    )
+    chainstate_init = Chainstate.create_chainstate_trees()
+    miner = {Governance.genesis_miner(), Governance.coinbase_transaction_amount()}
+
+    Enum.reduce([miner | accounts], chainstate_init, fn {pubkey, balance}, new_trees ->
+      new_acounts =
+        new_trees.accounts
+        |> AccountStateTree.put(
+          pubkey,
+          Account.new(%{balance: balance, nonce: 0, pubkey: pubkey})
+        )
+
+      struct(new_trees, accounts: new_acounts)
+    end)
   end
 
   @spec rlp_encode(non_neg_integer(), non_neg_integer(), Block.t()) ::

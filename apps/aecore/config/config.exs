@@ -36,7 +36,7 @@ accounts_path =
 
 config :aecore, :spend_tx, version: 1
 
-config :aecore, :aewallet, pub_key_size: 33
+config :aecore, :aewallet, pub_key_size: 32
 
 config :aecore, :rlp_tags,
   account_state: 10,

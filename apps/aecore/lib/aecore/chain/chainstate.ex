@@ -14,7 +14,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys.Wallet
-  alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Hash
 
   require Logger
@@ -53,12 +52,6 @@ defmodule Aecore.Chain.Chainstate do
 
   @spec init :: t()
   def init do
-    # %Chainstate{
-    #   :accounts => AccountStateTree.init_empty(),
-    #   :oracles => OracleStateTree.init_empty(),
-    #   :naming => NamingStateTree.init_empty(),
-    #   :channels => ChannelStateTree.init_empty()
-    #}
     Block.genesis_populated_trees()
   end
 
@@ -92,9 +85,18 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
+  def create_chainstate_trees do
+    %Chainstate{
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => OracleStateTree.init_empty(),
+      :naming => NamingStateTree.init_empty(),
+      :channels => ChannelStateTree.init_empty()
+    }
+  end
+
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::264>> ->
+      <<0::256>> ->
         chainstate
 
       miner_pubkey ->
