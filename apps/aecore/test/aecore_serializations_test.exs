@@ -116,14 +116,19 @@ defmodule AecoreSerializationTest do
     name_state = create_data(NameClaim, :elixir)
     serialized_name_state = NameClaim.rlp_encode(name_state)
     {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    deserialized_name_state = %NameClaim{deserialized_name_state | hash: name_state.hash}
-    assert deserialized_name_state == name_state
+    deserialized_name_state1 = %NameClaim{deserialized_name_state | hash: name_state.hash}
+    assert deserialized_name_state1 == name_state
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
-    deserialized_name_commitment = %NameCommitment{deserialized_name_commitment | hash: name_commitment.hash}
-    assert deserialized_name_commitment == name_commitment
+
+    deserialized_name_commitment1 = %NameCommitment{
+      deserialized_name_commitment
+      | hash: name_commitment.hash
+    }
+
+    assert deserialized_name_commitment1 == name_commitment
   end
 
   # Uncomment this check after the pubkey is implemented with :ed25519

@@ -272,12 +272,12 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   defp signing_form(%ChannelStateOffChain{} = state) do
     list_form = [
-      @signing_tag,
-      @version,
+      :binary.encode_unsigned(@signing_tag),
+      :binary.encode_unsigned(@version),
       state.channel_id,
-      state.initiator_amount,
-      state.responder_amount,
-      state.sequence
+      :binary.encode_unsigned(state.initiator_amount),
+      :binary.encode_unsigned(state.responder_amount),
+      :binary.encode_unsigned(state.sequence)
     ]
 
     ExRLP.encode(list_form)
@@ -291,11 +291,11 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         signatures: {initiator_sig, responder_sig}
       }) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       channel_id,
-      sequence,
-      initiator_amount,
-      responder_amount,
+      :binary.encode_unsigned(sequence),
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
       [initiator_sig, responder_sig]
     ]
   end
@@ -310,9 +310,9 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     {:ok,
      %ChannelStateOffChain{
        channel_id: channel_id,
-       sequence: Serialization.transform_item(sequence, :int),
-       initiator_amount: Serialization.transform_item(initiator_amount, :int),
-       responder_amount: Serialization.transform_item(responder_amount, :int),
+       sequence: :binary.decode_unsigned(sequence),
+       initiator_amount: :binary.decode_unsigned(initiator_amount),
+       responder_amount: :binary.decode_unsigned(responder_amount),
        signatures: {initiator_sig, responder_sig}
      }}
   end

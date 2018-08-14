@@ -197,16 +197,16 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     ttl_type = Serialization.encode_ttl_type(tx.ttl)
 
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       tx.query_format,
       tx.response_format,
       tx.query_fee,
       ttl_type,
-      tx.ttl.ttl,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(tx.ttl.ttl),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -223,23 +223,22 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       ]) do
     ttl_type =
       encoded_ttl_type
-      |> Serialization.transform_item(:int)
       |> Serialization.decode_ttl_type()
 
     payload = %{
       query_format: query_format,
       response_format: response_format,
-      ttl: %{ttl: Serialization.transform_item(ttl_value, :int), type: ttl_type},
-      query_fee: Serialization.transform_item(query_fee, :int)
+      ttl: %{ttl: :binary.decode_unsigned(ttl_value), type: ttl_type},
+      query_fee: :binary.decode_unsigned(query_fee)
     }
 
     DataTx.init_binary(
       OracleRegistrationTx,
       payload,
       encoded_senders,
-      fee,
-      nonce,
-      ttl
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
     )
   end
 

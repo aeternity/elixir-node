@@ -67,10 +67,10 @@ defmodule Aecore.Naming.NameCommitment do
 
   def encode_to_list(%NameCommitment{} = name_commitment) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(name_commitment.owner),
-      name_commitment.created,
-      name_commitment.expires
+      :binary.encode_unsigned(name_commitment.created),
+      :binary.encode_unsigned(name_commitment.expires)
     ]
   end
 
@@ -80,8 +80,8 @@ defmodule Aecore.Naming.NameCommitment do
         {:ok,
          %NameCommitment{
            owner: owner,
-           created: Serialization.transform_item(created, :int),
-           expires: Serialization.transform_item(expires, :int)
+           created: :binary.decode_unsigned(created),
+           expires: :binary.decode_unsigned(expires)
          }}
 
       {:error, _} = error ->

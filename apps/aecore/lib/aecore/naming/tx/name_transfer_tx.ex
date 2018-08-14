@@ -166,13 +166,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       Identifier.encode_to_binary(tx.target),
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -192,9 +192,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         NameTransferTx,
         payload,
         encoded_senders,
-        fee,
-        nonce,
-        ttl
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
       )
     else
       {:error, _} = error -> error

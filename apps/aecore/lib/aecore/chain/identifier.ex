@@ -22,13 +22,15 @@ defmodule Aecore.Chain.Identifier do
   """
   @type t() :: %Identifier{type: type(), value: value()}
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
-  # byte_size should be 32 byte
+
   @type value() :: binary()
   defstruct type: :undefined, value: ""
   use ExConstructor
+  # byte_size should be 32 byte
+  # @data_size 32
 
   @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
-  # byte_size(data) == 32 data should be stricted to 32 bytes only
+  # byte_size(value) == @data_size data should be stricted to 32 bytes only
   def create_identity(value, type) when is_atom(type) and is_binary(value) do
     %Identifier{type: type, value: value}
   end
@@ -52,7 +54,7 @@ defmodule Aecore.Chain.Identifier do
     <<tag::unsigned-integer-size(8), data.value::binary>>
   end
 
-  # byte_size(data) == 33 # data should be stricted to 32 bytes only
+  # byte_size(data) == @data_size # data should be stricted to 32 bytes only
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
   def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
       when is_binary(data) do

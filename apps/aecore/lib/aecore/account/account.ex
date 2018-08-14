@@ -350,9 +350,9 @@ defmodule Aecore.Account.Account do
   @spec encode_to_list(t()) :: list() | {:error, String.t()}
   def encode_to_list(%Account{} = account) do
     [
-      @version,
-      account.nonce,
-      account.balance
+      :binary.encode_unsigned(@version),
+      :binary.encode_unsigned(account.nonce),
+      :binary.encode_unsigned(account.balance)
     ]
   end
 
@@ -361,8 +361,8 @@ defmodule Aecore.Account.Account do
     {:ok,
      %Account{
        id: %Identifier{type: :account},
-       balance: Serialization.transform_item(balance, :int),
-       nonce: Serialization.transform_item(nonce, :int)
+       balance: :binary.decode_unsigned(balance),
+       nonce: :binary.decode_unsigned(nonce)
      }}
   end
 
