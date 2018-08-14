@@ -10,10 +10,10 @@ defmodule Aecore.Contract.Call do
   @version 1
 
   @type t :: %Call{
-          caller_address: Wallet.pubkey(),
+          caller_address: Identifier.t(),
           caller_nonce: integer(),
           height: integer(),
-          contract_address: Wallet.pubkey(),
+          contract_address: Identifier.t(),
           gas_price: non_neg_integer(),
           gas_used: non_neg_integer(),
           return_value: binary(),
@@ -35,7 +35,7 @@ defmodule Aecore.Contract.Call do
 
   @nonce_size 256
 
-  @spec new(hash(), non_neg_integer(), hash(), non_neg_integer(), non_neg_integer()) :: t()
+  @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey() , non_neg_integer()) :: t()
   def new(caller_address, nonce, block_height, contract_address, gas_price) do
     identified_caller_address = Identifier.create_identity(caller_address, :account)
     identified_contract_address = Identifier.create_identity(contract_address, :contract)

@@ -27,7 +27,7 @@ defmodule Aecore.Contract.Contract do
 
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
 
-  @spec new(Wallet.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
+  @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
   def new(owner, nonce, vm_version, code, deposit) do
     contract_id = create_contract_id(owner, nonce)
     identified_contract = Identifier.create_identity(contract_id, :contract)
