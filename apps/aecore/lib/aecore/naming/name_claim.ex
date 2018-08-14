@@ -16,7 +16,7 @@ defmodule Aecore.Naming.NameClaim do
 
   @type name_status() :: :claimed | :revoked
 
-  @type salt :: binary()
+  @type salt :: integer()
 
   @type hash :: binary()
 

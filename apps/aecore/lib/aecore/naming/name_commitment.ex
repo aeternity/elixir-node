@@ -11,7 +11,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   @version 1
 
-  @type salt :: binary()
+  @type salt :: integer()
 
   @type t :: %NameCommitment{
           hash: binary(),
@@ -43,10 +43,10 @@ defmodule Aecore.Naming.NameCommitment do
   end
 
   @spec hash(String.t(), salt()) :: {:ok, binary()} | {:error, String.t()}
-  def hash(name, name_salt) when is_binary(name_salt) do
+  def hash(name, name_salt) when is_integer(name_salt) do
     case NameUtil.normalized_namehash(name) do
       {:ok, hash} ->
-        {:ok, Hash.hash(hash <> name_salt)}
+        {:ok, Hash.hash(hash <> <<name_salt::integer-size(256)>>)}
 
       err ->
         err
