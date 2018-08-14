@@ -398,7 +398,8 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info(_, state) do
+  def handle_info(result, state) do
+    IO.inspect result
     {:noreply, state}
   end
 
