@@ -116,7 +116,7 @@ defmodule AecoreSerializationTest do
     name_state = create_data(NameClaim, :elixir)
     serialized_name_state = NameClaim.rlp_encode(name_state)
     {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    
+
     updated_deserialized_name_state = %NameClaim{deserialized_name_state | hash: name_state.hash}
     assert updated_deserialized_name_state == name_state
 
@@ -128,6 +128,7 @@ defmodule AecoreSerializationTest do
       deserialized_name_commitment
       | hash: name_commitment.hash
     }
+
     assert updated_deserialized_name_commitment == name_commitment
   end
 
