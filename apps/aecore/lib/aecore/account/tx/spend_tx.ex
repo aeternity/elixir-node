@@ -14,7 +14,6 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -169,13 +168,13 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
       Identifier.encode_to_binary(tx.receiver),
-      tx.amount,
-      datatx.fee,
-      datatx.ttl,
-      datatx.nonce,
+      :binary.encode_unsigned(tx.amount),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl),
+      :binary.encode_unsigned(datatx.nonce),
       tx.payload
     ]
   end
@@ -194,14 +193,14 @@ defmodule Aecore.Account.Tx.SpendTx do
         SpendTx,
         %{
           receiver: receiver,
-          amount: Serialization.transform_item(amount, :int),
+          amount: :binary.decode_unsigned(amount),
           version: @version,
           payload: payload
         },
         encoded_senders,
-        fee,
-        nonce,
-        ttl
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
       )
     else
       {:error, _} = error -> error

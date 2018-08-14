@@ -17,7 +17,6 @@ defmodule Aecore.Oracle.Oracle do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
   alias Aeutil.PatriciaMerkleTree
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   @version 1
@@ -280,11 +279,11 @@ defmodule Aecore.Oracle.Oracle do
   @spec encode_to_list(t()) :: list()
   def encode_to_list(%Oracle{} = oracle) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       oracle.query_format,
       oracle.response_format,
-      oracle.query_fee,
-      oracle.expires
+      :binary.encode_unsigned(oracle.query_fee),
+      :binary.encode_unsigned(oracle.expires)
     ]
   end
 
@@ -295,8 +294,8 @@ defmodule Aecore.Oracle.Oracle do
        owner: %Identifier{type: :oracle},
        query_format: query_format,
        response_format: response_format,
-       query_fee: Serialization.transform_item(query_fee, :int),
-       expires: Serialization.transform_item(expires, :int)
+       query_fee: :binary.decode_unsigned(query_fee),
+       expires: :binary.decode_unsigned(expires)
      }}
   end
 

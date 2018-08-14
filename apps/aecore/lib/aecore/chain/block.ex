@@ -70,7 +70,7 @@ defmodule Aecore.Chain.Block do
       end
 
     [
-      block.header.version,
+      :binary.encode_unsigned(block.header.version),
       Header.encode_to_binary(block.header),
       txs
     ]

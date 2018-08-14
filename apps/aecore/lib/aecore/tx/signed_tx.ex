@@ -251,7 +251,7 @@ defmodule Aecore.Tx.SignedTx do
 
   def encode_to_list(%SignedTx{} = tx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       tx.signatures,
       DataTx.rlp_encode(tx.data)
     ]

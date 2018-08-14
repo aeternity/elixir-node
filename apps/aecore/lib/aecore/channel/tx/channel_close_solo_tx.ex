@@ -10,7 +10,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -165,17 +164,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       ChannelStateOffChain.encode_to_list(tx.state),
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
-    state_ver = Serialization.transform_item(state_ver_bin, :int)
+    state_ver = :binary.decode_unsigned(state_ver_bin)
 
     case ChannelStateOffChain.decode_from_list(state_ver, state) do
       {:ok, state} ->
@@ -185,9 +184,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelCloseSoloTx,
           payload,
           encoded_senders,
-          fee,
-          nonce,
-          ttl
+          :binary.encode_unsigned(fee),
+          :binary.encode_unsigned(nonce),
+          :binary.encode_unsigned(ttl)
         )
 
       {:error, _} = error ->

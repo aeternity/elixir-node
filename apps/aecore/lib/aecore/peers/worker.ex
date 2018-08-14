@@ -87,7 +87,12 @@ defmodule Aecore.Peers.Worker do
   def rlp_decode_peers(encoded_peers) do
     Enum.map(encoded_peers, fn encoded_peer ->
       [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
-      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
+
+      %{
+        host: to_charlist(host),
+        port: :binary.decode_unsigned(port_bin),
+        pubkey: pubkey
+      }
     end)
   end
 

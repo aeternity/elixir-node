@@ -149,9 +149,9 @@ defmodule Aecore.Tx.DataTx do
          type: type,
          payload: type.init(payload),
          senders: senders,
-         fee: Serialization.transform_item(fee, :int),
-         nonce: Serialization.transform_item(nonce, :int),
-         ttl: Serialization.transform_item(ttl, :int)
+         fee: fee,
+         nonce: nonce,
+         ttl: ttl
        }}
     else
       {:error, _} = error -> error

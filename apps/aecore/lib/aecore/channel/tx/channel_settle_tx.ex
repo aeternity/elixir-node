@@ -152,12 +152,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       tx.channel_id,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -168,9 +168,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       ChannelSettleTx,
       payload,
       encoded_senders,
-      fee,
-      nonce,
-      ttl
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
     )
   end
 
