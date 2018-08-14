@@ -15,7 +15,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aeutil.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -317,7 +317,7 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _} = Keys.keypair(:sign)
     accounts_state_tree = blocks_data_map[top_hash].chain_state.accounts
 
     lowest_valid_nonce =

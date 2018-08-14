@@ -11,7 +11,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -130,27 +129,27 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
-      tx.ttl,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.nonce),
+      :binary.encode_unsigned(tx.ttl),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
   def decode_from_list(@version, [encoded_senders, nonce, ttl_value, fee, ttl]) do
     payload = %{
-      ttl: Serialization.transform_item(ttl_value, :int)
+      ttl: :binary.encode_unsigned(ttl_value)
     }
 
     DataTx.init_binary(
       OracleExtendTx,
       payload,
       encoded_senders,
-      fee,
-      nonce,
-      ttl
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
     )
   end
 

@@ -14,7 +14,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -216,15 +215,15 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
-      tx.client_ttl,
+      :binary.encode_unsigned(tx.client_ttl),
       tx.pointers,
-      tx.expire_by,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(tx.expire_by),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -241,8 +240,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     case Identifier.decode_from_binary(encoded_hash) do
       {:ok, hash} ->
         payload = %NameUpdateTx{
-          client_ttl: Serialization.transform_item(client_ttl, :int),
-          expire_by: Serialization.transform_item(expire_by, :int),
+          client_ttl: :binary.decode_unsigned(client_ttl),
+          expire_by: :binary.decode_unsigned(expire_by),
           hash: hash,
           pointers: pointers
         }
@@ -251,9 +250,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           NameUpdateTx,
           payload,
           encoded_senders,
-          fee,
-          nonce,
-          ttl
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
         )
 
       {:error, _} = error ->

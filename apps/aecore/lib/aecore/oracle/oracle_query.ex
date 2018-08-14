@@ -41,8 +41,8 @@ defmodule Aecore.Oracle.OracleQuery do
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
       case oracle_query.has_response do
-        true -> 1
-        false -> 0
+        true -> <<1>>
+        false -> <<0>>
       end
 
     response =
@@ -53,16 +53,16 @@ defmodule Aecore.Oracle.OracleQuery do
       end
 
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(oracle_query.sender_address),
-      oracle_query.sender_nonce,
+      :binary.encode_unsigned(oracle_query.sender_nonce),
       Identifier.encode_to_binary(oracle_query.oracle_address),
       oracle_query.query,
       has_response,
       response,
-      oracle_query.expires,
-      oracle_query.response_ttl,
-      oracle_query.fee
+      :binary.encode_unsigned(oracle_query.expires),
+      :binary.encode_unsigned(oracle_query.response_ttl),
+      :binary.encode_unsigned(oracle_query.fee)
     ]
   end
 
@@ -78,9 +78,9 @@ defmodule Aecore.Oracle.OracleQuery do
         fee
       ]) do
     has_response =
-      case Serialization.transform_item(has_response, :int) do
-        1 -> true
-        0 -> false
+      case has_response do
+        <<1>> -> true
+        <<0>> -> false
       end
 
     new_response =
@@ -93,15 +93,15 @@ defmodule Aecore.Oracle.OracleQuery do
          {:ok, sender_address} <- Identifier.decode_from_binary(encoded_sender_address) do
       {:ok,
        %OracleQuery{
-         expires: Serialization.transform_item(expires, :int),
-         fee: Serialization.transform_item(fee, :int),
+         expires: :binary.decode_unsigned(expires),
+         fee: :binary.decode_unsigned(fee),
          has_response: has_response,
          oracle_address: oracle_address,
          query: query,
          response: new_response,
-         response_ttl: Serialization.transform_item(response_ttl, :int),
+         response_ttl: :binary.decode_unsigned(response_ttl),
          sender_address: sender_address,
-         sender_nonce: Serialization.transform_item(sender_nonce, :int)
+         sender_nonce: :binary.decode_unsigned(sender_nonce)
        }}
     else
       {:error, _} = error -> error

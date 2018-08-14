@@ -346,9 +346,9 @@ defmodule Aeutil.Serialization do
 
     case result do
       [tag_bin, ver_bin | rest_data] ->
-        case TypeToTag.tag_to_type(transform_item(tag_bin, :int)) do
+        case TypeToTag.tag_to_type(:binary.decode_unsigned(tag_bin)) do
           {:ok, actual_type} ->
-            version = transform_item(ver_bin, :int)
+            version = :binary.decode_unsigned(ver_bin)
 
             if actual_type == type || type == :any do
               actual_type.decode_from_list(version, rest_data)
@@ -369,30 +369,8 @@ defmodule Aeutil.Serialization do
     end
   end
 
-  # Should be changed after some adjustments in oracle structures
-  def transform_item(item) do
-    Poison.encode!(item)
-  end
-
-  def transform_item(item, type) do
-    case type do
-      :int -> :binary.decode_unsigned(item)
-      :binary -> Poison.decode!(item)
-    end
-  end
-
-  def encode_ttl_type(%{ttl: _ttl, type: :absolute}), do: 1
-  def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: 0
-  def decode_ttl_type(1), do: :absolute
-  def decode_ttl_type(0), do: :relative
-
-  # Temporary workaround for encoding inconsistances
-  @spec decode_format(binary()) :: binary()
-  def decode_format(<<"$æx", binary::binary>>) do
-    transform_item(binary, :binary)
-  end
-
-  def decode_format(binary) when is_binary(binary) do
-    binary
-  end
+  def encode_ttl_type(%{ttl: _ttl, type: :absolute}), do: <<1>>
+  def encode_ttl_type(%{ttl: _ttl, type: :relative}), do: <<0>>
+  def decode_ttl_type(<<1>>), do: :absolute
+  def decode_ttl_type(<<0>>), do: :relative
 end

@@ -4,7 +4,7 @@ defmodule Aecore.Account.Account do
   """
 
   require Logger
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
@@ -65,7 +65,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the balance for a given key.
   """
-  @spec balance(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
+  @spec balance(AccountStateTree.accounts_state(), Keys.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
     AccountStateTree.get(tree, key).balance
   end
@@ -73,7 +73,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Return the nonce for a given key.
   """
-  @spec nonce(AccountStateTree.accounts_state(), Wallet.pubkey()) :: non_neg_integer()
+  @spec nonce(AccountStateTree.accounts_state(), Keys.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
     AccountStateTree.get(tree, key).nonce
   end
@@ -81,11 +81,10 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a SpendTx where the miners public key is used as a sender (sender)
   """
-  @spec spend(Wallet.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
+  @spec spend(Keys.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def spend(receiver, amount, fee, payload, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     spend(sender, sender_priv_key, receiver, amount, fee, nonce, payload, ttl)
   end
@@ -94,9 +93,9 @@ defmodule Aecore.Account.Account do
   Build a SpendTx from the given sender keys to the receivers account
   """
   @spec spend(
-          Wallet.pubkey(),
-          Wallet.privkey(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
+          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
@@ -120,8 +119,7 @@ defmodule Aecore.Account.Account do
   @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -130,8 +128,8 @@ defmodule Aecore.Account.Account do
   Build a NamePreClaimTx from the given sender keys
   """
   @spec pre_claim(
-          Wallet.pubkey(),
-          Wallet.privkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
           String.t(),
           binary(),
           non_neg_integer(),
@@ -155,8 +153,7 @@ defmodule Aecore.Account.Account do
   @spec claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(name, name_salt, fee, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -165,8 +162,8 @@ defmodule Aecore.Account.Account do
   Build a NameClaimTx from the given sender keys
   """
   @spec claim(
-          Wallet.pubkey(),
-          Wallet.privkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
           String.t(),
           binary(),
           non_neg_integer(),
@@ -190,8 +187,7 @@ defmodule Aecore.Account.Account do
   @spec name_update(String.t(), String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_update(name, pointers, fee, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl)
   end
@@ -200,8 +196,8 @@ defmodule Aecore.Account.Account do
   Build a NameUpdateTx from the given sender keys
   """
   @spec name_update(
-          Wallet.pubkey(),
-          Wallet.privkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
           String.t(),
           String.t(),
           non_neg_integer(),
@@ -231,8 +227,7 @@ defmodule Aecore.Account.Account do
   @spec name_transfer(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(name, target, fee, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl)
   end
@@ -241,8 +236,8 @@ defmodule Aecore.Account.Account do
   Build a NameTransferTx from the given sender keys
   """
   @spec name_transfer(
-          Wallet.pubkey(),
-          Wallet.privkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
           String.t(),
           binary(),
           non_neg_integer(),
@@ -266,8 +261,7 @@ defmodule Aecore.Account.Account do
   @spec name_revoke(String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(name, fee, ttl \\ 0) do
-    sender = Wallet.get_public_key()
-    sender_priv_key = Wallet.get_private_key()
+    {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce, ttl)
   end
@@ -276,8 +270,8 @@ defmodule Aecore.Account.Account do
   Build a NameRevokeTx from the given sender keys
   """
   @spec name_revoke(
-          Wallet.pubkey(),
-          Wallet.privkey(),
+          Keys.pubkey(),
+          Keys.sign_priv_key(),
           String.t(),
           non_neg_integer(),
           non_neg_integer(),
@@ -350,9 +344,9 @@ defmodule Aecore.Account.Account do
   @spec encode_to_list(t()) :: list() | {:error, String.t()}
   def encode_to_list(%Account{} = account) do
     [
-      @version,
-      account.nonce,
-      account.balance
+      :binary.encode_unsigned(@version),
+      :binary.encode_unsigned(account.nonce),
+      :binary.encode_unsigned(account.balance)
     ]
   end
 
@@ -361,8 +355,8 @@ defmodule Aecore.Account.Account do
     {:ok,
      %Account{
        id: %Identifier{type: :account},
-       balance: Serialization.transform_item(balance, :int),
-       nonce: Serialization.transform_item(nonce, :int)
+       balance: :binary.decode_unsigned(balance),
+       nonce: :binary.decode_unsigned(nonce)
      }}
   end
 

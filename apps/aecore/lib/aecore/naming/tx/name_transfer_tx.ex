@@ -9,7 +9,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aeutil.Hash
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
@@ -22,7 +22,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @typedoc "Expected structure for the Transfer Transaction"
   @type payload :: %{
           hash: binary(),
-          target: Wallet.pubkey()
+          target: Keys.pubkey()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
@@ -32,7 +32,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @typedoc "Structure of the NameTransferTx Transaction type"
   @type t :: %NameTransferTx{
           hash: binary(),
-          target: Wallet.pubkey()
+          target: Keys.pubkey()
         }
 
   @doc """
@@ -68,7 +68,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       byte_size(hash.value) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
-      !Wallet.key_size_valid?(target.value) ->
+      !Keys.key_size_valid?(target) ->
         {:error, "#{__MODULE__}: target size invalid"}
 
       length(senders) != 1 ->
@@ -166,13 +166,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       Identifier.encode_to_binary(tx.target),
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -192,9 +192,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         NameTransferTx,
         payload,
         encoded_senders,
-        fee,
-        nonce,
-        ttl
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
       )
     else
       {:error, _} = error -> error
