@@ -77,7 +77,7 @@ defmodule AecoreTxTest do
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-    assert Account.balance(Chain.chain_state().accounts, sender) == 100
+    assert Account.balance(Chain.chain_state().accounts, sender) == 10_000_000_000_000_000_000
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
@@ -115,7 +115,8 @@ defmodule AecoreTxTest do
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
-    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 100
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             10_000_000_000_000_000_000
   end
 
   test "sender pub_key is too small", tx do
