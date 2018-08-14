@@ -9,7 +9,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aeutil.Bits
@@ -116,7 +116,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !validate_identifier(oracle_address) ->
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
-      !Wallet.key_size_valid?(oracle_address.value) ->
+      !Keys.key_size_valid?(oracle_address.value) ->
         {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
@@ -257,7 +257,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Wallet.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
+  @spec id(Keys.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)

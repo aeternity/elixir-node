@@ -28,8 +28,7 @@ config :aecore, :pow,
     root_hash: <<0::256>>,
     time: 1_507_275_094_308,
     nonce: 46,
-    # 256 if key is 32 bytes
-    miner: <<0::264>>,
+    miner: <<0::256>>,
     pow_evidence: [
       1656,
       2734,

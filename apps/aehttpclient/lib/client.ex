@@ -7,7 +7,7 @@ defmodule Aehttpclient.Client do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Keys
 
   require Logger
 
@@ -23,7 +23,7 @@ defmodule Aehttpclient.Client do
   def get_peer_info(uri) do
     case get(uri <> "/peer_info") do
       {:ok, %{"port" => port, "pubkey" => pubkey}} ->
-        decoded_pubkey = PeerKeys.base58c_decode(pubkey)
+        decoded_pubkey = Keys.peer_decode(pubkey)
         host = uri |> String.split(":") |> Enum.at(0) |> to_charlist()
         peer_info = %{host: host, port: port, pubkey: decoded_pubkey}
         {:ok, peer_info}

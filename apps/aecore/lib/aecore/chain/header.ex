@@ -5,7 +5,7 @@ defmodule Aecore.Chain.Header do
 
   alias Aecore.Chain.Header
   alias Aeutil.Bits
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
 
   @header_version_size 64
   @header_height_size 64
@@ -16,8 +16,7 @@ defmodule Aecore.Chain.Header do
   @pow_size 168
   @header_nonce_size 64
   @header_time_size 64
-  # Should be adjusted to 32 after key algorithm change
-  @pubkey_size 33
+  @pubkey_size 32
 
   @pow_element_size 4
   @pow_element_size_bits @pow_element_size * 8
@@ -31,7 +30,7 @@ defmodule Aecore.Chain.Header do
           target: non_neg_integer(),
           nonce: non_neg_integer(),
           time: non_neg_integer(),
-          miner: Wallet.pubkey(),
+          miner: Keys.pubkey(),
           version: non_neg_integer()
         }
 
@@ -58,7 +57,7 @@ defmodule Aecore.Chain.Header do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer()
         ) :: Header.t()
 

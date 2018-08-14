@@ -8,7 +8,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
@@ -21,7 +21,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          receiver: Wallet.pubkey(),
+          receiver: Keys.pubkey(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
@@ -36,7 +36,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
-          receiver: Wallet.pubkey(),
+          receiver: Keys.pubkey(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
@@ -87,7 +87,7 @@ defmodule Aecore.Account.Tx.SpendTx do
       tx.version != get_tx_version() ->
         {:error, "#{__MODULE__}: Invalid version"}
 
-      !Wallet.key_size_valid?(receiver.value) ->
+      !Keys.key_size_valid?(receiver) ->
         {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       length(senders) != 1 ->
