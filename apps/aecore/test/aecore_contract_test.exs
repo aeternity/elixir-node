@@ -52,8 +52,8 @@ defmodule AecoreContractTest do
     tree = ContractStateTree.init_empty()
     contract = create_contract()
 
-    tree = ContractStateTree.insert_contract(tree, contract)
-    saved_contract = ContractStateTree.get_contract(tree, contract.id.value)
+    updated_tree = ContractStateTree.insert_contract(tree, contract)
+    saved_contract = ContractStateTree.get_contract(updated_tree, contract.id.value)
     assert contract === saved_contract
 
     new_contract_storage = %{
@@ -67,8 +67,11 @@ defmodule AecoreContractTest do
       | store: new_contract_storage
     }
 
-    tree = ContractStateTree.enter_contract(tree, updated_storage_contract)
-    updated_contract = ContractStateTree.get_contract(tree, updated_storage_contract.id.value)
+    updated_tree1 = ContractStateTree.enter_contract(tree, updated_storage_contract)
+
+    updated_contract =
+      ContractStateTree.get_contract(updated_tree1, updated_storage_contract.id.value)
+
     assert updated_storage_contract.store === updated_contract.store
   end
 
@@ -78,7 +81,7 @@ defmodule AecoreContractTest do
     Call.new(
       pubkey,
       Account.nonce(TestUtils.get_accounts_chainstate(), pubkey) + 1,
-      Chain.top_height,
+      Chain.top_height(),
       <<"THIS IS NOT AN ACTUALL CONTRACT ADDRESS">>,
       1
     )

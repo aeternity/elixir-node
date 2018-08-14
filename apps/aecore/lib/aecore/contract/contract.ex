@@ -125,11 +125,7 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec store_id(Contract.t()) :: binary()
-  def store_id(contract) do
-    id = contract.id
-
-    <<id.value::binary, @store_prefix>>
-  end
+  def store_id(contract = %Contract{id: id}), do: <<id.value::binary, @store_prefix>>
 
   defp create_contract_id(owner, nonce) do
     nonce_binary = :binary.encode_unsigned(nonce)
