@@ -191,14 +191,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec encode_to_list(t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       channel.initiator_pubkey,
       channel.responder_pubkey,
-      channel.initiator_amount,
-      channel.responder_amount,
-      channel.lock_period,
-      channel.slash_close,
-      channel.slash_sequence
+      :binary.encode_unsigned(channel.initiator_amount),
+      :binary.encode_unsigned(channel.responder_amount),
+      :binary.encode_unsigned(channel.lock_period),
+      :binary.encode_unsigned(channel.slash_close),
+      :binary.encode_unsigned(channel.slash_sequence)
     ]
   end
 
@@ -217,11 +217,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
      %ChannelStateOnChain{
        initiator_pubkey: initiator_pubkey,
        responder_pubkey: responder_pubkey,
-       initiator_amount: Serialization.transform_item(initiator_amount, :int),
-       responder_amount: Serialization.transform_item(responder_amount, :int),
-       lock_period: Serialization.transform_item(lock_period, :int),
-       slash_close: Serialization.transform_item(slash_close, :int),
-       slash_sequence: Serialization.transform_item(slash_sequence, :int)
+       initiator_amount: :binary.decode_unsigned(initiator_amount),
+       responder_amount: :binary.decode_unsigned(responder_amount),
+       lock_period: :binary.decode_unsigned(lock_period),
+       slash_close: :binary.decode_unsigned(slash_close),
+       slash_sequence: :binary.decode_unsigned(slash_sequence)
      }}
   end
 

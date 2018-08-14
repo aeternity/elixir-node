@@ -6,14 +6,14 @@ defmodule AecoreSerializationTest do
   """
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.{OracleQuery, Oracle}
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Keys
+  alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
-  alias Aecore.Account.Account
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
   alias Aecore.Naming.{NameClaim, NameCommitment}
@@ -116,43 +116,44 @@ defmodule AecoreSerializationTest do
     name_state = create_data(NameClaim, :elixir)
     serialized_name_state = NameClaim.rlp_encode(name_state)
     {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    deserialized_name_state = %NameClaim{deserialized_name_state | hash: name_state.hash}
-    assert deserialized_name_state == name_state
+    deserialized_name_state1 = %NameClaim{deserialized_name_state | hash: name_state.hash}
+    assert deserialized_name_state1 == name_state
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
 
-    deserialized_name_commitment = %NameCommitment{
+    deserialized_name_commitment1 = %NameCommitment{
       deserialized_name_commitment
       | hash: name_commitment.hash
     }
 
-    assert deserialized_name_commitment == name_commitment
+    assert deserialized_name_commitment1 == name_commitment
   end
 
-  # Uncomment this check after the pubkey is implemented with :ed25519
-  # @tag :rlp_test
-  # @tag timeout: 120_000
-  # test "Epoch RLP-encoded block deserialization", setup do
-  # epoch_serialized_block = create_data(Block, :erlang)
-  # deserialized_epoch_block = Block.rlp_decode(epoch_serialized_block)
-  # assert %Block{} = deserialized_epoch_block
-  # end
+  @tag :rlp_test
+  @tag timeout: 120_000
+  test "Epoch RLP-encoded block deserialization" do
+    epoch_serialized_block = create_data(Block, :erlang)
+    {:ok, deserialized_epoch_block} = Block.rlp_decode(epoch_serialized_block)
+    assert %Block{} = deserialized_epoch_block
+  end
 
   def create_data(data_type, :elixir) do
+    %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
+
     case data_type do
       SpendTx ->
         DataTx.init(
           data_type,
           %{amount: 100, receiver: <<1, 2, 3>>, version: 1, payload: <<"payload">>},
-          Wallet.get_public_key(),
+          elem(Keys.keypair(:sign), 0),
           100,
           Chain.lowest_valid_nonce()
         )
 
       SignedTx ->
-        {:ok, signed_tx} = Account.spend(Wallet.get_public_key("M/0/1"), 100, 20, <<"payload">>)
+        {:ok, signed_tx} = Account.spend(acc2_pub, 100, 20, <<"payload">>)
 
         signed_tx
 
@@ -172,8 +173,8 @@ defmodule AecoreSerializationTest do
           has_response: false,
           oracle_address: %Identifier{
             value:
-              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
             type: :oracle
           },
           query: "foo: bar",
@@ -181,8 +182,8 @@ defmodule AecoreSerializationTest do
           response_ttl: 86_000,
           sender_address: %Identifier{
             value:
-              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
             type: :account
           },
           sender_nonce: 4
@@ -205,17 +206,14 @@ defmodule AecoreSerializationTest do
         update.data
 
       NameTransferTx ->
-        transfer_to_priv = Wallet.get_private_key("m/0/1")
-
-        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        transfer_to_pub = acc2_pub
 
         {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 50)
         transfer.data
 
       NameRevokeTx ->
-        transfer_to_priv = Wallet.get_private_key("m/0/1")
-
-        transfer_to_pub = Wallet.to_public_key(transfer_to_priv)
+        transfer_to_priv = acc2_priv
+        transfer_to_pub = acc2_pub
         next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
         {:ok, revoke} =
@@ -234,8 +232,8 @@ defmodule AecoreSerializationTest do
           },
           owner: %Identifier{
             value:
-              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
             type: :account
           },
           pointers: [],
@@ -253,8 +251,8 @@ defmodule AecoreSerializationTest do
           },
           owner: %Identifier{
             value:
-              <<3, 238, 194, 37, 53, 17, 131, 41, 32, 167, 209, 197, 236, 138, 35, 63, 33, 4, 236,
-                181, 172, 160, 156, 141, 129, 143, 104, 133, 128, 109, 199, 73, 102>>,
+              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
             type: :account
           },
           created: 8500,

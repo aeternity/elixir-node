@@ -12,7 +12,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Hash
 
@@ -64,7 +64,7 @@ defmodule Aecore.Chain.Chainstate do
           list(),
           t(),
           non_neg_integer(),
-          Wallet.pubkey()
+          Keys.pubkey()
         ) :: {:ok, t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
     chainstate_with_coinbase =

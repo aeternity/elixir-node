@@ -91,11 +91,11 @@ defmodule Aecore.Naming.NameClaim do
   @spec encode_to_list(t()) :: binary()
   def encode_to_list(%NameClaim{} = naming_state) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(naming_state.owner),
-      naming_state.expires,
+      :binary.encode_unsigned(naming_state.expires),
       Atom.to_string(naming_state.status),
-      naming_state.ttl,
+      :binary.encode_unsigned(naming_state.ttl),
       naming_state.pointers
     ]
   end
@@ -107,9 +107,9 @@ defmodule Aecore.Naming.NameClaim do
         {:ok,
          %NameClaim{
            owner: owner,
-           expires: Serialization.transform_item(expires, :int),
+           expires: :binary.decode_unsigned(expires),
            status: String.to_atom(status),
-           ttl: Serialization.transform_item(ttl, :int),
+           ttl: :binary.decode_unsigned(ttl),
            pointers: pointers
          }}
 

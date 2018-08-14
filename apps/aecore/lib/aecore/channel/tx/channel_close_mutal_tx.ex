@@ -10,7 +10,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.ChannelStateTree
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -177,14 +176,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
+      :binary.encode_unsigned(datatx.nonce),
       tx.channel_id,
-      tx.initiator_amount,
-      tx.responder_amount,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(tx.initiator_amount),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -199,17 +198,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       ]) do
     payload = %ChannelCloseMutalTx{
       channel_id: channel_id,
-      initiator_amount: Serialization.transform_item(initiator_amount, :int),
-      responder_amount: Serialization.transform_item(responder_amount, :int)
+      initiator_amount: :binary.decode_unsigned(initiator_amount),
+      responder_amount: :binary.decode_unsigned(responder_amount)
     }
 
     DataTx.init_binary(
       ChannelCloseMutalTx,
       payload,
       encoded_senders,
-      fee,
-      nonce,
-      ttl
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
     )
   end
 

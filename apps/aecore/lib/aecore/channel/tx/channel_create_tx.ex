@@ -10,7 +10,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -191,14 +190,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
-      @version,
+      :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
-      datatx.nonce,
-      tx.initiator_amount,
-      tx.responder_amount,
-      tx.locktime,
-      datatx.fee,
-      datatx.ttl
+      :binary.encode_unsigned(datatx.nonce),
+      :binary.encode_unsigned(tx.initiator_amount),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(tx.locktime),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
@@ -212,18 +211,18 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         ttl
       ]) do
     payload = %ChannelCreateTx{
-      initiator_amount: Serialization.transform_item(initiator_amount, :int),
-      responder_amount: Serialization.transform_item(responder_amount, :int),
-      locktime: Serialization.transform_item(locktime, :int)
+      initiator_amount: :binary.decode_unsigned(initiator_amount),
+      responder_amount: :binary.decode_unsigned(responder_amount),
+      locktime: :binary.decode_unsigned(locktime)
     }
 
     DataTx.init_binary(
       ChannelCreateTx,
       payload,
       encoded_senders,
-      fee,
-      nonce,
-      ttl
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
     )
   end
 

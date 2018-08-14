@@ -18,7 +18,6 @@ defmodule Aecore.Channel.Worker do
 
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
   alias Aeutil.Events
 
   use GenServer
@@ -122,7 +121,7 @@ defmodule Aecore.Channel.Worker do
   """
   @spec initialize(
           binary(),
-          {{Wallet.pubkey(), non_neg_integer()}, {Wallet.pubkey(), non_neg_integer()}},
+          {{Keys.pubkey(), non_neg_integer()}, {Keys.pubkey(), non_neg_integer()}},
           role(),
           non_neg_integer()
         ) :: :ok | error()
@@ -142,7 +141,7 @@ defmodule Aecore.Channel.Worker do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, binary(), SignedTx.t()} | error()
   def open(temporary_id, locktime, fee, nonce, priv_key)
       when is_binary(temporary_id) and is_integer(locktime) and is_integer(fee) and
@@ -153,7 +152,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Signs open transaction. Can only be called once per channel by :responder. Returns fully signed SignedTx and adds it to Pool.
   """
-  @spec sign_open(binary(), SignedTx.t(), Wallet.privkey()) ::
+  @spec sign_open(binary(), SignedTx.t(), Keys.sign_priv_key()) ::
           {:ok, binary(), SignedTx.t()} | error()
   def sign_open(temporary_id, %SignedTx{} = open_tx, priv_key)
       when is_binary(temporary_id) and is_binary(priv_key) do
@@ -178,7 +177,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Transfers amount to other peer in channel. Returns half-signed channel off-chain state. Can only be called on open channel.
   """
-  @spec transfer(binary(), non_neg_integer(), Wallet.privkey()) ::
+  @spec transfer(binary(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStateOffChain.t()} | error()
   def transfer(channel_id, amount, priv_key)
       when is_binary(channel_id) and is_integer(amount) and is_binary(priv_key) do
@@ -188,7 +187,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received channel state. If it's half signed and validates: signs it and returns it.
   """
-  @spec recv_state(ChannelStateOffChain.t(), Wallet.privkey()) ::
+  @spec recv_state(ChannelStateOffChain.t(), Keys.sign_priv_key()) ::
           {:ok, ChannelStateOffChain.t() | nil} | error()
   def recv_state(%ChannelStateOffChain{} = recv_state, priv_key) when is_binary(priv_key) do
     GenServer.call(__MODULE__, {:recv_state, recv_state, priv_key})
@@ -201,7 +200,7 @@ defmodule Aecore.Channel.Worker do
           binary(),
           {non_neg_integer(), non_neg_integer()},
           non_neg_integer(),
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, SignedTx.t()} | error()
   def close(channel_id, {_, _} = fees, nonce, priv_key)
       when is_binary(channel_id) and is_integer(nonce) and is_binary(priv_key) do
@@ -215,7 +214,7 @@ defmodule Aecore.Channel.Worker do
           binary(),
           SignedTx.t(),
           {non_neg_integer(), non_neg_integer()},
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, SignedTx.t()} | error()
   def recv_close_tx(channel_id, %SignedTx{} = close_tx, {_, _} = fees, priv_key)
       when is_binary(channel_id) and is_binary(priv_key) do
@@ -233,7 +232,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Solo closes channel. Creates solo close Tx and adds it to the pool.
   """
-  @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec solo_close(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | error()
   def solo_close(channel_id, fee, nonce, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
@@ -243,7 +242,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Slashes channel. Creates slash Tx and adds it to the pool.
   """
-  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Wallet.pubkey(), Wallet.privkey()) ::
+  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), Keys.sign_priv_key()) ::
           :ok | error()
   def slash(channel_id, fee, nonce, pubkey, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and
@@ -258,8 +257,8 @@ defmodule Aecore.Channel.Worker do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.pubkey(),
-          Wallet.privkey()
+          Keys.pubkey(),
+          Keys.sign_priv_key()
         ) :: :ok | error()
   def slashed(%SignedTx{} = slash_tx, fee, nonce, pubkey, priv_key)
       when is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and is_binary(priv_key) do
@@ -269,7 +268,7 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Creates settle transaction and adds it to the pool
   """
-  @spec settle(binary(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec settle(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | :error | error()
   def settle(channel_id, fee, nonce, priv_key)
       when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do

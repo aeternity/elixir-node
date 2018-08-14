@@ -1,6 +1,4 @@
 defmodule Aecore.Chain.Identifier do
-  alias __MODULE__
-
   @moduledoc """
   Utility module for interacting with identifiers.
 
@@ -20,16 +18,24 @@ defmodule Aecore.Chain.Identifier do
     balance: non_neg_integer()
   }
   """
-  @type t() :: %Identifier{type: type(), value: value()}
-  @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
-  # byte_size should be 32 byte
-  @type value() :: binary()
+
+  alias __MODULE__
   defstruct type: :undefined, value: ""
   use ExConstructor
 
-  @spec create_identity(type(), value()) :: Identifier.t() | {:error, String.t()}
-  # byte_size(data) == 32 data should be stricted to 32 bytes only
-  def create_identity(value, type) when is_atom(type) and is_binary(value) do
+  @type t() :: %Identifier{type: type(), value: value()}
+  @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
+  @type value() :: binary()
+
+  # Use the binary size as guard for correct value size
+  # This requires special look over the code
+  # @bdata_size 32
+  @tag_size 8
+
+  @spec create_identity(type(), value()) :: Identifier.t()
+  # byte_size(data) == @data_size data should be stricted to 32 bytes only
+  def create_identity(value, type)
+      when is_atom(type) and is_binary(value) do
     %Identifier{type: type, value: value}
   end
 
@@ -49,12 +55,12 @@ defmodule Aecore.Chain.Identifier do
   @spec encode_to_binary(Identifier.t()) :: binary()
   def encode_to_binary(%Identifier{} = data) do
     tag = type_to_tag(data.type)
-    <<tag::unsigned-integer-size(8), data.value::binary>>
+    <<tag::unsigned-integer-size(@tag_size), data.value::binary>>
   end
 
-  # byte_size(data) == 33 # data should be stricted to 32 bytes only
+  # byte_size(data) == @data_size # data should be stricted to 32 bytes only
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
-  def decode_from_binary(<<tag::unsigned-integer-size(8), data::binary>>)
+  def decode_from_binary(<<tag::unsigned-integer-size(@tag_size), data::binary>>)
       when is_binary(data) do
     case tag_to_type(tag) do
       {:error, msg} ->
@@ -66,18 +72,14 @@ defmodule Aecore.Chain.Identifier do
   end
 
   @spec encode_list_to_binary(list(t())) :: list(binary())
-  def encode_list_to_binary([]) do
-    []
-  end
+  def encode_list_to_binary([]), do: []
 
   def encode_list_to_binary([head | rest]) do
     [encode_to_binary(head) | encode_list_to_binary(rest)]
   end
 
   @spec decode_list_from_binary(list(binary())) :: {:ok, list(t())} | {:error, String.t()}
-  def decode_list_from_binary([]) do
-    {:ok, []}
-  end
+  def decode_list_from_binary([]), do: {:ok, []}
 
   def decode_list_from_binary([head | rest]) do
     with {:ok, head_decoded} <- decode_from_binary(head),

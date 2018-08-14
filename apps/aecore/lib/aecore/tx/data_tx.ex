@@ -7,7 +7,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aeutil.Bits
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
@@ -149,9 +149,9 @@ defmodule Aecore.Tx.DataTx do
          type: type,
          payload: type.init(payload),
          senders: senders,
-         fee: Serialization.transform_item(fee, :int),
-         nonce: Serialization.transform_item(nonce, :int),
-         ttl: Serialization.transform_item(ttl, :int)
+         fee: fee,
+         nonce: nonce,
+         ttl: ttl
        }}
     else
       {:error, _} = error -> error
@@ -202,7 +202,10 @@ defmodule Aecore.Tx.DataTx do
   Checks whether the fee is above 0.
   """
   @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def validate(%DataTx{fee: fee, type: type} = tx, block_height \\ Chain.top_height()) do
+  def validate(
+        %DataTx{fee: fee, type: type, senders: senders} = tx,
+        block_height \\ Chain.top_height()
+      ) do
     cond do
       !Enum.member?(valid_types(), type) ->
         {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
@@ -210,7 +213,7 @@ defmodule Aecore.Tx.DataTx do
       fee < 0 ->
         {:error, "#{__MODULE__}: Negative fee"}
 
-      !senders_pubkeys_size_valid?(tx.senders) ->
+      !senders_pubkeys_size_valid?(senders) ->
         {:error, "#{__MODULE__}: Invalid senders pubkey size"}
 
       DataTx.ttl(tx) < 0 ->
@@ -361,7 +364,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   defp senders_pubkeys_size_valid?([sender | rest]) do
-    if Wallet.key_size_valid?(sender.value) do
+    if Keys.key_size_valid?(sender) do
       senders_pubkeys_size_valid?(rest)
     else
       false
