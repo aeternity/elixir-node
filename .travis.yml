@@ -20,7 +20,7 @@ script:
   - mix compile --warnings-as-errors
   - mix compile.xref --warnings-as-errors
   - mix credo list
-  - mix test --only sync_test
+  - mix coveralls -u
   - mix dialyzer
 
 cache:
