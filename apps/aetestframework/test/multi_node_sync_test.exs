@@ -10,8 +10,7 @@ defmodule MultiNodeSyncTest do
     Chain.clear_state()
     Pool.get_and_empty_pool()
 
-    Porcelain.reinit()
-    port1 = find_port(2)
+    port1 = find_port(1)
     TestFramework.new_node("node1", port1)
     :timer.sleep 2000
 
