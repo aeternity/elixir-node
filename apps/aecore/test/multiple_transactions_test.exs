@@ -15,6 +15,7 @@ defmodule MultipleTransactionsTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
+    Persistence.delete_all_blocks()
 
     on_exit(fn ->
       Persistence.delete_all_blocks()
