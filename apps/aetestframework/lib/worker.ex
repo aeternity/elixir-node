@@ -588,15 +588,17 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
       true ->
         # Running the new elixir-node using Port
-
+        IO.inspect System.cwd()
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-        process_port = Port.open({:spawn, "make iex-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: path])
+        proc = Porcelain.spawn_shell("make iex-node NODE_NUMBER=#{iex_num}", dir: path, in: :receive, out: {:send, self()})
+
+        # process_port = Port.open({:spawn, "make iex-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: path])
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
         new_state =
           Map.put(state, node_name, %{
-            process_port: process_port,
+            # process_port: process_port,
             port: port,
             sync_port: sync_port,
             top_block: nil,
