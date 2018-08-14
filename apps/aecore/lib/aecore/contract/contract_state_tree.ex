@@ -49,7 +49,6 @@ defmodule Aecore.Contract.ContractStateTree do
         {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
 
         identified_id = Identifier.create_identity(key, :contract)
-        # identified_owner = Identifier.create_identity(deserialized.owner, :account)
 
         raw_identified_referers =
           Enum.reduce(deserialized.referers, [], fn referer, acc ->
