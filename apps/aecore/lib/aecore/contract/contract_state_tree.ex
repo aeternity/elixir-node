@@ -17,8 +17,8 @@ defmodule Aecore.Contract.ContractStateTree do
     PatriciaMerkleTree.new(:contracts)
   end
 
-  @spec insert_contract(contracts_state(), map()) :: contracts_state()
-  def insert_contract(contract_tree, contract = %Contract{id: id}) do
+  @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
+  def insert_contract(contract_tree, %Contract{id: id} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     new_contract_tree = PatriciaMerkleTree.insert(contract_tree, id.value, serialized)
