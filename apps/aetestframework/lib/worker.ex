@@ -134,8 +134,9 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     one_line_res = String.replace(result, "\n", "")
     respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
     res = Regex.run(~r/"(.*)"/, List.last(respond_res))
-    base_decoded = Base.decode32!(List.last(res))
-    put_in(state[node].top_block_hash, base_decoded)
+    top_block_hash = Base.decode32!(List.last(res))
+
+    put_in(state[node].top_block_hash, top_block_hash)
   end
 
   defp update_data(state, result, respond, port, type) do
@@ -145,17 +146,17 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     res = Regex.run(~r/"(.*)"/, List.last(respond_res))
     base_decoded = Base.decode32!(List.last(res))
 
-    oracle_int_objects =
+    data =
       case type do
         :oracle_interaction_objects ->
-          {:ok, data} = Serialization.rlp_decode(base_decoded)
-          data
+          {:ok, oracle_int_objects} = Serialization.rlp_decode(base_decoded)
+          oracle_int_objects
 
         _ ->
           Serialization.rlp_decode(base_decoded)
       end
 
-    put_in(state[node][type], oracle_int_objects)
+    put_in(state[node][type], data)
   end
 
   def check_peers(state, node, result) do
@@ -398,7 +399,7 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
 
   # server
 
-  def handle_info(result, state) do
+  def handle_info(_, state) do
     {:noreply, state}
   end
 
