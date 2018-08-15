@@ -16,11 +16,11 @@ defmodule AecoreChainTest do
   alias Aecore.Governance.GovernanceConstants
 
   setup do
-    # Persistence.delete_all_blocks()
+    # Persistence.delete_all()
     Chain.start_link([])
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
+      Persistence.delete_all()
       Chain.clear_state()
       :ok
     end)

@@ -29,7 +29,7 @@ defmodule AecoreSerializationTest do
     Pool.get_and_empty_pool()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
+      Persistence.delete_all()
       Chain.clear_state()
       Pool.get_and_empty_pool()
       :ok

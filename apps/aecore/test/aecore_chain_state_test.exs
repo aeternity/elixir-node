@@ -13,7 +13,7 @@ defmodule AecoreChainstateTest do
 
   setup do
     on_exit(fn ->
-      Persistence.delete_all_blocks()
+      Persistence.delete_all()
       Chain.clear_state()
       :ok
     end)

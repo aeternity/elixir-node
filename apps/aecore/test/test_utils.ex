@@ -53,8 +53,8 @@ defmodule TestUtils do
   end
 
   def clean_blockchain do
-    Persistence.delete_all_blocks()
-    Chain.clear_state()
+    :ok = Persistence.delete_all()
+    :ok = Chain.clear_state()
     Pool.get_and_empty_pool()
     :ok
   end

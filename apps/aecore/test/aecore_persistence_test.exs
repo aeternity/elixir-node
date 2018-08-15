@@ -20,7 +20,7 @@ defmodule PersistenceTest do
     Miner.mine_sync_block_to_chain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
+      Persistence.delete_all()
       Chain.clear_state()
       :ok
     end)
