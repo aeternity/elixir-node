@@ -5,8 +5,6 @@ defmodule Aecore do
 
   use Application
 
-  import Supervisor.Spec
-
   def start(_type, _args) do
     children = [
       Aecore.Persistence.Worker.Supervisor,
@@ -14,8 +12,7 @@ defmodule Aecore do
       Aecore.Miner.Worker.Supervisor,
       Aecore.Tx.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
-      Aecore.Channel.Worker.Supervisor,
-      supervisor(Exexec, [], function: :start)
+      Aecore.Channel.Worker.Supervisor
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

@@ -36,7 +36,7 @@ defmodule Aecore.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [
-      extra_applications: [:gproc, :logger, :rox, :exconstructor, :ranch, :jobs],
+      extra_applications: [:erlexec, :gproc, :logger, :rox, :exconstructor, :ranch, :jobs],
       mod: {Aecore, []}
     ]
   end
@@ -62,7 +62,7 @@ defmodule Aecore.Mixfile do
       {:excoveralls, "~> 0.8.1", only: :test},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"}
+      {:gproc, "~> 0.6.1"},
     ]
   end
 end
