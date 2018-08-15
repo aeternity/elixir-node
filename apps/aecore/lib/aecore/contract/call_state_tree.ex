@@ -10,8 +10,8 @@ defmodule Aecore.Contract.CallStateTree do
 
   @type calls_state() :: Trie.t()
   @type hash :: binary()
-  @spec init_empty() :: calls_state()
 
+  @spec init_empty() :: calls_state()
   def init_empty do
     PatriciaMerkleTree.new(:calls)
   end

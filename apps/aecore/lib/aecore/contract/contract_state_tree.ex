@@ -31,14 +31,14 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec enter_contract(contracts_state(), Contract.t()) :: contracts_state()
-  def enter_contract(contract_tree, %Contract{id: id} = contract) do
+  def enter_contract(contract_tree, %Contract{id: id, store: store} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
     old_contract_store = get_store(store_id, contract_tree)
 
-    update_store(store_id, old_contract_store, contract.store, updated_contract_tree)
+    update_store(store_id, old_contract_store, store, updated_contract_tree)
   end
 
   @spec get_contract(contracts_state(), binary()) :: Contract.t()
@@ -49,14 +49,12 @@ defmodule Aecore.Contract.ContractStateTree do
 
         identified_id = Identifier.create_identity(key, :contract)
 
-        raw_identified_referers =
-          Enum.reduce(deserialized.referers, [], fn referer, acc ->
+        identified_referers =
+          Enum.map(deserialized.referers, fn referer ->
             {:ok, identified_referer} = Identifier.create_identity(referer, :contract)
 
-            [identified_referer | acc]
+            identified_referer
           end)
-
-        identified_referers = raw_identified_referers |> Enum.reverse()
 
         store_id = Contract.store_id(%{deserialized | id: identified_id})
 
