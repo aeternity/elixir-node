@@ -10,6 +10,7 @@ defmodule AecoreTestUtilsTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
+    :ok
   end
 
   test "clean_blockchain" do

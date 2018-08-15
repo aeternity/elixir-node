@@ -48,7 +48,7 @@ defmodule TestUtils do
   end
 
   def assert_transactions_mined do
-    Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_and_empty_pool()) == true
   end
 

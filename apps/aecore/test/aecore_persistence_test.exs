@@ -12,13 +12,16 @@ defmodule PersistenceTest do
   setup do
     Code.require_file("test_utils.ex", "./test")
     TestUtils.clean_blockchain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
     end)
+  end
 
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
+  setup do
 
     account1 = elem(Keys.keypair(:sign), 0)
 
@@ -65,6 +68,9 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
+
+    assert length(Map.values(Persistence.get_all_blocks())) == 4
+    assert length(Map.values(Persistence.get_blocks(2))) == 2
 
     [block1, block2] =
       Enum.sort(Map.values(Persistence.get_blocks(2)), fn b1, b2 ->
