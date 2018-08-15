@@ -152,7 +152,7 @@ defmodule Aecore.Persistence.Worker do
 
   ## Server side
 
-  defp all_families() do
+  defp all_families do
     [
       "blocks_family",
       "latest_block_info_family",
