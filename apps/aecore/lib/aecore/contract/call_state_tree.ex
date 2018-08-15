@@ -25,7 +25,7 @@ defmodule Aecore.Contract.CallStateTree do
   end
 
   @spec insert_call(calls_state(), Call.t()) :: calls_state()
-  def insert_call(call_tree, %Call{contract_address: contract_address}) do
+  def insert_call(call_tree, %Call{contract_address: contract_address} = call) do
     call_id = Call.id(call)
     call_tree_id = construct_call_tree_id(contract_address, call_id)
 

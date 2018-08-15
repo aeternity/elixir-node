@@ -55,7 +55,7 @@ defmodule Aecore.Contract.Contract do
           active: active,
           referers: referers,
           deposit: deposit
-        } = contract
+        }
       ) do
     encoded_active =
       case active do
