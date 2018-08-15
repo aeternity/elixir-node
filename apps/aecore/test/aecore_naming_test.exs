@@ -5,7 +5,6 @@ defmodule AecoreNamingTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -16,17 +15,14 @@ defmodule AecoreNamingTest do
   alias Aeutil.PatriciaMerkleTree
 
   setup do
-    Persistence.start_link([])
-    Miner.start_link([])
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
-
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+  end
 
+  setup do
     %{public: a_pub_key, secret: a_priv_key} = :enacl.sign_keypair()
     %{public: b_pub_key, secret: b_priv_key} = :enacl.sign_keypair()
 

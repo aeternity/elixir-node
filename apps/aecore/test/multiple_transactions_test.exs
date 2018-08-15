@@ -5,7 +5,6 @@ defmodule MultipleTransactionsTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -15,15 +14,13 @@ defmodule MultipleTransactionsTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+  end
 
-    Pool.start_link([])
-
+  setup do
     %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
     %{public: acc3_pub, secret: acc3_priv} = :enacl.sign_keypair()
     %{public: acc4_pub, secret: acc4_priv} = :enacl.sign_keypair()

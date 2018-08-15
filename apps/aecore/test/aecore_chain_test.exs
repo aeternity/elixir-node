@@ -5,7 +5,6 @@ defmodule AecoreChainTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
@@ -16,16 +15,11 @@ defmodule AecoreChainTest do
   alias Aecore.Governance.GovernanceConstants
 
   setup do
-    # Persistence.delete_all()
-    Chain.start_link([])
-
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
-
-    []
   end
 
   @tag timeout: 100_000

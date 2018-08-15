@@ -7,14 +7,14 @@ defmodule AecoreCuckooTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Pow.Cuckoo
   alias Aecore.Chain.{Block, Header}
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 

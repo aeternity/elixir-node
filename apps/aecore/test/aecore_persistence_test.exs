@@ -10,20 +10,15 @@ defmodule PersistenceTest do
   alias Aecore.Account.{Account, AccountStateTree}
 
   setup do
-    Persistence.start_link([])
-    Miner.start_link([])
-
-    Chain.clear_state()
-
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
 
     account1 = elem(Keys.keypair(:sign), 0)
 

@@ -11,13 +11,11 @@ defmodule GetTxsForAddressTest do
   alias Aeutil.Serialization
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
-
-    []
   end
 
   @tag timeout: 20_000

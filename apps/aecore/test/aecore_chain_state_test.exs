@@ -7,15 +7,14 @@ defmodule AecoreChainstateTest do
 
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 

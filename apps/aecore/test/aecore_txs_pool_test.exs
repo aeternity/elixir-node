@@ -4,7 +4,6 @@ defmodule AecoreTxsPoolTest do
   """
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
@@ -21,14 +20,13 @@ defmodule AecoreTxsPoolTest do
       File.rm_rf(path)
     end
 
-    Chain.clear_state()
-
+    TestUtils.clean_blockchain()
     on_exit(fn ->
-      Persistence.delete_all()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+  end
 
+  setup do
     %{public: b_pub_key} = :enacl.sign_keypair()
     {pubkey, privkey} = Keys.keypair(:sign)
 
