@@ -15,7 +15,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Chain.BlockValidation
   alias Aeutil.Events
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aehttpserver.Web.Notify
   alias Aeutil.Serialization
   alias Aeutil.Hash
@@ -26,6 +26,7 @@ defmodule Aecore.Chain.Worker do
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aeutil.PatriciaMerkleTree
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -316,7 +317,7 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _} = Keys.keypair(:sign)
     accounts_state_tree = blocks_data_map[top_hash].chain_state.accounts
 
     lowest_valid_nonce =
@@ -541,7 +542,7 @@ defmodule Aecore.Chain.Worker do
           end
         end)
         |> Enum.map(fn filtered_tx ->
-          tx_bin = Serialization.rlp_encode(filtered_tx, :signedtx)
+          tx_bin = SignedTx.rlp_encode(filtered_tx)
           hash = Hash.hash(tx_bin)
           {block_hash, hash}
         end)

@@ -4,13 +4,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the ChannelCloseMutal Transaction"
   @type payload :: %{
@@ -168,5 +172,51 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.channel_id,
+      :binary.encode_unsigned(tx.initiator_amount),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        channel_id,
+        initiator_amount,
+        responder_amount,
+        fee,
+        ttl
+      ]) do
+    payload = %ChannelCloseMutalTx{
+      channel_id: channel_id,
+      initiator_amount: :binary.decode_unsigned(initiator_amount),
+      responder_amount: :binary.decode_unsigned(responder_amount)
+    }
+
+    DataTx.init_binary(
+      ChannelCloseMutalTx,
+      payload,
+      encoded_senders,
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

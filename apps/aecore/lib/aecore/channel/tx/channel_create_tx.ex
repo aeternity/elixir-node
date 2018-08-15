@@ -4,13 +4,17 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
@@ -182,5 +186,51 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      :binary.encode_unsigned(tx.initiator_amount),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(tx.locktime),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        initiator_amount,
+        responder_amount,
+        locktime,
+        fee,
+        ttl
+      ]) do
+    payload = %ChannelCreateTx{
+      initiator_amount: :binary.decode_unsigned(initiator_amount),
+      responder_amount: :binary.decode_unsigned(responder_amount),
+      locktime: :binary.decode_unsigned(locktime)
+    }
+
+    DataTx.init_binary(
+      ChannelCreateTx,
+      payload,
+      encoded_senders,
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

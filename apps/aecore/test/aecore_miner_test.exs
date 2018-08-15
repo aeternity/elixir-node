@@ -4,7 +4,7 @@ defmodule MinerTest do
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
 
   setup do
     on_exit(fn ->
@@ -20,6 +20,6 @@ defmodule MinerTest do
     assert Chain.top_height() >= 1
     assert Chain.top_block().header.height >= 1
     assert length(Chain.longest_blocks_chain()) > 1
-    assert Chain.top_block().header.miner == Wallet.get_public_key()
+    assert Chain.top_block().header.miner == elem(Keys.keypair(:sign), 0)
   end
 end

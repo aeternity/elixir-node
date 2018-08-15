@@ -4,10 +4,11 @@ defmodule Aecore.Account.Tx.SpendTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
@@ -16,9 +17,11 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   require Logger
 
+  @version 1
+
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          receiver: Wallet.pubkey(),
+          receiver: Keys.pubkey(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
@@ -33,7 +36,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
-          receiver: Wallet.pubkey(),
+          receiver: Keys.pubkey(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
@@ -55,8 +58,17 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_chain_state_name, do: :accounts
 
   @spec init(payload()) :: t()
+  def init(%{
+        receiver: %Identifier{} = identified_receiver,
+        amount: amount,
+        version: version,
+        payload: payload
+      }) do
+    %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
+  end
+
   def init(%{receiver: receiver, amount: amount, version: version, payload: payload}) do
-    {:ok, identified_receiver} = Identifier.create_identity(receiver, :account)
+    identified_receiver = Identifier.create_identity(receiver, :account)
 
     %SpendTx{receiver: identified_receiver, amount: amount, payload: payload, version: version}
   end
@@ -75,7 +87,7 @@ defmodule Aecore.Account.Tx.SpendTx do
       tx.version != get_tx_version() ->
         {:error, "#{__MODULE__}: Invalid version"}
 
-      !Wallet.key_size_valid?(receiver.value) ->
+      !Keys.key_size_valid?(receiver) ->
         {:error, "#{__MODULE__}: Wrong receiver key size"}
 
       length(senders) != 1 ->
@@ -153,4 +165,53 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
+
+  def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(tx.receiver),
+      :binary.encode_unsigned(tx.amount),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.payload
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        encoded_receiver,
+        amount,
+        fee,
+        ttl,
+        nonce,
+        payload
+      ]) do
+    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver) do
+      DataTx.init_binary(
+        SpendTx,
+        %{
+          receiver: receiver,
+          amount: :binary.decode_unsigned(amount),
+          version: @version,
+          payload: payload
+        },
+        encoded_senders,
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error -> error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
 end

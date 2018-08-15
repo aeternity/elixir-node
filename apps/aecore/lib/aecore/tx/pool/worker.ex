@@ -18,7 +18,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aeutil.Events
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Hash
-  alias Aeutil.Serialization
   alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 
@@ -113,7 +112,6 @@ defmodule Aecore.Tx.Pool.Worker do
   @doc """
   A function that adds a merkle proof for every single transaction
   """
-
   @spec add_proof_to_txs(list()) :: list()
   def add_proof_to_txs(user_txs) do
     for tx <- user_txs do
@@ -123,7 +121,7 @@ defmodule Aecore.Tx.Pool.Worker do
       key =
         tx.type
         |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
-        |> Serialization.rlp_encode(:tx)
+        |> DataTx.rlp_encode()
 
       hashed_key = Hash.hash(key)
       merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
