@@ -406,7 +406,6 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def receive_result(state) do
     receive do
       {port, {:data, result}} ->
-        IO.inspect result
         cond do
           result =~ ":respond_top_block" ->
             new_state = update_data(state, result, ":respond_top_block", port, :top_block)
@@ -490,6 +489,11 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
   def handle_call({:sync_two_nodes, node_name1, node_name2}, _, state) do
     port = state[node_name2].port
     sync_port = state[node_name2].sync_port
+
+    IO.inspect "Port: #{port}"
+    IO.inspect "Sync_Port: #{sync_port}"
+
+    IO.inspect Client.get_info("localhost:#{port}")
 
     cmd1 = "{:ok, peer_info} = Client.get_info(\"localhost:#{port}\")\n"
     Port.command(state[node_name1].process_port, cmd1)
