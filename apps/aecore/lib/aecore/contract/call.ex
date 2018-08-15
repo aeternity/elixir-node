@@ -35,7 +35,8 @@ defmodule Aecore.Contract.Call do
 
   @nonce_size 256
 
-  @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey() , non_neg_integer()) :: t()
+  @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
+          t()
   def new(caller_address, nonce, block_height, contract_address, gas_price) do
     identified_caller_address = Identifier.create_identity(caller_address, :account)
     identified_contract_address = Identifier.create_identity(contract_address, :contract)
@@ -53,17 +54,26 @@ defmodule Aecore.Contract.Call do
   end
 
   @spec encode_to_list(Call.t()) :: list()
-  def encode_to_list(%Call{} = call) do
+  def encode_to_list(%Call{
+        caller_address: caller_address,
+        caller_nonce: caller_nonce,
+        height: height,
+        contract_address: contract_address,
+        gas_price: gas_price,
+        gas_used: gas_used,
+        return_value: return_value,
+        return_type: return_type
+      }) do
     [
       @version,
-      Identifier.encode_to_binary(call.caller_address),
-      :binary.encode_unsigned(call.caller_nonce),
-      :binary.encode_unsigned(call.height),
-      Identifier.encode_to_binary(call.contract_address),
-      :binary.encode_unsigned(call.gas_price),
-      :binary.encode_unsigned(call.gas_used),
-      call.return_value,
-      Parser.to_string(call.return_type)
+      Identifier.encode_to_binary(caller_address),
+      :binary.encode_unsigned(caller_nonce),
+      :binary.encode_unsigned(height),
+      Identifier.encode_to_binary(contract_address),
+      :binary.encode_unsigned(gas_price),
+      :binary.encode_unsigned(gas_used),
+      return_value,
+      Parser.to_string(return_type)
     ]
   end
 
@@ -103,13 +113,11 @@ defmodule Aecore.Contract.Call do
   end
 
   @spec id(Call.t()) :: binary()
-  def id(
-        %Call{
-          caller_address: caller_address,
-          caller_nonce: caller_nonce,
-          contract_address: contract_address
-        } = _call
-      ) do
+  def id(%Call{
+        caller_address: caller_address,
+        caller_nonce: caller_nonce,
+        contract_address: contract_address
+      }) do
     binary =
       <<caller_address.value::binary, caller_nonce::size(@nonce_size),
         contract_address.value::binary>>

@@ -30,9 +30,8 @@ defmodule Aecore.Contract.ContractStateTree do
     end)
   end
 
-  @spec enter_contract(contracts_state(), map()) :: contracts_state()
-  def enter_contract(contract_tree, contract) do
-    id = contract.id
+  @spec enter_contract(contracts_state(), Contract.t()) :: contracts_state()
+  def enter_contract(contract_tree, %Contract{id: id} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, id.value, serialized)
@@ -42,7 +41,7 @@ defmodule Aecore.Contract.ContractStateTree do
     update_store(store_id, old_contract_store, contract.store, updated_contract_tree)
   end
 
-  @spec get_contract(contracts_state(), binary()) :: map()
+  @spec get_contract(contracts_state(), binary()) :: Contract.t()
   def get_contract(contract_tree, key) do
     case PatriciaMerkleTree.lookup(contract_tree, key) do
       {:ok, serialized} ->

@@ -25,10 +25,9 @@ defmodule Aecore.Contract.CallStateTree do
   end
 
   @spec insert_call(calls_state(), Call.t()) :: calls_state()
-  def insert_call(call_tree, call) do
-    contract_id = call.contract_address
+  def insert_call(call_tree, %Call{contract_address: contract_address}) do
     call_id = Call.id(call)
-    call_tree_id = construct_call_tree_id(contract_id, call_id)
+    call_tree_id = construct_call_tree_id(contract_address, call_id)
 
     serialized = Serialization.rlp_encode(call)
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)

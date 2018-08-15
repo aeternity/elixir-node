@@ -46,15 +46,25 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec encode_to_list(Contract.t()) :: list()
-  def encode_to_list(%Contract{} = contract) do
-    active =
-      case contract.active do
+  def encode_to_list(
+        %Contract{
+          owner: owner,
+          vm_version: vm_version,
+          code: code,
+          log: log,
+          active: active,
+          referers: referers,
+          deposit: deposit
+        } = contract
+      ) do
+    encoded_active =
+      case active do
         true -> 1
         false -> 0
       end
 
     raw_encoded_referers =
-      Enum.reduce(contract.referers, [], fn referer, acc ->
+      Enum.reduce(referers, [], fn referer, acc ->
         encoded_referer = Identifier.encode_to_binary(referer)
         [encoded_referer | acc]
       end)
@@ -63,13 +73,13 @@ defmodule Aecore.Contract.Contract do
 
     [
       @version,
-      Identifier.encode_to_binary(contract.owner),
-      :binary.encode_unsigned(contract.vm_version),
-      contract.code,
-      contract.log,
-      active,
+      Identifier.encode_to_binary(owner),
+      :binary.encode_unsigned(vm_version),
+      code,
+      log,
+      encoded_active,
       encoded_referers,
-      :binary.encode_unsigned(contract.deposit)
+      :binary.encode_unsigned(deposit)
     ]
   end
 
