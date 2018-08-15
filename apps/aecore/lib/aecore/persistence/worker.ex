@@ -188,7 +188,11 @@ defmodule Aecore.Persistence.Worker do
        "total_difficulty_family" => total_difficulty_family,
        "patricia_channels_family" => patricia_channels_family
      } = families_map} =
-      Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], all_families())
+      Rox.open(
+        persistence_path(),
+        [create_if_missing: true, auto_create_column_families: true],
+        all_families()
+      )
 
     {:ok,
      %{
@@ -366,6 +370,7 @@ defmodule Aecore.Persistence.Worker do
         end)
       end)
       |> Batch.write(db)
+
     {:reply, status, state}
   end
 

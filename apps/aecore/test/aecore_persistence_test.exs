@@ -22,7 +22,6 @@ defmodule PersistenceTest do
   end
 
   setup do
-
     account1 = elem(Keys.keypair(:sign), 0)
 
     account2 =

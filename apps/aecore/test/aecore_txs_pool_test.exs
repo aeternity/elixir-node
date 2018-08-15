@@ -21,6 +21,7 @@ defmodule AecoreTxsPoolTest do
     end
 
     TestUtils.clean_blockchain()
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
     end)

@@ -13,6 +13,7 @@ defmodule AecoreCuckooTest do
   setup do
     Code.require_file("test_utils.ex", "./test")
     TestUtils.clean_blockchain()
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
     end)
