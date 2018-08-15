@@ -52,10 +52,16 @@ defmodule TestUtils do
     assert Enum.empty?(Pool.get_and_empty_pool()) == true
   end
 
+  defp restart_supervisor(supervisor) do
+    :ok = Supervisor.terminate_child(Aecore, supervisor)
+    {:ok, _} = Supervisor.restart_child(Aecore, supervisor)
+  end
+
   def clean_blockchain do
     :ok = Persistence.delete_all()
-    :ok = Chain.clear_state()
-    Pool.get_and_empty_pool()
+    restart_supervisor(Aecore.Channel.Worker.Supervisor)
+    restart_supervisor(Aecore.Chain.Worker.Supervisor)
+    restart_supervisor(Aecore.Tx.Pool.Worker.Supervisor)
     :ok
   end
 end

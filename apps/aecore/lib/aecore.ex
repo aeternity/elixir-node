@@ -15,6 +15,6 @@ defmodule Aecore do
       Aecore.Channel.Worker.Supervisor
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end
 end
