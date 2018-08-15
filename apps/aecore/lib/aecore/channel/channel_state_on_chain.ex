@@ -190,15 +190,18 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec encode_to_list(t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
+    total_amount = channel.initiator_amount + channel.responder_amount
     [
       :binary.encode_unsigned(@version),
       channel.initiator_pubkey,
       channel.responder_pubkey,
+      :binary.encode_unsigned(total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
-      :binary.encode_unsigned(channel.responder_amount),
+      #TODO channel reserve
+      #TODO state hash
+      :binary.encode_unsigned(channel.slash_sequence),
       :binary.encode_unsigned(channel.lock_period),
-      :binary.encode_unsigned(channel.slash_close),
-      :binary.encode_unsigned(channel.slash_sequence)
+      :binary.encode_unsigned(channel.slash_close)
     ]
   end
 
@@ -207,18 +210,21 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def decode_from_list(@version, [
         initiator_pubkey,
         responder_pubkey,
+        total_amount,
         initiator_amount,
-        responder_amount,
+        #TODO channel reserve
+        #TODO state hash
+        slash_sequence,
         lock_period,
-        slash_close,
-        slash_sequence
+        slash_close
       ]) do
+    responder_amount = :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
     {:ok,
      %ChannelStateOnChain{
        initiator_pubkey: initiator_pubkey,
        responder_pubkey: responder_pubkey,
        initiator_amount: :binary.decode_unsigned(initiator_amount),
-       responder_amount: :binary.decode_unsigned(responder_amount),
+       responder_amount: responder_amount,
        lock_period: :binary.decode_unsigned(lock_period),
        slash_close: :binary.decode_unsigned(slash_close),
        slash_sequence: :binary.decode_unsigned(slash_sequence)

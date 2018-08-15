@@ -177,24 +177,24 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
+      Identifier.encode_list_to_binary(datatx.senders), #TODO should be removed
       tx.channel_id,
       :binary.encode_unsigned(tx.initiator_amount),
       :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
-        nonce,
+        encoded_senders, #TODO should be removed
         channel_id,
         initiator_amount,
         responder_amount,
+        ttl,
         fee,
-        ttl
+        nonce,
       ]) do
     payload = %ChannelCloseMutalTx{
       channel_id: channel_id,
@@ -202,14 +202,19 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       responder_amount: :binary.decode_unsigned(responder_amount)
     }
 
-    DataTx.init_binary(
-      ChannelCloseMutalTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+    case Identifier.decode_list_from_binary(encoded_senders) do
+      {:ok, senders} ->
+        DataTx.init_binary(
+          ChannelCloseMutalTx,
+          payload,
+          senders,
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

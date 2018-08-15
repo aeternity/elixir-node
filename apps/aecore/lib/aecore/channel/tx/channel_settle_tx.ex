@@ -150,28 +150,43 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
-  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
+  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = data_tx) do
+    [sender] = data_tx.senders
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
       tx.channel_id,
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_to_binary(sender),
+      #TODO initiator_amount
+      #TODO responder amount
+      :binary.encode_unsigned(data_tx.ttl),
+      :binary.encode_unsigned(data_tx.fee),
+      :binary.encode_unsigned(data_tx.nonce)
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
+  def decode_from_list(@version, [
+      channel_id,
+      encoded_sender,
+      #TODO initiator_amount
+      #TODO responder amount
+      ttl,
+      fee,
+      nonce
+    ]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 
-    DataTx.init_binary(
-      ChannelSettleTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+    with {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
+      DataTx.init_binary(
+        ChannelSettleTx,
+        payload,
+        sender,
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

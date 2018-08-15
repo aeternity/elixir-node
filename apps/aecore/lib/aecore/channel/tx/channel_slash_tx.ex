@@ -164,32 +164,44 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      ChannelStateOffChain.encode_to_list(tx.state),
+      tx.state.channel_id,
+      Identifier.encode_to_binary(sender),
+      ChannelStateOffChain.encode_to_list(tx.state), #TODO payload + poi instead
+      :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
+  def decode_from_list(@version, [
+                         channel_id,
+                         encoded_sender,
+                         [state_ver_bin | state], #TODO payload + poi instead
+                         ttl,
+                         fee,
+                         nonce
+                       ]) do
     state_ver = :binary.decode_unsigned(state_ver_bin)
 
-    case ChannelStateOffChain.decode_from_list(state_ver, state) do
-      {:ok, state} ->
-        payload = %ChannelSlashTx{state: state}
-
+    with {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state),
+         {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
+      payload = %ChannelSlashTx{state: state}
+      if channel_id != state.channel_id do
+        {:error, "Channel_id mismatch"}
+      else
         DataTx.init_binary(
           ChannelSlashTx,
           payload,
-          encoded_senders,
-          :binary.decode_unsigned(fee),
-          :binary.decode_unsigned(nonce),
-          :binary.decode_unsigned(ttl)
+          [sender],
+          :binary.encode_unsigned(fee),
+          :binary.encode_unsigned(nonce),
+          :binary.encode_unsigned(ttl)
         )
-
+      end
+    else
       {:error, _} = error ->
         error
     end

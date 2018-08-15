@@ -189,26 +189,33 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+    [initiator, responder] = datatx.senders
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
+      Identifier.encode_to_binary(initiator),
       :binary.encode_unsigned(tx.initiator_amount),
+      Identifier.encode_to_binary(responder),
       :binary.encode_unsigned(tx.responder_amount),
+      #TODO channel reserve
       :binary.encode_unsigned(tx.locktime),
+      :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      #TODO state_hash
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
-        nonce,
+        encoded_initiator,
         initiator_amount,
+        encoded_responder,
         responder_amount,
+        #TODO channel reserve
         locktime,
+        ttl,
         fee,
-        ttl
+        #TODO state_hash
+        nonce
       ]) do
     payload = %ChannelCreateTx{
       initiator_amount: :binary.decode_unsigned(initiator_amount),
@@ -216,14 +223,19 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       locktime: :binary.decode_unsigned(locktime)
     }
 
-    DataTx.init_binary(
-      ChannelCreateTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+    with {:ok, initiator} <- Identifier.decode_from_binary(encoded_initiator),
+         {:ok, responder} <- Identifier.decode_from_binary(encoded_responder) do
+      DataTx.init_binary(
+        ChannelCreateTx,
+        payload,
+        [initiator, responder],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
