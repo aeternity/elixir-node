@@ -490,11 +490,6 @@ defmodule Aetestframework.MultiNodeTestFramework.Worker do
     port = state[node_name2].port
     sync_port = state[node_name2].sync_port
 
-    IO.inspect "Port: #{port}"
-    IO.inspect "Sync_Port: #{sync_port}"
-
-    IO.inspect Client.get_info("localhost:#{port}")
-
     cmd1 = "{:ok, peer_info} = Client.get_info(\"localhost:#{port}\")\n"
     Port.command(state[node_name1].process_port, cmd1)
 
