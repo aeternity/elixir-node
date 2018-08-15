@@ -374,22 +374,6 @@ defmodule Aecore.Persistence.Worker do
     {:reply, status, state}
   end
 
-  def handle_call(:delete_all_blocks, _from, %{blocks_family: blocks_family} = state) do
-    blocks_family
-    |> Rox.stream()
-    |> Enum.each(fn {key, _} -> Rox.delete(blocks_family, key) end)
-
-    {:reply, :ok, state}
-  end
-
-  def handle_call(:delete_chainstate, _from, %{chain_state_family: chain_state_family} = state) do
-    chain_state_family
-    |> Rox.stream()
-    |> Enum.each(fn {key, _} -> Rox.delete(chain_state_family, key) end)
-
-    {:reply, :ok, state}
-  end
-
   def handle_call(
         {:get_all_chainstates, block_hash},
         _from,
