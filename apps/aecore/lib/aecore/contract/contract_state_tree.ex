@@ -18,13 +18,13 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
-  def insert_contract(contract_tree, %Contract{id: id} = contract) do
+  def insert_contract(contract_tree, %Contract{id: id, store: store} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     new_contract_tree = PatriciaMerkleTree.insert(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
 
-    Enum.reduce(contract.store, new_contract_tree, fn {s_key, s_value}, tree_acc ->
+    Enum.reduce(store, new_contract_tree, fn {s_key, s_value}, tree_acc ->
       s_tree_key = <<store_id::binary, s_key::binary>>
       PatriciaMerkleTree.insert(tree_acc, s_tree_key, s_value)
     end)
