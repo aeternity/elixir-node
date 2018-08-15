@@ -8,12 +8,19 @@ defmodule Aehttpserver.Web.OracleController do
   require Logger
 
   def oracle_response(conn, _params) do
-    deserialized_oracle = Oracle.deserialize(conn.body_params)
+    %{
+      data: %{
+        payload: %{
+          query_id: query_id
+        },
+        fee: fee
+      }
+    } = Oracle.deserialize(conn.body_params)
 
     case Oracle.respond(
-           deserialized_oracle.data.payload.query_id,
-           deserialized_oracle.data.payload.query_id,
-           deserialized_oracle.data.fee
+           query_id,
+           query_id,
+           fee
          ) do
       :ok ->
         json(conn, %{:status => :ok})
@@ -45,15 +52,30 @@ defmodule Aehttpserver.Web.OracleController do
   end
 
   def oracle_query(conn, _params) do
-    deserialized_oracle = Oracle.deserialize(conn.body_params)
+    %{
+      data: %{
+        fee: fee,
+        payload: %{
+          oracle_address: %{
+            value: value
+          },
+          query_data: query_data,
+          query_fee: query_fee,
+          query_ttl: query_ttl,
+          response_ttle: response_ttl
+        }
+      }
+    } = Oracle.deserialize(conn.body_params)
+
+    IO.inspect(query_data)
 
     case Oracle.query(
-           deserialized_oracle.data.payload.oracle_address.value,
-           deserialized_oracle.data.payload.query_data,
-           deserialized_oracle.data.payload.query_fee,
-           deserialized_oracle.data.fee,
-           deserialized_oracle.data.payload.query_ttl,
-           deserialized_oracle.data.payload.response_ttl
+           value,
+           query_data,
+           query_fee,
+           fee,
+           query_ttl,
+           response_ttl
          ) do
       :ok ->
         json(conn, %{:status => :ok})
