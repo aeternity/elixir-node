@@ -106,6 +106,7 @@ defmodule Aecore.Chain.Block do
     case SignedTx.rlp_decode(encoded_tx) do
       {:ok, tx} ->
         decode_txs_list(rest_encoded_txs, [tx | acc])
+
       {:error, _} = error ->
         error
     end
