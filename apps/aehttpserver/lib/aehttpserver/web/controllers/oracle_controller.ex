@@ -67,8 +67,6 @@ defmodule Aehttpserver.Web.OracleController do
       }
     } = Oracle.deserialize(conn.body_params)
 
-    IO.inspect(query_data)
-
     case Oracle.query(
            value,
            query_data,
