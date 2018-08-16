@@ -65,7 +65,11 @@ defmodule Aehttpserver.Web.OracleController do
           response_ttle: response_ttl
         }
       }
+<<<<<<< HEAD
     } = SignedTx.deserialize(conn.body_params)
+=======
+    } = Oracle.deserialize(conn.body_params)
+>>>>>>> fa9a2846922018d8d0c413c5f53d35b63378c28d
 
     case Oracle.query(
            value,
