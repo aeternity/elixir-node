@@ -13,7 +13,7 @@ defmodule ContractCallTx do
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Call, CallStateTree}
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Contract.Dispatch
 
   @version 1
 
@@ -143,23 +143,61 @@ defmodule ContractCallTx do
         accounts,
         calls,
         block_height,
-        %ContractCallTx{} = call_tx,
+        %ContractCallTx{} = tx,
         data_tx
       ) do
     # Transfer the attached funds to the callee, before the calling of the contract
-    caller_pubkey = call_tx.caller.value
-    callee_pubkey = call_tx.contract.value
+    sender = DataTx.main_sender(data_tx)
+    nonce = DataTx.nonce(data_tx)
 
-    #Chainstate.apply_transaction_on_state
+    updated_accounts_state =
+      accounts
+      |> AccountStateTree.update(sender, fn acc ->
+        Account.apply_transfer!(acc, block_height, tx.amount)
+      end)
+
+    call = Call.new(tx.caller, nonce, block_height, tx.contract, tx.gas_price)
+
+    run_contract(tx, call, block_height, nonce)
   end
 
-  defp spend(caller_pubkey, callee_pubkey, value, _context, height, tree) do
-    payload = %{receiver: callee_pubkey, amount: value, version: @version, payload: <<>>}
-    nonce = Map.get(Chain.chain_state(), caller_pubkey, %{nonce: 0}).nonce + 1
-    spend_tx = DataTx.init(SpendTx, payload, caller_pubkey, 0, nonce)
+  # maybe identified caller and contract
+  defp run_contract(
+         %ContractCallTx{
+           caller: caller,
+           contract: contract,
+           vm_version: vm_version,
+           amount: amount,
+           gas: gas,
+           gas_price: gas_price,
+           call_data: call_data,
+           call_stack: call_stack
+         } = tx,
+         call,
+         block_height,
+         nonce
+       ) do
+    identified_caller = Identifier.create_identity(caller, :account)
+    identified_contract = Identifier.create_identity(contract, :contract)
 
-    # check_from_contract
-    # process_from_contract
+    contracts_tree = Chainstate.contracts()
+    contract = ContractStateTree.get_contact(contract.value, contracts_tree)
+
+    call_definition = %{
+      caller: identified_caller.value,
+      contract: identified_contract.value,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data,
+      amount: amount,
+      call_stack: call_stack,
+      code: contract.code,
+      call: call,
+      height: block_height
+    }
+
+    Dispatch.run(vm_version, call_definition)
+
   end
 
   defp validate_identifier(%Identifier{} = id, type) do
