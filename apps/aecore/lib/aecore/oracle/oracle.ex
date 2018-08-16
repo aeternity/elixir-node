@@ -25,9 +25,6 @@ defmodule Aecore.Oracle.Oracle do
 
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
 
-  @type json_schema :: map()
-  @type json :: any()
-
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
