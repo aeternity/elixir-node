@@ -13,7 +13,6 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Peers.Sync
   alias Aecore.Peers.Jobs
-  alias Aecore.Peers.P2PUtils
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
 
@@ -23,6 +22,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   @p2p_protocol_vsn 2
   @p2p_msg_version 1
+  @noise_timeout 5000
 
   @msg_fragment 0
   @p2p_response 100
@@ -66,7 +66,7 @@ defmodule Aecore.Peers.PeerConnection do
 
     state = Map.merge(opts, %{host: host_bin, version: version, genesis: genesis_hash})
 
-    noise_opts = P2PUtils.noise_opts(state.privkey, state.pubkey, genesis_hash, version)
+    noise_opts = noise_opts(state.privkey, state.pubkey, genesis_hash, version)
     :ok = :ranch.accept_ack(ref)
     :ok = :ranch_tcp.setopts(socket, [{:active, true}])
 
@@ -222,7 +222,7 @@ defmodule Aecore.Peers.PeerConnection do
       ) do
     case :gen_tcp.connect(host, port, [:binary, reuseaddr: true, active: false]) do
       {:ok, socket} ->
-        noise_opts = P2PUtils.noise_opts(privkey, pubkey, r_pubkey, genesis, version)
+        noise_opts = noise_opts(privkey, pubkey, r_pubkey, genesis, version)
 
         :inet.setopts(socket, active: true)
 
@@ -530,6 +530,22 @@ defmodule Aecore.Peers.PeerConnection do
       peers: peers,
       port: Supervisor.sync_port()
     }
+  end
+
+  defp noise_opts(privkey, pubkey, r_pubkey, genesis_hash, version) do
+    [
+      {:rs, :enoise_keypair.new(:dh25519, r_pubkey)}
+      | noise_opts(privkey, pubkey, genesis_hash, version)
+    ]
+  end
+
+  defp noise_opts(privkey, pubkey, genesis_hash, version) do
+    [
+      noise: "Noise_XK_25519_ChaChaPoly_BLAKE2b",
+      s: :enoise_keypair.new(:dh25519, privkey, pubkey),
+      prologue: <<version::binary(), genesis_hash::binary()>>,
+      timeout: @noise_timeout
+    ]
   end
 
   # RLP for peer messages

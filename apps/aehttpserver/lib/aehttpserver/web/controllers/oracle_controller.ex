@@ -3,7 +3,7 @@ defmodule Aehttpserver.Web.OracleController do
 
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
-  alias Aeutil.Bits
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
@@ -15,7 +15,7 @@ defmodule Aehttpserver.Web.OracleController do
         },
         fee: fee
       }
-    } = Oracle.deserialize(conn.body_params)
+    } = SignedTx.deserialize(conn.body_params)
 
     case Oracle.respond(
            query_id,
@@ -65,9 +65,7 @@ defmodule Aehttpserver.Web.OracleController do
           response_ttle: response_ttl
         }
       }
-    } = Oracle.deserialize(conn.body_params)
-
-    IO.inspect(query_data)
+    } = SignedTx.deserialize(conn.body_params)
 
     case Oracle.query(
            value,

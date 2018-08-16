@@ -2,6 +2,7 @@ defmodule Aehttpserver.Web.PeersController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Account.Account
   alias Aecore.Keys
 
   def info(conn, _params) do

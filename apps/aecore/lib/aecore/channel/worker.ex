@@ -6,7 +6,6 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
-  alias Aecore.Channel.Worker.ChannelConnectionSupervisor
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
@@ -70,11 +69,6 @@ defmodule Aecore.Channel.Worker do
   def new_tx_mined(%SignedTx{}) do
     # We don't care about this tx
     :ok
-  end
-
-  @spec start_session(charlist(), non_neg_integer()) :: pid()
-  def start_session(host, port) do
-    ChannelConnectionSupervisor.start_channel_connection(%{host: host, port: port})
   end
 
   @doc """
