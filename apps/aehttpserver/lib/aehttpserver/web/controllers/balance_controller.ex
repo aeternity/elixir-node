@@ -1,7 +1,6 @@
 defmodule Aehttpserver.Web.BalanceController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
 
