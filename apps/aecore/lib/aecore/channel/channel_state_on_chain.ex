@@ -11,6 +11,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -193,8 +194,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     total_amount = channel.initiator_amount + channel.responder_amount
     [
       :binary.encode_unsigned(@version),
-      channel.initiator_pubkey,
-      channel.responder_pubkey,
+      Identifier.create_encoded_to_binary(channel.initiator_pubkey, :account),
+      Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
       :binary.encode_unsigned(total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
       #TODO channel reserve
@@ -208,8 +209,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec decode_from_list(integer(), list()) ::
           {:ok, ChannelStateOnChain.t()} | {:error, String.t()}
   def decode_from_list(@version, [
-        initiator_pubkey,
-        responder_pubkey,
+        encoded_initiator_pubkey,
+        encoded_responder_pubkey,
         total_amount,
         initiator_amount,
         #TODO channel reserve
@@ -219,16 +220,25 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         slash_close
       ]) do
     responder_amount = :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
-    {:ok,
-     %ChannelStateOnChain{
-       initiator_pubkey: initiator_pubkey,
-       responder_pubkey: responder_pubkey,
-       initiator_amount: :binary.decode_unsigned(initiator_amount),
-       responder_amount: responder_amount,
-       lock_period: :binary.decode_unsigned(lock_period),
-       slash_close: :binary.decode_unsigned(slash_close),
-       slash_sequence: :binary.decode_unsigned(slash_sequence)
-     }}
+
+    with {:ok, %Identifier{type: :account, value: initiator_pubkey}} <- Identifier.decode_from_binary(encoded_initiator_pubkey),
+         {:ok, %Identifier{type: :account, value: responder_pubkey}} <- Identifier.decode_from_binary(encoded_responder_pubkey) do
+      {:ok,
+       %ChannelStateOnChain{
+         initiator_pubkey: initiator_pubkey,
+         responder_pubkey: responder_pubkey,
+         initiator_amount: :binary.decode_unsigned(initiator_amount),
+         responder_amount: responder_amount,
+         lock_period: :binary.decode_unsigned(lock_period),
+         slash_close: :binary.decode_unsigned(slash_close),
+         slash_sequence: :binary.decode_unsigned(slash_sequence)
+       }}
+    else
+      {:ok, %Identifier{}} ->
+        {:error, "#{__MODULE__}: Expected account identifier"}
+
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
