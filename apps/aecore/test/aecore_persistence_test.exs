@@ -10,21 +10,18 @@ defmodule PersistenceTest do
   alias Aecore.Account.{Account, AccountStateTree}
 
   setup do
-    Persistence.start_link([])
-    Miner.start_link([])
-
-    Chain.clear_state()
-
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+  end
 
+  setup do
     account1 = elem(Keys.keypair(:sign), 0)
 
     account2 =
@@ -70,6 +67,9 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
+
+    assert length(Map.values(Persistence.get_all_blocks())) == 4
+    assert length(Map.values(Persistence.get_blocks(2))) == 2
 
     [block1, block2] =
       Enum.sort(Map.values(Persistence.get_blocks(2)), fn b1, b2 ->
