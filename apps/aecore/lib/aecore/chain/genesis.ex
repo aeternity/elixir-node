@@ -21,10 +21,12 @@ defmodule Aecore.Chain.Genesis do
     %Block{header: header, txs: []}
   end
 
+  @spec populated_trees() :: Chainstate.t()
   def populated_trees do
     populated_trees(preset_accounts())
   end
 
+  @spec populated_trees(list()) :: Chainstate.t()
   def populated_trees(accounts) do
     chainstate_init = Chainstate.create_chainstate_trees()
     miner = {Governance.genesis_miner(), Governance.coinbase_transaction_amount()}

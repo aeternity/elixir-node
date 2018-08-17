@@ -28,7 +28,7 @@ defmodule Aecore.Chain.Chainstate do
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
-
+  @genesis_miner GovernanceConstants.genesis_miner()
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
@@ -86,6 +86,7 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
+  @spec create_chainstate_trees() :: Chainstate.t()
   def create_chainstate_trees do
     %Chainstate{
       :accounts => AccountStateTree.init_empty(),
@@ -97,7 +98,7 @@ defmodule Aecore.Chain.Chainstate do
 
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::256>> ->
+      @genesis_miner ->
         chainstate
 
       miner_pubkey ->

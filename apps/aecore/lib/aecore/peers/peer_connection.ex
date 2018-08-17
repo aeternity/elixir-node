@@ -62,7 +62,7 @@ defmodule Aecore.Peers.PeerConnection do
     :ok = :proc_lib.init_ack({:ok, self()})
     {:ok, {host, _}} = :inet.peername(socket)
     host_bin = host |> :inet.ntoa() |> :binary.list_to_bin()
-    genesis_hash = Genesis.genesis_hash()
+    genesis_hash = Genesis.hash()
     version = <<@p2p_protocol_vsn::64>>
 
     state = Map.merge(opts, %{host: host_bin, version: version, genesis: genesis_hash})
@@ -84,7 +84,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def init(conn_info) do
-    genesis_hash = Genesis.genesis_hash()
+    genesis_hash = Genesis.hash()
 
     updated_con_info =
       Map.merge(conn_info, %{
@@ -401,7 +401,7 @@ defmodule Aecore.Peers.PeerConnection do
          },
          conn_pid
        ) do
-    if Genesis.genesis_hash() == genesis_hash do
+    if Genesis.hash() == genesis_hash do
       cond do
         best_hash == Chain.top_block_hash() ->
           # don't sync - same top block
@@ -525,7 +525,7 @@ defmodule Aecore.Peers.PeerConnection do
   defp ping_object(peers) do
     %{
       share: 32,
-      genesis_hash: Genesis.genesis_hash(),
+      genesis_hash: Genesis.hash(),
       best_hash: Chain.top_block_hash(),
       difficulty: Chain.total_difficulty(),
       peers: peers,
