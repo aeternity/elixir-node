@@ -192,7 +192,12 @@ defmodule AecoreSerializationTest do
 
       Block ->
         Miner.mine_sync_block_to_chain()
-        Chain.top_block()
+        %{public: pk1, secret: _} = :enacl.sign_keypair()
+        TestUtils.miner_spend(pk1, 10)
+        TestUtils.assert_transactions_mined()
+        block = Chain.top_block()
+        assert length(block.txs) == 1
+        block
 
       NamePreClaimTx ->
         {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 50)
