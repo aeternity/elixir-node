@@ -7,10 +7,8 @@ defmodule AecoreContractTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Contract.Call, as: Call
   alias Aecore.Contract.CallStateTree, as: CallStateTree
   alias Aecore.Contract.Contract
@@ -20,16 +18,10 @@ defmodule AecoreContractTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
     Chain.clear_state()
-    Pool.get_and_empty_pool()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
