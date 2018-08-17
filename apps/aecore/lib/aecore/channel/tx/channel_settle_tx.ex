@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Aecore structure of ChannelSettleTx transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx

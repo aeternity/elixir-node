@@ -3,13 +3,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Aecore structure of ChannelCloseMutalTx transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Channel.{ChannelStateTree, ChannelStateOnChain}
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -50,6 +50,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
+  def chainstate_senders?(), do: true
+
+  @spec senders_from_chainstate(ChannelMutalCloseTx.t(), Chainstate.t()) :: list(binary())
+  def senders_from_chainstate(%ChannelCloseMutalTx{channel_id: channel_id}, chainstate) do
+    case ChannelStateTree.get(chainstate.channels, channel_id) do
+      %ChannelStateOnChain{} = channel ->
+        [channel.initiator_pubkey, channel.responder_pubkey]
+      :none ->
+        []
+    end
+  end
+
   @spec init(payload()) :: ChannelCloseMutalTx.t()
   def init(
         %{
@@ -69,15 +81,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Checks transactions internal contents validity
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
     cond do
       tx.initiator_amount + tx.responder_amount < 0 ->
         {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
-
-      length(senders) != 2 ->
-        {:error, "#{__MODULE__}: Invalid from_accs size"}
 
       true ->
         :ok
@@ -99,16 +106,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         channels,
         block_height,
         %ChannelCloseMutalTx{channel_id: channel_id} = tx,
-        data_tx
+        _data_tx
       ) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     new_accounts =
       accounts
-      |> AccountStateTree.update(initiator_pubkey, fn acc ->
+      |> AccountStateTree.update(channel.initiator_pubkey, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.initiator_amount)
       end)
-      |> AccountStateTree.update(responder_pubkey, fn acc ->
+      |> AccountStateTree.update(channel.responder_pubkey, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.responder_amount)
       end)
 

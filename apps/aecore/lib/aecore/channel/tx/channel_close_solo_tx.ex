@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Aecore structure of ChannelCloseSoloTx transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx

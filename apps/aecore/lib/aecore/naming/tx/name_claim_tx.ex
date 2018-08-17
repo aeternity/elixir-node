@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Aecore structure of naming claim.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx

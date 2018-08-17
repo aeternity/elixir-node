@@ -12,6 +12,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
   alias Aeutil.TypeToTag
+  alias Aecore.Chain.Chainstate
 
   require Logger
 
@@ -198,13 +199,23 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @spec chainstate_senders?(DataTx.t()) :: boolean()
+  def chainstate_senders?(%DataTx{type: type}) do
+    type.chainstate_senders?()
+  end
+
+  @spec senders_from_chainstate(DataTx.t(), Chainstate.t()) :: list(binary())
+  def senders_from_chainstate(%DataTx{payload: payload, type: type}, chainstate) do
+    type.senders_from_chainstate(payload, chainstate)
+  end
+
   @doc """
   Checks whether the fee is above 0.
   """
   @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
         %DataTx{fee: fee, type: type, senders: senders} = tx,
-        block_height \\ Chain.top_height()
+        block_height \\ Chain.top_height()  #FIXME
       ) do
     cond do
       !Enum.member?(valid_types(), type) ->

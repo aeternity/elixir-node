@@ -4,7 +4,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   and functions associated with those transactions.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Tx.DataTx

@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Aecore structure of naming Update.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameRevokeTx

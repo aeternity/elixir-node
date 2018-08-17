@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Aecore structure of naming transfer.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameTransferTx

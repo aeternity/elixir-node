@@ -3,7 +3,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Aecore structure of a transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Tx.SpendTx

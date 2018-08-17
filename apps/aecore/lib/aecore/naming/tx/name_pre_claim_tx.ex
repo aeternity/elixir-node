@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Aecore structure of naming pre claim data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx

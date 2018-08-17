@@ -37,7 +37,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec validate(t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
-    if signatures_valid?(tx) do
+    if DataTx.chainstate_senders?(data) || signatures_valid?(tx, DataTx.senders(data)) do
       DataTx.validate(data)
     else
       {:error, "#{__MODULE__}: Signatures invalid"}
@@ -46,7 +46,7 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx, block_height) do
-    if signatures_valid?(tx) do
+    if DataTx.chainstate_senders?(data) || signatures_valid?(tx, DataTx.senders(data)) do
       DataTx.validate(data, block_height)
     else
       {:error, "#{__MODULE__}: Signatures invalid"}
@@ -55,12 +55,16 @@ defmodule Aecore.Tx.SignedTx do
 
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
-    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
-      DataTx.process_chainstate(chainstate, block_height, data)
+  def process_chainstate(chainstate, block_height, %SignedTx{data: data} = tx) do
+    if DataTx.chainstate_senders?(data) && !signatures_valid?(tx, DataTx.senders_from_chainstate(data, chainstate)) do
+      {:error, "#{__MODULE__}: Signatures invalid"}
     else
-      err ->
-        err
+      with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
+        DataTx.process_chainstate(chainstate, block_height, data)
+      else
+        err ->
+          err
+      end
     end
   end
 
@@ -219,15 +223,15 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
-    if length(sigs) != length(DataTx.senders(data)) do
+  defp signatures_valid?(%SignedTx{data: data, signatures: sigs}, senders) do
+    if length(sigs) != length(senders) do
       Logger.error("Wrong signature count")
       false
     else
       data_binary = DataTx.rlp_encode(data)
 
       sigs
-      |> Enum.zip(DataTx.senders(data))
+      |> Enum.zip(senders)
       |> Enum.reduce(true, fn {sig, acc}, validity ->
         cond do
           sig == nil ->
