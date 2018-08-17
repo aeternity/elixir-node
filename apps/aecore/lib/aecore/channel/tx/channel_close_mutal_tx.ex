@@ -184,7 +184,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      tx.channel_id,
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       :binary.encode_unsigned(tx.initiator_amount),
       :binary.encode_unsigned(tx.responder_amount),
       :binary.encode_unsigned(datatx.ttl),
@@ -194,27 +194,35 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   def decode_from_list(@version, [
-        channel_id,
+        encoded_channel_id,
         initiator_amount,
         responder_amount,
         ttl,
         fee,
         nonce,
       ]) do
-    payload = %ChannelCloseMutalTx{
-      channel_id: channel_id,
-      initiator_amount: :binary.decode_unsigned(initiator_amount),
-      responder_amount: :binary.decode_unsigned(responder_amount)
-    }
+    case Identifier.decode_from_binary(encoded_channel_id) do
+      {:ok, %Identifier{type: :channel, value: channel_id}} ->
+        payload = %ChannelCloseMutalTx{
+          channel_id: channel_id,
+          initiator_amount: :binary.decode_unsigned(initiator_amount),
+          responder_amount: :binary.decode_unsigned(responder_amount)
+        }
 
-    DataTx.init_binary(
-      ChannelCloseMutalTx,
-      payload,
-      [],
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+        DataTx.init_binary(
+          ChannelCloseMutalTx,
+          payload,
+          [],
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+      
+      {:ok, %Identifier{}} ->
+        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
+
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

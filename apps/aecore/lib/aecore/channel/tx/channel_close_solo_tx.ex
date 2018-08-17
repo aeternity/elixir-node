@@ -166,7 +166,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     [sender] = data_tx.senders
     [
       :binary.encode_unsigned(@version),
-      tx.state.channel_id,
+      Identifier.create_encoded_to_binary(tx.state.channel_id, :channel),
       Identifier.encode_to_binary(sender),
       ChannelStateOffChain.encode_to_list(tx.state),  #TODO payload + poi instead
       :binary.encode_unsigned(data_tx.ttl),
@@ -175,8 +175,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     ]
   end
 
-  def decode_from_list(@version, [
-                         channel_id,
+  def decode_from_list(@version, [ 
+                         encoded_channel_id,
                          encoded_sender,
                          [state_ver_bin | state],  #TODO payload + poi instead
                          ttl,
@@ -185,8 +185,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
                        ]) do
     state_ver = :binary.decode_unsigned(state_ver_bin)
 
-    with{:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state),
-        {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
+    with {:ok, %Identifier{type: :channel, value: channel_id}} <- Identifier.decode_from_binary(encoded_channel_id),
+         {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state),
+         {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
       if channel_id != state.channel_id do
         {:error, "#{__MODULE__}: channel_id mismatch"}
       else
@@ -202,6 +203,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         )
       end
     else
+      {:ok, %Identifier{}} ->
+        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
+
       {:error, _} = error -> error
     end
   end

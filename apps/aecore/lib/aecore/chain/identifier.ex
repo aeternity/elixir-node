@@ -39,6 +39,12 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
+  @spec create_encoded_to_binary(type(), value()) :: binary()
+  def create_encoded_to_binary(value, type) do
+    create_identity(value, type)
+    |> encode_to_binary()
+  end
+
   def check_identity(%Identifier{} = id, type) do
     case create_identity(id.value, type) do
       {:ok, check_id} -> check_id == id
