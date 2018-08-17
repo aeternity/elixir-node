@@ -26,6 +26,8 @@ defmodule Aecore.Contract.Contract do
 
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
 
+  use Aecore.Util.Serializable
+
   @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
   def new(owner, nonce, vm_version, code, deposit) do
     contract_id = create_contract_id(owner, nonce)
@@ -88,8 +90,6 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    {:ok, decoded_owner_address} = Identifier.decode_from_binary(owner)
-
     decoded_active =
       case :binary.decode_unsigned(active) do
         0 -> false
@@ -103,18 +103,22 @@ defmodule Aecore.Contract.Contract do
         decoded_referer
       end)
 
-    {:ok,
-     %Contract{
-       id: %Identifier{type: :contract},
-       owner: decoded_owner_address,
-       vm_version: :binary.decode_unsigned(vm_version),
-       code: code,
-       store: %{},
-       log: log,
-       active: decoded_active,
-       referers: decoded_referers,
-       deposit: :binary.decode_unsigned(deposit)
-     }}
+    with {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
+      {:ok,
+       %Contract{
+         id: %Identifier{type: :contract},
+         owner: decoded_owner_address,
+         vm_version: :binary.decode_unsigned(vm_version),
+         code: code,
+         store: %{},
+         log: log,
+         active: decoded_active,
+         referers: decoded_referers,
+         deposit: :binary.decode_unsigned(deposit)
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do

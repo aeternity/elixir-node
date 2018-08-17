@@ -33,6 +33,8 @@ defmodule Aecore.Contract.Call do
     :return_type
   ]
 
+  use Aecore.Util.Serializable
+
   @nonce_size 256
 
   @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
@@ -47,9 +49,9 @@ defmodule Aecore.Contract.Call do
       :height => block_height,
       :contract_address => identified_contract_address,
       :gas_price => gas_price,
-      :gas_used => 0,
-      :return_value => <<>>,
-      :return_type => :ok
+      :gas_used => 0,         # will be set
+      :return_value => <<>>,  # in the
+      :return_type => :ok     #ContractCallTx.new
     }
   end
 
@@ -88,20 +90,31 @@ defmodule Aecore.Contract.Call do
         return_value,
         return_type
       ]) do
-    {:ok, decoded_caller_address} = Identifier.decode_from_binary(encoded_caller_address)
-    {:ok, decoded_contract_address} = Identifier.decode_from_binary(encoded_contract_address)
 
-    {:ok,
-     %Call{
-       caller_address: decoded_caller_address,
-       caller_nonce: :binary.decode_unsigned(caller_nonce),
-       height: :binary.decode_unsigned(height),
-       contract_address: decoded_contract_address,
-       gas_price: :binary.decode_unsigned(gas_price),
-       gas_used: :binary.decode_unsigned(gas_used),
-       return_value: return_value,
-       return_type: String.to_atom(return_type)
-     }}
+    parsed_return_type =
+      case return_type do
+        return_type when return_type in ["ok", "error", "revert"] ->
+            String.to_atom(return_type)
+        _ ->
+          {:error, "#{__MODULE__}: decode_from_list: Invalid return_type: #{inspect(return_type)}"}
+      end
+
+    with {:ok, decoded_caller_address} <- Identifier.decode_from_binary(encoded_caller_address),
+         {:ok, decoded_contract_address} <- Identifier.decode_from_binary(encoded_contract_address) do
+      {:ok,
+       %Call{
+         caller_address: decoded_caller_address,
+         caller_nonce: :binary.decode_unsigned(caller_nonce),
+         height: :binary.decode_unsigned(height),
+         contract_address: decoded_contract_address,
+         gas_price: :binary.decode_unsigned(gas_price),
+         gas_used: :binary.decode_unsigned(gas_used),
+         return_value: return_value,
+         return_type: parsed_return_type
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
