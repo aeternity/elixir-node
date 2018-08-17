@@ -10,6 +10,7 @@ defmodule TestUtils do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Keys
 
   def get_accounts_chainstate do
     Chain.chain_state().accounts
@@ -17,6 +18,11 @@ defmodule TestUtils do
 
   def assert_balance(pk, balance) do
     assert Account.balance(Chain.chain_state().accounts, pk) == balance
+  end
+
+  def miner_spend(receiver, amount) do
+    {pubkey, privkey} = Keys.keypair(:sign)
+    spend(pubkey, privkey, receiver, amount)
   end
 
   def spend(pk, sk, receiver, amount) do
@@ -27,10 +33,11 @@ defmodule TestUtils do
         receiver,
         amount,
         10,
-        Account.nonce(Chain.chain_state().accounts, pk) + 1
+        Account.nonce(Chain.chain_state().accounts, pk) + 1,
+        ""
       )
 
-    Pool.add_transaction(tx)
+    :ok = Pool.add_transaction(tx)
   end
 
   def spend_list(pk, sk, list) do
