@@ -174,7 +174,9 @@ defmodule Aecore.Persistence.Worker do
       "patricia_account_family",
       "patricia_naming_family",
       "total_difficulty_family",
-      "patricia_channels_family"
+      "patricia_channels_family",
+      "patricia_contracts_family",
+      "patricia_calls_family"
     ]
   end
 
@@ -196,8 +198,8 @@ defmodule Aecore.Persistence.Worker do
        "patricia_naming_family" => patricia_naming_family,
        "total_difficulty_family" => total_difficulty_family,
        "patricia_channels_family" => patricia_channels_family,
-       "patricia_contracts_family",
-       "patricia_calls_family"
+       "patricia_contracts_family" => patricia_contracts_family,
+       "patricia_calls_family" => patricia_calls_family
      } = families_map} =
       Rox.open(
         persistence_path(),
