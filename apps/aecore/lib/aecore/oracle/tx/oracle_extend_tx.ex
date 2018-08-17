@@ -140,7 +140,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   def decode_from_list(@version, [encoded_senders, nonce, ttl_value, fee, ttl]) do
     payload = %{
-      ttl: :binary.encode_unsigned(ttl_value)
+      ttl: :binary.decode_unsigned(ttl_value)
     }
 
     DataTx.init_binary(
