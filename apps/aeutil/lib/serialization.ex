@@ -152,6 +152,9 @@ defmodule Aeutil.Serialization do
       :hash ->
         NameClaim.base58c_encode_hash(value)
 
+      :value ->
+        Account.base58c_encode(value)
+
       _ ->
         value
     end
@@ -252,10 +255,16 @@ defmodule Aeutil.Serialization do
       :hash ->
         NameClaim.base58c_decode_hash(value)
 
+      :value ->
+        Account.base58c_decode(value)
+
       :name ->
         value
 
       :payload ->
+        value
+
+      :query_data ->
         value
 
       _ ->
