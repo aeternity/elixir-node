@@ -190,17 +190,18 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [initiator, responder] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(initiator),
       :binary.encode_unsigned(tx.initiator_amount),
       Identifier.encode_to_binary(responder),
       :binary.encode_unsigned(tx.responder_amount),
-      #TODO channel reserve
+      # TODO channel reserve
       :binary.encode_unsigned(tx.locktime),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      #TODO state_hash
+      # TODO state_hash
       :binary.encode_unsigned(datatx.nonce)
     ]
   end
@@ -210,11 +211,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         initiator_amount,
         encoded_responder,
         responder_amount,
-        #TODO channel reserve
+        # TODO channel reserve
         locktime,
         ttl,
         fee,
-        #TODO state_hash
+        # TODO state_hash
         nonce
       ]) do
     payload = %ChannelCreateTx{

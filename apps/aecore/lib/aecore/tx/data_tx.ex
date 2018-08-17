@@ -215,7 +215,8 @@ defmodule Aecore.Tx.DataTx do
   @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
         %DataTx{fee: fee, type: type, senders: senders} = tx,
-        block_height \\ Chain.top_height()  #FIXME
+        # FIXME
+        block_height \\ Chain.top_height()
       ) do
     cond do
       !Enum.member?(valid_types(), type) ->

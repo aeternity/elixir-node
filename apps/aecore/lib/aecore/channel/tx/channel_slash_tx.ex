@@ -165,11 +165,13 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.state.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      ChannelStateOffChain.encode_to_list(tx.state), #TODO payload + poi instead
+      # TODO payload + poi instead
+      ChannelStateOffChain.encode_to_list(tx.state),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.nonce)
@@ -177,19 +179,22 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   def decode_from_list(@version, [
-                         encoded_channel_id,
-                         encoded_sender,
-                         [state_ver_bin | state], #TODO payload + poi instead
-                         ttl,
-                         fee,
-                         nonce
-                       ]) do
+        encoded_channel_id,
+        encoded_sender,
+        # TODO payload + poi instead
+        [state_ver_bin | state],
+        ttl,
+        fee,
+        nonce
+      ]) do
     state_ver = :binary.decode_unsigned(state_ver_bin)
 
-    with {:ok, %Identifier{type: :channel, value: channel_id}} <- Identifier.decode_from_binary(encoded_channel_id),
+    with {:ok, %Identifier{type: :channel, value: channel_id}} <-
+           Identifier.decode_from_binary(encoded_channel_id),
          {:ok, state} <- ChannelStateOffChain.decode_from_list(state_ver, state),
          {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
       payload = %ChannelSlashTx{state: state}
+
       if channel_id != state.channel_id do
         {:error, "Channel_id mismatch"}
       else
@@ -206,7 +211,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       {:ok, %Identifier{}} ->
         {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
 
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 

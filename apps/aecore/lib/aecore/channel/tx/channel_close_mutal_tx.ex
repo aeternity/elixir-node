@@ -57,6 +57,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     case ChannelStateTree.get(chainstate.channels, channel_id) do
       %ChannelStateOnChain{} = channel ->
         [channel.initiator_pubkey, channel.responder_pubkey]
+
       :none ->
         []
     end
@@ -199,7 +200,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         responder_amount,
         ttl,
         fee,
-        nonce,
+        nonce
       ]) do
     case Identifier.decode_from_binary(encoded_channel_id) do
       {:ok, %Identifier{type: :channel, value: channel_id}} ->
@@ -217,11 +218,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
         )
-      
+
       {:ok, %Identifier{}} ->
         {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
 
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 

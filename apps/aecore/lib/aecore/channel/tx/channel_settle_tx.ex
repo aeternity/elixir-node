@@ -152,12 +152,13 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = data_tx) do
     [sender] = data_tx.senders
+
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      #TODO initiator_amount
-      #TODO responder amount
+      # TODO initiator_amount
+      # TODO responder amount
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
       :binary.encode_unsigned(data_tx.nonce)
@@ -165,19 +166,19 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   def decode_from_list(@version, [
-      encoded_channel_id,
-      encoded_sender,
-      #TODO initiator_amount
-      #TODO responder amount
-      ttl,
-      fee,
-      nonce
-    ]) do
-
-    with {:ok, %Identifier{type: :channel, value: channel_id}} <- Identifier.decode_from_binary(encoded_channel_id),
+        encoded_channel_id,
+        encoded_sender,
+        # TODO initiator_amount
+        # TODO responder amount
+        ttl,
+        fee,
+        nonce
+      ]) do
+    with {:ok, %Identifier{type: :channel, value: channel_id}} <-
+           Identifier.decode_from_binary(encoded_channel_id),
          {:ok, sender} <- Identifier.decode_from_binary(encoded_sender) do
       payload = %ChannelSettleTx{channel_id: channel_id}
-      
+
       DataTx.init_binary(
         ChannelSettleTx,
         payload,
@@ -190,7 +191,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       {:ok, %Identifier{}} ->
         {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
 
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 

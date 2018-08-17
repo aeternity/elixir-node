@@ -56,7 +56,8 @@ defmodule Aecore.Tx.SignedTx do
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data} = tx) do
-    if DataTx.chainstate_senders?(data) && !signatures_valid?(tx, DataTx.senders_from_chainstate(data, chainstate)) do
+    if DataTx.chainstate_senders?(data) &&
+         !signatures_valid?(tx, DataTx.senders_from_chainstate(data, chainstate)) do
       {:error, "#{__MODULE__}: Signatures invalid"}
     else
       with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do

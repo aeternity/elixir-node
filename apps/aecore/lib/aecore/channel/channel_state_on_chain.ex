@@ -192,14 +192,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec encode_to_list(t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     total_amount = channel.initiator_amount + channel.responder_amount
+
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(channel.initiator_pubkey, :account),
       Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
       :binary.encode_unsigned(total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
-      #TODO channel reserve
-      #TODO state hash
+      # TODO channel reserve
+      # TODO state hash
       :binary.encode_unsigned(channel.slash_sequence),
       :binary.encode_unsigned(channel.lock_period),
       :binary.encode_unsigned(channel.slash_close)
@@ -213,16 +214,19 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         encoded_responder_pubkey,
         total_amount,
         initiator_amount,
-        #TODO channel reserve
-        #TODO state hash
+        # TODO channel reserve
+        # TODO state hash
         slash_sequence,
         lock_period,
         slash_close
       ]) do
-    responder_amount = :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
+    responder_amount =
+      :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
 
-    with {:ok, %Identifier{type: :account, value: initiator_pubkey}} <- Identifier.decode_from_binary(encoded_initiator_pubkey),
-         {:ok, %Identifier{type: :account, value: responder_pubkey}} <- Identifier.decode_from_binary(encoded_responder_pubkey) do
+    with {:ok, %Identifier{type: :account, value: initiator_pubkey}} <-
+           Identifier.decode_from_binary(encoded_initiator_pubkey),
+         {:ok, %Identifier{type: :account, value: responder_pubkey}} <-
+           Identifier.decode_from_binary(encoded_responder_pubkey) do
       {:ok,
        %ChannelStateOnChain{
          initiator_pubkey: initiator_pubkey,
@@ -237,7 +241,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       {:ok, %Identifier{}} ->
         {:error, "#{__MODULE__}: Expected account identifier"}
 
-      {:error, _} = error -> error
+      {:error, _} = error ->
+        error
     end
   end
 
