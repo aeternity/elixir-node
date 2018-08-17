@@ -2,6 +2,7 @@ defmodule Aehttpserver.Web.PeersController do
   use Aehttpserver.Web, :controller
 
   alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Account.Account
   alias Aecore.Keys
 
   def info(conn, _params) do
@@ -18,6 +19,10 @@ defmodule Aehttpserver.Web.PeersController do
 
   def peers(conn, _params) do
     peers = Peers.all_peers()
-    json(conn, peers)
+
+    serialized_peers =
+      Enum.map(peers, fn peer -> %{peer | pubkey: Account.base58c_encode(peer.pubkey)} end)
+
+    json(conn, serialized_peers)
   end
 end
