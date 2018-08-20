@@ -455,9 +455,8 @@ defmodule Aetestframework.Worker do
     Port.command(port, "pubkey_receiver = \"#{receiver}\"\n")
     Port.command(port, "nonce = Account.nonce(Chain.chain_state().accounts, Account.base58c_decode(pubkey_sender)) + 1\n")
     Port.command(port, "ttl = Chain.top_height() + 1\n")
-    Port.command(port, "{:ok, tx} = Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\", 20)\n")
+    Port.command(port, "{:ok, tx} = Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\")\n")
     Port.command(port, "Pool.add_transaction(tx)\n")
-
     {:reply, :ok, state}
   end
 
@@ -476,7 +475,6 @@ defmodule Aetestframework.Worker do
   end
 
   def handle_call({:update_pubkeys_state}, _, state) do
-
     new_state = Enum.reduce(state, state, fn(node, acc) ->
       {node_name, _} = node
       port = state[node_name].port
