@@ -49,20 +49,12 @@ defmodule Aecore.Contract.ContractStateTree do
 
         identified_id = Identifier.create_identity(key, :contract)
 
-        identified_referers =
-          Enum.map(deserialized.referers, fn referer ->
-            {:ok, identified_referer} = Identifier.create_identity(referer, :contract)
-
-            identified_referer
-          end)
-
         store_id = Contract.store_id(%{deserialized | id: identified_id})
 
         %Contract{
           deserialized
           | id: identified_id,
-            store: get_store(store_id, contract_tree),
-            referers: identified_referers
+            store: get_store(store_id, contract_tree)
         }
 
       _ ->
