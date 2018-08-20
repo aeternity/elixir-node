@@ -55,14 +55,20 @@ defmodule TestUtils do
   end
 
   def assert_transactions_mined do
-    Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_and_empty_pool()) == true
   end
 
+  defp restart_supervisor(supervisor) do
+    :ok = Supervisor.terminate_child(Aecore, supervisor)
+    {:ok, _} = Supervisor.restart_child(Aecore, supervisor)
+  end
+
   def clean_blockchain do
-    Persistence.delete_all_blocks()
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
+    :ok = Persistence.delete_all()
+    restart_supervisor(Aecore.Channel.Worker.Supervisor)
+    restart_supervisor(Aecore.Chain.Worker.Supervisor)
+    restart_supervisor(Aecore.Tx.Pool.Worker.Supervisor)
     :ok
   end
 end

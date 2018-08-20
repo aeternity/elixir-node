@@ -5,8 +5,7 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aeutil.Serialization
   alias Aeutil.HTTPUtil
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header, Genesis}
   alias Aeutil.Serialization
 
   def block_by_height(conn, %{"height" => height}) do
@@ -87,7 +86,7 @@ defmodule Aehttpserver.Web.BlockController do
     to_block_hash =
       case Map.get(params, "to_block") do
         nil ->
-          BlockValidation.block_header_hash(Block.genesis_block().header)
+          BlockValidation.block_header_hash(Genesis.block().header)
 
         hash ->
           Header.base58c_decode(hash)

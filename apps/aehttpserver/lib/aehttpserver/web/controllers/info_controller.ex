@@ -1,8 +1,7 @@
 defmodule Aehttpserver.Web.InfoController do
   use Aehttpserver.Web, :controller
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.BlockValidation
   alias Aecore.Keys
@@ -18,7 +17,7 @@ defmodule Aehttpserver.Web.InfoController do
       |> BlockValidation.block_header_hash()
       |> Header.base58c_encode()
 
-    genesis_block_header = Block.genesis_block().header
+    genesis_block_header = Genesis.block().header
 
     genesis_block_hash =
       genesis_block_header

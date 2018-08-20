@@ -30,7 +30,9 @@ defmodule AecoreChannelTest do
     on_exit(fn ->
       TestUtils.clean_blockchain()
     end)
+  end
 
+  setup do
     %{public: pk1, secret: prk1} = :enacl.sign_keypair()
     %{public: pk2, secret: prk2} = :enacl.sign_keypair()
 

@@ -9,12 +9,9 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Tx.{DataTx, SignedTx}
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
   alias Aecore.Naming.{NameClaim, NameCommitment}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx.NameTransferTx}
@@ -22,17 +19,10 @@ defmodule AecoreSerializationTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 

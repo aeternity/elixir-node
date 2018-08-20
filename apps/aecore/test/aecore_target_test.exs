@@ -4,12 +4,12 @@ defmodule TargetTest do
   doctest Aecore.Chain.Target
 
   alias Aecore.Chain.Target, as: Target
-  alias Aecore.Chain.{Block, Header}
+  alias Aecore.Chain.{Block, Genesis, Header}
 
   @tag :target
   test "target calculation genesis block only" do
     blocks = [
-      Block.genesis_block()
+      Genesis.block()
     ]
 
     timestamp = 1_607_275_094_308
