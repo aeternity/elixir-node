@@ -6,17 +6,14 @@ defmodule AecoreOracleTest do
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aeutil.PatriciaMerkleTree
 
   setup do
     Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 

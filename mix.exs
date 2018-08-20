@@ -52,7 +52,6 @@ defmodule EpochElixir.Mixfile do
       {:gen_state_machine, "~> 2.0.1"},
       {:logger_file_backend, "~> 0.0.10"},
       {:excoveralls, "~> 0.8.1", only: :test},
-      {:ex_json_schema, "~> 0.5.4"},
       {:erl_base58, "~> 0.0.1"},
       {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
       {:edown, "~> 0.8", override: true},

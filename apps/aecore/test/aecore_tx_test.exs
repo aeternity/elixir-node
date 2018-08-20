@@ -5,7 +5,6 @@ defmodule AecoreTxTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -16,17 +15,10 @@ defmodule AecoreTxTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
