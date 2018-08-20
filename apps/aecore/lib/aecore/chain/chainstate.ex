@@ -14,7 +14,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys
-  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Governance.GenesisConstants
   alias Aeutil.Hash
 
   require Logger
@@ -28,7 +28,7 @@ defmodule Aecore.Chain.Chainstate do
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
-  @genesis_miner GovernanceConstants.genesis_miner()
+  @genesis_miner GenesisConstants.miner()
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()

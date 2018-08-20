@@ -6,7 +6,6 @@ defmodule AecoreValidationTest do
   use ExUnit.Case
   doctest Aecore.Chain.BlockValidation
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
@@ -17,6 +16,8 @@ defmodule AecoreValidationTest do
 
   setup_all do
     Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -24,9 +25,7 @@ defmodule AecoreValidationTest do
     end
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 

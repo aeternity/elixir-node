@@ -61,12 +61,7 @@ defmodule Aecore.Chain.Block do
 
   @spec decode_from_list(integer(), list()) :: {:ok, Block.t()} | {:error, String.t()}
   def decode_from_list(@version, [header_bin, txs]) when is_list(txs) do
-    txs_list =
-      for tx <- txs do
-        SignedTx.rlp_decode(tx)
-      end
-
-    with :ok <- txs_list_valid(txs_list),
+    with {:ok, txs_list} <- decode_txs_list(txs),
          {:ok, header} <- Header.decode_from_binary(header_bin) do
       {:ok, %Block{header: header, txs: txs_list}}
     else
@@ -82,14 +77,18 @@ defmodule Aecore.Chain.Block do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 
-  defp txs_list_valid([]) do
-    :ok
+  defp decode_txs_list(list) do
+    decode_txs_list(list, [])
   end
 
-  defp txs_list_valid([tx | rest]) do
-    case tx do
-      %SignedTx{} ->
-        txs_list_valid(rest)
+  defp decode_txs_list([], acc) do
+    {:ok, acc}
+  end
+
+  defp decode_txs_list([encoded_tx | rest_encoded_txs], acc) do
+    case SignedTx.rlp_decode(encoded_tx) do
+      {:ok, tx} ->
+        decode_txs_list(rest_encoded_txs, [tx | acc])
 
       {:error, _} = error ->
         error

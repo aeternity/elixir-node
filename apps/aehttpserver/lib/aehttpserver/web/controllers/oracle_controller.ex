@@ -3,15 +3,25 @@ defmodule Aehttpserver.Web.OracleController do
 
   alias Aecore.Oracle.Oracle
   alias Aecore.Account.Account
-  alias Aeutil.Bits
+  alias Aecore.Tx.SignedTx
 
   require Logger
 
   def oracle_response(conn, _params) do
-    body = conn.body_params
-    binary_query_id = Bits.decode58(body["query_id"])
+    %{
+      data: %{
+        payload: %{
+          query_id: query_id
+        },
+        fee: fee
+      }
+    } = SignedTx.deserialize(conn.body_params)
 
-    case Oracle.respond(binary_query_id, body["response"], body["fee"]) do
+    case Oracle.respond(
+           query_id,
+           query_id,
+           fee
+         ) do
       :ok ->
         json(conn, %{:status => :ok})
 
@@ -33,7 +43,7 @@ defmodule Aehttpserver.Web.OracleController do
           Map.put(
             acc,
             Account.base58c_encode(address),
-            Map.put(registered_oracle_state, :owner, Account.base58c_encode(owner))
+            Map.put(registered_oracle_state, :owner, Account.base58c_encode(owner.value))
           )
         end)
       end
@@ -42,17 +52,28 @@ defmodule Aehttpserver.Web.OracleController do
   end
 
   def oracle_query(conn, _params) do
-    body = conn.body_params
-    binary_oracle_address = Bits.decode58(body["address"])
-    parsed_query = Poison.decode!(~s(#{body["query"]}))
+    %{
+      data: %{
+        fee: fee,
+        payload: %{
+          oracle_address: %{
+            value: value
+          },
+          query_data: query_data,
+          query_fee: query_fee,
+          query_ttl: query_ttl,
+          response_ttle: response_ttl
+        }
+      }
+    } = SignedTx.deserialize(conn.body_params)
 
     case Oracle.query(
-           binary_oracle_address,
-           parsed_query,
-           body["query_fee"],
-           body["fee"],
-           body["query_ttl"],
-           body["response_ttl"]
+           value,
+           query_data,
+           query_fee,
+           fee,
+           query_ttl,
+           response_ttl
          ) do
       :ok ->
         json(conn, %{:status => :ok})

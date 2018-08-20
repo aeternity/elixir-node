@@ -6,6 +6,7 @@ defmodule Aecore.Chain.Genesis do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header}
   alias Aecore.Governance.GovernanceConstants, as: Governance
+  alias Aecore.Governance.GenesisConstants, as: GenesisConstants
 
   require Logger
 
@@ -29,7 +30,7 @@ defmodule Aecore.Chain.Genesis do
   @spec populated_trees(list()) :: Chainstate.t()
   def populated_trees(accounts) do
     chainstate_init = Chainstate.create_chainstate_trees()
-    miner = {Governance.genesis_miner(), Governance.coinbase_transaction_amount()}
+    miner = {GenesisConstants.miner(), Governance.coinbase_transaction_amount()}
 
     Enum.reduce([miner | accounts], chainstate_init, fn {pubkey, balance}, new_trees ->
       new_acounts =
@@ -69,16 +70,16 @@ defmodule Aecore.Chain.Genesis do
   @spec header() :: Header.t()
   defp header do
     header = %{
-      height: Governance.genesis_height(),
-      prev_hash: Governance.genesis_prev_hash(),
-      txs_hash: Governance.genesis_txs_hash(),
+      height: GenesisConstants.height(),
+      prev_hash: GenesisConstants.prev_hash(),
+      txs_hash: GenesisConstants.txs_hash(),
       root_hash: Chainstate.calculate_root_hash(populated_trees()),
-      time: Governance.genesis_time(),
-      nonce: Governance.genesis_nonce(),
-      miner: Governance.genesis_miner(),
-      pow_evidence: Governance.genesis_evidence(),
-      version: Governance.genesis_version(),
-      target: Governance.genesis_target()
+      time: GenesisConstants.time(),
+      nonce: GenesisConstants.nonce(),
+      miner: GenesisConstants.miner(),
+      pow_evidence: GenesisConstants.evidence(),
+      version: GenesisConstants.version(),
+      target: GenesisConstants.target()
     }
 
     struct(Header, header)
