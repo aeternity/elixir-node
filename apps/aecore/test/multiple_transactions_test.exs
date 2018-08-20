@@ -10,10 +10,14 @@ defmodule MultipleTransactionsTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys
   alias Aecore.Account.Account
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Governance.GovernanceConstants
 
   setup do
     Code.require_file("test_utils.ex", "./test")
+
+    Persistence.delete_all()
+
     TestUtils.clean_blockchain()
 
     on_exit(fn ->

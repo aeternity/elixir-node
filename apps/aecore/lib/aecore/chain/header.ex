@@ -17,7 +17,6 @@ defmodule Aecore.Chain.Header do
   @header_nonce_size 64
   @header_time_size 64
   @pubkey_size 32
-
   @pow_element_size 4
   @pow_element_size_bits @pow_element_size * 8
   @pow_length 42

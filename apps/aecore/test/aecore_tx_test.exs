@@ -11,6 +11,7 @@ defmodule AecoreTxTest do
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
+  alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Keys
 
   setup do
@@ -64,12 +65,13 @@ defmodule AecoreTxTest do
   end
 
   test "invalid spend transaction", tx do
+    reward = Governance.coinbase_transaction_amount()
     {sender, priv_key} = Keys.keypair(:sign)
-    amount = 200
+    amount = reward * 2
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-    assert Account.balance(Chain.chain_state().accounts, sender) == 100
+    assert Account.balance(Chain.chain_state().accounts, sender) == reward
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
@@ -80,19 +82,19 @@ defmodule AecoreTxTest do
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(Chain.chain_state().accounts, sender) == 200
+    assert Account.balance(Chain.chain_state().accounts, sender) == amount
 
     :ok = Miner.mine_sync_block_to_chain()
-    # At this poing the sender should have 300 tokens,
+    # At this poing the sender should have (reward * 3) tokens,
     # enough to mine the transaction in the pool
 
-    assert Account.balance(Chain.chain_state().accounts, sender) == 300
+    assert Account.balance(Chain.chain_state().accounts, sender) == reward * 3
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 200
-    assert Account.balance(Chain.chain_state().accounts, tx.receiver) == 200
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             Account.balance(TestUtils.get_accounts_chainstate(), tx.receiver)
   end
 
   test "nonce is too small", tx do
@@ -107,7 +109,8 @@ defmodule AecoreTxTest do
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
-    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 100
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             10_000_000_000_000_000_000
   end
 
   test "sender pub_key is too small", tx do
