@@ -34,6 +34,12 @@ peerkeys_path =
     env -> env
   end
 
+accounts_path =
+  case System.get_env("ACCOUNTS_PATH") do
+    nil -> "apps/aecore/config/genesis/"
+    env -> env
+  end
+
 config :aecore, :spend_tx, version: 1
 
 config :aecore, :sign_keys, pubkey_size: 32
@@ -55,6 +61,8 @@ config :aecore, :sign_keys,
 config :aecore, :peer_keys,
   pass: peer_keys_pass,
   path: Path.absname(peerkeys_path)
+
+config :aecore, :account_path, path: Path.absname(accounts_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),
