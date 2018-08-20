@@ -8,6 +8,8 @@ defmodule Aecore.Contract.Contract do
 
   @version 1
 
+  # The @store_prefix is used to name the storage tree and keep
+  # all storage nodes in one subtree under the contract tree.
   @store_prefix 16
 
   @type contract :: %Contract{
