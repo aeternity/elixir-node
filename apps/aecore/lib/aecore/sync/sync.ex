@@ -1,5 +1,4 @@
 defmodule Aecore.Sync.Sync do
-
   use GenServer
 
   alias Aecore.Sync.{Jobs, Chain, Task}
@@ -7,13 +6,20 @@ defmodule Aecore.Sync.Sync do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerConnection
 
+  alias __MODULE__
+
+  require Logger
+
   @max_headers_per_chunk 100
-  @genesis_height 0 ## maybe to be changed with another fun call
-  
-  ###===================================================
+  ## maybe to be changed with another fun call
+  @genesis_height 0
+
+  defstruct sync_tasks: []
+
+  ### ===================================================
   ### API calls
-  ###===================================================
-  
+  ### ===================================================
+
   def start_sync(peer_id, remote_hash, remote_difficulty) do
     GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash, remote_difficulty})
   end
@@ -42,11 +48,10 @@ defmodule Aecore.Sync.Sync do
     GenServer.cast(__MODULE__, {:handle_worker, task, action})
   end
 
-  ###==================================================================
+  ### ==================================================================
   ### GenServer functions
-  ###==================================================================
+  ### ==================================================================
 
-  
   ## When we Ping a node with at least as much difficulty as we have,
   ## then we are going to sync with it.
   ## We already agree upon the genesis block and need to find the highest common
@@ -65,11 +70,11 @@ defmodule Aecore.Sync.Sync do
   ##
   ## We sync with several nodes at the same time and use as strategy
   ## to pick a random hash from the hashes in the pool.
-  
+
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{sync_tasks: []}, name: __MODULE__)
   end
-  
+
   def init(state) do
     Jobs.init_jobs()
     {:ok, state}
@@ -79,10 +84,7 @@ defmodule Aecore.Sync.Sync do
     {:reply, peer_in_sync(state, peer_id), state}
   end
 
-  def handle_call(
-        {:known_chain, %Chain{chain_id: cid} = chain, new_chain_info},
-        _from,
-        state) do
+  def handle_call({:known_chain, %Chain{chain_id: cid} = chain, new_chain_info}, _from, state) do
     {new_chain, state1} =
       case new_chain_info do
         :none ->
@@ -94,18 +96,19 @@ defmodule Aecore.Sync.Sync do
         %Chain{chain_id: _cid} ->
           {chain, Chain.add_chain_info(new_chain_info, state)}
       end
+
     {res, new_state} = sync_task_for_chain(chain, state1)
     {:reply, res, new_state}
   end
 
   def handle_call({:update_sync_task, update, st_id}, _from, state) do
-    new_state = do_update_sync_task(state, st_id, update)
+    new_state = Task.do_update_sync_task(state, st_id, update)
     {:reply, :ok, new_state}
   end
 
   def handle_call({:next_work_item, st_id, peer_id, {:error, reason}}, _from, state) do
-    new_state = do_update_sync_task(state, st_id, {:error, peer_id})
-    {:reply, :abort_work, new_state)
+    new_state = Task.do_update_sync_task(state, st_id, {:error, peer_id})
+    {:reply, :abort_work, new_state}
   end
 
   def handle_call({:next_work_item, st_id, peer_id, last_result}, _from, state) do
@@ -117,7 +120,7 @@ defmodule Aecore.Sync.Sync do
   ## Handle casts
 
   def handle_cast({:start_sync, peer_id, remote_hash, _remote_diff}, state) do
-    Jobs.run_job(:sync_task_workers, fn -> do_start_sync(peer_id, remote_hash end))
+    Jobs.run_job(:sync_task_workers, fn -> do_start_sync(peer_id, remote_hash) end)
     {:noreply, state}
   end
 
@@ -131,22 +134,24 @@ defmodule Aecore.Sync.Sync do
 
   def handle_cast({:handle_worker, st_id, action}, state) do
     state1 =
-      case get_sync_task(st_id, state) do
+      case Task.get_sync_task(st_id, state) do
         {:ok, sync_task} ->
           sync_task1 = do_handle_worker(action, sync_task)
-          set_sync_task(sync_task1, state)
+          Task.set_sync_task(sync_task1, state)
 
         {:error, :not_found} ->
           state
       end
-    {:noreply, state1)
+
+    {:noreply, state1}
   end
 
-  def handle_cast(_, state), do: {:noreply, state)
+  def handle_cast(_, state), do: {:noreply, state}
 
   def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
     peer_ids = Enum.map(Peers.get_random(:all), fn pid -> Peers.peer_id(pid) end)
     non_syncing_peer_ids = Enum.filter(peer_ids, fn pid -> not peer_in_sync(state, pid) end)
+
     case event do
       :new_top_block -> Jobs.enqueue(:block, info, non_syncing_peer_ids)
       :tx_created -> Jobs.enqueue(:tx, info, peer_ids)
@@ -156,15 +161,15 @@ defmodule Aecore.Sync.Sync do
   end
 
   def sync_task_for_chain(chain, %{sync_tasks: sts} = state) do
-    case match_tasks(chain, sts, []) do
+    case Task.match_tasks(chain, sts, []) do
       :no_match ->
-        st = init_sync_task(chain)
-        {{:new, chain, st.id}, set_sync_task(st, state)}
-      
+        st = Task.init_sync_task(chain)
+        {{:new, chain, st.id}, Task.set_sync_task(st, state)}
+
       {:match, %Task{id: st_id, chain: chain2} = st} ->
-        new_chain = merge_chains(%Chain{chain_id: st_id}, chain2)
+        new_chain = Chain.merge_chains(%Chain{chain_id: st_id}, chain2)
         st1 = %Task{st | chain: new_chain}
-        {{:existing, stid}, set_sync_task(st1, state)}
+        {{:existing, st.id}, Task.set_sync_task(st1, state)}
 
       {:inconclusive, _, _} = res ->
         {res, state}
@@ -175,16 +180,17 @@ defmodule Aecore.Sync.Sync do
     case Task.get_sync_task(stid, state) do
       {:ok, st} ->
         st1 = handle_last_result(st, last_result)
-        maybe_end_sync_task(state, st1)
-      
+        Task.maybe_end_sync_task(state, st1)
+
       {:error, :not_found} ->
         state
     end
   end
 
   def handle_last_result(st, :none), do: st
-  
-  def handle_last_result(%Task{agreed: :undefined} = st, {:agreed_height, agreed}), do: %Task{st | agreed: agreed}
+
+  def handle_last_result(%Task{agreed: :undefined} = st, {:agreed_height, agreed}),
+    do: %Task{st | agreed: agreed}
 
   def handle_last_result(%Task{pool: []} = st, {:hash_pool, hash_pool}) do
     {height, hash, false} = List.last(hash_pool)
@@ -195,32 +201,36 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(
         %Task{pool: pool} = st,
-        {:get_block, height, hash, peer_id, {:ok, block}}) do
+        {:get_block, height, hash, peer_id, {:ok, block}}
+      ) do
     pool1 =
       Enum.map(pool, fn
         {^height, _, _} -> {height, hash, {peer_id, block}}
         elem -> elem
       end)
+
     %Task{st | pool: pool1}
   end
 
   def handle_last_result(%Task{} = st, {:post_blocks, :ok}), do: %Task{st | adding: []}
 
   def handle_last_result(
-        %Task{adding: adds, pending: pends, pool: pool, chain: chain},
-        {:post_blocks, {:error, block_from_peer_id, height}}) do
+        st = %Task{adding: adds, pending: pends, pool: pool, chain: chain},
+        {:post_blocks, {:error, block_from_peer_id, height}}
+      ) do
     ## Put back the blocks we did not manage to post, and schedule
     ## failing block for another retraival
-    [{height, hash, _} | put_back] =
-      Enum.filter(adds, fn {h, _, _} -> h < height end) ++ pends
+    [{height, hash, _} | put_back] = Enum.filter(adds, fn {h, _, _} -> h < height end) ++ pends
 
     new_pool = [{height, hash, false} | put_back] ++ pool
 
-    %Task{st |
-          adding: [],
-          pending: [],
-          pool: new_pool,
-          chain: %Chain{chain | peers: chain.peers -- [blocked_from_peer_id]}}
+    %Task{
+      st
+      | adding: [],
+        pending: [],
+        pool: new_pool,
+        chain: %Chain{chain | peers: chain.peers -- [block_from_peer_id]}
+    }
   end
 
   def split_pool(pool), do: split_pool(pool, [])
@@ -229,17 +239,16 @@ defmodule Aecore.Sync.Sync do
 
   def split_pool([], acc), do: {List.reverse(acc), []}
 
-  def split_pool([p | pool], acc) -> split_pool(pool, [p | acc])
+  def split_pool([p | pool], acc), do: split_pool(pool, [p | acc])
 
   def get_next_work_item(state, stid, peer_id) do
-    with
-    {:ok, %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
-      true <- Enum.member?(peer_ids, peer_id) do
+    with {:ok, st = %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
+         true <- Enum.member?(peer_ids, peer_id) do
       {action, st1} = get_next_work_item(st)
       {action, Task.set_sync_task(stid, st1, state)}
     else
       _ ->
-      {:abort_work, state}
+        {:abort_work, state}
     end
   end
 
@@ -251,21 +260,30 @@ defmodule Aecore.Sync.Sync do
     {{:agree_on_height, chain}, st}
   end
 
-  def get_next_work_item(%Task{pool: [], agreed: %{height: height, hash: last_hash}, chain: %Chain{chain: chain}}) do
-    target_hash = next_known_hash(chain, height + @max_headers_per_chunk)
+  def get_next_work_item(
+        st = %Task{
+          pool: [],
+          agreed: %{height: height, hash: last_hash},
+          chain: %Chain{chain: chain}
+        }
+      ) do
+    target_hash = Chain.next_known_hash(chain, height + @max_headers_per_chunk)
     {{:fill_pool, last_hash, target_hash}, st}
   end
 
-  def get_next_work_item(%Task{pool: [{_, _, {_, _}} | _] = pool, adding: add, pending: pend} = st) do
+  def get_next_work_item(
+        %Task{pool: [{_, _, {_, _}} | _] = pool, adding: add, pending: pend} = st
+      ) do
     {to_be_added, new_pool} = split_pool(pool)
-    case add do
-      [] ->
+
+    cond do
+      add === [] ->
         {{:post_blocks, to_be_added}, %Task{st | pool: new_pool, adding: to_be_added}}
 
-      _ when length(pend) < 10 || new_pool != [] ->
+      length(pend) < 10 || new_pool != [] ->
         get_next_work_item(%Task{st | pool: new_pool, pending: pend ++ [to_be_added]})
 
-      _ ->
+      true ->
         {:take_a_break, st}
     end
   end
@@ -286,25 +304,39 @@ defmodule Aecore.Sync.Sync do
 
   def do_handle_worker({:new_worker, peer_id, pid}, %Task{workers: ws} = st) do
     case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
-      [] -> :ok
-      [{_, old}] -> :unfinished ## Peer already has worker
+      [] ->
+        :ok
+
+      ## Peer already has worker
+      [{_, old}] ->
+        :unfinished
     end
+
     ## :erlang.link(pid)
-    %Task{st | workers: :unfinished} ## :list.keystore(...)
+    ## :list.keystore(...)
+    %Task{st | workers: :unfinished}
   end
 
   def do_handle_worker({:change_worker, peer_id, old_pid, new_pid}, %Task{workers: ws} = st) do
     case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
-      [] -> :unfinished ## Log info
-      [{_, old_pid}] -> :ok
-      [{_, another_pid}] -> :unfinished ## Log info
+      ## Log info
+      [] ->
+        :unfinished
+
+      [{_, old_pid}] ->
+        :ok
+
+      ## Log info
+      [{_, another_pid}] ->
+        :unfinished
     end
 
     ## :erlang.link(new_pid)
     ## :erlang.unlink(old_pid)
     ## Log info
 
-    %Task{st | workers: :unfinished} ## :list.keystore(...)
+    ## :list.keystore(...)
+    %Task{st | workers: :unfinished}
   end
 
   def do_terminate_worker(pid, %Sync{sync_tasks: sts} = state) do
@@ -313,7 +345,7 @@ defmodule Aecore.Sync.Sync do
         pid
         |> do_terminate_worker(st)
         |> Task.set_sync_task(state)
-      
+
       [] ->
         state
     end
@@ -329,8 +361,13 @@ defmodule Aecore.Sync.Sync do
     res = PeerConnection.ping(peer_id)
     ## Log res
     case res do
-      :ok -> :unfinished ## Log ping
-      {:error, _} -> :unfinished ## Log ping
+      ## Log ping
+      :ok ->
+        :unfinished
+
+      ## Log ping
+      {:error, _} ->
+        :unfinished
     end
   end
 
@@ -346,22 +383,25 @@ defmodule Aecore.Sync.Sync do
 
   def do_start_sync(peer_id, remote_hash) do
     if sync_in_progress?(peer_id) do
-      :unfinished ## Log - Already syncing
+      ## Log - Already syncing
+      :unfinished
     else
       do_start_sync1(peer_id, remote_hash)
     end
   end
 
-  defp do_start_sync1(peerd_id, remote_hash) do
+  defp do_start_sync1(peer_id, remote_hash) do
     case PeerConnection.get_header_by_height(peer_id, remote_hash) do
       {:ok, header} ->
         ## Log -> New header received
 
         ## We do try really hard to identify the same chain here...
-        chain = init_chain(peer_id, header)
+        chain = Chain.init_chain(peer_id, header)
+
         case known_chain(chain) do
           {:ok, task} ->
-            :unfinished ## Examine the self() part here
+            ## Examine the self() part here
+            :unfinished
             handle_worker(task, {:new_worker, peer_id, self()})
             do_work_on_sync_task(peer_id, task)
 
@@ -379,14 +419,14 @@ defmodule Aecore.Sync.Sync do
   defp known_chain(chain) do
     chain
     |> known_chain(:none)
-    |> idenify_chain()
+    |> identify_chain()
   end
 
   defp identify_chain({:existing, task}) do
     ## Log info -> Already syncing chain
     {:ok, task}
   end
-  
+
   defp identify_chain({:new, %Chain{chain: [target | _]}, task}) do
     ## Log info -> Started new sync task with target
     {:ok, task}
@@ -396,6 +436,7 @@ defmodule Aecore.Sync.Sync do
     ## We need another hash for this chain, make sure whoever we ask
     ## is still in this particular chain by including a known (at higher height) hash
     known_hash = Chain.next_known_hash(chain.chain, n)
+
     case do_get_header_by_height(peers, n, known_hash) do
       {:ok, header} ->
         chain
@@ -416,6 +457,7 @@ defmodule Aecore.Sync.Sync do
         [] -> Kernel.hd(cs)
         cs1 -> List.last(cs1)
       end
+
     hash
   end
 
@@ -430,7 +472,7 @@ defmodule Aecore.Sync.Sync do
 
       {:error, reason} ->
         ## Log info -> Fetching header at height from peer: pid, failed
-        do_get_header_by_height(peer_ids, n, top_hash)
+        do_get_header_by_height(ids, n, top_hash)
     end
   end
 
@@ -452,7 +494,15 @@ defmodule Aecore.Sync.Sync do
         min_agreed_hash = BlockValidation.block_header_hash(genesis)
         max_agree = min(local_height, top_height)
 
-        case agree_on_height(peer_id, top_hash, top_height, max_agree, max_agree, @genesis_height, min_agreed_hash) do
+        case agree_on_height(
+               peer_id,
+               top_hash,
+               top_height,
+               max_agree,
+               max_agree,
+               @genesis_height,
+               min_agreed_hash
+             ) do
           {:ok, height, hash} ->
             ## Log info -> Agreed upon height: height
             agreement = {:agreed_height, %{height: height, hash: hash}}
@@ -473,9 +523,10 @@ defmodule Aecore.Sync.Sync do
         res =
           case do_fetch_block(peer_id, hash) do
             {:ok, false, _block} -> {:get_block, height, hash, peer_id, {:ok, :local}}
-            {:ok, true, block} -> {:get_block mheight, hash, peer_id, {:ok, block}}
+            {:ok, true, block} -> {:get_block, height, hash, peer_id, {:ok, block}}
             {:error, reason} -> {:error, {:get_block, reason}}
           end
+
         do_work_on_sync_task(peer_id, task, res)
 
       :abort_work ->
@@ -485,11 +536,11 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp post_blocks([]), do: :ok
-  
+
   defp post_blocks([{start_height, _, _} | _] = blocks) do
     post_blocks(start_height, start_height, blocks)
   end
-  
+
   defp post_blocks(from, to, []) do
     ## Log info -> Synced blocks [from, to]
     :ok
@@ -514,7 +565,6 @@ defmodule Aecore.Sync.Sync do
     {:ok, min, agreed_hash}
   end
 
-
   ## Ping logic makes sure they always agree on genesis header (height 0)
   ## We look for the block that is bloth on remote highest chain and in our local
   ## chain, connected to genesis (may be on a fork, but that fork
@@ -525,7 +575,8 @@ defmodule Aecore.Sync.Sync do
     case Chainstate.get_block(rhash) do
       {:ok, _} ->
         ## We agree on block
-        middle = div((max + rh), 2)
+        middle = div(max + rh, 2)
+
         case min < middle and middle < max do
           true ->
             agree_on_height(peer_id, rhash, rh, middle, max, rh, rhash)
@@ -536,7 +587,8 @@ defmodule Aecore.Sync.Sync do
 
       _ ->
         ## We dissagree. Local on a fork compared to remote, check half-way
-        middle = div((min + rh), 2)
+        middle = div(min + rh, 2)
+
         case min < middle and middle < max do
           true ->
             agree_on_height(peer_id, rhash, rh, middle, rh, min, agreed_hash)
@@ -560,7 +612,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp fill_pool(peer_id, start_hash, target_hash, %Task{} = st) do
-    case PeerConnection.get_n_successors(peer_id, start_hash, target_hsah, @max_headers_per_chunk) do
+    case PeerConnection.get_n_successors(peer_id, start_hash, target_hash, @max_headers_per_chunk) do
       {:ok, []} ->
         ## Log info -> Sync done according to [peer_id]
         ## events:publish?
@@ -578,8 +630,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-
-    # Check if we already have this block locally, is so
+  # Check if we already have this block locally, is so
   # take it from the chain
   defp do_fetch_block(hash, peer_pid) do
     case Chain.get_block(hash) do
@@ -623,7 +674,8 @@ defmodule Aecore.Sync.Sync do
 
   defp parse_peers(peer) do
     ## parse_peer_address should be implemented!!
-    :unfinished 
+    :unfinished
+
     case Peers.parse_peer_address(peer) do
       {:ok, peer_info} -> [peer_info]
       {:error, _} -> []
@@ -633,7 +685,7 @@ defmodule Aecore.Sync.Sync do
   ## Checks if peer is syncing??
   defp peer_in_sync(%Sync{sync_tasks: sts}, peer_id) do
     sts
-    |> Enum.map(fn %Sync{chain: %Chain{peers: peers}} -> peers end)
+    |> Enum.map(fn %Task{chain: %Chain{peers: peers}} -> peers end)
     |> Enum.member?(peer_id)
-  end  
+  end
 end
