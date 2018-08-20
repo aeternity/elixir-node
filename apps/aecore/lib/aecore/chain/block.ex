@@ -6,7 +6,6 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.BlockValidation
   alias Aeutil.Serialization
 
   @version 14
@@ -23,22 +22,6 @@ defmodule Aecore.Chain.Block do
   @spec current_block_version() :: non_neg_integer()
   def current_block_version do
     @version
-  end
-
-  @spec genesis_header() :: Header.t()
-  defp genesis_header do
-    header = Application.get_env(:aecore, :pow)[:genesis_header]
-    struct(Header, header)
-  end
-
-  def genesis_hash do
-    BlockValidation.block_header_hash(genesis_header())
-  end
-
-  @spec genesis_block() :: Block.t()
-  def genesis_block do
-    header = genesis_header()
-    %Block{header: header, txs: []}
   end
 
   @spec encode_to_map(Block.t()) :: map()
