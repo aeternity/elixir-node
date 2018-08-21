@@ -179,7 +179,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner.value != sender ->
+      claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 

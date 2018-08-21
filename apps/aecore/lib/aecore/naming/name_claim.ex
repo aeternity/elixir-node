@@ -40,16 +40,15 @@ defmodule Aecore.Naming.NameClaim do
           non_neg_integer(),
           list()
         ) :: t()
-  def create(hash, owner, expire_by, client_ttl, pointers) do
+  def create(hash, owner, expire_by, _client_ttl, pointers \\ "[]") do   ## TODO: Claint_ttl shouln't be ignored
     identified_hash = Identifier.create_identity(hash, :name)
-    identified_owner = Identifier.create_identity(owner, :account)
 
     %NameClaim{
       :hash => identified_hash,
-      :owner => identified_owner,
+      :owner => owner,
       :expires => expire_by,
       :status => :claimed,
-      :ttl => client_ttl,
+      :ttl => 0,   ## TODO: Should be changed to client_ttl
       :pointers => pointers
     }
   end
@@ -64,7 +63,7 @@ defmodule Aecore.Naming.NameClaim do
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
       :status => :claimed,
       :ttl => GovernanceConstants.client_ttl_limit(),
-      :pointers => []
+      :pointers => "[]"
     }
   end
 
@@ -91,7 +90,7 @@ defmodule Aecore.Naming.NameClaim do
       :binary.encode_unsigned(naming_state.expires),
       Atom.to_string(naming_state.status),
       :binary.encode_unsigned(naming_state.ttl),
-      naming_state.pointers
+      naming_state.pointers      # maybe Poison.encode!()
     ]
   end
 
@@ -103,7 +102,7 @@ defmodule Aecore.Naming.NameClaim do
            expires: :binary.decode_unsigned(expires),
            status: String.to_atom(status),
            ttl: :binary.decode_unsigned(ttl),
-           pointers: pointers
+           pointers: pointers   # maybe Poison.dencode!()
          }}
   end
 

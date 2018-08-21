@@ -21,7 +21,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @revoke_expiration_ttl 2016
 
-  @client_ttl_limit 86_400
+  ## TODO: Should be changed to 86_400
+  @client_ttl_limit 0
 
   @claim_expire_by_relative_limit 50_000
 
