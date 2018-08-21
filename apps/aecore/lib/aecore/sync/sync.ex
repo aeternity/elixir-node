@@ -20,12 +20,12 @@ defmodule Aecore.Sync.Sync do
   ### API calls
   ### ===================================================
 
-  def start_sync(peer_id, remote_hash, remote_difficulty) do
+  def start_sync(peer_id, remote_hash, remote_difficulty \\ 0) do
     GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash, remote_difficulty})
   end
 
   def schedule_ping(peer_id) do
-    GenServer.case(__MODULE__, {:schedule_ping, peer_id})
+    GenServer.cast(__MODULE__, {:schedule_ping, peer_id})
   end
 
   def sync_in_progress?(peer_id) do
@@ -44,8 +44,8 @@ defmodule Aecore.Sync.Sync do
     GenServer.call(__MODULE__, {:next_work_item, task, peer_id, last_result})
   end
 
-  def handle_worker(task, action) do
-    GenServer.cast(__MODULE__, {:handle_worker, task, action})
+  def handle_worker(st_id, action) do
+    GenServer.cast(__MODULE__, {:handle_worker, st_id, action})
   end
 
   ### ==================================================================
@@ -72,11 +72,11 @@ defmodule Aecore.Sync.Sync do
   ## to pick a random hash from the hashes in the pool.
 
   def start_link(_args) do
-    GenServer.start_link(__MODULE__, %{sync_tasks: []}, name: __MODULE__)
+    GenServer.start_link(__MODULE__, %Sync{sync_tasks: []}, name: __MODULE__)
   end
 
   def init(state) do
-    Jobs.init_jobs()
+    Jobs.init_queues()
     {:ok, state}
   end
 
@@ -88,7 +88,7 @@ defmodule Aecore.Sync.Sync do
     {new_chain, state1} =
       case new_chain_info do
         :none ->
-          {chain, cid}
+          {chain, state}
 
         %Chain{chain_id: c} when c == cid ->
           {Chain.merge_chains(chain, new_chain_info), state}
@@ -98,6 +98,7 @@ defmodule Aecore.Sync.Sync do
       end
 
     {res, new_state} = sync_task_for_chain(chain, state1)
+    IO.inspect ":known_chain Result: #{inspect(res)}"
     {:reply, res, new_state}
   end
 
@@ -107,11 +108,14 @@ defmodule Aecore.Sync.Sync do
   end
 
   def handle_call({:next_work_item, st_id, peer_id, {:error, reason}}, _from, state) do
+    IO.inspect "next work item: ERROR, #{inspect(reason)}"
     new_state = Task.do_update_sync_task(state, st_id, {:error, peer_id})
     {:reply, :abort_work, new_state}
   end
 
   def handle_call({:next_work_item, st_id, peer_id, last_result}, _from, state) do
+    IO.inspect "next_work_item success!"
+    # IO.inspect("st_id: #{inspect(st_id)}, peer_id: #{inspect(peer_id)}, last_result: #{inspect(last_result)}")
     state1 = handle_last_result(state, st_id, last_result)
     {reply, state2} = get_next_work_item(state1, st_id, peer_id)
     {:reply, reply, state2}
@@ -137,7 +141,9 @@ defmodule Aecore.Sync.Sync do
       case Task.get_sync_task(st_id, state) do
         {:ok, sync_task} ->
           sync_task1 = do_handle_worker(action, sync_task)
-          Task.set_sync_task(sync_task1, state)
+          st = Task.set_sync_task(sync_task1, state)
+          IO.inspect ":handle_worker SyncTask: #{inspect(st)}"
+          st
 
         {:error, :not_found} ->
           state
@@ -160,7 +166,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  def sync_task_for_chain(chain, %{sync_tasks: sts} = state) do
+  def sync_task_for_chain(chain, %Sync{sync_tasks: sts} = state) do
     case Task.match_tasks(chain, sts, []) do
       :no_match ->
         st = Task.init_sync_task(chain)
@@ -189,7 +195,7 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(st, :none), do: st
 
-  def handle_last_result(%Task{agreed: :undefined} = st, {:agreed_height, agreed}),
+  def handle_last_result(%Task{agreed: nil} = st, {:agreed_height, agreed}),
     do: %Task{st | agreed: agreed}
 
   def handle_last_result(%Task{pool: []} = st, {:hash_pool, hash_pool}) do
@@ -245,6 +251,7 @@ defmodule Aecore.Sync.Sync do
     with {:ok, st = %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
          true <- Enum.member?(peer_ids, peer_id) do
       {action, st1} = get_next_work_item(st)
+      IO.inspect "Get next work action: #{inspect(action)}"
       {action, Task.set_sync_task(stid, st1, state)}
     else
       _ ->
@@ -256,7 +263,7 @@ defmodule Aecore.Sync.Sync do
     {{:post_blocks, to_add}, %Task{st | adding: to_add, pending: new_pending}}
   end
 
-  def get_next_work_item(%Task{chain: chain, agreed: :undefined} = st) do
+  def get_next_work_item(%Task{chain: chain, agreed: nil} = st) do
     {{:agree_on_height, chain}, st}
   end
 
@@ -284,6 +291,7 @@ defmodule Aecore.Sync.Sync do
         get_next_work_item(%Task{st | pool: new_pool, pending: pend ++ [to_be_added]})
 
       true ->
+        IO.inspect "true"
         {:take_a_break, st}
     end
   end
@@ -299,22 +307,18 @@ defmodule Aecore.Sync.Sync do
 
   def get_next_work_item(%Task{} = st) do
     ## Nothing to do
+    IO.inspect "Nothing to do"
     {:take_a_break, st}
   end
 
   def do_handle_worker({:new_worker, peer_id, pid}, %Task{workers: ws} = st) do
     case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
-      [] ->
-        :ok
-
-      ## Peer already has worker
-      [{_, old}] ->
-        :unfinished
+      [] -> :ok
+      [{_, old}] -> :ok ## Log: Peer already has worker
     end
 
     ## :erlang.link(pid)
-    ## :list.keystore(...)
-    %Task{st | workers: :unfinished}
+    %Task{st | workers: Task.keystore(peer_id, {peer_id, pid}, ws)}
   end
 
   def do_handle_worker({:change_worker, peer_id, old_pid, new_pid}, %Task{workers: ws} = st) do
@@ -391,19 +395,19 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp do_start_sync1(peer_id, remote_hash) do
-    case PeerConnection.get_header_by_height(peer_id, remote_hash) do
-      {:ok, header} ->
+    case PeerConnection.get_header_by_hash(remote_hash, peer_id) do
+      {:ok, %{header: header}} ->
         ## Log -> New header received
 
         ## We do try really hard to identify the same chain here...
         chain = Chain.init_chain(peer_id, header)
 
         case known_chain(chain) do
-          {:ok, task} ->
+          {:ok, st_id} ->
+            IO.inspect "Chain is known !!"
             ## Examine the self() part here
-            :unfinished
-            handle_worker(task, {:new_worker, peer_id, self()})
-            do_work_on_sync_task(peer_id, task)
+            handle_worker(st_id, {:new_worker, peer_id, self()})
+            do_work_on_sync_task(peer_id, st_id)
 
           {:error, reason} ->
             ## Log -> Could not identify chain, aborting sync
@@ -449,18 +453,6 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  ## Get the next known hash at a height bigger than N; or
-  ## if no such hash exist, the hash at the highest known height.
-  defp next_known_chain(cs, n) do
-    %{hash: hash} =
-      case Enum.filter(cs, fn %{height: h} -> h > n end) do
-        [] -> Kernel.hd(cs)
-        cs1 -> List.last(cs1)
-      end
-
-    hash
-  end
-
   defp do_get_header_by_height([], _n, _top_hash) do
     {:error, :header_not_found}
   end
@@ -476,21 +468,21 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  defp do_work_on_sync_task(peer_id, task) do
-    do_work_on_sync_task(peer_id, task, :none)
+  defp do_work_on_sync_task(peer_id, st_id) do
+    do_work_on_sync_task(peer_id, st_id, :none)
   end
 
-  defp do_work_on_sync_task(peer_id, task, last_result) do
-    case next_work_item(task, peer_id, last_result) do
+  defp do_work_on_sync_task(peer_id, st_id, last_result) do
+    case next_work_item(st_id, peer_id, last_result) do
       :take_a_break ->
-        fun = fn -> do_work_on_sync_task(peer_id, task) end
-        Jobs.delayed_run_job(peer_id, task, :sync_task_workers, fun, 250)
+        fun = fn -> do_work_on_sync_task(peer_id, st_id) end
+        Jobs.delayed_run_job(self(), peer_id, st_id, :sync_task_workers, fun, 250)
 
       {:agree_on_height, chain} ->
+        IO.inspect "agree_on_height !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
         %Chain{chain: [%{height: top_height, hash: top_hash} | _]} = chain
-        local_header = Chainstate.top_header()
         local_height = Chainstate.top_height()
-        {:ok, genesis} = Chainstate.get_block_by_height(0)
+        {:ok, %{header: genesis}} = Chainstate.get_block_by_height(0)
         min_agreed_hash = BlockValidation.block_header_hash(genesis)
         max_agree = min(local_height, top_height)
 
@@ -504,20 +496,22 @@ defmodule Aecore.Sync.Sync do
                min_agreed_hash
              ) do
           {:ok, height, hash} ->
+            IO.inspect "Agreed on height: #{height}"
             ## Log info -> Agreed upon height: height
-            agreement = {:agreed_height, %{height: height, hash: hash}}
-            do_work_on_sync_task(peer_id, task, agreement)
+          agreement = {:agreed_height, %{height: height, hash: hash}}
+          IO.inspect agreement
+            do_work_on_sync_task(peer_id, st_id, agreement)
 
           {:error, reason} ->
-            do_work_on_sync_task(peer_id, task, {:error, {:agree_on_height, reason}})
+            do_work_on_sync_task(peer_id, st_id, {:error, {:agree_on_height, reason}})
         end
 
       {:fill_pool, start_hash, target_hash} ->
-        fill_pool(peer_id, start_hash, target_hash, task)
+        fill_pool(peer_id, start_hash, target_hash, st_id)
 
       {:post_blocks, blocks} ->
         res = post_blocks(blocks)
-        do_work_on_sync_task(peer_id, task, {:post_blocks, res})
+        do_work_on_sync_task(peer_id, st_id, {:post_blocks, res})
 
       {:get_block, height, hash} ->
         res =
@@ -527,7 +521,7 @@ defmodule Aecore.Sync.Sync do
             {:error, reason} -> {:error, {:get_block, reason}}
           end
 
-        do_work_on_sync_task(peer_id, task, res)
+        do_work_on_sync_task(peer_id, st_id, res)
 
       :abort_work ->
         ## Log info -> Aborting sync work against peer: peer_id
@@ -611,21 +605,21 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  defp fill_pool(peer_id, start_hash, target_hash, %Task{} = st) do
+  defp fill_pool(peer_id, start_hash, target_hash, stid) do
     case PeerConnection.get_n_successors(peer_id, start_hash, target_hash, @max_headers_per_chunk) do
       {:ok, []} ->
         ## Log info -> Sync done according to [peer_id]
         ## events:publish?
-        update_sync_task({:done, peer_id}, st)
+        update_sync_task({:done, peer_id}, stid)
         :unfinished
 
       {:ok, hashes} ->
         hash_pool = Enum.map(hashes, fn {h, hash} -> {h, hash, false} end)
-        do_work_on_sync_task(peer_id, st, {:hash_pool, hash_pool})
+        do_work_on_sync_task(peer_id, stid, {:hash_pool, hash_pool})
 
       {:error, _} = err ->
         ## Log info -> Abort sync with [peer_id, reason]
-        Tsak.update_sync_task({:error, peer_id}, st)
+        Tsak.update_sync_task({:error, peer_id}, stid)
         {:error, :sync_abort}
     end
   end

@@ -12,7 +12,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
-  alias Aecore.Peers.Sync
+  alias Aecore.Sync.Sync
   alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
@@ -117,9 +117,9 @@ defmodule Aecore.Peers.PeerConnection do
 
   @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid) when is_pid(pid) do
+  def get_n_successors(target_hash, start_hash, n, pid) when is_pid(pid) do
     @get_n_successors
-    |> pack_msg(%{hash: hash, n: n})
+    |> pack_msg(%{hash: start_hash, n: n})
     |> send_request_msg(pid)
   end
 
@@ -421,9 +421,6 @@ defmodule Aecore.Peers.PeerConnection do
           Peers.try_connect(peer)
         end
       end)
-
-      Sync.fetch_mempool(conn_pid)
-      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -476,7 +473,6 @@ defmodule Aecore.Peers.PeerConnection do
         {:ok, headers} ->
           header_hashes =
             Enum.map(headers, fn header ->
-              {header.height, BlockValidation.block_header_hash(header)}
               <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
             end)
 

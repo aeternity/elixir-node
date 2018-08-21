@@ -23,11 +23,11 @@ defmodule Aecore.Sync.Chain do
   end
 
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_h} = header) do
-    {:ok, hash} = BlockValidation.block_header_hash(header)
+    hash = BlockValidation.block_header_hash(header)
 
     prev_hash =
       if height > 1 do
-        %{height: height - 1, hash: prev_h}
+        [%{height: height - 1, hash: prev_h}]
       else
         []
       end
@@ -82,5 +82,16 @@ defmodule Aecore.Sync.Chain do
       {:error, :not_found} ->
         state
     end
+  end
+
+  ## Get the next known hash at a height bigger than N; or
+  ## if no such hash exist, the hash at the highest known height.
+  def next_known_hash(cs, n) do
+    %{hash: hash} =
+      case Enum.take_while(cs, fn %{height: h} -> h > n end) do
+        [] -> Kernel.hd(cs)
+        cs1 -> List.last(cs1)
+      end
+    hash
   end
 end

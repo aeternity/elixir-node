@@ -22,12 +22,14 @@ defmodule Aecore.Sync.Jobs do
   end
 
   def run_job(queue, fun) do
-    :proc_lib.spawn(:jobs, :run, [queue, fun])
+    # :proc_lib.spawn() do it like this!
+    spawn(:jobs, :run, [queue, fun])
   end
 
   def delayed_run_job(old_worker, peer_id, task, queue, fun, delay) do
     new_worker =
-      :proc_lib.spawn(fn ->
+    # Use :proc_lib.spawn()
+      spawn(fn ->
         :timer.sleep(delay)
         :jobs.run(queue, fun)
       end)
