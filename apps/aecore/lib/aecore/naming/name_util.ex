@@ -9,7 +9,7 @@ defmodule Aecore.Naming.NameUtil do
   @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
   def normalized_namehash(name) do
     case normalize_and_validate_name(name) do
-      {:ok, normalized_name} -> {:ok, Hash.hash(normalized_name)}
+      {:ok, normalized_name} -> {:ok, namehash(normalized_name)}
       err -> err
     end
   end
@@ -51,12 +51,13 @@ defmodule Aecore.Naming.NameUtil do
   defp validate_normalized_name(name) do
     allowed_registrar =
       GovernanceConstants.name_registrars()
-      |> Enum.any?(fn registrar -> String.ends_with?(name, registrar) end)
+      |> Enum.any?(fn registrar -> String.ends_with?(name, registrar) &&
+      Enum.count(String.split(name, GovernanceConstants.split_name_symbol)) == 2 end)
 
     if allowed_registrar do
       validate_name_length(name)
     else
-      {:error, "#{__MODULE__}: name doesn't end with allowed registrar: #{inspect(name)}"}
+      {:error, "#{__MODULE__}: name doesn't end with allowed registrar: #{inspect(name)} or consists of multiple namespaces"}
     end
   end
 

@@ -98,7 +98,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
+    claim = NameClaim.create(claim_hash, sender, block_height)
 
     updated_naming_chainstate =
       naming_state

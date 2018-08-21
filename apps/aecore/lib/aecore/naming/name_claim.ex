@@ -22,7 +22,6 @@ defmodule Aecore.Naming.NameClaim do
 
   @type t :: %NameClaim{
           hash: binary(),
-          name: binary(),
           owner: Wallet.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
@@ -30,25 +29,23 @@ defmodule Aecore.Naming.NameClaim do
           pointers: list()
         }
 
-  defstruct [:hash, :name, :owner, :expires, :status, :ttl, :pointers]
+  defstruct [:hash, :owner, :expires, :status, :ttl, :pointers]
   use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(
-          binary(),
           binary(),
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           list()
         ) :: t()
-  def create(hash, name, owner, expire_by, client_ttl, pointers) do
+  def create(hash, owner, expire_by, client_ttl, pointers) do
     identified_hash = Identifier.create_identity(hash, :name)
     identified_owner = Identifier.create_identity(owner, :account)
 
     %NameClaim{
       :hash => identified_hash,
-      :name => name,
       :owner => identified_owner,
       :expires => expire_by,
       :status => :claimed,
@@ -57,15 +54,13 @@ defmodule Aecore.Naming.NameClaim do
     }
   end
 
-  @spec create(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: t()
-  def create(hash, name, owner, height) do
+  @spec create(binary(), Wallet.pubkey(), non_neg_integer()) :: t()
+  def create(hash, owner, height) do
     identified_hash = Identifier.create_identity(hash, :name)
-    identified_owner = Identifier.create_identity(owner, :account)
 
     %NameClaim{
       :hash => identified_hash,
-      :name => name,
-      :owner => identified_owner,
+      :owner => owner,
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
       :status => :claimed,
       :ttl => GovernanceConstants.client_ttl_limit(),
@@ -92,7 +87,7 @@ defmodule Aecore.Naming.NameClaim do
   def encode_to_list(%NameClaim{} = naming_state) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(naming_state.owner),
+      naming_state.owner,
       :binary.encode_unsigned(naming_state.expires),
       Atom.to_string(naming_state.status),
       :binary.encode_unsigned(naming_state.ttl),
@@ -101,9 +96,7 @@ defmodule Aecore.Naming.NameClaim do
   end
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
-  def decode_from_list(@version, [encoded_owner, expires, status, ttl, pointers]) do
-    case Identifier.decode_from_binary(encoded_owner) do
-      {:ok, owner} ->
+  def decode_from_list(@version, [owner, expires, status, ttl, pointers]) do
         {:ok,
          %NameClaim{
            owner: owner,
@@ -112,10 +105,6 @@ defmodule Aecore.Naming.NameClaim do
            ttl: :binary.decode_unsigned(ttl),
            pointers: pointers
          }}
-
-      {:error, _} = error ->
-        error
-    end
   end
 
   def decode_from_list(@version, data) do
