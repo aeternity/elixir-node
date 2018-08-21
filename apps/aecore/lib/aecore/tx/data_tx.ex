@@ -104,7 +104,7 @@ defmodule Aecore.Tx.DataTx do
           non_neg_integer(),
           integer(),
           non_neg_integer()
-        ) :: t()
+        ) :: DataTx.t()
   def init(type, payload, senders, fee, nonce, ttl \\ 0) do
     if is_list(senders) do
       identified_senders =
@@ -141,7 +141,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @spec init_binary(tx_types(), map(), list(binary()), binary(), binary(), binary()) ::
-          {:ok, t()} | {:error, String.t()}
+          {:ok, DataTx.t()} | {:error, String.t()}
   def init_binary(type, payload, encoded_senders, fee, nonce, ttl) do
     with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,
@@ -235,7 +235,7 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
     accounts_state = chainstate.accounts
@@ -276,7 +276,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), t()) :: :ok | {:error, String.t()}
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) :: :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
@@ -324,7 +324,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec deserialize(map()) :: t()
+  @spec deserialize(map()) :: DataTx.t()
   def deserialize(%{sender: sender} = data_tx) do
     init(data_tx.type, data_tx.payload, [sender], data_tx.fee, data_tx.nonce, data_tx.ttl)
   end
@@ -348,7 +348,7 @@ defmodule Aecore.Tx.DataTx do
   @spec standard_deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
   def standard_deduct_fee(accounts, block_height, data_tx, fee) do

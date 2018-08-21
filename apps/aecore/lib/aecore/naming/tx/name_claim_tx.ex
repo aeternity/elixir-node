@@ -45,7 +45,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameClaimTx.t()
   def init(%{name: name, name_salt: name_salt}) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
@@ -84,7 +84,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -116,7 +116,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -160,7 +160,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

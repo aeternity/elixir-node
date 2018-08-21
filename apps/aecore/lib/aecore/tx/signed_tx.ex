@@ -26,7 +26,7 @@ defmodule Aecore.Tx.SignedTx do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(DataTx.t(), list(Keys.pubkey())) :: t()
+  @spec create(DataTx.t(), list(Keys.pubkey())) :: SignedTx.t()
   def create(data, signatures \\ []) do
     %SignedTx{data: data, signatures: signatures}
   end
@@ -53,7 +53,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
     with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
@@ -75,7 +75,7 @@ defmodule Aecore.Tx.SignedTx do
 
   """
 
-  @spec sign_tx(DataTx.t() | t(), binary(), binary()) :: {:ok, t()} | {:error, String.t()}
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
     signatures =
       for _ <- DataTx.senders(tx) do
@@ -202,7 +202,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec deserialize(map()) :: t()
+  @spec deserialize(map()) :: SignedTx.t()
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)

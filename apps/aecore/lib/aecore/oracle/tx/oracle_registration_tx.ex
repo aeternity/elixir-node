@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   use ExConstructor
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
         query_format: query_format,
         response_format: response_format,
@@ -92,7 +92,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -124,7 +124,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -158,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

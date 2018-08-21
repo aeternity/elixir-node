@@ -305,7 +305,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given Account state and updates last update block.
   """
-  @spec apply_transfer!(t(), non_neg_integer(), integer()) :: t()
+  @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
   def apply_transfer!(account_state, _block_height, amount) do
     new_balance = account_state.balance + amount
 
@@ -316,7 +316,7 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance}
   end
 
-  @spec apply_nonce!(t(), integer()) :: t()
+  @spec apply_nonce!(Account.t(), integer()) :: Account.t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
       throw({:error, "#{__MODULE__}: Invalid nonce"})
