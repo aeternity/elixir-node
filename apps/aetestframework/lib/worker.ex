@@ -36,15 +36,34 @@ defmodule Aetestframework.Worker do
     GenServer.call(__MODULE__, {:update_pubkeys_state})
   end
 
+  def get_top_block(node) do
+    GenServer.call(__MODULE__, {:get_top_block, node})
+  end
+
+  def get_top_block_hash(node) do
+    GenServer.call(__MODULE__, {:get_top_block_hash, node})
+  end
+
+  def get_oracle_interaction_objects(node) do
+    GenServer.call(__MODULE__, {:get_oracle_interaction_objects, node})
+  end
+
   @doc """
     Updates top block state for 2 nodes and compares them.
     If top block of each node is equal - they are synced
   """
   @spec compare_nodes_by_top_block(String.t(), String.t()) :: :synced | :not_synced
   def compare_nodes_by_top_block(node_name1, node_name2) do
-    get_node_top_block(node_name1)
-    get_node_top_block(node_name2)
-    GenServer.call(__MODULE__, {:compare_nodes_by_top_block, node_name1, node_name2})
+    update_node_top_block(node_name1)
+    update_node_top_block(node_name2)
+    block1 = get_top_block(node_name1)
+    block2 = get_top_block(node_name2)
+
+    if block1 == block2 do
+      :synced
+    else
+      :not_synced
+    end
   end
 
   @doc """
@@ -53,23 +72,29 @@ defmodule Aetestframework.Worker do
   """
   @spec compare_nodes_by_top_block_hash(String.t(), String.t()) :: :synced | :not_synced
   def compare_nodes_by_top_block_hash(node_name1, node_name2) do
-    get_node_top_block_hash(node_name1)
-    get_node_top_block_hash(node_name2)
-    GenServer.call(__MODULE__, {:compare_nodes_by_top_block_hash, node_name1, node_name2})
+    update_node_top_block_hash(node_name1)
+    update_node_top_block_hash(node_name2)
+    top_block_hash1 = get_top_block_hash(node_name1)
+    top_block_hash2 = get_top_block_hash(node_name2)
+
+    if top_block_hash1 == top_block_hash2 do
+      :synced
+    else
+      :not_synced
+    end
   end
 
   def compare_nodes_by_oracle_interaction_objects(node_name1, node_name2) do
-    oracle_interaction_objects(node_name1)
-    oracle_interaction_objects(node_name2)
+    update_oracle_interaction_objects(node_name1)
+    update_oracle_interaction_objects(node_name2)
+    oracle_int_obj1 = get_oracle_interaction_objects(node_name1)
+    oracle_int_obj2 = get_oracle_interaction_objects(node_name2)
 
-    GenServer.call(
-      __MODULE__,
-      {:compare_nodes_by_oracle_interaction_objects, node_name1, node_name2}
-    )
-  end
-
-  def update_top_block(new_top_block) do
-    GenServer.call(__MODULE__, {:update_top_block, new_top_block})
+    if oracle_int_obj1 == oracle_int_obj2 do
+      :synced
+    else
+      :not_synced
+    end
   end
 
   @doc """
@@ -122,8 +147,8 @@ defmodule Aetestframework.Worker do
   end
 
   # oracles
-  @spec oracle_interaction_objects(String.t()) :: :ok | :unknown_node
-  def oracle_interaction_objects(node_name) do
+  @spec update_oracle_interaction_objects(String.t()) :: :ok | :unknown_node
+  def update_oracle_interaction_objects(node_name) do
     send_command(node_name, "oracle_tree = Chain.chain_state().oracles.oracle_tree")
 
     send_command(
@@ -222,8 +247,8 @@ defmodule Aetestframework.Worker do
   end
 
   # chain
-  @spec get_node_top_block(String.t()) :: :ok | String.t()
-  def get_node_top_block(node_name) do
+  @spec update_node_top_block(String.t()) :: :ok | String.t()
+  def update_node_top_block(node_name) do
     send_command(node_name, "top_block = Chain.top_block()")
 
     send_command(
@@ -239,8 +264,8 @@ defmodule Aetestframework.Worker do
     send_command(node_name, " ")
   end
 
-  @spec get_node_top_block_hash(String.t()) :: :ok | :unknown_node
-  def get_node_top_block_hash(node_name) do
+  @spec update_node_top_block_hash(String.t()) :: :ok | :unknown_node
+  def update_node_top_block_hash(node_name) do
     send_command(node_name, "block_hash = Chain.top_block_hash() |> Base.encode32")
     send_command(node_name, "{:respond_hash, block_hash}")
     send_command(node_name, " ")
@@ -536,40 +561,19 @@ defmodule Aetestframework.Worker do
   end
 
   def handle_call(
-        {:compare_nodes_by_oracle_interaction_objects, node_name1, node_name2},
+        {:get_oracle_interaction_objects, node},
         _,
         state
       ) do
-    oracle_interaction_objects1 = state[node_name1].oracle_interaction_objects
-    oracle_interaction_objects2 = state[node_name2].oracle_interaction_objects
-
-    if oracle_interaction_objects1 == oracle_interaction_objects2 do
-      {:reply, :synced, state}
-    else
-      {:reply, :not_synced, state}
-    end
+    {:reply, state[node].oracle_interaction_objects}
   end
 
-  def handle_call({:compare_nodes_by_top_block, node_name1, node_name2}, _, state) do
-    block1 = state[node_name1].top_block
-    block2 = state[node_name2].top_block
-
-    if block1 != nil && block2 != nil && block1 == block2 do
-      {:reply, :synced, state}
-    else
-      {:reply, :not_synced, state}
-    end
+  def handle_call({:get_top_block, node}, _, state) do
+    {:reply, state[node].top_block, state}
   end
 
-  def handle_call({:compare_nodes_by_top_block_hash, node_name1, node_name2}, _, state) do
-    hash1 = state[node_name1].top_block_hash
-    hash2 = state[node_name2].top_block_hash
-
-    if hash1 != nil && hash2 != nil && hash1 == hash2 do
-      {:reply, :synced, state}
-    else
-      {:reply, :not_synced, state}
-    end
+  def handle_call({:get_top_block_hash, node}, _, state) do
+    {:reply, state[node].top_block_hash, state}
   end
 
   def handle_call({:new_node, node_name, iex_num}, _, state) do

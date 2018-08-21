@@ -44,10 +44,6 @@ defmodule MultiNodeSyncTest do
     TestFramework.spend_tx("node1")
     TestFramework.mine_sync_block("node1")
 
-    TestFramework.get_node_top_block_hash("node1")
-
-    TestFramework.get_node_top_block_hash("node4")
-
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
     TestFramework.delete_all_nodes()
@@ -68,10 +64,6 @@ defmodule MultiNodeSyncTest do
 
     TestFramework.respond_oracle("node2")
     TestFramework.mine_sync_block("node2")
-
-    TestFramework.get_node_top_block_hash("node1")
-
-    TestFramework.get_node_top_block_hash("node4")
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
@@ -99,10 +91,6 @@ defmodule MultiNodeSyncTest do
     TestFramework.mine_sync_block("node2")
     TestFramework.naming_revoke("node2")
     TestFramework.mine_sync_block("node2")
-
-    TestFramework.get_node_top_block_hash("node1")
-
-    TestFramework.get_node_top_block_hash("node4")
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
