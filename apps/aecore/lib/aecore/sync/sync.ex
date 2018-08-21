@@ -169,7 +169,7 @@ defmodule Aecore.Sync.Sync do
       {:match, %Task{id: st_id, chain: chain2} = st} ->
         new_chain = Chain.merge_chains(%Chain{chain_id: st_id}, chain2)
         st1 = %Task{st | chain: new_chain}
-        {{:existing, st.id}, Task.set_sync_task(st1, state)}
+        {{:existing, st_id}, Task.set_sync_task(st1, state)}
 
       {:inconclusive, _, _} = res ->
         {res, state}
