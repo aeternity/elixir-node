@@ -6,7 +6,6 @@ defmodule Aetestframework.Worker do
   alias Aeutil.Serialization
   alias Aehttpclient.Client
   alias Aecore.Account.Account
-  alias String.Chars
 
   require Logger
   use GenServer
@@ -509,11 +508,8 @@ defmodule Aetestframework.Worker do
   def handle_call({:delete_all_nodes}, _, state) do
     # killing all the processes and closing all of the ports of the nodes
     Enum.each(state, fn {_, val} ->
-      port = val.port
+      Port.command(val.process_port, ":erlang.halt()\n")
       Port.close(val.process_port)
-      pid_str = :os.cmd('lsof -ti tcp:#{port}')
-      pid = pid_str |> Chars.to_string() |> String.trim()
-      System.cmd("kill", ["-9", pid])
       path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> "/apps/aecore/priv/"
       File.rm_rf(path <> "aewallet_#{val.port}")
       File.rm_rf(path <> "peerkeys_#{val.port}")
@@ -525,12 +521,8 @@ defmodule Aetestframework.Worker do
 
   def handle_call({:delete_node, node_name}, _, state) do
     if Map.has_key?(state, node_name) do
-      # kills the process, closes the port
-      port = state[node_name].port
+      Port.command(state[node_name].process_port, ":erlang.halt()\n")
       Port.close(state[node_name].process_port)
-      pid_str = :os.cmd('lsof -ti tcp:#{port}')
-      pid = pid_str |> Chars.to_string() |> String.trim()
-      System.cmd("kill", ["-9", pid])
       new_state = Map.delete(state, node_name)
       {:reply, :ok, new_state}
     else
