@@ -27,7 +27,6 @@ defmodule Aecore.Poi.PoiProof do
   def construct(%Trie{} = trie) do
     %PoiProof{
       root_hash: trie_root_hash(trie),
-      db: %{}
     }
   end
 
@@ -91,11 +90,6 @@ defmodule Aecore.Poi.PoiProof do
     end
   end
 
-  defp invoke_proof_verification(%PoiProof{} = poi_proof, key, value) do
-    proof_trie = get_readonly_proof_trie(poi_proof)
-    PatriciaMerkleTrie.verify_proof(proof_trie, key, value)
-  end
-
   @spec add_to_poi(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
   def add_to_poi(%PoiProof{root_hash: root_hash} = poi_proof, %Trie{} = trie, key) do
     case trie_root_hash(trie) do
@@ -118,11 +112,43 @@ defmodule Aecore.Poi.PoiProof do
     PatriciaMerkleTree.verify_proof(key, value, root_hash, proof_trie)
   end
 
-  @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, value} | :error
+  @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
     root_hash = poi_root_hash_to_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
     PatriciaMerkleTree.lookup_proof(key, root_hash, proof_trie)
+  end
+
+  @spec encode_to_list(PoiProof.t()) :: list()
+  def encode_to_list(%PoiProof{root_hash: :empty}) do
+    []
+  end
+
+  def encode_to_list(%PoiProof{root_hash: root_hash, db: db}) do
+    contents =
+      db
+      |> Enum.map(fn {key, value} -> [key, value] end)
+      |> Enum.sort_by(fn [key, _] -> key end) #the specification requires keys to be sorted in serialized POI's
+    [root_hash, contents]
+  end
+
+  @spec decode_from_list(list()) :: PoiProof.t() | {:error, string()}
+  def decode_from_list([]) do
+    %PoiProof{}
+  end
+
+  def decode_from_list([root_hash, contents]) when is_binary(root_hash) and is_list(contents) do
+    db =
+      Enum.reduce(
+        contents,
+        %{},
+        fn([key, value], acc) -> Map.put(acc, key, value) end)
+
+    %PoiProof{root_hash: root_hash, db: db}
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__} deserialization of POI failed"}
   end
 
 end
