@@ -9,14 +9,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   alias __MODULE__
   alias Aecore.Tx.DataTx
   alias Aecore.Account.Account
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aeutil.Bits
   alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
+  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+
+  @version 1
 
   @type id :: binary()
 
@@ -54,6 +57,23 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: t()
+
+  def init(%{
+        oracle_address: %Identifier{} = identified_oracle_address,
+        query_data: query_data,
+        query_fee: query_fee,
+        query_ttl: query_ttl,
+        response_ttl: response_ttl
+      }) do
+    %OracleQueryTx{
+      oracle_address: identified_oracle_address,
+      query_data: query_data,
+      query_fee: query_fee,
+      query_ttl: query_ttl,
+      response_ttl: response_ttl
+    }
+  end
+
   def init(%{
         oracle_address: oracle_address,
         query_data: query_data,
@@ -61,7 +81,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         query_ttl: query_ttl,
         response_ttl: response_ttl
       }) do
-    {:ok, identified_orc_address} = Identifier.create_identity(oracle_address, :oracle)
+    identified_orc_address = Identifier.create_identity(oracle_address, :oracle)
 
     %OracleQueryTx{
       oracle_address: identified_orc_address,
@@ -96,7 +116,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !validate_identifier(oracle_address) ->
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
-      !Wallet.key_size_valid?(oracle_address.value) ->
+      !Keys.key_size_valid?(oracle_address.value) ->
         {:error, "#{__MODULE__}: oracle_adddress size invalid"}
 
       length(senders) != 1 ->
@@ -130,9 +150,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    {:ok, identified_sender} = Identifier.create_identity(sender, :account)
+    identified_sender = Identifier.create_identity(sender, :account)
 
-    query = %{
+    query = %OracleQuery{
       sender_address: identified_sender,
       sender_nonce: nonce,
       oracle_address: tx.oracle_address,
@@ -237,7 +257,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     tx_fee_is_met && tx_query_fee_is_met
   end
 
-  @spec id(Wallet.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
+  @spec id(Keys.pubkey(), non_neg_integer(), Identifier.t()) :: binary()
   def id(sender, nonce, oracle_address) do
     bin = sender <> <<nonce::@nonce_size>> <> oracle_address
     Hash.hash(bin)
@@ -257,8 +277,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{} = id) do
-    {:ok, check_id} = Identifier.create_identity(id.value, :oracle)
-    check_id == id
+    Identifier.create_identity(id.value, :oracle) == id
   end
 
   @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
@@ -267,5 +286,84 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+  end
+
+  def encode_to_list(%OracleQueryTx{} = tx, %DataTx{} = datatx) do
+    ttl_type_q = Serialization.encode_ttl_type(tx.query_ttl)
+    ttl_type_r = Serialization.encode_ttl_type(tx.response_ttl)
+
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      Identifier.encode_to_binary(tx.oracle_address),
+      tx.query_data,
+      :binary.encode_unsigned(tx.query_fee),
+      ttl_type_q,
+      tx.query_ttl.ttl,
+      ttl_type_r,
+      :binary.encode_unsigned(tx.response_ttl.ttl),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_senders,
+        nonce,
+        encoded_oracle_address,
+        query_data,
+        query_fee,
+        encoded_query_ttl_type,
+        query_ttl_value,
+        encoded_response_ttl_type,
+        response_ttl_value,
+        fee,
+        ttl
+      ]) do
+    query_ttl_type =
+      encoded_query_ttl_type
+      |> Serialization.decode_ttl_type()
+
+    response_ttl_type =
+      encoded_response_ttl_type
+      |> Serialization.decode_ttl_type()
+
+    case Identifier.decode_from_binary(encoded_oracle_address) do
+      {:ok, oracle_address} ->
+        payload = %{
+          oracle_address: oracle_address,
+          query_data: query_data,
+          query_fee: :binary.decode_unsigned(query_fee),
+          query_ttl: %{
+            ttl: :binary.decode_unsigned(query_ttl_value),
+            type: query_ttl_type
+          },
+          response_ttl: %{
+            ttl: :binary.decode_unsigned(response_ttl_value),
+            type: response_ttl_type
+          }
+        }
+
+        DataTx.init_binary(
+          OracleQueryTx,
+          payload,
+          encoded_senders,
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

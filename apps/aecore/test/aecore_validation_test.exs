@@ -6,17 +6,18 @@ defmodule AecoreValidationTest do
   use ExUnit.Case
   doctest Aecore.Chain.BlockValidation
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.{Block, Header}
+  alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Governance.GovernanceConstants
 
   setup_all do
     Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+
     path = Application.get_env(:aecore, :persistence)[:path]
 
     if File.exists?(path) do
@@ -24,17 +25,16 @@ defmodule AecoreValidationTest do
     end
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
   setup _ctx do
     Miner.mine_sync_block_to_chain()
+    %{public: receiver} = :enacl.sign_keypair()
 
     [
-      receiver: Wallet.get_public_key("M/0")
+      receiver: receiver
     ]
   end
 
@@ -115,11 +115,10 @@ defmodule AecoreValidationTest do
   end
 
   test "validate transactions in a block", ctx do
-    sender = Wallet.get_public_key()
+    {sender, priv_key} = Keys.keypair(:sign)
     amount = 5
     fee = 1
 
-    priv_key = Wallet.get_private_key()
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
 
     {:ok, signed_tx1} =
@@ -128,7 +127,7 @@ defmodule AecoreValidationTest do
     {:ok, signed_tx2} =
       Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
-    block = %{Block.genesis_block() | txs: [signed_tx1, signed_tx2]}
+    block = %{Genesis.block() | txs: [signed_tx1, signed_tx2]}
 
     assert block
            |> BlockValidation.validate_block_transactions()
@@ -136,11 +135,9 @@ defmodule AecoreValidationTest do
   end
 
   def get_new_block(receiver) do
-    sender = Wallet.get_public_key()
+    {sender, priv_key} = Keys.keypair(:sign)
     amount = 100
     fee = 10
-
-    priv_key = Wallet.get_private_key()
 
     {:ok, signed_tx} =
       Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)

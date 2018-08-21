@@ -5,28 +5,22 @@ defmodule AecoreChainTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Block
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Keys.Wallet
 
   setup do
-    # Persistence.delete_all_blocks()
-    Chain.start_link([])
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
-
-    []
   end
 
   @tag timeout: 100_000
@@ -44,7 +38,7 @@ defmodule AecoreChainTest do
         [],
         chain_state,
         2,
-        Wallet.get_public_key()
+        elem(Keys.keypair(:sign), 0)
       )
 
     new_root_hash = Chainstate.calculate_root_hash(new_chain_state)
@@ -57,7 +51,7 @@ defmodule AecoreChainTest do
         root_hash: new_root_hash,
         target: 553_713_663,
         nonce: 0,
-        miner: Wallet.get_public_key(),
+        miner: elem(Keys.keypair(:sign), 0),
         time: System.system_time(:milliseconds),
         version: 14
       },

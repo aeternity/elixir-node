@@ -6,20 +6,21 @@ defmodule Aecore.Chain.Chainstate do
 
   alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Genesis}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.NamingStateTree
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
-  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Governance.GenesisConstants
   alias Aeutil.Hash
 
   require Logger
 
   @protocol_version_field_size 64
-  @protocol_version 17
+  @protocol_version 15
 
   @doc """
   This is the canonical root hash of an empty Patricia merkle tree
@@ -27,7 +28,7 @@ defmodule Aecore.Chain.Chainstate do
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
-
+  @genesis_miner GenesisConstants.miner()
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
@@ -52,19 +53,14 @@ defmodule Aecore.Chain.Chainstate do
 
   @spec init :: t()
   def init do
-    %Chainstate{
-      :accounts => AccountStateTree.init_empty(),
-      :oracles => OracleStateTree.init_empty(),
-      :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
-    }
+    Genesis.populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
           list(),
           t(),
           non_neg_integer(),
-          Wallet.pubkey()
+          Keys.pubkey()
         ) :: {:ok, t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
     chainstate_with_coinbase =
@@ -90,9 +86,19 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
+  @spec create_chainstate_trees() :: Chainstate.t()
+  def create_chainstate_trees do
+    %Chainstate{
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => OracleStateTree.init_empty(),
+      :naming => NamingStateTree.init_empty(),
+      :channels => ChannelStateTree.init_empty()
+    }
+  end
+
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::264>> ->
+      @genesis_miner ->
         chainstate
 
       miner_pubkey ->
@@ -129,7 +135,10 @@ defmodule Aecore.Chain.Chainstate do
     [
       AccountStateTree.root_hash(chainstate.accounts),
       NamingStateTree.root_hash(chainstate.naming),
-      OracleStateTree.root_hash(chainstate.oracles)
+      OracleStateTree.root_hash(chainstate.oracles),
+      @canonical_root_hash,
+      @canonical_root_hash,
+      @canonical_root_hash
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)

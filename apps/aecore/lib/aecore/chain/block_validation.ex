@@ -4,13 +4,12 @@ defmodule Aecore.Chain.BlockValidation do
   """
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Target
   alias Aeutil.Hash
-  alias Aeutil.Serialization
   alias Aecore.Chain.Chainstate
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.PatriciaMerkleTree
@@ -29,7 +28,7 @@ defmodule Aecore.Chain.BlockValidation do
         old_chain_state,
         blocks_for_target_calculation
       ) do
-    is_genesis = new_block == Block.genesis_block() && previous_block == nil
+    is_genesis = new_block == Genesis.block() && previous_block == nil
 
     case single_validate_block(new_block) do
       :ok ->
@@ -115,7 +114,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec block_header_hash(Header.t()) :: binary()
   def block_header_hash(%Header{} = header) do
-    block_header_bin = Serialization.header_to_binary(header)
+    block_header_bin = Header.encode_to_binary(header)
     Hash.hash(block_header_bin)
   end
 
@@ -139,7 +138,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   def build_merkle_tree(txs) do
     Enum.reduce(txs, PatriciaMerkleTree.new(:txs), fn tx, trie ->
-      encoded_tx = tx.data |> Serialization.rlp_encode(:tx)
+      encoded_tx = tx.data |> DataTx.rlp_encode()
       PatriciaMerkleTree.enter(trie, encoded_tx |> Hash.hash(), encoded_tx)
     end)
   end

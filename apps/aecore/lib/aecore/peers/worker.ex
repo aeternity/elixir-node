@@ -8,7 +8,7 @@ defmodule Aecore.Peers.Worker do
   alias Aecore.Peers.Worker.PeerConnectionSupervisor
   alias Aecore.Peers.PeerConnection
   alias Aecore.Chain.Block
-  alias Aecore.Keys.Peer, as: PeerKeys
+  alias Aecore.Keys
   alias Aehttpclient.Client
 
   require Logger
@@ -16,7 +16,7 @@ defmodule Aecore.Peers.Worker do
   def start_link(_args) do
     peers = %{}
 
-    {pubkey, privkey} = PeerKeys.keypair()
+    {pubkey, privkey} = Keys.keypair(:peer)
 
     local_peer = %{privkey: privkey, pubkey: pubkey}
     state = %{peers: peers, local_peer: local_peer}
@@ -87,7 +87,12 @@ defmodule Aecore.Peers.Worker do
   def rlp_decode_peers(encoded_peers) do
     Enum.map(encoded_peers, fn encoded_peer ->
       [host, port_bin, pubkey] = ExRLP.decode(encoded_peer)
-      %{host: to_charlist(host), port: :binary.decode_unsigned(port_bin), pubkey: pubkey}
+
+      %{
+        host: to_charlist(host),
+        port: :binary.decode_unsigned(port_bin),
+        pubkey: pubkey
+      }
     end)
   end
 

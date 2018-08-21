@@ -5,18 +5,15 @@ defmodule AecoreOracleTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys.Wallet
-  alias Aecore.Persistence.Worker, as: Persistence
+  alias Aecore.Keys
   alias Aeutil.PatriciaMerkleTree
 
   setup do
     Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
@@ -35,7 +32,7 @@ defmodule AecoreOracleTest do
     assert oracle_tree_2 |> PatriciaMerkleTree.all_keys() |> Enum.empty?() == false
 
     Miner.mine_sync_block_to_chain()
-    pub_key = Wallet.get_public_key()
+    pub_key = elem(Keys.keypair(:sign), 0)
 
     assert %{} == Pool.get_and_empty_pool()
 

@@ -1,15 +1,16 @@
 defmodule MinerTest do
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
 
   setup do
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
@@ -20,6 +21,6 @@ defmodule MinerTest do
     assert Chain.top_height() >= 1
     assert Chain.top_block().header.height >= 1
     assert length(Chain.longest_blocks_chain()) > 1
-    assert Chain.top_block().header.miner == Wallet.get_public_key()
+    assert Chain.top_block().header.miner == elem(Keys.keypair(:sign), 0)
   end
 end

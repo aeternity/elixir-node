@@ -5,30 +5,37 @@ defmodule MultipleTransactionsTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Governance.GovernanceConstants
 
   setup do
     Code.require_file("test_utils.ex", "./test")
 
-    on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
-    end)
+    Persistence.delete_all()
 
-    Pool.start_link([])
+    TestUtils.clean_blockchain()
+
+    on_exit(fn ->
+      TestUtils.clean_blockchain()
+    end)
+  end
+
+  setup do
+    %{public: acc2_pub, secret: acc2_priv} = :enacl.sign_keypair()
+    %{public: acc3_pub, secret: acc3_priv} = :enacl.sign_keypair()
+    %{public: acc4_pub, secret: acc4_priv} = :enacl.sign_keypair()
+    {pubkey, privkey} = Keys.keypair(:sign)
 
     [
-      account: {Wallet.get_public_key(), Wallet.get_private_key()},
-      account2: {Wallet.get_public_key("M/0"), Wallet.get_private_key("m/0")},
-      account3: {Wallet.get_public_key("M/1"), Wallet.get_private_key("m/1")},
-      account4: {Wallet.get_public_key("M/2"), Wallet.get_private_key("m/2")}
+      account: {pubkey, privkey},
+      account2: {acc2_pub, acc2_priv},
+      account3: {acc3_pub, acc3_priv},
+      account4: {acc4_pub, acc4_priv}
     ]
   end
 

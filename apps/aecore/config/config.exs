@@ -10,15 +10,21 @@ persistence_path =
     env -> env
   end
 
-aewallet_pass =
-  case System.get_env("AEWALLET_PASS") do
-    nil -> " "
+sign_keys_pass =
+  case System.get_env("SIGN_KEYS_PASS") do
+    nil -> <<"Secret">>
     env -> env
   end
 
-aewallet_path =
-  case System.get_env("AEWALLET_PATH") do
-    nil -> "apps/aecore/priv/aewallet"
+sign_keys_path =
+  case System.get_env("SIGN_KEYS_PATH") do
+    nil -> "apps/aecore/priv/signkeys"
+    env -> env
+  end
+
+peer_keys_pass =
+  case System.get_env("PEER_KEYS_PASS") do
+    nil -> <<"Secret">>
     env -> env
   end
 
@@ -28,50 +34,19 @@ peerkeys_path =
     env -> env
   end
 
+accounts_path =
+  case System.get_env("ACCOUNTS_PATH") do
+    nil -> "apps/aecore/config/genesis/"
+    env -> env
+  end
+
 config :aecore, :spend_tx, version: 1
 
-config :aecore, :aewallet, pub_key_size: 33
-
-config :aecore, :rlp_tags,
-  account_state: 10,
-  signed_tx: 11,
-  spend_tx: 12,
-  oracle_state: 20,
-  oracle_query_state: 21,
-  oracle_reg_tx: 22,
-  oracle_query_tx: 23,
-  oracle_response_tx: 24,
-  oracle_extend_tx: 25,
-  naming_state: 30,
-  name_commitment_state: 31,
-  name_claim_tx: 32,
-  name_pre_claim_tx: 33,
-  name_update_tx: 34,
-  name_revoke_tx: 35,
-  name_transfer_tx: 36,
-  block: 100
-
-config :aecore, :version, block: 14
-
-config :aecore, :bytes_size,
-  txs_hash: 32,
-  state_hash: 32,
-  miner_pubkey: 32,
-  header_hash: 32,
-  root_hash: 32,
-  pow_total_size: 168
-
-config :aecore, :binary_ids,
-  account: 1,
-  name: 2,
-  commitment: 3,
-  oracle: 4,
-  contract: 5,
-  channel: 6
+config :aecore, :sign_keys, pubkey_size: 32
 
 config :aecore, :signed_tx, sign_max_size: 72
 
-config :aecore, :oracle_response_tx, query_id: 65
+config :aecore, :oracle_response_tx, query_id: 64
 
 config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
 
@@ -79,11 +54,15 @@ config :aecore, :naming,
   max_label_length: 63,
   max_name_length: 253
 
-config :aecore, :aewallet,
-  pass: aewallet_pass,
-  path: Path.absname(aewallet_path)
+config :aecore, :sign_keys,
+  pass: sign_keys_pass,
+  path: Path.absname(sign_keys_path)
 
-config :aecore, :peer_keys, path: Path.absname(peerkeys_path)
+config :aecore, :peer_keys,
+  pass: peer_keys_pass,
+  path: Path.absname(peerkeys_path)
+
+config :aecore, :account_path, path: Path.absname(accounts_path)
 
 config :aecore, :persistence,
   path: persistence_path |> Path.absname() |> Path.join("//"),

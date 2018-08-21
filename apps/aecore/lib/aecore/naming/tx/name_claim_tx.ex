@@ -7,13 +7,16 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.{NameClaim, NameCommitment, NamingStateTree}
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Identifier
 
   require Logger
+
+  @version 1
 
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
@@ -59,7 +62,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      byte_size(name_salt) != Naming.get_name_salt_byte_size() ->
+      byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
         {:error,
          "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
 
@@ -91,10 +94,11 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         %NameClaimTx{} = tx,
         data_tx
       ) do
-    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    sender = DataTx.main_sender(data_tx)
+
+    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    [identified_sender] = data_tx.senders
-    claim = Naming.create_claim(claim_hash, tx.name, identified_sender, block_height)
+    claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
 
     updated_naming_chainstate =
       naming_state
@@ -126,7 +130,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = Naming.create_commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
@@ -167,5 +171,38 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
   def is_minimum_fee_met?(tx) do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_list_to_binary(datatx.senders),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.name,
+      tx.name_salt,
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl)
+    ]
+  end
+
+  def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
+    payload = %NameClaimTx{name: name, name_salt: name_salt}
+
+    DataTx.init_binary(
+      NameClaimTx,
+      payload,
+      encoded_senders,
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end
