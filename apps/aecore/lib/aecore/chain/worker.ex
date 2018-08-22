@@ -6,27 +6,18 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
-  alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Chain.Header
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Chain.BlockValidation
-  alias Aeutil.Events
   alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Keys
-  alias Aehttpserver.Web.Notify
-  alias Aeutil.Serialization
-  alias Aeutil.Hash
-  alias Aeutil.Scientific
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aeutil.PatriciaMerkleTree
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.SignedTx
+  alias Aehttpserver.Web.Notify
+  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
+  alias Aeutil.{Serialization, Hash, Scientific, PatriciaMerkleTree, Events}
 
   require Logger
 
@@ -41,12 +32,12 @@ defmodule Aecore.Chain.Worker do
   end
 
   def init(_) do
-    genesis_block_header = Block.genesis_block().header
+    genesis_block_header = Genesis.block().header
     genesis_block_hash = BlockValidation.block_header_hash(genesis_block_header)
 
     {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
-        Block.genesis_block().txs,
+        Genesis.block().txs,
         build_chain_state(),
         genesis_block_header.height,
         genesis_block_header.miner
@@ -54,13 +45,13 @@ defmodule Aecore.Chain.Worker do
 
     blocks_data_map = %{
       genesis_block_hash => %{
-        block: Block.genesis_block(),
+        block: Genesis.block(),
         chain_state: genesis_chain_state,
         refs: []
       }
     }
 
-    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+    txs_index = calculate_block_acc_txs_info(Genesis.block())
 
     {:ok,
      %{
