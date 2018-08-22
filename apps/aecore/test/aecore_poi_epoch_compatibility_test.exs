@@ -64,11 +64,7 @@ defmodule PoiEpochCompabilityTest do
   assert {:ok, _} = Poi.lookup_poi(:accounts, poi, epoch_account_pub_key1)
   assert {:ok, _} = Poi.lookup_poi(:accounts, poi, epoch_account_pub_key2)
 
-  IO.inspect(Serialization.rlp_encode(poi) |> ExRLP.decode())
-  IO.inspect(epoch_serialized_poi |> ExRLP.decode())
-
   assert Serialization.rlp_encode(poi) === epoch_serialized_poi
-
   end
 
   defp assert_accounts_equal(

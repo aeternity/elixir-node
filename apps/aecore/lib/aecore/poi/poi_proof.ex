@@ -85,7 +85,11 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   defp get_proof_construction_trie(%PoiProof{} = poi_proof) do
-    Trie.new(ExternalDB.init(get_proof_construction_handles(poi_proof)))
+    len = Trie.Storage.max_rlp_len()*8
+    Trie.new(
+      ExternalDB.init(get_proof_construction_handles(poi_proof)),
+      <<0 :: size(len)>> #this will avoid writing the root hash to the readonly DB
+    )
   end
 
   defp get_readonly_proof_trie(%PoiProof{} = poi_proof) do
