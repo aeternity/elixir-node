@@ -1,12 +1,13 @@
-defmodule Aecore.Poi do
+defmodule Aecore.Poi.Poi do
 
-  alias Aecore.Poi
+  alias Aecore.Poi.Poi
   alias Aecore.Poi.PoiProof
   alias Aecore.Chain.Chainstate
   alias Aeutil.Hash
   alias Aecore.Keys
   alias Aecore.Account.Account
 
+  @version 1
   @protocol_version_field_size 64
   @protocol_version 15
 
@@ -98,7 +99,7 @@ defmodule Aecore.Poi do
   #Placeholder until PR-#526 gets merged into master
   #def verify_poi(%Poi{contracts: contracts_proof}, %Contract{})
 
-  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} || {:error, :key_not_present | String.t() | :nyi}
+  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_present | String.t() | :nyi}
   def lookup_poi(:accounts, %Poi{accounts: accounts_proof}, pub_key) do
     case PoiProof.lookup_in_poi(accounts_proof, pub_key) do
       :error ->
@@ -109,6 +110,7 @@ defmodule Aecore.Poi do
           Account.rlp_decode(serialized_account)
         rescue
           _ -> {:error, "#{__MODULE__} Deserialization of account failed"}
+        end
     end
   end
 
@@ -129,7 +131,7 @@ defmodule Aecore.Poi do
     calls: calls_proof,
     contracts: contracts_proof
   }) do
-    [
+    payload = [
       accounts_proof,
       calls_proof,
       channels_proof,
@@ -138,10 +140,12 @@ defmodule Aecore.Poi do
       oracles_proof
     ]
     |> Enum.map(fn proof -> PoiProof.encode_to_list(proof) end)
+
+    [:binary.encode_unsigned(@version)] ++ payload
   end
 
-  @spec decode_from_list(list()) :: Poi.t() | {:error, String.t()}
-  def decode_from_list([
+  @spec decode_from_list(non_neg_integer(), list()) :: Poi.t() | {:error, String.t()}
+  def decode_from_list(@version, [
       accounts,
       calls,
       channels,
@@ -159,7 +163,7 @@ defmodule Aecore.Poi do
     }
   end
 
-  def decode_from_list(_) do
+  def decode_from_list(_, _) do
     {:error, "#{__MODULE__} deserialization of POI failed"}
   end
 

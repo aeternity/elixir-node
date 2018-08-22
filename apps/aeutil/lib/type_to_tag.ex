@@ -33,7 +33,7 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(57), do: {:ok, Aecore.Channel.Tx.ChannelSettleTx}
   def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
   # Channel snapshot transaction - 59
-  # POI - 60
+  def tag_to_type(60), do: {:ok, Aecore.Poi.Poi}
   # Non Epoch tags:
   def tag_to_type(100), do: {:ok, Aecore.Chain.Block}
   def tag_to_type(101), do: {:ok, Aecore.Channel.ChannelStateOffChain}
@@ -70,7 +70,7 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 57}
   def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
   # Channel snapshot transaction - 59
-  # POI - 60
+  def type_to_tag(Aecore.Poi.Poi), do: {:ok, 60}
   # Non Epoch tags
   def type_to_tag(Aecore.Chain.Block), do: {:ok, 100}
   def type_to_tag(Aecore.Channel.ChannelStateOffChain), do: {:ok, 101}
