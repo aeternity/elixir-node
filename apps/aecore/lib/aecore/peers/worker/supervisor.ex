@@ -19,7 +19,6 @@ defmodule Aecore.Peers.Worker.Supervisor do
     {pubkey, privkey} = Keys.keypair(:peer)
 
     children = [
-
       Sync,
       PeerConnectionSupervisor,
       Peers,

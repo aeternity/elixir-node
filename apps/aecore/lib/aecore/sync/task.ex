@@ -1,5 +1,4 @@
 defmodule Aecore.Sync.Task do
-
   alias Aecore.Sync.Chain
   alias Aecore.Sync.Sync
   alias Aecore.Chain.Block
@@ -8,7 +7,8 @@ defmodule Aecore.Sync.Task do
   @type id :: reference()
   @type height :: non_neg_integer()
   @type hash :: binary()
-  @type peer_id :: pid() ## :unfinished Maybe its not pid() ????
+  ## :unfinished Maybe its not pid() ????
+  @type peer_id :: pid()
   @type sync_task :: %Task{}
   @type sync_tasks :: list(%Task{})
   @type pool_elem :: {height(), hash(), {peer_id(), Block.t()}}
@@ -28,7 +28,7 @@ defmodule Aecore.Sync.Task do
   defstruct id: nil,
             chain: nil,
             pool: [],
-            agreed: :nil,
+            agreed: nil,
             adding: [],
             pending: [],
             workers: []
@@ -78,12 +78,12 @@ defmodule Aecore.Sync.Task do
   def maybe_end_sync_task(state, %Task{chain: chain} = st) do
     case chain do
       %{peers: [], chain: [target | []]} ->
-        IO.inspect "Delete sync task"
+        IO.inspect("Delete sync task")
         ## Removing/ending SyncTask: st with target: target <- use it for log
         delete_sync_task(st, state)
 
       _ ->
-        IO.inspect "Set sync task"
+        IO.inspect("Set sync task")
         set_sync_task(st, state)
     end
   end
@@ -110,7 +110,7 @@ defmodule Aecore.Sync.Task do
   change the tasks. Otherwise add the given task to the end of list of tasks
   """
   @spec keystore(id() | pid(), sync_tasks(), sync_task()) :: sync_tasks()
-  def keystore(id, elem,  elems) do
+  def keystore(id, elem, elems) do
     do_keystore(elems, elem, id, [])
   end
 

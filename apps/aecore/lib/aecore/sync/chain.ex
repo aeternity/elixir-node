@@ -1,8 +1,7 @@
 defmodule Aecore.Sync.Chain do
-
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
-  alias   Aecore.Sync.Task
+  alias Aecore.Sync.Task
   alias __MODULE__
 
   @type chain_id :: reference()
@@ -68,7 +67,7 @@ defmodule Aecore.Sync.Chain do
 
   def find_hash_at_height(n, [%{height: n, hash: h} | _]), do: {:ok, h}
   def find_hash_at_height(_, []), do: :not_found
-  def find_hash_at_height(n, [%{height: n1}| _]) when n1 < n, do: :not_found
+  def find_hash_at_height(n, [%{height: n1} | _]) when n1 < n, do: :not_found
   def find_hash_at_height(n, [_ | chain]), do: find_hash_at_height(n, chain)
 
   ## If there is a task with chain_id equal to the given chain,
@@ -92,6 +91,7 @@ defmodule Aecore.Sync.Chain do
         [] -> Kernel.hd(cs)
         cs1 -> List.last(cs1)
       end
+
     hash
   end
 end

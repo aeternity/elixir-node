@@ -98,7 +98,7 @@ defmodule Aecore.Sync.Sync do
       end
 
     {res, new_state} = sync_task_for_chain(chain, state1)
-    IO.inspect ":known_chain Result: #{inspect(res)}"
+    IO.inspect(":known_chain Result: #{inspect(res)}")
     {:reply, res, new_state}
   end
 
@@ -108,13 +108,14 @@ defmodule Aecore.Sync.Sync do
   end
 
   def handle_call({:next_work_item, st_id, peer_id, {:error, reason}}, _from, state) do
-    IO.inspect "next work item: ERROR, #{inspect(reason)}"
+    IO.inspect("next work item: ERROR, #{inspect(reason)}")
     new_state = Task.do_update_sync_task(state, st_id, {:error, peer_id})
     {:reply, :abort_work, new_state}
   end
 
   def handle_call({:next_work_item, st_id, peer_id, last_result}, _from, state) do
-    IO.inspect "next_work_item success!"
+    IO.inspect("next_work_item success!")
+
     # IO.inspect("st_id: #{inspect(st_id)}, peer_id: #{inspect(peer_id)}, last_result: #{inspect(last_result)}")
     state1 = handle_last_result(state, st_id, last_result)
     {reply, state2} = get_next_work_item(state1, st_id, peer_id)
@@ -142,7 +143,7 @@ defmodule Aecore.Sync.Sync do
         {:ok, sync_task} ->
           sync_task1 = do_handle_worker(action, sync_task)
           st = Task.set_sync_task(sync_task1, state)
-          IO.inspect ":handle_worker SyncTask: #{inspect(st)}"
+          IO.inspect(":handle_worker SyncTask: #{inspect(st)}")
           st
 
         {:error, :not_found} ->
@@ -251,7 +252,7 @@ defmodule Aecore.Sync.Sync do
     with {:ok, st = %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
          true <- Enum.member?(peer_ids, peer_id) do
       {action, st1} = get_next_work_item(st)
-      IO.inspect "Get next work action: #{inspect(action)}"
+      IO.inspect("Get next work action: #{inspect(action)}")
       {action, Task.set_sync_task(stid, st1, state)}
     else
       _ ->
@@ -291,7 +292,7 @@ defmodule Aecore.Sync.Sync do
         get_next_work_item(%Task{st | pool: new_pool, pending: pend ++ [to_be_added]})
 
       true ->
-        IO.inspect "true"
+        IO.inspect("true")
         {:take_a_break, st}
     end
   end
@@ -307,14 +308,18 @@ defmodule Aecore.Sync.Sync do
 
   def get_next_work_item(%Task{} = st) do
     ## Nothing to do
-    IO.inspect "Nothing to do"
+    IO.inspect("Nothing to do")
     {:take_a_break, st}
   end
 
   def do_handle_worker({:new_worker, peer_id, pid}, %Task{workers: ws} = st) do
     case Enum.filter(ws, fn {p_id, _} -> p_id == peer_id end) do
-      [] -> :ok
-      [{_, old}] -> :ok ## Log: Peer already has worker
+      [] ->
+        :ok
+
+      ## Log: Peer already has worker
+      [{_, old}] ->
+        :ok
     end
 
     ## :erlang.link(pid)
@@ -404,7 +409,7 @@ defmodule Aecore.Sync.Sync do
 
         case known_chain(chain) do
           {:ok, st_id} ->
-            IO.inspect "Chain is known !!"
+            IO.inspect("Chain is known !!")
             ## Examine the self() part here
             handle_worker(st_id, {:new_worker, peer_id, self()})
             do_work_on_sync_task(peer_id, st_id)
@@ -479,7 +484,7 @@ defmodule Aecore.Sync.Sync do
         Jobs.delayed_run_job(self(), peer_id, st_id, :sync_task_workers, fun, 250)
 
       {:agree_on_height, chain} ->
-        IO.inspect "agree_on_height !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        IO.inspect("agree_on_height !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         %Chain{chain: [%{height: top_height, hash: top_hash} | _]} = chain
         local_height = Chainstate.top_height()
         {:ok, %{header: genesis}} = Chainstate.get_block_by_height(0)
@@ -496,10 +501,10 @@ defmodule Aecore.Sync.Sync do
                min_agreed_hash
              ) do
           {:ok, height, hash} ->
-            IO.inspect "Agreed on height: #{height}"
+            IO.inspect("Agreed on height: #{height}")
             ## Log info -> Agreed upon height: height
-          agreement = {:agreed_height, %{height: height, hash: hash}}
-          IO.inspect agreement
+            agreement = {:agreed_height, %{height: height, hash: hash}}
+            IO.inspect(agreement)
             do_work_on_sync_task(peer_id, st_id, agreement)
 
           {:error, reason} ->
