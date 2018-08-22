@@ -14,6 +14,8 @@ defmodule Aecore.Poi.PoiProof do
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
 
+  @state_hash_bytes 32
+
   @type t :: %PoiProof{
           root_hash: :empty | binary(),
           db: Map.t()
@@ -28,6 +30,18 @@ defmodule Aecore.Poi.PoiProof do
     %PoiProof{
       root_hash: trie_root_hash(trie),
     }
+  end
+
+  def construct_empty() do
+    %PoiProof{}
+  end
+
+  def root_hash(%PoiProof{root_hash: :empty}) do
+    <<0::size(@state_hash_bytes)-unit(8)>>
+  end
+
+  def root_hash(%PoiProof{root_hash: root_hash}) do
+    root_hash
   end
 
   defp get_proof_construction_handles(%PoiProof{db: proof_db}) do
@@ -106,10 +120,10 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @spec verify_poi_entry(PoiProof.t(), Trie.key, Trie.value()) :: boolean()
-  def verify_poi_entry(%PoiProof{} = poi_proof, key, value) do
+  def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
     root_hash = poi_root_hash_to_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
-    PatriciaMerkleTree.verify_proof(key, value, root_hash, proof_trie)
+    PatriciaMerkleTree.verify_proof(key, serialized_value, root_hash, proof_trie)
   end
 
   @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
@@ -134,7 +148,7 @@ defmodule Aecore.Poi.PoiProof do
 
   @spec decode_from_list(list()) :: PoiProof.t() | {:error, string()}
   def decode_from_list([]) do
-    %PoiProof{}
+    construct_empty()
   end
 
   def decode_from_list([root_hash, contents]) when is_binary(root_hash) and is_list(contents) do

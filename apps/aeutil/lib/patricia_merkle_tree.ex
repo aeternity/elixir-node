@@ -99,7 +99,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Lookups the value associated with the given key in the proof trie.
   """
-  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: {:ok, value} | :error
+  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: {:ok, Trie.value()} | :error
   def lookup_proof(key, root_hash, proof) do
     case Proof.lookup_proof(key, root_hash, proof) do
       nil ->
