@@ -35,9 +35,13 @@ defmodule Aecore.Peers.PeerConnection do
   @header_hashes 6
   @get_block 7
   @block 11
-  @tx 9
+  # @tx 9
   @get_mempool 13
-  @mempool 14
+  @mempool 9
+  @tx_pool_sync_init 20
+  @tx_pool_sync_unfold 21
+  @tx_pool_sync_get 22
+  @tx_pool_sync_finish 23
 
   @max_packet_size 0x1FF
   @fragment_size 0x1F9
@@ -108,10 +112,11 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid) when is_pid(pid) do
+  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
+          {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(height, top_hash, pid) when is_pid(pid) do
     @get_header_by_height
-    |> pack_msg(%{height: height})
+    |> pack_msg(%{height: height, top_hash: top_hash})
     |> send_request_msg(pid)
   end
 
@@ -288,6 +293,18 @@ defmodule Aecore.Peers.PeerConnection do
 
       @tx ->
         spawn(fn -> handle_new_tx(deserialized_payload) end)
+
+      @tx_pool_sync_init ->
+        spawn(fn -> handle_tx_pool_sync_init(self) end)
+
+      @tx_pool_sync_unfold ->
+        spawn(fn -> handle_tx_pool_sync_unfold(deserialized_payload, self) end)
+
+      @tx_pool_sync_get ->
+        spawn(fn -> handle_tx_pool_sync_get(deserialized_payload, self) end)
+
+      @tx_pool_sync_finish ->
+        spawn(fn -> handle_tx_pool_sync_finish(deserialized_payload, self) end)
     end
 
     {:noreply, state}
@@ -422,7 +439,8 @@ defmodule Aecore.Peers.PeerConnection do
         end
       end)
 
-      Sync.fetch_mempool(conn_pid)
+      tx_pool_sync_init(conn_pid)
+
       Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
@@ -433,9 +451,22 @@ defmodule Aecore.Peers.PeerConnection do
     result = payload.result
     type = payload.type
 
-    if type == @ping do
-      handle_ping_msg(payload.object, parent)
-    else
+    case type do
+      @ping ->
+        handle_ping_msg(payload.object, parent)
+      @tx_pool_sync_init ->
+        :timer.sleep(1000)
+        send_unfolds(parent)
+      @tx_pool_sync_unfold ->
+        {new_unfolds, gets} = analyze_unfolds(payload.object)
+        case new_unfolds do
+          [] ->
+            send_gets(gets, parent)
+          unfolds ->
+            send_unfolds(unfolds, parent)
+        end
+      _ ->
+
       reply =
         case result do
           true ->
@@ -449,6 +480,8 @@ defmodule Aecore.Peers.PeerConnection do
 
       clear_request(parent, type)
     end
+
+
   end
 
   defp clear_request(pid, type) do
@@ -463,7 +496,15 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_get_header_by_height(payload, pid) do
     height = payload.height
-    result = Chain.get_header_by_height(height)
+    top_hash = payload.top_hash
+
+    result =
+      if Chain.hash_is_in_main_chain?(top_hash) do
+        Chain.get_header_by_height(height)
+      else
+        {:error, :not_on_chain}
+      end
+
     send_response(result, @header, pid)
   end
 
@@ -510,6 +551,33 @@ defmodule Aecore.Peers.PeerConnection do
     Pool.add_transaction(tx)
   end
 
+  defp handle_tx_pool_sync_init(pid) do
+    send_response({:ok, %{}}, @tx_pool_sync_init, pid)
+  end
+
+  defp handle_tx_pool_sync_unfold(payload, pid) do
+    unfolds = payload.unfolds
+
+    new_unfolds = Pool.get_pool() |> Map.keys() |> Kernel.--(unfolds)
+    send_response({:ok, %{unfolds: new_unfolds}}, @tx_pool_sync_unfold, pid)
+  end
+
+  defp handle_tx_pool_sync_get(payload, pid) do
+    hashes = payload.hashes
+    pool = Pool.get_pool()
+    txs = Enum.map(hashes, fn hash -> pool[hash] end)
+    send_response({:ok, %{txs: txs}}, @mempool, pid)
+  end
+
+  defp handle_tx_pool_sync_finish(payload, pid) do
+    finish = payload.finish
+    send_response({:ok, %{finish: finish}}, @tx_pool_sync_finish, pid)
+  end
+
+  defp tx_pool_sync_init(pid) do
+    @tx_pool_sync_init |> pack_msg(%{}) |> send_msg_no_response(pid)
+  end
+
   defp local_ping_object do
     peers = Peers.get_random(@peer_share_count)
 
@@ -547,6 +615,50 @@ defmodule Aecore.Peers.PeerConnection do
       prologue: <<version::binary(), genesis_hash::binary()>>,
       timeout: @noise_timeout
     ]
+  end
+
+  defp deserialize_unfolds(unfolds) do
+    Enum.map(unfolds, fn unfold ->
+      case ExRLP.decode(unfold) do
+        [<<0>>, path, node] ->
+          {:node, path, node}
+        _ ->
+          <<_::24, hash::binary>> = rest
+          hash]
+      end
+    end)
+  end
+
+  defp send_unfolds(pid) do
+    unfolds = case Map.keys(Pool.get_pool()) do
+      [] -> [<<195,0,0,128>>]
+      hashes -> hashes
+    end
+
+    @tx_pool_sync_unfold
+    |> pack_msg(%{unfolds: unfolds})
+    |> send_msg_no_response(pid)
+  end
+
+  defp analyze_unfolds(unfolds, pool_hashes) do
+    Enum.reduce(unfolds, {[], []} fn unfold, {new_unfolds, gets} ->
+      case unfold do
+        {:node, path, _node} ->
+          {[path | new_unfolds], gets}
+        {:key, key} ->
+          {new_unfolds, [key | gets]}
+        {:leaf, key} ->
+          if Enum.member?(pool_hashes, key) do
+            {new_unfolds, gets}
+          else
+            {new_unfolds, [key | gets]}
+          end
+      end
+    end)
+  end
+
+  defp analyze_unfolds(unfolds, pool_hashes, new_unfolds, gets) do
+
   end
 
   # RLP for peer messages
@@ -648,6 +760,22 @@ defmodule Aecore.Peers.PeerConnection do
   def rlp_encode(@mempool, %{txs: txs}) do
     encoded_txs = Enum.map(txs, fn tx -> SignedTx.rlp_encode(tx) end)
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), encoded_txs])
+  end
+
+  def rlp_encode(@tx_pool_sync_init, %{}) do
+    ExRLP.encode([@p2p_msg_version])
+  end
+
+  def rlp_encode(@tx_pool_sync_unfold, %{unfolds: unfolds}) do
+    ExRLP.encode([@p2p_msg_version, unfolds])
+  end
+
+  def rlp_encode(@tx_pool_sync_get, %{hashes: hashes}) do
+    ExRLP.encode([@p2p_msg_version, hashes])
+  end
+
+  def rlp_encode(@tx_pool_sync_finish, %{finish: finish}) do
+    ExRLP.encode([@p2p_msg_version, bool_bin(finish)])
   end
 
   def rlp_decode(@msg_fragment, fragment) do
@@ -801,6 +929,28 @@ defmodule Aecore.Peers.PeerConnection do
       end)
 
     %{txs: txs}
+  end
+
+  def rlp_decode(@tx_pool_sync_init, encoded_empty) do
+    [_vsn] = ExRLP.decode(encoded_empty)
+    %{}
+  end
+
+  def rlp_decode(@tx_pool_sync_unfold, encoded_unfolds) do
+    [_vsn, unfolds] = ExRLP.decode(encoded_unfolds)
+
+    %{unfolds: unfolds}
+  end
+
+  def rlp_decode(@tx_pool_sync_get, encoded_hashes) do
+    [_vsn, hashes] = ExRLP.decode(encoded_hashes)
+    %{hashes: hashes}
+  end
+
+  def rlp_decode(@tx_pool_sync_finish, encoded_finish) do
+    [_vsn, finish] = ExRLP.decode(encoded_finish)
+    decoded_finish = bool_bin(finish)
+    %{finish: decoded_finish}
   end
 
   defp bool_bin(bool) do
