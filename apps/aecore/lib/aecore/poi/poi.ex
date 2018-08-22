@@ -120,5 +120,47 @@ defmodule Aecore.Poi do
       {:error, :nyi}
   end
 
+  @spec encode_to_list(Poi.t()) :: list()
+  def encode_to_list(%Poi{
+    accounts: accounts_proof,
+    oracles: oracles_proof,
+    naming: naming_proof,
+    channels: channels_proof,
+    calls: calls_proof,
+    contracts: contracts_proof
+  }) do
+    [
+      accounts_proof,
+      calls_proof,
+      channels_proof,
+      contracts_proof,
+      naming_proof,
+      oracles_proof
+    ]
+    |> Enum.map(fn proof -> PoiProof.encode_to_list(proof) end)
+  end
+
+  @spec decode_from_list(list()) :: Poi.t() | {:error, String.t()}
+  def decode_from_list([
+      accounts,
+      calls,
+      channels,
+      contracts,
+      naming,
+      oracles
+    ]) do
+    %Poi{
+      accounts:  PoiProof.decode_from_list(accounts),
+      calls:     PoiProof.decode_from_list(calls),
+      channels:  PoiProof.decode_from_list(channels),
+      contracts: PoiProof.decode_from_list(contracts),
+      naming:    PoiProof.decode_from_list(naming),
+      oracles:   PoiProof.decode_from_list(oracles)
+    }
+  end
+
+  def decode_from_list(_) do
+    {:error, "#{__MODULE__} deserialization of POI failed"}
+  end
 
 end

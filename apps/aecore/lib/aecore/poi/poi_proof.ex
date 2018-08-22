@@ -146,7 +146,7 @@ defmodule Aecore.Poi.PoiProof do
     [root_hash, contents]
   end
 
-  @spec decode_from_list(list()) :: PoiProof.t() | {:error, string()}
+  @spec decode_from_list(list()) :: PoiProof.t() | {:error, String.t()}
   def decode_from_list([]) do
     construct_empty()
   end
