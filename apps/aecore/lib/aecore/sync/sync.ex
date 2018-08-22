@@ -611,7 +611,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp fill_pool(peer_id, start_hash, target_hash, stid) do
-    case PeerConnection.get_n_successors(peer_id, start_hash, target_hash, @max_headers_per_chunk) do
+    case PeerConnection.get_n_successors(start_hash, target_hash, @max_headers_per_chunk, peer_id) do
       {:ok, []} ->
         ## Log info -> Sync done according to [peer_id]
         ## events:publish?

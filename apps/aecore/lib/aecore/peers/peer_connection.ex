@@ -110,18 +110,18 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, top_hash pid) when is_pid(pid) do
+  @spec get_header_by_height(non_neg_integer(), binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(height, top_hash, pid) when is_pid(pid) do
     @get_header_by_height
     |> pack_msg(%{height: height, top_hash: top_hash})
     |> send_request_msg(pid)
   end
 
-  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
+  @spec get_n_successors(binary(), binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
   def get_n_successors(start_hash, target_hash, n, pid) when is_pid(pid) do
     @get_n_successors
-    |> pack_msg(%{start_hash: start_hash, target_hash: target_hash, n: n})
+    |> pack_msg(%{starting_hash: start_hash, target_hash: target_hash, n: n})
     |> send_request_msg(pid)
   end
 
@@ -474,6 +474,7 @@ defmodule Aecore.Peers.PeerConnection do
     starting_hash = payload.starting_hash
     target_hash = payload.target_hash
     count = payload.n
+    starting_header = Chain.get_header_by_hash(starting_hash)
 
     result =
       with {:ok, headers} <- Chain.get_headers_forward(starting_header, count),
