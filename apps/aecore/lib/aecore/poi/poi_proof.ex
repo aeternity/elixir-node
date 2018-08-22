@@ -89,7 +89,11 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   defp get_readonly_proof_trie(%PoiProof{} = poi_proof) do
-    Trie.new(ExternalDB.init(get_proof_readonly_handles(poi_proof)))
+    len = Trie.Storage.max_rlp_len()*8
+    Trie.new(
+      ExternalDB.init(get_proof_readonly_handles(poi_proof)),
+      <<0 :: size(len)>> #this will avoid writing the root hash to the readonly DB
+    )
   end
 
   defp invoke_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
@@ -141,9 +145,9 @@ defmodule Aecore.Poi.PoiProof do
   def encode_to_list(%PoiProof{root_hash: root_hash, db: db}) do
     contents =
       db
-      |> Enum.map(fn {key, value} -> [key, value] end)
+      |> Enum.map(fn {key, value} -> [key, ExRLP.decode(value)] end)
       |> Enum.sort_by(fn [key, _] -> key end) #the specification requires keys to be sorted in serialized POI's
-    [root_hash, contents]
+    [[root_hash, contents]]
   end
 
   @spec decode_from_list(list()) :: PoiProof.t() | {:error, String.t()}
@@ -151,17 +155,18 @@ defmodule Aecore.Poi.PoiProof do
     construct_empty()
   end
 
-  def decode_from_list([root_hash, contents]) when is_binary(root_hash) and is_list(contents) do
+  def decode_from_list([[root_hash, contents]]) when is_binary(root_hash) and is_list(contents) do
     db =
       Enum.reduce(
         contents,
         %{},
-        fn([key, value], acc) -> Map.put(acc, key, value) end)
+        fn([key, value], acc) -> Map.put(acc, key, ExRLP.encode(value)) end)
 
     %PoiProof{root_hash: root_hash, db: db}
   end
 
-  def decode_from_list(_) do
+  def decode_from_list(v) do
+    IO.inspect(v)
     {:error, "#{__MODULE__} deserialization of POI failed"}
   end
 
