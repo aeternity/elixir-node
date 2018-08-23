@@ -58,8 +58,10 @@ defmodule Aecore.Mixfile do
     [
       {:rox, "~> 2.2.1"},
       {:exconstructor, "~> 1.1"},
-      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
+      {:logger_file_backend, "~> 0.0.10"},
       {:excoveralls, "~> 0.8.1", only: :test},
+      {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
+      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
       {:gproc, "~> 0.6.1"}

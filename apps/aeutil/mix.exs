@@ -6,7 +6,10 @@ defmodule Aeutil.Mixfile do
       app: :aeutil,
       version: "0.1.0",
       elixir: "~> 1.6",
-      start_permanent: Mix.env() == :prod
+      start_permanent: Mix.env() == :prod,
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
+      deps: deps()
     ]
   end
 
@@ -15,5 +18,9 @@ defmodule Aeutil.Mixfile do
     [
       extra_applications: [:logger]
     ]
+  end
+
+  defp deps do
+    [{:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]}]
   end
 end
