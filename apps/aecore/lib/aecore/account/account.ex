@@ -119,16 +119,7 @@ defmodule Aecore.Account.Account do
   @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
-    # {sender, sender_priv_key} = Keys.keypair(:sign)
-    sender =
-      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
-        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
-
-    sender_priv_key =
-      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
-        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
-        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
-        121, 64, 28, 8>>
+    {sender, sender_priv_key} = Keys.keypair(:sign)
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
@@ -163,16 +154,7 @@ defmodule Aecore.Account.Account do
   @spec claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(name, name_salt, fee, ttl \\ 0) do
-    # {sender, sender_priv_key} = Keys.keypair(:sign)
-    sender =
-      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
-        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
-
-    sender_priv_key =
-      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
-        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
-        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
-        121, 64, 28, 8>>
+    {sender, sender_priv_key} = Keys.keypair(:sign)
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
@@ -212,16 +194,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def name_update(name, pointers, fee, expire_by, client_ttl, ttl \\ 0) do
-    # {sender, sender_priv_key} = Keys.keypair(:sign)
-    sender =
-      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
-        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
-
-    sender_priv_key =
-      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
-        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
-        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
-        121, 64, 28, 8>>
+    {sender, sender_priv_key} = Keys.keypair(:sign)
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_update(sender, sender_priv_key, name, pointers, fee, nonce, expire_by, client_ttl, ttl)
@@ -273,16 +246,7 @@ defmodule Aecore.Account.Account do
   @spec name_transfer(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(name, target, fee, ttl \\ 0) do
-    # {sender, sender_priv_key} = Keys.keypair(:sign)
-    sender =
-      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
-        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
-
-    sender_priv_key =
-      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
-        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
-        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
-        121, 64, 28, 8>>
+    {sender, sender_priv_key} = Keys.keypair(:sign)
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl)
@@ -317,16 +281,7 @@ defmodule Aecore.Account.Account do
   @spec name_revoke(String.t(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(name, fee, ttl \\ 0) do
-    # {sender, sender_priv_key} = Keys.keypair(:sign)
-    sender =
-      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
-        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
-
-    sender_priv_key =
-      <<95, 37, 118, 103, 184, 224, 120, 15, 186, 26, 68, 159, 180, 121, 192, 240, 23, 209, 40,
-        73, 50, 194, 7, 208, 109, 149, 212, 180, 165, 64, 136, 137, 124, 184, 176, 74, 88, 15, 23,
-        59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231, 23, 210, 69, 29, 233, 62, 167,
-        121, 64, 28, 8>>
+    {sender, sender_priv_key} = Keys.keypair(:sign)
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce, ttl)

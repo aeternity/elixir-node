@@ -13,7 +13,7 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Block
-  alias Aecore.Naming.{NameClaim, NameCommitment}
+  alias Aecore.Naming.{Name, NameCommitment}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx.NameTransferTx}
   alias Aecore.Chain.Identifier
 
@@ -103,10 +103,10 @@ defmodule AecoreSerializationTest do
 
   @tag :rlp_test
   test "Naming System chainstate structures serialization" do
-    name_state = create_data(NameClaim, :elixir)
-    serialized_name_state = NameClaim.rlp_encode(name_state)
-    {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    deserialized_name_state1 = %NameClaim{deserialized_name_state | hash: name_state.hash}
+    name_state = create_data(Name, :elixir)
+    serialized_name_state = Name.rlp_encode(name_state)
+    {:ok, deserialized_name_state} = Name.rlp_decode(serialized_name_state)
+    deserialized_name_state1 = %Name{deserialized_name_state | hash: name_state.hash}
     assert deserialized_name_state1 == name_state
 
     name_commitment = create_data(NameCommitment, :elixir)
@@ -189,15 +189,15 @@ defmodule AecoreSerializationTest do
         block
 
       NamePreClaimTx ->
-        {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 50)
+        {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 50)
         pre_claim.data
 
       NameClaimTx ->
-        {:ok, claim} = Account.claim("test.aet", <<1::256>>, 50)
+        {:ok, claim} = Account.claim("test.aet", 123, 50)
         claim.data
 
       NameUpdateTx ->
-        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50)
+        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50)
         update.data
 
       NameTransferTx ->
@@ -216,8 +216,8 @@ defmodule AecoreSerializationTest do
 
         revoke.data
 
-      NameClaim ->
-        %NameClaim{
+      Name ->
+        %Name{
           expires: 50_003,
           hash: %Identifier{
             value:
@@ -225,15 +225,12 @@ defmodule AecoreSerializationTest do
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
             type: :name
           },
-          owner: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :account
-          },
+          owner:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           pointers: [],
           status: :claimed,
-          ttl: 86_400
+          client_ttl: 86_400
         }
 
       NameCommitment ->
@@ -244,12 +241,9 @@ defmodule AecoreSerializationTest do
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
             type: :name
           },
-          owner: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :account
-          },
+          owner:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           created: 8500,
           expires: 86_400
         }
