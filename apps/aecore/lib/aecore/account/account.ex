@@ -20,7 +20,6 @@ defmodule Aecore.Account.Account do
   alias Aecore.Account.AccountStateTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
-  alias Aecore.Governance.GovernanceConstants
 
   @version 1
 
