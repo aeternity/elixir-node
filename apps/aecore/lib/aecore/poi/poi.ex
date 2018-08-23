@@ -1,16 +1,22 @@
 defmodule Aecore.Poi.Poi do
+  @moduledoc """
+    Implements a Poi for the entire chainstate
+  """
 
+  alias Aecore.Account.Account
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Keys
   alias Aecore.Poi.Poi
   alias Aecore.Poi.PoiProof
-  alias Aecore.Chain.Chainstate
   alias Aeutil.Hash
-  alias Aecore.Keys
-  alias Aecore.Account.Account
 
   @version 1
   @protocol_version_field_size 64
   @protocol_version 15
 
+  @typedoc """
+    Structure of a Poi proof for the chainstate
+  """
   @type t :: %Poi{
           accounts: PoiProof.t(),
           oracles: PoiProof.t(),
@@ -20,6 +26,22 @@ defmodule Aecore.Poi.Poi do
           contracts: PoiProof.t()
         }
 
+  @typedoc """
+    Type representing the types of proofs in the poi
+  """
+  @type tree_type :: :accounts | :oracles | :naming | :channels | :calls | :contracts
+
+  @doc """
+    Definition of a Poi proof for the entire chainstate
+
+    ### Parameters
+    - accounts  - Poi proof for the accounts trie
+    - oracles   - Poi proof for the oracles trie
+    - naming    - Poi proof for the naming trie
+    - channels  - Poi proof for the channels trie
+    - calls     - Poi proof for the calls trie
+    - contracts - Poi proof for the contracts trie
+  """
   defstruct [
     :accounts,
     :oracles,
@@ -32,6 +54,9 @@ defmodule Aecore.Poi.Poi do
   use ExConstructor
   use Aecore.Util.Serializable
 
+  @doc """
+    Creates a new Poi for the given chainstate
+  """
   @spec construct(Chainstate.t()) :: Poi.t()
   def construct(%Chainstate{
     accounts: accounts,
@@ -49,6 +74,10 @@ defmodule Aecore.Poi.Poi do
     }
   end
 
+  @doc """
+    Calculates the root hash of the Poi
+  """
+  @spec calculate_root_hash(Poi.t()) :: binary()
   def calculate_root_hash(%Poi{
     accounts: accounts_proof,
     oracles: oracles_proof,
@@ -70,8 +99,9 @@ defmodule Aecore.Poi.Poi do
     |> Hash.hash_blake2b()
   end
 
-  @type tree_type :: :accounts | :oracles | :naming | :channels | :calls | :contracts
-
+  @doc """
+    Adds an entry for the specified key to the Poi
+  """
   @spec add_to_poi(tree_type(), Keys.pubkey(), Chainstate.t(), Poi.t()) :: {:ok, Poi.t()} | {:error, :wrong_root_hash | :key_not_found | :nyi}
   def add_to_poi(:accounts, pub_key, %Chainstate{accounts: accounts}, %Poi{accounts: accounts_proof} = poi) do
     case PoiProof.add_to_poi(accounts_proof, accounts, pub_key) do
@@ -91,6 +121,9 @@ defmodule Aecore.Poi.Poi do
     {:error, :nyi}
   end
 
+  @doc """
+    Verifies whether the poi contains the given entry under the given key
+  """
   @spec verify_poi(Poi.t(), Keys.pubkey(), Account.t()) :: boolean()
   def verify_poi(%Poi{accounts: accounts_proof}, pub_key, %Account{} = account) do
     PoiProof.verify_poi_entry(accounts_proof, pub_key, Account.rlp_encode(account))
@@ -99,6 +132,9 @@ defmodule Aecore.Poi.Poi do
   #Placeholder until PR-#526 gets merged into master
   #def verify_poi(%Poi{contracts: contracts_proof}, %Contract{})
 
+  @doc """
+    Lookups the entry associated with the given key in the Poi
+  """
   @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_present | String.t() | :nyi}
   def lookup_poi(:accounts, %Poi{accounts: accounts_proof}, pub_key) do
     case PoiProof.lookup_in_poi(accounts_proof, pub_key) do
@@ -122,6 +158,9 @@ defmodule Aecore.Poi.Poi do
       {:error, :nyi}
   end
 
+  @doc """
+    Serializes the Poi to a list
+  """
   @spec encode_to_list(Poi.t()) :: list()
   def encode_to_list(%Poi{
     accounts: accounts_proof,
@@ -144,6 +183,9 @@ defmodule Aecore.Poi.Poi do
     [:binary.encode_unsigned(@version)] ++ payload
   end
 
+  @doc """
+    Deserializes the Poi from a list
+  """
   @spec decode_from_list(non_neg_integer(), list()) :: Poi.t() | {:error, String.t()}
   def decode_from_list(@version, [
       accounts,
