@@ -144,7 +144,7 @@ defmodule Aecore.Poi.PoiProof do
   defp invoke_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
     proof_trie = get_proof_construction_trie(poi_proof)
     {value, _} = Proof.construct_proof({trie, key, proof_trie})
-    new_proof_db = PoiDB.finilize()
+    new_proof_db = PoiDB.finalize()
     case value do
       nil ->
         {:error, :key_not_found}

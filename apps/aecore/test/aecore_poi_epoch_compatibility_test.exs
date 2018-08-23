@@ -77,7 +77,7 @@ defmodule PoiEpochCompabilityTest do
     do_test(epoch_serialized_poi, epoch_poi_hash, [], [])
   end
 
-  @spec do_test(binary(), binary(), list(tuple(binary(), Account.t())), list(tuple(binary(), Account.t()))) :: no_return
+  @spec do_test(binary(), binary(), list({binary(), Account.t()}), list({binary(), Account.t()})) :: no_return
   defp do_test(epoch_serialized_poi, epoch_poi_hash, included_accounts, excluded_accounts) do
     deserialized_poi = deserialize_poi(epoch_serialized_poi, epoch_poi_hash)
 
@@ -92,7 +92,7 @@ defmodule PoiEpochCompabilityTest do
   end
 
   #Creates a chainstate from a list of accounts and checks if the root hash matches
-  @spec create_chainstate_with_accounts(list(tuple(binary(), Account.t())), binary()) :: Chainstate.t()
+  @spec create_chainstate_with_accounts(list({binary(), Account.t()}), binary()) :: Chainstate.t()
   defp create_chainstate_with_accounts(accounts, root_hash) do
     chainstate = Chainstate.create_chainstate_trees()
     updated_accounts = Enum.reduce(
@@ -103,7 +103,7 @@ defmodule PoiEpochCompabilityTest do
       end)
 
     updated_chainstate = %Chainstate{chainstate | accounts: updated_accounts}
-    assert root_hash === Chainstate.calculate_root_hash(chainstate)
+    assert root_hash === Chainstate.calculate_root_hash(updated_chainstate)
     updated_chainstate
   end
 
@@ -120,20 +120,24 @@ defmodule PoiEpochCompabilityTest do
   end
 
   #Creates a Poi from a chainstate and tests whether it functions as expected
-  @spec build_poi(Chainstate.t(), binary(), list(tuple(binary(), Account.t())), list(tuple(binary(), Account.t()))) :: Poi.t()
+  @spec build_poi(Chainstate.t(), binary(), list({binary(), Account.t()}), list({binary(), Account.t()})) :: Poi.t()
   defp build_poi(chainstate, root_hash, included_accounts, excluded_accounts) do
     poi = Poi.construct(chainstate)
     assert root_hash === Poi.calculate_root_hash(poi)
 
+    #In the begining there are no accounts in the Poi
     test_poi(poi, [], included_accounts ++ excluded_accounts)
 
+    #Add accounts to the Poi one by one and test if they are properly included in the Poi
     {constructed_poi, _, _} = Enum.reduce(
       included_accounts,
       {poi, [], included_accounts ++ excluded_accounts},
-      fn {pub_key, _}, {acc, included, [account | excluded]} ->
+      fn({pub_key, _}, {acc, included, [account | excluded]}) ->
+        #Add the account to the Poi
         {:ok, new_acc} = Poi.add_to_poi(:accounts, pub_key, chainstate, acc)
         assert root_hash === Poi.calculate_root_hash(new_acc)
 
+        #Test if it was properly included
         new_included = [account] ++ included
         test_poi(new_acc, new_included, excluded)
         {new_acc, new_included, excluded}
@@ -143,7 +147,7 @@ defmodule PoiEpochCompabilityTest do
   end
 
   #Some basic functional tests on Poi
-  @spec test_poi(Poi.t(), list(tuple(binary(), Account.t())), list(tuple(binary(), Account.t()))) :: no_return
+  @spec test_poi(Poi.t(), list({binary(), Account.t()}), list({binary(), Account.t()})) :: no_return
   defp test_poi(poi, included_accounts, excluded_accounts) do
     Enum.each(
       included_accounts,
