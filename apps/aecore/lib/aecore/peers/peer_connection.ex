@@ -21,7 +21,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   @behaviour :ranch_protocol
 
-  @p2p_protocol_vsn 2
+  @p2p_protocol_vsn 3
   @p2p_msg_version 1
   @noise_timeout 5000
 
