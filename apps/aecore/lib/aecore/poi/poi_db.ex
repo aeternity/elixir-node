@@ -29,8 +29,8 @@ defmodule Aecore.Poi.PoiDB do
     Finilizes the put requests made to the wrapper and returns the updated state.
     This function must only be called after calling prepare_for_requests.
   """
-  @spec finilize() :: Map.t()
-  def finilize() do
+  @spec finilize :: Map.t()
+  def finilize do
     state = GenServer.call(__MODULE__, {:finilize})
     :ok = GenServer.stop(__MODULE__)
     state
@@ -55,4 +55,3 @@ defmodule Aecore.Poi.PoiDB do
     {:reply, :ok, Map.put(state, key, value)}
   end
 end
-

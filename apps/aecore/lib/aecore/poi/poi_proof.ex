@@ -7,9 +7,9 @@ defmodule Aecore.Poi.PoiProof do
   alias Aecore.Poi.PoiProof
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
+  alias MerklePatriciaTree.Trie.Storage
   alias MerklePatriciaTree.Proof
   alias MerklePatriciaTree.DB.ExternalDB
-
 
   #This is the canonical root hash of an empty Patricia merkle tree
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
@@ -52,8 +52,8 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
     Creates a new Poi proof for an empty Merkle Patricia Trie
   """
-  @spec construct_empty() :: PoiProof.t()
-  def construct_empty() do
+  @spec construct_empty :: PoiProof.t()
+  def construct_empty do
     %PoiProof{}
   end
 
@@ -122,20 +122,20 @@ defmodule Aecore.Poi.PoiProof do
   #Returns a trie suitable for proof construction
   @spec get_proof_construction_trie(PoiProof.t()) :: Trie.t()
   defp get_proof_construction_trie(%PoiProof{} = poi_proof) do
-    len = Trie.Storage.max_rlp_len()*8
+    len = Storage.max_rlp_len()
     Trie.new(
       ExternalDB.init(get_proof_construction_handles(poi_proof)),
-      <<0 :: size(len)>> #this will avoid writing the initial root hash to the DB
+      <<0::size(len)-unit(8)>> #this will avoid writing the initial root hash to the DB
     )
   end
 
   #Returns a trie suitable for proof verification and lookups
   @spec get_readonly_proof_trie(PoiProof.t()) :: Trie.t()
   defp get_readonly_proof_trie(%PoiProof{} = poi_proof) do
-    len = Trie.Storage.max_rlp_len()*8
+    len = Storage.max_rlp_len()
     Trie.new(
       ExternalDB.init(get_proof_readonly_handles(poi_proof)),
-      <<0 :: size(len)>> #this will avoid writing the initial root hash to the readonly DB
+      <<0::size(len)-unit(8)>> #this will avoid writing the initial root hash to the readonly DB
     )
   end
 
@@ -228,5 +228,4 @@ defmodule Aecore.Poi.PoiProof do
   def decode_from_list(_) do
     {:error, "#{__MODULE__} deserialization of POI failed"}
   end
-
 end
