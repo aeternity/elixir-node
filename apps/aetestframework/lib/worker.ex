@@ -3,7 +3,6 @@ defmodule Aetestframework.Worker do
   Module for multi node sync test
   """
 
-  alias Aeutil.Serialization
   alias Aehttpclient.Client
   alias Aecore.Account.Account
 
@@ -164,12 +163,12 @@ defmodule Aetestframework.Worker do
     # converting the keys which are binary to string
     send_command(
       node_name,
-      "encoded_int_object = Serialization.rlp_encode(interaction_object) |> Base.encode32"
+      "encoded_int_object = :erlang.term_to_binary(interaction_object)"
     )
 
     send_command(
       node_name,
-      "{:respond_oracle_int_obj, encoded_int_object}"
+      "{:respond_oracle_int_obj, Base.encode32(encoded_int_object)}"
     )
 
     send_command(node_name, " ")
@@ -253,12 +252,12 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "rlp_top_block = Block.rlp_encode(top_block)"
+      "encoded_block = :erlang.term_to_binary(top_block)"
     )
 
     send_command(
       node_name,
-      "{:respond_top_block, Base.encode32(rlp_top_block)}"
+      "{:respond_top_block, Base.encode32(encoded_block)}"
     )
 
     send_command(node_name, " ")
@@ -266,8 +265,8 @@ defmodule Aetestframework.Worker do
 
   @spec update_node_top_block_hash(String.t()) :: :ok | :unknown_node
   def update_node_top_block_hash(node_name) do
-    send_command(node_name, "block_hash = Chain.top_block_hash() |> Base.encode32")
-    send_command(node_name, "{:respond_hash, block_hash}")
+    send_command(node_name, "block_hash = Chain.top_block_hash() |> :erlang.term_to_binary()")
+    send_command(node_name, "{:respond_hash, Base.encode32(block_hash)}")
     send_command(node_name, " ")
   end
 
@@ -356,15 +355,8 @@ defmodule Aetestframework.Worker do
   @spec get_all_peers(String.t()) :: :ok
   def get_all_peers(node_name) do
     send_command(node_name, "peers = Peers.all_peers")
-
-    send_command(
-      node_name,
-      "peers_encoded = Enum.reduce(peers, [], fn peer, acc ->
-                                acc ++ [put_in(peer.pubkey, Base.encode32(peer.pubkey))]
-                              end)"
-    )
-
-    send_command(node_name, "{:respond_peers, peers_encoded}")
+    send_command(node_name, "peers_encoded = :erlang.term_to_binary(peers)")
+    send_command(node_name, "{:respond_peers, Base.encode32(peers_encoded)}")
   end
 
   @doc """
@@ -374,52 +366,23 @@ defmodule Aetestframework.Worker do
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
 
-  defp update_data(state, result, node, :peers) do
-    regex_res = Regex.run(~r/{(:respond_peers,) .*}/, result)
-    res = List.first(regex_res)
-    [host] = Regex.run(~r/(?<=host: )[^,]*/, res)
-    [port] = Regex.run(~r/(?<=port: )[^,]*/, res)
-    [pubkey] = Regex.run(~r/(?<=pubkey: )[^}]*/, res)
-    formatted_host = host |> String.replace("\'", "") |> String.replace("\"", "")
-    formatted_port = String.to_integer(port)
-    formatted_pubkey = pubkey |> String.replace("\"", "") |> String.trim() |> Base.decode32!()
-
-    peers_map = %{
-      host: formatted_host,
-      port: formatted_port,
-      pubkey: formatted_pubkey
-    }
-
-    put_in(state[node].peers, peers_map)
-  end
-
-  defp update_data(state, result, respond, port, :top_block_hash) do
-    {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-    one_line_res = String.replace(result, "\n", "")
-    respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
-    res = Regex.run(~r/"(.*)"/, List.last(respond_res))
-    top_block_hash = Base.decode32!(List.last(res))
-
-    put_in(state[node].top_block_hash, top_block_hash)
-  end
-
   defp update_data(state, result, respond, port, type) do
     {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
     one_line_res = String.replace(result, "\n", "")
     respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
     res = Regex.run(~r/"(.*)"/, List.last(respond_res))
     base_decoded = Base.decode32!(List.last(res))
-    {:ok, data} = Serialization.rlp_decode_anything(base_decoded)
+    data = :erlang.binary_to_term(base_decoded)
 
     put_in(state[node][type], data)
   end
 
-  def check_peers(state, node, result) do
+  def check_peers(state, port, result) do
     one_line_res = String.replace(result, "\n", "")
     if Regex.match?(~r/({:respond_peers, \[\])/, one_line_res) do
       state
     else
-      update_data(state, one_line_res, node, :peers)
+      update_data(state, result, ":respond_peers", port, :peers)
     end
   end
 
@@ -446,8 +409,7 @@ defmodule Aetestframework.Worker do
             {:reply, :ok, new_state}
 
           result =~ ":respond_peers" ->
-            {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
-            new_state = check_peers(state, node, result)
+            new_state = check_peers(state, port, result)
             {:reply, :ok, new_state}
 
           result =~ ":acc_balance" ->
