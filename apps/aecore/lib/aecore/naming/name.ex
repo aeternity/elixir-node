@@ -1,13 +1,13 @@
-defmodule Aecore.Naming.NameClaim do
+defmodule Aecore.Naming.Name do
   @moduledoc """
-  Aecore naming name claim structure
+  Aecore naming name structure
   """
 
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aeutil.Bits
   alias Aeutil.Serialization
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Naming.NameClaim
+  alias Aecore.Naming.Name
   alias Aecore.Chain.Identifier
 
   @version 1
@@ -20,49 +20,49 @@ defmodule Aecore.Naming.NameClaim do
 
   @type hash :: binary()
 
-  @type t :: %NameClaim{
+  @type t :: %Name{
           hash: binary(),
-          owner: Wallet.pubkey(),
+          owner: Keys.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
-          ttl: non_neg_integer(),
+          client_ttl: non_neg_integer(),
           pointers: list()
         }
 
-  defstruct [:hash, :owner, :expires, :status, :ttl, :pointers]
+  defstruct [:hash, :owner, :expires, :status, :client_ttl, :pointers]
   use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(
           binary(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer(),
           list()
         ) :: t()
-  def create(hash, owner, expire_by, _client_ttl, pointers \\ "[]") do   ## TODO: Claint_ttl shouln't be ignored
+  def create(hash, owner, expire_by, client_ttl, pointers \\ "[]") do
     identified_hash = Identifier.create_identity(hash, :name)
 
-    %NameClaim{
+    %Name{
       :hash => identified_hash,
       :owner => owner,
       :expires => expire_by,
       :status => :claimed,
-      :ttl => 0,   ## TODO: Should be changed to client_ttl
+      :client_ttl => client_ttl,
       :pointers => pointers
     }
   end
 
-  @spec create(binary(), Wallet.pubkey(), non_neg_integer()) :: t()
+  @spec create(binary(), Keys.pubkey(), non_neg_integer()) :: t()
   def create(hash, owner, height) do
     identified_hash = Identifier.create_identity(hash, :name)
 
-    %NameClaim{
+    %Name{
       :hash => identified_hash,
       :owner => owner,
       :expires => height + GovernanceConstants.claim_expire_by_relative_limit(),
       :status => :claimed,
-      :ttl => GovernanceConstants.client_ttl_limit(),
+      :client_ttl => 0,
       :pointers => "[]"
     }
   end
@@ -83,27 +83,29 @@ defmodule Aecore.Naming.NameClaim do
   end
 
   @spec encode_to_list(t()) :: binary()
-  def encode_to_list(%NameClaim{} = naming_state) do
+  def encode_to_list(%Name{} = naming_state) do
     [
       :binary.encode_unsigned(@version),
       naming_state.owner,
       :binary.encode_unsigned(naming_state.expires),
       Atom.to_string(naming_state.status),
-      :binary.encode_unsigned(naming_state.ttl),
-      naming_state.pointers      # maybe Poison.encode!()
+      :binary.encode_unsigned(naming_state.client_ttl),
+      # maybe Poison.encode!()
+      naming_state.pointers
     ]
   end
 
   @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
-  def decode_from_list(@version, [owner, expires, status, ttl, pointers]) do
-        {:ok,
-         %NameClaim{
-           owner: owner,
-           expires: :binary.decode_unsigned(expires),
-           status: String.to_atom(status),
-           ttl: :binary.decode_unsigned(ttl),
-           pointers: pointers   # maybe Poison.dencode!()
-         }}
+  def decode_from_list(@version, [owner, expires, status, client_ttl, pointers]) do
+    {:ok,
+     %Name{
+       owner: owner,
+       expires: :binary.decode_unsigned(expires),
+       status: String.to_atom(status),
+       client_ttl: :binary.decode_unsigned(client_ttl),
+       # maybe Poison.dencode!()
+       pointers: pointers
+     }}
   end
 
   def decode_from_list(@version, data) do

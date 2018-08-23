@@ -139,9 +139,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
     claim = %{
       claim_to_update
-      | pointers: [tx.pointers],
+      | pointers: tx.pointers,
         expires: tx.expire_by,
-        ttl: tx.client_ttl
+        client_ttl: tx.client_ttl
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)

@@ -204,9 +204,14 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameUpdateTx where the miners public key is used as a sender
   """
-  @spec name_update(String.t(), String.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(name, pointers, fee, ttl \\ 0) do
+  @spec name_update(
+          String.t(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
+  def name_update(name, pointers, fee, expire_by, client_ttl, ttl \\ 0) do
     # {sender, sender_priv_key} = Keys.keypair(:sign)
     sender =
       <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
@@ -219,7 +224,7 @@ defmodule Aecore.Account.Account do
         121, 64, 28, 8>>
 
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl)
+    name_update(sender, sender_priv_key, name, pointers, fee, nonce, expire_by, client_ttl, ttl)
   end
 
   @doc """
@@ -232,15 +237,26 @@ defmodule Aecore.Account.Account do
           String.t(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl \\ 0) do
+  def name_update(
+        sender,
+        sender_priv_key,
+        name,
+        pointers,
+        fee,
+        nonce,
+        expire_by,
+        client_ttl,
+        ttl \\ 0
+      ) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
         payload = %{
           hash: namehash,
-          expire_by: Chain.top_height() + GovernanceConstants.claim_expire_by_relative_limit(),
-          client_ttl: 86_400,
+          expire_by: Chain.top_height() + 1 + expire_by,
+          client_ttl: client_ttl,
           pointers: pointers
         }
 

@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{NameClaim, NameCommitment, NamingStateTree}
+  alias Aecore.Naming.{Name, NameCommitment, NamingStateTree}
   alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.DataTx
@@ -62,9 +62,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      # byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
-      #   {:error,
-      #    "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+      !is_integer(name_salt) ->
+        {:error,
+         "#{__MODULE__}: Name salt is not correct: #{inspect(byte_size(name_salt))}, should be integer"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -98,7 +98,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
     {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = NameClaim.create(claim_hash, sender, block_height)
+    claim = Name.create(claim_hash, sender, block_height)
 
     updated_naming_chainstate =
       naming_state
