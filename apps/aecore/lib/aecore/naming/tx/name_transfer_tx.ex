@@ -100,7 +100,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         _data_tx
       ) do
     claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
-    claim = %{claim_to_update | owner: tx.target}
+    claim = %{claim_to_update | owner: tx.target.value}
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
@@ -136,7 +136,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner.value != sender ->
+      claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
