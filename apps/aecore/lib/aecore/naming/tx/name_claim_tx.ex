@@ -7,11 +7,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{Name, NameCommitment, NamingStateTree}
-  alias Aecore.Naming.NameUtil
+  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Chain.Identifier
 
   require Logger

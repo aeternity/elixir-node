@@ -12,8 +12,6 @@ defmodule Aecore.Naming.Name do
 
   @version 1
 
-  @name_salt_byte_size 32
-
   @type name_status() :: :claimed | :revoked
 
   @type salt :: integer()
@@ -67,9 +65,6 @@ defmodule Aecore.Naming.Name do
     }
   end
 
-  @spec get_name_salt_byte_size() :: non_neg_integer()
-  def get_name_salt_byte_size, do: @name_salt_byte_size
-
   def base58c_encode_hash(bin) do
     Bits.encode58c("nm", bin)
   end
@@ -90,7 +85,6 @@ defmodule Aecore.Naming.Name do
       :binary.encode_unsigned(naming_state.expires),
       Atom.to_string(naming_state.status),
       :binary.encode_unsigned(naming_state.client_ttl),
-      # maybe Poison.encode!()
       naming_state.pointers
     ]
   end
@@ -103,7 +97,6 @@ defmodule Aecore.Naming.Name do
        expires: :binary.decode_unsigned(expires),
        status: String.to_atom(status),
        client_ttl: :binary.decode_unsigned(client_ttl),
-       # maybe Poison.dencode!()
        pointers: pointers
      }}
   end

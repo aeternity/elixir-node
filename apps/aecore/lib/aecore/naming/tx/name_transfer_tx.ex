@@ -5,15 +5,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.{Naming, NamingStateTree}
-  alias Aeutil.Hash
-  alias Aecore.Keys
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Keys
+  alias Aeutil.Hash
 
   require Logger
 

@@ -6,20 +6,14 @@ defmodule Aecore.Account.Account do
   require Logger
   alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.Account
-  alias Aeutil.Bits
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.{NameCommitment, NameUtil}
-  alias Aecore.Account.AccountStateTree
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Naming.{NameCommitment, NameUtil}
+  alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   @version 1
 

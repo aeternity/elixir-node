@@ -4,10 +4,9 @@ defmodule Aecore.Naming.NameCommitment do
   """
 
   alias Aecore.Naming.{NameCommitment, NameUtil}
-  alias Aeutil.Bits
-  alias Aeutil.Hash
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+  alias Aeutil.{Bits, Hash}
+  alias Aeutil.Serialization
 
   @version 1
 

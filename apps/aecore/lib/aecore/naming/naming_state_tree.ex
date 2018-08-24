@@ -2,8 +2,7 @@ defmodule Aecore.Naming.NamingStateTree do
   @moduledoc """
   Top level naming state tree.
   """
-  alias Aecore.Naming.Name
-  alias Aecore.Naming.NameCommitment
+  alias Aecore.Naming.{Name, NameCommitment}
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier

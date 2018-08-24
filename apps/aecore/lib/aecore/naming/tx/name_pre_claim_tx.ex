@@ -8,12 +8,11 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NamePreClaimTx
   alias Aecore.Naming.{NameCommitment, NamingStateTree}
-  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Chain.Identifier
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Hash
 
   require Logger
 
