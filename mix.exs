@@ -49,6 +49,7 @@ defmodule EpochElixir.Mixfile do
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
       {:erl_base58, "~> 0.0.1"},
+      {:excoveralls, "~> 0.8.1", only: :test},
       {:edown, "~> 0.8", override: true},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
