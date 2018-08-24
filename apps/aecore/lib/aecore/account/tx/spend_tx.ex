@@ -168,6 +168,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
