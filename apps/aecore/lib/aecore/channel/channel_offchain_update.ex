@@ -1,0 +1,68 @@
+defmodule Aecore.Channel.ChannelOffchainUpdate do
+  @moduledoc """
+  Behaviour that states all the necessary functions that every update of the offchain state should implement.
+  """
+
+  alias Aecore.Channel.ChannelStateOnChain
+
+  @typedoc "Structure of an update"
+  @type update_types ::
+          Aecore.Channels.Updates.ChannelTransferUpdate.t()
+          | Aecore.Channels.Updates.ChannelDepositUpdate.t()
+          | Aecore.Channels.Updates.ChannelWidthdrawUpdate.t()
+
+  # Callbacks
+
+  @doc """
+    Updates
+  """
+  @callback update_offchain_chainstate(Chainstate.t(), update_types()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+
+  @callback encode_to_list(update_types()) :: list(binary()) | {:error, String.t()}
+
+  @callback decode_from_list(list(binary())) :: update_types()
+
+  @doc """
+      Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
+      To make upgrading easy updates will need to specify their ID which will act as their tag. To upgrade
+      to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
+      and this temporary tag will need to be removed.
+    """
+
+  def tag_to_module(0), do: {:ok, Aecore.Channels.Updates.ChannelTransferUpdate}
+  def tag_to_module(1), do: {:ok, Aecore.Channels.Updates.ChannelDepositUpdate}
+  def tag_to_module(2), do: {:ok, Aecore.Channels.Updates.ChannelWidthdrawUpdate}
+  def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
+
+  @spec to_list(update_types()) :: list(binary())
+  def to_list(object) do
+    module = object.__struct__
+    tag = module.get_tag
+    [:binary.encode_unsigned(tag)] ++ module.encode_to_list(object)
+  end
+
+  @spec from_list(list(binary())) :: update_types()
+  def from_list([tag | rest]) do
+    decoded_tag = :binary.decode_unsigned(tag)
+    case tag_to_module(decoded_tag) do
+      {:ok, module} ->
+        module.decode_from_list(rest)
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec update_chainstate(Chainstate.t(), update_types(), ChannelStateOnChain.t()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def update_chainstate(%Chainstate{} = chainstate, object, %ChannelStateOnChain{} = channel) do
+    module = object.__struct__
+    module.update_offchain_chainstate(chainstate, object, channel)
+  end
+
+  def ensure_minimal_deposit_is_meet!(%Account{balance: balance} = account, minimal_deposit) do
+    if(balance < minimal_deposit) do
+      throw {:error, "#{__MODULE__} Account does not meet channel reserve (We have #{balance} tokens vs minimal deposit of #{minimal_deposit} tokens)"}
+    end
+    account
+  end
+
+end
