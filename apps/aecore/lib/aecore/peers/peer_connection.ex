@@ -430,7 +430,7 @@ defmodule Aecore.Peers.PeerConnection do
           :ok
 
         true ->
-          Sync.start_sync(conn_pid, best_hash)
+          #Sync.start_sync(conn_pid, best_hash)
           :ok
       end
 
@@ -440,7 +440,7 @@ defmodule Aecore.Peers.PeerConnection do
         end
       end)
 
-      tx_pool_sync_init(conn_pid)
+      #tx_pool_sync_init(conn_pid)
 
       Jobs.dequeue(:sync_jobs)
     else
@@ -619,7 +619,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   defp serialize_leaves(leaves) do
-    Enum.map(leaves, fn leaf -> ExRLP.encode([<<1>>, leaf]) end)
+    Enum.map(leaves, fn leaf -> ExRLP.encode([<<1>>, <<0>> <> leaf]) end)
   end
 
   defp serialize_unfolds(unfolds) do
@@ -869,8 +869,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     # vsn should be addititonaly decoded with :binary.decode_unsigned
-    [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
-    %{height: :binary.decode_unsigned(height)}
+    [_vsn, height, top_hash] = ExRLP.decode(encoded_get_header_by_height)
+    %{height: :binary.decode_unsigned(height), top_hash: top_hash}
   end
 
   def rlp_decode(@header, encoded_header) do

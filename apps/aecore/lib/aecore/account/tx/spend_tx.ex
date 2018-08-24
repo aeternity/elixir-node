@@ -167,9 +167,10 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       Identifier.encode_to_binary(tx.receiver),
       :binary.encode_unsigned(tx.amount),
       :binary.encode_unsigned(datatx.fee),
@@ -180,7 +181,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         encoded_receiver,
         amount,
         fee,
@@ -197,7 +198,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           version: @version,
           payload: payload
         },
-        encoded_senders,
+        [encoded_sender],
         :binary.decode_unsigned(fee),
         :binary.decode_unsigned(nonce),
         :binary.decode_unsigned(ttl)
