@@ -291,10 +291,11 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   def encode_to_list(%OracleQueryTx{} = tx, %DataTx{} = datatx) do
     ttl_type_q = Serialization.encode_ttl_type(tx.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.response_ttl)
+    [sender] = datatx.senders
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.oracle_address),
       tx.query_data,
@@ -309,7 +310,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         encoded_oracle_address,
         query_data,
@@ -348,7 +349,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         DataTx.init_binary(
           OracleQueryTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
