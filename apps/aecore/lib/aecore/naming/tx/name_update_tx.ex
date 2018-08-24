@@ -87,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
           hash: identified_hash,

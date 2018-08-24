@@ -53,7 +53,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Checks name format
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)

@@ -67,7 +67,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @doc """
   Checks name hash byte size
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameRevokeTx{hash: hash}, data_tx) do
     senders = DataTx.senders(data_tx)
 

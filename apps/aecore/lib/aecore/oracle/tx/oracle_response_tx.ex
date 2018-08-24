@@ -46,7 +46,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -158,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(t(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
     oracles = Chain.chain_state().oracles
     referenced_query_response_ttl = OracleStateTree.get_query(oracles, tx.query_id).response_ttl

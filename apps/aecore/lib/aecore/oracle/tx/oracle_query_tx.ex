@@ -92,7 +92,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     }
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %OracleQueryTx{
           query_ttl: query_ttl,
@@ -230,7 +230,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     |> Map.get(:query_fee)
   end
 
-  @spec is_minimum_fee_met?(t(), non_neg_integer(), non_neg_integer() | nil) :: boolean()
+  @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) :: boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     tx_query_fee_is_met =
       tx.query_fee >=

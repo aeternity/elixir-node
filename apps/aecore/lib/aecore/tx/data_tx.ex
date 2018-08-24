@@ -158,29 +158,29 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec fee(t()) :: non_neg_integer()
+  @spec fee(DataTx.t()) :: non_neg_integer()
   def fee(%DataTx{fee: fee}) do
     fee
   end
 
-  @spec senders(t()) :: list(binary())
+  @spec senders(DataTx.t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
     for sender <- senders do
       sender.value
     end
   end
 
-  @spec main_sender(t()) :: binary() | nil
+  @spec main_sender(DataTx.t()) :: binary() | nil
   def main_sender(tx) do
     List.first(senders(tx))
   end
 
-  @spec nonce(t()) :: non_neg_integer()
+  @spec nonce(DataTx.t()) :: non_neg_integer()
   def nonce(%DataTx{nonce: nonce}) do
     nonce
   end
 
-  @spec ttl(t()) :: non_neg_integer()
+  @spec ttl(DataTx.t()) :: non_neg_integer()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
       0 -> :max_ttl
@@ -188,7 +188,7 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec payload(t()) :: map()
+  @spec payload(DataTx.t()) :: map()
   def payload(%DataTx{payload: payload, type: type}) do
     if Enum.member?(valid_types(), type) do
       payload
@@ -201,7 +201,7 @@ defmodule Aecore.Tx.DataTx do
   @doc """
   Checks whether the fee is above 0.
   """
-  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
         %DataTx{fee: fee, type: type, senders: senders} = tx,
         block_height \\ Chain.top_height()

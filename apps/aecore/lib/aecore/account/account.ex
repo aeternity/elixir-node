@@ -341,7 +341,7 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(Account.t()) :: list() | {:error, String.t()}
   def encode_to_list(%Account{} = account) do
     [
       :binary.encode_unsigned(@version),

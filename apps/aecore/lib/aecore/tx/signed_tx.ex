@@ -35,7 +35,7 @@ defmodule Aecore.Tx.SignedTx do
     data
   end
 
-  @spec validate(t()) :: :ok | {:error, String.t()}
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
     if signatures_valid?(tx) do
       DataTx.validate(data)
@@ -44,7 +44,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  @spec validate(SignedTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx, block_height) do
     if signatures_valid?(tx) do
       DataTx.validate(data, block_height)

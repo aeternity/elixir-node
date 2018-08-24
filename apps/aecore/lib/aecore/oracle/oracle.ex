@@ -273,7 +273,7 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  @spec encode_to_list(t()) :: list()
+  @spec encode_to_list(Oracle.t()) :: list()
   def encode_to_list(%Oracle{} = oracle) do
     [
       :binary.encode_unsigned(@version),

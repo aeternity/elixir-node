@@ -38,7 +38,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 

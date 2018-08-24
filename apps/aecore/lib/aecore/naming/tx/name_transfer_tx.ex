@@ -60,7 +60,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 

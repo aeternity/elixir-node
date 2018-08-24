@@ -58,7 +58,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @doc """
   Checks commitment hash byte size
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
     senders = DataTx.senders(data_tx)
 
