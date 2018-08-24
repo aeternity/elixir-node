@@ -8,7 +8,7 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
 
-  @version 14
+  @version 15
 
   @type t :: %Block{
           header: Header.t(),
@@ -52,7 +52,7 @@ defmodule Aecore.Chain.Block do
       pow_evidence: :no_value
     })
   end
-  
+
   @spec encode_to_map(Block.t()) :: map()
   def encode_to_map(%Block{} = block) do
     serialized_header = Serialization.serialize_value(block.header)

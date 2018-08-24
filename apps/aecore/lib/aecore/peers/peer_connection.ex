@@ -16,6 +16,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -447,57 +448,66 @@ defmodule Aecore.Peers.PeerConnection do
     end
   end
 
-  defp handle_response(payload, parent, requests) do
-    result = payload.result
-    type = payload.type
-
+  defp handle_response(
+         %{result: result, type: type, object: object, reason: reason},
+         parent,
+         requests
+       ) do
     case type do
       @ping ->
-        handle_ping_msg(payload.object, parent)
+        handle_ping_msg(object, parent)
+
       @tx_pool_sync_init ->
         :timer.sleep(1000)
         send_unfolds(parent)
+
       @tx_pool_sync_unfold ->
-        {new_unfolds, gets} = analyze_unfolds(payload.object)
+          IO.inspect(reason)
+        deserialized_unfolds = deserialize_unfolds(object.unfolds)
+        pool_hashes = Map.keys(Pool.get_pool())
+        {new_unfolds, gets} = analyze_unfolds(deserialized_unfolds, pool_hashes)
+
         case new_unfolds do
           [] ->
             send_gets(gets, parent)
+
           unfolds ->
-            send_unfolds(unfolds, parent)
+            unfolds
+            |> serialize_unfolds()
+            |> send_unfolds(parent)
         end
+
+      @mempool ->
+        Enum.each(object.txs, fn tx ->
+          Pool.add_transaction(tx)
+        end)
+
       _ ->
+        reply =
+          case result do
+            true ->
+              {:ok, object}
 
-      reply =
-        case result do
-          true ->
-            {:ok, payload.object}
+            false ->
+              {:error, reason}
+          end
 
-          false ->
-            {:error, payload.reason}
-        end
+        GenServer.reply(requests[type], reply)
 
-      GenServer.reply(requests[type], reply)
-
-      clear_request(parent, type)
+        clear_request(parent, type)
     end
-
-
   end
 
   defp clear_request(pid, type) do
     GenServer.call(pid, {:clear_request, type})
   end
 
-  defp handle_get_header_by_hash(payload, pid) do
-    hash = payload.hash
+  defp handle_get_header_by_hash(%{hash: hash}, pid) do
     result = Chain.get_header_by_hash(hash)
     send_response(result, @header, pid)
   end
 
-  defp handle_get_header_by_height(payload, pid) do
-    height = payload.height
-    top_hash = payload.top_hash
-
+  defp handle_get_header_by_height(%{height: height, top_hash: top_hash}, pid) do
     result =
       if Chain.hash_is_in_main_chain?(top_hash) do
         Chain.get_header_by_height(height)
@@ -508,10 +518,7 @@ defmodule Aecore.Peers.PeerConnection do
     send_response(result, @header, pid)
   end
 
-  defp handle_get_n_successors(payload, pid) do
-    starting_header = payload.hash
-    count = payload.n
-
+  defp handle_get_n_successors(%{hash: starting_header, target_hash: _, n: count}, pid) do
     result =
       case Chain.get_headers_forward(starting_header, count) do
         {:ok, headers} ->
@@ -530,8 +537,7 @@ defmodule Aecore.Peers.PeerConnection do
     send_response(result, @header_hashes, pid)
   end
 
-  defp handle_get_block(payload, pid) do
-    hash = payload.hash
+  defp handle_get_block(%{hash: hash}, pid) do
     result = Chain.get_block(hash)
     send_response(result, @block, pid)
   end
@@ -541,13 +547,11 @@ defmodule Aecore.Peers.PeerConnection do
     send_response({:ok, %{txs: txs}}, @mempool, pid)
   end
 
-  defp handle_new_block(payload) do
-    block = payload.block
+  defp handle_new_block(%{block: block}) do
     Chain.add_block(block)
   end
 
-  defp handle_new_tx(payload) do
-    tx = payload.tx
+  defp handle_new_tx(%{tx: tx}) do
     Pool.add_transaction(tx)
   end
 
@@ -555,22 +559,19 @@ defmodule Aecore.Peers.PeerConnection do
     send_response({:ok, %{}}, @tx_pool_sync_init, pid)
   end
 
-  defp handle_tx_pool_sync_unfold(payload, pid) do
-    unfolds = payload.unfolds
-
-    new_unfolds = Pool.get_pool() |> Map.keys() |> Kernel.--(unfolds)
-    send_response({:ok, %{unfolds: new_unfolds}}, @tx_pool_sync_unfold, pid)
+  defp handle_tx_pool_sync_unfold(%{unfolds: _unfolds}, pid) do
+    unfolds = Pool.get_pool() |> Map.keys() |> serialize_leaves() |> IO.inspect()
+    send_response({:ok, %{unfolds: unfolds}}, @tx_pool_sync_unfold, pid)
   end
 
-  defp handle_tx_pool_sync_get(payload, pid) do
-    hashes = payload.hashes
+  defp handle_tx_pool_sync_get(%{hashes: hashes}, pid) do
+    IO.inspect({"HASHES", hashes})
     pool = Pool.get_pool()
     txs = Enum.map(hashes, fn hash -> pool[hash] end)
     send_response({:ok, %{txs: txs}}, @mempool, pid)
   end
 
-  defp handle_tx_pool_sync_finish(payload, pid) do
-    finish = payload.finish
+  defp handle_tx_pool_sync_finish(%{finish: finish}, pid) do
     send_response({:ok, %{finish: finish}}, @tx_pool_sync_finish, pid)
   end
 
@@ -617,36 +618,63 @@ defmodule Aecore.Peers.PeerConnection do
     ]
   end
 
+  defp serialize_leaves(leaves) do
+    Enum.map(leaves, fn leaf -> ExRLP.encode([<<1>>, leaf]) end)
+  end
+
+  defp serialize_unfolds(unfolds) do
+    Enum.map(unfolds, fn unfold -> ExRLP.encode([<<2>>, unfold]) end)
+  end
+
   defp deserialize_unfolds(unfolds) do
     Enum.map(unfolds, fn unfold ->
       case ExRLP.decode(unfold) do
         [<<0>>, path, node] ->
           {:node, path, node}
-        _ ->
-          <<_::24, hash::binary>> = rest
-          hash]
+
+        [<<1>>, hash] ->
+          {:leaf, hash}
+
+        [<<2>>, path] ->
+          {:subtree, path}
+
+        [<<3>>, key] ->
+          {:key, key}
       end
     end)
   end
 
-  defp send_unfolds(pid) do
-    unfolds = case Map.keys(Pool.get_pool()) do
-      [] -> [<<195,0,0,128>>]
-      hashes -> hashes
-    end
-
+  defp send_unfolds(unfolds, pid) do
     @tx_pool_sync_unfold
     |> pack_msg(%{unfolds: unfolds})
     |> send_msg_no_response(pid)
   end
 
+  defp send_unfolds(pid) do
+    unfolds =
+      case Map.keys(Pool.get_pool()) do
+        [] -> [<<195, 0, 0, 128>>]
+        hashes -> serialize_leaves(hashes)
+      end
+
+    send_unfolds(unfolds, pid)
+  end
+
+  defp send_gets(gets, pid) do
+    @tx_pool_sync_get
+    |> pack_msg(%{gets: gets})
+    |> send_msg_no_response(pid)
+  end
+
   defp analyze_unfolds(unfolds, pool_hashes) do
-    Enum.reduce(unfolds, {[], []} fn unfold, {new_unfolds, gets} ->
+    Enum.reduce(unfolds, {[], []}, fn unfold, {new_unfolds, gets} ->
       case unfold do
         {:node, path, _node} ->
           {[path | new_unfolds], gets}
+
         {:key, key} ->
           {new_unfolds, [key | gets]}
+
         {:leaf, key} ->
           if Enum.member?(pool_hashes, key) do
             {new_unfolds, gets}
@@ -655,10 +683,6 @@ defmodule Aecore.Peers.PeerConnection do
           end
       end
     end)
-  end
-
-  defp analyze_unfolds(unfolds, pool_hashes, new_unfolds, gets) do
-
   end
 
   # RLP for peer messages
@@ -770,7 +794,7 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([@p2p_msg_version, unfolds])
   end
 
-  def rlp_encode(@tx_pool_sync_get, %{hashes: hashes}) do
+  def rlp_encode(@tx_pool_sync_get, %{gets: hashes}) do
     ExRLP.encode([@p2p_msg_version, hashes])
   end
 
@@ -865,11 +889,13 @@ defmodule Aecore.Peers.PeerConnection do
       # vsn should be addititonaly decoded with :binary.decode_unsigned
       _vsn,
       hash,
+      target_hash,
       n
     ] = ExRLP.decode(encoded_get_n_successors)
 
     %{
       hash: hash,
+      target_hash: target_hash,
       n: :binary.decode_unsigned(n)
     }
   end
@@ -924,7 +950,7 @@ defmodule Aecore.Peers.PeerConnection do
 
     txs =
       Enum.map(pool, fn encoded_tx ->
-        {:ok, tx} = SignedTx.rlp_decode(encoded_tx)
+        {:ok, tx} = Serialization.rlp_decode_anything(encoded_tx)
         tx
       end)
 
