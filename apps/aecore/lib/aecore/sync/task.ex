@@ -11,8 +11,8 @@ defmodule Aecore.Sync.Task do
   @type peer_id :: pid()
   @type sync_task :: %Task{}
   @type sync_tasks :: list(%Task{})
-  @type pool_elem :: {height(), hash(), {peer_id(), Block.t()}}
-  @type agreed :: %{height: height(), hash: hash()} | :undefined
+  @type pool_elem :: {height(), hash(), {peer_id(), Block.t()} | false}
+  @type agreed :: %{height: height(), hash: hash()} | nil
   @type worker :: {peer_id(), pid()}
 
   @type t :: %Task{
@@ -77,13 +77,11 @@ defmodule Aecore.Sync.Task do
 
   def maybe_end_sync_task(state, %Task{chain: chain} = st) do
     case chain do
-      %{peers: [], chain: [target | []]} ->
-        IO.inspect("Delete sync task")
+      %Chain{peers: [], chain: [target | _]} ->
         ## Removing/ending SyncTask: st with target: target <- use it for log
         delete_sync_task(st, state)
 
       _ ->
-        IO.inspect("Set sync task")
         set_sync_task(st, state)
     end
   end
@@ -109,7 +107,8 @@ defmodule Aecore.Sync.Task do
   the list of tasks is equal to the id of the given task,
   change the tasks. Otherwise add the given task to the end of list of tasks
   """
-  @spec keystore(id() | pid(), sync_tasks(), sync_task()) :: sync_tasks()
+  @spec keystore(id() | pid(), sync_task() | worker(), sync_tasks() | list(worker())) ::
+          sync_tasks() | list(worker())
   def keystore(id, elem, elems) do
     do_keystore(elems, elem, id, [])
   end
@@ -127,6 +126,6 @@ defmodule Aecore.Sync.Task do
   end
 
   defp do_keystore([], elem, _id, acc) do
-    acc ++ [elem]
+    [elem | Enum.reverse(acc)] |> Enum.reverse()
   end
 end

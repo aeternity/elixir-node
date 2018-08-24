@@ -120,11 +120,14 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_headers_forward(binary(), non_neg_integer()) ::
           {:ok, list(Header.t())} | {:error, atom()}
-  def get_headers_forward(starting_header, count) do
-    case get_header_by_hash(starting_header) do
+  def get_headers_forward(starting_hash, count) do
+    case get_header_by_hash(starting_hash) do
       {:ok, header} ->
         blocks_to_get = min(top_height() - header.height, count)
-        get_headers_forward([], header.height, blocks_to_get + 1)
+
+        ## Start from the first block we don't have
+        start_from = header.height + 1
+        get_headers_forward([], start_from, blocks_to_get)
 
       {:error, reason} ->
         {:error, reason}
@@ -582,6 +585,10 @@ defmodule Aecore.Chain.Worker do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
+  defp get_headers_forward(headers, _next_header_height, 0) do
+    {:ok, headers}
+  end
+
   defp get_headers_forward(headers, next_header_height, count) when count > 0 do
     case get_header_by_height(next_header_height) do
       {:ok, header} ->
@@ -590,10 +597,6 @@ defmodule Aecore.Chain.Worker do
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
-    {:ok, headers}
   end
 
   defp get_block_info_by_height(height, nil, info) do

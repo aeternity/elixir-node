@@ -6,10 +6,12 @@ defmodule Aecore.Sync.Jobs do
   ## spawn() and :proc_lib.spawn() to be changed with Elixir func calls
   ## Maybe use Task module ??
 
+  alias Aecore.Sync.Sync
+
   @type queue ::
           :sync_ping_workers
-          | :sing_task_workers
-          | :sing_gossip_worers
+          | :sync_task_workers
+          | :sync_gossip_worers
 
   @doc """
   Creates a new jobs queue for doing some work.
@@ -22,14 +24,12 @@ defmodule Aecore.Sync.Jobs do
   end
 
   def run_job(queue, fun) do
-    # :proc_lib.spawn() do it like this!
-    spawn(:jobs, :run, [queue, fun])
+    Task.start(:jobs, :run, [queue, fun])
   end
 
   def delayed_run_job(old_worker, peer_id, task, queue, fun, delay) do
-    # Use :proc_lib.spawn()
     new_worker =
-      spawn(fn ->
+      Task.start(fn ->
         :timer.sleep(delay)
         :jobs.run(queue, fun)
       end)
@@ -38,18 +38,18 @@ defmodule Aecore.Sync.Jobs do
   end
 
   def enqueue(gossip, data, peer_ids) do
-    spawn(fn ->
-      case gossip do
-        :block ->
-          Enum.map(peer_ids, fn id ->
-            :jobs.run(:sync_gossip_workers, Sync.do_forward_block(data, id))
-          end)
-
-        :tx ->
-          Enum.map(peer_ids, fn id ->
-            :jobs.run(:sync_gossip_workers, Sync.do_forward_tx(data, id))
-          end)
-      end
+    Task.start(fn ->
+      Enum.map(peer_ids, fn id ->
+        :jobs.run(:sync_gossip_workers, enqueue_strategy(gossip, data, id))
+      end)
     end)
+  end
+
+  defp enqueue_strategy(:block, data, id) do
+    fn -> Sync.do_forward_block(data, id) end
+  end
+
+  defp enqueue_strategy(:tx, data, id) do
+    fn -> Sync.do_forward_tx(data, id) end
   end
 end

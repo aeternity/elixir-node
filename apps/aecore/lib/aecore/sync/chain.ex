@@ -9,7 +9,7 @@ defmodule Aecore.Sync.Chain do
   @type hash :: binary()
   @type chain :: %{height: height(), hash: hash()}
 
-  @type t :: %Chain{chain_id: chain_id(), peers: list(), chain: chain()}
+  @type t :: %Chain{chain_id: chain_id(), peers: list(), chain: list(chain())}
 
   defstruct chain_id: nil,
             peers: [],
@@ -43,9 +43,12 @@ defmodule Aecore.Sync.Chain do
         peers: ps2,
         chain: c2
       }) do
-    ## We sort descending
-    sorting = fn %{height: h1}, %{height: h2} -> h1 >= h2 end
-    %Chain{chain_id: cid, peers: Enum.sort(ps1 ++ ps2), chain: Enum.merge(c1, c2, sorting)}
+    peers =
+      (ps1 ++ ps2)
+      |> Enum.sort()
+      |> Enum.uniq()
+
+    %Chain{chain_id: cid, peers: peers, chain: merge(c1, c2)}
   end
 
   def match_chains([%{height: n1} | c1], [%{height: n2, hash: hash} | _])
@@ -53,7 +56,7 @@ defmodule Aecore.Sync.Chain do
     case find_hash_at_height(n2, c1) do
       {:ok, ^hash} -> :equal
       {:ok, _} -> :different
-      :not_found -> {:fst, n2}
+      :not_found -> {:first, n2}
     end
   end
 
@@ -61,7 +64,7 @@ defmodule Aecore.Sync.Chain do
     case find_hash_at_height(n1, c2) do
       {:ok, ^hash} -> :equal
       {:ok, _} -> :different
-      :not_found -> {:snd, n1}
+      :not_found -> {:second, n1}
     end
   end
 
@@ -93,5 +96,30 @@ defmodule Aecore.Sync.Chain do
       end
 
     hash
+  end
+
+  def merge(c1, c2) do
+    merge(c1, c2, [])
+  end
+
+  defp merge([], [], acc) do
+    acc
+    |> Enum.sort()
+    |> Enum.reverse()
+  end
+
+  defp merge([], [e2 | c2], acc) do
+    merge([], c2, [e2 | acc])
+  end
+
+  defp merge([e1 | c1], c2, acc) do
+    case Enum.member?(c2, e1) do
+      true ->
+        new_c2 = Enum.filter(c2, fn elem -> elem != e1 end)
+        merge(c1, new_c2, [e1 | acc])
+
+      false ->
+        merge(c1, c2, [e1 | acc])
+    end
   end
 end

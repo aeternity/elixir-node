@@ -16,6 +16,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -110,8 +111,9 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), binary(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, top_hash, pid) when is_pid(pid) do
+  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
+          {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(pid, height, top_hash) when is_pid(pid) do
     @get_header_by_height
     |> pack_msg(%{height: height, top_hash: top_hash})
     |> send_request_msg(pid)
@@ -463,10 +465,13 @@ defmodule Aecore.Peers.PeerConnection do
   defp handle_get_header_by_height(payload, pid) do
     height = payload.height
     top_hash = payload.top_hash
-    result = case Chain.hash_is_in_main_chain?(top_hash) do
-      true -> Chain.get_header_by_height(height)
-      false -> {:error, :not_on_chain}
-    end
+
+    result =
+      case Chain.hash_is_in_main_chain?(top_hash) do
+        true -> Chain.get_header_by_height(height)
+        false -> {:error, :not_on_chain}
+      end
+
     send_response(result, @header, pid)
   end
 
@@ -474,10 +479,9 @@ defmodule Aecore.Peers.PeerConnection do
     starting_hash = payload.starting_hash
     target_hash = payload.target_hash
     count = payload.n
-    starting_header = Chain.get_header_by_hash(starting_hash)
 
     result =
-      with {:ok, headers} <- Chain.get_headers_forward(starting_header, count),
+      with {:ok, headers} <- Chain.get_headers_forward(starting_hash, count),
            true <- Chain.hash_is_in_main_chain?(target_hash) do
         header_hashes =
           Enum.map(headers, fn header ->
@@ -724,7 +728,12 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     # vsn should be addititonaly decoded with :binary.decode_unsigned
-    [@get_header_by_height_version, height, top_hash] = ExRLP.decode(encoded_get_header_by_height)
+    [
+      <<@get_header_by_height_version>>,
+      height,
+      top_hash
+    ] = ExRLP.decode(encoded_get_header_by_height)
+
     %{height: :binary.decode_unsigned(height), top_hash: top_hash}
   end
 
@@ -740,9 +749,10 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_decode(@get_n_successors, encoded_get_n_successors) do
+    :io.format("encoded_get_n_successors: ~p ~n", [encoded_get_n_successors])
+
     [
-      # vsn should be addititonaly decoded with :binary.decode_unsigned
-      @get_n_successors_version,
+      <<@get_n_successors_version>>,
       starting_hash,
       target_hash,
       n
@@ -762,7 +772,7 @@ defmodule Aecore.Peers.PeerConnection do
     ] = ExRLP.decode(encoded_header_hashes)
 
     deserialized_hashes =
-      Enum.map(header_hashes, fn <<height::64, hash::binary>> -> %{height: height, hash: hash} end)
+      Enum.map(header_hashes, fn <<height::64, hash::binary>> -> {height, hash} end)
 
     %{hashes: deserialized_hashes}
   end
