@@ -12,6 +12,8 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Contract.ContractStateTree
+  alias Aecore.Contract.CallStateTree
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys
   alias Aecore.Governance.GenesisConstants
@@ -35,20 +37,26 @@ defmodule Aecore.Chain.Chainstate do
   @type oracles :: OracleStateTree.oracles_state()
   @type naming :: NamingStateTree.namings_state()
   @type channels :: ChannelStateTree.channel_state()
-  @type chain_state_types :: :accounts | :oracles | :naming | :channels
+  @type contracts :: ContractStateTree.contracts_state()
+  @type calls :: CallStateTree.calls_state()
+  @type chain_state_types :: :accounts | :oracles | :naming | :channels | :contracts | :calls
 
   @type t :: %Chainstate{
           accounts: accounts(),
           oracles: oracles(),
           naming: naming(),
-          channels: channels()
+          channels: channels(),
+          contracts: contracts(),
+          calls: calls()
         }
 
   defstruct [
     :accounts,
     :oracles,
     :naming,
-    :channels
+    :channels,
+    :contracts,
+    :calls
   ]
 
   @spec init :: Chainstate.t()
@@ -92,7 +100,9 @@ defmodule Aecore.Chain.Chainstate do
       :accounts => AccountStateTree.init_empty(),
       :oracles => OracleStateTree.init_empty(),
       :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
+      :channels => ChannelStateTree.init_empty(),
+      :contracts => ContractStateTree.init_empty(),
+      :calls => CallStateTree.init_empty()
     }
   end
 
@@ -137,8 +147,8 @@ defmodule Aecore.Chain.Chainstate do
       NamingStateTree.root_hash(chainstate.naming),
       OracleStateTree.root_hash(chainstate.oracles),
       @canonical_root_hash,
-      @canonical_root_hash,
-      @canonical_root_hash
+      ContractStateTree.root_hash(chainstate.contracts),
+      CallStateTree.root_hash(chainstate.calls)
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)

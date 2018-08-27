@@ -689,6 +689,12 @@ defmodule Aecore.Chain.Worker do
 
       {key = :channels, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :contracts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :calls, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
     end
   end
 
@@ -707,6 +713,12 @@ defmodule Aecore.Chain.Worker do
         })
 
       {key = :channels, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :contracts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :calls, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
     end
   end
