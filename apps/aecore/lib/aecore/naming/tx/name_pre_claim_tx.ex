@@ -152,9 +152,11 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.commitment),
       :binary.encode_unsigned(datatx.fee),
@@ -162,7 +164,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, encoded_commitment, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_commitment) do
       {:ok, commitment} ->
         payload = %NamePreClaimTx{commitment: commitment}
@@ -170,7 +172,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         DataTx.init_binary(
           NamePreClaimTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)

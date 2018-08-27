@@ -212,9 +212,11 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       :binary.encode_unsigned(tx.client_ttl),
@@ -226,7 +228,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         encoded_hash,
         client_ttl,
@@ -247,7 +249,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         DataTx.init_binary(
           NameUpdateTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
