@@ -1,22 +1,27 @@
 defmodule Aecore.Sync.Task do
+  @moduledoc """
+  Implements all the functions regarding the SyncTask
+  """
+
   alias Aecore.Sync.Chain
   alias Aecore.Sync.Sync
   alias Aecore.Chain.Block
   alias __MODULE__
 
-  @type id :: reference()
+  require Logger
+
+  @type chain_id :: reference()
+  @type task_id :: reference()
   @type height :: non_neg_integer()
   @type hash :: binary()
-  ## :unfinished Maybe its not pid() ????
   @type peer_id :: pid()
-  @type sync_task :: %Task{}
   @type sync_tasks :: list(%Task{})
-  @type pool_elem :: {height(), hash(), {peer_id(), Block.t()} | false}
+  @type pool_elem :: {height(), hash(), {peer_id(), Block.t()} | {:ok, :local} | false}
   @type agreed :: %{height: height(), hash: hash()} | nil
   @type worker :: {peer_id(), pid()}
 
   @type t :: %Task{
-          id: id(),
+          id: task_id(),
           chain: Chain.t(),
           pool: list(pool_elem()),
           agreed: agreed(),
@@ -33,12 +38,12 @@ defmodule Aecore.Sync.Task do
             pending: [],
             workers: []
 
-  use ExConstructor
-
-  def init_sync_task(chain) do
-    %Task{id: chain.chain_id, chain: chain}
+  @spec init_sync_task(Chain.t()) :: t()
+  def init_sync_task(chain = %Chain{chain_id: id}) do
+    %Task{id: id, chain: chain}
   end
 
+  @spec get_sync_task(task_id(), Sync.t()) :: {:ok, t()} | {:error, :not_found}
   def get_sync_task(stid, %Sync{sync_tasks: sts}) do
     case Enum.find(sts, fn %{id: id} -> id == stid end) do
       nil -> {:error, :not_found}
@@ -46,68 +51,77 @@ defmodule Aecore.Sync.Task do
     end
   end
 
-  def set_sync_task(%Task{id: id} = st, %Sync{sync_tasks: sts}) do
-    %Sync{sync_tasks: keystore(id, st, sts)}
+  @spec set_sync_task(t(), Sync.t()) :: Sync.t()
+  def set_sync_task(st = %Task{id: id}, sync = %Sync{sync_tasks: sts}) do
+    %Sync{sync | sync_tasks: keystore(id, st, sts)}
   end
 
-  def set_sync_task(id, %Task{} = st, %Sync{sync_tasks: sts}) do
-    %Sync{sync_tasks: keystore(id, st, sts)}
+  @spec set_sync_task(task_id(), t(), Sync.t()) :: Sync.t()
+  def set_sync_task(id, st = %Task{}, sync = %Sync{sync_tasks: sts}) do
+    %Sync{sync | sync_tasks: keystore(id, st, sts)}
   end
 
-  def delete_sync_task(%Task{id: stid}, %Sync{sync_tasks: sts}) do
-    %Sync{sync_tasks: Enum.filter(sts, fn %{id: id} -> id != stid end)}
+  @spec delete_sync_task(t(), Sync.t()) :: Sync.t()
+  def delete_sync_task(%Task{id: stid}, sync = %Sync{sync_tasks: sts}) do
+    %Sync{sync | sync_tasks: Enum.filter(sts, fn %{id: id} -> id != stid end)}
   end
 
-  def do_update_sync_task(state, stid, update) do
-    case get_sync_task(stid, state) do
-      {:ok, %Task{chain: %Chain{peers: peers}}} ->
+  @spec do_update_sync_task(Sync.t(), task_id(), {:done | :error, peer_id()}) :: Sync.t()
+  def do_update_sync_task(sync, stid, update) do
+    case get_sync_task(stid, sync) do
+      {:ok, st = %Task{chain: chain = %Chain{peers: peers}}} ->
         chain1 =
           case update do
-            {:done, peer_id} -> %Chain{peers: peers -- [peer_id]}
-            {:error, peer_id} -> %Chain{peers: peers -- [peer_id]}
+            {:done, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
+            {:error, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
           end
 
-        maybe_end_sync_task(state, %Task{chain: chain1})
+        maybe_end_sync_task(sync, %{st | chain: chain1})
 
       {:error, :not_found} ->
-        ## Sync Task not found
-        state
+        Logger.info("#{__MODULE__}: Sync task not found!")
+        sync
     end
   end
 
-  def maybe_end_sync_task(state, %Task{chain: chain} = st) do
+  @spec maybe_end_sync_task(Sync.t(), t()) :: Sync.t()
+  def maybe_end_sync_task(sync, st = %Task{chain: chain}) do
     case chain do
       %Chain{peers: [], chain: [target | _]} ->
-        ## Removing/ending SyncTask: st with target: target <- use it for log
-        delete_sync_task(st, state)
+        Logger.info("#{__MODULE__}: Removing Sync task: st with target: #{inspect(target)}")
+        delete_sync_task(st, sync)
 
       _ ->
-        set_sync_task(st, state)
+        set_sync_task(st, sync)
     end
   end
 
+  @spec match_tasks(Chain.t(), Sync.t(), list()) ::
+          :no_match
+          | {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
+          | {:match, t()}
   def match_tasks(_chain, [], []), do: :no_match
 
   def match_tasks(chain, [], acc) do
-    {n, %Chain{chain_id: cid, peers: peers}} = hd(Enum.reverse(acc))
-    {:inconclusive, chain, {:get_header, cid, peers, n}}
+    {height, %Chain{chain_id: cid, peers: peers}} = hd(Enum.reverse(acc))
+    {:inconclusive, chain, {:get_header, cid, peers, heigth}}
   end
 
-  def match_tasks(chain1, [st = %Task{chain: chain2} | sts], acc) do
-    case Chain.match_chains(Map.get(chain1, :chain), Map.get(chain2, :chain)) do
+  def match_tasks(chain_1, [st = %Task{chain: chain_2} | sts], acc) do
+    case Chain.match_chains(Map.get(chain_1, :chain), Map.get(chain_2, :chain)) do
       :equal -> {:match, st}
-      :different -> match_tasks(chain1, sts, acc)
-      {:first, n} -> match_tasks(chain1, sts, [{n, chain1} | acc])
-      {:second, n} -> match_tasks(chain1, sts, [{n, chain2} | acc])
+      :different -> match_tasks(chain_1, sts, acc)
+      {:first, height} -> match_tasks(chain_1, sts, [{height, chain_1} | acc])
+      {:second, height} -> match_tasks(chain_1, sts, [{height, chain_2} | acc])
     end
   end
 
   @doc """
-  Gets a list of tasks and a singe task. If an id of a task inside
-  the list of tasks is equal to the id of the given task,
-  change the tasks. Otherwise add the given task to the end of list of tasks
+  This function gets a list of arguments and a single element. If this element
+  is present in the list -> update the list with it's values.
+  If not -> add the element to the list
   """
-  @spec keystore(id() | pid(), sync_task() | worker(), sync_tasks() | list(worker())) ::
+  @spec keystore(peer_id() | task_id(), t() | worker(), t() | list(worker())) ::
           sync_tasks() | list(worker())
   def keystore(id, elem, elems) do
     do_keystore(elems, elem, id, [])

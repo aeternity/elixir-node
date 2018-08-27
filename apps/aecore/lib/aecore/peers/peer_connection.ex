@@ -13,10 +13,8 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Sync.Sync
-  alias Aecore.Peers.Jobs
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Serialization
 
   require Logger
 
@@ -749,8 +747,6 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_decode(@get_n_successors, encoded_get_n_successors) do
-    :io.format("encoded_get_n_successors: ~p ~n", [encoded_get_n_successors])
-
     [
       <<@get_n_successors_version>>,
       starting_hash,

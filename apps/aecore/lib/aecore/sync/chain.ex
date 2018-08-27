@@ -1,9 +1,14 @@
 defmodule Aecore.Sync.Chain do
+  @moduledoc """
+  Implements all the functions regarding the Chain structure of the SyncTask
+  """
+
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Sync.Task
   alias __MODULE__
 
+  @type peer_id :: pid()
   @type chain_id :: reference()
   @type height :: non_neg_integer()
   @type hash :: binary()
@@ -12,24 +17,24 @@ defmodule Aecore.Sync.Chain do
   @type t :: %Chain{chain_id: chain_id(), peers: list(), chain: list(chain())}
 
   defstruct chain_id: nil,
-            peers: [],
-            chain: %{height: nil, hash: nil}
+    peers: [],
+    chain: []
 
-  use ExConstructor
-
+  @spec init_chain(peer_id(), Header.t()) :: t()
   def init_chain(peer_id, header) do
     init_chain(Kernel.make_ref(), [peer_id], header)
   end
 
+  @spec init_chain(chain_id(), peer_id(), Header.t()) :: t()
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_h} = header) do
     hash = BlockValidation.block_header_hash(header)
 
     prev_hash =
-      if height > 1 do
-        [%{height: height - 1, hash: prev_h}]
-      else
-        []
-      end
+    if height > 1 do
+      [%{height: height - 1, hash: prev_h}]
+    else
+      []
+    end
 
     %Chain{
       chain_id: chain_id,
@@ -38,88 +43,94 @@ defmodule Aecore.Sync.Chain do
     }
   end
 
-  def merge_chains(%Chain{chain_id: cid, peers: ps1, chain: c1}, %Chain{
-        chain_id: cid,
-        peers: ps2,
-        chain: c2
-      }) do
+  @spec merge_chains(t(), t()) :: t()
+  def merge_chains(%Chain{chain_id: chain_id, peers: peers_1, chain: chain_1}, %Chain{
+        chain_id: chain_id,
+        peers: peers_2,
+        chain: chain_2
+                   }) do
     peers =
-      (ps1 ++ ps2)
-      |> Enum.sort()
-      |> Enum.uniq()
+    (peers_1 ++ peers_2)
+    |> Enum.sort()
+    |> Enum.uniq()
 
-    %Chain{chain_id: cid, peers: peers, chain: merge(c1, c2)}
+    %Chain{chain_id: chain_id, peers: peers, chain: merge(chain_1, chain_2)}
   end
 
-  def match_chains([%{height: n1} | c1], [%{height: n2, hash: hash} | _])
-      when n1 > n2 do
-    case find_hash_at_height(n2, c1) do
+  @spec match_chains(list(chain()), list(chain())) :: :equal | :different | {:first | :second, height()}
+  def match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: hash} | _])
+  when height_1 > height_2 do
+    case find_hash_at_height(height_2, chain_1) do
       {:ok, ^hash} -> :equal
       {:ok, _} -> :different
-      :not_found -> {:first, n2}
+      :not_found -> {:first, height_2}
     end
   end
 
-  def match_chains([%{height: n1, hash: hash} | _], c2) do
-    case find_hash_at_height(n1, c2) do
+  def match_chains([%{height: height_1, hash: hash} | _], chain_2) do
+    case find_hash_at_height(height_1, chain_2) do
       {:ok, ^hash} -> :equal
       {:ok, _} -> :different
-      :not_found -> {:second, n1}
+      :not_found -> {:second, height_1}
     end
   end
 
-  def find_hash_at_height(n, [%{height: n, hash: h} | _]), do: {:ok, h}
+  @spec find_hash_at_height(height(), list(chain())) :: {:ok, hash()} | :not_found
+  def find_hash_at_height(height, [%{height: height, hash: hash} | _]), do: {:ok, hash}
   def find_hash_at_height(_, []), do: :not_found
-  def find_hash_at_height(n, [%{height: n1} | _]) when n1 < n, do: :not_found
-  def find_hash_at_height(n, [_ | chain]), do: find_hash_at_height(n, chain)
+  def find_hash_at_height(height, [%{height: height_1} | _]) when height_1 < height, do: :not_found
+  def find_hash_at_height(height, [_ | chain]), do: find_hash_at_height(height, chain)
 
   ## If there is a task with chain_id equal to the given chain,
   ## merge the data between the chain in the task and the given chain
-  def add_chain_info(%Chain{chain_id: chid} = chain, state) do
-    case Task.get_sync_task(chid, state) do
-      {:ok, %Task{chain: chain1} = st} ->
-        st1 = struct(st, chain: merge_chains(chain, chain1))
-        Task.set_sync_task(st1, state)
+  @spec add_chain_info(t(), Sync.t()) :: Sync.t()
+  def add_chain_info(chain = %Chain{chain_id: chain_id}, sync) do
+    case Task.get_sync_task(chain_id, sync) do
+      {:ok, st = %Task{chain: chain_1}} ->
+        st1 = struct(st, chain: merge_chains(chain, chain_1))
+        Task.set_sync_task(st1, sync)
 
       {:error, :not_found} ->
-        state
+        sync
     end
   end
 
   ## Get the next known hash at a height bigger than N; or
   ## if no such hash exist, the hash at the highest known height.
-  def next_known_hash(cs, n) do
+  @spec next_known_hash(t(), height()) :: hash()
+  def next_known_hash(chains, height) do
     %{hash: hash} =
-      case Enum.take_while(cs, fn %{height: h} -> h > n end) do
-        [] -> Kernel.hd(cs)
-        cs1 -> List.last(cs1)
+      case Enum.take_while(chains, fn %{height: h} -> h > height end) do
+        [] -> Kernel.hd(chains)
+        chains_1 -> List.last(chains_1)
       end
-
     hash
   end
 
-  def merge(c1, c2) do
-    merge(c1, c2, [])
+  @spec merge(t(), t()) :: t()
+  def merge(chain_1, chain_2) do
+    merge(chain_1, chain_2, [])
   end
 
+  @spec merge(t(), t(), list()) :: t()
   defp merge([], [], acc) do
     acc
     |> Enum.sort()
     |> Enum.reverse()
   end
 
-  defp merge([], [e2 | c2], acc) do
-    merge([], c2, [e2 | acc])
+  defp merge([], [e2 | chain_2], acc) do
+    merge([], chain_2, [e2 | acc])
   end
 
-  defp merge([e1 | c1], c2, acc) do
-    case Enum.member?(c2, e1) do
+  defp merge([e1 | chain_1], chain_2, acc) do
+    case Enum.member?(chain_2, e1) do
       true ->
-        new_c2 = Enum.filter(c2, fn elem -> elem != e1 end)
-        merge(c1, new_c2, [e1 | acc])
+        new_chain_2 = Enum.filter(chain_2, fn elem -> elem != e1 end)
+        merge(chain_1, new_chain_2, [e1 | acc])
 
       false ->
-        merge(c1, c2, [e1 | acc])
+        merge(chain_1, chain_2, [e1 | acc])
     end
   end
 end
