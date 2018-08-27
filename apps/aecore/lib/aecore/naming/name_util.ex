@@ -28,7 +28,7 @@ defmodule Aecore.Naming.NameUtil do
   def normalize_name(name), do: name |> :idna.utf8_to_ascii() |> to_string()
 
   @spec namehash(String.t()) :: binary()
-  def namehash(name) do
+  defp namehash(name) do
     if name == "" do
       <<0::256>>
     else
@@ -53,7 +53,8 @@ defmodule Aecore.Naming.NameUtil do
       GovernanceConstants.name_registrars()
       |> Enum.any?(fn registrar ->
         String.ends_with?(name, registrar) &&
-          Enum.count(String.split(name, GovernanceConstants.split_name_symbol())) == 2
+          Enum.count(String.split(name, GovernanceConstants.split_name_symbol())) ==
+            GovernanceConstants.name_split_check()
       end)
 
     if allowed_registrar do
