@@ -21,6 +21,12 @@ defmodule Aeutil.Mixfile do
   end
 
   defp deps do
-    [{:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]}]
+    [
+      {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
+      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
+      {:gproc, "~> 0.6.1"},
+      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
+      {:ex_rlp, "~> 0.2.1"}
+    ]
   end
 end

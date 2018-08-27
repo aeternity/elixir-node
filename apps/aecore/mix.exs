@@ -58,13 +58,14 @@ defmodule Aecore.Mixfile do
     [
       {:rox, "~> 2.2.1"},
       {:exconstructor, "~> 1.1"},
+      {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:logger_file_backend, "~> 0.0.10"},
-      {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
+      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"},
-      {:ranch, github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true}
+      {:ex_rlp, "~> 0.2.1"},
+      {:gproc, "~> 0.6.1"}
     ]
   end
 end

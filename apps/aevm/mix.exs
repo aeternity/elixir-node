@@ -8,7 +8,10 @@ defmodule Aevm.MixProject do
       build_path: "../../_build",
       config_path: "../../config/config.exs",
       elixir: "~> 1.6",
-      start_permanent: Mix.env() == :prod
+      start_permanent: Mix.env() == :prod,
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
+      deps: deps()
     ]
   end
 
@@ -16,6 +19,12 @@ defmodule Aevm.MixProject do
   def application do
     [
       extra_applications: [:logger]
+    ]
+  end
+
+  defp deps do
+    [
+      {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]}
     ]
   end
 end
