@@ -60,7 +60,7 @@ defmodule Aecore.Mixfile do
       {:exconstructor, "~> 1.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
       {:logger_file_backend, "~> 0.0.10"},
-      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"},
+      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git", ref: "595a436c554a4c2b7235f184fc9d2a910d333ca5", override: true},
       {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
