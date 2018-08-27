@@ -57,7 +57,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :accounts
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: SpendTx.t()
   def init(%{
         receiver: %Identifier{} = identified_receiver,
         amount: amount,
@@ -76,7 +76,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -109,7 +109,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
@@ -135,7 +135,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
@@ -151,7 +151,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
