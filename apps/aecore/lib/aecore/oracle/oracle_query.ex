@@ -47,16 +47,16 @@ defmodule Aecore.Oracle.OracleQuery do
 
     response =
       case oracle_query.response do
-        :undefined -> "undefined"
+        :undefined -> <<>>
         %DataTx{type: OracleResponseTx} = data -> data
         _ -> oracle_query.response
       end
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(oracle_query.sender_address),
+      oracle_query.sender_address,
       :binary.encode_unsigned(oracle_query.sender_nonce),
-      Identifier.encode_to_binary(oracle_query.oracle_address),
+      oracle_query.oracle_address,
       oracle_query.query,
       has_response,
       response,
@@ -67,9 +67,9 @@ defmodule Aecore.Oracle.OracleQuery do
   end
 
   def decode_from_list(@version, [
-        encoded_sender_address,
+        sender_address,
         sender_nonce,
-        encoded_oracle_address,
+        oracle_address,
         query,
         has_response,
         response,
@@ -85,27 +85,22 @@ defmodule Aecore.Oracle.OracleQuery do
 
     new_response =
       case response do
-        "undefined" -> :undefined
+        <<>> -> :undefined
         _ -> response
       end
 
-    with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address),
-         {:ok, sender_address} <- Identifier.decode_from_binary(encoded_sender_address) do
-      {:ok,
-       %OracleQuery{
-         expires: :binary.decode_unsigned(expires),
-         fee: :binary.decode_unsigned(fee),
-         has_response: has_response,
-         oracle_address: oracle_address,
-         query: query,
-         response: new_response,
-         response_ttl: :binary.decode_unsigned(response_ttl),
-         sender_address: sender_address,
-         sender_nonce: :binary.decode_unsigned(sender_nonce)
-       }}
-    else
-      {:error, _} = error -> error
-    end
+    {:ok,
+     %OracleQuery{
+       expires: :binary.decode_unsigned(expires),
+       fee: :binary.decode_unsigned(fee),
+       has_response: has_response,
+       oracle_address: oracle_address,
+       query: query,
+       response: new_response,
+       response_ttl: :binary.decode_unsigned(response_ttl),
+       sender_address: sender_address,
+       sender_nonce: :binary.decode_unsigned(sender_nonce)
+     }}
   end
 
   def decode_from_list(@version, data) do

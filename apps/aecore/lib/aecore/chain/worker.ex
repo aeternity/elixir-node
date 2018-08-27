@@ -308,7 +308,11 @@ defmodule Aecore.Chain.Worker do
         _from,
         %{blocks_data_map: blocks_data_map, top_hash: top_hash} = state
       ) do
-    {pubkey, _} = Keys.keypair(:sign)
+    pubkey =
+      <<124, 184, 176, 74, 88, 15, 23, 59, 122, 200, 102, 61, 1, 156, 245, 90, 9, 67, 22, 58, 231,
+        23, 210, 69, 29, 233, 62, 167, 121, 64, 28, 8>>
+
+    # {pubkey, _} = Keys.keypair(:sign) -> TODO: Have to remonve!!!
     accounts_state_tree = blocks_data_map[top_hash].chain_state.accounts
 
     lowest_valid_nonce =

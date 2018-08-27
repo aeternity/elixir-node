@@ -8,7 +8,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
   alias Aecore.Account.AccountStateTree
@@ -91,10 +91,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         Account.apply_transfer!(acc, block_height, query_fee)
       end)
 
+    IO
+
     updated_interaction_objects = %{
       interaction_objects
       | response: tx.response,
-        expires: interaction_objects.expires + interaction_objects.response_ttl,
+        expires:
+          Oracle.calculate_absolute_ttl(interaction_objects.response_ttl, Chain.top_height()) + 1,
+        # interaction_objects.expires + interaction_objects.response_ttl,
         has_response: true
     }
 
@@ -136,7 +140,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, tx.query_id).oracle_address.value != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
