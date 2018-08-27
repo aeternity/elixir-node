@@ -174,9 +174,11 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.name,
       tx.name_salt,
@@ -185,13 +187,13 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
 
     DataTx.init_binary(
       NameClaimTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)
