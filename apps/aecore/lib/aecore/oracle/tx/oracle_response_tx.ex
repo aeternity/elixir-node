@@ -177,9 +177,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.query_id,
       tx.response,
@@ -189,7 +191,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         query_id,
         response,
@@ -204,7 +206,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     DataTx.init_binary(
       OracleResponseTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

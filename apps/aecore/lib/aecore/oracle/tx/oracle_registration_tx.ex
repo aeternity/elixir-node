@@ -195,10 +195,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
     ttl_type = Serialization.encode_ttl_type(tx.ttl)
+    [sender] = datatx.senders
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.query_format,
       tx.response_format,
@@ -211,7 +212,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         query_format,
         response_format,
@@ -235,7 +236,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     DataTx.init_binary(
       OracleRegistrationTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

@@ -180,9 +180,11 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       :binary.encode_unsigned(datatx.fee),
@@ -190,7 +192,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, encoded_hash, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, encoded_hash, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_hash) do
       {:ok, hash} ->
         payload = %NameRevokeTx{hash: hash}
@@ -198,7 +200,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         DataTx.init_binary(
           NameRevokeTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
