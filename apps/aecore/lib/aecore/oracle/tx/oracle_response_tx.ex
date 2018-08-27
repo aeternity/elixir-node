@@ -96,9 +96,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_interaction_objects = %{
       interaction_objects
       | response: tx.response,
-        expires:
-          Oracle.calculate_absolute_ttl(interaction_objects.response_ttl, Chain.top_height()) + 1,
-        # interaction_objects.expires + interaction_objects.response_ttl,
+        expires: interaction_objects.response_ttl + block_height,
         has_response: true
     }
 
