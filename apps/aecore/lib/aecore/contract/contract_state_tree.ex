@@ -90,17 +90,13 @@ defmodule Aecore.Contract.ContractStateTree do
     store_id_bit_size = (@contract_key_size + 1) * 8
 
     Enum.reduce(keys, %{}, fn key, store_acc ->
-      if byte_size(key) > @contract_key_size do
-        <<tree_store_id::size(store_id_bit_size), s_key::binary>> = key
-
-        if store_id == <<tree_store_id::size(store_id_bit_size)>> do
-          {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
-          Map.put(store_acc, s_key, s_value)
-        else
-          store_acc
-        end
+      with true <- byte_size(key) > @contract_key_size,
+           <<tree_store_id::size(store_id_bit_size), s_key::binary>> <- key,
+           true <- store_id == <<tree_store_id::size(store_id_bit_size)>> do
+        {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
+        Map.put(store_acc, s_key, s_value)
       else
-        store_acc
+        _ -> store_acc
       end
     end)
   end

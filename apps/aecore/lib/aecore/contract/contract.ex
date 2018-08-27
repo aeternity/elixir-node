@@ -96,9 +96,10 @@ defmodule Aecore.Contract.Contract do
 
     decoded_referers =
       Enum.reduce_while(referers, [], fn referer, acc ->
-        with {:ok, decoded_referer} <- Identifier.decode_from_binary(referer) do
-          [decoded_referer | acc]
-        else
+        case Identifier.decode_from_binary(referer) do
+          {:ok, decoded_referer} ->
+            {:cont, [decoded_referer | acc]}
+
           _ ->
             {:halt,
              {:error,
@@ -106,33 +107,23 @@ defmodule Aecore.Contract.Contract do
         end
       end)
 
-    case decoded_active do
-      {:error, _} = error ->
-        error
-
-      _ ->
-        case decoded_referers do
-          {:error, _} = error ->
-            error
-
-          _ ->
-            with {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
-              {:ok,
-               %Contract{
-                 id: %Identifier{type: :contract},
-                 owner: decoded_owner_address,
-                 vm_version: :binary.decode_unsigned(vm_version),
-                 code: code,
-                 store: %{},
-                 log: log,
-                 active: decoded_active,
-                 referers: decoded_referers,
-                 deposit: :binary.decode_unsigned(deposit)
-               }}
-            else
-              {:error, _} = error -> error
-            end
-        end
+    with {:ok, decoded_active_value} <- decoded_active,
+          true <- is_list(decoded_referers),
+         {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
+      {:ok,
+       %Contract{
+         id: %Identifier{type: :contract},
+         owner: decoded_owner_address,
+         vm_version: :binary.decode_unsigned(vm_version),
+         code: code,
+         store: %{},
+         log: log,
+         active: decoded_active_value,
+         referers: decoded_referers,
+         deposit: :binary.decode_unsigned(deposit)
+       }}
+    else
+      {:error, _} = error -> error
     end
   end
 
@@ -147,8 +138,8 @@ defmodule Aecore.Contract.Contract do
   @spec decode_active(binary()) :: non_neg_integer()
   def decode_active(active) when active == <<0>> or active == <<1>> do
     case :binary.decode_unsigned(active) do
-      0 -> false
-      1 -> true
+      0 -> {:ok, false}
+      1 -> {:ok, true}
     end
   end
 
