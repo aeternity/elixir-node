@@ -112,11 +112,10 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
-          {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, top_hash, pid) when is_pid(pid) do
+  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(height, pid) when is_pid(pid) do
     @get_header_by_height
-    |> pack_msg(%{height: height, top_hash: top_hash})
+    |> pack_msg(%{height: height})
     |> send_request_msg(pid)
   end
 
@@ -146,13 +145,6 @@ defmodule Aecore.Peers.PeerConnection do
   def send_new_block(block, pid) when is_pid(pid) do
     @block
     |> pack_msg(block)
-    |> send_msg_no_response(pid)
-  end
-
-  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid) when is_pid(pid) do
-    @tx
-    |> pack_msg(tx)
     |> send_msg_no_response(pid)
   end
 
@@ -294,9 +286,6 @@ defmodule Aecore.Peers.PeerConnection do
       @block ->
         spawn(fn -> handle_new_block(deserialized_payload) end)
 
-      @tx ->
-        spawn(fn -> handle_new_tx(deserialized_payload) end)
-
       @tx_pool_sync_init ->
         spawn(fn -> handle_tx_pool_sync_init(self) end)
 
@@ -408,10 +397,6 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), Block.rlp_encode(block)])
   end
 
-  def rlp_encode(@tx, tx) do
-    ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), SignedTx.rlp_encode(tx)])
-  end
-
   def rlp_encode(@get_mempool, _data) do
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version)])
   end
@@ -504,8 +489,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     # vsn should be addititonaly decoded with :binary.decode_unsigned
-    [_vsn, height, top_hash] = ExRLP.decode(encoded_get_header_by_height)
-    %{height: :binary.decode_unsigned(height), top_hash: top_hash}
+    [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
+    %{height: :binary.decode_unsigned(height)}
   end
 
   def rlp_decode(@header, encoded_header) do
@@ -524,13 +509,11 @@ defmodule Aecore.Peers.PeerConnection do
       # vsn should be addititonaly decoded with :binary.decode_unsigned
       _vsn,
       hash,
-      target_hash,
       n
     ] = ExRLP.decode(encoded_get_n_successors)
 
     %{
       hash: hash,
-      target_hash: target_hash,
       n: :binary.decode_unsigned(n)
     }
   end
@@ -564,16 +547,6 @@ defmodule Aecore.Peers.PeerConnection do
 
     {:ok, deserialized_block} = Block.rlp_decode(block)
     %{block: deserialized_block}
-  end
-
-  def rlp_decode(@tx, encoded_tx) do
-    [
-      _vsn,
-      tx
-    ] = ExRLP.decode(encoded_tx)
-
-    {:ok, deserialized_tx} = SignedTx.rlp_decode(tx)
-    %{tx: deserialized_tx}
   end
 
   def rlp_decode(@get_mempool, _data) do
@@ -848,10 +821,6 @@ defmodule Aecore.Peers.PeerConnection do
 
   defp handle_new_block(%{block: block}) do
     Chain.add_block(block)
-  end
-
-  defp handle_new_tx(%{tx: tx}) do
-    Pool.add_transaction(tx)
   end
 
   defp handle_tx_pool_sync_init(pid) do

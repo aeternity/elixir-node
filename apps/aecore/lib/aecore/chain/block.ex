@@ -8,7 +8,7 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
 
-  @version 15
+  @version 14
 
   @type t :: %Block{
           header: Header.t(),
@@ -22,35 +22,6 @@ defmodule Aecore.Chain.Block do
   @spec current_block_version() :: non_neg_integer()
   def current_block_version do
     @version
-  end
-
-  # @spec genesis_header() :: Header.t()
-  # defp genesis_header do
-  #   header = Application.get_env(:aecore, :pow)[:genesis_header]
-  #   struct(Header, header)
-  # end
-
-  def genesis_header do
-    Header.new(%{
-      height: 0,
-      prev_hash:
-        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0>>,
-      txs_hash:
-        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0>>,
-      root_hash:
-        <<232, 183, 193, 178, 72, 97, 49, 126, 122, 247, 245, 45, 43, 120, 61, 35, 210, 166, 103,
-          167, 99, 167, 85, 205, 205, 254, 50, 201, 221, 174, 64, 108>>,
-      target: 553_713_663,
-      nonce: 0,
-      time: 0,
-      miner:
-        <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0>>,
-      version: 15,
-      pow_evidence: :no_value
-    })
   end
 
   @spec encode_to_map(Block.t()) :: map()
