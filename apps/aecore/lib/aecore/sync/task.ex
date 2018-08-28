@@ -39,7 +39,7 @@ defmodule Aecore.Sync.Task do
             workers: []
 
   @spec init_sync_task(Chain.t()) :: t()
-  def init_sync_task(chain = %Chain{chain_id: id}) do
+  def init_sync_task(%Chain{chain_id: id} = chain) do
     %Task{id: id, chain: chain}
   end
 
@@ -52,17 +52,17 @@ defmodule Aecore.Sync.Task do
   end
 
   @spec set_sync_task(t(), Sync.t()) :: Sync.t()
-  def set_sync_task(st = %Task{id: id}, sync = %Sync{sync_tasks: sts}) do
+  def set_sync_task(%Task{id: id} = st, %Sync{sync_tasks: sts} = sync) do
     %Sync{sync | sync_tasks: keystore(id, st, sts)}
   end
 
   @spec set_sync_task(task_id(), t(), Sync.t()) :: Sync.t()
-  def set_sync_task(id, st = %Task{}, sync = %Sync{sync_tasks: sts}) do
+  def set_sync_task(id, %Task{} = st, %Sync{sync_tasks: sts} = sync) do
     %Sync{sync | sync_tasks: keystore(id, st, sts)}
   end
 
   @spec delete_sync_task(t(), Sync.t()) :: Sync.t()
-  def delete_sync_task(%Task{id: stid}, sync = %Sync{sync_tasks: sts}) do
+  def delete_sync_task(%Task{id: stid}, %Sync{sync_tasks: sts} = sync) do
     %Sync{sync | sync_tasks: Enum.filter(sts, fn %{id: id} -> id != stid end)}
   end
 
@@ -85,7 +85,7 @@ defmodule Aecore.Sync.Task do
   end
 
   @spec maybe_end_sync_task(Sync.t(), t()) :: Sync.t()
-  def maybe_end_sync_task(sync, st = %Task{chain: chain}) do
+  def maybe_end_sync_task(sync, %Task{chain: chain} = st) do
     case chain do
       %Chain{peers: [], chain: [target | _]} ->
         Logger.info("#{__MODULE__}: Removing Sync task: st with target: #{inspect(target)}")
@@ -104,10 +104,10 @@ defmodule Aecore.Sync.Task do
 
   def match_tasks(chain, [], acc) do
     {height, %Chain{chain_id: cid, peers: peers}} = hd(Enum.reverse(acc))
-    {:inconclusive, chain, {:get_header, cid, peers, heigth}}
+    {:inconclusive, chain, {:get_header, cid, peers, height}}
   end
 
-  def match_tasks(chain_1, [st = %Task{chain: chain_2} | sts], acc) do
+  def match_tasks(chain_1, [%Task{chain: chain_2} = st | sts], acc) do
     case Chain.match_chains(Map.get(chain_1, :chain), Map.get(chain_2, :chain)) do
       :equal -> {:match, st}
       :different -> match_tasks(chain_1, sts, acc)

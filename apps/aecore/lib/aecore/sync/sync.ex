@@ -27,8 +27,16 @@ defmodule Aecore.Sync.Sync do
   @type task_id :: reference()
   @type height :: non_neg_integer()
   @type hash :: binary()
+  @type last_hash :: binary()
+  @type target_hash :: binary()
   @type peer_id :: pid()
-  @spec split_pool() :: {list(Task.pool_elem(),list(Task.pool_elem())}
+  @type last_result ::
+          :none
+          | {:agreed_height, Chain.chain()}
+          | {:hash_pool, list(Task.pool_elem())}
+          | {:get_block, height(), hash(), peer_id(), {:ok, Block.t()}}
+          | {:post_blocks, :ok | {:error, Block.t(), height()}}
+  @type t :: %Sync{sync_tasks: list(Task.t())}
 
   defstruct sync_tasks: []
 
@@ -49,7 +57,10 @@ defmodule Aecore.Sync.Sync do
     GenServer.call(__MODULE__, {:sync_in_progress, peer_id})
   end
 
-  @spec known_chain(Chain.t(), Chain.t() | :none)
+  @spec known_chain(Chain.t(), Chain.t() | :none) ::
+          {:inconclusive, Chain.t()}
+          | {:existing, Task.task_id()}
+          | {:new, Chain.t(), Task.task_id()}
   def known_chain(chain, extra_info) do
     GenServer.call(__MODULE__, {:known_chain, chain, extra_info})
   end
@@ -197,16 +208,16 @@ defmodule Aecore.Sync.Sync do
   end
 
   @spec sync_task_for_chain(Chain.t(), t()) ::
-  {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
-  | {{:existing, task_id()}, t()}
-  | {{:new, Chain.t(), task_id()}, t()}
+          {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
+          | {{:existing, Task.task_id()}, t()}
+          | {{:new, Chain.t(), Task.task_id()}, t()}
   def sync_task_for_chain(chain, %Sync{sync_tasks: sts} = state) do
     case Task.match_tasks(chain, sts, []) do
       :no_match ->
         st = %Task{id: st_id} = Task.init_sync_task(chain)
         {{:new, chain, st_id}, Task.set_sync_task(st, state)}
 
-      {:match, st = %Task{id: st_id, chain: chain2}} ->
+      {:match, %Task{id: st_id, chain: chain2} = st} ->
         new_chain = Chain.merge_chains(%Chain{chain_id: st_id}, chain2)
         st1 = %Task{st | chain: new_chain}
         {{:existing, st_id}, Task.set_sync_task(st1, state)}
@@ -216,13 +227,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  @type last_result ::
-  :none
-  | {:agreed_height, Chain.chain()}
-  | {:hash_pool, list(Task.pool_elem())}
-  | {:get_block, height(), hash(), peer_id(), {:ok, Block.t()}}
-  | {:post_blocks, :ok | {:error, Block.t(), height()}}
-  @spec handle_last_result(t(), task_id(), last_result()) :: t()
+  @spec handle_last_result(t(), Task.task_id(), last_result()) :: t()
   def handle_last_result(state, stid, last_result) do
     case Task.get_sync_task(stid, state) do
       {:ok, st} ->
@@ -236,10 +241,10 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(st, :none), do: st
 
-  def handle_last_result(%Task{agreed: nil} = st, {:agreed_height, agreed}),
+  def handle_last_result(%Task{agreed: nil}, {:agreed_height, agreed} = st),
     do: %Task{st | agreed: agreed}
 
-  def handle_last_result(%Task{pool: []} = st, {:hash_pool, hash_pool}) do
+  def handle_last_result(%Task{pool: []}, {:hash_pool, hash_pool} = st) do
     {height, hash, false} = List.last(hash_pool)
     %Task{st | pool: hash_pool, agreed: %{height: height, hash: hash}}
   end
@@ -248,7 +253,7 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(
         %Task{pool: pool} = st,
-    {:get_block, height, hash, peer_id, {:ok, block}}
+        {:get_block, height, hash, peer_id, {:ok, block}}
       ) do
     pool1 =
       Enum.map(pool, fn
@@ -263,7 +268,7 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(
         %Task{adding: adds, pending: pends, pool: pool, chain: chain} = st,
-    {:post_blocks, {:error, block_from_peer_id, height}}
+        {:post_blocks, {:error, block_from_peer_id, height}}
       ) do
     ## Put back the blocks we did not manage to post, and schedule
     ## failing block for another retraival
@@ -280,7 +285,8 @@ defmodule Aecore.Sync.Sync do
     }
   end
 
-
+  @spec split_pool(list(Task.pool_elem())) ::
+          {list(Task.pool_elem()), list(Task.pool_elem()) | []}
   def split_pool(pool), do: split_pool(pool, [])
 
   def split_pool([{_, _, false} | _] = pool, acc), do: {Enum.reverse(acc), pool}
@@ -289,8 +295,15 @@ defmodule Aecore.Sync.Sync do
 
   def split_pool([p | pool], acc), do: split_pool(pool, [p | acc])
 
+  @spec get_next_work_item(Sync.t(), reference(), peer_id()) ::
+          {{:post_blocks, Block.t()}
+           | {:get_block, height(), hash()}
+           | {:agree_on_height, Chain.chain()}
+           | {:fill_pool, last_hash(), target_hash()}
+           | :take_a_break
+           | :abort_work, Sync.t()}
   def get_next_work_item(state, stid, peer_id) do
-    with {:ok, st = %Task{chain: %Chain{peers: peer_ids}}} <- Task.get_sync_task(stid, state),
+    with {:ok, %Task{chain: %Chain{peers: peer_ids}} = st} <- Task.get_sync_task(stid, state),
          true <- Enum.member?(peer_ids, peer_id) do
       {action, st1} = get_next_work_item(st)
       {action, Task.set_sync_task(stid, st1, state)}
@@ -341,6 +354,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
+  # Pick a random block from the ones we don't have already
   def get_next_work_item(%Task{pool: [{_, _, false} | _] = pool} = st) do
     pick_from = Enum.filter(pool, fn {_, _, elem} -> elem == false end)
 
@@ -396,6 +410,7 @@ defmodule Aecore.Sync.Sync do
     %Task{st | workers: Task.keystore(peer_id, {peer_id, new_pid}, ws)}
   end
 
+  @spec do_terminate_worker(pid(), Sync.t()) :: Sync.t()
   def do_terminate_worker(pid, %Sync{sync_tasks: sts} = state) do
     case Enum.filter(sts, fn %{workers: {_, p}} -> p == pid end) do
       [st] ->
@@ -414,16 +429,19 @@ defmodule Aecore.Sync.Sync do
     %Task{st | workers: Enum.filter(ws, fn {_, p} -> p != pid end)}
   end
 
+  @spec ping_peer(peer_id()) :: :ok | {:error, String.t()}
   def ping_peer(peer_id) do
     res = PeerConnection.ping(peer_id)
 
     case res do
       :ok ->
         Logger.info("#{__MODULE__}: Pinged peer #{inspect(peer_id)} successfully")
+        :ok
 
       ## Log ping
-      {:error, reason} ->
+      {:error, reason} = err ->
         Logger.info("#{__MODULE__}: Error while pinging peer #{inspect(peer_id)}: #{reason}")
+        err
     end
   end
 
