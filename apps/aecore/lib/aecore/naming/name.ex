@@ -78,14 +78,20 @@ defmodule Aecore.Naming.Name do
   end
 
   @spec encode_to_list(t()) :: binary()
-  def encode_to_list(%Name{} = naming_state) do
+  def encode_to_list(%Name{
+        owner: owner,
+        expires: expires,
+        status: status,
+        client_ttl: client_ttl,
+        pointers: pointers
+      }) do
     [
       :binary.encode_unsigned(@version),
-      naming_state.owner,
-      :binary.encode_unsigned(naming_state.expires),
-      Atom.to_string(naming_state.status),
-      :binary.encode_unsigned(naming_state.client_ttl),
-      naming_state.pointers
+      owner,
+      :binary.encode_unsigned(expires),
+      Atom.to_string(status),
+      :binary.encode_unsigned(client_ttl),
+      pointers
     ]
   end
 

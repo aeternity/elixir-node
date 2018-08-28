@@ -62,7 +62,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
       !is_integer(name_salt) ->
         {:error,
-         "#{__MODULE__}: Name salt is not correct: #{inspect(byte_size(name_salt))}, should be integer"}
+         "#{__MODULE__}: Name salt is not correct: #{inspect(name_salt)}, should be integer"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
