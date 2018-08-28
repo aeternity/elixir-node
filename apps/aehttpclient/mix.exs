@@ -22,6 +22,7 @@ defmodule Aehttpclient.Mixfile do
   defp deps do
     [
       {:httpoison, "~> 1.0.0"},
+      {:erl_base58, "~> 0.0.1"},
       {:aeutil, in_umbrella: true},
       {:aehttpserver, in_umbrella: true}
     ]
