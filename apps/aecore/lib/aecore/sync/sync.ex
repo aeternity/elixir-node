@@ -747,20 +747,6 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  defp parse_peers(peers) do
-    Enum.map(peers, fn peer -> parse_peer(peer) end)
-  end
-
-  defp parse_peers(peer) do
-    ## parse_peer_address should be implemented!!
-    :unfinished
-
-    case Peers.parse_peer_address(peer) do
-      {:ok, peer_info} -> [peer_info]
-      {:error, _} -> []
-    end
-  end
-
   ## Checks if peer is syncing
   defp peer_in_sync?(%Sync{sync_tasks: sts}, peer_id) do
     sts
