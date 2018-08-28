@@ -29,7 +29,7 @@ defmodule Aecore.Naming.NameCommitment do
           Wallet.pubkey(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: t()
+        ) :: NameCommitment.t()
   def create(hash, owner, created, expires) do
     identified_hash = Identifier.create_identity(hash, :commitment)
     identified_owner = Identifier.create_identity(owner, :account)

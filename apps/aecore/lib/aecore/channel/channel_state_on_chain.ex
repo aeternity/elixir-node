@@ -188,7 +188,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     [
       :binary.encode_unsigned(@version),
