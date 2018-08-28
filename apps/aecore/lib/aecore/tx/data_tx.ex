@@ -12,7 +12,6 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
   alias Aeutil.TypeToTag
-  alias Aecore.Tx.Transaction
 
   require Logger
 
@@ -236,9 +235,9 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx, context) do
+  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
 
@@ -261,7 +260,7 @@ defmodule Aecore.Tx.DataTx do
              block_height,
              payload,
              tx,
-             context
+             0
            ) do
       new_chainstate =
         if tx.type.get_chain_state_name() == :accounts do
@@ -278,14 +277,14 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx, context) do
+  def preprocess_check(chainstate, block_height, tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context) do
+    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, 0) do
       if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
         :ok
       else
