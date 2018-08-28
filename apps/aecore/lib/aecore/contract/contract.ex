@@ -92,20 +92,24 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    decoded_active =
-      case :binary.decode_unsigned(active) do
-        0 -> false
-        1 -> true
-      end
+    decoded_active = decode_active(active)
 
     decoded_referers =
-      Enum.map(referers, fn referer ->
-        {:ok, decoded_referer} = Identifier.decode_from_binary(referer)
+      Enum.reduce_while(referers, [], fn referer, acc ->
+        case Identifier.decode_from_binary(referer) do
+          {:ok, decoded_referer} ->
+            {:cont, [decoded_referer | acc]}
 
-        decoded_referer
+          _ ->
+            {:halt,
+             {:error,
+              "#{__MODULE__}: decode_from_list: Invalid contract referer: #{inspect(referer)}"}}
+        end
       end)
 
-    with {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
+    with {:ok, decoded_active_value} <- decoded_active,
+          true <- is_list(decoded_referers),
+         {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
       {:ok,
        %Contract{
          id: %Identifier{type: :contract},
@@ -114,7 +118,7 @@ defmodule Aecore.Contract.Contract do
          code: code,
          store: %{},
          log: log,
-         active: decoded_active,
+         active: decoded_active_value,
          referers: decoded_referers,
          deposit: :binary.decode_unsigned(deposit)
        }}
@@ -129,6 +133,18 @@ defmodule Aecore.Contract.Contract do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  @spec decode_active(binary()) :: non_neg_integer()
+  def decode_active(active) when active == <<0>> or active == <<1>> do
+    case :binary.decode_unsigned(active) do
+      0 -> {:ok, false}
+      1 -> {:ok, true}
+    end
+  end
+
+  def decode_active(active) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid contract active: #{inspect(active)}"}
   end
 
   @spec store_id(Contract.t()) :: binary()

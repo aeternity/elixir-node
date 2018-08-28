@@ -52,7 +52,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameUpdateTx.t()
 
   def init(%{
         hash: %Identifier{} = identified_hash,
@@ -87,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
           hash: identified_hash,
@@ -125,7 +125,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -157,7 +157,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -200,7 +200,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -214,9 +214,11 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       :binary.encode_unsigned(tx.client_ttl),
@@ -228,7 +230,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         encoded_hash,
         client_ttl,
@@ -249,7 +251,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         DataTx.init_binary(
           NameUpdateTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
