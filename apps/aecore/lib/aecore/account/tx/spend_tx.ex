@@ -110,9 +110,10 @@ defmodule Aecore.Account.Tx.SpendTx do
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
-  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
+  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx, _context) do
     sender = DataTx.main_sender(data_tx)
 
     new_accounts =
@@ -136,9 +137,10 @@ defmodule Aecore.Account.Tx.SpendTx do
           tx_type_state(),
           non_neg_integer(),
           SpendTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
+  def preprocess_check(accounts, %{}, _block_height, tx, data_tx, _context) do
     sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
     if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do

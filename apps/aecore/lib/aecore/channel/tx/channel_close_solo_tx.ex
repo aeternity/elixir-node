@@ -83,7 +83,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
@@ -95,7 +96,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
               channel_id: channel_id
             } = state
         },
-        _data_tx
+        _data_tx,
+        _context
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
@@ -114,14 +116,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         channels,
         _block_height,
         %ChannelCloseSoloTx{state: state},
-        data_tx
+        data_tx,
+        _context
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)

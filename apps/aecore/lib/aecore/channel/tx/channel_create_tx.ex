@@ -95,14 +95,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
         block_height,
         %ChannelCreateTx{} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     nonce = DataTx.nonce(data_tx)
@@ -141,14 +143,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         channels,
         _block_height,
         %ChannelCreateTx{} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     nonce = DataTx.nonce(data_tx)
