@@ -6,7 +6,11 @@ defmodule EpochElixir.Mixfile do
       app: :elixir_node,
       apps_path: "apps",
       version: "0.1.0",
-      elixir: "~> 1.6.4",
+      build_path: "./_build",
+      config_path: "./config/config.exs",
+      deps_path: "./deps",
+      lockfile: "./mix.lock",
+      elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -48,18 +52,10 @@ defmodule EpochElixir.Mixfile do
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.8.1", only: :test},
-      {:idna,
-       [
-         git: "https://github.com/aeternity/erlang-idna",
-         ref: "24bf647",
-         manager: :rebar,
-         override: true
-       ]},
-      {:ranch,
-       git: "https://github.com/ninenines/ranch",
-       ref: "55c2a9d623454f372a15e99721a37093d8773b48",
-       override: true},
-      {:edown, "~> 0.8", override: true}
+
+      # aecore deps, they are needed here, as we can only override umbrella-apps dependencies here (https://github.com/elixir-lang/elixir/issues/5232)
+      {:idna, github: "aeternity/erlang-idna", tag: "5.1.1", manager: :rebar, override: true},
+      {:ranch, github: "ninenines/ranch", tag: "1.4.0", override: true}
     ]
   end
 end

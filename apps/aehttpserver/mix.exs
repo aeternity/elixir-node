@@ -36,12 +36,12 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:aeutil, in_umbrella: true},
       {:phoenix, "~> 1.3.0"},
       {:cowboy, "~> 1.0"},
       {:cors_plug, "~> 1.5.0"},
       {:erl_base58, "~> 0.0.1"},
-      {:uuid, "~> 1.1.8"},
-      {:aeutil, in_umbrella: true}
+      {:uuid, "~> 1.1.8"}
     ]
   end
 end

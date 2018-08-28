@@ -22,15 +22,13 @@ defmodule Aeutil.Mixfile do
 
   defp deps do
     [
-      {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
-      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
       {:gproc, "~> 0.6.1"},
       {:erl_base58, "~> 0.0.1"},
-      {:merkle_patricia_tree,
-       git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git",
-       ref: "595a436c554a4c2b7235f184fc9d2a910d333ca5",
-       override: true},
-      {:ex_rlp, "~> 0.2.1"}
+      {:ex_rlp, "~> 0.2.1"},
+      {:edown, "~> 0.8", override: true}, # needs override as uwiger/sext edown dependency is not correctly downloading
+      {:sext, github: "uwiger/sext", tag: "1.4.1", manager: :rebar},
+      {:enacl, github: "aeternity/enacl", ref: "2f50ba6"},
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", ref: "595a436"}
     ]
   end
 end
