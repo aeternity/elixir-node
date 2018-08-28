@@ -4,6 +4,8 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   """
 
   alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.Account
 
   @typedoc "Structure of an update"
   @type update_types ::
@@ -16,7 +18,7 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   @doc """
     Updates
   """
-  @callback update_offchain_chainstate(Chainstate.t(), update_types()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  @callback update_offchain_chainstate(Chainstate.t(), update_types(), ChannelStateOnChain.t()) :: {:ok, Chainstate.t()} | {:error, String.t()}
 
   @callback encode_to_list(update_types()) :: list(binary()) | {:error, String.t()}
 
@@ -29,15 +31,20 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
       and this temporary tag will need to be removed.
     """
 
-  def tag_to_module(0), do: {:ok, Aecore.Channels.Updates.ChannelTransferUpdate}
-  def tag_to_module(1), do: {:ok, Aecore.Channels.Updates.ChannelDepositUpdate}
-  def tag_to_module(2), do: {:ok, Aecore.Channels.Updates.ChannelWidthdrawUpdate}
+  def tag_to_module(0), do: {:ok, Aecore.Channel.Updates.ChannelTransferUpdate}
+  def tag_to_module(1), do: {:ok, Aecore.Channel.Updates.ChannelDepositUpdate}
+  def tag_to_module(2), do: {:ok, Aecore.Channel.Updates.ChannelWidthdrawUpdate}
   def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
+
+  def module_to_tag(Aecore.Channel.Updates.ChannelTransferUpdate), do: {:ok, 0}
+  def module_to_tag(Aecore.Channel.Updates.ChannelDepositUpdate), do: {:ok, 1}
+  def module_to_tag(Aecore.Channel.Updates.ChannelWidthdrawUpdate), do: {:ok, 2}
+  def module_to_tag(module), do: {:error, "#{__MODULE__} Error: Unserializable module: #{IO.inspect(module)}"}
 
   @spec to_list(update_types()) :: list(binary())
   def to_list(object) do
     module = object.__struct__
-    tag = module.get_tag
+    {:ok, tag} = module_to_tag(module)
     [:binary.encode_unsigned(tag)] ++ module.encode_to_list(object)
   end
 
@@ -64,5 +71,4 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
     account
   end
-
 end

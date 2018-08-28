@@ -20,7 +20,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type payload :: %{
           initiator_amount: non_neg_integer(),
           responser_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          locktime: non_neg_integer(),
+          state_hash: binary(),
+          channel_reserve: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -33,7 +35,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type t :: %ChannelCreateTx{
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          locktime: non_neg_integer(),
+          state_hash: binary(),
+          channel_reserve: non_neg_integer()
         }
 
   @doc """
@@ -43,8 +47,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - initiator_amount: amount that account first on the senders list commits
   - responser_amount: amount that account second on the senders list commits
   - locktime: number of blocks for dispute settling
+  - state_hash: root hash of the initial offchain chainstate
+  - channel_reserve: minimal ammount of tokens held by the initiator or responder
   """
-  defstruct [:initiator_amount, :responder_amount, :locktime]
+  defstruct [:initiator_amount, :responder_amount, :locktime, :state_hash, :channel_reserve]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
@@ -55,13 +61,17 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
-          locktime: locktime
+          locktime: locktime,
+          state_hash: state_hash,
+          channel_reserve: channel_reserve
         } = _payload
       ) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      locktime: locktime
+      locktime: locktime,
+      state_hash: state_hash,
+      channel_reserve: channel_reserve
     }
   end
 
@@ -81,6 +91,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
       length(senders) != 2 ->
         {:error, "#{__MODULE__}: Invalid senders size"}
+
+      tx.initiator_amount < tx.channel_reserve ->
+        {:error, "#{__MODULE__}: Initiator amount does not meet minimal deposit"}
+
+      tx.responder_amount < tx.channel_reserve ->
+        {:error, "#{__MODULE__}: Responder amount does not meet minimal deposit"}
+
+      byte_size(tx.state_hash) != 32 ->
+        {:error, "#{__MODULE__}: Invalid state hash"}
 
       true ->
         :ok
@@ -122,7 +141,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         responder_pubkey,
         tx.initiator_amount,
         tx.responder_amount,
-        tx.locktime
+        tx.locktime,
+        tx.channel_reserve,
+        tx.state_hash
       )
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)

@@ -1,7 +1,9 @@
 defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
 
   alias Aecore.Channel.Updates.ChannelDepositUpdate
+  alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
@@ -33,7 +35,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
 
   def update_offchain_chainstate(
         %Chainstate{
-          accounts: %AccountStateTree{} = accounts
+          accounts: accounts
         } = chainstate,
         %ChannelDepositUpdate{
           from: from,
@@ -49,7 +51,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
           #|> Account.apply_nonce!(from_account.nonce+1) #TODO: check if the nonce is being increased in epoch
         end)
       {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
-    rescue
+    catch
       {:error, _} = err ->
         err
     end

@@ -2,6 +2,8 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
 
   alias Aecore.Channel.Updates.ChannelWithdrawUpdate
   alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
@@ -33,7 +35,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
 
   def update_offchain_chainstate(
         %Chainstate{
-          accounts: %AccountStateTree{} = accounts
+          accounts: accounts
         } = chainstate,
         %ChannelWithdrawUpdate{
           to: to,
@@ -47,10 +49,10 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
           account
           |> Account.apply_transfer!(nil, -amount)
           #|> Account.apply_nonce!(from_account.nonce+1) #TODO: check if the nonce is being increased in epoch
-          |> ensure_minimal_deposit_is_meet!()
+          |> ChannelOffchainUpdate.ensure_minimal_deposit_is_meet!(0)
         end)
       {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
-    rescue
+    catch
       {:error, _} = err ->
         err
     end

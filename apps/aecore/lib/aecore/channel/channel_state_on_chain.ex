@@ -21,7 +21,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           responder_amount: integer(),
           lock_period: non_neg_integer(),
           slash_close: integer(),
-          slash_sequence: integer()
+          slash_sequence: integer(),
+          state_hash: binary(),
+          channel_reserve: non_neg_integer()
         }
 
   @type id :: binary()
@@ -37,6 +39,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   - lock_period - time before slashing is settled
   - slash_close - when != 0: block height when slashing is settled
   - slash_sequence - when != 0: sequence or slashing
+  - state_hash - root hash of last known offchain chainstate
+  - channel_reserve - minimal ammount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_pubkey,
@@ -45,15 +49,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :responder_amount,
     :lock_period,
     :slash_close,
-    :slash_sequence
+    :slash_sequence,
+    :state_hash,
+    :channel_reserve
   ]
 
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(Wallet.pubkey(), Wallet.pubkey(), integer(), integer(), non_neg_integer()) ::
+  @spec create(Wallet.pubkey(), Wallet.pubkey(), integer(), integer(), non_neg_integer(), non_neg_integer(), binary()) ::
           ChannelStateOnChain.t()
-  def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period) do
+  def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period, channel_reserve, state_hash) do
     %ChannelStateOnChain{
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
@@ -61,7 +67,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       responder_amount: responder_amount,
       lock_period: lock_period,
       slash_close: 0,
-      slash_sequence: 0
+      slash_sequence: 0,
+      state_hash: state_hash,
+      channel_reserve: channel_reserve
     }
   end
 
@@ -194,11 +202,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       :binary.encode_unsigned(@version),
       channel.initiator_pubkey,
       channel.responder_pubkey,
+      :binary.encode_unsigned(channel.initiator_amount + channel.responder_amount),
       :binary.encode_unsigned(channel.initiator_amount),
-      :binary.encode_unsigned(channel.responder_amount),
+      :binary.encode_unsigned(channel.channel_reserve),
+      channel.state_hash,
+      :binary.encode_unsigned(channel.slash_sequence),
       :binary.encode_unsigned(channel.lock_period),
-      :binary.encode_unsigned(channel.slash_close),
-      :binary.encode_unsigned(channel.slash_sequence)
+      :binary.encode_unsigned(channel.slash_close)
     ]
   end
 
@@ -207,21 +217,25 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def decode_from_list(@version, [
         initiator_pubkey,
         responder_pubkey,
+        total_amount,
         initiator_amount,
-        responder_amount,
+        channel_reserve,
+        state_hash,
+        slash_sequence,
         lock_period,
-        slash_close,
-        slash_sequence
+        slash_close
       ]) do
     {:ok,
      %ChannelStateOnChain{
        initiator_pubkey: initiator_pubkey,
        responder_pubkey: responder_pubkey,
        initiator_amount: :binary.decode_unsigned(initiator_amount),
-       responder_amount: :binary.decode_unsigned(responder_amount),
+       responder_amount: :binary.decode_unsigned(total_amount - initiator_amount),
        lock_period: :binary.decode_unsigned(lock_period),
        slash_close: :binary.decode_unsigned(slash_close),
-       slash_sequence: :binary.decode_unsigned(slash_sequence)
+       slash_sequence: :binary.decode_unsigned(slash_sequence),
+       state_hash: state_hash,
+       channel_reserve: :binary.decode_unsigned(channel_reserve)
      }}
   end
 
