@@ -241,10 +241,10 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(st, :none), do: st
 
-  def handle_last_result(%Task{agreed: nil}, {:agreed_height, agreed} = st),
+  def handle_last_result(%Task{agreed: nil} = st, {:agreed_height, agreed}),
     do: %Task{st | agreed: agreed}
 
-  def handle_last_result(%Task{pool: []}, {:hash_pool, hash_pool} = st) do
+  def handle_last_result(%Task{pool: []} = st, {:hash_pool, hash_pool}) do
     {height, hash, false} = List.last(hash_pool)
     %Task{st | pool: hash_pool, agreed: %{height: height, hash: hash}}
   end
