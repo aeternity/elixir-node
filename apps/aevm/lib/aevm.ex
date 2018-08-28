@@ -20,7 +20,8 @@ defmodule Aevm do
     code = State.code(state)
 
     if pc >= byte_size(code) do
-      {:ok, state}
+      {:ok,
+       %{gas_left: State.gas(state), out: State.out(state), chain_state: State.chain_state(state)}}
     else
       op_code = AevmUtil.get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
@@ -1264,9 +1265,9 @@ defmodule Aevm do
   #   # TODO
   # end
 
-  # defp exec(OpCodes._REVERT(), state) do
-  #   # TODO
-  # end
+  defp exec(OpCodes._REVERT(), state) do
+    #TODO
+  end
 
   # 0xfe INVALID
   # Designated invalid instruction.

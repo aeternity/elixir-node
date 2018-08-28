@@ -4,12 +4,14 @@ defmodule Dispatch do
   """
 
   alias Aecore.Contract.Call
+  alias Aecore.Contract.VmChain
   alias Aevm.State, as: State
   alias Aevm.Aevm, as: Aevm
+  alias Aecore.Chain.Worker, as: Chain
 
   require ContractConstants, as: Constants
 
-  @pubkey_size 32
+  @pubkey_size_bits 256
 
   @spec run(integer(), map()) :: Call.t()
   def run(Constants.aevm_sophia_01(), call_definition) do
@@ -50,7 +52,7 @@ defmodule Dispatch do
   end
 
   def set_env(contract_pubkey, height, vm_version) do
-    # chainstate = new_state(height, contract_pubkey)
+    chainstate = %{pubkey: contract_pubkey, chain_state: Chain.chain_state()}
     %{
       currentCoinbase: <<>>,
       # Get actual difficulty
@@ -58,8 +60,8 @@ defmodule Dispatch do
       currentGasLimit: 100_000_000_000,
       currentNumber: height,
       currentTimestamp: :os.system_time(:millisecond),
-      # chainState: chain_state,
-      # chainApi: api,
+      chainState: Chain.chain_state(),
+      chainApi: VmChain,
       vm_version: vm_version
     }
   end
@@ -79,8 +81,8 @@ defmodule Dispatch do
         },
         spec
       ) do
-    <<address::size(@pubkey_size)>> = contract_pubkey
-    <<caller_address::size(@pubkey_size)>> = caller
+    <<address::size(@pubkey_size_bits)>> = contract_pubkey
+    <<caller_address::size(@pubkey_size_bits)>> = caller
 
     Map.put(spec, :exec, %{
       code: code,
@@ -104,6 +106,16 @@ defmodule Dispatch do
     # :revert - setting gas_used and return_type in call
     # :error - Execution resulting in VM exeception;
     # Gas used, but other state not affected.
-    Aevm.init(state)
+    try do
+      init_state = Aevm.init(state)
+      case Aevm.loop(init_state) do
+        {:ok, %{gas_left: gas_left, out: out, chain_state: chain_state}} ->
+          gas_used = gas - gas_left
+          {gas_used, chain_state}
+        {}
+      end
+    catch
+      error -> {:error, "#{__MODULE__}: call_init: #{error}"}
+    end
   end
 end
