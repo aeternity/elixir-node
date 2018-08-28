@@ -86,7 +86,7 @@ defmodule Aecore.Chain.Header do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec encode_to_binary(t()) :: binary()
+  @spec encode_to_binary(Header.t()) :: binary()
   def encode_to_binary(%Header{} = header) do
     <<
       header.version::@header_version_size,
