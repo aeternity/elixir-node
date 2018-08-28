@@ -130,7 +130,7 @@ defmodule Aecore.Chain.Chainstate do
   def apply_transaction_on_state(chainstate, block_height, tx) do
     case SignedTx.validate(tx, block_height) do
       :ok ->
-        SignedTx.process_chainstate(chainstate, block_height, tx)
+        SignedTx.process_chainstate(chainstate, block_height, tx, :unused_context)
 
       err ->
         err

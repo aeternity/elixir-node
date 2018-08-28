@@ -53,11 +53,11 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t(), Transaction.context()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
-    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
-      DataTx.process_chainstate(chainstate, block_height, data)
+  def process_chainstate(chainstate, block_height, %SignedTx{data: data}, context) do
+    with :ok <- DataTx.preprocess_check(chainstate, block_height, data, context) do
+      DataTx.process_chainstate(chainstate, block_height, data, context)
     else
       err ->
         err

@@ -238,7 +238,7 @@ defmodule Aecore.Tx.DataTx do
   """
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx, _context) do
+  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx, context) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
 
@@ -260,7 +260,8 @@ defmodule Aecore.Tx.DataTx do
              tx_type_state,
              block_height,
              payload,
-             tx
+             tx,
+             context
            ) do
       new_chainstate =
         if tx.type.get_chain_state_name() == :accounts do
@@ -279,12 +280,12 @@ defmodule Aecore.Tx.DataTx do
 
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx, _context) do
+  def preprocess_check(chainstate, block_height, tx, context) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
+    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context) do
       if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
         :ok
       else
