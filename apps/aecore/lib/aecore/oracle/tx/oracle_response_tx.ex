@@ -91,8 +91,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         Account.apply_transfer!(acc, block_height, query_fee)
       end)
 
-    IO
-
     updated_interaction_objects = %{
       interaction_objects
       | response: tx.response,

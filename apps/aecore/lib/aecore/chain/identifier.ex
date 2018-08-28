@@ -78,7 +78,8 @@ defmodule Aecore.Chain.Identifier do
     [encode_to_binary(head) | encode_list_to_binary(rest)]
   end
 
-  @spec decode_list_from_binary(list(binary())) :: {:ok, list(Identifier.t())} | {:error, String.t()}
+  @spec decode_list_from_binary(list(binary())) ::
+          {:ok, list(Identifier.t())} | {:error, String.t()}
   def decode_list_from_binary([]), do: {:ok, []}
 
   def decode_list_from_binary([head | rest]) do

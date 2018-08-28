@@ -228,7 +228,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     |> Map.get(:query_fee)
   end
 
-  @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) :: boolean()
+  @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
+          boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     tx_query_fee_is_met =
       tx.query_fee >=
