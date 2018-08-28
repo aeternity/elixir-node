@@ -148,6 +148,13 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
+  @spec hash_is_in_main_chain?(binary()) :: boolean()
+  def hash_is_in_main_chain?(header_hash) do
+    longest_blocks_chain()
+    |> Enum.map(fn block -> BlockValidation.block_header_hash(block.header) end)
+    |> Enum.member?(header_hash)
+  end
+
   @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil, :block) do
