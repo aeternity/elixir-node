@@ -6,14 +6,12 @@ defmodule ContractCallTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Chain.Identifier
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.{Identifier, Chainstate}
-  alias Aecore.Contract.{Call, CallStateTree}
+  alias Aecore.Contract.{Call, CallStateTree, Dispatch}
   alias Aecore.Tx.DataTx
-  alias Aecore.Contract.Dispatch
 
   @version 1
 
@@ -112,12 +110,12 @@ defmodule ContractCallTx do
         %ContractCallTx{
           caller: caller,
           contract: contract,
-          vm_version: vm_version,
-          amount: amount,
-          gas: gas,
-          gas_price: gas_price,
-          call_data: call_data,
-          call_stack: call_stack
+          # vm_version: vm_version,
+          # amount: amount,
+          # gas: gas,
+          # gas_price: gas_price,
+          # call_data: call_data,
+          # call_stack: call_stack
         },
         data_tx
       ) do
@@ -137,6 +135,7 @@ defmodule ContractCallTx do
           tx_type_state(),
           non_neg_integer(),
           t(),
+          Transction.context(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -144,11 +143,14 @@ defmodule ContractCallTx do
         calls,
         block_height,
         %ContractCallTx{} = call_tx,
+        context,
         data_tx
       ) do
     # Transfer the attached funds to the callee, before the calling of the contract
     sender = DataTx.main_sender(data_tx)
     nonce = DataTx.nonce(data_tx)
+
+    chain_state = Chain.chain_state()
 
     updated_accounts_state =
       accounts
@@ -156,9 +158,67 @@ defmodule ContractCallTx do
         Account.apply_transfer!(acc, block_height, call_tx.amount)
       end)
 
-    call = Call.new(call_tx.caller, nonce, block_height, call_tx.contract, call_tx.gas_price)
+    updated_chain_state = Map.put(chain_state, :accounts, updated_accounts_state)
 
-    run_contract(call_tx, call, block_height, nonce)
+    init_call = Call.new(call_tx.caller, nonce, block_height, call_tx.contract, call_tx.gas_price)
+
+    {call, update_chain_state1} =
+      run_contract(call_tx, init_call, block_height, nonce, updated_chain_state)
+
+    accounts1 = update_chain_state1.account
+
+    accounts2 =
+      case context do
+        :contract ->
+          accounts1
+
+        :transaction ->
+          gas_cost = call.gas_used * call_tx.gas_price
+          amount = call_tx.fee + gas_cost
+          caller1 = AccountStateTree.get(accounts1, sender)
+
+          accounts1
+          |> AccountStateTree.update(caller1, fn acc ->
+            Account.apply_transfer!(acc, block_height, amount)
+          end)
+      end
+
+    # Insert the call into the state tree. This is mainly to remember what the
+    # return value was so that the caller can access it easily.
+    # Each block starts with an empty calls tree.
+    updated_calls_tree =
+      calls
+      |> CallStateTree.insert_call(calls, call)
+
+    {:ok, {accounts2, updated_calls_tree}}
+  end
+
+  @spec preprocess_check(
+          Chainstate.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
+          ContractCallTx.t(),
+          DataTx.t()
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(
+        accounts,
+        calls,
+        _block_height,
+        tx,
+        data_tx
+      ) do
+    # TODO
+  end
+
+  @spec deduct_fee(
+          Chainstate.accounts(),
+          non_neg_integer(),
+          ContractCallTx.t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: Chainstate.accounts()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   # maybe identified caller and contract
@@ -172,16 +232,18 @@ defmodule ContractCallTx do
            gas_price: gas_price,
            call_data: call_data,
            call_stack: call_stack
-         } = call_tx,
+         },
          call,
          block_height,
-         nonce
+         _nonce,
+         chain_state
        ) do
     identified_caller = Identifier.create_identity(caller, :account)
     identified_contract = Identifier.create_identity(contract, :contract)
 
-    contracts_tree = Chainstate.contracts()
-    contract = ContractStateTree.get_contact(contract.value, contracts_tree)
+    contracts_tree = chain_state.contracts
+    # check the get_contract
+    contract = ContractStateTree.get_contact(contracts_tree, identified_contract.value)
 
     call_definition = %{
       caller: identified_caller.value,
