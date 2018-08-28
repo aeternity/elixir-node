@@ -6,7 +6,7 @@ defmodule Aeutil.Serialization do
   alias Aecore.Chain.Header
   alias Aecore.Tx.SignedTx
   alias Aecore.Naming.NameCommitment
-  alias Aecore.Naming.NameClaim
+  alias Aecore.Naming.Name
   alias Aecore.Chain.Chainstate
   alias Aeutil.Parser
   alias Aecore.Account.Account
@@ -150,7 +150,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :serialize)
 
       :hash ->
-        NameClaim.base58c_encode_hash(value)
+        Name.base58c_encode_hash(value)
 
       :value ->
         Account.base58c_encode(value)
@@ -253,7 +253,7 @@ defmodule Aeutil.Serialization do
         base64_binary(value, :deserialize)
 
       :hash ->
-        NameClaim.base58c_decode_hash(value)
+        Name.base58c_decode_hash(value)
 
       :value ->
         Account.base58c_decode(value)
