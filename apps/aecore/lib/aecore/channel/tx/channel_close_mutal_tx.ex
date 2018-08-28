@@ -92,14 +92,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
         channels,
         block_height,
         %ChannelCloseMutalTx{channel_id: channel_id} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
 
@@ -126,14 +128,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         _accounts,
         channels,
         _block_height,
         %ChannelCloseMutalTx{} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     fee = DataTx.fee(data_tx)
     channel = ChannelStateTree.get(channels, tx.channel_id)

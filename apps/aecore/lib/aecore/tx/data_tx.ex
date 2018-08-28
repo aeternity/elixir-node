@@ -12,6 +12,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
   alias Aeutil.TypeToTag
+  alias Aecore.Tx.Transaction
 
   require Logger
 
@@ -235,9 +236,9 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
+  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx, _context) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
 
@@ -276,8 +277,9 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) :: :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx) do
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
+          :ok | {:error, String.t()}
+  def preprocess_check(chainstate, block_height, tx, _context) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})

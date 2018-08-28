@@ -86,14 +86,16 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NamePreClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         block_height,
         %NamePreClaimTx{} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     sender = DataTx.main_sender(data_tx)
 
@@ -116,14 +118,16 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NamePreClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         _naming_state,
         _block_height,
         _tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     fee = DataTx.fee(data_tx)
     sender = DataTx.main_sender(data_tx)
