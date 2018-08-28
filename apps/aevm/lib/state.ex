@@ -12,6 +12,8 @@ defmodule State do
   `calldepth` - the current call's depth
   `opts`      - VM options
   """
+  # @spec init_vm(map(), map()) :: map()
+  # def init_vm(%{exec: exec, env: env, pre: pre}, opts) do
   @spec init_vm(map(), map(), map(), integer(), map()) :: map()
   def init_vm(exec, env, pre, calldepth, opts) do
     bytecode = Map.get(exec, :code)
@@ -35,6 +37,7 @@ defmodule State do
       :gas => Map.get(exec, :gas),
       :value => Map.get(exec, :value),
       :return_data => Map.get(exec, :return_data, <<>>),
+      :call_stack => Map.get(exec, :call_stack, []),
 
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
@@ -44,7 +47,9 @@ defmodule State do
 
       :pre => pre,
 
-      :calldepth => calldepth,
+      :vm_version => Map.get(env, :vm_version),
+      :chain_state => Map.get(env, :chain_state),
+      :chain_api => Map.get(env, :chain_api),
 
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
@@ -73,7 +78,7 @@ defmodule State do
   end
 
   def calldepth(state) do
-    Map.get(state, :calldepth)
+    Map.get(state, :call_stack) |> Enum.count()
   end
 
   def execute_calls(state) do
@@ -200,6 +205,14 @@ defmodule State do
 
   def current_timestamp(state) do
     Map.get(state, :currentTimestamp)
+  end
+
+  def out(state) do
+    Map.get(state, :out)
+  end
+
+  def chain_state(state) do
+    Map.get(state, :chain_state)
   end
 
   def get_balance(address, state) do

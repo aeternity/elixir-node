@@ -7,29 +7,20 @@ defmodule AecoreContractTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Contract.Call, as: Call
   alias Aecore.Contract.CallStateTree, as: CallStateTree
   alias Aecore.Contract.Contract
   alias Aecore.Contract.ContractStateTree
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Account.Account
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
     Chain.clear_state()
-    Pool.get_and_empty_pool()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
@@ -76,7 +67,7 @@ defmodule AecoreContractTest do
   end
 
   defp create_call do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _privkey} = Keys.keypair(:sign)
 
     Call.new(
       pubkey,
@@ -88,7 +79,7 @@ defmodule AecoreContractTest do
   end
 
   defp create_contract do
-    pubkey = Wallet.get_public_key()
+    {pubkey, _privkey} = Keys.keypair(:sign)
 
     Contract.new(
       pubkey,

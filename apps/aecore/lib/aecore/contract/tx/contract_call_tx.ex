@@ -143,7 +143,7 @@ defmodule ContractCallTx do
         accounts,
         calls,
         block_height,
-        %ContractCallTx{} = tx,
+        %ContractCallTx{} = call_tx,
         data_tx
       ) do
     # Transfer the attached funds to the callee, before the calling of the contract
@@ -153,12 +153,12 @@ defmodule ContractCallTx do
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.amount)
+        Account.apply_transfer!(acc, block_height, call_tx.amount)
       end)
 
-    call = Call.new(tx.caller, nonce, block_height, tx.contract, tx.gas_price)
+    call = Call.new(call_tx.caller, nonce, block_height, call_tx.contract, call_tx.gas_price)
 
-    run_contract(tx, call, block_height, nonce)
+    run_contract(call_tx, call, block_height, nonce)
   end
 
   # maybe identified caller and contract
@@ -172,7 +172,7 @@ defmodule ContractCallTx do
            gas_price: gas_price,
            call_data: call_data,
            call_stack: call_stack
-         } = tx,
+         } = call_tx,
          call,
          block_height,
          nonce
@@ -197,7 +197,6 @@ defmodule ContractCallTx do
     }
 
     Dispatch.run(vm_version, call_definition)
-
   end
 
   defp validate_identifier(%Identifier{} = id, type) do

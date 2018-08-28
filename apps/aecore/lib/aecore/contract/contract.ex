@@ -4,12 +4,12 @@ defmodule Aecore.Contract.Contract do
   """
   alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier
-  alias Aeutil.Serialization
-  alias Aecore.Keys.Wallet
   alias Aeutil.Hash
 
   @version 1
 
+  # The @store_prefix is used to name the storage tree and keep
+  # all storage nodes in one subtree under the contract tree.
   @store_prefix 16
 
   @type contract :: %Contract{
@@ -28,7 +28,9 @@ defmodule Aecore.Contract.Contract do
 
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
 
-  @spec new(Wallet.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
+  use Aecore.Util.Serializable
+
+  @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
   def new(owner, nonce, vm_version, code, deposit) do
     contract_id = create_contract_id(owner, nonce)
     identified_contract = Identifier.create_identity(contract_id, :contract)
@@ -48,30 +50,35 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec encode_to_list(Contract.t()) :: list()
-  def encode_to_list(%Contract{} = contract) do
-    active =
-      case contract.active do
+  def encode_to_list(%Contract{
+        owner: owner,
+        vm_version: vm_version,
+        code: code,
+        log: log,
+        active: active,
+        referers: referers,
+        deposit: deposit
+      }) do
+    encoded_active =
+      case active do
         true -> 1
         false -> 0
       end
 
-    raw_encoded_referers =
-      Enum.reduce(contract.referers, [], fn referer, acc ->
-        encoded_referer = Identifier.encode_to_binary(referer)
-        [encoded_referer | acc]
+    encoded_referers =
+      Enum.map(referers, fn referer ->
+        Identifier.encode_to_binary(referer)
       end)
-
-    encoded_referers = raw_encoded_referers |> Enum.reverse()
 
     [
       @version,
-      Identifier.encode_to_binary(contract.owner),
-      contract.vm_version,
-      contract.code,
-      contract.log,
-      active,
+      Identifier.encode_to_binary(owner),
+      :binary.encode_unsigned(vm_version),
+      code,
+      log,
+      encoded_active,
       encoded_referers,
-      contract.deposit
+      :binary.encode_unsigned(deposit)
     ]
   end
 
@@ -85,35 +92,35 @@ defmodule Aecore.Contract.Contract do
         referers,
         deposit
       ]) do
-    {:ok, decoded_owner_address} = Identifier.decode_from_binary(owner)
-
     decoded_active =
-      case Serialization.transform_item(active, :int) do
+      case :binary.decode_unsigned(active) do
         0 -> false
         1 -> true
       end
 
-    raw_decoded_referers =
-      Enum.reduce(referers, [], fn referer, acc ->
+    decoded_referers =
+      Enum.map(referers, fn referer ->
         {:ok, decoded_referer} = Identifier.decode_from_binary(referer)
 
-        [decoded_referer | acc]
+        decoded_referer
       end)
 
-    decoded_referers = raw_decoded_referers |> Enum.reverse()
-
-    {:ok,
-     %Contract{
-       id: %Identifier{type: :contract},
-       owner: decoded_owner_address,
-       vm_version: Serialization.transform_item(vm_version, :int),
-       code: code,
-       store: %{},
-       log: log,
-       active: decoded_active,
-       referers: decoded_referers,
-       deposit: Serialization.transform_item(deposit, :int)
-     }}
+    with {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
+      {:ok,
+       %Contract{
+         id: %Identifier{type: :contract},
+         owner: decoded_owner_address,
+         vm_version: :binary.decode_unsigned(vm_version),
+         code: code,
+         store: %{},
+         log: log,
+         active: decoded_active,
+         referers: decoded_referers,
+         deposit: :binary.decode_unsigned(deposit)
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
@@ -125,7 +132,7 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec store_id(Contract.t()) :: binary()
-  def store_id(%Contract{id: id} = contract), do: <<id.value::binary, @store_prefix>>
+  def store_id(%Contract{id: id}), do: <<id.value::binary, @store_prefix>>
 
   defp create_contract_id(owner, nonce) do
     nonce_binary = :binary.encode_unsigned(nonce)
