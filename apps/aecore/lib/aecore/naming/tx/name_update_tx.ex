@@ -5,15 +5,13 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Naming.Tx.NameUpdateTx
   alias Aecore.Naming.{Naming, NamingStateTree}
-  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Hash
 
   require Logger
 
@@ -141,9 +139,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
     claim = %{
       claim_to_update
-      | pointers: [tx.pointers],
+      | pointers: tx.pointers,
         expires: tx.expire_by,
-        ttl: tx.client_ttl
+        client_ttl: tx.client_ttl
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
@@ -183,7 +181,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner.value != sender ->
+      claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
