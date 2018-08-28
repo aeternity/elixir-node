@@ -33,12 +33,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -58,7 +58,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -81,7 +81,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -112,7 +112,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -128,9 +128,11 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       :binary.encode_unsigned(tx.ttl),
       :binary.encode_unsigned(datatx.fee),
@@ -138,7 +140,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, ttl_value, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, ttl_value, fee, ttl]) do
     payload = %{
       ttl: :binary.decode_unsigned(ttl_value)
     }
@@ -146,7 +148,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     DataTx.init_binary(
       OracleExtendTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

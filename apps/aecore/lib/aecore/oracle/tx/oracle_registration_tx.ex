@@ -44,7 +44,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   use ExConstructor
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
         query_format: query_format,
         response_format: response_format,
@@ -59,7 +59,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %OracleRegistrationTx{
           query_format: query_format,
@@ -92,7 +92,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -124,7 +124,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -158,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          OracleRegistrationTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -166,7 +166,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(t(), non_neg_integer(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     case tx.ttl do
       %{ttl: ttl, type: :relative} ->
@@ -195,10 +195,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
     ttl_type = Serialization.encode_ttl_type(tx.ttl)
+    [sender] = datatx.senders
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.query_format,
       tx.response_format,
@@ -211,7 +212,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         query_format,
         response_format,
@@ -235,7 +236,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     DataTx.init_binary(
       OracleRegistrationTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

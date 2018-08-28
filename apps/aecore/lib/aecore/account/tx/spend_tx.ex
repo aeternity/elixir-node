@@ -57,7 +57,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :accounts
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: SpendTx.t()
   def init(%{
         receiver: %Identifier{} = identified_receiver,
         amount: amount,
@@ -76,7 +76,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @doc """
   Checks wether the amount that is send is not a negative number
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -109,7 +109,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
@@ -135,7 +135,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
@@ -151,7 +151,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -167,9 +167,11 @@ defmodule Aecore.Account.Tx.SpendTx do
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       Identifier.encode_to_binary(tx.receiver),
       :binary.encode_unsigned(tx.amount),
       :binary.encode_unsigned(datatx.fee),
@@ -180,7 +182,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         encoded_receiver,
         amount,
         fee,
@@ -197,7 +199,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           version: @version,
           payload: payload
         },
-        encoded_senders,
+        [encoded_sender],
         :binary.decode_unsigned(fee),
         :binary.decode_unsigned(nonce),
         :binary.decode_unsigned(ttl)
