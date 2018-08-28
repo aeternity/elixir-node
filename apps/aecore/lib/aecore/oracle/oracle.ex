@@ -273,7 +273,7 @@ defmodule Aecore.Oracle.Oracle do
     end)
   end
 
-  @spec encode_to_list(t()) :: list()
+  @spec encode_to_list(Oracle.t()) :: list()
   def encode_to_list(%Oracle{} = oracle) do
     [
       :binary.encode_unsigned(@version),
@@ -284,7 +284,7 @@ defmodule Aecore.Oracle.Oracle do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, String.t()}
   def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
     {:ok,
      %Oracle{

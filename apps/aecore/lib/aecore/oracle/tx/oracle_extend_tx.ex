@@ -33,12 +33,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -58,7 +58,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -81,7 +81,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -112,7 +112,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          OracleExtendTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

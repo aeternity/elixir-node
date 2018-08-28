@@ -41,7 +41,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameRevokeTx.t()
   def init(%{hash: hash}) do
     name_hash =
       case hash do
@@ -65,7 +65,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @doc """
   Checks name hash byte size
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameRevokeTx{hash: hash}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -91,7 +91,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameRevokeTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -122,7 +122,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameRevokeTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -159,7 +159,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameRevokeTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

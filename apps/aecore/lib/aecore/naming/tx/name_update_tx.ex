@@ -50,7 +50,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameUpdateTx.t()
 
   def init(%{
         hash: %Identifier{} = identified_hash,
@@ -85,7 +85,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Checks name format
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %NameUpdateTx{
           hash: identified_hash,
@@ -123,7 +123,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -155,7 +155,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -198,7 +198,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameUpdateTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

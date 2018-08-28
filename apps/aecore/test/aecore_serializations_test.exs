@@ -113,12 +113,12 @@ defmodule AecoreSerializationTest do
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
 
-    deserialized_name_commitment1 = %NameCommitment{
+    updated_deserialized_name_commitment = %NameCommitment{
       deserialized_name_commitment
       | hash: name_commitment.hash
     }
 
-    assert deserialized_name_commitment1 == name_commitment
+    assert updated_deserialized_name_commitment == name_commitment
   end
 
   @tag :rlp_test

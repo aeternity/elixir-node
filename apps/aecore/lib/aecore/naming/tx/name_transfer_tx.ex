@@ -44,7 +44,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameTransferTx.t()
   def init(%{hash: %Identifier{} = identified_hash, target: %Identifier{} = identified_target}) do
     %NameTransferTx{hash: identified_hash, target: identified_target}
   end
@@ -58,7 +58,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -87,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -112,7 +112,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -149,7 +149,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()

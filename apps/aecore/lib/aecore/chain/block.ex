@@ -28,7 +28,6 @@ defmodule Aecore.Chain.Block do
   def encode_to_map(%Block{} = block) do
     serialized_header = Serialization.serialize_value(block.header)
     serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
-
     Map.put(serialized_header, "transactions", serialized_txs)
   end
 
