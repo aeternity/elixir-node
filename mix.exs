@@ -47,11 +47,18 @@ defmodule EpochElixir.Mixfile do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
-      {:idna, [git: "https://github.com/aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
-      {:ranch,
-      git: "https://github.com/ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
-      {:erl_base58, "~> 0.0.1"},
       {:excoveralls, "~> 0.8.1", only: :test},
+      {:idna,
+       [
+         git: "https://github.com/aeternity/erlang-idna",
+         ref: "24bf647",
+         manager: :rebar,
+         override: true
+       ]},
+      {:ranch,
+       git: "https://github.com/ninenines/ranch",
+       ref: "55c2a9d623454f372a15e99721a37093d8773b48",
+       override: true},
       {:edown, "~> 0.8", override: true}
     ]
   end
