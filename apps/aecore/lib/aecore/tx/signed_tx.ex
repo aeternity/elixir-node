@@ -75,7 +75,8 @@ defmodule Aecore.Tx.SignedTx do
 
   """
 
-  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) :: {:ok, SignedTx.t()} | {:error, String.t()}
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
   def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
     signatures =
       for _ <- DataTx.senders(tx) do

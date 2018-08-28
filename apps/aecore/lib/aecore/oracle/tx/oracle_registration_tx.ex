@@ -166,7 +166,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::
+          boolean()
   def is_minimum_fee_met?(tx, fee, block_height) do
     case tx.ttl do
       %{ttl: ttl, type: :relative} ->

@@ -721,8 +721,6 @@ defmodule Aecore.Peers.PeerConnection do
       end)
 
       tx_pool_sync_init(conn_pid)
-
-      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -797,20 +795,22 @@ defmodule Aecore.Peers.PeerConnection do
     send_response(result, @header, pid)
   end
 
-  defp handle_get_n_successors(%{hash: starting_header, target_hash: _, n: count}, pid) do
+  defp handle_get_n_successors(%{
+            starting_hash: starting_hash,
+            target_hash: target_hash,
+            n: count}, pid) do
     result =
-      case Chain.get_headers_forward(starting_header, count) do
-        {:ok, headers} ->
-          header_hashes =
-            Enum.map(headers, fn header ->
-              {header.height, BlockValidation.block_header_hash(header)}
-              <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
-            end)
+      with {:ok, headers} <- Chain.get_headers_forward(starting_hash, count),
+      true <- Chain.hash_is_in_main_chain?(target_hash) do
+      header_hashes =
+          Enum.map(headers, fn header ->
+            <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
+          end)
 
-          {:ok, Enum.reverse(header_hashes)}
-
-        {:error, reason} ->
-          {:error, reason}
+        {:ok, Enum.reverse(header_hashes)}
+      else
+        {:error, _} = error -> error
+        false -> {:error, :not_on_chain}
       end
 
     send_response(result, @header_hashes, pid)
