@@ -7,7 +7,6 @@ defmodule Aecore.Oracle.OracleQuery do
   alias Aecore.Keys.Wallet
   alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
 
   @version 1
 
