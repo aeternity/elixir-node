@@ -143,7 +143,7 @@ defmodule Aecore.Contract.Call do
   end
 
   def set_gas_used(call, gas_used) do
-    %Call{call : gas_used: gas_used}
+    %Call{call | gas_used: gas_used}
   end
 
   def set_return_value(call, return_value) do

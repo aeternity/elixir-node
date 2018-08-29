@@ -69,13 +69,16 @@ defmodule State do
     exec = export_exec(gas, to, value, data, caller, dest, caller_state)
     env = export_env(caller_state)
     pre = Map.get(caller_state, :pre, %{})
-    calldepth = State.calldepth(caller_state) + 1
 
-    init_vm(exec, env, pre, calldepth, opts)
+    init_vm(%{exec: exec, env: env, pre: pre}, opts)
   end
 
   def calldepth(state) do
-    Map.get(state, :call_stack) |> Enum.count()
+    __MODULE__.call_stack(state) |> Enum.count()
+  end
+
+  def call_stack(state) do
+    Map.get(state, :call_stack)
   end
 
   def execute_calls(state) do
@@ -305,7 +308,8 @@ defmodule State do
       :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
       :gasPrice => State.gas_price(state),
       :gas => gas,
-      :value => value
+      :value => value,
+      :call_stack => [caller | State.call_stack(state)]
     }
   end
 

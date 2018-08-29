@@ -98,7 +98,7 @@ defmodule Dispatch do
       call_stack: call_stack
     })
 
-    state = State.init_vm(spec, call_depth, opts)
+    state = State.init_vm(spec, %{})
 
     try do
       init_state = Aevm.init(state)
