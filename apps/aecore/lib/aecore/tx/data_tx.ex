@@ -276,7 +276,8 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
+          :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)

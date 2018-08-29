@@ -2,13 +2,9 @@ defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
   alias Aetestframework.Worker, as: TestFramework
-  alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Tx.Pool.Worker, as: Pool
 
   setup do
     TestFramework.start_link(%{})
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
 
     port1 = find_port(1)
     TestFramework.new_node("node1", port1)
@@ -32,8 +28,6 @@ defmodule MultiNodeSyncTest do
     TestFramework.get_all_peers "node4"
 
     on_exit(fn ->
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
       :ok
     end)
   end
