@@ -9,13 +9,10 @@ defmodule State do
   `exec`      - transaction information
   `env`       - environmental Information
   `pre`       - previous world state (mapping between addresses and accounts)
-  `calldepth` - the current call's depth
   `opts`      - VM options
   """
-  # @spec init_vm(map(), map()) :: map()
-  # def init_vm(%{exec: exec, env: env, pre: pre}, opts) do
-  @spec init_vm(map(), map(), map(), integer(), map()) :: map()
-  def init_vm(exec, env, pre, calldepth, opts) do
+  @spec init_vm(map(), map()) :: map()
+  def init_vm(%{exec: exec, env: env, pre: pre}, opts) do
     bytecode = Map.get(exec, :code)
 
     %{
