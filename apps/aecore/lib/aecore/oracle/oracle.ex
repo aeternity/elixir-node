@@ -30,7 +30,7 @@ defmodule Aecore.Oracle.Oracle do
   @pubkey_size 33
 
   @type t :: %Oracle{
-          owner: Wallet.pubkey(),
+          owner: Keys.pubkey(),
           query_format: binary(),
           response_format: binary(),
           query_fee: integer(),
