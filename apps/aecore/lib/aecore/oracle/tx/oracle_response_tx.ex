@@ -94,7 +94,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_interaction_objects = %{
       interaction_objects
       | response: tx.response,
-        expires: interaction_objects.expires + interaction_objects.response_ttl,
+        expires: interaction_objects.response_ttl + block_height,
         has_response: true
     }
 
@@ -136,7 +136,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, tx.query_id).oracle_address.value != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->

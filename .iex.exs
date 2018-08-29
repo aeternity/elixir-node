@@ -2,7 +2,7 @@ alias Aecore.Chain.Worker, as: Chain
 alias Aecore.Chain.{Chainstate, BlockValidation, Difficulty, Block, Header, Genesis}
 alias Aecore.Miner.Worker, as: Miner
 alias Aecore.Oracle.{Oracle, OracleStateTree}
-alias Aecore.Naming.{Naming, NamingStateTree}
+alias Aecore.Naming.{NameCommitment, NamingStateTree, NameUtil}
 alias Aecore.Naming.Tx.NamePreClaimTx
 alias Aecore.Naming.Tx.NameClaimTx
 alias Aecore.Naming.Tx.NameUpdateTx
