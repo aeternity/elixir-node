@@ -4,7 +4,7 @@ defmodule Aecore.Oracle.OracleQuery do
   """
 
   alias Aecore.Oracle.OracleQuery
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
@@ -18,7 +18,7 @@ defmodule Aecore.Oracle.OracleQuery do
           query: binary(),
           response: map() | atom(),
           response_ttl: integer(),
-          sender_address: Wallet.pubkey(),
+          sender_address: Keys.pubkey(),
           sender_nonce: integer()
         }
 
