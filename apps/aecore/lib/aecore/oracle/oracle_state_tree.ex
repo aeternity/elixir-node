@@ -7,6 +7,7 @@ defmodule Aecore.Oracle.OracleStateTree do
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Oracle.Oracle
   alias Aecore.Oracle.OracleQuery
+  alias Aecore.Chain.Identifier
   alias MerklePatriciaTree.Trie
 
   @type hash :: binary()
@@ -140,11 +141,11 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp add_query(tree, query, how) do
-    oracle_id = query.oracle_address.value
+    oracle_id = query.oracle_address
 
     id =
       OracleQueryTx.id(
-        query.sender_address.value,
+        query.sender_address,
         query.sender_nonce,
         oracle_id
       )
@@ -192,7 +193,14 @@ defmodule Aecore.Oracle.OracleStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
         {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
-        deserialized
+
+        case deserialized do
+          %Oracle{} ->
+            %{deserialized | owner: Identifier.create_identity(key, :oracle)}
+
+          _ ->
+            deserialized
+        end
 
       _ ->
         :none

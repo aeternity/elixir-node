@@ -13,7 +13,7 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(23), do: {:ok, Aecore.Oracle.Tx.OracleQueryTx}
   def tag_to_type(24), do: {:ok, Aecore.Oracle.Tx.OracleResponseTx}
   def tag_to_type(25), do: {:ok, Aecore.Oracle.Tx.OracleExtendTx}
-  def tag_to_type(30), do: {:ok, Aecore.Naming.NameClaim}
+  def tag_to_type(30), do: {:ok, Aecore.Naming.Name}
   def tag_to_type(31), do: {:ok, Aecore.Naming.NameCommitment}
   def tag_to_type(32), do: {:ok, Aecore.Naming.Tx.NameClaimTx}
   def tag_to_type(33), do: {:ok, Aecore.Naming.Tx.NamePreClaimTx}
@@ -50,7 +50,7 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Oracle.Tx.OracleQueryTx), do: {:ok, 23}
   def type_to_tag(Aecore.Oracle.Tx.OracleResponseTx), do: {:ok, 24}
   def type_to_tag(Aecore.Oracle.Tx.OracleExtendTx), do: {:ok, 25}
-  def type_to_tag(Aecore.Naming.NameClaim), do: {:ok, 30}
+  def type_to_tag(Aecore.Naming.Name), do: {:ok, 30}
   def type_to_tag(Aecore.Naming.NameCommitment), do: {:ok, 31}
   def type_to_tag(Aecore.Naming.Tx.NameClaimTx), do: {:ok, 32}
   def type_to_tag(Aecore.Naming.Tx.NamePreClaimTx), do: {:ok, 33}

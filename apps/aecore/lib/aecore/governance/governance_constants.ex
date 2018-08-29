@@ -25,6 +25,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @claim_expire_by_relative_limit 50_000
 
+  @name_split_check 2
+
   # getter functions with same name for use in other modules
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
@@ -56,4 +58,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec claim_expire_by_relative_limit :: non_neg_integer()
   def claim_expire_by_relative_limit, do: @claim_expire_by_relative_limit
+
+  @spec name_split_check :: non_neg_integer()
+  def name_split_check, do: @name_split_check
 end

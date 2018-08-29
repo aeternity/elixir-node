@@ -32,28 +32,36 @@ defmodule Aecore.Naming.NameUtil do
     if name == "" do
       <<0::256>>
     else
-      {label, remainder} = partition_name(name)
-
-      Hash.hash(namehash(remainder) <> Hash.hash(label))
+      name
+      |> String.split(GovernanceConstants.split_name_symbol())
+      |> Enum.reverse()
+      |> hash_labels()
     end
   end
 
-  @spec partition_name(String.t()) :: {String.t(), String.t()}
-  defp partition_name(name) do
-    [label | remainder] = split_name(name)
-    {label, Enum.join(remainder, GovernanceConstants.split_name_symbol())}
+  defp hash_labels([]), do: <<0::256>>
+
+  defp hash_labels([label | rest]) do
+    label_hash = Hash.hash(label)
+    rest_hash = hash_labels(rest)
+    Hash.hash(<<rest_hash::binary, label_hash::binary>>)
   end
 
   @spec validate_normalized_name(String.t()) :: :ok | {:error, String.t()}
   defp validate_normalized_name(name) do
     allowed_registrar =
       GovernanceConstants.name_registrars()
-      |> Enum.any?(fn registrar -> String.ends_with?(name, registrar) end)
+      |> Enum.any?(fn registrar ->
+        String.ends_with?(name, registrar) &&
+          Enum.count(String.split(name, GovernanceConstants.split_name_symbol())) ==
+            GovernanceConstants.name_split_check()
+      end)
 
     if allowed_registrar do
       validate_name_length(name)
     else
-      {:error, "#{__MODULE__}: name doesn't end with allowed registrar: #{inspect(name)}"}
+      {:error,
+       "#{__MODULE__}: name doesn't end with allowed registrar: #{inspect(name)} or consists of multiple namespaces"}
     end
   end
 
