@@ -62,6 +62,6 @@ defmodule TargetTest do
     ]
 
     timestamp = 140_000
-    assert 553_713_663 == Target.calculate_next_target(timestamp, blocks)
+    assert 539_294_250 == Target.calculate_next_target(timestamp, blocks)
   end
 end

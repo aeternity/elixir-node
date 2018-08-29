@@ -795,14 +795,14 @@ defmodule Aecore.Peers.PeerConnection do
     send_response(result, @header, pid)
   end
 
-  defp handle_get_n_successors(%{
-            starting_hash: starting_hash,
-            target_hash: target_hash,
-            n: count}, pid) do
+  defp handle_get_n_successors(
+         %{starting_hash: starting_hash, target_hash: target_hash, n: count},
+         pid
+       ) do
     result =
       with {:ok, headers} <- Chain.get_headers_forward(starting_hash, count),
-      true <- Chain.hash_is_in_main_chain?(target_hash) do
-      header_hashes =
+           true <- Chain.hash_is_in_main_chain?(target_hash) do
+        header_hashes =
           Enum.map(headers, fn header ->
             <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
           end)
