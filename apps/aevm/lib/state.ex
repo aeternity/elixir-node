@@ -15,16 +15,18 @@ defmodule State do
   def init_vm(%{exec: exec, env: env, pre: pre}, opts) do
     bytecode = Map.get(exec, :code)
 
+    chain_api = Map.get(env, :chain_api)
+    chain_state = Map.get(env, :chain_state)
+
     %{
       :stack => [],
       :memory => %{size: 0},
-      :storage => init_storage(Map.get(exec, :address), pre),
+      :storage => chain_api.get_store(),
       :pc => 0,
       :jumpdests => [],
       :out => <<>>,
       :logs => [],
       :callcreates => [],
-
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
       :caller => Map.get(exec, :caller),
@@ -35,19 +37,15 @@ defmodule State do
       :value => Map.get(exec, :value),
       :return_data => Map.get(exec, :return_data, <<>>),
       :call_stack => Map.get(exec, :call_stack, []),
-
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
-
       :pre => pre,
-
       :vm_version => Map.get(env, :vm_version),
-      :chain_state => Map.get(env, :chain_state),
-      :chain_api => Map.get(env, :chain_api),
-
+      :chain_api => chain_api,
+      :chain_state => chain_state,
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
   end
@@ -71,6 +69,25 @@ defmodule State do
     pre = Map.get(caller_state, :pre, %{})
 
     init_vm(%{exec: exec, env: env, pre: pre}, opts)
+  end
+
+  def call_contract(caller, target, gas, value, data, state) do
+    call_stack = [caller | call_stack(state)]
+    target_key = <<target::size(256)>>
+    chain_api = chain_api(state)
+    chain_state = chain_state(state)
+
+    case chain_api.call_contract(target_key, gas, value, data, call_stack, chain_state) do
+      {:ok, %{gas_spent: gas_spent, result: result}, chain_state_after_call} ->
+        {:ok, result, gas_spent, set_chain_state(state, chain_state_after_call)}
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  def save_storage(%{chain_api: chain_api, chain_state: chain_state, storage: storage} = state) do
+    %{state | chain_state: chain_api.set_store(storage, chain_state)}
   end
 
   def calldepth(state) do
@@ -129,6 +146,10 @@ defmodule State do
 
   def set_selfdestruct(value, state) do
     Map.put_new(state, :selfdestruct, value)
+  end
+
+  def set_chain_state(chain_state, state) do
+    Map.put(state, :chain_state, chain_state)
   end
 
   def stack(state) do
@@ -211,14 +232,19 @@ defmodule State do
     Map.get(state, :out)
   end
 
+  def chain_api(state) do
+    Map.get(state, :chain_api)
+  end
+
   def chain_state(state) do
     Map.get(state, :chain_state)
   end
 
   def get_balance(address, state) do
-    pre = Map.get(state, :pre)
-    account = Map.get(pre, address, %{})
-    Map.get(account, :balance, 0)
+    chain_api = chain_api(state)
+    chain_state = chain_state(state)
+    pubkey = <<address::size(256)>>
+    chain_api.get_balance(pubkey, chain_state)
   end
 
   def get_ext_code_size(address, state) do
@@ -290,13 +316,6 @@ defmodule State do
     |> Enum.reduce(<<>>, fn x, acc ->
       acc <> <<x::size(8)>>
     end)
-  end
-
-  def init_storage(address, pre) do
-    case Map.get(pre, address, nil) do
-      nil -> %{}
-      %{:storage => storage} -> storage
-    end
   end
 
   defp export_exec(gas, to, value, data, caller, dest, state) do

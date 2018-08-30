@@ -317,24 +317,34 @@ defmodule AevmUtil do
       )
 
     if State.execute_calls(call_state) do
-      {ret, out_gas} =
-        try do
-          {:ok, out_state} = Aevm.loop(call_state)
-          {1, State.gas(out_state)}
-        catch
-          {:error, _, _} ->
-            {0, 0}
+      {out_gas, return_state, result} =
+        case State.call_contract(
+               caller,
+               dest,
+               call_gas,
+               value,
+               input_area,
+               updated_memory_size_state
+             ) do
+          {:ok, %{result: call_result, gas_spent: gas_spent}, state_after_call} ->
+            {call_gas - gas_spent, state_after_call, call_result}
+
+          {:error, message} ->
+            {0, updated_memory_size_state, {:error, message}}
         end
 
-      remaining_gas = State.gas(updated_memory_size_state) + out_gas
-      updated_gas_state = State.set_gas(remaining_gas, updated_memory_size_state)
+      remaining_gas = State.gas(return_state) + out_gas
+      updated_gas_state = State.set_gas(remaining_gas, return_state)
 
       added_callcreate_state =
         State.add_callcreate(input_area, dest, call_gas, value, updated_gas_state)
 
       final_state =
-        case ret do
-          1 ->
+        case result do
+          {:error, _} ->
+            added_callcreate_state
+
+          _ ->
             {message, _} = Memory.get_area(0, output_size, added_callcreate_state)
 
             updated_memory_size_state =
@@ -342,12 +352,9 @@ defmodule AevmUtil do
 
             mem_gas_cost = Gas.memory_gas_cost(updated_memory_size_state, added_callcreate_state)
             State.set_gas(remaining_gas - mem_gas_cost, updated_memory_size_state)
-
-          0 ->
-            added_callcreate_state
         end
 
-      {ret, final_state}
+      {1, final_state}
     else
       remaining_gas = State.gas(updated_memory_size_state) + call_gas
       updated_memory_size_state = State.set_gas(remaining_gas, updated_memory_size_state)
