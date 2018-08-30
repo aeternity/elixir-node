@@ -72,47 +72,25 @@ defmodule Aecore.Tx.SignedTx do
   ## Parameters
      - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
-
   """
-
-  @spec sign_tx(DataTx.t() | SignedTx.t(), binary(), binary()) ::
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
-  def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
-    signatures =
-      for _ <- DataTx.senders(tx) do
-        nil
-      end
-
-    sign_tx(%SignedTx{data: tx, signatures: signatures}, pub_key, priv_key)
+  def sign_tx(%DataTx{} = tx, priv_key) do
+    signatures = DataTx.senders(tx)
+    sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
   end
 
-  def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
+  def sign_tx(%SignedTx{data: data, signatures: sigs}, priv_key) do
     new_signature =
       data
       |> DataTx.rlp_encode()
       |> Keys.sign(priv_key)
 
-    {success, new_sigs_reversed} =
-      sigs
-      |> Enum.zip(DataTx.senders(data))
-      |> Enum.reduce({false, []}, fn {sig, sender}, {success, acc} ->
-        if sender == pub_key do
-          {true, [new_signature | acc]}
-        else
-          {success, [sig | acc]}
-        end
-      end)
-
-    new_sigs = Enum.reverse(new_sigs_reversed)
-
-    if success do
-      {:ok, %SignedTx{data: data, signatures: new_sigs}}
-    else
-      {:error, "#{__MODULE__}: Not in senders"}
-    end
+    #We need to make sure the sigs are sorted in order for the json/websocket api to function properly
+    {:ok, %SignedTx{data: data, signatures: Enum.sort([new_signature | sigs])}}
   end
 
-  def sign_tx(tx, _pub_key, _priv_key) do
+  def sign_tx(tx, _priv_key) do
     {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
@@ -221,48 +199,78 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   def signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
-    if length(sigs) != length(DataTx.senders(data)) do
+    senders = DataTx.senders(data)
+    if length(sigs) != length(senders) do
       Logger.error("Wrong signature count")
       false
     else
       data_binary = DataTx.rlp_encode(data)
-
-      #TODO: The specification says that the signatures are sorted, so we cannot relay on this ordering. Refactor this module
-      sigs
-      |> Enum.zip(DataTx.senders(data))
-      |> Enum.reduce(true, fn {sig, acc}, validity ->
-        cond do
-          sig == nil ->
-            Logger.error("Missing signature of #{inspect(acc)}")
-            false
-
-          !Keys.key_size_valid?(acc) ->
-            Logger.error("Wrong sender size #{inspect(acc)}")
-            false
-
-          Keys.verify(data_binary, sig, acc) ->
-            validity
-
-          true ->
-            Logger.error("Signature of #{inspect(acc)} invalid")
-            false
-        end
-      end)
+      many_signatures_check(sigs, data_binary, senders)
     end
   end
 
+  defp many_signatures_check(signatures, data_binary, [pubkey | remaining_pubkeys]) do
+    case single_signature_check(signatures, data_binary, pubkey) do
+      {:ok, remaining_signatures} ->
+        many_signatures_check(remaining_signatures, data_binary, remaining_pubkeys)
+      :error ->
+        false
+    end
+  end
+
+  defp many_signatures_check([], _data_binary, []) do
+    true
+  end
+
+  defp many_signatures_check(_, _, _) do
+    false
+  end
+
   def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
-    #TODO: Rewrite the quick hack :P
     data_binary = DataTx.rlp_encode(data)
-    pubkey in DataTx.senders(data)
-    and
-    Enum.reduce(signatures, false, fn sig, acc -> acc or Keys.verify(data_binary, sig, pubkey) end)
+    if pubkey not in DataTx.senders(data) do
+      false
+    else
+      case single_singature_check(signatures, data_binary, pubkey) do
+        {:ok, _} ->
+          true
+        :error ->
+          false
+      end
+    end
+  end
+
+  defp single_signature_check(signatures, data_binary, pubkey) do
+    if(!Keys.key_size_valid?(pubkey)) do
+      Logger.error("Wrong pubkey size #{inspect(pubkey)}")
+      :error
+    else
+      internal_single_signature_check(signatures, data_binary, pubkey)
+    end
+  end
+
+  defp internal_single_signature_check([signature | rest_signatures], data_binary, pubkey) do
+    if Keys.verify(data_binary, sig, pubkey) do
+      {:ok, rest_signatures}
+    else
+      case internal_single_signature_check(rest_signatures, data_binary, pubkey) do
+        {:ok, unchecked_sigs} ->
+          {:ok, [signature | unchecked_sigs]}
+        :error ->
+          :error
+      end
+    end
+  end
+
+  defp internal_single_signature_check([], _data_binary, pubkey) do
+    Logger.error("Signature of #{inspect(pubkey)} invalid")
+    :error
   end
 
   def encode_to_list(%SignedTx{} = tx) do
     [
       :binary.encode_unsigned(@version),
-      tx.signatures,
+      Enum.sort(tx.signatures),
       DataTx.rlp_encode(tx.data)
     ]
   end
@@ -270,7 +278,8 @@ defmodule Aecore.Tx.SignedTx do
   def decode_from_list(@version, [signatures, data]) do
     case DataTx.rlp_decode(data) do
       {:ok, data} ->
-        {:ok, %SignedTx{data: data, signatures: signatures}}
+        #make sure that the sigs are sorted - we cannot trust user input ;)
+        {:ok, %SignedTx{data: data, signatures: Enum.sort(signatures)}}
 
       {:error, _} = error ->
         error
