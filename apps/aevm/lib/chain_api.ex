@@ -12,12 +12,6 @@ defmodule Aevm.ChainApi do
     gas_spent: non_neg_integer()
   }
 
-  @callback spend(
-              recipient :: Keys.pubkey(),
-              amount :: non_neg_integer(),
-              state :: chain_state()
-            ) :: {:ok, chain_state()} | {:error, term()}
-
   @callback get_balance(account :: Keys.pubkey(), state :: chain_state()) :: non_neg_integer()
 
   @callback call_contract(

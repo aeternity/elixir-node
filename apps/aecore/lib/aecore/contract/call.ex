@@ -142,6 +142,18 @@ defmodule Aecore.Contract.Call do
     Hash.hash(binary)
   end
 
+  def gas_used(%Call{gas_used: gas_used}) do
+    gas_used
+  end
+
+  def return_value(%Call{return_value: return_value}) do
+    return_value
+  end
+
+  def return_type(%Call{return_type: return_type}) do
+    return_type
+  end
+
   def set_gas_used(call, gas_used) do
     %Call{call | gas_used: gas_used}
   end
