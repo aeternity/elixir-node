@@ -15,7 +15,7 @@ defmodule Aecore.Sync.Jobs do
   alias Aecore.Sync.Sync
   alias Aecore.Sync.Task, as: SyncTask
   alias Aecore.Chain.Block
-  alias Aecore.Tx.Transaction
+  alias Aecore.Tx.SignedTx
 
   @type peer_id :: pid()
   @type delay :: non_neg_integer()
@@ -41,8 +41,8 @@ defmodule Aecore.Sync.Jobs do
   end
 
   @spec delayed_run_job(peer_id(), SyncTask.t(), queue(), fun(), delay()) ::
-          {SyncTask.t(), {:chainge_worker, peer_id(), pid(), pid()}}
-  def delayed_run_job(peer_id, st, queue, fun, delay) do
+          {SyncTask.t(), {:change_worker, peer_id(), pid(), pid()}}
+  def delayed_run_job(peer_id, task, queue, fun, delay) do
     old_worker = self()
 
     {:ok, new_worker} =
@@ -51,24 +51,24 @@ defmodule Aecore.Sync.Jobs do
         :jobs.run(queue, fun)
       end)
 
-    {st, {:change_worker, peer_id, old_worker, new_worker}}
+    {task, {:change_worker, peer_id, old_worker, new_worker}}
   end
 
-  @spec enqueue(gossip(), Block.t() | Transaction.tx_types(), list(peer_id())) :: {:ok, pid()}
+  @spec enqueue(gossip(), Block.t() | SignedTx.t(), list(peer_id())) :: {:ok, pid()}
   def enqueue(gossip, data, peer_ids) do
     Task.start(fn ->
-      Enum.map(peer_ids, fn id ->
-        :jobs.run(:sync_gossip_workers, enqueue_strategy(gossip, data, id))
+      Enum.map(peer_ids, fn peer_id ->
+        :jobs.run(:sync_gossip_workers, enqueue_strategy(gossip, data, peer_id))
       end)
     end)
   end
 
-  @spec enqueue_strategy(gossip(), Block.t() | Transaction.tx_types(), peer_id()) :: fun()
-  defp enqueue_strategy(:block, data, id) do
-    fn -> Sync.do_forward_block(data, id) end
+  @spec enqueue_strategy(gossip(), Block.t() | SignedTx.t(), peer_id()) :: fun()
+  defp enqueue_strategy(:block, block, peer_id) do
+    fn -> Sync.do_forward_block(block, peer_id) end
   end
 
-  defp enqueue_strategy(:tx, data, id) do
-    fn -> Sync.do_forward_tx(data, id) end
+  defp enqueue_strategy(:tx, tx, peer_id) do
+    fn -> Sync.do_forward_tx(tx, peer_id) end
   end
 end

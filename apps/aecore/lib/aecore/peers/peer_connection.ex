@@ -150,6 +150,13 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_msg_no_response(pid)
   end
 
+  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
+  def send_new_tx(tx, pid) when is_pid(pid) do
+    @mempool
+    |> pack_msg(%{txs: [tx]})
+    |> send_msg_no_response(pid)
+  end
+
   def handle_call(:ping, _from, state) do
     :ok = do_ping(state)
     {:reply, :ok, state}

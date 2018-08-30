@@ -44,39 +44,39 @@ defmodule Aecore.Sync.Task do
   end
 
   @spec get_sync_task(task_id(), Sync.t()) :: {:ok, t()} | {:error, :not_found}
-  def get_sync_task(stid, %Sync{sync_tasks: sts}) do
-    case Enum.find(sts, fn %{id: id} -> id == stid end) do
+  def get_sync_task(task_id, %Sync{sync_tasks: tasks}) do
+    case Enum.find(tasks, fn %{id: id} -> id == task_id end) do
       nil -> {:error, :not_found}
-      st -> {:ok, st}
+      task -> {:ok, task}
     end
   end
 
   @spec set_sync_task(t(), Sync.t()) :: Sync.t()
-  def set_sync_task(%Task{id: id} = st, %Sync{sync_tasks: sts} = sync) do
-    %Sync{sync | sync_tasks: keystore(id, st, sts)}
+  def set_sync_task(%Task{id: id} = task, %Sync{sync_tasks: tasks} = sync) do
+    %Sync{sync | sync_tasks: keystore(id, task, tasks)}
   end
 
   @spec set_sync_task(task_id(), t(), Sync.t()) :: Sync.t()
-  def set_sync_task(id, %Task{} = st, %Sync{sync_tasks: sts} = sync) do
-    %Sync{sync | sync_tasks: keystore(id, st, sts)}
+  def set_sync_task(id, %Task{} = task, %Sync{sync_tasks: tasks} = sync) do
+    %Sync{sync | sync_tasks: keystore(id, task, tasks)}
   end
 
   @spec delete_sync_task(t(), Sync.t()) :: Sync.t()
-  def delete_sync_task(%Task{id: stid}, %Sync{sync_tasks: sts} = sync) do
-    %Sync{sync | sync_tasks: Enum.filter(sts, fn %{id: id} -> id != stid end)}
+  def delete_sync_task(%Task{id: task_id}, %Sync{sync_tasks: tasks} = sync) do
+    %Sync{sync | sync_tasks: Enum.filter(tasks, fn %{id: id} -> id != task_id end)}
   end
 
   @spec do_update_sync_task(Sync.t(), task_id(), {:done | :error, peer_id()}) :: Sync.t()
-  def do_update_sync_task(sync, stid, update) do
-    case get_sync_task(stid, sync) do
-      {:ok, st = %Task{chain: chain = %Chain{peers: peers}}} ->
+  def do_update_sync_task(sync, task_id, update) do
+    case get_sync_task(task_id, sync) do
+      {:ok, %Task{chain: %Chain{peers: peers} = chain} = task} ->
         chain1 =
           case update do
             {:done, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
             {:error, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
           end
 
-        maybe_end_sync_task(sync, %{st | chain: chain1})
+        maybe_end_sync_task(sync, %{task | chain: chain1})
 
       {:error, :not_found} ->
         Logger.info("#{__MODULE__}: Sync task not found!")
@@ -85,14 +85,14 @@ defmodule Aecore.Sync.Task do
   end
 
   @spec maybe_end_sync_task(Sync.t(), t()) :: Sync.t()
-  def maybe_end_sync_task(sync, %Task{chain: chain} = st) do
+  def maybe_end_sync_task(sync, %Task{chain: chain} = task) do
     case chain do
       %Chain{peers: [], chain: [target | _]} ->
-        Logger.info("#{__MODULE__}: Removing Sync task: st with target: #{inspect(target)}")
-        delete_sync_task(st, sync)
+        Logger.info("#{__MODULE__}: Removing Sync task: task with target: #{inspect(target)}")
+        delete_sync_task(task, sync)
 
       _ ->
-        set_sync_task(st, sync)
+        set_sync_task(task, sync)
     end
   end
 
@@ -107,12 +107,12 @@ defmodule Aecore.Sync.Task do
     {:inconclusive, chain, {:get_header, cid, peers, height}}
   end
 
-  def match_tasks(chain_1, [%Task{chain: chain_2} = st | sts], acc) do
+  def match_tasks(chain_1, [%Task{chain: chain_2} = task | tasks], acc) do
     case Chain.match_chains(Map.get(chain_1, :chain), Map.get(chain_2, :chain)) do
-      :equal -> {:match, st}
-      :different -> match_tasks(chain_1, sts, acc)
-      {:first, height} -> match_tasks(chain_1, sts, [{height, chain_1} | acc])
-      {:second, height} -> match_tasks(chain_1, sts, [{height, chain_2} | acc])
+      :equal -> {:match, task}
+      :different -> match_tasks(chain_1, tasks, acc)
+      {:first, height} -> match_tasks(chain_1, tasks, [{height, chain_1} | acc])
+      {:second, height} -> match_tasks(chain_1, tasks, [{height, chain_2} | acc])
     end
   end
 
@@ -140,6 +140,6 @@ defmodule Aecore.Sync.Task do
   end
 
   defp do_keystore([], elem, _id, acc) do
-    [elem | Enum.reverse(acc)] |> Enum.reverse()
+    Enum.reverse([elem | Enum.reverse(acc)])
   end
 end

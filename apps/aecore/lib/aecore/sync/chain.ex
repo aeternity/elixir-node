@@ -26,12 +26,12 @@ defmodule Aecore.Sync.Chain do
   end
 
   @spec init_chain(chain_id(), peer_id(), Header.t()) :: t()
-  def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_h} = header) do
+  def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_hash} = header) do
     hash = BlockValidation.block_header_hash(header)
 
-    prev_hash =
+    prev_header_data =
       if height > 1 do
-        [%{height: height - 1, hash: prev_h}]
+        [%{height: height - 1, hash: prev_hash}]
       else
         []
       end
@@ -39,7 +39,7 @@ defmodule Aecore.Sync.Chain do
     %Chain{
       chain_id: chain_id,
       peers: peers,
-      chain: [%{height: height, hash: hash}] ++ prev_hash
+      chain: [%{height: height, hash: hash}] ++ prev_header_data
     }
   end
 
@@ -85,8 +85,10 @@ defmodule Aecore.Sync.Chain do
 
   def find_hash_at_height(height, [_ | chain]), do: find_hash_at_height(height, chain)
 
-  ## If there is a task with chain_id equal to the given chain,
-  ## merge the data between the chain in the task and the given chain
+  @doc """
+  If there is a task with chain_id equal to the given chain,
+  merge the data between the chain in the task and the given chain
+  """
   @spec add_chain_info(t(), Sync.t()) :: Sync.t()
   def add_chain_info(%Chain{chain_id: chain_id} = chain, sync) do
     case Task.get_sync_task(chain_id, sync) do
@@ -99,8 +101,10 @@ defmodule Aecore.Sync.Chain do
     end
   end
 
-  ## Get the next known hash at a height bigger than N; or
-  ## if no such hash exist, the hash at the highest known height.
+  @doc """
+  Get the next known hash at a height bigger than N; or
+  if no such hash exist, the hash at the highest known height.
+  """
   @spec next_known_hash(t(), height()) :: hash()
   def next_known_hash(chains, height) do
     %{hash: hash} =
@@ -112,6 +116,9 @@ defmodule Aecore.Sync.Chain do
     hash
   end
 
+  @doc """
+  Merge two chains while keeping their descending order
+  """
   @spec merge(t(), t()) :: t()
   def merge(chain_1, chain_2) do
     merge(chain_1, chain_2, [])
@@ -124,18 +131,18 @@ defmodule Aecore.Sync.Chain do
     |> Enum.reverse()
   end
 
-  defp merge([], [e2 | chain_2], acc) do
-    merge([], chain_2, [e2 | acc])
+  defp merge([], [elem2 | chain_2], acc) do
+    merge([], chain_2, [elem2 | acc])
   end
 
-  defp merge([e1 | chain_1], chain_2, acc) do
-    case Enum.member?(chain_2, e1) do
+  defp merge([elem1 | chain_1], chain_2, acc) do
+    case Enum.member?(chain_2, elem1) do
       true ->
-        new_chain_2 = Enum.filter(chain_2, fn elem -> elem != e1 end)
-        merge(chain_1, new_chain_2, [e1 | acc])
+        new_chain_2 = Enum.filter(chain_2, fn elem -> elem != elem1 end)
+        merge(chain_1, new_chain_2, [elem1 | acc])
 
       false ->
-        merge(chain_1, chain_2, [e1 | acc])
+        merge(chain_1, chain_2, [elem1 | acc])
     end
   end
 end
