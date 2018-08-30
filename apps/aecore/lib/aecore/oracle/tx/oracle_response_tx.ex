@@ -35,7 +35,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec get_chain_state_name() :: :oracles
   def get_chain_state_name, do: :oracles
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,
         response: response
@@ -46,7 +46,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -71,7 +71,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleResponseTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -94,7 +94,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     updated_interaction_objects = %{
       interaction_objects
       | response: tx.response,
-        expires: interaction_objects.expires + interaction_objects.response_ttl,
+        expires: interaction_objects.response_ttl + block_height,
         has_response: true
     }
 
@@ -107,7 +107,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          OracleResponseTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -136,7 +136,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       OracleStateTree.get_query(oracles, tx.query_id).response != :undefined ->
         {:error, "#{__MODULE__}: Query already answered"}
 
-      OracleStateTree.get_query(oracles, tx.query_id).oracle_address.value != sender ->
+      OracleStateTree.get_query(oracles, tx.query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
       !is_minimum_fee_met?(tx, fee) ->
@@ -158,7 +158,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(t(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(tx, fee) do
     oracles = Chain.chain_state().oracles
     referenced_query_response_ttl = OracleStateTree.get_query(oracles, tx.query_id).response_ttl
@@ -173,9 +173,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.query_id,
       tx.response,
@@ -185,7 +187,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         query_id,
         response,
@@ -200,7 +202,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     DataTx.init_binary(
       OracleResponseTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

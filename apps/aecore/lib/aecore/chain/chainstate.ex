@@ -12,6 +12,8 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.Bits
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Contract.ContractStateTree
+  alias Aecore.Contract.CallStateTree
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Keys
   alias Aecore.Governance.GenesisConstants
@@ -35,33 +37,39 @@ defmodule Aecore.Chain.Chainstate do
   @type oracles :: OracleStateTree.oracles_state()
   @type naming :: NamingStateTree.namings_state()
   @type channels :: ChannelStateTree.channel_state()
-  @type chain_state_types :: :accounts | :oracles | :naming | :channels
+  @type contracts :: ContractStateTree.contracts_state()
+  @type calls :: CallStateTree.calls_state()
+  @type chain_state_types :: :accounts | :oracles | :naming | :channels | :contracts | :calls
 
   @type t :: %Chainstate{
           accounts: accounts(),
           oracles: oracles(),
           naming: naming(),
-          channels: channels()
+          channels: channels(),
+          contracts: contracts(),
+          calls: calls()
         }
 
   defstruct [
     :accounts,
     :oracles,
     :naming,
-    :channels
+    :channels,
+    :contracts,
+    :calls
   ]
 
-  @spec init :: t()
+  @spec init :: Chainstate.t()
   def init do
     Genesis.populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
           list(),
-          t(),
+          Chainstate.t(),
           non_neg_integer(),
           Keys.pubkey()
-        ) :: {:ok, t()} | {:error, String.t()}
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
     chainstate_with_coinbase =
       calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
@@ -92,7 +100,9 @@ defmodule Aecore.Chain.Chainstate do
       :accounts => AccountStateTree.init_empty(),
       :oracles => OracleStateTree.init_empty(),
       :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
+      :channels => ChannelStateTree.init_empty(),
+      :contracts => ContractStateTree.init_empty(),
+      :calls => CallStateTree.init_empty()
     }
   end
 
@@ -115,8 +125,8 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
-  @spec apply_transaction_on_state(t(), non_neg_integer(), SignedTx.t()) ::
-          t() | {:error, String.t()}
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+          Chainstate.t() | {:error, String.t()}
   def apply_transaction_on_state(chainstate, block_height, tx) do
     case SignedTx.validate(tx, block_height) do
       :ok ->
@@ -130,15 +140,15 @@ defmodule Aecore.Chain.Chainstate do
   @doc """
   Create the root hash of the tree.
   """
-  @spec calculate_root_hash(t()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
       NamingStateTree.root_hash(chainstate.naming),
       OracleStateTree.root_hash(chainstate.oracles),
       @canonical_root_hash,
-      @canonical_root_hash,
-      @canonical_root_hash
+      ContractStateTree.root_hash(chainstate.contracts),
+      CallStateTree.root_hash(chainstate.calls)
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)
@@ -158,7 +168,7 @@ defmodule Aecore.Chain.Chainstate do
   @doc """
   Goes through all the transactions and only picks the valid ones
   """
-  @spec get_valid_txs(list(), t(), non_neg_integer()) :: list()
+  @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate} ->

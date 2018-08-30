@@ -13,17 +13,17 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(23), do: {:ok, Aecore.Oracle.Tx.OracleQueryTx}
   def tag_to_type(24), do: {:ok, Aecore.Oracle.Tx.OracleResponseTx}
   def tag_to_type(25), do: {:ok, Aecore.Oracle.Tx.OracleExtendTx}
-  def tag_to_type(30), do: {:ok, Aecore.Naming.NameClaim}
+  def tag_to_type(30), do: {:ok, Aecore.Naming.Name}
   def tag_to_type(31), do: {:ok, Aecore.Naming.NameCommitment}
   def tag_to_type(32), do: {:ok, Aecore.Naming.Tx.NameClaimTx}
   def tag_to_type(33), do: {:ok, Aecore.Naming.Tx.NamePreClaimTx}
   def tag_to_type(34), do: {:ok, Aecore.Naming.Tx.NameUpdateTx}
   def tag_to_type(35), do: {:ok, Aecore.Naming.Tx.NameRevokeTx}
   def tag_to_type(36), do: {:ok, Aecore.Naming.Tx.NameTransferTx}
-  # Contract - 40
-  # Contract call - 41
-  # Contract create transaction - 42
-  # Contract call transaction - 43
+  def tag_to_type(40), do: {:ok, Aecore.Contract.Contract}
+  def tag_to_type(41), do: {:ok, Aecore.Contract.Call}
+  # def tag_to_type(42), do: {:ok, Aecore.Contract.ContractCreateTx}
+  # def tag_to_type(43), do: {:ok, Aecore.Contract.ContractCallTx}
   def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
   # Channel deposit transaction - 51
   # Channel withdraw transaction - 52
@@ -49,17 +49,17 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Oracle.Tx.OracleQueryTx), do: {:ok, 23}
   def type_to_tag(Aecore.Oracle.Tx.OracleResponseTx), do: {:ok, 24}
   def type_to_tag(Aecore.Oracle.Tx.OracleExtendTx), do: {:ok, 25}
-  def type_to_tag(Aecore.Naming.NameClaim), do: {:ok, 30}
+  def type_to_tag(Aecore.Naming.Name), do: {:ok, 30}
   def type_to_tag(Aecore.Naming.NameCommitment), do: {:ok, 31}
   def type_to_tag(Aecore.Naming.Tx.NameClaimTx), do: {:ok, 32}
   def type_to_tag(Aecore.Naming.Tx.NamePreClaimTx), do: {:ok, 33}
   def type_to_tag(Aecore.Naming.Tx.NameUpdateTx), do: {:ok, 34}
   def type_to_tag(Aecore.Naming.Tx.NameRevokeTx), do: {:ok, 35}
   def type_to_tag(Aecore.Naming.Tx.NameTransferTx), do: {:ok, 36}
-  # Contract - 40
-  # Contract call - 41
-  # Contract create transaction - 42
-  # Contract call transaction - 43
+  def type_to_tag(Aecore.Contract.Contract), do: {:ok, 40}
+  def type_to_tag(Aecore.Contract.Call), do: {:ok, 41}
+  # def type_to_tag(Aecore.Contract.ContractCreateTx), do: {:ok, 42}
+  # def type_to_tag(Aecore.Contract.ContractCall), do: {:ok, 43}
   def type_to_tag(Aecore.Channel.Tx.ChannelCreateTx), do: {:ok, 50}
   # Channel deposit transaction - 51
   # Channel withdraw transaction - 52

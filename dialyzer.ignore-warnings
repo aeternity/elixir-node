@@ -55,14 +55,11 @@
 :0: Unknown function sext:decode/1
 :0: Unknown function sext:encode/1
 :0: Unknown type 'Elixir.Aecore.Chain.Chainstate':account/0
-:0: Unknown type 'Elixir.Aecore.Keys.Wallet':privkey/0
-:0: Unknown type 'Elixir.Aecore.Keys.Wallet':pubkey/0
 :0: Unknown type 'Elixir.Chainstate':t/0
 :0: Unknown type 'Elixir.ChannelSteteOnChain':id/0
 :0: Unknown type 'Elixir.ChannelSteteOnChain':t/0
 :0: Unknown type 'Elixir.Keys':pubkey/0
 :0: Unknown type 'Elixir.Keys':sign_priv_key/0
-:0: Unknown type 'Elixir.Wallet':pubkey/0
 Function put/3 has no local return
 Function update/3 has no local return
 Function process_chainstate/5 has no local return

@@ -6,21 +6,14 @@ defmodule Aecore.Account.Account do
   require Logger
   alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.Account
-  alias Aeutil.Bits
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.{NameCommitment, NameUtil}
-  alias Aecore.Account.AccountStateTree
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
-  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Naming.{NameCommitment, NameUtil}
+  alias Aeutil.Serialization
+  alias Aeutil.Bits
 
   @version 1
 
@@ -120,6 +113,7 @@ defmodule Aecore.Account.Account do
           {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -137,7 +131,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
-    case NameCommitment.hash(name, name_salt) do
+    case NameCommitment.commitment_hash(name, name_salt) do
       {:ok, commitment} ->
         payload = %{commitment: commitment}
         build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)
@@ -154,6 +148,7 @@ defmodule Aecore.Account.Account do
           {:ok, SignedTx.t()} | {:error, String.t()}
   def claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl)
   end
@@ -184,12 +179,18 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameUpdateTx where the miners public key is used as a sender
   """
-  @spec name_update(String.t(), String.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(name, pointers, fee, ttl \\ 0) do
+  @spec name_update(
+          String.t(),
+          String.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, SignedTx.t()} | {:error, String.t()}
+  def name_update(name, pointers, fee, expire_by, client_ttl, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
-    name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl)
+    name_update(sender, sender_priv_key, name, pointers, fee, nonce, expire_by, client_ttl, ttl)
   end
 
   @doc """
@@ -202,15 +203,26 @@ defmodule Aecore.Account.Account do
           String.t(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def name_update(sender, sender_priv_key, name, pointers, fee, nonce, ttl \\ 0) do
+  def name_update(
+        sender,
+        sender_priv_key,
+        name,
+        pointers,
+        fee,
+        nonce,
+        expire_by,
+        client_ttl,
+        ttl \\ 0
+      ) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
         payload = %{
           hash: namehash,
-          expire_by: Chain.top_height() + GovernanceConstants.claim_expire_by_relative_limit(),
-          client_ttl: 86_400,
+          expire_by: Chain.top_height() + 1 + expire_by,
+          client_ttl: client_ttl,
           pointers: pointers
         }
 
@@ -228,6 +240,7 @@ defmodule Aecore.Account.Account do
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_transfer(name, target, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl)
   end
@@ -262,6 +275,7 @@ defmodule Aecore.Account.Account do
           {:ok, SignedTx.t()} | {:error, String.t()}
   def name_revoke(name, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
+
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
     name_revoke(sender, sender_priv_key, name, fee, nonce, ttl)
   end
@@ -305,7 +319,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to a given Account state and updates last update block.
   """
-  @spec apply_transfer!(t(), non_neg_integer(), integer()) :: t()
+  @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
   def apply_transfer!(account_state, _block_height, amount) do
     new_balance = account_state.balance + amount
 
@@ -316,7 +330,7 @@ defmodule Aecore.Account.Account do
     %Account{account_state | balance: new_balance}
   end
 
-  @spec apply_nonce!(t(), integer()) :: t()
+  @spec apply_nonce!(Account.t(), integer()) :: Account.t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
       throw({:error, "#{__MODULE__}: Invalid nonce"})
@@ -341,7 +355,7 @@ defmodule Aecore.Account.Account do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(Account.t()) :: list() | {:error, String.t()}
   def encode_to_list(%Account{} = account) do
     [
       :binary.encode_unsigned(@version),

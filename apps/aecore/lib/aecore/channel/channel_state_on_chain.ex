@@ -5,7 +5,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   require Logger
 
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Tx.DataTx
@@ -15,8 +15,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @version 1
 
   @type t :: %ChannelStateOnChain{
-          initiator_pubkey: Wallet.pubkey(),
-          responder_pubkey: Wallet.pubkey(),
+          initiator_pubkey: Keys.pubkey(),
+          responder_pubkey: Keys.pubkey(),
           initiator_amount: integer(),
           responder_amount: integer(),
           lock_period: non_neg_integer(),
@@ -57,7 +57,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(Wallet.pubkey(), Wallet.pubkey(), integer(), integer(), non_neg_integer(), non_neg_integer(), binary()) ::
+  @spec create(Keys.pubkey(), Keys.pubkey(), integer(), integer(), non_neg_integer(), non_neg_integer(), binary()) ::
           ChannelStateOnChain.t()
   def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period, channel_reserve, state_hash) do
     %ChannelStateOnChain{
@@ -86,7 +86,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Generates channel id from detail of ChannelCreateTx.
   """
-  @spec id(Wallet.pubkey(), Wallet.pubkey(), non_neg_integer()) :: id()
+  @spec id(Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
     binary_data = initiator_pubkey <> <<nonce::size(64)>> <> responder_pubkey
 
@@ -101,7 +101,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     {initiator_amount, responder_amount}
   end
 
-  @spec pubkeys(ChannelStateOnChain.t()) :: {Wallet.pubkey(), Wallet.pubkey()}
+  @spec pubkeys(ChannelStateOnChain.t()) :: {Keys.pubkey(), Keys.pubkey()}
   def pubkeys(%ChannelStateOnChain{
         initiator_pubkey: initiator_pubkey,
         responder_pubkey: responder_pubkey
@@ -196,7 +196,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  @spec encode_to_list(t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     [
       :binary.encode_unsigned(@version),

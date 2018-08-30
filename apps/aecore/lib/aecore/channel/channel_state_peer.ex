@@ -33,8 +33,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   @type t :: %ChannelStatePeer{
           fsm_state: fsm_state(),
-          initiator_pubkey: Wallet.pubkey(),
-          responder_pubkey: Wallet.pubkey(),
+          initiator_pubkey: Keys.pubkey(),
+          responder_pubkey: Keys.pubkey(),
           role: Channel.role(),
           channel_id: Identifier.t(),
           mutualy_signed_tx: list(ChannelOffchainTx.t()),
@@ -196,6 +196,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
         minimal_deposit,
         role
       ) do
+    initial_state =
+      ChannelStateOffChain.create(temporary_id, 0, initiator_amount, responder_amount)
 
     %ChannelStatePeer{
       fsm_state: :initialized,
@@ -217,7 +219,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.privkey()
+          Keys.privkey()
         ) :: {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
   def open(
         %ChannelStatePeer{
@@ -463,7 +465,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates a transfer on channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfer. Returns altered ChannelStatePeer and new half-signed offchain state.
   """
-  @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Wallet.privkey()) ::
+  @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
   def transfer(
         %ChannelStatePeer{fsm_state: :open, highest_mutualy_signed_offchain_tx: highest_mutualy_signed_offchain_tx, role: role} =
@@ -494,13 +496,97 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
+  Handles incoming ChannelOffChainState. If incoming state is a half signed transfer validates it and signs it. If incoming state is fully signed and has higher sequence then current then stores it. Returns altered ChannelPeerState and if it signed a half signed state: fully signed state else nil.
+  """
+  @spec recv_state(ChannelStatePeer.t(), ChannelStateOffChain.t(), Wallet.privkey()) ::
+          {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t() | nil} | error()
+  def recv_state(%ChannelStatePeer{fsm_state: :open} = peer_state, new_state, priv_key) do
+    with {:ok, new_peer_state, nil} <- recv_full_state(peer_state, new_state) do
+      {:ok, new_peer_state, nil}
+    else
+      {:error, _reason} ->
+        recv_half_state(peer_state, new_state, priv_key)
+    end
+  end
+
+  def recv_state(%ChannelStatePeer{fsm_state: :update} = peer_state, new_state, _priv_key) do
+    recv_full_state(peer_state, new_state)
+  end
+
+  def recv_state(%ChannelStatePeer{} = state) do
+    {:error, "#{__MODULE__}: Can't receive state now; channel state is #{state.fsm_state}"}
+  end
+
+  defp recv_full_state(
+         %ChannelStatePeer{
+           highest_signed_state: highest_signed_state,
+           highest_state: highest_state
+         } = peer_state,
+         new_state
+       ) do
+    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
+
+    with :ok <-
+           ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
+      if highest_state.sequence <= new_state.sequence do
+        {:ok,
+         %ChannelStatePeer{
+           peer_state
+           | fsm_state: :open,
+             highest_signed_state: new_state,
+             highest_state: new_state
+         }, nil}
+      else
+        {:ok, %ChannelStatePeer{peer_state | highest_signed_state: new_state}, nil}
+      end
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp recv_half_state(
+         %ChannelStatePeer{highest_signed_state: prev_state} = peer_state,
+         new_state,
+         priv_key
+       ) do
+    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
+
+    with :ok <-
+           ChannelStateOffChain.validate_half_update(
+             prev_state,
+             new_state,
+             pubkeys,
+             peer_state.role
+           ) do
+      signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
+
+      new_peer_state = %ChannelStatePeer{
+        peer_state
+        | highest_signed_state: signed_new_state,
+          highest_state: signed_new_state
+      }
+
+      with :ok <- ChannelStateOffChain.validate(signed_new_state, pubkeys) do
+        {:ok, new_peer_state, signed_new_state}
+      else
+        {:error, reason} ->
+          {:error, reason}
+      end
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Creates mutal close tx for open channel. This blocks any new transfers on channel. Returns: altered ChannelStatePeer and ChannelCloseMutalTx
   """
   @spec close(
           ChannelStatePeer.t(),
           {non_neg_integer(), non_neg_integer()},
           non_neg_integer(),
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def close(
         %ChannelStatePeer{
@@ -556,7 +642,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelStatePeer.t(),
           SignedTx.t(),
           {non_neg_integer(), non_neg_integer()},
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def recv_close_tx(
         %ChannelStatePeer{

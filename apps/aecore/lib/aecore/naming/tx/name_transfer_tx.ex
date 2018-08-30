@@ -5,15 +5,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Naming.{Naming, NamingStateTree}
-  alias Aeutil.Hash
-  alias Aecore.Keys
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Keys
+  alias Aeutil.Hash
 
   require Logger
 
@@ -46,7 +44,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameTransferTx.t()
   def init(%{hash: %Identifier{} = identified_hash, target: %Identifier{} = identified_target}) do
     %NameTransferTx{hash: identified_hash, target: identified_target}
   end
@@ -60,7 +58,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Checks target and hash byte sizes
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -89,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -100,7 +98,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         _data_tx
       ) do
     claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
-    claim = %{claim_to_update | owner: tx.target}
+    claim = %{claim_to_update | owner: tx.target.value}
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
@@ -114,7 +112,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -136,7 +134,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner.value != sender ->
+      claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
@@ -151,7 +149,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameTransferTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -165,9 +163,11 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.hash),
       Identifier.encode_to_binary(tx.target),
@@ -177,7 +177,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         nonce,
         encoded_hash,
         encoded_recipient,
@@ -191,7 +191,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
       DataTx.init_binary(
         NameTransferTx,
         payload,
-        encoded_senders,
+        [encoded_sender],
         :binary.decode_unsigned(fee),
         :binary.decode_unsigned(nonce),
         :binary.decode_unsigned(ttl)
