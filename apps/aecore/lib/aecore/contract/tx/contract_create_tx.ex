@@ -7,6 +7,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Contract.Contract
 
   @type payload :: %{
           code: binary(),
@@ -28,6 +29,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           call_data: binary()
         }
 
+  @type tx_type_state() :: Chainstate.contracts()
+
   defstruct [
     :code,
     :vm_version,
@@ -37,6 +40,9 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     :gas_price,
     :call_data
   ]
+
+  @spec get_chain_state_name() :: :contracts
+  def get_chain_state_name, do: :contracts
 
   @spec init(payload()) :: t()
   def init(%{
@@ -59,9 +65,89 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     }
   end
 
-  def validate(%ContractCreateTx{deposit: deposit, amount: amount
-  , gas: gas, gas_price: gas_price}, data_tx) do
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(
+        %ContractCreateTx{},
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
-    total_amount = DataTx.fee(data_tx) + amount + deposit + gas * gas_price
+
+    if length(senders) == 1 do
+      :ok
+    else
+      {:error, "#{__MODULE__}: Invalid senders number"}
+    end
+  end
+
+  @spec process_chainstate(
+          Chainstate.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
+          t(),
+          DataTx.t()
+        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
+  def process_chainstate(
+        accounts,
+        contracts,
+        block_height,
+        %ContractCreateTx{
+          code: code,
+          vm_version: vm_version,
+          deposit: deposit,
+          amount: amount,
+          gas: gas,
+          gas_price: gas_price,
+          call_data: call_data
+        } = tx,
+        data_tx
+      ) do
+    owner = DataTx.main_sender(data_tx)
+    contract = Contract.new(owner, data_tx.nonce, vm_version, code, deposit)
+
+    updated_accounts_state =
+      accounts
+      |> AccountStateTree.update(owner, fn acc ->
+        Account.apply_transfer!(acc, block_height, amount * -1)
+      end)
+      |> AccountStateTree.update(contract.id, fn acc ->
+        Account.apply_transfer!(acc, block_height, amount)
+      end)
+
+    updated_contracts_state = ContractStateTree.insert_contract(contracts, contract)
+
+    call = Call.new(owner, data_tx.nonce, block_height, contract.id, gas_price)
+
+    # {call_result, updated_state} = run_contract(...) TODO
+
+    {:ok, {updated_accounts_state, updated_contracts_state}}
+  end
+
+  @spec preprocess_check(
+          Chainstate.accounts(),
+          tx_type_state(),
+          non_neg_integer(),
+          t(),
+          DataTx.t()
+        ) :: :ok | {:error, String.t()}
+  def preprocess_check(accounts, _contracts, block_height, tx, data_tx) do
+    sender = DataTx.main_sender(data_tx)
+    total_deduction = data_tx.fee + tx.amount + tx.deposit + tx.gas * tx.gas_price
+
+    if AccountStateTree.get(accounts, sender).balance - total_deduction < 0 do
+      {:error, "#{__MODULE__}: Negative balance"}
+    else
+      :ok
+    end
+  end
+
+  @spec deduct_fee(
+          Chainstate.accounts(),
+          non_neg_integer(),
+          t(),
+          DataTx.t(),
+          non_neg_integer()
+        ) :: Chainstate.accounts()
+  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 end

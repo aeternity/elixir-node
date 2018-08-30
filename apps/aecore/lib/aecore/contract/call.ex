@@ -35,7 +35,8 @@ defmodule Aecore.Contract.Call do
 
   @nonce_size 256
 
-  @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey() , non_neg_integer()) :: t()
+  @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
+          t()
   def new(caller_address, nonce, block_height, contract_address, gas_price) do
     identified_caller_address = Identifier.create_identity(caller_address, :account)
     identified_contract_address = Identifier.create_identity(contract_address, :contract)
@@ -103,13 +104,11 @@ defmodule Aecore.Contract.Call do
   end
 
   @spec id(Call.t()) :: binary()
-  def id(
-        %Call{
-          caller_address: caller_address,
-          caller_nonce: caller_nonce,
-          contract_address: contract_address
-        } = _call
-      ) do
+  def id(%Call{
+        caller_address: caller_address,
+        caller_nonce: caller_nonce,
+        contract_address: contract_address
+      }) do
     binary =
       <<caller_address.value::binary, caller_nonce::size(@nonce_size),
         contract_address.value::binary>>
