@@ -45,7 +45,11 @@ defmodule Aecore.Sync.Sync do
   ### ===================================================
 
   def start_sync(peer_id, remote_hash) do
-    GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash})
+    if sync_in_progress?(peer_id) do
+      Logger.info("#{__MODULE__}: Already syncing with #{inspect(peer_id)}")
+    else
+      GenServer.cast(__MODULE__, {:start_sync, peer_id, remote_hash})
+    end
   end
 
   def schedule_ping(peer_id) do
@@ -117,13 +121,17 @@ defmodule Aecore.Sync.Sync do
     {:reply, peer_in_sync?(state, peer_id), state}
   end
 
-  def handle_call({:known_chain, %Chain{chain_id: cid} = chain, new_chain_info}, _from, state) do
+  def handle_call(
+        {:known_chain, %Chain{chain_id: chain_id} = chain, new_chain_info},
+        _from,
+        state
+      ) do
     {new_chain, updated_state} =
       case new_chain_info do
         :none ->
           {chain, state}
 
-        %Chain{chain_id: c} when c == cid ->
+        %Chain{chain_id: cid} when cid == chain_id ->
           {Chain.merge_chains(chain, new_chain_info), state}
 
         %Chain{chain_id: _cid} ->
@@ -145,9 +153,12 @@ defmodule Aecore.Sync.Sync do
   end
 
   def handle_call({:next_work_item, task_id, peer_id, last_result}, _from, state) do
-    updated_state = handle_last_result(state, task_id, last_result)
-    {reply, new_state} = get_next_work_item(updated_state, task_id, peer_id)
-    {:reply, reply, new_state}
+    state_applied_last_result = handle_last_result(state, task_id, last_result)
+
+    {reply, state_applied_next_work_item} =
+      get_next_work_item(state_applied_last_result, task_id, peer_id)
+
+    {:reply, reply, state_applied_next_work_item}
   end
 
   ## Handle casts
@@ -214,10 +225,15 @@ defmodule Aecore.Sync.Sync do
   def sync_task_for_chain(chain, %Sync{sync_tasks: tasks} = state) do
     case Task.match_tasks(chain, tasks, []) do
       :no_match ->
+        ## Starting new task for the given chain
+        ## We are here if this is out first task
+        ## or if the given chain is a fork
         task = %Task{id: task_id} = Task.init_sync_task(chain)
         {{:new, chain, task_id}, Task.set_sync_task(task, state)}
 
       {:match, %Task{id: task_id, chain: matched_chain} = task} ->
+        ## The given chain matches the chain in the current Task
+        ## Merge the chains (possibly get more blocks if the new chain is longer)
         new_chain = Chain.merge_chains(%Chain{chain | chain_id: task_id}, matched_chain)
         updated_task = %Task{task | chain: new_chain}
         {{:existing, task_id}, Task.set_sync_task(updated_task, state)}
@@ -339,7 +355,7 @@ defmodule Aecore.Sync.Sync do
     {to_be_added, new_pool} = split_pool(pool)
 
     cond do
-      add === [] ->
+      add == [] ->
         {{:post_blocks, to_be_added}, %Task{task | pool: new_pool, adding: to_be_added}}
 
       length(pend) < 10 || new_pool != [] ->
@@ -379,9 +395,11 @@ defmodule Aecore.Sync.Sync do
       [] ->
         :ok
 
-      [{_, old}] ->
+      [{_, old_pid}] ->
         Logger.info(
-          "#{__MODULE__}: Peer: #{inspect(worker_peer_id)} already has a worker: #{inspect(old)}"
+          "#{__MODULE__}: Peer: #{inspect(worker_peer_id)} already has a worker: #{
+            inspect(old_pid)
+          }"
         )
     end
 
@@ -456,18 +474,10 @@ defmodule Aecore.Sync.Sync do
   end
 
   def do_forward_tx(tx, peer_id) do
-    PeerConnection.send_new_tx(peer_id, tx)
+    PeerConnection.send_new_tx(tx, peer_id)
   end
 
-  def do_start_sync(peer_id, remote_hash) do
-    if sync_in_progress?(peer_id) do
-      Logger.info("#{__MODULE__}: Already syncing with #{inspect(peer_id)}")
-    else
-      do_start_sync_internal(peer_id, remote_hash)
-    end
-  end
-
-  defp do_start_sync_internal(peer_id, remote_hash) do
+  defp do_start_sync(peer_id, remote_hash) do
     case PeerConnection.get_header_by_hash(remote_hash, peer_id) do
       {:ok, %{header: header}} ->
         Logger.info(

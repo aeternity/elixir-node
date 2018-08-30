@@ -1,6 +1,11 @@
 defmodule Aecore.Sync.Task do
   @moduledoc """
-  Implements all the functions regarding the SyncTask
+  Each sync task holds information about a syncing process with multiple peers 
+  where each peer is recognized as a worker with peer_id and pid of a seperate process doing the work.
+  A sync task works on a specific chain, meaning there is one sync task per chain.
+  If a worker is on different chain (on a fork, meaning different chain than what we already syncing against)
+  a new sync task will be started. In the normal case where all is good 
+  all peers work on the same task, we work only on one sync task.
   """
 
   alias Aecore.Sync.Chain
@@ -10,14 +15,29 @@ defmodule Aecore.Sync.Task do
 
   require Logger
 
-  @type chain_id :: reference()
-  @type task_id :: reference()
   @type height :: non_neg_integer()
   @type hash :: binary()
+
+  @typespec "Id specifing the chain to which we are syncing"
+  @type chain_id :: reference()
+
+  @typespec "Id of the peer we are communicating with"
   @type peer_id :: pid()
+
+  @typespec "List of all the sync tasks we are currently syncing against"
   @type sync_tasks :: list(%Task{})
+
+  @typespec "Id of the current task"
+  @type task_id :: reference()
+
+  @typespec "Element holding weather we have this block or not, 
+  and if we don't from where could we take it (local/remote peer)"
   @type pool_elem :: {height(), hash(), {peer_id(), Block.t()} | {:ok, :local} | false}
+
+  @typespec "On what header data (height + hash) do we agree upon when starting a sync task"
   @type agreed :: %{height: height(), hash: hash()} | nil
+
+  @typespec "Process resolving syncing implemetation with a specific peer"
   @type worker :: {peer_id(), pid()}
 
   @type t :: %Task{

@@ -120,8 +120,8 @@ defmodule Aecore.Sync.Chain do
   Merge two chains while keeping their descending order
   """
   @spec merge(t(), t()) :: t()
-  def merge(chain_1, chain_2) do
-    merge(chain_1, chain_2, [])
+  def merge(chain_list_1, chain_list_2) do
+    merge(chain_list_1, chain_list_2, [])
   end
 
   @spec merge(t(), t(), list()) :: t()
@@ -131,18 +131,18 @@ defmodule Aecore.Sync.Chain do
     |> Enum.reverse()
   end
 
-  defp merge([], [elem2 | chain_2], acc) do
-    merge([], chain_2, [elem2 | acc])
+  defp merge([], [chain2 | chain_list_2], acc) do
+    merge([], chain_list_2, [chain2 | acc])
   end
 
-  defp merge([elem1 | chain_1], chain_2, acc) do
-    case Enum.member?(chain_2, elem1) do
+  defp merge([chain1 | chain_list_1], chain_list_2, acc) do
+    case Enum.member?(chain_list_2, chain1) do
       true ->
-        new_chain_2 = Enum.filter(chain_2, fn elem -> elem != elem1 end)
-        merge(chain_1, new_chain_2, [elem1 | acc])
+        new_chain_list_2 = Enum.filter(chain_list_2, fn chain -> chain != chain1 end)
+        merge(chain_list_1, new_chain_list_2, [chain1 | acc])
 
       false ->
-        merge(chain_1, chain_2, [elem1 | acc])
+        merge(chain_list_1, chain_list_2, [chain1 | acc])
     end
   end
 end
