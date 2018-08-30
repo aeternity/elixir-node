@@ -8,7 +8,6 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   alias Aecore.Channel.Worker, as: Channel
   alias Aecore.Keys
   alias Aeutil.Serialization
-  alias Aeutil.TypeToTag
   alias Aecore.Chain.Identifier
 
   @version 1
@@ -195,30 +194,30 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   """
   @spec equal?(ChannelOffchainTx.t(), ChannelOffchainTx.t()) :: boolean()
   def equal?(state1, state2) do
-    state1.channel_id == state2.channel_id && state1.sequence == state2.sequence
+    state1.channel_id == state2.channel_id && state1.sequence == state2.sequence && state1.state_hash == state2.state_hash
   end
 
   @doc """
-  Signs a state.
+  Signs an offchain Tx.
   """
-  @spec sign(ChannelOffchainTx.t(), Channel.role(), Keys.sign_priv_key()) ::
+  @spec sign_with(ChannelOffchainTx.t(), Keys.sign_pub_key(), Keys.sign_priv_key()) ::
           ChannelOffchainTx.t()
-  def sign(%ChannelOffchainTx{signatures: {_, responder_sig}} = state, :initiator, priv_key) do
-    initiator_sig =
+  def sign_with(%ChannelOffchainTx{signatures: {<<>>, <<>>}} = state, pub_key, priv_key) do
+    sig =
       state
       |> Serialization.rlp_encode()
       |> Keys.sign(priv_key)
 
-    %ChannelOffchainTx{state | signatures: {initiator_sig, responder_sig}}
+    %ChannelOffchainTx{state | signatures: {sig, <<>>}}
   end
 
-  def sign(%ChannelOffchainTx{signatures: {initiator_sig, _}} = state, :responder, priv_key) do
-    responder_sig =
+  def sign_with(%ChannelOffchainTx{signatures: {sig1, <<>>}} = state, pub_key, priv_key) do
+    sig2 =
       state
       |> Serialization.rlp_encode()
       |> Keys.sign(priv_key)
 
-    %ChannelOffchainTx{state | signatures: {initiator_sig, responder_sig}}
+    %ChannelOffchainTx{state | signatures: {sig1, sig2}}
   end
 
   @doc """
@@ -264,7 +263,9 @@ defmodule Aecore.Channel.ChannelOffchainTx do
 
   def decode_from_payload([@signed_tx_tag, @version, [initiator_sig, responder_sig], encoded_tx]) do
     decoded_tx = Serialization.rlp_decode(encoded_tx, ChannelOffchainTx)
-    %ChannelOffchainTx{decoded_tx | signatures: {initiator_sig, responder_sig}}
+    {:ok,
+      %ChannelOffchainTx{decoded_tx | signatures: {initiator_sig, responder_sig}}
+    }
   end
 
   def decode_from_payload([[@signed_tx_tag, @version] | _]) do
@@ -284,7 +285,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
     sequence:   sequence,
     updates:    updates,
     state_hash: state_hash
-  }, _datatx) do
+  }) do
     encoded_updates = Enum.map(updates, &ChannelOffchainUpdate.to_list/1)
     [
       :binary.encode_unsigned(@version),

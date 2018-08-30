@@ -219,13 +219,14 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  defp signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
+  def signatures_valid?(%SignedTx{data: data, signatures: sigs}) do
     if length(sigs) != length(DataTx.senders(data)) do
       Logger.error("Wrong signature count")
       false
     else
       data_binary = DataTx.rlp_encode(data)
 
+      #TODO: The specification says that the signatures are sorted, so we cannot relay on this ordering. Refactor this module
       sigs
       |> Enum.zip(DataTx.senders(data))
       |> Enum.reduce(true, fn {sig, acc}, validity ->
@@ -247,6 +248,14 @@ defmodule Aecore.Tx.SignedTx do
         end
       end)
     end
+  end
+
+  def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
+    #TODO: Rewrite the quick hack :P
+    data_binary = DataTx.rlp_encode(data)
+    pubkey in DataTx.senders(data)
+    and
+    Enum.reduce(signatures, false, fn sig, acc -> acc or Keys.verify(data_binary, sig, pubkey) end)
   end
 
   def encode_to_list(%SignedTx{} = tx) do

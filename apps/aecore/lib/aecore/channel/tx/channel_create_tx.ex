@@ -4,13 +4,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   """
 
   @behaviour Aecore.Tx.Transaction
+  @behaviour Aecore.Channel.ChannelTransaction
 
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffchainUpdate}
   alias Aecore.Chain.Identifier
+  alias Aecore.Channel.Updates.ChannelCreateUpdate
 
   require Logger
 
@@ -18,11 +20,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
+          initiator: binary(),
           initiator_amount: non_neg_integer(),
-          responser_amount: non_neg_integer(),
+          responder: binary(),
+          responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
-          channel_reserve: non_neg_integer()
+          minimal_deposit: non_neg_integer(),
+          channel_id: binary()
         }
 
   @typedoc "Reason for the error"
@@ -33,24 +38,30 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
+          initiator: Identifier.t(),
           initiator_amount: non_neg_integer(),
+          responder: Identifier.t(),
           responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
-          channel_reserve: non_neg_integer()
+          minimal_deposit: non_neg_integer(),
+          channel_id: Identifier.t()
         }
 
   @doc """
   Definition of Aecore ChannelCreateTx structure
 
   ## Parameters
+  - initiator: initiator of the channel creation
   - initiator_amount: amount that account first on the senders list commits
-  - responser_amount: amount that account second on the senders list commits
+  - responder: responder of the channel creation
+  - responder_amount: amount that account second on the senders list commits
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
+  - channel_id: id of the created channel - not sent to the blockchain but calculated here for convenience
   """
-  defstruct [:initiator_amount, :responder_amount, :locktime, :state_hash, :channel_reserve]
+  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :minimal_deposit, :channel_id]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
@@ -59,19 +70,25 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(
         %{
+          initiator: initiator,
           initiator_amount: initiator_amount,
+          responder: responder,
           responder_amount: responder_amount,
           locktime: locktime,
           state_hash: state_hash,
-          channel_reserve: channel_reserve
+          minimal_deposit: minimal_deposit,
+          channel_id: channel_id
         } = _payload
       ) do
     %ChannelCreateTx{
+      initiator: Identifier.new(initiator, :account),
       initiator_amount: initiator_amount,
+      responder: Identifier.new(responder, :account),
       responder_amount: responder_amount,
       locktime: locktime,
       state_hash: state_hash,
-      channel_reserve: channel_reserve
+      minimal_deposit: minimal_deposit,
+      channel_id: Identifier.new(channel_id, :channel)
     }
   end
 
@@ -253,5 +270,37 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  @doc """
+    Get the sequence number of the channel after applying the transaction to the offchain channel's state
+  """
+  @spec get_sequence(ChannelCreateTx.tx()) :: non_neg_integer()
+  def get_sequence(%ChannelCreateTx{}) do
+    1
+  end
+
+  @doc """
+    Get the state hash of the offchain chainstate after applying the transaction to the offchain channel's state
+  """
+  @spec get_state_hash(ChannelCreateTx.tx()) :: binary()
+  def get_state_hash(%ChannelCreateTx{state_hash: state_hash}) do
+    state_hash
+  end
+
+  @doc """
+    Get the id of the channel for which the transaction is ment to be applied
+  """
+  @callback get_channel_id(channel_tx()) :: Identifier.t()
+  def get_channel_id(%ChannelCreateTx{channel_id: channel_id}) do
+    channel_id
+  end
+
+  @doc """
+    Get a list of offchain updates to the offchain chainstate
+  """
+  @spec get_updates(ChannelCreateTx.tx()) :: list(ChannelOffchainUpdate.update_types())
+  def get_updates(%ChannelCreateTx{} = tx) do
+    [ChannelCreateUpdate.new(tx)]
   end
 end

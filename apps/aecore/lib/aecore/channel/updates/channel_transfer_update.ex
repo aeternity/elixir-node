@@ -53,7 +53,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
           to: to,
           amount: amount
         },
-        %ChannelStateOnChain{})
+        minimal_deposit)
   do
     try do
       updated_accounts =
@@ -61,7 +61,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
           account
           |> Account.apply_transfer!(nil, -amount)
           |> Account.apply_nonce!(account.nonce+1)
-          |> ChannelOffchainUpdate.ensure_minimal_deposit_is_meet!(0)
+          |> ChannelOffchainUpdate.ensure_minimal_deposit_is_meet!(minimal_deposit)
         end)
         |>
         AccountStateTree.update(to, fn account ->

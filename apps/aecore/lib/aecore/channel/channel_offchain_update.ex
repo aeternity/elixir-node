@@ -18,7 +18,7 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   @doc """
     Updates
   """
-  @callback update_offchain_chainstate(Chainstate.t(), update_types(), ChannelStateOnChain.t()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
 
   @callback encode_to_list(update_types()) :: list(binary()) | {:error, String.t()}
 
@@ -59,15 +59,35 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
   end
 
-  @spec update_chainstate(Chainstate.t(), update_types(), ChannelStateOnChain.t()) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  def update_chainstate(%Chainstate{} = chainstate, object, %ChannelStateOnChain{} = channel) do
+  @spec update_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  defp update_chainstate(%Chainstate{} = chainstate, object, minimal_deposit) do
     module = object.__struct__
-    module.update_offchain_chainstate(chainstate, object, channel)
+    module.update_offchain_chainstate(chainstate, object, minimal_deposit)
+  end
+
+  @spec apply_updates(Chainstate.t(), list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def apply_updates(%Chainstate{} = chainstate, updates, minimal_deposit) do
+    new_chainstate =
+      Enum.reduce_while(updates, chainstate,
+        fn update, acc ->
+          case update_chainstate(acc, update, minimal_deposit) do
+            {:ok, new_acc} ->
+              {:cont, new_acc}
+            {:error, _} = err ->
+              {:halt, err}
+          end
+        end)
+    case new_chainstate do
+      {:error, _} = err ->
+        err
+      _ ->
+        {:ok, new_chainstate}
+    end
   end
 
   def ensure_minimal_deposit_is_meet!(%Account{balance: balance} = account, minimal_deposit) do
     if(balance < minimal_deposit) do
-      throw {:error, "#{__MODULE__} Account does not meet channel reserve (We have #{balance} tokens vs minimal deposit of #{minimal_deposit} tokens)"}
+      throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{minimal_deposit} tokens)"}
     end
     account
   end

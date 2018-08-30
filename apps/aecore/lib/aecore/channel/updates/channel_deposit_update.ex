@@ -41,7 +41,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
           from: from,
           amount: amount
         },
-        %ChannelStateOnChain{})
+        _minimal_deposit)
   do
     try do
       updated_accounts =
