@@ -280,7 +280,7 @@ defmodule Aetestframework.Worker do
   def naming_pre_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.pre_claim(\"test.aet\", <<1::256>>, 10)"
+      "{:ok, tx} = Account.pre_claim(\"test.aet\", 123, 10)"
     )
 
     send_command(node_name, "Pool.add_transaction(tx)")
@@ -290,7 +290,7 @@ defmodule Aetestframework.Worker do
   def naming_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.claim(\"test.aet\", <<1::256>>, 10)"
+      "{:ok, tx} = Account.claim(\"test.aet\", 123, 10)"
     )
 
     send_command(node_name, "Pool.add_transaction(tx)")
@@ -300,7 +300,7 @@ defmodule Aetestframework.Worker do
   def naming_update(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10) "
+      "{:ok, tx} = Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50) "
     )
 
     send_command(node_name, "Pool.add_transaction(tx)")
