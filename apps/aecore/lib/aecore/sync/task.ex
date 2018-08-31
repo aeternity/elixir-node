@@ -89,14 +89,14 @@ defmodule Aecore.Sync.Task do
   @spec do_update_sync_task(Sync.t(), task_id(), {:done | :error, peer_id()}) :: Sync.t()
   def do_update_sync_task(sync, task_id, update) do
     case get_sync_task(task_id, sync) do
-      {:ok, %Task{chain: %Chain{peers: peers} = chain} = task} ->
-        chain1 =
+      {:ok, %Task{chain: %Chain{peers: peers} = task_chain} = task} ->
+        chain_with_removed_peer_id =
           case update do
-            {:done, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
-            {:error, peer_id} -> %Chain{chain | peers: peers -- [peer_id]}
+            {:done, peer_id} -> %Chain{task_chain | peers: peers -- [peer_id]}
+            {:error, peer_id} -> %Chain{task_chain | peers: peers -- [peer_id]}
           end
 
-        maybe_end_sync_task(sync, %{task | chain: chain1})
+        maybe_end_sync_task(sync, %Task{task | chain: chain_with_removed_peer_id})
 
       {:error, :not_found} ->
         Logger.info("#{__MODULE__}: Sync task not found!")
@@ -107,8 +107,8 @@ defmodule Aecore.Sync.Task do
   @spec maybe_end_sync_task(Sync.t(), Task.t()) :: Sync.t()
   def maybe_end_sync_task(sync, %Task{chain: chain} = task) do
     case chain do
-      %Chain{peers: [], chain: [target | _]} ->
-        Logger.info("#{__MODULE__}: Removing Sync task: task with target: #{inspect(target)}")
+      %Chain{peers: [], chain: [target_chain | _]} ->
+        Logger.info("#{__MODULE__}: Removing Sync task: task with target: #{inspect(target_chain)}")
         delete_sync_task(task, sync)
 
       _ ->
@@ -116,23 +116,23 @@ defmodule Aecore.Sync.Task do
     end
   end
 
-  @spec match_tasks(Chain.t(), Sync.t(), list()) ::
+  @spec match_chain_to_task(Chain.t(), Sync.t(), list()) ::
           :no_match
           | {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
           | {:match, Task.t()}
-  def match_tasks(_chain, [], []), do: :no_match
+  def match_chain_to_task(_incoming_chain, [], []), do: :no_match
 
-  def match_tasks(chain, [], acc) do
+  def match_chain_to_task(incoming_chain, [], acc) do
     {height, %Chain{chain_id: cid, peers: peers}} = hd(Enum.reverse(acc))
-    {:inconclusive, chain, {:get_header, cid, peers, height}}
+    {:inconclusive, incoming_chain, {:get_header, cid, peers, height}}
   end
 
-  def match_tasks(chain_1, [%Task{chain: chain_2} = task | tasks], acc) do
-    case Chain.match_chains(Map.get(chain_1, :chain), Map.get(chain_2, :chain)) do
+  def match_chain_to_task(incoming_chain, [%Task{chain: task_chain} = task | tasks], acc) do
+    case Chain.try_match_chains(Map.get(incoming_chain, :chain), Map.get(task_chain, :chain)) do
       :equal -> {:match, task}
-      :different -> match_tasks(chain_1, tasks, acc)
-      {:first, height} -> match_tasks(chain_1, tasks, [{height, chain_1} | acc])
-      {:second, height} -> match_tasks(chain_1, tasks, [{height, chain_2} | acc])
+      :different -> match_chain_to_task(incoming_chain, tasks, acc)
+      {:first, height} -> match_chain_to_task(incoming_chain, tasks, [{height, incoming_chain} | acc])
+      {:second, height} -> match_chain_to_task(incoming_chain, tasks, [{height, task_chain} | acc])
     end
   end
 

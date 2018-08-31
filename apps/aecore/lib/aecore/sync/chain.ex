@@ -13,9 +13,13 @@ defmodule Aecore.Sync.Chain do
   @type chain_id :: reference()
   @type height :: non_neg_integer()
   @type header_hash :: binary()
+
+  @typedoc "Holds data for header height and hash"
   @type chain :: %{height: height(), hash: header_hash()}
 
-  @type t :: %Chain{chain_id: chain_id(), peers: list(peer_id()), chain: list(chain())}
+  @type t :: %Chain{chain_id: chain_id(),
+                    peers: list(peer_id()),
+                    chain: list(chain())}
 
   defstruct chain_id: nil,
             peers: [],
@@ -58,9 +62,9 @@ defmodule Aecore.Sync.Chain do
     %Chain{chain_id: chain_id, peers: peers, chain: ListUtils.merge_descending(chain_1, chain_2)}
   end
 
-  @spec match_chains(list(chain()), list(chain())) ::
+  @spec try_match_chains(list(chain()), list(chain())) ::
           :equal | :different | {:first | :second, height()}
-  def match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: header_hash} | _])
+  def try_match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: header_hash} | _])
       when height_1 > height_2 do
     case find_hash_at_height(height_2, chain_1) do
       {:ok, ^header_hash} -> :equal
@@ -69,7 +73,7 @@ defmodule Aecore.Sync.Chain do
     end
   end
 
-  def match_chains([%{height: height_1, hash: header_hash} | _], chain_2) do
+  def try_match_chains([%{height: height_1, hash: header_hash} | _], chain_2) do
     case find_hash_at_height(height_1, chain_2) do
       {:ok, ^header_hash} -> :equal
       {:ok, _} -> :different
@@ -93,11 +97,12 @@ defmodule Aecore.Sync.Chain do
   merge the data between the chain in the task and the given chain
   """
   @spec add_chain_info(Chain.t(), Sync.t()) :: Sync.t()
-  def add_chain_info(%Chain{chain_id: chain_id} = chain, sync) do
+  def add_chain_info(%Chain{chain_id: chain_id} = incoming_chain, sync) do
     case Task.get_sync_task(chain_id, sync) do
-      {:ok, st = %Task{chain: chain_1}} ->
-        st1 = struct(st, chain: merge_chains(chain, chain_1))
-        Task.set_sync_task(st1, sync)
+      {:ok, %Task{chain: current_chain} = task} ->
+        merged_chain = merge_chains(incoming_chain, current_chain)
+        task_with_merged_chain = %Task{task | chain: merged_chain}
+        Task.set_sync_task(task_with_merged_chain, sync)
 
       {:error, :not_found} ->
         sync
@@ -108,12 +113,16 @@ defmodule Aecore.Sync.Chain do
   Get the next known header_hash at a height bigger than N; or
   if no such hash exist, the header_hash at the highest known height.
   """
-  @spec next_known_hash(Chain.t(), height()) :: header_hash()
-  def next_known_hash(chains, height) do
+  @spec next_known_header_hash(Chain.t(), height()) :: header_hash()
+  def next_known_header_hash(chains, height) do
     %{hash: header_hash} =
       case Enum.take_while(chains, fn %{height: h} -> h > height end) do
-        [] -> Kernel.hd(chains)
-        chains_1 -> List.last(chains_1)
+        [] ->
+          [chain | _] = chains
+          chain
+        
+        chains_1 ->
+          List.last(chains_1)
       end
 
     header_hash
