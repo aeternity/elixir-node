@@ -7,7 +7,9 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Contract.Contract
+  alias Aecore.Contract.{Contract, CallStateTree, ContractStateTree}
+
+  require ContractConstants
 
   @type payload :: %{
           code: binary(),
@@ -117,9 +119,58 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
 
     call = Call.new(owner, data_tx.nonce, block_height, contract.id, gas_price)
 
-    # {call_result, updated_state} = run_contract(...) TODO
+    call_definition = %{
+      caller: owner,
+      contract: contract.id,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data,
+      amount: amount,
+      call_stack: [],
+      code: contract.code,
+      call: call,
+      height: block_height
+    }
 
-    {:ok, {updated_accounts_state, updated_contracts_state}}
+    {call_result, updated_state} =
+      Dispatch.run(ContractConstants.aevm_solidity_01(), call_definition)
+
+    final_state =
+      case call_result.return_type do
+        :ok ->
+          gas_cost = (gas - gas_left) * gas_price
+
+          accounts_after_gas_spent =
+            AccountStateTree.update(updated_accounts_state, owner, fn acc ->
+              Account.apply_transfer!(acc, block_height, (gas_cost + deposit) * -1)
+            end)
+
+          updated_contract = %{contract | code: call_result.return_value}
+
+          chain_state_with_call = %{
+            updated_state
+            | calls: CallStateTree.insert_call(updated_state.calls, call),
+              accounts: accounts_after_gas_spent,
+              contracts:
+                ContractStateTree.insert_contract(updated_state.contracts, updated_contract)
+          }
+
+        _error ->
+          gas_cost = (gas - gas_left) * gas_price
+
+          accounts_after_gas_spent =
+            AccountStateTree.update(updated_accounts_state, owner, fn acc ->
+              Account.apply_transfer!(acc, block_height, gas_cost * -1)
+            end)
+
+          chain_state_with_call = %{
+            updated_state
+            | calls: CallStateTree.insert_call(updated_state.calls, call),
+              accounts: accounts_after_gas_spent
+          }
+      end
+
+    {:ok, {:unused, final_state}}
   end
 
   @spec preprocess_check(

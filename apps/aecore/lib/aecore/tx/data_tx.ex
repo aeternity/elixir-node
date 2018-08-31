@@ -27,6 +27,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx
           | Aecore.Naming.Tx.NameTransferTx
           | Aecore.Naming.Tx.NameRevokeTx
+          | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
           | Aecore.Channel.Tx.ChannelCloseMutalTx
           | Aecore.Channel.Tx.ChannelCloseSoloTx
@@ -45,6 +46,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx.t()
           | Aecore.Naming.Tx.NameTransferTx.t()
           | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
           | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
@@ -89,6 +91,7 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Naming.Tx.NameRevokeTx,
       Aecore.Naming.Tx.NameTransferTx,
       Aecore.Naming.Tx.NameUpdateTx,
+      Aecore.Contract.Tx.ContractCalltx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,
@@ -262,11 +265,16 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == :accounts do
-          %{chainstate | accounts: new_accounts_state}
-        else
-          %{chainstate | accounts: new_accounts_state}
-          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+        case tx.type.get_chain_state_name do
+          :accounts ->
+            %{chainstate | accounts: new_accounts_state}
+
+          :contracts ->
+            new_tx_type_state
+
+          _ ->
+            %{chainstate | accounts: new_accounts_state}
+            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
         end
 
       {:ok, new_chainstate}

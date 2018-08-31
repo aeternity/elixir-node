@@ -7,7 +7,11 @@ defmodule Aecore.Contract.Call do
   alias Aeutil.Parser
   alias Aeutil.Hash
 
+  require Logger
+
   @version 1
+
+  @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @type t :: %Call{
           caller_address: Identifier.t(),
@@ -33,6 +37,8 @@ defmodule Aecore.Contract.Call do
     :return_type
   ]
 
+  use Aecore.Util.Serializable
+
   @nonce_size 256
 
   @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
@@ -47,24 +53,36 @@ defmodule Aecore.Contract.Call do
       :height => block_height,
       :contract_address => identified_contract_address,
       :gas_price => gas_price,
+      # will be set
       :gas_used => 0,
+      # in the
       :return_value => <<>>,
+      # ContractCallTx.new
       :return_type => :ok
     }
   end
 
   @spec encode_to_list(Call.t()) :: list()
-  def encode_to_list(%Call{} = call) do
+  def encode_to_list(%Call{
+        caller_address: caller_address,
+        caller_nonce: caller_nonce,
+        height: height,
+        contract_address: contract_address,
+        gas_price: gas_price,
+        gas_used: gas_used,
+        return_value: return_value,
+        return_type: return_type
+      }) do
     [
       @version,
-      Identifier.encode_to_binary(call.caller_address),
-      :binary.encode_unsigned(call.caller_nonce),
-      :binary.encode_unsigned(call.height),
-      Identifier.encode_to_binary(call.contract_address),
-      :binary.encode_unsigned(call.gas_price),
-      :binary.encode_unsigned(call.gas_used),
-      call.return_value,
-      Parser.to_string(call.return_type)
+      Identifier.encode_to_binary(caller_address),
+      :binary.encode_unsigned(caller_nonce),
+      :binary.encode_unsigned(height),
+      Identifier.encode_to_binary(contract_address),
+      :binary.encode_unsigned(gas_price),
+      :binary.encode_unsigned(gas_used),
+      return_value,
+      Parser.to_string(return_type)
     ]
   end
 
@@ -79,20 +97,33 @@ defmodule Aecore.Contract.Call do
         return_value,
         return_type
       ]) do
-    {:ok, decoded_caller_address} = Identifier.decode_from_binary(encoded_caller_address)
-    {:ok, decoded_contract_address} = Identifier.decode_from_binary(encoded_contract_address)
+    parsed_return_type =
+      case return_type do
+        return_type when return_type in ["ok", "error", "revert"] ->
+          String.to_atom(return_type)
 
-    {:ok,
-     %Call{
-       caller_address: decoded_caller_address,
-       caller_nonce: :binary.decode_unsigned(caller_nonce),
-       height: :binary.decode_unsigned(height),
-       contract_address: decoded_contract_address,
-       gas_price: :binary.decode_unsigned(gas_price),
-       gas_used: :binary.decode_unsigned(gas_used),
-       return_value: return_value,
-       return_type: String.to_atom(return_type)
-     }}
+        _ ->
+          {:error,
+           "#{__MODULE__}: decode_from_list: Invalid return_type: #{inspect(return_type)}"}
+      end
+
+    with {:ok, decoded_caller_address} <- Identifier.decode_from_binary(encoded_caller_address),
+         {:ok, decoded_contract_address} <-
+           Identifier.decode_from_binary(encoded_contract_address) do
+      {:ok,
+       %Call{
+         caller_address: decoded_caller_address,
+         caller_nonce: :binary.decode_unsigned(caller_nonce),
+         height: :binary.decode_unsigned(height),
+         contract_address: decoded_contract_address,
+         gas_price: :binary.decode_unsigned(gas_price),
+         gas_used: :binary.decode_unsigned(gas_used),
+         return_value: return_value,
+         return_type: parsed_return_type
+       }}
+    else
+      {:error, _} = error -> error
+    end
   end
 
   def decode_from_list(@version, data) do
@@ -114,5 +145,29 @@ defmodule Aecore.Contract.Call do
         contract_address.value::binary>>
 
     Hash.hash(binary)
+  end
+
+  def gas_used(%Call{gas_used: gas_used}) do
+    gas_used
+  end
+
+  def return_value(%Call{return_value: return_value}) do
+    return_value
+  end
+
+  def return_type(%Call{return_type: return_type}) do
+    return_type
+  end
+
+  def set_gas_used(call, gas_used) do
+    %Call{call | gas_used: gas_used}
+  end
+
+  def set_return_value(call, return_value) do
+    %Call{call | return_value: return_value}
+  end
+
+  def set_return_type(call, return_type) do
+    %Call{call | return_type: return_type}
   end
 end

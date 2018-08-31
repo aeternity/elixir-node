@@ -4,8 +4,7 @@ defmodule Aecore.Chain.BlockValidation do
   """
 
   alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header, Genesis}
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Chain.Chainstate
@@ -29,7 +28,7 @@ defmodule Aecore.Chain.BlockValidation do
         old_chain_state,
         blocks_for_target_calculation
       ) do
-    is_genesis = new_block == Block.genesis_block() && previous_block == nil
+    is_genesis = new_block == Genesis.block() && previous_block == nil
 
     case single_validate_block(new_block) do
       :ok ->

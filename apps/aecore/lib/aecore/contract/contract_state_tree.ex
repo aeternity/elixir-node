@@ -18,31 +18,30 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
-  def insert_contract(contract_tree, %Contract{id: id} = contract) do
+  def insert_contract(contract_tree, %Contract{id: id, store: store} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     new_contract_tree = PatriciaMerkleTree.insert(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
 
-    Enum.reduce(contract.store, new_contract_tree, fn {s_key, s_value}, tree_acc ->
+    Enum.reduce(store, new_contract_tree, fn {s_key, s_value}, tree_acc ->
       s_tree_key = <<store_id::binary, s_key::binary>>
       PatriciaMerkleTree.insert(tree_acc, s_tree_key, s_value)
     end)
   end
 
-  @spec enter_contract(contracts_state(), map()) :: contracts_state()
-  def enter_contract(contract_tree, contract) do
-    id = contract.id
+  @spec enter_contract(contracts_state(), Contract.t()) :: contracts_state()
+  def enter_contract(contract_tree, %Contract{id: id, store: store} = contract) do
     serialized = Serialization.rlp_encode(contract)
 
     updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, id.value, serialized)
     store_id = Contract.store_id(contract)
     old_contract_store = get_store(store_id, contract_tree)
 
-    update_store(store_id, old_contract_store, contract.store, updated_contract_tree)
+    update_store(store_id, old_contract_store, store, updated_contract_tree)
   end
 
-  @spec get_contract(contracts_state(), binary()) :: map()
+  @spec get_contract(contracts_state(), binary()) :: Contract.t()
   def get_contract(contract_tree, key) do
     case PatriciaMerkleTree.lookup(contract_tree, key) do
       {:ok, serialized} ->
@@ -50,22 +49,12 @@ defmodule Aecore.Contract.ContractStateTree do
 
         identified_id = Identifier.create_identity(key, :contract)
 
-        raw_identified_referers =
-          Enum.reduce(deserialized.referers, [], fn referer, acc ->
-            {:ok, identified_referer} = Identifier.create_identity(referer, :contract)
-
-            [identified_referer | acc]
-          end)
-
-        identified_referers = raw_identified_referers |> Enum.reverse()
-
         store_id = Contract.store_id(%{deserialized | id: identified_id})
 
         %Contract{
           deserialized
           | id: identified_id,
-            store: get_store(store_id, contract_tree),
-            referers: identified_referers
+            store: get_store(store_id, contract_tree)
         }
 
       _ ->
@@ -82,6 +71,8 @@ defmodule Aecore.Contract.ContractStateTree do
     merged_store = Map.merge(old_store, new_store)
 
     Enum.reduce(merged_store, tree, fn {s_key, s_value}, tree_acc ->
+      # If key exists in new store, we store the new value
+      # Otherwise, overwrite with empty tree
       insert_value =
         if Map.has_key?(new_store, s_key) do
           s_value

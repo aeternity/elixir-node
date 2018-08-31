@@ -9,11 +9,10 @@ defmodule State do
   `exec`      - transaction information
   `env`       - environmental Information
   `pre`       - previous world state (mapping between addresses and accounts)
-  `calldepth` - the current call's depth
   `opts`      - VM options
   """
-  @spec init_vm(map(), map(), map(), integer(), map()) :: map()
-  def init_vm(exec, env, pre, calldepth, opts) do
+  @spec init_vm(map(), map()) :: map()
+  def init_vm(%{exec: exec, env: env, pre: pre}, opts) do
     bytecode = Map.get(exec, :code)
 
     %{
@@ -35,6 +34,7 @@ defmodule State do
       :gas => Map.get(exec, :gas),
       :value => Map.get(exec, :value),
       :return_data => Map.get(exec, :return_data, <<>>),
+      :call_stack => Map.get(exec, :call_stack, []),
 
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
@@ -44,7 +44,9 @@ defmodule State do
 
       :pre => pre,
 
-      :calldepth => calldepth,
+      :vm_version => Map.get(env, :vm_version),
+      :chain_state => Map.get(env, :chain_state),
+      :chain_api => Map.get(env, :chain_api),
 
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
@@ -67,13 +69,16 @@ defmodule State do
     exec = export_exec(gas, to, value, data, caller, dest, caller_state)
     env = export_env(caller_state)
     pre = Map.get(caller_state, :pre, %{})
-    calldepth = State.calldepth(caller_state) + 1
 
-    init_vm(exec, env, pre, calldepth, opts)
+    init_vm(%{exec: exec, env: env, pre: pre}, opts)
   end
 
   def calldepth(state) do
-    Map.get(state, :calldepth)
+    __MODULE__.call_stack(state) |> Enum.count()
+  end
+
+  def call_stack(state) do
+    Map.get(state, :call_stack)
   end
 
   def execute_calls(state) do
@@ -202,6 +207,14 @@ defmodule State do
     Map.get(state, :currentTimestamp)
   end
 
+  def out(state) do
+    Map.get(state, :out)
+  end
+
+  def chain_state(state) do
+    Map.get(state, :chain_state)
+  end
+
   def get_balance(address, state) do
     pre = Map.get(state, :pre)
     account = Map.get(pre, address, %{})
@@ -295,7 +308,8 @@ defmodule State do
       :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
       :gasPrice => State.gas_price(state),
       :gas => gas,
-      :value => value
+      :value => value,
+      :call_stack => [caller | State.call_stack(state)]
     }
   end
 
