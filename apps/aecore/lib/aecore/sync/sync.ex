@@ -218,10 +218,10 @@ defmodule Aecore.Sync.Sync do
     {:noreply, do_terminate_worker(pid, state)}
   end
 
-  @spec sync_task_for_chain(Chain.t(), t()) ::
+  @spec sync_task_for_chain(Chain.t(), Sync.t()) ::
           {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
-          | {{:existing, Task.task_id()}, t()}
-          | {{:new, Chain.t(), Task.task_id()}, t()}
+          | {{:existing, Task.task_id()}, Sync.t()}
+          | {{:new, Chain.t(), Task.task_id()}, Sync.t()}
   def sync_task_for_chain(chain, %Sync{sync_tasks: tasks} = state) do
     case Task.match_tasks(chain, tasks, []) do
       :no_match ->
@@ -243,7 +243,7 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  @spec handle_last_result(t(), Task.task_id(), last_result()) :: t()
+  @spec handle_last_result(Sync.t(), Task.task_id(), last_result()) :: Sync.t()
   def handle_last_result(state, task_id, last_result) do
     case Task.get_sync_task(task_id, state) do
       {:ok, task} ->

@@ -58,12 +58,12 @@ defmodule Aecore.Sync.Task do
             pending: [],
             workers: []
 
-  @spec init_sync_task(Chain.t()) :: t()
+  @spec init_sync_task(Chain.t()) :: Task.t()
   def init_sync_task(%Chain{chain_id: id} = chain) do
     %Task{id: id, chain: chain}
   end
 
-  @spec get_sync_task(task_id(), Sync.t()) :: {:ok, t()} | {:error, :not_found}
+  @spec get_sync_task(task_id(), Sync.t()) :: {:ok, Task.t()} | {:error, :not_found}
   def get_sync_task(task_id, %Sync{sync_tasks: tasks}) do
     case Enum.find(tasks, fn %{id: id} -> id == task_id end) do
       nil -> {:error, :not_found}
@@ -71,17 +71,17 @@ defmodule Aecore.Sync.Task do
     end
   end
 
-  @spec set_sync_task(t(), Sync.t()) :: Sync.t()
+  @spec set_sync_task(Task.t(), Sync.t()) :: Sync.t()
   def set_sync_task(%Task{id: id} = task, %Sync{sync_tasks: tasks} = sync) do
     %Sync{sync | sync_tasks: keystore(id, task, tasks)}
   end
 
-  @spec set_sync_task(task_id(), t(), Sync.t()) :: Sync.t()
+  @spec set_sync_task(task_id(), Task.t(), Sync.t()) :: Sync.t()
   def set_sync_task(id, %Task{} = task, %Sync{sync_tasks: tasks} = sync) do
     %Sync{sync | sync_tasks: keystore(id, task, tasks)}
   end
 
-  @spec delete_sync_task(t(), Sync.t()) :: Sync.t()
+  @spec delete_sync_task(Task.t(), Sync.t()) :: Sync.t()
   def delete_sync_task(%Task{id: task_id}, %Sync{sync_tasks: tasks} = sync) do
     %Sync{sync | sync_tasks: Enum.filter(tasks, fn %{id: id} -> id != task_id end)}
   end
@@ -104,7 +104,7 @@ defmodule Aecore.Sync.Task do
     end
   end
 
-  @spec maybe_end_sync_task(Sync.t(), t()) :: Sync.t()
+  @spec maybe_end_sync_task(Sync.t(), Task.t()) :: Sync.t()
   def maybe_end_sync_task(sync, %Task{chain: chain} = task) do
     case chain do
       %Chain{peers: [], chain: [target | _]} ->
@@ -119,7 +119,7 @@ defmodule Aecore.Sync.Task do
   @spec match_tasks(Chain.t(), Sync.t(), list()) ::
           :no_match
           | {:inconclusive, Chain.t(), {:get_header, chain_id(), peer_id(), height()}}
-          | {:match, t()}
+          | {:match, Task.t()}
   def match_tasks(_chain, [], []), do: :no_match
 
   def match_tasks(chain, [], acc) do
@@ -141,7 +141,7 @@ defmodule Aecore.Sync.Task do
   is present in the list -> update the list with it's values.
   If not -> add the element to the list
   """
-  @spec keystore(peer_id() | task_id(), t() | worker(), t() | list(worker())) ::
+  @spec keystore(peer_id() | task_id(), Task.t() | worker(), Task.t() | list(worker())) ::
           sync_tasks() | list(worker())
   def keystore(id, elem, elems) do
     do_keystore(elems, elem, id, [])

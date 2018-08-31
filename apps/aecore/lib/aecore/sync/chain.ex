@@ -6,28 +6,29 @@ defmodule Aecore.Sync.Chain do
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Sync.Task
+  alias Aecore.List, as: ListUtils
   alias __MODULE__
 
   @type peer_id :: pid()
   @type chain_id :: reference()
   @type height :: non_neg_integer()
-  @type hash :: binary()
-  @type chain :: %{height: height(), hash: hash()}
+  @type header_hash :: binary()
+  @type chain :: %{height: height(), hash: header_hash()}
 
-  @type t :: %Chain{chain_id: chain_id(), peers: list(), chain: list(chain())}
+  @type t :: %Chain{chain_id: chain_id(), peers: list(peer_id()), chain: list(chain())}
 
   defstruct chain_id: nil,
             peers: [],
             chain: []
 
-  @spec init_chain(peer_id(), Header.t()) :: t()
+  @spec init_chain(peer_id(), Header.t()) :: Chain.t()
   def init_chain(peer_id, header) do
     init_chain(Kernel.make_ref(), [peer_id], header)
   end
 
-  @spec init_chain(chain_id(), peer_id(), Header.t()) :: t()
+  @spec init_chain(chain_id(), peer_id(), Header.t()) :: Chain.t()
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_hash} = header) do
-    hash = BlockValidation.block_header_hash(header)
+    header_hash = BlockValidation.block_header_hash(header)
 
     prev_header_data =
       if height > 1 do
@@ -39,11 +40,11 @@ defmodule Aecore.Sync.Chain do
     %Chain{
       chain_id: chain_id,
       peers: peers,
-      chain: [%{height: height, hash: hash}] ++ prev_header_data
+      chain: [%{height: height, hash: header_hash}] ++ prev_header_data
     }
   end
 
-  @spec merge_chains(t(), t()) :: t()
+  @spec merge_chains(Chain.t(), Chain.t()) :: Chain.t()
   def merge_chains(%Chain{chain_id: chain_id, peers: peers_1, chain: chain_1}, %Chain{
         chain_id: chain_id,
         peers: peers_2,
@@ -54,30 +55,32 @@ defmodule Aecore.Sync.Chain do
       |> Enum.sort()
       |> Enum.uniq()
 
-    %Chain{chain_id: chain_id, peers: peers, chain: merge(chain_1, chain_2)}
+    %Chain{chain_id: chain_id, peers: peers, chain: ListUtils.merge_descending(chain_1, chain_2)}
   end
 
   @spec match_chains(list(chain()), list(chain())) ::
           :equal | :different | {:first | :second, height()}
-  def match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: hash} | _])
+  def match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: header_hash} | _])
       when height_1 > height_2 do
     case find_hash_at_height(height_2, chain_1) do
-      {:ok, ^hash} -> :equal
+      {:ok, ^header_hash} -> :equal
       {:ok, _} -> :different
       :not_found -> {:first, height_2}
     end
   end
 
-  def match_chains([%{height: height_1, hash: hash} | _], chain_2) do
+  def match_chains([%{height: height_1, hash: header_hash} | _], chain_2) do
     case find_hash_at_height(height_1, chain_2) do
-      {:ok, ^hash} -> :equal
+      {:ok, ^header_hash} -> :equal
       {:ok, _} -> :different
       :not_found -> {:second, height_1}
     end
   end
 
-  @spec find_hash_at_height(height(), list(chain())) :: {:ok, hash()} | :not_found
-  def find_hash_at_height(height, [%{height: height, hash: hash} | _]), do: {:ok, hash}
+  @spec find_hash_at_height(height(), list(chain())) :: {:ok, header_hash()} | :not_found
+  def find_hash_at_height(height, [%{height: height, hash: header_hash} | _]),
+    do: {:ok, header_hash}
+
   def find_hash_at_height(_, []), do: :not_found
 
   def find_hash_at_height(height, [%{height: height_1} | _]) when height_1 < height,
@@ -89,7 +92,7 @@ defmodule Aecore.Sync.Chain do
   If there is a task with chain_id equal to the given chain,
   merge the data between the chain in the task and the given chain
   """
-  @spec add_chain_info(t(), Sync.t()) :: Sync.t()
+  @spec add_chain_info(Chain.t(), Sync.t()) :: Sync.t()
   def add_chain_info(%Chain{chain_id: chain_id} = chain, sync) do
     case Task.get_sync_task(chain_id, sync) do
       {:ok, st = %Task{chain: chain_1}} ->
@@ -102,47 +105,17 @@ defmodule Aecore.Sync.Chain do
   end
 
   @doc """
-  Get the next known hash at a height bigger than N; or
-  if no such hash exist, the hash at the highest known height.
+  Get the next known header_hash at a height bigger than N; or
+  if no such hash exist, the header_hash at the highest known height.
   """
-  @spec next_known_hash(t(), height()) :: hash()
+  @spec next_known_hash(Chain.t(), height()) :: header_hash()
   def next_known_hash(chains, height) do
-    %{hash: hash} =
+    %{hash: header_hash} =
       case Enum.take_while(chains, fn %{height: h} -> h > height end) do
         [] -> Kernel.hd(chains)
         chains_1 -> List.last(chains_1)
       end
 
-    hash
-  end
-
-  @doc """
-  Merge two chains while keeping their descending order
-  """
-  @spec merge(t(), t()) :: t()
-  def merge(chain_list_1, chain_list_2) do
-    merge(chain_list_1, chain_list_2, [])
-  end
-
-  @spec merge(t(), t(), list()) :: t()
-  defp merge([], [], acc) do
-    acc
-    |> Enum.sort()
-    |> Enum.reverse()
-  end
-
-  defp merge([], [chain2 | chain_list_2], acc) do
-    merge([], chain_list_2, [chain2 | acc])
-  end
-
-  defp merge([chain1 | chain_list_1], chain_list_2, acc) do
-    case Enum.member?(chain_list_2, chain1) do
-      true ->
-        new_chain_list_2 = Enum.filter(chain_list_2, fn chain -> chain != chain1 end)
-        merge(chain_list_1, new_chain_list_2, [chain1 | acc])
-
-      false ->
-        merge(chain_list_1, chain_list_2, [chain1 | acc])
-    end
+    header_hash
   end
 end
