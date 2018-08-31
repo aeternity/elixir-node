@@ -108,7 +108,10 @@ defmodule Aecore.Sync.Task do
   def maybe_end_sync_task(sync, %Task{chain: chain} = task) do
     case chain do
       %Chain{peers: [], chain: [target_chain | _]} ->
-        Logger.info("#{__MODULE__}: Removing Sync task: task with target: #{inspect(target_chain)}")
+        Logger.info(
+          "#{__MODULE__}: Removing Sync task: task with target: #{inspect(target_chain)}"
+        )
+
         delete_sync_task(task, sync)
 
       _ ->
@@ -129,10 +132,17 @@ defmodule Aecore.Sync.Task do
 
   def match_chain_to_task(incoming_chain, [%Task{chain: task_chain} = task | tasks], acc) do
     case Chain.try_match_chains(Map.get(incoming_chain, :chain), Map.get(task_chain, :chain)) do
-      :equal -> {:match, task}
-      :different -> match_chain_to_task(incoming_chain, tasks, acc)
-      {:first, height} -> match_chain_to_task(incoming_chain, tasks, [{height, incoming_chain} | acc])
-      {:second, height} -> match_chain_to_task(incoming_chain, tasks, [{height, task_chain} | acc])
+      :equal ->
+        {:match, task}
+
+      :different ->
+        match_chain_to_task(incoming_chain, tasks, acc)
+
+      {:first, height} ->
+        match_chain_to_task(incoming_chain, tasks, [{height, incoming_chain} | acc])
+
+      {:second, height} ->
+        match_chain_to_task(incoming_chain, tasks, [{height, task_chain} | acc])
     end
   end
 

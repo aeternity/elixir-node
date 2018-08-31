@@ -116,7 +116,7 @@ defmodule Aecore.Sync.Sync do
 
     ## Set trap_exit, to receive crash messages from async processes
     Process.flag(:trap_exit, true)
-    
+
     {:ok, state}
   end
 
@@ -349,7 +349,9 @@ defmodule Aecore.Sync.Sync do
           chain: %Chain{chain: chain}
         } = task
       ) do
-    target_header_hash = Chain.next_known_header_hash(chain, block_height + @max_headers_per_chunk)
+    target_header_hash =
+      Chain.next_known_header_hash(chain, block_height + @max_headers_per_chunk)
+
     {{:fill_pool, last_header_hash, target_header_hash}, task}
   end
 
@@ -435,7 +437,10 @@ defmodule Aecore.Sync.Sync do
     # so we can safely remove it
     Process.unlink(old_worker_pid)
 
-    %Task{task | workers: Task.keystore(worker_peer_id, {worker_peer_id, new_worker_pid}, workers)}
+    %Task{
+      task
+      | workers: Task.keystore(worker_peer_id, {worker_peer_id, new_worker_pid}, workers)
+    }
   end
 
   @spec do_terminate_worker(pid(), Sync.t()) :: Sync.t()
@@ -561,9 +566,9 @@ defmodule Aecore.Sync.Sync do
 
       {:error, reason} ->
         Logger.info(
-          "#{__MODULE__}: Fetching header at height #{block_height} under #{inspect(top_header_hash)} from #{
-            inspect(peer_id)
-          }, failed #{reason}"
+          "#{__MODULE__}: Fetching header at height #{block_height} under #{
+            inspect(top_header_hash)
+          } from #{inspect(peer_id)}, failed #{reason}"
         )
 
         do_get_header_by_height(ids, block_height, top_header_hash)
@@ -597,7 +602,10 @@ defmodule Aecore.Sync.Sync do
                min_agreed_hash
              ) do
           {:ok, block_height, header_hash} ->
-            Logger.info("#{__MODULE__}: Agreed upon height: #{block_height} with #{inspect(peer_id)}")
+            Logger.info(
+              "#{__MODULE__}: Agreed upon height: #{block_height} with #{inspect(peer_id)}"
+            )
+
             agreement = {:agreed_height, %{height: block_height, hash: header_hash}}
             do_work_on_sync_task(peer_id, task_id, agreement)
 
@@ -615,9 +623,14 @@ defmodule Aecore.Sync.Sync do
       {:get_block, block_height, header_hash} ->
         res =
           case do_fetch_block(header_hash, peer_id) do
-            {:ok, false, _block} -> {:get_block, block_height, header_hash, peer_id, {:ok, :local}}
-            {:ok, true, block} -> {:get_block, block_height, header_hash, peer_id, {:ok, block}}
-            {:error, reason} -> {:error, {:get_block, reason}}
+            {:ok, false, _block} ->
+              {:get_block, block_height, header_hash, peer_id, {:ok, :local}}
+
+            {:ok, true, block} ->
+              {:get_block, block_height, header_hash, peer_id, {:ok, block}}
+
+            {:error, reason} ->
+              {:error, {:get_block, reason}}
           end
 
         do_work_on_sync_task(peer_id, task_id, res)
@@ -756,7 +769,12 @@ defmodule Aecore.Sync.Sync do
   end
 
   defp fill_pool(peer_id, start_header_hash, target_header_hash, task_id) do
-    case PeerConnection.get_n_successors(start_header_hash, target_header_hash, @max_headers_per_chunk, peer_id) do
+    case PeerConnection.get_n_successors(
+           start_header_hash,
+           target_header_hash,
+           @max_headers_per_chunk,
+           peer_id
+         ) do
       {:ok, %{hashes: []}} ->
         update_sync_task({:done, peer_id}, task_id)
         Logger.info("#{__MODULE__}: Sync done (according to #{inspect(peer_id)})")
@@ -799,8 +817,11 @@ defmodule Aecore.Sync.Sync do
 
           false ->
             Logger.error(fn ->
-              "#{__MODULE__}: Calculated header for block #{inspect(block)} does not match header hash: #{header_hash}"
+              "#{__MODULE__}: Calculated header for block #{inspect(block)} does not match header hash: #{
+                header_hash
+              }"
             end)
+
             {:error, :header_hash_mismatch}
         end
 

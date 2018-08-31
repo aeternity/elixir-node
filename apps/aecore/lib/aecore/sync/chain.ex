@@ -17,9 +17,7 @@ defmodule Aecore.Sync.Chain do
   @typedoc "Holds data for header height and hash"
   @type chain :: %{height: height(), hash: header_hash()}
 
-  @type t :: %Chain{chain_id: chain_id(),
-                    peers: list(peer_id()),
-                    chain: list(chain())}
+  @type t :: %Chain{chain_id: chain_id(), peers: list(peer_id()), chain: list(chain())}
 
   defstruct chain_id: nil,
             peers: [],
@@ -64,7 +62,9 @@ defmodule Aecore.Sync.Chain do
 
   @spec try_match_chains(list(chain()), list(chain())) ::
           :equal | :different | {:first | :second, height()}
-  def try_match_chains([%{height: height_1} | chain_1], [%{height: height_2, hash: header_hash} | _])
+  def try_match_chains([%{height: height_1} | chain_1], [
+        %{height: height_2, hash: header_hash} | _
+      ])
       when height_1 > height_2 do
     case find_hash_at_height(height_2, chain_1) do
       {:ok, ^header_hash} -> :equal
@@ -120,7 +120,7 @@ defmodule Aecore.Sync.Chain do
         [] ->
           [chain | _] = chains
           chain
-        
+
         chains_1 ->
           List.last(chains_1)
       end
