@@ -140,7 +140,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   defp build_merkle_tree([], _position, tree), do: tree
 
-  defp build_merkle_tree([signed_tx | list_txs], position, tree) do
+  defp build_merkle_tree([%SignedTx{} = signed_tx | list_txs], position, tree) do
     key = :binary.encode_unsigned(position)
     val = Serialization.rlp_encode(signed_tx)
     build_merkle_tree(list_txs, position + 1, PatriciaMerkleTree.enter(tree, key, val))
