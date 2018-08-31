@@ -18,26 +18,26 @@ defmodule Aecore.Sync.Task do
   @type height :: non_neg_integer()
   @type hash :: binary()
 
-  @typespec "Id specifing the chain to which we are syncing"
+  @typedoc "Id specifing the chain to which we are syncing"
   @type chain_id :: reference()
 
-  @typespec "Id of the peer we are communicating with"
+  @typedoc "Id of the peer we are communicating with"
   @type peer_id :: pid()
 
-  @typespec "List of all the sync tasks we are currently syncing against"
+  @typedoc "List of all the sync tasks we are currently syncing against"
   @type sync_tasks :: list(%Task{})
 
-  @typespec "Id of the current task"
+  @typedoc "Id of the current task"
   @type task_id :: reference()
 
-  @typespec "Element holding weather we have this block or not, 
+  @typedoc "Element holding weather we have this block or not,
   and if we don't from where could we take it (local/remote peer)"
   @type pool_elem :: {height(), hash(), {peer_id(), Block.t()} | {:ok, :local} | false}
 
-  @typespec "On what header data (height + hash) do we agree upon when starting a sync task"
+  @typedoc "On what header data (height + hash) do we agree upon when starting a sync task"
   @type agreed :: %{height: height(), hash: hash()} | nil
 
-  @typespec "Process resolving syncing implemetation with a specific peer"
+  @typedoc "Process resolving syncing implemetation with a specific peer"
   @type worker :: {peer_id(), pid()}
 
   @type t :: %Task{
