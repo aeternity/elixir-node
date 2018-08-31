@@ -6,7 +6,7 @@ defmodule Aecore.Sync.Chain do
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Sync.Task
-  alias Aecore.List, as: ListUtils
+  alias Aeutil.List, as: ListUtils
   alias __MODULE__
 
   @type peer_id :: pid()
