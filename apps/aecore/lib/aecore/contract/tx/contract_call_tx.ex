@@ -137,16 +137,16 @@
            tx_type_state(),
            non_neg_integer(),
            t(),
-           Transaction.context(),
-           DataTx.t()
+           DataTx.t(),
+           Transaction.context()
          ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
    def process_chainstate(
          accounts,
          calls,
          block_height,
          %ContractCallTx{} = call_tx,
-         context,
-         data_tx
+         data_tx,
+         context
        ) do
      # Transfer the attached funds to the callee, before the calling of the contract
      sender = DataTx.main_sender(data_tx)
@@ -200,16 +200,16 @@
            tx_type_state(),
            non_neg_integer(),
            ContractCallTx.t(),
-           Transaction.context(),
-           DataTx.t()
+           DataTx.t(),
+           Transaction.context()
          ) :: :ok | {:error, String.t()}
    def preprocess_check(
          accounts,
          calls,
          _block_height,
          %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price} = call_tx,
-         context,
-         data_tx
+         data_tx,
+         context
        )
        when is_non_neg_integer(gas_price) do
      sender = DataTx.main_sender(data_tx)
@@ -301,7 +301,7 @@
 
    defp check_contract_balance(accounts, sender, amount) do
      case AccountStateTree.get(accounts, sender) do
-       account ->
+       %Account{} ->
          check_validity(
            Account.balance(accounts, sender) >= amount,
            "#{__MODULE__}: Insufficient funds"
