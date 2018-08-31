@@ -5,6 +5,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Chain.Identifier
+  alias Aecore.Keys
   alias Aeutil.{Bits, Hash}
   alias Aeutil.Serialization
 
@@ -14,7 +15,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   @type t :: %NameCommitment{
           hash: binary(),
-          owner: Wallet.pubkey(),
+          owner: Keys.pubkey(),
           created: non_neg_integer(),
           expires: non_neg_integer()
         }
@@ -25,7 +26,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   @spec create(
           binary(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
         ) :: NameCommitment.t()

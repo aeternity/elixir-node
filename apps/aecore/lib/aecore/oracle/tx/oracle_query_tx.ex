@@ -152,12 +152,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         Account.apply_transfer!(acc, block_height, tx.query_fee * -1)
       end)
 
-    identified_sender = Identifier.create_identity(sender, :account)
-
     query = %OracleQuery{
-      sender_address: identified_sender,
+      sender_address: sender,
       sender_nonce: nonce,
-      oracle_address: tx.oracle_address,
+      oracle_address: tx.oracle_address.value,
       query: tx.query_data,
       has_response: false,
       response: :undefined,
