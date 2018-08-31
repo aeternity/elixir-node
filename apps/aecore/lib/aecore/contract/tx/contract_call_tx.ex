@@ -197,7 +197,6 @@ defmodule ContractCallTx do
     }
 
     Dispatch.run(vm_version, call_definition)
-
   end
 
   defp validate_identifier(%Identifier{} = id, type) do

@@ -63,7 +63,7 @@ defmodule Dispatch do
       currentGasLimit: 100_000_000_000,
       currentNumber: height,
       currentTimestamp: :os.system_time(:millisecond),
-      chain_state: Chain.chain_state(),
+      chain_state: chainstate,
       chain_api: VmChain,
       vm_version: vm_version
     }

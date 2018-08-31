@@ -265,11 +265,16 @@ defmodule Aecore.Tx.DataTx do
              tx
            ) do
       new_chainstate =
-        if tx.type.get_chain_state_name() == :accounts do
-          %{chainstate | accounts: new_accounts_state}
-        else
-          %{chainstate | accounts: new_accounts_state}
-          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+        case tx.type.get_chain_state_name do
+          :accounts ->
+            %{chainstate | accounts: new_accounts_state}
+
+          :contracts ->
+            new_tx_type_state
+
+          _ ->
+            %{chainstate | accounts: new_accounts_state}
+            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
         end
 
       {:ok, new_chainstate}

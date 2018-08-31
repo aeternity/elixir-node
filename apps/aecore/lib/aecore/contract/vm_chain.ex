@@ -86,10 +86,14 @@ defmodule Aecore.Contract.VmChain do
     end
   end
 
-  defp do_call_contract(chain_state, height, %DataTx{
-         nonce: nonce,
-         payload: %{caller: contract_key, contract: target}
-       } = tx) do
+  defp do_call_contract(
+         chain_state,
+         height,
+         %DataTx{
+           nonce: nonce,
+           payload: %{caller: contract_key, contract: target}
+         } = tx
+       ) do
     identified_contract = Identifier.create_identity(contract_key, :contract)
     identified_target = Identifier.create_identity(target, :contract)
 
