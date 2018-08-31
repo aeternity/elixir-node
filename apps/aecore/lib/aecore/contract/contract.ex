@@ -108,7 +108,7 @@ defmodule Aecore.Contract.Contract do
       end)
 
     with {:ok, decoded_active_value} <- decoded_active,
-          true <- is_list(decoded_referers),
+         true <- is_list(decoded_referers),
          {:ok, decoded_owner_address} <- Identifier.decode_from_binary(owner) do
       {:ok,
        %Contract{

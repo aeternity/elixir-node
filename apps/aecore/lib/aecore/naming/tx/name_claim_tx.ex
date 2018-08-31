@@ -7,11 +7,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{NameClaim, NameCommitment, NamingStateTree}
-  alias Aecore.Naming.NameUtil
+  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Chain.Identifier
 
   require Logger
@@ -62,9 +60,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
+      !is_integer(name_salt) ->
         {:error,
-         "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+         "#{__MODULE__}: Name salt is not correct: #{inspect(name_salt)}, should be integer"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -85,20 +83,22 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         block_height,
         %NameClaimTx{} = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
+    claim = Name.create(claim_hash, sender, block_height)
 
     updated_naming_chainstate =
       naming_state
@@ -117,20 +117,22 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
         _block_height,
         tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
@@ -143,7 +145,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner.value != sender ->
+      pre_claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)
@@ -181,14 +183,14 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.name,
-      tx.name_salt,
+      :binary.encode_unsigned(tx.name_salt),
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
   def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
-    payload = %NameClaimTx{name: name, name_salt: name_salt}
+    payload = %NameClaimTx{name: name, name_salt: :binary.decode_unsigned(name_salt)}
 
     DataTx.init_binary(
       NameClaimTx,

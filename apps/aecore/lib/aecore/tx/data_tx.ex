@@ -262,7 +262,8 @@ defmodule Aecore.Tx.DataTx do
              tx_type_state,
              block_height,
              payload,
-             tx
+             tx,
+             0
            ) do
       new_chainstate =
         case tx.type.get_chain_state_name do
@@ -284,13 +285,14 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
+          :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
+    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, 0) do
       if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
         :ok
       else

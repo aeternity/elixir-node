@@ -53,9 +53,12 @@ defmodule Aecore.Contract.Call do
       :height => block_height,
       :contract_address => identified_contract_address,
       :gas_price => gas_price,
-      :gas_used => 0,         # will be set
-      :return_value => <<>>,  # in the
-      :return_type => :ok     # ContractCallTx.new
+      # will be set
+      :gas_used => 0,
+      # in the
+      :return_value => <<>>,
+      # ContractCallTx.new
+      :return_type => :ok
     }
   end
 

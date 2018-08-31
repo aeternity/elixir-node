@@ -5,15 +5,13 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Naming.Tx.NameRevokeTx
   alias Aecore.Naming.{Naming, NamingStateTree}
-  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Hash
 
   require Logger
 
@@ -94,14 +92,16 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         block_height,
         %NameRevokeTx{} = tx,
-        _data_tx
+        _data_tx,
+        _context
       ) do
     claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
 
@@ -125,14 +125,16 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           tx_type_state(),
           non_neg_integer(),
           NameRevokeTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
         accounts,
         naming_state,
         _block_height,
         tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
@@ -146,7 +148,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
       claim == :none ->
         {:error, "#{__MODULE__}: Name has not been claimed: #{inspect(claim)}"}
 
-      claim.owner.value != sender ->
+      claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
