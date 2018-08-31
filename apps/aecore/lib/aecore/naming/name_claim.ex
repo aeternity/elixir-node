@@ -41,7 +41,7 @@ defmodule Aecore.Naming.NameClaim do
           non_neg_integer(),
           non_neg_integer(),
           list()
-        ) :: t()
+        ) :: NameClaim.t()
   def create(hash, name, owner, expire_by, client_ttl, pointers) do
     identified_hash = Identifier.create_identity(hash, :name)
     identified_owner = Identifier.create_identity(owner, :account)
@@ -57,7 +57,7 @@ defmodule Aecore.Naming.NameClaim do
     }
   end
 
-  @spec create(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: t()
+  @spec create(binary(), binary(), Wallet.pubkey(), non_neg_integer()) :: NameClaim.t()
   def create(hash, name, owner, height) do
     identified_hash = Identifier.create_identity(hash, :name)
     identified_owner = Identifier.create_identity(owner, :account)
@@ -88,7 +88,7 @@ defmodule Aecore.Naming.NameClaim do
     {:error, "Wrong data"}
   end
 
-  @spec encode_to_list(t()) :: binary()
+  @spec encode_to_list(NameClaim.t()) :: binary()
   def encode_to_list(%NameClaim{} = naming_state) do
     [
       :binary.encode_unsigned(@version),
@@ -100,7 +100,7 @@ defmodule Aecore.Naming.NameClaim do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, NameClaim.t()} | {:error, String.t()}
   def decode_from_list(@version, [encoded_owner, expires, status, ttl, pointers]) do
     case Identifier.decode_from_binary(encoded_owner) do
       {:ok, owner} ->

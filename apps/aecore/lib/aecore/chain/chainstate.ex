@@ -58,17 +58,17 @@ defmodule Aecore.Chain.Chainstate do
     :calls
   ]
 
-  @spec init :: t()
+  @spec init :: Chainstate.t()
   def init do
     Genesis.populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
           list(),
-          t(),
+          Chainstate.t(),
           non_neg_integer(),
           Keys.pubkey()
-        ) :: {:ok, t()} | {:error, String.t()}
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
     chainstate_with_coinbase =
       calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
@@ -124,8 +124,8 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
-  @spec apply_transaction_on_state(t(), non_neg_integer(), SignedTx.t()) ::
-          t() | {:error, String.t()}
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+          Chainstate.t() | {:error, String.t()}
   def apply_transaction_on_state(chainstate, block_height, tx) do
     case SignedTx.validate(tx, block_height) do
       :ok ->
@@ -139,7 +139,7 @@ defmodule Aecore.Chain.Chainstate do
   @doc """
   Create the root hash of the tree.
   """
-  @spec calculate_root_hash(t()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
@@ -167,7 +167,7 @@ defmodule Aecore.Chain.Chainstate do
   @doc """
   Goes through all the transactions and only picks the valid ones
   """
-  @spec get_valid_txs(list(), t(), non_neg_integer()) :: list()
+  @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate} ->

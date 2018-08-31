@@ -138,7 +138,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     final_state =
       case call_result.return_type do
         :ok ->
-          gas_cost = (gas - gas_left) * gas_price
+          gas_cost = call_result.gas_used * gas_price
 
           accounts_after_gas_spent =
             AccountStateTree.update(updated_accounts_state, owner, fn acc ->
@@ -156,7 +156,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           }
 
         _error ->
-          gas_cost = (gas - gas_left) * gas_price
+          gas_cost = call_result.gas_used * gas_price
 
           accounts_after_gas_spent =
             AccountStateTree.update(updated_accounts_state, owner, fn acc ->

@@ -45,7 +45,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameClaimTx.t()
   def init(%{name: name, name_salt: name_salt}) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
@@ -53,7 +53,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Checks name format
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
@@ -84,7 +84,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -116,7 +116,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
   def preprocess_check(
@@ -160,7 +160,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -174,9 +174,11 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.name,
       tx.name_salt,
@@ -185,13 +187,13 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: name_salt}
 
     DataTx.init_binary(
       NameClaimTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)
