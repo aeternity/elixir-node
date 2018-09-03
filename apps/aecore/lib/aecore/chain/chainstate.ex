@@ -144,11 +144,11 @@ defmodule Aecore.Chain.Chainstate do
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
-      NamingStateTree.root_hash(chainstate.naming),
-      OracleStateTree.root_hash(chainstate.oracles),
+      CallStateTree.root_hash(chainstate.calls),
       @canonical_root_hash,
       ContractStateTree.root_hash(chainstate.contracts),
-      CallStateTree.root_hash(chainstate.calls)
+      NamingStateTree.root_hash(chainstate.naming),
+      OracleStateTree.root_hash(chainstate.oracles)
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)
