@@ -151,7 +151,7 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
-  def send_new_tx(tx, pid) when is_pid(pid) do
+  def send_new_tx(%SignedTx{} = tx, pid) when is_pid(pid) do
     @mempool
     |> pack_msg(%{txs: [tx]})
     |> send_msg_no_response(pid)
@@ -502,7 +502,7 @@ defmodule Aecore.Peers.PeerConnection do
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     # vsn should be addititonaly decoded with :binary.decode_unsigned
     [
-      <<@get_header_by_height_version>>,
+      _vsn,
       height,
       top_hash
     ] = ExRLP.decode(encoded_get_header_by_height)
@@ -523,7 +523,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_n_successors, encoded_get_n_successors) do
     [
-      <<@get_n_successors_version>>,
+      _vsn,
       starting_hash,
       target_hash,
       n

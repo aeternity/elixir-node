@@ -7,29 +7,37 @@ defmodule Aeutil.List do
   Merge two list in descending order
   """
   @spec merge_descending(list(), list()) :: list()
-  def merge_descending(list_1, list_2) do
-    merge_descending(list_1, list_2, [])
+  def merge_descending(list1, list2) do
+    merge(list1, list2, [])
   end
 
-  @spec merge_descending(list(), list(), list()) :: list()
-  defp merge_descending([], [], acc) do
+  defp merge([], [], acc) do
     acc
-    |> Enum.sort()
     |> Enum.reverse()
   end
 
-  defp merge_descending([], [head2 | list_2], acc) do
-    merge_descending([], list_2, [head2 | acc])
+  defp merge([], [head2 | rest2], acc) do
+    merge([], rest2, [head2 | acc])
   end
 
-  defp merge_descending([head1 | list_1], list_2, acc) do
-    case Enum.member?(list_2, head1) do
-      true ->
-        new_list_2 = Enum.filter(list_2, fn elem -> elem != head1 end)
-        merge_descending(list_1, new_list_2, [head1 | acc])
+  defp merge([head1 | rest1], [], acc) do
+    merge(rest1, [], [head1 | acc])
+  end
 
-      false ->
-        merge_descending(list_1, list_2, [head1 | acc])
+  defp merge(
+         [%{height: height1} = hd1 | rest1] = list1,
+         [%{height: height2} = hd2 | rest2] = list2,
+         acc
+       ) do
+    cond do
+      height1 > height2 ->
+        merge(rest1, list2, [hd1 | acc])
+
+      height1 < height2 ->
+        merge(list1, rest2, [hd2 | acc])
+
+      true ->
+        merge(rest1, rest2, [hd1 | acc])
     end
   end
 end
