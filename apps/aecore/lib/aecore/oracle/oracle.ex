@@ -78,7 +78,7 @@ defmodule Aecore.Oracle.Oracle do
   and a TTL of the query and response.
   """
   @spec query(
-          Wallet.pubkey(),
+          Keys.pubkey(),
           String.t(),
           non_neg_integer(),
           non_neg_integer(),
