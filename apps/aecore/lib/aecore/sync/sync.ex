@@ -430,8 +430,10 @@ defmodule Aecore.Sync.Sync do
   Handle new worker or change of a proccess related to worker.
   """
   @spec do_handle_worker(
-    {:new_worker, peer_id(), pid()}
-    | {:change_worker, peer_id(), pid(), pid()}, Task.t()) :: Task.t()
+          {:new_worker, peer_id(), pid()}
+          | {:change_worker, peer_id(), pid(), pid()},
+          Task.t()
+        ) :: Task.t()
   def do_handle_worker({:new_worker, worker_peer_id, pid}, %Task{workers: workers} = task) do
     case Enum.filter(workers, fn {peer_id, _} -> peer_id == worker_peer_id end) do
       [] ->
@@ -715,7 +717,6 @@ defmodule Aecore.Sync.Sync do
     end
   end
 
-  
   ## Ping logic makes sure they always agree on genesis header (height 0)
   ## We look for the block that is both on remote highest chain and in our local
   ## chain, connected to genesis (may be on a fork, but that fork
@@ -761,17 +762,17 @@ defmodule Aecore.Sync.Sync do
         middle_height = div(min_agreed_height + remote_height, 2)
 
         if min_agreed_height < middle_height and middle_height < max_agreed_height do
-            agree_on_height(
-              peer_id,
-              remote_header_hash,
-              remote_height,
-              middle_height,
-              remote_height,
-              min_agreed_height,
-              agreed_header_hash
-            )
+          agree_on_height(
+            peer_id,
+            remote_header_hash,
+            remote_height,
+            middle_height,
+            remote_height,
+            min_agreed_height,
+            agreed_header_hash
+          )
         else
-            {:ok, min_agreed_height, agreed_header_hash}
+          {:ok, min_agreed_height, agreed_header_hash}
         end
     end
   end
