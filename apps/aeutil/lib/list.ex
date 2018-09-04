@@ -3,41 +3,45 @@ defmodule Aeutil.List do
   This module holds some additional utility functions for list
   """
 
-  @doc """
-  Merge two list in descending order
-  """
-  @spec merge_descending(list(), list()) :: list()
-  def merge_descending(list1, list2) do
-    merge(list1, list2, [])
+  @spec merge(list(), list()) :: list()
+  def merge(l1, l2) do
+    do_merge(Enum.reverse(l1), Enum.reverse(l2), [])
   end
 
-  defp merge([], [], acc) do
-    acc
-    |> Enum.reverse()
+  defp do_merge([], [], acc), do: acc
+
+  defp do_merge([], [h | t], [last | _] = acc) do
+    if h === last do
+      do_merge([], t, acc)
+    else
+      do_merge([], t, [h | acc])
+    end
   end
 
-  defp merge([], [head2 | rest2], acc) do
-    merge([], rest2, [head2 | acc])
+  defp do_merge([], [h | t], []) do
+    do_merge([], t, [h])
   end
 
-  defp merge([head1 | rest1], [], acc) do
-    merge(rest1, [], [head1 | acc])
+  defp do_merge(l, [], acc) do
+    ## reuse the code
+    do_merge([], l, acc)
   end
 
-  defp merge(
-         [%{height: height1} = hd1 | rest1] = list1,
-         [%{height: height2} = hd2 | rest2] = list2,
-         acc
-       ) do
+  defp do_merge([h1 | _] = l1, [h2 | t2], []) when h1 < h2 do
+    do_merge(l1, t2, [h2])
+  end
+
+  defp do_merge([h1 | t1], l2, []) do
+    do_merge(t1, l2, [h1])
+  end
+
+  defp do_merge([h1 | t1] = l1, [h2 | t2] = l2, [last | _] = acc) do
     cond do
-      height1 > height2 ->
-        merge(rest1, list2, [hd1 | acc])
-
-      height1 < height2 ->
-        merge(list1, rest2, [hd2 | acc])
-
-      true ->
-        merge(rest1, rest2, [hd1 | acc])
+      h1 === last -> do_merge(t1, l2, acc)
+      h2 === last -> do_merge(l1, t2, acc)
+      h1 === h2 -> do_merge(t1, t2, [h1 | acc])
+      h1 < h2 -> do_merge(l1, t2, [h2 | acc])
+      h1 > h2 -> do_merge(t1, l2, [h1 | acc])
     end
   end
 end

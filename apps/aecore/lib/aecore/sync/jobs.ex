@@ -63,7 +63,6 @@ defmodule Aecore.Sync.Jobs do
     end)
   end
 
-  @spec enqueue_strategy(gossip(), Block.t() | SignedTx.t(), peer_id()) :: fun()
   defp enqueue_strategy(:block, block, peer_id) do
     fn -> Sync.forward_block(block, peer_id) end
   end
