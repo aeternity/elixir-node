@@ -27,6 +27,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @name_split_check 2
 
+  @name_claim_burned_fee 3
+
   # getter functions with same name for use in other modules
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
@@ -61,4 +63,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec name_split_check :: non_neg_integer()
   def name_split_check, do: @name_split_check
+
+  @spec name_claim_burned_fee :: non_neg_integer()
+  def name_claim_burned_fee, do: @name_claim_burned_fee
 end
