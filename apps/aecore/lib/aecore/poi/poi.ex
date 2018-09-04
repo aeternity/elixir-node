@@ -158,6 +158,16 @@ defmodule Aecore.Poi.Poi do
       {:error, :nyi}
   end
 
+  @spec get_account_balance_from_poi(Poi.t(), Keys.pubkey()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def get_account_balance_from_poi(%Poi{} = poi, pubkey) do
+    case Poi.lookup_poi(:accounts, poi, pubkey) do
+      {:ok, account} ->
+        {:ok, account.balance}
+      {:error, _} = err ->
+        err
+    end
+  end
+
   @doc """
     Serializes the Poi to a list
   """

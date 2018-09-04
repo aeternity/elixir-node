@@ -3,7 +3,6 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   Behaviour that states all the necessary functions that every update of the offchain state should implement.
   """
 
-  alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
 
@@ -59,18 +58,18 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
   end
 
-  @spec update_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  defp update_chainstate(%Chainstate{} = chainstate, object, minimal_deposit) do
+  @spec update_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  defp update_chainstate(chainstate, object, channel_reserve) do
     module = object.__struct__
-    module.update_offchain_chainstate(chainstate, object, minimal_deposit)
+    module.update_offchain_chainstate(chainstate, object, channel_reserve)
   end
 
-  @spec apply_updates(Chainstate.t(), list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  def apply_updates(%Chainstate{} = chainstate, updates, minimal_deposit) do
+  @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  def apply_updates(chainstate, updates, channel_reserve) do
     new_chainstate =
       Enum.reduce_while(updates, chainstate,
         fn update, acc ->
-          case update_chainstate(acc, update, minimal_deposit) do
+          case update_chainstate(acc, update, channel_reserve) do
             {:ok, new_acc} ->
               {:cont, new_acc}
             {:error, _} = err ->
@@ -85,9 +84,9 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
   end
 
-  def ensure_minimal_deposit_is_meet!(%Account{balance: balance} = account, minimal_deposit) do
-    if(balance < minimal_deposit) do
-      throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{minimal_deposit} tokens)"}
+  def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
+    if(balance < channel_reserve) do
+      throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{channel_reserve} tokens)"}
     end
     account
   end

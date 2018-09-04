@@ -2,7 +2,6 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
 
   alias Aecore.Channel.Updates.ChannelCreateUpdate
   alias Aecore.Channel.ChannelOffchainUpdate
-  alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
   alias Aecore.Account.AccountStateTree
@@ -54,23 +53,30 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
           responder: responder,
           responder_amount: responder_amount
         },
-        minimal_deposit)
+        channel_reserve)
   do
-    Enum.reduce(
-      [
-        {initiator, initiator_amount},
-        {responder, responder_amount}
-      ],
-      Chainstate.create_chainstate_trees(),
-      fn {pubkey, amount}, acc ->
-        account =
-          Account.new(%{balance: amount, nonce: 0, pubkey: pubkey})
-          |> ChannelOffchainUpdate.ensure_minimal_deposit_is_meet!(minimal_deposit)
-        %Chainstate{
-          acc
-          | accounts: AccountStateTree.put(acc.accounts, pubkey, account)
-        }
-      end)
+    try do
+      new_chainstate = Enum.reduce(
+        [
+          {initiator, initiator_amount},
+          {responder, responder_amount}
+        ],
+        Chainstate.create_chainstate_trees(),
+        fn {pubkey, amount}, acc ->
+          account =
+            Account.empty
+            |> Account.apply_transfer!(nil, amount)
+            |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+          %Chainstate{
+            acc
+            | accounts: AccountStateTree.put(acc.accounts, pubkey.value, account)
+          }
+        end)
+      {:ok, new_chainstate}
+    catch
+      {:error, _} = err ->
+        err
+    end
   end
 
   def update_offchain_chainstate(%Chainstate{}, _) do

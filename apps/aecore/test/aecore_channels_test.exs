@@ -11,7 +11,8 @@ defmodule AecoreChannelTest do
   alias Aecore.Channel.{
     ChannelStateOnChain,
     ChannelStatePeer,
-    ChannelStateTree
+    ChannelStateTree,
+    ChannelOffchainTx
   }
 
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
@@ -71,24 +72,11 @@ defmodule AecoreChannelTest do
     # Can't transfer more then reserve allows
     {:error, _} = call_s2({:transfer, id, 151, ctx.sk2})
 
-    {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
-    assert :update == get_fsm_state_s1(id)
-    {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
-    assert :open == get_fsm_state_s2(id)
-    {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
-    assert :open == get_fsm_state_s1(id)
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
 
-    assert 100 == signed_state1.initiator_amount
-    assert 200 == signed_state1.responder_amount
-    assert 1 == signed_state1.sequence
-
-    {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
-    {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
-    {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
-
-    assert 270 == signed_state2.initiator_amount
-    assert 30 == signed_state2.responder_amount
-    assert 2 == signed_state2.sequence
+    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 270, 30, 3)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
     {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, {5, 5}, ctx.sk2})
@@ -114,45 +102,23 @@ defmodule AecoreChannelTest do
   test "create channel, transfer twice, slash with old, slash with corrent and settle", ctx do
     id = create_channel(ctx)
 
-    # Can't transfer more then reserve allows
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
 
-    {:ok, state1} = call_s1({:transfer, id, 50, ctx.sk1})
-    assert :update == get_fsm_state_s1(id)
-    {:ok, signed_state1} = call_s2({:recv_state, state1, ctx.sk2})
-    assert :open == get_fsm_state_s2(id)
-    {:ok, nil} = call_s1({:recv_state, signed_state1, ctx.sk1})
-    assert :open == get_fsm_state_s1(id)
+    #prepare solo close but do not submit to pool
+    solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
 
-    assert 100 == signed_state1.initiator_amount
-    assert 200 == signed_state1.responder_amount
-    assert 1 == signed_state1.sequence
+    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 270, 30, 3)
 
-    {:ok, state2} = call_s2({:transfer, id, 170, ctx.sk2})
-    {:ok, signed_state2} = call_s1({:recv_state, state2, ctx.sk1})
-    {:ok, nil} = call_s2({:recv_state, signed_state2, ctx.sk2})
-
-    assert 270 == signed_state2.initiator_amount
-    assert 30 == signed_state2.responder_amount
-    assert 2 == signed_state2.sequence
-
-    slash_data =
-      DataTx.init(
-        ChannelCloseSoloTx,
-        %{state: signed_state1},
-        ctx.pk2,
-        15,
-        1
-      )
-
-    {:ok, tx} = SignedTx.sign_tx(slash_data, ctx.pk2, ctx.sk2)
-    assert :ok == Pool.add_transaction(tx)
+    assert :ok == Pool.add_transaction(solo_close_tx)
 
     TestUtils.assert_transactions_mined()
 
     assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
              false
 
-    assert :ok == call_s1({:slashed, tx, 10, 2, ctx.pk1, ctx.sk1})
+    assert :ok == call_s1({:slashed, solo_close_tx, 10, 2, ctx.sk1})
 
     TestUtils.assert_transactions_mined()
 
@@ -180,7 +146,7 @@ defmodule AecoreChannelTest do
     id = create_channel(ctx)
 
     {:ok, _state} = call_s1({:transfer, id, 50, ctx.sk1})
-    assert :update == get_fsm_state_s1(id)
+    assert :awaiting_full_tx == get_fsm_state_s1(id)
     # We simulate no response from other peer = transfer failed
 
     :ok = call_s1({:solo_close, id, 10, 2, ctx.sk1})
@@ -212,13 +178,16 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
 
     tmp_id = <<123>>
-    assert :ok == call_s1({:initialize, tmp_id, {{ctx.pk1, 150}, {ctx.pk2, 150}}, :initiator, 10})
-    assert :ok == call_s2({:initialize, tmp_id, {{ctx.pk1, 150}, {ctx.pk2, 150}}, :responder, 10})
-    {:ok, id, half_open_tx} = call_s1({:open, tmp_id, 2, 10, 1, ctx.sk1})
-    assert :half_signed == get_fsm_state_s1(id)
-    {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, half_open_tx, ctx.sk2})
-    assert :signed == get_fsm_state_s2(id)
+    assert :ok == call_s1({:initialize, tmp_id, ctx.pk1, ctx.pk2, :initiator, 10})
+    assert :ok == call_s2({:initialize, tmp_id, ctx.pk1, ctx.pk2, :responder, 10})
+    {:ok, id, half_open_tx} = call_s1({:open, tmp_id, 150, 150, 2, 10, 1, ctx.sk1})
+    assert :awaiting_full_tx == get_fsm_state_s1(id)
+    {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, 150, 150, half_open_tx, ctx.sk2})
+    assert :awaiting_tx_confirmed == get_fsm_state_s2(id)
     assert id == id2
+
+    :ok = call_s1({:recv_fully_signed_tx, open_tx})
+    assert :awaiting_tx_confirmed == get_fsm_state_s1(id)
 
     TestUtils.assert_transactions_mined()
     assert ChannelStateTree.get(Chain.chain_state().channels, id) != :none
@@ -226,11 +195,50 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_balance(ctx.pk1, 40)
     TestUtils.assert_balance(ctx.pk2, 50)
-    assert :ok == call_s1({:opened, open_tx})
-    assert :ok == call_s2({:opened, open_tx})
+    assert :ok == call_s1({:recv_confirmed_tx, open_tx})
+    assert :ok == call_s2({:recv_confirmed_tx, open_tx})
+    assert_offchain_state(id, 150, 150, 1)
+    id
+  end
+
+  defp assert_offchain_state(id, peer1_amount, peer2_amount, sequence) do
     assert :open == get_fsm_state_s1(id)
     assert :open == get_fsm_state_s2(id)
-    id
+
+    assert {:ok, peer1_amount} === call_s1({:our_offchain_account_balance, id})
+    assert {:ok, peer2_amount} === call_s1({:foreign_offchain_account_balance, id})
+
+    assert {:ok, peer2_amount} === call_s2({:our_offchain_account_balance, id})
+    assert {:ok, peer1_amount} === call_s2({:foreign_offchain_account_balance, id})
+
+    assert {:ok, sequence} === call_s1({:highest_sequence, id})
+
+    assert call_s1({:most_recent_chainstate, id}) === call_s2({:most_recent_chainstate, id})
+  end
+
+  defp perform_transfer(id, amount, initiator_fun, initiator_sk, responder_fun, responder_sk) when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and initiator_fun != responder_fun do
+    {:ok, %ChannelStatePeer{fsm_state: :open}} = initiator_fun.({:get_channel, id})
+    {:ok, %ChannelStatePeer{fsm_state: :open}} = responder_fun.({:get_channel, id})
+
+    {:ok, half_signed_transfer_tx} = initiator_fun.({:transfer, id, amount, initiator_sk})
+    %ChannelOffchainTx{} = half_signed_transfer_tx
+    {:ok, %ChannelStatePeer{fsm_state: :awaiting_full_tx}} = initiator_fun.({:get_channel, id})
+    {:ok, fully_signed_transfer_tx} = responder_fun.({:recv_half_signed_tx, half_signed_transfer_tx, responder_sk})
+    %ChannelOffchainTx{} = fully_signed_transfer_tx
+    {:ok, %ChannelStatePeer{fsm_state: :open}} = responder_fun.({:get_channel, id})
+    :ok = initiator_fun.({:recv_fully_signed_tx, fully_signed_transfer_tx})
+  end
+
+  defp prepare_slash_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
+    {:ok, state} = peer_fun.({:get_channel, id})
+    {:ok, _, slash_tx} = ChannelStatePeer.slash(state, fee, nonce, priv_key)
+    slash_tx
+  end
+
+  defp prepare_solo_close_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
+    {:ok, state} = peer_fun.({:get_channel, id})
+    {:ok, _, slash_tx} = ChannelStatePeer.solo_close(state, fee, nonce, priv_key)
+    slash_tx
   end
 
   defp call_s1(call) do

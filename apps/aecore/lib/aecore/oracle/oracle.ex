@@ -69,7 +69,7 @@ defmodule Aecore.Oracle.Oracle do
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
     Pool.add_transaction(tx)
   end
 
@@ -110,7 +110,6 @@ defmodule Aecore.Oracle.Oracle do
     {:ok, tx} =
       SignedTx.sign_tx(
         tx_data,
-        pubkey,
         privkey
       )
 
@@ -140,7 +139,7 @@ defmodule Aecore.Oracle.Oracle do
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
     Pool.add_transaction(tx)
   end
 
@@ -162,7 +161,7 @@ defmodule Aecore.Oracle.Oracle do
         tx_ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
     Pool.add_transaction(tx)
   end
 

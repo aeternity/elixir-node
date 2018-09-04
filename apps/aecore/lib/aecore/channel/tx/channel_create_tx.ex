@@ -26,7 +26,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
-          minimal_deposit: non_neg_integer(),
+          channel_reserve: non_neg_integer(),
           channel_id: binary()
         }
 
@@ -44,7 +44,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
-          minimal_deposit: non_neg_integer(),
+          channel_reserve: non_neg_integer(),
           channel_id: Identifier.t()
         }
 
@@ -61,7 +61,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
   - channel_id: id of the created channel - not sent to the blockchain but calculated here for convenience
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :minimal_deposit, :channel_id]
+  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
@@ -76,19 +76,19 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           responder_amount: responder_amount,
           locktime: locktime,
           state_hash: state_hash,
-          minimal_deposit: minimal_deposit,
+          channel_reserve: channel_reserve,
           channel_id: channel_id
         } = _payload
       ) do
     %ChannelCreateTx{
-      initiator: Identifier.new(initiator, :account),
+      initiator: Identifier.create_identity(initiator, :account),
       initiator_amount: initiator_amount,
-      responder: Identifier.new(responder, :account),
+      responder: Identifier.create_identity(responder, :account),
       responder_amount: responder_amount,
       locktime: locktime,
       state_hash: state_hash,
-      minimal_deposit: minimal_deposit,
-      channel_id: Identifier.new(channel_id, :channel)
+      channel_reserve: channel_reserve,
+      channel_id: Identifier.create_identity(channel_id, :channel)
     }
   end
 
@@ -117,6 +117,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
       byte_size(tx.state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
+
+      #TODO: Should we recreate the offchain chainstate and make sure that the state hash is correct?
 
       true ->
         :ok
@@ -275,7 +277,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @doc """
     Get the sequence number of the channel after applying the transaction to the offchain channel's state
   """
-  @spec get_sequence(ChannelCreateTx.tx()) :: non_neg_integer()
+  @spec get_sequence(ChannelCreateTx.t()) :: non_neg_integer()
   def get_sequence(%ChannelCreateTx{}) do
     1
   end
@@ -283,7 +285,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @doc """
     Get the state hash of the offchain chainstate after applying the transaction to the offchain channel's state
   """
-  @spec get_state_hash(ChannelCreateTx.tx()) :: binary()
+  @spec get_state_hash(ChannelCreateTx.t()) :: binary()
   def get_state_hash(%ChannelCreateTx{state_hash: state_hash}) do
     state_hash
   end
@@ -291,7 +293,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @doc """
     Get the id of the channel for which the transaction is ment to be applied
   """
-  @callback get_channel_id(channel_tx()) :: Identifier.t()
+  @callback get_channel_id(ChannelCreateTx.t()) :: Identifier.t()
   def get_channel_id(%ChannelCreateTx{channel_id: channel_id}) do
     channel_id
   end
@@ -299,7 +301,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @doc """
     Get a list of offchain updates to the offchain chainstate
   """
-  @spec get_updates(ChannelCreateTx.tx()) :: list(ChannelOffchainUpdate.update_types())
+  @spec get_updates(ChannelCreateTx.t()) :: list(ChannelOffchainUpdate.update_types())
   def get_updates(%ChannelCreateTx{} = tx) do
     [ChannelCreateUpdate.new(tx)]
   end

@@ -11,6 +11,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffchainTx, ChannelStateTree}
   alias Aecore.Chain.Identifier
+  alias Aecore.Poi.Poi
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -18,6 +20,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Expected structure for the ChannelSlash Transaction"
   @type payload :: %{
+          channel_id: binary(),
           offchain_tx: map(),
           poi: map()
         }
@@ -30,6 +33,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
+          channel_id: Identifier.t(),
           offchain_tx: ChannelOffchainTx.t(),
           poi: Poi.t()
         }
@@ -40,47 +44,33 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   ## Parameters
   - state - the state to slash with
   """
-  defstruct [:offchain_tx, :poi]
+  defstruct [:channel_id, :offchain_tx, :poi]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{ofchain_tx: offchain_tx, poi: poi} = _payload) do
+  def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{
-      offchain_tx: ChannelOffchainTx.init(offchain_tx),
-      poi: Poi.init(poi)
-    }
-  end
-
-  @spec create(ChannelOffchainTx.t(), Chainstate.t()) :: ChannelSlashTx.t()
-  def create(offchain_tx, chainstate) do
-    poi =
-      PatriciaMerkleTree.all_keys(chainstate.accounts)
-      |> Enum.reduce(Poi.construct(chainstate),
-        fn(pub_key, acc) ->
-          {:ok, new_acc} = Poi.add_to_poi(:accounts, pub_key, chainstate, acc)
-          new_acc
-        end)
-
-    %ChannelSlashTx{
+      channel_id: Identifier.create_identity(channel_id, :channel),
       offchain_tx: offchain_tx,
       poi: poi
     }
   end
 
-  @spec sequence(ChannelSlashTx.t()) :: non_neg_integer()
-  def sequence(%ChannelSlashTx{offchain_tx: %ChannelOffchainTx{sequence: sequence}}), do: sequence
-
   @spec channel_id(ChannelSlashTx.t()) :: binary()
-  def channel_id(%ChannelSlashTx{offchain_tx: %ChannelOffchainTx{channel_id: id}}), do: id
+  def channel_id(%ChannelSlashTx{channel_id: channel_id}), do: channel_id
 
   @doc """
   Checks transactions internal contents validity
   """
   @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSlashTx{offchain_tx: %ChannelOffchainTx{sequence: sequence, state_hash: state_hash}, poi: poi}, data_tx) do
+  def validate(%ChannelSlashTx{offchain_tx: :empty}) do
+    {:error, "#{__MODULE__}: Can't slash without an offchain tx"}
+  end
+
+  def validate(%ChannelSlashTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffchainTx{channel_id: offchain_tx_channel_id, sequence: sequence, state_hash: state_hash}, poi: poi}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -89,6 +79,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
       sequence == 0 ->
         {:error, "#{__MODULE__}: Can't slash with zero state"}
+
+      internal_channel_id !== offchain_tx_channel_id ->
+        {:error, "#{__MODULE__}: Channel id mismatch"}
 
       Poi.calculate_root_hash(poi) !== state_hash ->
         {:error, "#{__MODULE__}: Invalid state_hash"}
@@ -113,16 +106,15 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         channels,
         block_height,
         %ChannelSlashTx{
-          offchain_tx:
-            %ChannelOffchainTx{
-              channel_id: channel_id
-            } = state
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
         },
         _data_tx
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
-        ChannelStateOnChain.apply_slashing(channel, block_height, state)
+        ChannelStateOnChain.apply_slashing(channel, block_height, offchain_tx, poi)
       end)
 
     {:ok, {accounts, new_channels}}
@@ -143,13 +135,13 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         accounts,
         channels,
         _block_height,
-        %ChannelSlashTx{offchain_tx: state},
+        %ChannelSlashTx{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi},
         data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
     fee = DataTx.fee(data_tx)
 
-    channel = ChannelStateTree.get(channels, state.channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -162,7 +154,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         {:error, "#{__MODULE__}: Can't slash active channel"}
 
       true ->
-        ChannelStateOnChain.validate_slashing(channel, state)
+        ChannelStateOnChain.validate_slashing(channel, offchain_tx, poi)
     end
   end
 
@@ -183,10 +175,10 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
-    main_sender = DataTx.main_sender(datatx)
+    main_sender = Identifier.create_identity(DataTx.main_sender(datatx), :account)
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(tx.offchain_tx.channel_id),
+      Identifier.encode_to_binary(tx.channel_id),
       Identifier.encode_to_binary(main_sender),
       ChannelOffchainTx.encode_to_payload(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),
@@ -196,14 +188,15 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     ]
   end
 
-  def decode_from_list(@version, [_, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
+  def decode_from_list(@version, [channel_id, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
     case ChannelOffchainTx.decode_from_payload(payload) do
       {:ok, offchain_tx} ->
         case Serialization.rlp_decode_only(rlp_encoded_poi, Poi) do
           {:ok, poi} ->
             DataTx.init_binary(
               ChannelSlashTx,
-              %ChannelSlashTx{
+              %{
+                channel_id: channel_id,
                 offchain_tx: offchain_tx,
                 poi: poi
               },

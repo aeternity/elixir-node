@@ -76,7 +76,6 @@ defmodule Aecore.Tx.SignedTx do
   @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) ::
           {:ok, SignedTx.t()} | {:error, String.t()}
   def sign_tx(%DataTx{} = tx, priv_key) do
-    signatures = DataTx.senders(tx)
     sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
   end
 
@@ -209,6 +208,20 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
+  def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
+    data_binary = DataTx.rlp_encode(data)
+    if pubkey not in DataTx.senders(data) do
+      false
+    else
+      case single_signature_check(signatures, data_binary, pubkey) do
+        {:ok, _} ->
+          true
+        :error ->
+          false
+      end
+    end
+  end
+
   defp many_signatures_check(signatures, data_binary, [pubkey | remaining_pubkeys]) do
     case single_signature_check(signatures, data_binary, pubkey) do
       {:ok, remaining_signatures} ->
@@ -226,20 +239,6 @@ defmodule Aecore.Tx.SignedTx do
     false
   end
 
-  def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
-    data_binary = DataTx.rlp_encode(data)
-    if pubkey not in DataTx.senders(data) do
-      false
-    else
-      case single_singature_check(signatures, data_binary, pubkey) do
-        {:ok, _} ->
-          true
-        :error ->
-          false
-      end
-    end
-  end
-
   defp single_signature_check(signatures, data_binary, pubkey) do
     if(!Keys.key_size_valid?(pubkey)) do
       Logger.error("Wrong pubkey size #{inspect(pubkey)}")
@@ -250,7 +249,7 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   defp internal_single_signature_check([signature | rest_signatures], data_binary, pubkey) do
-    if Keys.verify(data_binary, sig, pubkey) do
+    if Keys.verify(data_binary, signature, pubkey) do
       {:ok, rest_signatures}
     else
       case internal_single_signature_check(rest_signatures, data_binary, pubkey) do

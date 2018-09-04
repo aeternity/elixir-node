@@ -42,7 +42,7 @@ defmodule AecoreTxTest do
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     {_, priv_key} = Keys.keypair(:sign)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert :ok = SignedTx.validate(signed_tx)
     [signature] = signed_tx.signatures
@@ -76,7 +76,7 @@ defmodule AecoreTxTest do
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
 
@@ -104,7 +104,7 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
@@ -155,7 +155,7 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: acc1, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
@@ -169,7 +169,7 @@ defmodule AecoreTxTest do
 
     payload2 = %{receiver: acc2, amount: amount2, version: 1, payload: <<"payload">>}
     tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, acc1, priv_key2)
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, priv_key2)
 
     :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()

@@ -3,9 +3,8 @@ defmodule Aecore.Channel.Worker do
   Module for managing Channels
   """
 
-  alias Aecore.Channel.ChannelStateOffChain
-  alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
+  alias Aecore.Channel.ChannelTransaction
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
@@ -17,6 +16,7 @@ defmodule Aecore.Channel.Worker do
 
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Chain.Identifier
   alias Aeutil.Events
 
   use GenServer
@@ -44,8 +44,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Notifies channel manager about new mined tx
   """
-  def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCreateTx}} = tx) do
-    opened(tx)
+  def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do  #, ChannelWidhdrawTx, ChannelDepositTx]  do
+    recv_confirmed_tx(tx)
   end
 
   def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseMutalTx}} = tx) do
@@ -76,38 +76,42 @@ defmodule Aecore.Channel.Worker do
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
   def import_channel(%ChannelStatePeer{} = channel_state) do
-    id = ChannelStatePeer.id(channel_state)
-    GenServer.call(__MODULE__, {:import_channel, id, channel_state})
+    channel_id = ChannelStatePeer.channel_id(channel_state)
+    GenServer.call(__MODULE__, {:import_channel, channel_id, channel_state})
   end
 
   @doc """
   Import channel from open tx. Assumes no transactions were made
   """
-  @spec import_from_open(SignedTx.t(), non_neg_integer(), role()) :: :ok | error()
-  def import_from_open(%SignedTx{} = open_tx, reserve, role)
-      when is_integer(reserve) and is_atom(role) do
-    peer_state = ChannelStatePeer.from_open(open_tx, reserve, role)
-    import_channel(peer_state)
+  @spec import_from_open(SignedTx.t(), role()) :: :ok | error()
+  def import_from_open(%SignedTx{data: %DataTx{type: ChannelOpenTx}} = open_tx, role)
+      when is_atom(role) do
+    case ChannelStatePeer.from_open(open_tx, role) do
+      {:ok, peer_state} ->
+        import_channel(peer_state)
+      {:error, _} = err ->
+        err
+    end
   end
 
   @doc """
   Imports channel from open tx and ChannelStateOffChain.
   """
-  @spec import_from_open_and_state(
-          SignedTx.t(),
-          ChannelStateOffChain.t(),
-          non_neg_integer(),
+  @spec import_from_signed_tx_list(
+          list(SignedTx.t() | ChannelOffchainTx.t()),
           role()
         ) :: :ok | error()
-  def import_from_open_and_state(
-        %SignedTx{} = open_tx,
-        %ChannelStateOffChain{} = state,
-        reserve,
+  def import_from_signed_tx_list(
+        mutually_signed_tx_list,
         role
       )
-      when is_integer(reserve) and is_atom(role) do
-    peer_state = ChannelStatePeer.from_open_and_state(open_tx, state, reserve, role)
-    import_channel(peer_state)
+      when is_atom(role) do
+    case ChannelStatePeer.from_signed_tx_list(mutually_signed_tx_list, role) do
+      {:ok, peer_state} ->
+        import_channel(peer_state)
+      {:error, _} = err ->
+        err
+    end
   end
 
   @doc """
@@ -115,15 +119,16 @@ defmodule Aecore.Channel.Worker do
   """
   @spec initialize(
           binary(),
-          {{Keys.pubkey(), non_neg_integer()}, {Keys.pubkey(), non_neg_integer()}},
+          Keys.pubkey(),
+          Keys.pubkey(),
           role(),
           non_neg_integer()
         ) :: :ok | error()
-  def initialize(temporary_id, {{_, _}, {_, _}} = parties, role, channel_reserve)
+  def initialize(temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve)
       when is_binary(temporary_id) and is_atom(role) and is_integer(channel_reserve) do
     GenServer.call(
       __MODULE__,
-      {:initialize, temporary_id, parties, role, channel_reserve}
+      {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve}
     )
   end
 
@@ -135,12 +140,14 @@ defmodule Aecore.Channel.Worker do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
           Keys.sign_priv_key()
         ) :: {:ok, binary(), SignedTx.t()} | error()
-  def open(temporary_id, locktime, fee, nonce, priv_key)
+  def open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)
       when is_binary(temporary_id) and is_integer(locktime) and is_integer(fee) and
              is_integer(nonce) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:open, temporary_id, locktime, fee, nonce, priv_key})
+    GenServer.call(__MODULE__, {:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key})
   end
 
   @doc """
@@ -151,21 +158,6 @@ defmodule Aecore.Channel.Worker do
   def sign_open(temporary_id, %SignedTx{} = open_tx, priv_key)
       when is_binary(temporary_id) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:sign_open, temporary_id, open_tx, priv_key})
-  end
-
-  @doc """
-  Notifies Channels Manager about confirmed channel open tx. Called by block validation stack.
-  """
-  @spec opened(SignedTx.t()) :: :ok
-  def opened(%SignedTx{} = open_tx) do
-    case GenServer.call(__MODULE__, {:opened, open_tx}) do
-      :ok ->
-        :ok
-
-      {:error, reason} = error ->
-        Logger.warn(reason)
-        error
-    end
   end
 
   @doc """
@@ -181,11 +173,27 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received channel state. If it's half signed and validates: signs it and returns it.
   """
-  @spec recv_state(ChannelStateOffChain.t(), Keys.sign_priv_key()) ::
-          {:ok, ChannelStateOffChain.t() | nil} | error()
-  def recv_state(%ChannelStateOffChain{} = recv_state, priv_key) when is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:recv_state, recv_state, priv_key})
+  @spec recv_half_signed_tx(ChannelTransaction.channel_tx(), Keys.sign_priv_key()) ::
+          {:ok, ChannelTransaction.channel_tx()} | error()
+  def recv_half_signed_tx(half_signed_tx, priv_key) when is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:recv_half_signed_tx, half_signed_tx, priv_key})
   end
+
+  @doc """
+  Handles incoming uncorfirmed fully signed onchain Tx or confirmed fully signed offchain Tx.
+  """
+  @spec recv_fully_signed_tx(ChannelTransaction.channel_tx()) :: :ok | error()
+  def recv_fully_signed_tx(fully_signed_tx) do
+    GenServer.call(__MODULE__, {:recv_fully_signed_tx, fully_signed_tx})
+  end
+
+  @doc """
+  Handles mined and confirmed ChannelCreateTx, ChannelWidthdrawTx, ChannelDepositTx
+  """
+  def recv_confirmed_tx(confirmed_onchain_tx) do
+    GenServer.call(__MODULE__, {:recv_confirmed_tx, confirmed_onchain_tx})
+  end
+
 
   @doc """
   Creates channel close transaction. This also blocks any new transactions from happening on channel.
@@ -251,12 +259,11 @@ defmodule Aecore.Channel.Worker do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
-          Keys.pubkey(),
           Keys.sign_priv_key()
         ) :: :ok | error()
-  def slashed(%SignedTx{} = slash_tx, fee, nonce, pubkey, priv_key)
-      when is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, pubkey, priv_key})
+  def slashed(%SignedTx{} = slash_tx, fee, nonce, priv_key)
+      when is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:slashed, slash_tx, fee, nonce, priv_key})
   end
 
   @doc """
@@ -306,20 +313,20 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:initialize, temporary_id, parties, role, channel_reserve},
+        {:initialize, temporary_id, initiator_pubkey, responder_pubkey, role, channel_reserve},
         _from,
         state
       ) do
-    peer_state = ChannelStatePeer.initialize(temporary_id, parties, channel_reserve, role)
+    peer_state = ChannelStatePeer.initialize(temporary_id, initiator_pubkey, responder_pubkey, channel_reserve, role)
 
     {:reply, :ok, Map.put(state, temporary_id, peer_state)}
   end
 
-  def handle_call({:open, temporary_id, locktime, fee, nonce, priv_key}, _from, state) do
+  def handle_call({:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
     {:ok, new_peer_state, new_id, open_tx} =
-      ChannelStatePeer.open(peer_state, locktime, fee, nonce, priv_key)
+      ChannelStatePeer.open(peer_state, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)
 
     new_state =
       state
@@ -329,11 +336,11 @@ defmodule Aecore.Channel.Worker do
     {:reply, {:ok, new_id, open_tx}, new_state}
   end
 
-  def handle_call({:sign_open, temporary_id, open_tx, priv_key}, _from, state) do
+  def handle_call({:sign_open, temporary_id, initiator_amount, responder_amount, open_tx, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
     with {:ok, new_peer_state, id, signed_open_tx} <-
-           ChannelStatePeer.sign_open(peer_state, open_tx, priv_key),
+           ChannelStatePeer.sign_open(peer_state, initiator_amount, responder_amount, open_tx, priv_key),
          :ok <- Pool.add_transaction(signed_open_tx) do
       new_state =
         state
@@ -350,18 +357,6 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:opened, open_tx}, _from, state) do
-    id = ChannelStateOnChain.id(SignedTx.data_tx(open_tx))
-
-    if Map.has_key?(state, id) do
-      peer_state = Map.get(state, id)
-      new_peer_state = ChannelStatePeer.opened(peer_state)
-      {:reply, :ok, Map.put(state, id, new_peer_state)}
-    else
-      {:reply, :ok, state}
-    end
-  end
-
   def handle_call({:transfer, id, amount, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
@@ -375,18 +370,50 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:recv_state, %ChannelStateOffChain{channel_id: id} = recv_state, priv_key},
+        {:recv_half_signed_tx, half_signed_tx, priv_key},
         _from,
         state
       ) do
-    peer_state = Map.get(state, id)
+    channel_id = ChannelTransaction.get_channel_id(half_signed_tx).value
+    peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, offchain_state} <-
-           ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
-      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+    with {:ok, new_peer_state, fully_signed_tx} <-
+           ChannelStatePeer.recv_half_signed_tx(peer_state, half_signed_tx, priv_key) do
+      {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
     else
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+      {:error, _} = err ->
+        {:reply, err, state}
+    end
+  end
+
+  def handle_call({:recv_fully_signed_tx, fully_signed_tx}, _from, state) do
+    channel_id = ChannelTransaction.get_channel_id(fully_signed_tx).value
+    peer_state = Map.get(state, channel_id)
+
+    with {:ok, new_peer_state} <-
+           ChannelStatePeer.recv_fully_signed_tx(peer_state, fully_signed_tx) do
+      {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+    else
+      {:error, _} = err ->
+        {:reply, err, state}
+    end
+  end
+
+  def handle_call({:recv_confirmed_tx, confirmed_onchain_tx}, _from, state) do
+    channel_id = ChannelTransaction.get_channel_id(confirmed_onchain_tx).value
+
+    if Map.has_key?(state, channel_id) do
+      peer_state = Map.get(state, channel_id)
+
+      with {:ok, new_peer_state} <-
+             ChannelStatePeer.recv_confirmed_tx(peer_state, confirmed_onchain_tx) do
+        {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
+      else
+        {:error, _} = err ->
+          {:reply, err, state}
+      end
+    else
+      {:reply, {:error, "Channel ID not present"}, state}
     end
   end
 
@@ -476,10 +503,10 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slashed, slash_tx, fee, nonce, pubkey, priv_key}, _from, state) do
+  def handle_call({:slashed, slash_tx, fee, nonce, priv_key}, _from, state) do
     data_tx = SignedTx.data_tx(slash_tx)
 
-    channel_id =
+    %Identifier{type: :channel, value: channel_id} =
       case DataTx.payload(data_tx) do
         %ChannelCloseSoloTx{} = payload ->
           ChannelCloseSoloTx.channel_id(payload)
@@ -492,7 +519,7 @@ defmodule Aecore.Channel.Worker do
       peer_state = Map.get(state, channel_id)
 
       {:ok, new_peer_state, tx} =
-        ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, pubkey, priv_key)
+        ChannelStatePeer.slashed(peer_state, slash_tx, fee, nonce, priv_key)
 
       if tx != nil do
         case Pool.add_transaction(tx) do
@@ -531,6 +558,34 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:get_channel, channel_id}, _from, state) do
     if Map.has_key?(state, channel_id) do
       {:reply, {:ok, Map.get(state, channel_id)}, state}
+    else
+      {:reply, {:error, "#{__MODULE__}: No such channel"}, state}
+    end
+  end
+
+  def handle_call({:calculate_state_hash, channel_id}, _from, state) do
+    invoke_channel_getter(state, channel_id, &ChannelStatePeer.calculate_state_hash/1)
+  end
+
+  def handle_call({:most_recent_chainstate, channel_id}, _from, state) do
+    invoke_channel_getter(state, channel_id, &ChannelStatePeer.most_recent_chainstate/1)
+  end
+
+  def handle_call({:highest_sequence, channel_id}, _from, state) do
+    invoke_channel_getter(state, channel_id, &ChannelStatePeer.highest_sequence/1)
+  end
+
+  def handle_call({:our_offchain_account_balance, channel_id}, _from, state) do
+    invoke_channel_getter(state, channel_id, &ChannelStatePeer.our_offchain_account_balance/1)
+  end
+
+  def handle_call({:foreign_offchain_account_balance, channel_id}, _from, state) do
+    invoke_channel_getter(state, channel_id, &ChannelStatePeer.foreign_offchain_account_balance/1)
+  end
+
+  defp invoke_channel_getter(state, channel_id, fun) when is_function(fun, 1) do
+    if Map.has_key?(state, channel_id) do
+      {:reply, {:ok, fun.(Map.get(state, channel_id))}, state}
     else
       {:reply, {:error, "#{__MODULE__}: No such channel"}, state}
     end

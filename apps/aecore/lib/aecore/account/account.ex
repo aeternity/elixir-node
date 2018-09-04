@@ -313,7 +313,7 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
-    SignedTx.sign_tx(tx, sender, sender_prv)
+    SignedTx.sign_tx(tx, sender_prv)
   end
 
   @doc """

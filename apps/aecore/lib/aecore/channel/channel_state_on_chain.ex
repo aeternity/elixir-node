@@ -7,7 +7,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   alias Aecore.Keys
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.ChannelOffchainTx
+  alias Aecore.Poi.Poi
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
   alias Aeutil.Serialization
@@ -130,67 +131,99 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Validates Slash and SoloCloseTx states.
+  Validates SlashTx and SoloCloseTx payload and poi.
   """
-  @spec validate_slashing(ChannelStateOnChain.t(), ChannelStateOffChain.t()) ::
+  @spec validate_slashing(ChannelStateOnChain.t(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
           :ok | {:error, binary()}
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
-        %ChannelStateOffChain{sequence: 0} = offchain_state
+        :empty,
+        %Poi{} = poi
       ) do
     cond do
+      #No payload is only allowed for SoloCloseTx
       channel.slash_sequence != 0 ->
         {:error, "#{__MODULE__}: Channel already slashed"}
 
-      channel.initiator_amount != offchain_state.initiator_amount ->
-        {:error, "#{__MODULE__}: Wrong initator amount"}
-
-      channel.responder_amount != offchain_state.responder_amount ->
-        {:error, "#{__MODULE__}: Wrong responder amount"}
+      channel.state_hash !== Poi.calculate_root_hash(poi) ->
+        {:error, "#{__MODULE__}: Invalid state hash"}
 
       true ->
-        :ok
+        case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
+          {:ok, poi_initiator_amount} ->
+            case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+              {:ok, poi_respoder_amount} ->
+                if poi_initiator_amount + poi_respoder_amount !== channel.initiator_amount + channel.responder_amount do
+                  #The total amount MUST never change
+                  {:error, "#{__MODULE__}: Invalid total amount"}
+                else
+                  :ok
+                end
+              {:error, _} ->
+                {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
+            end
+          {:error, _} ->
+            {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
+        end
     end
   end
 
-  def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
+  def validate_slashing(
+        %ChannelStateOnChain{} = channel,
+        %ChannelOffchainTx{} = offchain_tx,
+        %Poi{} = poi) do
     cond do
-      channel.slash_sequence >= offchain_state.sequence ->
+      channel.slash_sequence >= offchain_tx.sequence ->
         {:error, "#{__MODULE__}: Offchain state is too old"}
 
-      channel.initiator_amount + channel.responder_amount !=
-          ChannelStateOffChain.total_amount(offchain_state) ->
-        {:error, "#{__MODULE__}: Invalid total amount"}
+      offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
+        {:error, "#{__MODULE__}: Invalid state hash"}
 
       true ->
-        ChannelStateOffChain.validate(offchain_state, pubkeys(channel))
+        case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
+          {:ok, poi_initiator_amount} ->
+            case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+              {:ok, poi_respoder_amount} ->
+                if poi_initiator_amount + poi_respoder_amount !== channel.initiator_amount + channel.responder_amount do
+                  #The total amount MUST never change
+                  {:error, "#{__MODULE__}: Invalid total amount"}
+                else
+                  ChannelOffchainTx.validate(offchain_tx, pubkeys(channel))
+                end
+              {:error, _} ->
+                {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
+            end
+          {:error, _} ->
+            {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
+        end
     end
   end
 
   @doc """
   Executes slashing on channel. Slashing should be validated before with validate_slashing.
   """
-  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelStateOffChain.t()) ::
+  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelOffchainTx.t() | :empty, Poi.t()) ::
           ChannelStateOnChain.t()
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
-        sequence: 0
-      }) do
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
+    {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
     %ChannelStateOnChain{
       channel
-      | slash_close: block_height + channel.lock_period,
+      |
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        slash_close: block_height + channel.lock_period,
         slash_sequence: 0
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
-        sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount
-      }) do
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelOffchainTx{} = offchain_tx, %Poi{} = poi) do
+    {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,
-        slash_sequence: sequence,
+        slash_sequence: offchain_tx.sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
     }
@@ -217,20 +250,22 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def decode_from_list(@version, [
         initiator_pubkey,
         responder_pubkey,
-        total_amount,
-        initiator_amount,
+        encoded_total_amount,
+        encoded_initiator_amount,
         channel_reserve,
         state_hash,
         slash_sequence,
         lock_period,
         slash_close
       ]) do
+    initiator_amount = :binary.decode_unsigned(encoded_initiator_amount)
+    total_amount = :binary.decode_unsigned(encoded_total_amount)
     {:ok,
      %ChannelStateOnChain{
        initiator_pubkey: initiator_pubkey,
        responder_pubkey: responder_pubkey,
-       initiator_amount: :binary.decode_unsigned(initiator_amount),
-       responder_amount: :binary.decode_unsigned(total_amount - initiator_amount),
+       initiator_amount: initiator_amount,
+       responder_amount: total_amount - initiator_amount,
        lock_period: :binary.decode_unsigned(lock_period),
        slash_close: :binary.decode_unsigned(slash_close),
        slash_sequence: :binary.decode_unsigned(slash_sequence),

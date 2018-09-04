@@ -1,7 +1,6 @@
 defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
 
   alias Aecore.Channel.Updates.ChannelDepositUpdate
-  alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelOffchainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
@@ -41,7 +40,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
           from: from,
           amount: amount
         },
-        _minimal_deposit)
+        _channel_reserve)
   do
     try do
       updated_accounts =

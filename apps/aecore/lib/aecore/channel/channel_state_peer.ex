@@ -27,7 +27,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
   alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
+  alias Aecore.Poi.Poi
 
   @type fsm_state :: :initialized | :awaiting_full_tx | :awaiting_tx_confirmed | :open | :closing | :closed
 
@@ -37,9 +37,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder_pubkey: Keys.pubkey(),
           role: Channel.role(),
           channel_id: Identifier.t(),
-          mutualy_signed_tx: list(ChannelOffchainTx.t()),
+          mutually_signed_tx: list(ChannelOffchainTx.t()),
           highest_half_signed_tx: ChannelOffChainTx.t() | nil,
-          minimal_deposit: non_neg_integer(),
+          channel_reserve: non_neg_integer(),
           offchain_chainstate: Chainstate.t() | nil,
           sequence: non_neg_integer()
         }
@@ -52,7 +52,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :responder_pubkey,
     :role,
     :channel_id,
-    :minimal_deposit,
+    :channel_reserve,
     mutually_signed_tx: [],
     highest_half_signed_tx: nil,
     offchain_chainstate: nil,
@@ -63,34 +63,34 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   use ExConstructor
 
-  @spec id(ChannelStatePeer.t()) :: Identifier.t()
-  def id(%ChannelStatePeer{channel_id: channel_id}), do: channel_id
+  @spec channel_id(ChannelStatePeer.t()) :: Identifier.t()
+  def channel_id(%ChannelStatePeer{channel_id: channel_id}), do: channel_id.value
 
-  @spec verify_and_apply_on_chainstate(ChannelTransaction.channel_tx(), ChannelStatePeer.t(), list(Identifier.t()) | Identifier.t() ) :: {:ok, ChannelStatePeer.t()} | {:error, String.t()}
+  @spec verify_tx_and_apply(ChannelTransaction.channel_tx(), ChannelStatePeer.t(), list(Identifier.t()) | Identifier.t() ) :: {:ok, ChannelStatePeer.t()} | {:error, String.t()}
   defp verify_tx_and_apply(tx, %ChannelStatePeer{
     channel_id: channel_id,
     mutually_signed_tx: mutually_signed_tx,
-    minimal_deposit: minimal_deposit,
+    channel_reserve: channel_reserve,
     offchain_chainstate: offchain_chainstate,
     sequence: sequence
   } = peer, signed_with) do
-    new_sequence = ChannelTransaction.sequence(tx)
+    new_sequence = ChannelTransaction.get_sequence(tx)
     cond do
       #check if signed by the expected parties
-      !ChannelTransaction.is_signed_with(tx, signed_with) ->
+      !ChannelTransaction.signed_with?(tx, signed_with) ->
         {:error, "#{__MODULE__}: Tx was not signed as expected"}
       #check channel id
-      ChannelTransaction.channel_id(tx) !== channel_id ->
-        {:error, "#{__MODULE__}: Wrong channel id in tx"}
+      ChannelTransaction.get_channel_id(tx) !== channel_id ->
+        {:error, "#{__MODULE__}: Wrong channel id in tx. Expected: #{inspect(channel_id)}, received: #{inspect(ChannelTransaction.get_channel_id(tx))}"}
       #check sequence
       new_sequence <= sequence ->
         {:error, "#{__MODULE__}: Invalid sequence in tx"}
       true ->
         #apply updates
-        case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.updates(tx), minimal_deposit) do
+        case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.get_updates(tx), channel_reserve) do
           {:ok, new_offchain_chainstate} ->
             #update was succesfull - verify the state hash
-            if(ChannelTransaction.state_hash(tx) !== Chainstate.calculate_root_hash(new_offchain_chainstate)) do
+            if(ChannelTransaction.get_state_hash(tx) !== Chainstate.calculate_root_hash(new_offchain_chainstate)) do
               {:error, "#{__MODULE__}: Wrong state hash in tx"}
             else
               {:ok, %ChannelStatePeer{
@@ -123,7 +123,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       payload: %ChannelCreateTx{
         initiator: initiator_pubkey,
         responder: responder_pubkey,
-        minimal_deposit: minimal_deposit,
+        channel_reserve: channel_reserve,
         channel_id: channel_id
       }}} = create_tx
 
@@ -133,7 +133,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
             responder_pubkey: responder_pubkey,
             role: role,
             channel_id: channel_id,
-            minimal_deposit: minimal_deposit
+            channel_reserve: channel_reserve
           }
 
     Enum.reduce_while(offchain_tx_list_from_oldest, {:ok, initial_state},
@@ -150,7 +150,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates channel from open transaction assuming no transactions in channel.
   """
-  @spec from_open(SignedTx.t(), non_neg_integer(), Channel.role()) :: ChannelStatePeer.t()
+  @spec from_open(SignedTx.t(), Channel.role()) :: ChannelStatePeer.t()
   def from_open(open_tx, role) do
     from_signed_tx_list([open_tx], role)
   end
@@ -167,16 +167,21 @@ defmodule Aecore.Channel.ChannelStatePeer do
     Calculates the state hash of the offchain chainstate after aplying the transaction.
     Only basic verification is done.
   """
-  @spec calculate_next_state_hash_for_tx(ChannelTransaction.channel_tx(), ChannelStatePeer.t()) :: {:ok, binary()} | {:error, String.t()}
-  def calculate_next_state_hash_for_tx(tx, %ChannelStatePeer{
-    minimal_deposit: minimal_deposit,
-    offchain_chainstate: offchain_chainstate
+  @spec calculate_next_state_hash_for_new_tx(ChannelTransaction.channel_tx(), ChannelStatePeer.t()) :: {:ok, binary()} | {:error, String.t()}
+  def calculate_next_state_hash_for_new_tx(tx, %ChannelStatePeer{
+    channel_reserve: channel_reserve,
+    offchain_chainstate: offchain_chainstate,
+    sequence: sequence
   }) do
-    case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.updates(tx), minimal_deposit) do
-      {:ok, new_offchain_chainstate} ->
-        {:ok, Chainstate.calculate_root_hash(new_offchain_chainstate)}
-      {:error, _} = err ->
-        err
+    if ChannelTransaction.get_sequence(tx) <= sequence do
+      {:error, "#{__MODULE__}: Invalid sequence in tx"}
+    else
+      case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.get_updates(tx), channel_reserve) do
+        {:ok, new_offchain_chainstate} ->
+          {:ok, Chainstate.calculate_root_hash(new_offchain_chainstate)}
+        {:error, _} = err ->
+          err
+      end
     end
   end
 
@@ -185,7 +190,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec initialize(
           binary(),
-          {{Wallet.pubkey(), non_neg_integer()}, {Wallet.pubkey(), non_neg_integer()}},
+          Wallet.pubkey(),
+          Wallet.pubkey(),
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
@@ -193,20 +199,44 @@ defmodule Aecore.Channel.ChannelStatePeer do
         temporary_id,
         initiator_pubkey,
         responder_pubkey,
-        minimal_deposit,
+        channel_reserve,
         role
       ) do
-    initial_state =
-      ChannelStateOffChain.create(temporary_id, 0, initiator_amount, responder_amount)
 
     %ChannelStatePeer{
       fsm_state: :initialized,
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
       role: role,
-      minimal_deposit: minimal_deposit,
+      channel_reserve: channel_reserve,
       channel_id: temporary_id
     }
+  end
+
+  defp initialize_new_mutual_onchain_tx(%ChannelStatePeer{
+    initiator_pubkey: initiator_pubkey,
+    responder_pubkey: responder_pubkey},
+    fee,
+    nonce, type, spec) do
+    DataTx.init(type, spec, [initiator_pubkey, responder_pubkey], fee, nonce)
+  end
+
+  defp validate_prepare_and_sign_new_channel_tx(
+         %ChannelStatePeer{sequence: sequence} = peer_state, tx, priv_key) do
+    tx1 = ChannelTransaction.set_sequence(tx, sequence+1)
+    case calculate_next_state_hash_for_new_tx(tx1, peer_state) do
+      {:ok, state_hash} ->
+        tx1
+        |> ChannelTransaction.set_state_hash(state_hash)
+        |> ChannelTransaction.add_signature(priv_key)
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  defp half_signed_mutual_onchain_tx_from_spec(peer_state, fee, nonce, type, spec, priv_key) do
+    data_tx = initialize_new_mutual_onchain_tx(peer_state, fee, nonce, type, spec)
+    validate_prepare_and_sign_new_channel_tx(peer_state, data_tx, priv_key)
   end
 
   @doc """
@@ -229,8 +259,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder_pubkey: responder_pubkey,
           mutually_signed_tx: [],
           highest_half_signed_tx: nil,
-          minimal_deposit: minimal_deposit
-        } = peer,
+          channel_reserve: channel_reserve
+        } = peer_state,
         initiator_amount,
         responder_amount,
         locktime,
@@ -238,7 +268,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         nonce,
         priv_key
       ) do
-    channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
+    raw_channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     channel_create_tx_spec = %{
           initiator: initiator_pubkey,
@@ -246,47 +276,35 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder: responder_pubkey,
           responder_amount: responder_amount,
           locktime: locktime,
-          state_hash: nil,
-          minimal_deposit: minimal_deposit,
-          channel_id: channel_id
+          channel_reserve: channel_reserve,
+          channel_id: raw_channel_id,
+          state_hash: <<>>
         }
-
-    case calculate_next_state_hash_for_tx(ChannelCreateTx.init(channel_create_tx_spec), peer) do
-      {:ok, state_hash} ->
-        create_tx_data = DataTx.init(
-          ChannelCreateTx,
-          Map.put(channel_create_tx_spec, :state_hash, state_hash),
-          [initiator_pubkey, responder_pubkey],
-          fee,
-          nonce
-        )
-        with {:ok, half_signed_create_tx} <- SignedTx.sign_tx(create_tx_data, initiator_pubkey, priv_key) do
-          {:ok,
-            %ChannelStatePeer{
-              peer |
-              fsm_state: :awaiting_full_tx,
-              mutually_signed_tx: [],
-              highest_half_signed_tx: half_signed_create_tx
-            },
-            channel_id,
-            half_signed_create_tx}
-        else
-          {:error, _} = err ->
-            err
-        end
+    case half_signed_mutual_onchain_tx_from_spec(peer_state, fee, nonce, ChannelCreateTx, channel_create_tx_spec, priv_key) do
+      {:ok, half_signed_create_tx} ->
+        {:ok,
+          %ChannelStatePeer{
+            peer_state |
+            fsm_state: :awaiting_full_tx,
+            mutually_signed_tx: [],
+            highest_half_signed_tx: half_signed_create_tx,
+            channel_id: Identifier.create_identity(raw_channel_id, :channel)
+          },
+          raw_channel_id,
+          half_signed_create_tx}
       {:error, _} = err ->
         err
-    end
+      end
   end
 
-  def open(%ChannelStatePeer{}) do
+  def open(%ChannelStatePeer{}, _, _, _, _, _, _) do
     {:error, "#{__MODULE__}: Invalid call"}
   end
 
   @doc """
   Signs provided open tx if it verifies. Can only be called in initialized state by responder. Returns altered ChannelPeerState, generated channel id and fully signed openTx.
   """
-  @spec sign_open(ChannelStatePeer.t(), SignedTx.t(), Wallet.privkey()) ::
+  @spec sign_open(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), SignedTx.t(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
   def sign_open(
         %ChannelStatePeer{
@@ -296,7 +314,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder_pubkey: responder_pubkey,
           mutually_signed_tx: [],
           highest_half_signed_tx: nil,
-          minimal_deposit: minimal_deposit
+          channel_reserve: correct_channel_reserve
         } = peer_state,
         correct_initiator_amount,
         correct_responder_amount,
@@ -308,10 +326,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     %ChannelCreateTx{
       initiator_amount: tx_initiator_amount,
-      responder_amount: tx_responder_amount
+      responder_amount: tx_responder_amount,
+      channel_reserve: tx_channel_reserve
     } = DataTx.payload(data_tx)
 
-    channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
+    raw_channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     cond do
       tx_initiator_amount != correct_initiator_amount ->
@@ -320,17 +339,20 @@ defmodule Aecore.Channel.ChannelStatePeer do
       tx_responder_amount != correct_responder_amount ->
         {:error, "#{__MODULE__}: Wrong responder amount"}
 
+      tx_channel_reserve != correct_channel_reserve ->
+        {:error, "#{__MODULE__}: Wrong channel reserve"}
+
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Wrong peers"}
 
       true ->
         #validate the state
         case recv_half_signed_tx(
-          %ChannelStatePeer{peer_state | fsm_state: :open},
+          %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: Identifier.create_identity(raw_channel_id, :channel)},
           half_signed_create_tx, priv_key
         ) do
           {:ok, new_peer_state, fully_signed_create_tx} ->
-            {:ok, new_peer_state, channel_id, fully_signed_create_tx}
+            {:ok, new_peer_state, raw_channel_id, fully_signed_create_tx}
           {:error, _} = err ->
             err
         end
@@ -342,35 +364,23 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-    Receives a half signed transaction. Can only be called when the channel is fully open. If the transaction validates then returns a fully signed tx together with the altered state. If the received transaction is not instant then stores it and wait for min_depth confirmations.
+    Receives a half signed transaction. Can only be called when the channel is fully open. If the transaction validates then returns a fully signed tx together with the altered state. If the received transaction is not instant then stores it and waits for min_depth confirmations.
   """
   def recv_half_signed_tx(%ChannelStatePeer{
     fsm_state: :open,
+    mutually_signed_tx: mutually_signed_tx,
     highest_half_signed_tx: nil,
-    initiator_pubkey: initiator_pubkey,
-    responder_pubkey: responder_pubkey,
-    role: :responder} = peer_state, tx, responder_privkey) do
-    internal_recv_half_signed_tx(peer_state, initiator_pubkey, tx, {responder_pubkey, responder_privkey})
-  end
-
-  def recv_half_signed_tx(%ChannelStatePeer{
-    fsm_state: :open,
-    highest_half_signed_tx: nil,
-    initiator_pubkey: initiator_pubkey,
-    responder_pubkey: responder_pubkey,
-    role: :initiator} = peer_state, tx, initiator_privkey) do
-    internal_recv_half_signed_tx(peer_state, responder_pubkey, tx, {initiator_pubkey, initiator_privkey})
-  end
-
-  defp internal_recv_half_signed_tx(%ChannelStatePeer{} = peer_state, other_pubkey, tx, {own_pubkey, own_privkey}) do
-    case verify_tx_and_apply(tx, peer_state, other_pubkey) do
+    } = peer_state, tx, privkey) do
+    case verify_tx_and_apply(tx, peer_state, foreign_pubkey(peer_state)) do
       {:ok, new_peer_state} ->
         #The update validates on our side -> sign it and make a transition in the FSM
-        case ChannelTransaction.add_signature(tx, own_pubkey, own_privkey) do
+        case ChannelTransaction.add_signature(tx, privkey) do
           {:ok, fully_signed_tx} ->
             if ChannelTransaction.is_instant?(fully_signed_tx) do
-            {:ok,
+              {:ok,
               %ChannelStatePeer{new_peer_state |
+                #new peer state will contain the half signed tx so we are changing it to the correct tx
+                mutually_signed_tx: [fully_signed_tx | mutually_signed_tx],
                 fsm_state: :open,
                 highest_half_signed_tx: nil
               },
@@ -403,7 +413,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     responder_pubkey: responder_pubkey,
     highest_half_signed_tx: last_signed} = peer_state, tx) do
 
-    if(ChannelTransaction.state_hash(last_signed) !== ChannelTransaction.state_hash(tx)) do
+    if(ChannelTransaction.get_state_hash(last_signed) !== ChannelTransaction.get_state_hash(tx)) do
       {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(last_signed)}"}
     else
       case verify_tx_and_apply(tx, peer_state, [initiator_pubkey, responder_pubkey]) do
@@ -429,8 +439,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_fully_signed_tx(%ChannelStatePeer{}, _) do
-    {:error, "Unexpected 'recv_fully_signed_tx' call"}
+  def recv_fully_signed_tx(%ChannelStatePeer{fsm_state: fsm_state}, _) do
+    {:error, "Unexpected 'recv_fully_signed_tx' call. Current state is: #{fsm_state}"}
   end
 
   @doc """
@@ -441,7 +451,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     initiator_pubkey: initiator_pubkey,
     responder_pubkey: responder_pubkey,
     highest_half_signed_tx: awaiting_tx} = peer_state, tx) when state === :awaiting_full_tx or state === :awaiting_tx_confirmed do
-    if(ChannelTransaction.state_hash(awaiting_tx) !== ChannelTransaction.state_hash(tx)) do
+    if(ChannelTransaction.get_state_hash(awaiting_tx) !== ChannelTransaction.get_state_hash(tx)) do
       {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(awaiting_tx)}"}
     else
       case verify_tx_and_apply(tx, peer_state, [initiator_pubkey, responder_pubkey]) do
@@ -463,31 +473,30 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates a transfer on channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfer. Returns altered ChannelStatePeer and new half-signed offchain state.
+  Creates a transfer on channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfer. Returns altered ChannelStatePeer and the half signed tx.
   """
   @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
   def transfer(
-        %ChannelStatePeer{fsm_state: :open, highest_mutualy_signed_offchain_tx: highest_mutualy_signed_offchain_tx, role: role} =
+        %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} =
           peer_state,
         amount,
         priv_key
       ) do
-    {:ok, new_state} = ChannelStateOffChain.transfer(highest_mutualy_signed_offchain_tx, role, amount)
+    unsigned_tx = ChannelOffchainTx.intialize_transfer(channel_id, our_pubkey(peer_state), foreign_pubkey(peer_state), amount)
 
-    if new_state.initiator_amount < peer_state.channel_reserve ||
-         new_state.responder_amount < peer_state.channel_reserve do
-      {:error, "#{__MODULE__}: Too big transfer"}
-    else
-      new_state_signed = ChannelStateOffChain.sign(new_state, role, priv_key)
-
-      new_peer_state = %ChannelStatePeer{
-        peer_state
-        | fsm_state: :update,
-          highest_mutualy_signed_offchain_tx: new_state_signed
-      }
-
-      {:ok, new_peer_state, new_state_signed}
+    case validate_prepare_and_sign_new_channel_tx(peer_state, unsigned_tx, priv_key) do
+      {:ok, half_signed_transfer_tx} ->
+        {:ok,
+          %ChannelStatePeer{
+            peer_state |
+            fsm_state: :awaiting_full_tx,
+            highest_half_signed_tx: half_signed_transfer_tx
+          },
+          half_signed_transfer_tx
+        }
+      {:error, _} = err ->
+        err
     end
   end
 
@@ -495,88 +504,44 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:error, "#{__MODULE__}: Can't transfer now; channel state is #{state.fsm_state}"}
   end
 
-  @doc """
-  Handles incoming ChannelOffChainState. If incoming state is a half signed transfer validates it and signs it. If incoming state is fully signed and has higher sequence then current then stores it. Returns altered ChannelPeerState and if it signed a half signed state: fully signed state else nil.
-  """
-  @spec recv_state(ChannelStatePeer.t(), ChannelStateOffChain.t(), Wallet.privkey()) ::
-          {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t() | nil} | error()
-  def recv_state(%ChannelStatePeer{fsm_state: :open} = peer_state, new_state, priv_key) do
-    with {:ok, new_peer_state, nil} <- recv_full_state(peer_state, new_state) do
-      {:ok, new_peer_state, nil}
-    else
-      {:error, _reason} ->
-        recv_half_state(peer_state, new_state, priv_key)
-    end
+  def our_offchain_account_balance(%ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}} = peer_state) do
+    Account.balance(accounts, our_pubkey(peer_state))
   end
 
-  def recv_state(%ChannelStatePeer{fsm_state: :update} = peer_state, new_state, _priv_key) do
-    recv_full_state(peer_state, new_state)
+  def foreign_offchain_account_balance(%ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}} = peer_state) do
+    Account.balance(accounts, foreign_pubkey(peer_state))
   end
 
-  def recv_state(%ChannelStatePeer{} = state) do
-    {:error, "#{__MODULE__}: Can't receive state now; channel state is #{state.fsm_state}"}
+  def calculate_state_hash(%ChannelStatePeer{offchain_chainstate: offchain_chainstate}) do
+    Chainstate.calculate_state_hash(offchain_chainstate)
   end
 
-  defp recv_full_state(
-         %ChannelStatePeer{
-           highest_signed_state: highest_signed_state,
-           highest_state: highest_state
-         } = peer_state,
-         new_state
-       ) do
-    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
-
-    with :ok <-
-           ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
-      if highest_state.sequence <= new_state.sequence do
-        {:ok,
-         %ChannelStatePeer{
-           peer_state
-           | fsm_state: :open,
-             highest_signed_state: new_state,
-             highest_state: new_state
-         }, nil}
-      else
-        {:ok, %ChannelStatePeer{peer_state | highest_signed_state: new_state}, nil}
-      end
-    else
-      {:error, reason} ->
-        {:error, reason}
-    end
+  def most_recent_chainstate(%ChannelStatePeer{offchain_chainstate: offchain_chainstate}) do
+    offchain_chainstate
   end
 
-  defp recv_half_state(
-         %ChannelStatePeer{highest_signed_state: prev_state} = peer_state,
-         new_state,
-         priv_key
-       ) do
-    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
+  def highest_sequence(%ChannelStatePeer{sequence: sequence}) do
+    sequence
+  end
 
-    with :ok <-
-           ChannelStateOffChain.validate_half_update(
-             prev_state,
-             new_state,
-             pubkeys,
-             peer_state.role
-           ) do
-      signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
+  def dispute_poi_for_chainstate(%ChannelStatePeer{
+    initiator_pubkey: initiator_pubkey,
+    responder_pubkey: responder_pubkey},
+    %Chainstate{} = offchain_chainstate) do
+    Enum.reduce([initiator_pubkey, responder_pubkey], Poi.construct(offchain_chainstate),
+      fn(pub_key, acc) ->
+        {:ok, new_acc} = Poi.add_to_poi(:accounts, pub_key, offchain_chainstate, acc)
+        new_acc
+      end)
+  end
 
-      new_peer_state = %ChannelStatePeer{
-        peer_state
-        | highest_signed_state: signed_new_state,
-          highest_state: signed_new_state
-      }
+  defp dispute_poi_for_latest_state(%ChannelStatePeer{} = peer_state) do
+    dispute_poi_for_chainstate(peer_state, most_recent_chainstate(peer_state))
+  end
 
-      with :ok <- ChannelStateOffChain.validate(signed_new_state, pubkeys) do
-        {:ok, new_peer_state, signed_new_state}
-      else
-        {:error, reason} ->
-          {:error, reason}
-      end
-    else
-      {:error, reason} ->
-        {:error, reason}
-    end
+  defp closing_balance_for(%ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}}, pubkey) do
+    #TODO: add the balance from associated contract accounts - not needed for 0.16
+    Account.balance(accounts, pubkey)
   end
 
   @doc """
@@ -593,17 +558,16 @@ defmodule Aecore.Channel.ChannelStatePeer do
           fsm_state: :open,
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
-          highest_half_signed_offchain_tx: %ChannelStateOffChain{
-            channel_id: id,
-            initiator_amount: initiator_amount,
-            responder_amount: responder_amount
-          }
+          channel_id: channel_id,
         } = peer_state,
         {fee_initiator, fee_responder},
         nonce,
         priv_key
       ) do
+    initiator_amount = closing_balance_for(peer_state, initiator_pubkey)
+    responder_amount = closing_balance_for(peer_state, responder_pubkey)
     cond do
+
       fee_initiator > initiator_amount ->
         {:error, "#{__MODULE__}: Initiator fee bigger then initiator balance"}
 
@@ -615,7 +579,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           DataTx.init(
             ChannelCloseMutalTx,
             %{
-              channel_id: id,
+              channel_id: channel_id.value,
               initiator_amount: initiator_amount - fee_initiator,
               responder_amount: responder_amount - fee_responder
             },
@@ -624,7 +588,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
             nonce
           )
 
-        {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, node_pubkey(peer_state), priv_key)
+        {:ok, close_signed_tx} = SignedTx.sign_tx(close_tx, priv_key)
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
         {:ok, new_peer_state, close_signed_tx}
@@ -649,16 +613,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
           fsm_state: :open,
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
-          highest_half_signed_offchain_tx: %ChannelStateOffChain{
-            channel_id: correct_id,
-            initiator_amount: correct_initiator_amount,
-            responder_amount: correct_responder_amount
-          }
+          channel_id: channel_id,
         } = peer_state,
         half_signed_tx,
         {fee_initiator, fee_responder},
         priv_key
       ) do
+
     data_tx = SignedTx.data_tx(half_signed_tx)
 
     %ChannelCloseMutalTx{
@@ -667,24 +628,26 @@ defmodule Aecore.Channel.ChannelStatePeer do
       responder_amount: tx_responder_amount
     } = DataTx.payload(data_tx)
 
+    initiator_amount = closing_balance_for(peer_state, initiator_pubkey)
+    responder_amount = closing_balance_for(peer_state, responder_pubkey)
     cond do
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Invalid senders"}
 
-      tx_id != correct_id ->
+      tx_id != channel_id.value ->
         {:error, "#{__MODULE__}: Invalid id"}
 
-      tx_initiator_amount != correct_initiator_amount - fee_initiator ->
+      tx_initiator_amount != initiator_amount - fee_initiator ->
         {:error, "#{__MODULE__}: Invalid initiator_amount (check fee)"}
 
-      tx_responder_amount != correct_responder_amount - fee_responder ->
+      tx_responder_amount != responder_amount - fee_responder ->
         {:error, "#{__MODULE__}: Invalid responder_amount (check fee)"}
 
       true ->
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
         {:ok, signed_close_tx} =
-          SignedTx.sign_tx(half_signed_tx, node_pubkey(peer_state), priv_key)
+          SignedTx.sign_tx(half_signed_tx, priv_key)
 
         {:ok, new_peer_state, signed_close_tx}
     end
@@ -707,7 +670,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec solo_close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def solo_close(
-        %ChannelStatePeer{highest_half_signed_offchain_tx: our_state} = peer_state,
+        %ChannelStatePeer{mutually_signed_tx: [most_recent_tx | _]} = peer_state,
         fee,
         nonce,
         priv_key
@@ -715,24 +678,35 @@ defmodule Aecore.Channel.ChannelStatePeer do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
     data =
-      DataTx.init(ChannelCloseSoloTx, %{state: our_state}, node_pubkey(peer_state), fee, nonce)
+      DataTx.init(ChannelCloseSoloTx,
+        %{
+          channel_id: channel_id(peer_state),
+          poi: dispute_poi_for_latest_state(peer_state),
+          offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
+        },
+        our_pubkey(peer_state), fee, nonce)
 
-    {:ok, our_slash_tx} = SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
+    {:ok, our_slash_tx} = SignedTx.sign_tx(data, priv_key)
     {:ok, new_peer_state, our_slash_tx}
   end
 
   def slash(
-        %ChannelStatePeer{highest_half_signed_offchain_tx: our_state} = peer_state,
+        %ChannelStatePeer{mutually_signed_tx: [most_recent_tx | _]} = peer_state,
         fee,
         nonce,
-        pubkey,
         priv_key
       ) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
 
-    data = DataTx.init(ChannelSlashTx, %{state: our_state}, pubkey, fee, nonce)
+    data = DataTx.init(ChannelSlashTx,
+      %{
+        channel_id: channel_id(peer_state),
+        poi: dispute_poi_for_latest_state(peer_state),
+        offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
+      },
+      our_pubkey(peer_state), fee, nonce)
 
-    {:ok, our_slash_tx} = SignedTx.sign_tx(data, pubkey, priv_key)
+    {:ok, our_slash_tx} = SignedTx.sign_tx(data, priv_key)
     {:ok, new_peer_state, our_slash_tx}
   end
 
@@ -744,19 +718,15 @@ defmodule Aecore.Channel.ChannelStatePeer do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.pubkey(),
           Wallet.privkey()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t() | nil} | error()
   def slashed(
         %ChannelStatePeer{
-          highest_half_signed_offchain_tx: %ChannelStateOffChain{
-            sequence: best_sequence
-          }
+          mutually_signed_tx: [most_recent_tx | _]
         } = peer_state,
         slash_tx,
         fee,
         nonce,
-        pubkey,
         privkey
       ) do
     payload =
@@ -764,17 +734,20 @@ defmodule Aecore.Channel.ChannelStatePeer do
       |> SignedTx.data_tx()
       |> DataTx.payload()
 
-    slash_sequence =
+    slash_hash =
       case payload do
-        %ChannelCloseSoloTx{} ->
-          ChannelCloseSoloTx.sequence(payload)
+        %ChannelCloseSoloTx{poi: poi} ->
+          Poi.calculate_root_hash(poi)
 
-        %ChannelSlashTx{} ->
-          ChannelSlashTx.sequence(payload)
+        %ChannelSlashTx{poi: poi} ->
+          Poi.calculate_root_hash(poi)
       end
 
-    if slash_sequence < best_sequence do
-      slash(peer_state, fee, nonce, pubkey, privkey)
+    #We cannot relay on the sequence as SlashTx/SoloTx may not contain a payload.
+    #Because SlashTx/SoloTx was mined the state hash present here must have been verified onchain
+    #If it was verfied onchain then we needed to sign it - In conclusion we can relay on the state hash
+    if slash_hash != ChannelTransaction.get_state_hash(most_recent_tx) do
+      slash(peer_state, fee, nonce, privkey)
     else
       new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
       {:ok, new_peer_state, nil}
@@ -790,13 +763,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
     data =
       DataTx.init(
         ChannelSettleTx,
-        %{channel_id: id(peer_state)},
-        node_pubkey(peer_state),
+        %{channel_id: channel_id(peer_state)},
+        our_pubkey(peer_state),
         fee,
         nonce
       )
 
-    SignedTx.sign_tx(data, node_pubkey(peer_state), priv_key)
+    SignedTx.sign_tx(data, priv_key)
   end
 
   @doc """
@@ -810,12 +783,24 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Returns our pubkey from in channel.
   """
-  @spec node_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
-  def node_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
+  @spec our_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
+  def our_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
     pubkey
   end
 
-  def node_pubkey(%ChannelStatePeer{role: :responder, responder_pubkey: pubkey}) do
+  def our_pubkey(%ChannelStatePeer{role: :responder, responder_pubkey: pubkey}) do
+    pubkey
+  end
+
+  @doc """
+  Returns the pubkey of the other peer in channel.
+  """
+  @spec foreign_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
+  def foreign_pubkey(%ChannelStatePeer{role: :initiator, responder_pubkey: pubkey}) do
+    pubkey
+  end
+
+  def foreign_pubkey(%ChannelStatePeer{role: :responder, initiator_pubkey: pubkey}) do
     pubkey
   end
 end
