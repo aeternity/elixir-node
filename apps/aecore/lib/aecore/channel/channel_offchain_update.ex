@@ -7,9 +7,9 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
 
-  alias Aecore.Channels.Updates.ChannelTransferUpdate
-  alias Aecore.Channels.Updates.ChannelDepositUpdate
-  alias Aecore.Channels.Updates.ChannelWidthdrawUpdate
+  alias Aecore.Channel.Updates.ChannelTransferUpdate
+  alias Aecore.Channel.Updates.ChannelDepositUpdate
+  alias Aecore.Channel.Updates.ChannelWidthdrawUpdate
 
   @typedoc """
   Possible types of an update

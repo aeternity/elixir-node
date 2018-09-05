@@ -378,7 +378,16 @@ defmodule Aecore.Channel.Worker do
 
     with {:ok, new_peer_state, fully_signed_tx} <-
            ChannelStatePeer.recv_half_signed_tx(peer_state, half_signed_tx, priv_key) do
-      {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
+      if ChannelTransaction.is_instant?(fully_signed_tx) do
+        {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
+      else
+        with :ok <- Pool.add_transaction(fully_signed_tx) do
+          {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
+        else
+          :error ->
+            {:reply, {:error, "Pool error"}, state}
+        end
+      end
     else
       {:error, _} = err ->
         {:reply, err, state}
