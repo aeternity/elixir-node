@@ -17,8 +17,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Events
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Hash
-  alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 
   require Logger
