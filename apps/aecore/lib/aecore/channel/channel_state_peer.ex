@@ -78,6 +78,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     cond do
       #check if signed by the expected parties
       !ChannelTransaction.signed_with?(tx, signed_with) ->
+        IO.inspect(tx)
         {:error, "#{__MODULE__}: Tx was not signed as expected"}
       #check channel id
       ChannelTransaction.get_channel_id(tx) !== channel_id ->

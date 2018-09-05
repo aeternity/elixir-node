@@ -151,14 +151,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       true ->
         case get_final_balances_from_poi(channel, poi) do
           {:ok, poi_initiator_amount, poi_responder_amount} ->
-              cond do
-                poi_initiator_amount !== channel.initiator_amount ->
-                  {:error, "#{__MODULE__}: Invalid initiator amount"}
-                poi_respoder_amount !== channel.responder_amount ->
-                  {:error, "#{__MODULE__}: Invalid responder amount"}
-                true ->
-                  :ok
-              end
+            cond do
+              poi_initiator_amount !== channel.initiator_amount ->
+                {:error, "#{__MODULE__}: Invalid initiator amount"}
+              poi_responder_amount !== channel.responder_amount ->
+                {:error, "#{__MODULE__}: Invalid responder amount"}
+              true ->
+                :ok
+            end
           {:error, _} = err ->
             err
         end
@@ -191,7 +191,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
-  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, total_balance} | {:error, binary()}
+  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
   defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
     case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
       {:ok, poi_initiator_amount} ->

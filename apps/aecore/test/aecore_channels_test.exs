@@ -15,11 +15,7 @@ defmodule AecoreChannelTest do
     ChannelOffchainTx
   }
 
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
-
   alias Aeutil.PatriciaMerkleTree
-
-  alias Aecore.Tx.{DataTx, SignedTx}
 
   @s1_name {:global, :Channels_S1}
   @s2_name {:global, :Channels_S2}
@@ -66,7 +62,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, treansfer funds, mutal close channel", ctx do
+  test "create channel, transfer funds, mutal close channel", ctx do
     id = create_channel(ctx)
 
     # Can't transfer more then reserve allows
@@ -99,7 +95,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 240_000
-  test "create channel, transfer twice, slash with old, slash with corrent and settle", ctx do
+  test "create channel, transfer twice, slash with old, slash with correct and settle", ctx do
     id = create_channel(ctx)
 
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
@@ -172,6 +168,47 @@ defmodule AecoreChannelTest do
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 150)
     TestUtils.assert_balance(ctx.pk2, 50 + 150)
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Slashing an active channel does not work", ctx do
+    id = create_channel(ctx)
+
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
+
+    #prepare slash but do not submit to pool
+    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 270, 30, 3)
+
+    assert :ok == Pool.add_transaction(slash_tx)
+
+    Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Pool.get_and_empty_pool()) == false
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
+             true
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Test channel importing", ctx do
+    id = create_channel(ctx)
+
+    for i <- 1..10 do
+      perform_transfer(id, i, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+      transfered_so_far = div((1+i)*i,2)
+      assert_offchain_state(id, 150-transfered_so_far, 150+transfered_so_far, i+1)
+    end
+
+    {:ok, state1} = call_s1({:get_channel, id})
+    tx_list = ChannelStatePeer.get_signed_tx_list(state1)
+    IO.inspect(tx_list)
+    {:ok, imported} = ChannelStatePeer.from_signed_tx_list(tx_list, :initiator)
+    assert ChannelStatePeer.calculate_state_hash(state1) === ChannelStatePeer.calculate_state_hash(imported)
   end
 
   defp create_channel(ctx) do
