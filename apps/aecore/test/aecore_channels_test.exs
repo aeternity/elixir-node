@@ -206,7 +206,7 @@ defmodule AecoreChannelTest do
 
     {:ok, state1} = call_s1({:get_channel, id})
     tx_list = ChannelStatePeer.get_signed_tx_list(state1)
-    IO.inspect(tx_list)
+    
     {:ok, imported} = ChannelStatePeer.from_signed_tx_list(tx_list, :initiator)
     assert ChannelStatePeer.calculate_state_hash(state1) === ChannelStatePeer.calculate_state_hash(imported)
   end

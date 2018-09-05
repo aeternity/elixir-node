@@ -78,7 +78,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
     cond do
       #check if signed by the expected parties
       !ChannelTransaction.signed_with?(tx, signed_with) ->
-        IO.inspect(tx)
         {:error, "#{__MODULE__}: Tx was not signed as expected"}
       #check channel id
       ChannelTransaction.get_channel_id(tx) !== channel_id ->
@@ -130,8 +129,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     initial_state = %ChannelStatePeer{
             fsm_state: :open,
-            initiator_pubkey: initiator_pubkey,
-            responder_pubkey: responder_pubkey,
+            initiator_pubkey: initiator_pubkey.value,
+            responder_pubkey: responder_pubkey.value,
             role: role,
             channel_id: channel_id,
             channel_reserve: channel_reserve
@@ -139,7 +138,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     Enum.reduce_while(offchain_tx_list_from_oldest, {:ok, initial_state},
       fn tx, {:ok, state} ->
-        case verify_tx_and_apply(tx, state, [initiator_pubkey, responder_pubkey]) do
+        case verify_tx_and_apply(tx, state, [initiator_pubkey.value, responder_pubkey.value]) do
           {:ok, _} = new_acc ->
             {:cont, new_acc}
           {:error, _} = err ->
