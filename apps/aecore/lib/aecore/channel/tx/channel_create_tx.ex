@@ -118,7 +118,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       byte_size(tx.state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
 
-      #TODO: Should we recreate the offchain chainstate and make sure that the state hash is correct?
+      #Should we recreate the offchain chainstate and make sure that the state hash is correct?
 
       true ->
         :ok

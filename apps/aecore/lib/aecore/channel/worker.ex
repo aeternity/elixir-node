@@ -194,7 +194,6 @@ defmodule Aecore.Channel.Worker do
     GenServer.call(__MODULE__, {:recv_confirmed_tx, confirmed_onchain_tx})
   end
 
-
   @doc """
   Creates channel close transaction. This also blocks any new transactions from happening on channel.
   """
@@ -244,12 +243,12 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Slashes channel. Creates slash Tx and adds it to the pool.
   """
-  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), Keys.sign_priv_key()) ::
+  @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | error()
-  def slash(channel_id, fee, nonce, pubkey, priv_key)
-      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(pubkey) and
+  def slash(channel_id, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and
              is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, pubkey, priv_key})
+    GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, priv_key})
   end
 
   @doc """
@@ -487,11 +486,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slash, channel_id, fee, nonce, pubkey, priv_key}, _from, state) do
+  def handle_call({:slash, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state, tx} <-
-           ChannelStatePeer.slash(peer_state, fee, nonce, pubkey, priv_key),
+           ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else

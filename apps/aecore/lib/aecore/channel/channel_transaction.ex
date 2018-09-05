@@ -129,7 +129,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   end
 
   def set_sequence(%DataTx{type: type, payload: payload} = data_tx, sequence) when type in @allowed_onchain_tx do
-    #TODO: Maybe consider doing proper dispatching here?
+    #Maybe consider doing proper dispatching here?
     %DataTx{data_tx | payload: Map.put(payload, :sequence, sequence)}
   end
 
@@ -153,7 +153,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   end
 
   def set_state_hash(%DataTx{type: type, payload: payload} = data_tx, state_hash) when type in @allowed_onchain_tx do
-    #TODO: Maybe consider doing proper dispatching here?
+    #Maybe consider doing proper dispatching here?
     %DataTx{data_tx | payload: Map.put(payload, :state_hash, state_hash)}
   end
 

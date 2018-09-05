@@ -240,11 +240,11 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   defp single_signature_check(signatures, data_binary, pubkey) do
-    if(!Keys.key_size_valid?(pubkey)) do
+    if Keys.key_size_valid?(pubkey) do
+      internal_single_signature_check(signatures, data_binary, pubkey)
+    else
       Logger.error("Wrong pubkey size #{inspect(pubkey)}")
       :error
-    else
-      internal_single_signature_check(signatures, data_binary, pubkey)
     end
   end
 

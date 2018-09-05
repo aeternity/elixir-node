@@ -66,7 +66,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec channel_id(ChannelStatePeer.t()) :: Identifier.t()
   def channel_id(%ChannelStatePeer{channel_id: channel_id}), do: channel_id.value
 
-  @spec verify_tx_and_apply(ChannelTransaction.channel_tx(), ChannelStatePeer.t(), list(Identifier.t()) | Identifier.t() ) :: {:ok, ChannelStatePeer.t()} | {:error, String.t()}
+  @spec verify_tx_and_apply(ChannelTransaction.channel_tx(), ChannelStatePeer.t(), list(Identifier.t()) | Identifier.t()) :: {:ok, ChannelStatePeer.t()} | {:error, String.t()}
   defp verify_tx_and_apply(tx, %ChannelStatePeer{
     channel_id: channel_id,
     mutually_signed_tx: mutually_signed_tx,
@@ -90,15 +90,15 @@ defmodule Aecore.Channel.ChannelStatePeer do
         case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.get_updates(tx), channel_reserve) do
           {:ok, new_offchain_chainstate} ->
             #update was succesfull - verify the state hash
-            if(ChannelTransaction.get_state_hash(tx) !== Chainstate.calculate_root_hash(new_offchain_chainstate)) do
-              {:error, "#{__MODULE__}: Wrong state hash in tx"}
-            else
+            if ChannelTransaction.get_state_hash(tx) === Chainstate.calculate_root_hash(new_offchain_chainstate) do
               {:ok, %ChannelStatePeer{
                 peer |
                 offchain_chainstate: new_offchain_chainstate,
                 sequence: new_sequence,
                 mutually_signed_tx: [tx | mutually_signed_tx]
               }}
+            else
+              {:error, "#{__MODULE__}: Wrong state hash in tx"}
             end
           {:error, _} = err ->
             err
@@ -223,7 +223,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   defp validate_prepare_and_sign_new_channel_tx(
          %ChannelStatePeer{sequence: sequence} = peer_state, tx, priv_key) do
-    tx1 = ChannelTransaction.set_sequence(tx, sequence+1)
+    tx1 = ChannelTransaction.set_sequence(tx, sequence + 1)
     case calculate_next_state_hash_for_new_tx(tx1, peer_state) do
       {:ok, state_hash} ->
         tx1
@@ -413,9 +413,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     responder_pubkey: responder_pubkey,
     highest_half_signed_tx: last_signed} = peer_state, tx) do
 
-    if(ChannelTransaction.get_state_hash(last_signed) !== ChannelTransaction.get_state_hash(tx)) do
-      {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(last_signed)}"}
-    else
+    if ChannelTransaction.get_state_hash(last_signed) === ChannelTransaction.get_state_hash(tx) do
       case verify_tx_and_apply(tx, peer_state, [initiator_pubkey, responder_pubkey]) do
         {:ok, new_peer_state} ->
           if ChannelTransaction.is_instant?(tx) do
@@ -436,6 +434,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
         {:error, _} = err ->
           err
       end
+    else
+      {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(last_signed)}"}
     end
   end
 
@@ -451,9 +451,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     initiator_pubkey: initiator_pubkey,
     responder_pubkey: responder_pubkey,
     highest_half_signed_tx: awaiting_tx} = peer_state, tx) when state === :awaiting_full_tx or state === :awaiting_tx_confirmed do
-    if(ChannelTransaction.get_state_hash(awaiting_tx) !== ChannelTransaction.get_state_hash(tx)) do
-      {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(awaiting_tx)}"}
-    else
+    if ChannelTransaction.get_state_hash(awaiting_tx) === ChannelTransaction.get_state_hash(tx) do
       case verify_tx_and_apply(tx, peer_state, [initiator_pubkey, responder_pubkey]) do
         {:ok, new_peer_state} ->
             {:ok,
@@ -465,6 +463,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
         {:error, _} = err ->
           err
       end
+    else
+      {:error, "#{__MODULE__} Received unexpected tx #{inspect(tx)}, expected: #{inspect(awaiting_tx)}"}
     end
   end
 
@@ -513,7 +513,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def calculate_state_hash(%ChannelStatePeer{offchain_chainstate: offchain_chainstate}) do
-    Chainstate.calculate_state_hash(offchain_chainstate)
+    Chainstate.calculate_root_hash(offchain_chainstate)
   end
 
   def most_recent_chainstate(%ChannelStatePeer{offchain_chainstate: offchain_chainstate}) do
@@ -540,7 +540,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   defp closing_balance_for(%ChannelStatePeer{offchain_chainstate: %Chainstate{accounts: accounts}}, pubkey) do
-    #TODO: add the balance from associated contract accounts - not needed for 0.16
+    #In future versions we need to add the balance from associated contract accounts - not needed for 0.16
     Account.balance(accounts, pubkey)
   end
 

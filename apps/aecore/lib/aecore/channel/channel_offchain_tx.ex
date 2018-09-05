@@ -188,7 +188,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   end
 
   def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do
-    decoded_tx = Serialization.rlp_decode(encoded_tx, ChannelOffchainTx)
+    decoded_tx = Serialization.rlp_decode_only(encoded_tx, ChannelOffchainTx)
     {:ok,
       %ChannelOffchainTx{decoded_tx | signatures: {sig1, sig2}}
     }

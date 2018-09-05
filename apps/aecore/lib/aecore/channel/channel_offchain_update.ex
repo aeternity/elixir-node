@@ -38,7 +38,7 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   def module_to_tag(Aecore.Channel.Updates.ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(Aecore.Channel.Updates.ChannelDepositUpdate), do: {:ok, 1}
   def module_to_tag(Aecore.Channel.Updates.ChannelWidthdrawUpdate), do: {:ok, 2}
-  def module_to_tag(module), do: {:error, "#{__MODULE__} Error: Unserializable module: #{IO.inspect(module)}"}
+  def module_to_tag(module), do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
 
   @spec to_list(update_types()) :: list(binary())
   def to_list(object) do
@@ -85,7 +85,7 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
   end
 
   def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
-    if(balance < channel_reserve) do
+    if balance < channel_reserve do
       throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{channel_reserve} tokens)"}
     end
     account

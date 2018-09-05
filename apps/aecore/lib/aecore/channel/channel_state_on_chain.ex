@@ -149,21 +149,18 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         {:error, "#{__MODULE__}: Invalid state hash"}
 
       true ->
-        case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
-          {:ok, poi_initiator_amount} ->
-            case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
-              {:ok, poi_respoder_amount} ->
-                if poi_initiator_amount + poi_respoder_amount !== channel.initiator_amount + channel.responder_amount do
-                  #The total amount MUST never change
-                  {:error, "#{__MODULE__}: Invalid total amount"}
-                else
+        case get_final_balances_from_poi(channel, poi) do
+          {:ok, poi_initiator_amount, poi_responder_amount} ->
+              cond do
+                poi_initiator_amount !== channel.initiator_amount ->
+                  {:error, "#{__MODULE__}: Invalid initiator amount"}
+                poi_respoder_amount !== channel.responder_amount ->
+                  {:error, "#{__MODULE__}: Invalid responder amount"}
+                true ->
                   :ok
-                end
-              {:error, _} ->
-                {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
-            end
-          {:error, _} ->
-            {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
+              end
+          {:error, _} = err ->
+            err
         end
     end
   end
@@ -180,22 +177,33 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         {:error, "#{__MODULE__}: Invalid state hash"}
 
       true ->
-        case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
-          {:ok, poi_initiator_amount} ->
-            case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
-              {:ok, poi_respoder_amount} ->
-                if poi_initiator_amount + poi_respoder_amount !== channel.initiator_amount + channel.responder_amount do
-                  #The total amount MUST never change
-                  {:error, "#{__MODULE__}: Invalid total amount"}
-                else
-                  ChannelOffchainTx.validate(offchain_tx, pubkeys(channel))
-                end
-              {:error, _} ->
-                {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
+        case get_final_balances_from_poi(channel, poi) do
+          {:ok, poi_initiator_amount, poi_responder_amount} ->
+            if poi_initiator_amount + poi_responder_amount !== channel.initiator_amount + channel.responder_amount do
+              #The total amount MUST never change
+              {:error, "#{__MODULE__}: Invalid total amount"}
+            else
+              ChannelOffchainTx.validate(offchain_tx, pubkeys(channel))
             end
-          {:error, _} ->
-            {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
+          {:error, _} = err ->
+            err
         end
+    end
+  end
+
+  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, total_balance} | {:error, binary()}
+  defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
+    case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
+      {:ok, poi_initiator_amount} ->
+        case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+          {:ok, poi_respoder_amount} ->
+            #Later we will need to factor in contracts
+            {:ok, poi_initiator_amount, poi_respoder_amount}
+          {:error, _} ->
+            {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
+        end
+      {:error, _} ->
+        {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
     end
   end
 
