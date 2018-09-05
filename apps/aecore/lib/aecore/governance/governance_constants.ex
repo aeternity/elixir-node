@@ -5,8 +5,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @number_of_blocks_for_target_recalculation 10
 
-  # 30sec
-  @expected_mine_rate_ms 30_000
+  # 60sec * 1000ms * 5 = 300_000ms
+  @expected_mine_rate_ms 300_000
 
   @coinbase_transaction_amount 10_000_000_000_000_000_000
 
