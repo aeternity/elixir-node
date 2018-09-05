@@ -5,6 +5,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Tx.SignedTx
   alias Aecore.Keys
   alias Aecore.Channel.Worker, as: Channels
 
@@ -107,12 +108,8 @@ defmodule AecoreChannelTest do
     perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
     assert_offchain_state(id, 270, 30, 3)
 
-    assert :ok == Pool.add_transaction(solo_close_tx)
-
-    TestUtils.assert_transactions_mined()
-
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
-             false
+    assert_custom_tx_succeeds(solo_close_tx)
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
 
     assert :ok == call_s1({:slashed, solo_close_tx, 10, 2, ctx.sk1})
 
@@ -172,25 +169,28 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Slashing an active channel does not work", ctx do
+  test "Slashing an active channel does not work. Solo closing an inactive channel does not work", ctx do
     id = create_channel(ctx)
+
+    solo_close_tx1 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
 
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
     assert_offchain_state(id, 100, 200, 2)
 
-    #prepare slash but do not submit to pool
+    solo_close_tx2 = prepare_solo_close_tx(id, &call_s2/1, 15, 2, ctx.sk2)
+
+    #slashing an active channel fails
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    assert_custom_tx_fails(slash_tx)
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === true
 
-    perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
-    assert_offchain_state(id, 270, 30, 3)
+    #solo closing an active channel succeeds
+    assert_custom_tx_succeeds(solo_close_tx1)
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
 
-    assert :ok == Pool.add_transaction(slash_tx)
-
-    Miner.mine_sync_block_to_chain()
-    assert Enum.empty?(Pool.get_and_empty_pool()) == false
-
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ==
-             true
+    #solo closing an inactive channel fails
+    assert_custom_tx_fails(solo_close_tx2)
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
   end
 
   @tag :channels
@@ -200,15 +200,19 @@ defmodule AecoreChannelTest do
 
     for i <- 1..10 do
       perform_transfer(id, i, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
-      transfered_so_far = div((1+i)*i,2)
-      assert_offchain_state(id, 150-transfered_so_far, 150+transfered_so_far, i+1)
+      transfered_so_far = div((1 + i) * i, 2)
+      assert_offchain_state(id, 150 - transfered_so_far, 150 + transfered_so_far, i + 1)
     end
 
-    {:ok, state1} = call_s1({:get_channel, id})
-    tx_list = ChannelStatePeer.get_signed_tx_list(state1)
-    
-    {:ok, imported} = ChannelStatePeer.from_signed_tx_list(tx_list, :initiator)
-    assert ChannelStatePeer.calculate_state_hash(state1) === ChannelStatePeer.calculate_state_hash(imported)
+    {:ok, initiator_state} = call_s1({:get_channel, id})
+    {:ok, responder_state} = call_s2({:get_channel, id})
+    tx_list = ChannelStatePeer.get_signed_tx_list(initiator_state)
+    assert tx_list === ChannelStatePeer.get_signed_tx_list(responder_state)
+
+    {:ok, imported_initiator_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :initiator)
+    {:ok, imported_responder_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :responder)
+    assert ChannelStatePeer.calculate_state_hash(initiator_state) === ChannelStatePeer.calculate_state_hash(imported_initiator_state)
+    assert ChannelStatePeer.calculate_state_hash(responder_state) === ChannelStatePeer.calculate_state_hash(imported_responder_state)
   end
 
   defp create_channel(ctx) do
@@ -253,16 +257,21 @@ defmodule AecoreChannelTest do
     assert call_s1({:most_recent_chainstate, id}) === call_s2({:most_recent_chainstate, id})
   end
 
+  defp get_fsm_state(id, peer_fun) when is_function(peer_fun, 1) do
+    {:ok, %ChannelStatePeer{fsm_state: fsm_state}} = peer_fun.({:get_channel, id})
+    fsm_state
+  end
+
   defp perform_transfer(id, amount, initiator_fun, initiator_sk, responder_fun, responder_sk) when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and initiator_fun != responder_fun do
-    {:ok, %ChannelStatePeer{fsm_state: :open}} = initiator_fun.({:get_channel, id})
-    {:ok, %ChannelStatePeer{fsm_state: :open}} = responder_fun.({:get_channel, id})
+    assert :open === get_fsm_state(id, initiator_fun)
+    assert :open === get_fsm_state(id, responder_fun)
 
     {:ok, half_signed_transfer_tx} = initiator_fun.({:transfer, id, amount, initiator_sk})
     %ChannelOffchainTx{} = half_signed_transfer_tx
-    {:ok, %ChannelStatePeer{fsm_state: :awaiting_full_tx}} = initiator_fun.({:get_channel, id})
+    assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
     {:ok, fully_signed_transfer_tx} = responder_fun.({:recv_half_signed_tx, half_signed_transfer_tx, responder_sk})
     %ChannelOffchainTx{} = fully_signed_transfer_tx
-    {:ok, %ChannelStatePeer{fsm_state: :open}} = responder_fun.({:get_channel, id})
+    assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:recv_fully_signed_tx, fully_signed_transfer_tx})
   end
 
@@ -278,6 +287,19 @@ defmodule AecoreChannelTest do
     slash_tx
   end
 
+  defp assert_custom_tx_fails(%SignedTx{} = tx) do
+    assert :ok === Pool.add_transaction(tx)
+
+    Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Pool.get_and_empty_pool()) == false
+  end
+
+  def assert_custom_tx_succeeds(%SignedTx{} = tx) do
+    assert :ok === Pool.add_transaction(tx)
+
+    TestUtils.assert_transactions_mined()
+  end
+
   defp call_s1(call) do
     GenServer.call(@s1_name, call)
   end
@@ -287,12 +309,10 @@ defmodule AecoreChannelTest do
   end
 
   defp get_fsm_state_s1(id) do
-    {:ok, %ChannelStatePeer{fsm_state: fsm_state}} = call_s1({:get_channel, id})
-    fsm_state
+    get_fsm_state(id, &call_s1/1)
   end
 
   defp get_fsm_state_s2(id) do
-    {:ok, %ChannelStatePeer{fsm_state: fsm_state}} = call_s2({:get_channel, id})
-    fsm_state
+    get_fsm_state(id, &call_s2/1)
   end
 end
