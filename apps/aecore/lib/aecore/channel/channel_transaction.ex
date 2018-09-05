@@ -128,7 +128,11 @@ defmodule Aecore.Channel.ChannelTransaction do
     structure.__struct__.get_sequence(structure)
   end
 
-  def set_sequence(%DataTx{type: type, payload: payload} = data_tx, sequence) when type in @allowed_onchain_tx do
+  def set_sequence(%DataTx{type: type} = data_tx, _sequence) when type === Aecore.Channel.Tx.ChannelCreateTx do
+    data_tx
+  end
+
+  def set_sequence(%DataTx{type: type, payload: payload} = data_tx, sequence) when type in @allowed_onchain_tx and type !== Aecore.Channel.Tx.ChannelCreateTx do
     #Maybe consider doing proper dispatching here?
     %DataTx{data_tx | payload: Map.put(payload, :sequence, sequence)}
   end

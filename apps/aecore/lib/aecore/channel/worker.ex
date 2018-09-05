@@ -455,10 +455,10 @@ defmodule Aecore.Channel.Worker do
     id =
       case payload do
         %ChannelCloseMutalTx{channel_id: id} ->
-          id
+          id.value
 
         %ChannelSettleTx{channel_id: id} ->
-          id
+          id.value
       end
 
     if Map.has_key?(state, id) do

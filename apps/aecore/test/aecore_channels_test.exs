@@ -8,6 +8,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Tx.SignedTx
   alias Aecore.Keys
   alias Aecore.Channel.Worker, as: Channels
+  alias Aeutil.Serialization
 
   alias Aecore.Channel.{
     ChannelStateOnChain,
@@ -213,6 +214,29 @@ defmodule AecoreChannelTest do
     {:ok, imported_responder_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :responder)
     assert ChannelStatePeer.calculate_state_hash(initiator_state) === ChannelStatePeer.calculate_state_hash(imported_initiator_state)
     assert ChannelStatePeer.calculate_state_hash(responder_state) === ChannelStatePeer.calculate_state_hash(imported_responder_state)
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Onchain transaction basic serialization tests", ctx do
+    id = create_channel(ctx)
+
+    {:ok, initiator_state} = call_s1({:get_channel, id})
+    [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
+    solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+    {:ok, settle_tx} = ChannelStatePeer.settle(%ChannelStatePeer{initiator_state | fsm_state: :closing}, 10, 3, ctx.sk1)
+    {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
+
+    to_test = [channel_create_tx, solo_close_tx, slash_tx, settle_tx, close_tx]
+
+    for tx <- to_test do
+      serialized = Serialization.rlp_encode(tx)
+      {:ok, %SignedTx{} = deserialized_tx} = Serialization.rlp_decode_only(serialized, SignedTx)
+
+      assert SignedTx.hash_tx(deserialized_tx) === SignedTx.hash_tx(tx)
+      assert deserialized_tx === tx
+    end
   end
 
   defp create_channel(ctx) do

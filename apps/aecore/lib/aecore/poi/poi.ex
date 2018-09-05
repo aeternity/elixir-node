@@ -188,7 +188,7 @@ defmodule Aecore.Poi.Poi do
       naming_proof,
       oracles_proof
     ]
-    |> Enum.map(fn proof -> PoiProof.encode_to_list(proof) end)
+    |> Enum.map(&PoiProof.encode_to_list/1)
 
     [:binary.encode_unsigned(@version)] ++ payload
   end
@@ -205,13 +205,15 @@ defmodule Aecore.Poi.Poi do
       naming,
       oracles
     ]) do
-    %Poi{
-      accounts:  PoiProof.decode_from_list(accounts),
-      calls:     PoiProof.decode_from_list(calls),
-      channels:  PoiProof.decode_from_list(channels),
-      contracts: PoiProof.decode_from_list(contracts),
-      naming:    PoiProof.decode_from_list(naming),
-      oracles:   PoiProof.decode_from_list(oracles)
+    {:ok,
+      %Poi{
+        accounts:  PoiProof.decode_from_list(accounts),
+        calls:     PoiProof.decode_from_list(calls),
+        channels:  PoiProof.decode_from_list(channels),
+        contracts: PoiProof.decode_from_list(contracts),
+        naming:    PoiProof.decode_from_list(naming),
+        oracles:   PoiProof.decode_from_list(oracles)
+      }
     }
   end
 

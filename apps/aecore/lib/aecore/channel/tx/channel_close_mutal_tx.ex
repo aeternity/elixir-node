@@ -9,6 +9,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Identifier
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Chain.Identifier
 
@@ -31,7 +32,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   @typedoc "Structure of the ChannelMutalClose Transaction type"
   @type t :: %ChannelCloseMutalTx{
-          channel_id: binary(),
+          channel_id: Identifier.t(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer()
         }
@@ -59,7 +60,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         } = _payload
       ) do
     %ChannelCloseMutalTx{
-      channel_id: channel_id,
+      channel_id: Identifier.create_identity(channel_id, :channel),
       initiator_amount: initiator_amount,
       responder_amount: responder_amount
     }
@@ -179,12 +180,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       :binary.encode_unsigned(@version),
       Identifier.encode_list_to_binary(datatx.senders),
       :binary.encode_unsigned(datatx.nonce),
-      tx.channel_id,
+      Identifier.encode_to_binary(tx.channel_id),
       :binary.encode_unsigned(tx.initiator_amount),
       :binary.encode_unsigned(tx.responder_amount),
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.ttl)
     ]
+  end
+
+  defp decode_channel_identifier_to_binary(encoded_identifier) do
+  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
+    value
   end
 
   def decode_from_list(@version, [
@@ -196,8 +202,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         fee,
         ttl
       ]) do
-    payload = %ChannelCloseMutalTx{
-      channel_id: channel_id,
+    payload = %{
+      channel_id: decode_channel_identifier_to_binary(channel_id),
       initiator_amount: :binary.decode_unsigned(initiator_amount),
       responder_amount: :binary.decode_unsigned(responder_amount)
     }

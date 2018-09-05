@@ -194,6 +194,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     ]
   end
 
+  defp decode_channel_identifier_to_binary(encoded_identifier) do
+  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
+    value
+  end
+
   def decode_from_list(@version, [channel_id, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
     case ChannelOffchainTx.decode_from_payload(payload) do
       {:ok, offchain_tx} ->
@@ -202,14 +207,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
             DataTx.init_binary(
               ChannelCloseSoloTx,
               %{
-                channel_id: channel_id,
+                channel_id: decode_channel_identifier_to_binary(channel_id),
                 offchain_tx: offchain_tx,
                 poi: poi
               },
-              encoded_sender,
-              :binary.encode_unsigned(fee),
-            :binary.encode_unsigned(nonce),
-            :binary.encode_unsigned(ttl)
+              [encoded_sender],
+              :binary.decode_unsigned(fee),
+              :binary.decode_unsigned(nonce),
+              :binary.decode_unsigned(ttl)
             )
           {:error, _} = err ->
             err

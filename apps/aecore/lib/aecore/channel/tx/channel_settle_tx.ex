@@ -9,6 +9,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.Identifier
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
   alias Aecore.Chain.Identifier
 
@@ -29,7 +30,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @typedoc "Structure of the ChannelSettle Transaction type"
   @type t :: %ChannelSettleTx{
-          channel_id: binary()
+          channel_id: Identifier.t()
         }
 
   @doc """
@@ -46,7 +47,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(%{channel_id: channel_id} = _payload) do
-    %ChannelSettleTx{channel_id: channel_id}
+    %ChannelSettleTx{channel_id: Identifier.create_identity(channel_id, :channel)}
   end
 
   @doc """
@@ -153,16 +154,21 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
+      Identifier.encode_to_binary(tx.channel_id),
       Identifier.encode_list_to_binary(datatx.senders),
       :binary.encode_unsigned(datatx.nonce),
-      tx.channel_id,
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
-    payload = %ChannelSettleTx{channel_id: channel_id}
+  defp decode_channel_identifier_to_binary(encoded_identifier) do
+  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
+    value
+  end
+
+  def decode_from_list(@version, [channel_id, encoded_senders, nonce, fee, ttl]) do
+    payload = %ChannelSettleTx{channel_id: decode_channel_identifier_to_binary(channel_id)}
 
     DataTx.init_binary(
       ChannelSettleTx,

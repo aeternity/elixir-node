@@ -634,7 +634,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Invalid senders"}
 
-      tx_id != channel_id.value ->
+      tx_id != channel_id ->
         {:error, "#{__MODULE__}: Invalid id"}
 
       tx_initiator_amount != initiator_amount - fee_initiator ->

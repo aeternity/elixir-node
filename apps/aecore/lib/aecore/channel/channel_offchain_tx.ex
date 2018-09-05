@@ -184,7 +184,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   end
 
   def decode_from_payload(<<>>) do
-    :empty
+    {:ok, :empty}
   end
 
   def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do

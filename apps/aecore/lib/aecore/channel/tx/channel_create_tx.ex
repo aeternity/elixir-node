@@ -231,37 +231,56 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
+      Identifier.encode_to_binary(tx.initiator),
       :binary.encode_unsigned(tx.initiator_amount),
+      Identifier.encode_to_binary(tx.responder),
       :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(tx.channel_reserve),
       :binary.encode_unsigned(tx.locktime),
+      :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      tx.state_hash,
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
+  defp decode_account_identifier_to_binary(encoded_identifier) do
+  {:ok, %Identifier{type: :account, value: value}} = Identifier.decode_from_binary(encoded_identifier)
+    value
+  end
+
   def decode_from_list(@version, [
-        encoded_senders,
-        nonce,
+        encoded_initiator,
         initiator_amount,
+        encoded_responder,
         responder_amount,
+        channel_reserve,
         locktime,
+        ttl,
         fee,
-        ttl
+        state_hash,
+        encoded_nonce
       ]) do
+    initiator = decode_account_identifier_to_binary(encoded_initiator)
+    responder = decode_account_identifier_to_binary(encoded_responder)
+    nonce = :binary.decode_unsigned(encoded_nonce)
     payload = %ChannelCreateTx{
+      initiator: initiator,
       initiator_amount: :binary.decode_unsigned(initiator_amount),
+      responder: responder,
       responder_amount: :binary.decode_unsigned(responder_amount),
-      locktime: :binary.decode_unsigned(locktime)
+      channel_reserve: :binary.decode_unsigned(channel_reserve),
+      locktime: :binary.decode_unsigned(locktime),
+      state_hash: state_hash,
+      channel_id: ChannelStateOnChain.id(initiator, responder, nonce)
     }
 
     DataTx.init_binary(
       ChannelCreateTx,
       payload,
-      encoded_senders,
+      [encoded_initiator, encoded_responder],
       :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
+      nonce,
       :binary.decode_unsigned(ttl)
     )
   end

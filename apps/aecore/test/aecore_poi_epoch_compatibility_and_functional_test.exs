@@ -1,6 +1,6 @@
 defmodule PoiEpochCompabilityTest do
   @moduledoc """
-    Tests for checking if Poi's are compatible with Epoch
+    Functional tests and tests for checking if Poi's are compatible with Epoch.
   """
 
   use ExUnit.Case
@@ -110,8 +110,7 @@ defmodule PoiEpochCompabilityTest do
   #Deserializes Poi and does basic serialization tests
   @spec deserialize_poi(binary(), binary()) :: Poi.t()
   defp deserialize_poi(serialized_poi, root_hash) do
-    poi = Serialization.rlp_decode_anything(serialized_poi)
-    %Poi{} = poi
+    {:ok, %Poi{} = poi} = Serialization.rlp_decode_only(serialized_poi, Poi)
 
     assert Serialization.rlp_encode(poi) === serialized_poi
     assert Poi.calculate_root_hash(poi) === root_hash
