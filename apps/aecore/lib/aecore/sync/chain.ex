@@ -6,7 +6,6 @@ defmodule Aecore.Sync.Chain do
   alias Aecore.Chain.Header
   alias Aecore.Chain.BlockValidation
   alias Aecore.Sync.Task
-  alias Aeutil.List, as: ListUtils
   alias __MODULE__
 
   @type peer_id :: pid()
@@ -52,9 +51,16 @@ defmodule Aecore.Sync.Chain do
         peers: peers_2,
         chain: chain_2
       }) do
-    peers = ListUtils.merge(peers_1, peers_2)
+    peers =
+      (peers_1 ++ peers_2)
+      |> Enum.sort()
+      |> Enum.uniq()
 
-    %Chain{chain_id: chain_id, peers: peers, chain: merge_descending(chain_1, chain_2)}
+    %Chain{
+      chain_id: chain_id,
+      peers: peers,
+      chain: merge_chain_list_descending(chain_1, chain_2)
+    }
   end
 
   @spec try_match_chains(list(chain()), list(chain())) ::
@@ -125,11 +131,10 @@ defmodule Aecore.Sync.Chain do
     header_hash
   end
 
-  @doc """
-  Merge two chains in descending order
-  """
-  @spec merge_descending(list(chain()), list(chain())) :: list(chain())
-  def merge_descending(list1, list2) do
+  ## Merges two list of chains, that are already sorted descending
+  ## (based on the height), without keeping duplicates,
+  ## where each element is a map with height and header hash
+  defp merge_chain_list_descending(list1, list2) do
     merge(list1, list2, [])
   end
 
