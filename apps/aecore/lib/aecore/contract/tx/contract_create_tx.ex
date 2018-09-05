@@ -7,9 +7,17 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Contract.{Contract, CallStateTree, ContractStateTree}
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Account.Account
+  alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree}
+  alias Aecore.Tx.Transaction
+  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.Worker, as: Chain
 
   require ContractConstants
+
+  @version 1
 
   @type payload :: %{
           code: binary(),
@@ -86,7 +94,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           tx_type_state(),
           non_neg_integer(),
           t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
@@ -101,7 +110,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           gas_price: gas_price,
           call_data: call_data
         } = tx,
-        data_tx
+        data_tx,
+        _context
       ) do
     owner = DataTx.main_sender(data_tx)
     contract = Contract.new(owner, data_tx.nonce, vm_version, code, deposit)
@@ -111,16 +121,16 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       |> AccountStateTree.update(owner, fn acc ->
         Account.apply_transfer!(acc, block_height, amount * -1)
       end)
-      |> AccountStateTree.update(contract.id, fn acc ->
+      |> AccountStateTree.update(contract.id.value, fn acc ->
         Account.apply_transfer!(acc, block_height, amount)
       end)
 
     updated_contracts_state = ContractStateTree.insert_contract(contracts, contract)
 
-    call = Call.new(owner, data_tx.nonce, block_height, contract.id, gas_price)
+    call = Call.new(owner, data_tx.nonce, block_height, contract.id.value, gas_price)
 
     call_definition = %{
-      caller: owner,
+      caller: call.caller_address,
       contract: contract.id,
       gas: gas,
       gas_price: gas_price,
@@ -132,8 +142,14 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       height: block_height
     }
 
+    chain_state = %{
+      Chain.chain_state()
+      | contracts: updated_contracts_state,
+        accounts: updated_accounts_state
+    }
+
     {call_result, updated_state} =
-      Dispatch.run(ContractConstants.aevm_solidity_01(), call_definition)
+      Dispatch.run(ContractConstants.aevm_solidity_01(), call_definition, chain_state)
 
     final_state =
       case call_result.return_type do
@@ -152,7 +168,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
             | calls: CallStateTree.insert_call(updated_state.calls, call),
               accounts: accounts_after_gas_spent,
               contracts:
-                ContractStateTree.insert_contract(updated_state.contracts, updated_contract)
+                ContractStateTree.enter_contract(updated_state.contracts, updated_contract)
           }
 
         _error ->
@@ -178,9 +194,10 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           tx_type_state(),
           non_neg_integer(),
           t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(accounts, _contracts, block_height, tx, data_tx) do
+  def preprocess_check(accounts, _contracts, block_height, tx, data_tx, _context) do
     sender = DataTx.main_sender(data_tx)
     total_deduction = data_tx.fee + tx.amount + tx.deposit + tx.gas * tx.gas_price
 
@@ -200,5 +217,71 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  end
+
+  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+  def is_minimum_fee_met?(tx) do
+    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  end
+
+  def encode_to_list(%ContractCreateTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
+    [
+      :binary.encode_unsigned(@version),
+      Identifier.encode_to_binary(sender),
+      :binary.encode_unsigned(datatx.nonce),
+      tx.code,
+      :binary.encode_unsigned(tx.vm_version),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.ttl),
+      :binary.encode_unsigned(tx.deposit),
+      :binary.encode_unsigned(tx.amount),
+      :binary.encode_unsigned(tx.gas),
+      :binary.encode_unsigned(tx.gas_price),
+      tx.call_data
+    ]
+  end
+
+  def decode_from_list(@version, [
+        encoded_sender,
+        nonce,
+        code,
+        vm_version,
+        fee,
+        ttl,
+        deposit,
+        amount,
+        gas,
+        gas_price,
+        call_data
+      ]) do
+
+    payload = %{
+      code: code,
+      vm_version: :binary.decode_unsigned(vm_version),
+      deposit: :binary.decode_unsigned(deposit),
+      amount: :binary.decode_unsigned(amount),
+      gas: :binary.decode_unsigned(gas),
+      gas_price: :binary.decode_unsigned(gas_price),
+      call_data: call_data
+    }
+
+    DataTx.init_binary(
+      ContractCreateTx,
+      payload,
+      [encoded_sender],
+      :binary.decode_unsigned(fee),
+      :binary.decode_unsigned(nonce),
+      :binary.decode_unsigned(ttl)
+    )
+  end
+
+  def decode_from_list(@version, data) do
+    {:error, "#{__MODULE__}: decode_from_list: Invalid serialization: #{inspect(data)}"}
+  end
+
+  def decode_from_list(version, _) do
+    {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
   end
 end

@@ -3,6 +3,8 @@ defmodule Storage do
     Module for working with the VM's internal storage
   """
 
+  alias Aevm.State
+
   @spec sstore(integer(), integer(), map()) :: map()
   def sstore(key, value, state) do
     storage = State.storage(state)

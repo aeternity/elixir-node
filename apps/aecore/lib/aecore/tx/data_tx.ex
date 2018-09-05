@@ -27,6 +27,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx
           | Aecore.Naming.Tx.NameTransferTx
           | Aecore.Naming.Tx.NameRevokeTx
+          | Aecore.Contract.Tx.ContractCreateTx
           | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
           | Aecore.Channel.Tx.ChannelCloseMutalTx
@@ -46,6 +47,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx.t()
           | Aecore.Naming.Tx.NameTransferTx.t()
           | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Contract.Tx.ContractCreateTx.t()
           | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
           | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
@@ -91,7 +93,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Naming.Tx.NameRevokeTx,
       Aecore.Naming.Tx.NameTransferTx,
       Aecore.Naming.Tx.NameUpdateTx,
-      Aecore.Contract.Tx.ContractCalltx,
+      Aecore.Contract.Tx.ContractCreateTx,
+      Aecore.Contract.Tx.ContractCallTx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,

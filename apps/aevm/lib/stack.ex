@@ -3,6 +3,8 @@ defmodule Stack do
     Module for working with the VM's internal stack
   """
 
+  alias Aevm.State
+
   @maximum_stack_length 1024
 
   @spec push(any(), map()) :: :ok | {:error, String.t(), list()}

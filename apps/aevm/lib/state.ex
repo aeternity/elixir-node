@@ -1,7 +1,9 @@
-defmodule State do
+defmodule Aevm.State do
   @moduledoc """
     Module for handling and accessing values from the VM's internal state.
   """
+
+  alias __MODULE__
 
   @doc """
   Initialize the VM's internal state.
@@ -21,7 +23,7 @@ defmodule State do
     %{
       :stack => [],
       :memory => %{size: 0},
-      :storage => chain_api.get_store(),
+      :storage => chain_api.get_store(chain_state),
       :pc => 0,
       :jumpdests => [],
       :out => <<>>,

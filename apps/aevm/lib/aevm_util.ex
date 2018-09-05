@@ -3,6 +3,8 @@ defmodule AevmUtil do
     Module containing all the VM utility functions
   """
 
+  alias Aevm.State
+
   use Bitwise
 
   require AevmConst

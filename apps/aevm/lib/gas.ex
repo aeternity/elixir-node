@@ -4,6 +4,8 @@ defmodule Gas do
     the additional costs for the opcodes, based on dynamic data
   """
 
+  alias Aevm.State
+
   use Bitwise
 
   require OpCodesUtil

@@ -1,4 +1,4 @@
- defmodule ContractCallTx do
+ defmodule Aecore.Contract.Tx.ContractCallTx do
    @moduledoc """
    Aecore structure for Contract Call
    """
@@ -123,6 +123,9 @@
 
        !validate_identifier(contract, :contract) ->
          {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
+
+      true ->
+        :ok
      end
    end
 

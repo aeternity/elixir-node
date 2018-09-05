@@ -12,6 +12,11 @@ defmodule Aecore.Contract.VmChain do
 
   @behaviour Aevm.ChainApi
 
+  @spec new_state(Keys.pubkey(), Chainstate.t()) :: ChainApi.chain_state()
+  def new_state(pubkey, chain_state) do
+    %{pubkey: pubkey, chain_state: chain_state}
+  end
+
   @spec get_balance(Keys.pubkey(), ChainApi.chain_state()) :: non_neg_integer()
   def get_balance(pubkey, state) do
     account_tree = state.accounts
@@ -22,7 +27,7 @@ defmodule Aecore.Contract.VmChain do
   def get_store(%{pubkey: pubkey, chain_state: chain_state}) do
     contract_tree = chain_state.contracts
 
-    case ContractStateTree.get_contract(pubkey) do
+    case ContractStateTree.get_contract(contract_tree, pubkey) do
       %Contract{} = contract ->
         Contract.store(contract)
 
@@ -37,7 +42,7 @@ defmodule Aecore.Contract.VmChain do
     contract = ContractStateTree.get_contract(contract_tree, pubkey)
 
     new_contract = %Contract{contract | store: store}
-    updated_contracts_tree = ContractsStateTree.enter_contract(contract_tree, new_contract)
+    updated_contracts_tree = ContractStateTree.enter_contract(contract_tree, new_contract)
 
     %{state | chain_state: %{chain_state | contracts: updated_contracts_tree}}
   end

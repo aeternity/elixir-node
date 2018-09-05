@@ -1,7 +1,9 @@
-defmodule Aevm do
+defmodule Aevm.Aevm do
   @moduledoc """
     Module for the execution of a contract
   """
+
+  alias Aevm.State
 
   use Bitwise
 
@@ -1271,9 +1273,21 @@ defmodule Aevm do
   #   # TODO
   # end
 
-  # defp exec(OpCodes._REVERT(), state) do
-  #   # TODO
-  # end
+  defp exec(OpCodes._REVERT(), state) do
+    {from_pos, state_1} = Stack.pop(state)
+    {nbytes, state_2} = Stack.pop(state_1)
+
+    {data, state_3} = Memory.get_area(from_pos, nbytes, state_2)
+    state_4 = State.set_out(data, state_3)
+
+    mem_gas_cost = Gas.memory_gas_cost(state_4, state)
+    state_5 = Gas.update_gas(mem_gas_cost, state_4)
+
+    # This should be checked
+    # With this uncommented, the initial contract execution
+    # does not return any output message
+    # AevmUtil.stop_exec(state_5)
+  end
 
   # 0xfe INVALID
   # Designated invalid instruction.

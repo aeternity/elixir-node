@@ -8,6 +8,8 @@ defmodule Memory do
     Data from the memory can be accessed at byte level.
   """
 
+  alias Aevm.State
+
   use Bitwise
 
   @chunk_size 32
