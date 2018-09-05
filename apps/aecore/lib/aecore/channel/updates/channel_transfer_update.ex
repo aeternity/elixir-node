@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   @moduledoc """
-    State channel update implementing transfers in the state channel. This update can be included in ChannelOffchainTx.
-    This update allows for transfering tokens between peers in the state channel(later for transfers to offchain contract accounts)..
+  State channel update implementing transfers in the state channel. This update can be included in ChannelOffchainTx.
+  This update allows for transfering tokens between peers in the state channel(later for transfers to offchain contract accounts)..
   """
 
   alias Aecore.Channel.Updates.ChannelTransferUpdate
@@ -13,7 +13,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   @behaviour ChannelOffchainUpdate
 
   @typedoc """
-    Structure of the ChannelTransferUpdate type
+  Structure of the ChannelTransferUpdate type
   """
   @type t :: %ChannelTransferUpdate{
           from: binary(),
@@ -22,22 +22,22 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
         }
 
   @typedoc """
-    The type of errors returned by this module
+  The type of errors returned by this module
   """
   @type error :: {:error, String.t()}
 
   @doc """
-    Definition of ChannelTransferUpdate structure
+  Definition of ChannelTransferUpdate structure
 
-    ## Parameters
-    - from: the offchain account where the transfer originates
-    - to: the offchain account which is the destination of the transfer
-    - amount: number of the tokens transfered between the peers
+  ## Parameters
+  - from: the offchain account where the transfer originates
+  - to: the offchain account which is the destination of the transfer
+  - amount: number of the tokens transfered between the peers
   """
   defstruct [:from, :to, :amount]
 
   @doc """
-    Creates an ChannelTransferUpdate
+  Creates an ChannelTransferUpdate
   """
   @spec new(binary(), binary(), non_neg_integer()) :: ChannelTransferUpdate.t()
   def new(from, to, amount) do
@@ -49,7 +49,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   end
 
   @doc """
-    Deserializes ChannelTransferUpdate.
+  Deserializes ChannelTransferUpdate.
   """
   @spec decode_from_list(list(binary())) :: ChannelTransferUpdate.t()
   def decode_from_list([from, to, amount]) do
@@ -61,7 +61,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   end
 
   @doc """
-    Serializes ChannelTransferUpdate.
+  Serializes ChannelTransferUpdate.
   """
   @spec encode_to_list(ChannelTransferUpdate.t()) :: list(binary())
   def encode_to_list(
@@ -75,7 +75,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   end
 
   @doc """
-    Performs the transfer on the offchain chainstate. Returns an error if the transfer failed.
+  Performs the transfer on the offchain chainstate. Returns an error if the transfer failed.
   """
   @spec update_offchain_chainstate(Chainstate.t(), ChannelDepositUpdate.t(), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
   def update_offchain_chainstate(

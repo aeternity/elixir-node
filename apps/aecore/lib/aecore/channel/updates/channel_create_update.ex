@@ -1,7 +1,7 @@
 defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @moduledoc """
-    State channel update which creates the offchain chainstate. This update can not be included in ChannelOffchainTx.
-    The creation of the initial chainstate is implemented as an update in order to increase readibility of the code and facilitate code reuse.
+  State channel update which creates the offchain chainstate. This update can not be included in ChannelOffchainTx.
+  The creation of the initial chainstate is implemented as an update in order to increase readibility of the code and facilitate code reuse.
   """
 
   alias Aecore.Channel.Updates.ChannelCreateUpdate
@@ -15,7 +15,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @behaviour ChannelOffchainUpdate
 
   @typedoc """
-    Structure of the ChannelCreateUpdate type
+  Structure of the ChannelCreateUpdate type
   """
   @type t :: %ChannelCreateUpdate{
           initiator: Identifier.t(),
@@ -25,23 +25,23 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
         }
 
   @typedoc """
-    The type of errors returned by this module
+  The type of errors returned by this module
   """
   @type error :: {:error, String.t()}
 
   @doc """
-    Definition of ChannelCreateUpdate structure
+  Definition of ChannelCreateUpdate structure
 
-    ## Parameters
-    - initiator: initiator of the channel creation
-    - initiator_amount: amount that the initiator account commits
-    - responder: responder of the channel creation
-    - responder_amount: amount that the responder account commits
+  ## Parameters
+  - initiator: initiator of the channel creation
+  - initiator_amount: amount that the initiator account commits
+  - responder: responder of the channel creation
+  - responder_amount: amount that the responder account commits
   """
   defstruct [:initiator, :initiator_amount, :responder, :responder_amount]
 
   @doc """
-    Creates a ChannelCreateUpdate from a ChannelCreateTx
+  Creates a ChannelCreateUpdate from a ChannelCreateTx
   """
   @spec new(ChannelCreateTx.t()) :: ChannelCreateUpdate.t()
   def new(%ChannelCreateTx{
@@ -58,7 +58,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   end
 
   @doc """
-    ChannelCreateUpdate MUST not be included in ChannelOffchainTx. This update may only be created from ChannelCreateTx.
+  ChannelCreateUpdate MUST not be included in ChannelOffchainTx. This update may only be created from ChannelCreateTx.
   """
   @spec decode_from_list(list(binary())) :: error()
   def decode_from_list(_) do
@@ -66,7 +66,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   end
 
   @doc """
-    ChannelCreateUpdate cannot be serialized into ChannelOffchainTx.
+  ChannelCreateUpdate cannot be serialized into ChannelOffchainTx.
   """
   @spec encode_to_list(ChannelCreateUpdate.t()) :: error()
   def encode_to_list(_) do
@@ -74,7 +74,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   end
 
   @doc """
-    Creates the initial chainstate. Assumes no chainstate is present. Returns an error in the creation failed or a chainstate is already present.
+  Creates the initial chainstate. Assumes no chainstate is present. Returns an error in the creation failed or a chainstate is already present.
   """
   @spec update_offchain_chainstate(Chainstate.t() | nil, ChannelCreateUpdate.t()) :: {:ok, Chainstate.t()} | error()
   def update_offchain_chainstate(nil,

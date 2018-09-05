@@ -1,45 +1,70 @@
 defmodule Aecore.Channel.ChannelOffchainUpdate do
   @moduledoc """
   Behaviour that states all the necessary functions that every update of the offchain state should implement.
+  This module implements helpers for applying updates to an offchain chainstate
   """
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
 
-  @typedoc "Structure of an update"
-  @type update_types ::
-          Aecore.Channels.Updates.ChannelTransferUpdate.t()
-          | Aecore.Channels.Updates.ChannelDepositUpdate.t()
-          | Aecore.Channels.Updates.ChannelWidthdrawUpdate.t()
+  alias Aecore.Channels.Updates.ChannelTransferUpdate
+  alias Aecore.Channels.Updates.ChannelDepositUpdate
+  alias Aecore.Channels.Updates.ChannelWidthdrawUpdate
 
-  # Callbacks
+  @typedoc """
+  Possible types of an update
+  """
+  @type update_types ::
+          ChannelTransferUpdate.t()
+          | ChannelDepositUpdate.t()
+          | ChannelWidthdrawUpdate.t()
+
+  @typedoc """
+  The type of errors returned by the functions in this module
+  """
+  @type error :: {:error, String.t()}
 
   @doc """
-    Updates
+  Callback for aplying the update to the offchain chainstate.
   """
-  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
 
-  @callback encode_to_list(update_types()) :: list(binary()) | {:error, String.t()}
+  @doc """
+  Encodes the update to list of binaries. This callback is compatible with the Serializable behaviour.
+  Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
+  """
+  @callback encode_to_list(update_types()) :: list(binary()) | error()
 
+  @doc """
+  Decodes the update from a list of binaries. This callback is compatible with the Serializable behaviour.
+  Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
+  """
   @callback decode_from_list(list(binary())) :: update_types()
 
   @doc """
-      Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
-      To make upgrading easy updates will need to specify their ID which will act as their tag. To upgrade
-      to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
-      and this temporary tag will need to be removed.
-    """
-
-  def tag_to_module(0), do: {:ok, Aecore.Channel.Updates.ChannelTransferUpdate}
-  def tag_to_module(1), do: {:ok, Aecore.Channel.Updates.ChannelDepositUpdate}
-  def tag_to_module(2), do: {:ok, Aecore.Channel.Updates.ChannelWidthdrawUpdate}
+  Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
+  To make upgrading easy updates will need to specify their ID which will act as their tag. To upgrade
+  to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
+  and this temporary tag will need to be removed.
+  """
+  @spec tag_to_module(non_neg_integer()) :: module()
+  def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
+  def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
+  def tag_to_module(2), do: {:ok, ChannelWidthdrawUpdate}
   def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
 
-  def module_to_tag(Aecore.Channel.Updates.ChannelTransferUpdate), do: {:ok, 0}
-  def module_to_tag(Aecore.Channel.Updates.ChannelDepositUpdate), do: {:ok, 1}
-  def module_to_tag(Aecore.Channel.Updates.ChannelWidthdrawUpdate), do: {:ok, 2}
+  @doc """
+  Converts the specified module to the associated tag.
+  """
+  @spec module_to_tag(module()) :: non_neg_integer()
+  def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
+  def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
+  def module_to_tag(ChannelWidthdrawUpdate), do: {:ok, 2}
   def module_to_tag(module), do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
 
+  @doc """
+  Encodes the given update to a list of binaries.
+  """
   @spec to_list(update_types()) :: list(binary())
   def to_list(object) do
     module = object.__struct__
@@ -47,6 +72,9 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     [:binary.encode_unsigned(tag)] ++ module.encode_to_list(object)
   end
 
+  @doc """
+  Decodes the given update from a list of binaries.
+  """
   @spec from_list(list(binary())) :: update_types()
   def from_list([tag | rest]) do
     decoded_tag = :binary.decode_unsigned(tag)
@@ -58,18 +86,24 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
   end
 
-  @spec update_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
-  defp update_chainstate(chainstate, object, channel_reserve) do
+  @doc """
+  Updates the offchain chainstate acording to the specified update.
+  """
+  @spec update_offchain_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
+  def update_offchain_chainstate(chainstate, object, channel_reserve) do
     module = object.__struct__
     module.update_offchain_chainstate(chainstate, object, channel_reserve)
   end
 
-  @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | {:error, String.t()}
+  @doc """
+  Aplies each update in a list of updates to the offchain chainstate. Breaks on the first encountered error.
+  """
+  @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
   def apply_updates(chainstate, updates, channel_reserve) do
     new_chainstate =
       Enum.reduce_while(updates, chainstate,
         fn update, acc ->
-          case update_chainstate(acc, update, channel_reserve) do
+          case update_offchain_chainstate(acc, update, channel_reserve) do
             {:ok, new_acc} ->
               {:cont, new_acc}
             {:error, _} = err ->
@@ -84,6 +118,7 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     end
   end
 
+  @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
   def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
     if balance < channel_reserve do
       throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{channel_reserve} tokens)"}

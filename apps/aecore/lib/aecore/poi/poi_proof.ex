@@ -1,6 +1,6 @@
 defmodule Aecore.Poi.PoiProof do
   @moduledoc """
-    Implements a POI for a single Merkle Patricia Trie.
+  Implements a POI for a single Merkle Patricia Trie.
   """
 
   alias Aecore.Poi.PoiDB
@@ -19,7 +19,7 @@ defmodule Aecore.Poi.PoiProof do
   @state_hash_bytes 32
 
   @typedoc """
-    Structure of a Poi proof for a single trie
+  Structure of a Poi proof for a single trie
   """
   @type t :: %PoiProof{
           root_hash: :empty | binary(),
@@ -27,12 +27,12 @@ defmodule Aecore.Poi.PoiProof do
         }
 
   @doc """
-    Definition of a Poi proof for a single trie
+  Definition of a Poi proof for a single trie
 
-    ### Parameters
-    - root_hash - contains the root hash of the associated merkle patricia trie
-    - db -        contains the proof database. Any changes to this database via the PatriciaMerkleTree library
-                  must be made via the ProofDB wrapper
+  ### Parameters
+  - root_hash - contains the root hash of the associated merkle patricia trie
+  - db -        contains the proof database. Any changes to this database via the PatriciaMerkleTree library
+                must be made via the ProofDB wrapper
   """
   defstruct [
     root_hash: :empty,
@@ -40,7 +40,7 @@ defmodule Aecore.Poi.PoiProof do
   ]
 
   @doc """
-    Creates a new Poi proof for a single Merkle Patricia Trie
+  Creates a new Poi proof for a single Merkle Patricia Trie
   """
   @spec construct(Trie.t()) :: PoiProof.t()
   def construct(%Trie{} = trie) do
@@ -50,7 +50,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Creates a new Poi proof for an empty Merkle Patricia Trie
+  Creates a new Poi proof for an empty Merkle Patricia Trie
   """
   @spec construct_empty :: PoiProof.t()
   def construct_empty do
@@ -58,8 +58,8 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Calculates the root hash of the given Poi proof.
-    Returns a hash of all zeroes for proofs for empty tries.
+  Calculates the root hash of the given Poi proof.
+  Returns a hash of all zeroes for proofs for empty tries.
   """
   @spec root_hash(PoiProof.t()) :: binary()
   def root_hash(%PoiProof{root_hash: :empty}) do
@@ -154,7 +154,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Adds the value associated with the given key in the given trie to the Poi proof
+  Adds the value associated with the given key in the given trie to the Poi proof
   """
   @spec add_to_poi(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
   def add_to_poi(%PoiProof{root_hash: root_hash} = poi_proof, %Trie{} = trie, key) do
@@ -172,7 +172,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Verifies if an entry is present under the given key in the Poi proof
+  Verifies if an entry is present under the given key in the Poi proof
   """
   @spec verify_poi_entry(PoiProof.t(), Trie.key, Trie.value()) :: boolean()
   def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
@@ -182,7 +182,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Lookups the entry assiociated with the given key in the Poi proof
+  Lookups the entry assiociated with the given key in the Poi proof
   """
   @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
@@ -192,7 +192,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Serializes the poi proof to a list
+  Serializes the poi proof to a list
   """
   @spec encode_to_list(PoiProof.t()) :: list()
   def encode_to_list(%PoiProof{root_hash: :empty}) do
@@ -208,7 +208,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   @doc """
-    Deserialized the poi proof from a list
+  Deserialized the poi proof from a list
   """
   @spec decode_from_list(list()) :: PoiProof.t() | {:error, String.t()}
   def decode_from_list([]) do
