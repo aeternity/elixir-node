@@ -112,16 +112,10 @@
          %ContractCallTx{
            caller: caller,
            contract: contract
-           # vm_version: vm_version,
-           # amount: amount,
-           # gas: gas,
-           # gas_price: gas_price,
-           # call_data: call_data,
-           # call_stack: call_stack
          },
-         data_tx
+         _data_tx
        ) do
-     sender = DataTx.senders(data_tx)
+     #sender = DataTx.senders(data_tx)
 
      cond do
        !validate_identifier(caller, :account) ->
@@ -205,7 +199,7 @@
          ) :: :ok | {:error, String.t()}
    def preprocess_check(
          accounts,
-         calls,
+         _calls,
          _block_height,
          %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price} = call_tx,
          data_tx,
@@ -250,6 +244,54 @@
          ) :: Chainstate.accounts()
    def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
      DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+   end
+
+   def encode_to_list(%ContractCallTx{} = tx, %DataTx{} = datatx) do
+     [sender] = datatx.senders
+
+     [
+       :binary.encode_unsigned(@version),
+       Identifier.encode_to_binary(sender),
+       :binary.encode_unsigned(datatx.nonce),
+       Identifier.encode_to_binary(tx.contract),
+       :binary.encode_unsigned(tx.vm_version),
+       :binary.encode_unsigned(datatx.fee),
+       :binary.encode_unsigned(datatx.ttl),
+       :binary.encode_unsigned(tx.amount),
+       :binary.encode_unsigned(tx.gas),
+       :binary.encode_unsigned(tx.gas_price),
+       tx.call_data
+     ]
+   end
+
+   def decode_from_list(@version, [
+         encoded_sender,
+         nonce,
+         encoded_contract,
+         vm_version,
+         fee,
+         ttl,
+         amount,
+         gas,
+         gas_price,
+         call_data
+       ]) do
+     payload = %ContractCallTx{
+       caller: encoded_sender,
+       contract: encoded_contract,
+       vm_version: vm_version,
+       amount: amount,
+       gas: gas,
+       gas_price: gas_price,
+       call_data: call_data
+     }
+
+     DataTx.init_binary(ContractCallTx, payload, [encoded_sender], fee, nonce, ttl)
+   end
+
+   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
+   def is_minimum_fee_met?(tx) do
+     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
    end
 
    # maybe identified caller and contract
@@ -313,7 +355,7 @@
    end
 
    defp check_call(
-          %ContractCallTx{contract: contract, vm_version: vm_version, amount: amount},
+          %ContractCallTx{contract: contract, vm_version: vm_version},
           chain_state
         ) do
      case ContractStateTree.get(chain_state.contracts, contract.value) do
@@ -343,6 +385,7 @@
 
    defp validate_fns(checks), do: validate_fns(checks, [])
    defp validate_fns([], _args), do: :ok
+
    defp validate_fns([fns, tail], args) do
      case apply(fns, args) do
        :ok ->
