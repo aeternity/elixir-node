@@ -8,7 +8,7 @@ defmodule Aecore.Chain.Block do
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
 
-  @version 14
+  @version 15
 
   @type t :: %Block{
           header: Header.t(),
