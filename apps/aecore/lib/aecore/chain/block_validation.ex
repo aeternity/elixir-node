@@ -13,8 +13,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
-
-  @type tree :: :gb_merkle_trees.tree()
+  alias MerklePatriciaTree.Trie
 
   @spec calculate_and_validate_block(
           Block.t(),
@@ -133,7 +132,7 @@ defmodule Aecore.Chain.BlockValidation do
     |> PatriciaMerkleTree.root_hash()
   end
 
-  @spec build_merkle_tree(list(SignedTx.t())) :: tree()
+  @spec build_merkle_tree(list(SignedTx.t())) :: Trie.t()
   def build_merkle_tree(txs) do
     build_merkle_tree(txs, 0, PatriciaMerkleTree.new(:txs))
   end
