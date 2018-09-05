@@ -8,8 +8,11 @@ alias Aecore.Naming.Tx.NameClaimTx
 alias Aecore.Naming.Tx.NameUpdateTx
 alias Aecore.Naming.Tx.NameRevokeTx
 alias Aecore.Oracle.Tx.{OracleExtendTx, OracleQueryTx, OracleRegistrationTx, OracleResponseTx}
-alias Aecore.Peers.{PeerConnection, Sync}
+alias Aecore.Peers.PeerConnection
 alias Aecore.Peers.Worker, as: Peers
+alias Aecore.Sync.{Sync, Jobs}
+alias Aecore.Sync.Chain, as: SyncChain
+alias Aecore.Sync.Task, as: SyncTask
 alias Aecore.Persistence.Worker, as: Persistence
 alias Aecore.Pow.{Cuckoo, Hashcash}
 alias Aecore.Account.{Account, AccountStateTree}
