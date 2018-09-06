@@ -11,6 +11,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
 
   require Logger
 
@@ -163,7 +164,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           non_neg_integer()
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+    total_fee = fee + GovernanceConstants.name_claim_burned_fee()
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, total_fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()

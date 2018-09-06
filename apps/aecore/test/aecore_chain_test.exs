@@ -53,7 +53,7 @@ defmodule AecoreChainTest do
         nonce: 0,
         miner: elem(Keys.keypair(:sign), 0),
         time: System.system_time(:milliseconds),
-        version: 14
+        version: 15
       },
       txs: []
     }

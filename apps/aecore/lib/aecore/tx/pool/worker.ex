@@ -17,8 +17,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Peers.Worker, as: Peers
   alias Aeutil.Events
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Hash
-  alias Aecore.Tx.DataTx
   alias Aehttpserver.Web.Notify
 
   require Logger
@@ -107,26 +105,6 @@ defmodule Aecore.Tx.Pool.Worker do
 
   def handle_call(:get_and_empty_pool, _from, tx_pool) do
     {:reply, tx_pool, %{}}
-  end
-
-  @doc """
-  A function that adds a merkle proof for every single transaction
-  """
-  @spec add_proof_to_txs(list()) :: list()
-  def add_proof_to_txs(user_txs) do
-    for tx <- user_txs do
-      block = Chain.get_block(tx.block_hash)
-      tree = BlockValidation.build_merkle_tree(block.txs)
-
-      key =
-        tx.type
-        |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
-        |> DataTx.rlp_encode()
-
-      hashed_key = Hash.hash(key)
-      merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
-      Map.put_new(tx, :proof, merkle_proof)
-    end
   end
 
   @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()

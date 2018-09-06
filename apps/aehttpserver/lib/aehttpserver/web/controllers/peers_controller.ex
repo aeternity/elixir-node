@@ -9,7 +9,7 @@ defmodule Aehttpserver.Web.PeersController do
     sync_port = Application.get_env(:aecore, :peers)[:sync_port]
 
     peer_pubkey =
-      :peers
+      :peer
       |> Keys.keypair()
       |> elem(0)
       |> Keys.peer_encode()
