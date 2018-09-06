@@ -1,7 +1,6 @@
 defmodule Aecore.Chain.Chainstate do
   @moduledoc """
-  Module used for calculating the block and chain states.
-  The chain state is a map, telling us what amount of tokens each account has.
+  Module containing functionality for calculating the chainstate
   """
 
   alias Aecore.Tx.SignedTx
@@ -138,7 +137,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Create the root hash of the tree.
+  Calculates the root hash of a chainstate tree.
   """
   @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
@@ -166,7 +165,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Goes through all the transactions and only picks the valid ones
+  Filters the invalid transactions out of the given list
   """
   @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do

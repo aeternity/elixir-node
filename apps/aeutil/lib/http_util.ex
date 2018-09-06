@@ -1,6 +1,6 @@
 defmodule Aeutil.HTTPUtil do
   @moduledoc """
-  HTTP Util functions for easier use
+  Module containing controller utility functions
   """
 
   alias Phoenix.Controller

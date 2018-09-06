@@ -1,6 +1,6 @@
 defmodule Aecore.Contract.Call do
   @moduledoc """
-  Aecore call module implementation.
+  Module defining the structure of a contract call
   """
   alias Aecore.Chain.Identifier
   alias Aecore.Contract.Call

@@ -1,6 +1,6 @@
 defmodule AevmUtil do
   @moduledoc """
-    Module containing all the VM utility functions
+  Module containing VM utility functions
   """
 
   use Bitwise

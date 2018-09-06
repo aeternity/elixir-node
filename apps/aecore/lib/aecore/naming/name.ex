@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Name do
   @moduledoc """
-  Aecore naming name structure
+  Module defining the structure of a name
   """
 
   alias Aecore.Keys

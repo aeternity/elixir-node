@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NameTransferTx do
   @moduledoc """
-  Aecore structure of naming transfer.
+  Module defining the NameTransfer transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -34,8 +34,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         }
 
   @doc """
-  Definition of Aecore NameTransferTx structure
-  ## Parameters
+  Definition of the NameTransferTx structure
+  # Parameters
   - hash: hash of name to be transfered
   - target: target public key to transfer to
   """
@@ -56,7 +56,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   @doc """
-  Checks target and hash byte sizes
+  Validates the transaction without considering state
   """
   @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
@@ -105,8 +105,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameTransferTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

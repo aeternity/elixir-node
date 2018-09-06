@@ -1,6 +1,6 @@
 defmodule Aeutil.Hash do
   @moduledoc """
-  Module for hashing functions
+  Module containing hashing functions
   """
 
   @hash_bytes_size 32

@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.NameUtil do
   @moduledoc """
-  Aecore naming utilities.
+  Module containing naming utilities.
   """
 
   alias Aeutil.Hash

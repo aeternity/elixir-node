@@ -1,6 +1,6 @@
 defmodule Aecore do
   @moduledoc """
-  Supervisor responsible for all of the worker modules in his folder
+  Main application supervisor
   """
 
   use Application

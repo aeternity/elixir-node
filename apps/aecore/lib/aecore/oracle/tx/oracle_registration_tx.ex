@@ -1,7 +1,6 @@
 defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @moduledoc """
-  Contains the transaction structure for oracle registration
-  and functions associated with those transactions.
+  Module defining the OracleRegistration transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -59,6 +58,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %OracleRegistrationTx{
@@ -88,6 +90,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     end
   end
 
+  @doc """
+  Enters an oracle in the oracle state tree
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -120,6 +125,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
      }}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),

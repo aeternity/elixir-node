@@ -1,6 +1,6 @@
 defmodule Aecore.Miner.Worker do
   @moduledoc """
-  Handle the mining process.
+  Handles the mining process.
   inspiration : https://github.com/aeternity/epoch/blob/master/apps/aecore/src/aec_conductor.erl
   """
 
@@ -63,7 +63,7 @@ defmodule Aecore.Miner.Worker do
   @spec get_state() :: :running | :idle
   def get_state, do: GenServer.call(__MODULE__, :get_state)
 
-  ## Mine single block and add it to the chain - Sync
+  # Mine single block and add it to the chain - Sync
   @spec mine_sync_block_to_chain() :: Block.t() | error :: term()
   def mine_sync_block_to_chain do
     cblock = candidate()
@@ -74,7 +74,7 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  ## Mine single block without adding it to the chain - Sync
+  # Mine single block without adding it to the chain - Sync
   @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
   def mine_sync_block(%Block{} = cblock) do
     if GenServer.call(__MODULE__, :get_state) == :idle do
@@ -94,7 +94,7 @@ defmodule Aecore.Miner.Worker do
     {:ok, %{cblock | header: mined_header}}
   end
 
-  ## Server side
+  # Server side
 
   def handle_call({:mining, :stop}, _from, state) do
     Logger.info("#{__MODULE__}: stopping miner")
@@ -142,7 +142,7 @@ defmodule Aecore.Miner.Worker do
     {:noreply, state}
   end
 
-  ## Private
+  # Private
 
   defp mining(%{miner_state: :running, job: job} = state)
        when job != {} do
@@ -250,7 +250,7 @@ defmodule Aecore.Miner.Worker do
     end)
   end
 
-  ## Internal
+  # Internal
 
   defp get_pool_values do
     pool_values = Map.values(Pool.get_pool())

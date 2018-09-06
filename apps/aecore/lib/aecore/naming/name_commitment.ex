@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.NameCommitment do
   @moduledoc """
-  Aecore naming name commitment structure
+  Module defining the structure of a name commitment
   """
 
   alias Aecore.Naming.{NameCommitment, NameUtil}

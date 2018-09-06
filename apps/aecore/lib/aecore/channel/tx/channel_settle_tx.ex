@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @moduledoc """
-  Aecore structure of ChannelSettleTx transaction data.
+  Module defining the ChannelSettle transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -33,9 +33,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         }
 
   @doc """
-  Definition of Aecore ChannelSettleTx structure
+  Definition of the ChannelSettleTx structure
 
-  ## Parameters
+  # Parameters
   - channel_id: channel id
   """
   defstruct [:channel_id]
@@ -50,7 +50,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelSettleTx{}, data_tx) do
@@ -64,7 +64,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and closes channel (drops channel object)
+  Changes the account state (balance) of both parties and closes the channel (drops the channel object)
   """
   @spec process_chainstate(
           Chainstate.account(),
@@ -97,8 +97,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelSettleTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.account(),

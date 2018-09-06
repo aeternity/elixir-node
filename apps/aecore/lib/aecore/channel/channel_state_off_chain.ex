@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.ChannelStateOffChain do
   @moduledoc """
-  Structure of OffChain Channel State
+  Module defining the structure of the OffChain Channel state
   """
 
   alias Aecore.Channel.ChannelStateOffChain
@@ -77,7 +77,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Validates ChannelStateOffChain signatures.
+  Validates the transaction without considering state
   """
   @spec validate(ChannelStateOffChain.t(), {Keys.pubkey(), Keys.pubkey()}) :: :ok | error()
   def validate(%ChannelStateOffChain{signatures: {_, _}} = state, {
@@ -101,7 +101,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Validates half signed update(new object) of ChannelStateOffChain. Updates validates if transfer is in correct direction and sequence is increasing. Role should be the role of validating peer.
+  Validates a half signed update(new object) of ChannelStateOffChain. The update is valid if the transfer is in correct the direction and the sequence has been increased. Role should be the role of validating peer.
   """
   @spec validate_half_update(
           ChannelStateOffChain.t(),
@@ -139,7 +139,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Validates new fully signed ChannelStateOffChain.
+  Validates a new fully signed ChannelStateOffChain.
   """
   @spec validate_full_update(
           ChannelStateOffChain.t(),
@@ -164,7 +164,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Validates initiator signature
+  Validates the initiator signature
   """
   @spec valid_initiator?(ChannelStateOffChain.t(), Keys.pubkey()) :: boolean()
   def valid_initiator?(%ChannelStateOffChain{signatures: {<<>>, _}}, _) do
@@ -185,7 +185,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Validates responder signature
+  Validates the responder signature
   """
   @spec valid_responder?(ChannelStateOffChain.t(), Keys.pubkey()) :: boolean()
   def valid_responder?(%ChannelStateOffChain{signatures: {_, <<>>}}, _) do
@@ -206,7 +206,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Checks is two states are equal. Ignores signatures.
+  Checks if two states are equal. Ignores signatures.
   """
   @spec equal?(ChannelStateOffChain.t(), ChannelStateOffChain.t()) :: boolean()
   def equal?(state1, state2) do
@@ -238,7 +238,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   end
 
   @doc """
-  Creates new state with transfer applied. Role is the peer who transfer to other peer.
+  Creates new state with transfer applied. Role is the peer who transfers funds to the other peer.
   """
   @spec transfer(ChannelStateOffChain.t(), Channel.role(), non_neg_integer()) ::
           ChannelStateOffChain.t()

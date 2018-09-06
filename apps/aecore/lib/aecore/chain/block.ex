@@ -1,6 +1,6 @@
 defmodule Aecore.Chain.Block do
   @moduledoc """
-  Structure of the block
+  Module defining the Block structure
   """
 
   alias Aecore.Chain.Block
