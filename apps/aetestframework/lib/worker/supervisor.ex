@@ -11,7 +11,8 @@ defmodule Aetestframework.Worker.Supervisor do
 
   def init(:ok) do
     children = [
-      Aetestframework.Worker
+      Aetestframework.Worker,
+      Aetestframework.Epoch
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

@@ -343,12 +343,6 @@ defmodule Aetestframework.Worker do
     send_command(node_name, "Pool.add_transaction(revoke)")
   end
 
-  @spec chainstate_naming(String.t()) :: :ok | :unknown_node
-  def chainstate_naming(node_name) do
-    send_command(node_name, "naming_state = Chain.chain_state().naming")
-    send_command(node_name, "naming_state = Chain.chain_state().naming")
-  end
-
   @doc """
     Gets all peers for a given node
   """
