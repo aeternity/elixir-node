@@ -27,6 +27,7 @@ defmodule EpochTest do
   end
 
   @tag :epoch_sync_test
+  @tag timeout: 120_000
   test "spend_tx test" do
     TestFramework.mine_sync_block("node1")
     TestFramework.spend_tx("node1")
@@ -42,6 +43,7 @@ defmodule EpochTest do
   end
 
   @tag :epoch_sync_test
+  @tag timeout: 120_000
   test "oracles test" do
     TestFramework.mine_sync_block("node2")
     TestFramework.register_oracle("node2")
