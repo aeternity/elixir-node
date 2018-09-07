@@ -85,7 +85,6 @@ defmodule Aecore.Chain.BlockValidation do
       end
 
     block_txs_count = length(block.txs)
-    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
     cond do
       block.header.txs_hash != calculate_txs_hash(block.txs) ->
@@ -97,7 +96,7 @@ defmodule Aecore.Chain.BlockValidation do
       block.header.version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
 
-      block_txs_count > max_txs_for_block ->
+      block_txs_count > GovernanceConstants.max_txs_per_block() ->
         {:error, "#{__MODULE__}: Too many transactions"}
 
       !valid_header_time?(block) ->
