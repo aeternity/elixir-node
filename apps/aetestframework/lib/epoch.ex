@@ -1,4 +1,7 @@
 defmodule Aetestframework.Epoch do
+  @moduledoc """
+  Module for multi node sync test
+  """
 
   alias Aetestframework.Worker, as: TestFramework
   use Agent
@@ -27,11 +30,11 @@ defmodule Aetestframework.Epoch do
     Agent.update(__MODULE__, fn _ -> %{} end)
   end
 
-  def get_state() do
+  def get_state do
     Agent.get(__MODULE__, fn state -> state end)
   end
 
-  def get_process_port() do
+  def get_process_port do
     Agent.get(__MODULE__, fn state -> state.process_port end)
   end
 
@@ -52,14 +55,14 @@ defmodule Aetestframework.Epoch do
     Port.open({:spawn, "make dev1-attach"}, [:binary, cd: path])
   end
 
-  def get_peer_pubkey() do
+  def get_peer_pubkey do
     process_port = get_process_port()
     Port.command(process_port, "{ok, Pubkey} = aec_keys:peer_pubkey().\n")
     Port.command(process_port, "{\"pubkey_response\", base64:encode(Pubkey)}.\n")
     receive_result()
   end
 
-  def get_top_block_hash() do
+  def get_top_block_hash do
     Port.command(get_process_port(), "{\"hash_response\", base64:encode(aec_chain:top_block_hash())}.\n")
     hash = receive_result()
     Base.decode64!(hash)
@@ -81,7 +84,6 @@ defmodule Aetestframework.Epoch do
   def receive_result do
     receive do
       {_, {:data, result}} ->
-        IO.inspect result
         cond do
           res = Regex.run(~r/<<(.*)>>/, result) ->
             res

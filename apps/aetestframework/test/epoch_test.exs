@@ -13,7 +13,7 @@ defmodule EpochTest do
     port2 = find_port(port1 + 1)
     TestFramework.new_node("node2", port2)
 
-    Epoch.start_epoch(System.get_env("EPOCH_PATH"))
+    Epoch.start_epoch("/home/oleg/epoch/epoch")
 
     TestFramework.sync_two_nodes("node1", "node2")
     TestFramework.get_all_peers("node2")
@@ -37,7 +37,6 @@ defmodule EpochTest do
     assert :synced == Epoch.compare_hash "node1"
     assert :synced == Epoch.compare_hash "node2"
 
-    IO.inspect TestFramework.get_state()
     Epoch.stop_epoch()
     TestFramework.delete_all_nodes()
   end
@@ -62,7 +61,6 @@ defmodule EpochTest do
     assert :synced == Epoch.compare_hash "node1"
     assert :synced == Epoch.compare_hash "node2"
 
-    IO.inspect TestFramework.get_state()
     Epoch.stop_epoch()
     TestFramework.delete_all_nodes()
   end
@@ -93,7 +91,6 @@ defmodule EpochTest do
     assert :synced == Epoch.compare_hash "node1"
     assert :synced == Epoch.compare_hash "node2"
 
-    IO.inspect TestFramework.get_state()
     Epoch.stop_epoch()
     TestFramework.delete_all_nodes()
   end
