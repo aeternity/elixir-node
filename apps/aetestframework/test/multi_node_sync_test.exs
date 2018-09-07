@@ -55,17 +55,17 @@ defmodule MultiNodeSyncTest do
     TestFramework.register_oracle("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node3") == OracleRegistrationTx
+    assert TestFramework.get_latest_tx_type("node2") == OracleRegistrationTx
 
     TestFramework.query_oracle("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node4") == OracleQueryTx
+    assert TestFramework.get_latest_tx_type("node2") == OracleQueryTx
 
     TestFramework.extend_oracle("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node1") == OracleExtendTx
+    assert TestFramework.get_latest_tx_type("node2") == OracleExtendTx
 
     TestFramework.respond_oracle("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
@@ -84,18 +84,18 @@ defmodule MultiNodeSyncTest do
     TestFramework.naming_pre_claim("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node4") == NamePreClaimTx
+    assert TestFramework.get_latest_tx_type("node2") == NamePreClaimTx
 
     TestFramework.naming_claim("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node1") == NameClaimTx
+    assert TestFramework.get_latest_tx_type("node2") == NameClaimTx
 
     TestFramework.mine_sync_block("node2")
     TestFramework.naming_update("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node1")
-    assert TestFramework.get_latest_tx_type("node3") == NameUpdateTx
+    assert TestFramework.get_latest_tx_type("node2") == NameUpdateTx
 
     TestFramework.mine_sync_block("node2")
     TestFramework.naming_transfer("node2")
@@ -107,7 +107,7 @@ defmodule MultiNodeSyncTest do
     TestFramework.naming_revoke("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node4") == NameRevokeTx
+    assert TestFramework.get_latest_tx_type("node2") == NameRevokeTx
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
