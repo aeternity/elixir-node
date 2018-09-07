@@ -32,7 +32,7 @@ config :aecore, :pow,
 
 sync_port =
   case System.get_env("SYNC_PORT") do
-    nil -> 3001
+    nil -> 3015
     env -> String.to_integer(env)
   end
 

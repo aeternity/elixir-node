@@ -2,7 +2,7 @@ use Mix.Config
 
 port =
   case System.get_env("PORT") do
-    nil -> 4001
+    nil -> 4000
     env -> env
   end
 
