@@ -77,14 +77,17 @@ defmodule Aecore.Account.Tx.SpendTx do
   Checks wether the amount that is send is not a negative number
   """
   @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
+  def validate(
+        %SpendTx{receiver: receiver, amount: amount, version: version, payload: payload},
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      tx.amount < 0 ->
+      amount < 0 ->
         {:error, "#{__MODULE__}: The amount cannot be a negative number"}
 
-      tx.version != get_tx_version() ->
+      version != get_tx_version() ->
         {:error, "#{__MODULE__}: Invalid version"}
 
       !Keys.key_size_valid?(receiver) ->
@@ -93,9 +96,9 @@ defmodule Aecore.Account.Tx.SpendTx do
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
 
-      !is_binary(tx.payload) ->
+      !is_binary(payload) ->
         {:error,
-         "#{__MODULE__}: Invalid payload type , expected binary , got: #{inspect(tx.payload)} "}
+         "#{__MODULE__}: Invalid payload type , expected binary , got: #{inspect(payload)} "}
 
       true ->
         :ok
@@ -112,16 +115,22 @@ defmodule Aecore.Account.Tx.SpendTx do
           SpendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
-  def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
+  def process_chainstate(
+        accounts,
+        %{},
+        block_height,
+        %SpendTx{amount: amount, receiver: %Identifier{value: receiver}},
+        %DataTx{} = data_tx
+      ) do
     sender = DataTx.main_sender(data_tx)
 
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.amount * -1)
+        Account.apply_transfer!(acc, block_height, amount * -1)
       end)
-      |> AccountStateTree.update(tx.receiver.value, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.amount)
+      |> AccountStateTree.update(receiver, fn acc ->
+        Account.apply_transfer!(acc, block_height, amount)
       end)
 
     {:ok, {new_accounts, %{}}}
@@ -138,10 +147,16 @@ defmodule Aecore.Account.Tx.SpendTx do
           SpendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
-    sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
+  def preprocess_check(
+        accounts,
+        %{},
+        _block_height,
+        %SpendTx{amount: amount},
+        %DataTx{fee: fee} = data_tx
+      ) do
+    %Account{balance: balance} = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
-    if sender_state.balance - (DataTx.fee(data_tx) + tx.amount) < 0 do
+    if balance - (fee + amount) < 0 do
       {:error, "#{__MODULE__}: Negative balance"}
     else
       :ok
@@ -155,29 +170,34 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 
-  def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
+  def encode_to_list(%SpendTx{receiver: receiver, amount: amount, payload: payload}, %DataTx{
+        senders: senders,
+        fee: fee,
+        ttl: ttl,
+        nonce: nonce
+      }) do
+    [sender] = senders
 
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      Identifier.encode_to_binary(tx.receiver),
-      :binary.encode_unsigned(tx.amount),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.payload
+      Identifier.encode_to_binary(receiver),
+      :binary.encode_unsigned(amount),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl),
+      :binary.encode_unsigned(nonce),
+      payload
     ]
   end
 
@@ -190,22 +210,24 @@ defmodule Aecore.Account.Tx.SpendTx do
         nonce,
         payload
       ]) do
-    with {:ok, receiver} <- Identifier.decode_from_binary(encoded_receiver) do
-      DataTx.init_binary(
-        SpendTx,
-        %{
-          receiver: receiver,
-          amount: :binary.decode_unsigned(amount),
-          version: @version,
-          payload: payload
-        },
-        [encoded_sender],
-        :binary.decode_unsigned(fee),
-        :binary.decode_unsigned(nonce),
-        :binary.decode_unsigned(ttl)
-      )
-    else
-      {:error, _} = error -> error
+    case Identifier.decode_from_binary(encoded_receiver) do
+      {:ok, receiver} ->
+        DataTx.init_binary(
+          SpendTx,
+          %{
+            receiver: receiver,
+            amount: :binary.decode_unsigned(amount),
+            version: @version,
+            payload: payload
+          },
+          [encoded_sender],
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+
+      {:error, _} = error ->
+        error
     end
   end
 

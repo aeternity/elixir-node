@@ -33,7 +33,7 @@ defmodule Aecore.Chain.Worker do
 
   def init(_) do
     genesis_block_header = Genesis.block().header
-    genesis_block_hash = BlockValidation.block_header_hash(genesis_block_header)
+    genesis_block_hash = Header.hash(genesis_block_header)
 
     {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
@@ -154,7 +154,7 @@ defmodule Aecore.Chain.Worker do
   @spec hash_is_in_main_chain?(binary()) :: boolean()
   def hash_is_in_main_chain?(header_hash) do
     longest_blocks_chain()
-    |> Enum.map(fn block -> BlockValidation.block_header_hash(block.header) end)
+    |> Enum.map(fn block -> Header.hash(block.header) end)
     |> Enum.member?(header_hash)
   end
 
@@ -362,7 +362,7 @@ defmodule Aecore.Chain.Worker do
     new_block_txs_index = calculate_block_acc_txs_info(new_block)
     new_txs_index = update_txs_index(txs_index, new_block_txs_index)
     Enum.each(new_block.txs, fn tx -> Pool.remove_transaction(tx) end)
-    new_block_hash = BlockValidation.block_header_hash(new_block.header)
+    new_block_hash = Header.hash(new_block.header)
 
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
@@ -506,7 +506,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   defp calculate_block_acc_txs_info(block) do
-    block_hash = BlockValidation.block_header_hash(block.header)
+    block_hash = Header.hash(block.header)
 
     accounts_unique =
       block.txs

@@ -215,7 +215,7 @@ defmodule Aecore.Miner.Worker do
   @spec candidate() :: Block.t()
   def candidate do
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
     {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
     candidate_height = top_block.header.height + 1
@@ -282,7 +282,7 @@ defmodule Aecore.Miner.Worker do
       )
 
     root_hash = Chainstate.calculate_root_hash(new_chain_state)
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     # start from nonce 0, will be incremented in mining
     unmined_header =

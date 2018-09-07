@@ -14,7 +14,7 @@ defmodule Aecore.Pow.Hashcash do
   """
   @spec verify(map()) :: boolean()
   def verify(%Aecore.Chain.Header{} = block_header) do
-    block_header_hash = BlockValidation.block_header_hash(block_header)
+    block_header_hash = Header.hash(block_header)
     verify(block_header_hash, block_header.target)
   end
 
@@ -67,7 +67,7 @@ defmodule Aecore.Pow.Hashcash do
   """
   @spec generate(Header.t(), non_neg_integer()) :: {:ok, Header.t()} | {:error, term()}
   def generate(%Header{nonce: nonce} = block_header, start_nonce) do
-    block_header_hash = BlockValidation.block_header_hash(block_header)
+    block_header_hash = Header.hash(block_header)
 
     case verify(block_header_hash, block_header.target) do
       true ->

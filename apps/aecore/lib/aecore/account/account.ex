@@ -60,7 +60,8 @@ defmodule Aecore.Account.Account do
   """
   @spec balance(AccountStateTree.accounts_state(), Keys.pubkey()) :: non_neg_integer()
   def balance(tree, key) do
-    AccountStateTree.get(tree, key).balance
+    %Account{balance: balance} = AccountStateTree.get(tree, key)
+    balance
   end
 
   @doc """
@@ -68,7 +69,8 @@ defmodule Aecore.Account.Account do
   """
   @spec nonce(AccountStateTree.accounts_state(), Keys.pubkey()) :: non_neg_integer()
   def nonce(tree, key) do
-    AccountStateTree.get(tree, key).nonce
+    %Account{nonce: nonce} = AccountStateTree.get(tree, key)
+    nonce
   end
 
   @doc """
@@ -95,11 +97,11 @@ defmodule Aecore.Account.Account do
           binary(),
           non_neg_integer()
         ) :: {:ok, SignedTx.t()} | {:error, String.t()}
-  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, pl, ttl \\ 0) do
+  def spend(sender, sender_priv_key, receiver, amount, fee, nonce, binary_payload, ttl \\ 0) do
     payload = %{
       receiver: receiver,
       amount: amount,
-      payload: pl,
+      payload: binary_payload,
       version: SpendTx.get_tx_version()
     }
 
@@ -136,8 +138,8 @@ defmodule Aecore.Account.Account do
         payload = %{commitment: commitment}
         build_tx(payload, NamePreClaimTx, sender, sender_priv_key, fee, nonce, ttl)
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -171,8 +173,8 @@ defmodule Aecore.Account.Account do
         payload = %{name: name, name_salt: name_salt}
         build_tx(payload, NameClaimTx, sender, sender_priv_key, fee, nonce, ttl)
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -228,8 +230,8 @@ defmodule Aecore.Account.Account do
 
         build_tx(payload, NameUpdateTx, sender, sender_priv_key, fee, nonce, ttl)
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -263,8 +265,8 @@ defmodule Aecore.Account.Account do
         payload = %{hash: namehash, target: target}
         build_tx(payload, NameTransferTx, sender, sender_priv_key, fee, nonce, ttl)
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -297,8 +299,8 @@ defmodule Aecore.Account.Account do
         payload = %{hash: namehash}
         build_tx(payload, NameRevokeTx, sender, sender_priv_key, fee, nonce, ttl)
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -320,8 +322,8 @@ defmodule Aecore.Account.Account do
   Adds balance to a given Account state and updates last update block.
   """
   @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
-  def apply_transfer!(account_state, _block_height, amount) do
-    new_balance = account_state.balance + amount
+  def apply_transfer!(%Account{balance: balance} = account_state, _block_height, amount) do
+    new_balance = balance + amount
 
     if new_balance < 0 do
       throw({:error, "#{__MODULE__}: Negative balance"})
@@ -356,11 +358,11 @@ defmodule Aecore.Account.Account do
   end
 
   @spec encode_to_list(Account.t()) :: list() | {:error, String.t()}
-  def encode_to_list(%Account{} = account) do
+  def encode_to_list(%Account{nonce: nonce, balance: balance}) do
     [
       :binary.encode_unsigned(@version),
-      :binary.encode_unsigned(account.nonce),
-      :binary.encode_unsigned(account.balance)
+      :binary.encode_unsigned(nonce),
+      :binary.encode_unsigned(balance)
     ]
   end
 

@@ -155,7 +155,7 @@ defmodule Aecore.Tx.Pool.Worker do
         for block_user_txs <- user_txs do
           block_user_txs
           |> Map.put_new(:txs_hash, block.header.txs_hash)
-          |> Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
+          |> Map.put_new(:block_hash, Header.hash(block.header))
           |> Map.put_new(:block_height, block.header.height)
         end
 

@@ -158,11 +158,6 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec fee(DataTx.t()) :: non_neg_integer()
-  def fee(%DataTx{fee: fee}) do
-    fee
-  end
-
   @spec senders(DataTx.t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
     for sender <- senders do

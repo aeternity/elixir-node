@@ -811,7 +811,7 @@ defmodule Aecore.Peers.PeerConnection do
            true <- Chain.hash_is_in_main_chain?(target_hash) do
         header_hashes =
           Enum.map(headers, fn header ->
-            <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
+            <<header.height::64, Header.hash(header)::binary>>
           end)
 
         {:ok, Enum.reverse(header_hashes)}

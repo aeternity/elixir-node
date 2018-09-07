@@ -61,7 +61,7 @@ defmodule Aehttpserver.Web.BlockController do
 
     blocks_json =
       Enum.map(blocks, fn block ->
-        hash = BlockValidation.block_header_hash(block.header)
+        hash = Header.hash(block.header)
 
         %{
           "hash" => Header.base58c_encode(hash),
@@ -86,7 +86,7 @@ defmodule Aehttpserver.Web.BlockController do
     to_block_hash =
       case Map.get(params, "to_block") do
         nil ->
-          BlockValidation.block_header_hash(Genesis.block().header)
+          Header.hash(Genesis.block().header)
 
         hash ->
           Header.base58c_decode(hash)

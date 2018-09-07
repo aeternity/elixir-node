@@ -39,8 +39,8 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
-  def check_identity(%Identifier{} = id, type) do
-    case create_identity(id.value, type) do
+  def check_identity(%Identifier{value: value} = id, type) do
+    case create_identity(value, type) do
       {:ok, check_id} -> check_id == id
       {:error, msg} -> {:error, msg}
     end
@@ -53,9 +53,9 @@ defmodule Aecore.Chain.Identifier do
   # ==============API needed for RLP===============
   # byte_size(data.value) == 32 # data should be stricted to 32 bytes only
   @spec encode_to_binary(Identifier.t()) :: binary()
-  def encode_to_binary(%Identifier{} = data) do
-    tag = type_to_tag(data.type)
-    <<tag::unsigned-integer-size(@tag_size), data.value::binary>>
+  def encode_to_binary(%Identifier{value: value, type: type}) do
+    tag = type_to_tag(type)
+    <<tag::unsigned-integer-size(@tag_size), value::binary>>
   end
 
   # byte_size(data) == @data_size # data should be stricted to 32 bytes only

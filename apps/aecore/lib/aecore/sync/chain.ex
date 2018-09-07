@@ -29,7 +29,7 @@ defmodule Aecore.Sync.Chain do
 
   @spec init_chain(chain_id(), peer_id(), Header.t()) :: Chain.t()
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_hash} = header) do
-    header_hash = BlockValidation.block_header_hash(header)
+    header_hash = Header.hash(header)
 
     prev_header_data =
       if height > 1 do

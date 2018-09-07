@@ -48,7 +48,7 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def add_block_info(%{block: block, header: header} = info) do
-    hash = BlockValidation.block_header_hash(header)
+    hash = Header.hash(header)
     GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
 
     cleaned_info =
@@ -66,7 +66,7 @@ defmodule Aecore.Persistence.Worker do
 
   @spec add_block_by_hash(Block.t()) :: :ok | {:error, reason :: term()}
   def add_block_by_hash(%{header: header} = block) do
-    hash = BlockValidation.block_header_hash(header)
+    hash = Header.hash(header)
     GenServer.call(__MODULE__, {:add_block_by_hash, {hash, block}})
   end
 

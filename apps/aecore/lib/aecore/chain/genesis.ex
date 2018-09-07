@@ -13,7 +13,7 @@ defmodule Aecore.Chain.Genesis do
   @dir Application.get_env(:aecore, :account_path)[:path]
 
   def hash do
-    BlockValidation.block_header_hash(header())
+    Header.hash(header())
   end
 
   @spec block() :: Block.t()
@@ -63,7 +63,7 @@ defmodule Aecore.Chain.Genesis do
 
     case File.read(preset_accounts_file) do
       {:ok, _} = file -> file
-      {:error, reason} -> {:error, reason}
+      {:error, _} = error -> error
     end
   end
 
