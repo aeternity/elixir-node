@@ -44,7 +44,7 @@ config :aecore, :miner, resumed_by_default: false
 
 config :aecore, :tx_data,
   minimum_fee: 1,
-  max_txs_per_block: 100,
+  max_txs_per_block: 10946,
   blocks_ttl_per_token: 1000,
   oracle_registration_base_fee: 4,
   oracle_query_base_fee: 2,
