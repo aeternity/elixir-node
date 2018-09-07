@@ -13,7 +13,7 @@ defmodule EpochTest do
     port2 = find_port(port1 + 1)
     TestFramework.new_node("node2", port2)
 
-    Epoch.start_epoch("/home/oleg/epoch/epoch")
+    Epoch.start_epoch(System.get_env("EPOCH_PATH"))
 
     TestFramework.sync_two_nodes("node1", "node2")
     TestFramework.get_all_peers("node2")
