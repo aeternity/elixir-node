@@ -3,9 +3,10 @@ defmodule Aecore.Chain.Header do
   Structure of Header
   """
 
-  alias Aecore.Chain.Header
-  alias Aeutil.Bits
+  alias __MODULE__
   alias Aecore.Keys
+  alias Aeutil.Bits
+  alias Aeutil.Hash
 
   @header_version_size 64
   @header_height_size 64
@@ -76,8 +77,9 @@ defmodule Aecore.Chain.Header do
 
   @spec hash(Header.t()) :: binary()
   def hash(%Header{} = header) do
-    header_binary = encode_to_binary(header)
-    Hash.hash(header_binary)
+    header
+    |> encode_to_binary()
+    |> Hash.hash()
   end
 
   def base58c_encode(bin) do
@@ -93,20 +95,18 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec encode_to_binary(Header.t()) :: binary()
-  def encode_to_binary(
-        %Header{
-          version: version,
-          height: height,
-          prev_hash: prev_hash,
-          txs_hash: txs_hash,
-          root_hash: root_hash,
-          target: target,
-          pow_evidence: pow_evidence,
-          nonce: nonce,
-          time: time,
-          miner: miner
-        } = header
-      ) do
+  def encode_to_binary(%Header{
+        version: version,
+        height: height,
+        prev_hash: prev_hash,
+        txs_hash: txs_hash,
+        root_hash: root_hash,
+        target: target,
+        pow_evidence: pow_evidence,
+        nonce: nonce,
+        time: time,
+        miner: miner
+      }) do
     <<
       version::@header_version_size,
       height::@header_height_size,

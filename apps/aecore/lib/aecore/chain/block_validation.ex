@@ -8,7 +8,6 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Target
-  alias Aeutil.Hash
   alias Aecore.Chain.Chainstate
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.PatriciaMerkleTree
@@ -31,7 +30,7 @@ defmodule Aecore.Chain.BlockValidation do
             target: target
           },
           txs: txs
-        },
+        } = new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
@@ -80,22 +79,12 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
-  def single_validate_block(%Block{
-        header: %Header{txs_hash: txs_hash, version: version} = header,
-        txs: txs
-      }) do
-    server = self()
-    work = fn -> Cuckoo.verify(header) end
-
-    spawn(fn ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
-
-    is_target_met =
-      receive do
-        {:worker_reply, _from, verified?} -> verified?
-      end
-
+  def single_validate_block(
+        %Block{
+          header: %Header{txs_hash: txs_hash, version: version} = header,
+          txs: txs
+        } = block
+      ) do
     block_txs_count = length(txs)
     max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
@@ -115,7 +104,7 @@ defmodule Aecore.Chain.BlockValidation do
       !valid_header_time?(block) ->
         {:error, "#{__MODULE__}: Invalid header time"}
 
-      !is_target_met ->
+      !is_target_met?(header) ->
         {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
@@ -125,7 +114,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(%Block{txs: txs}) do
-    txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
+    Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -152,15 +141,30 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
-  defp check_correct_height?(%Block{header: %Header{height: new_block_height}}, %Block{
-         header: %Header{height: previous_block_height}
-       }) do
+  defp check_correct_height?(
+         %Block{header: %Header{height: new_block_height}},
+         %Block{header: %Header{height: previous_block_height}}
+       ) do
     previous_block_height + 1 == new_block_height
   end
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: %Header{time: time}}) do
-    previous_block_height <
+    time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
+  end
+
+  @spec is_target_met?(Header.t()) :: true | false
+  defp is_target_met?(%Header{} = header) do
+    server_pid = self()
+    work = fn -> Cuckoo.verify(header) end
+
+    Task.start(fn ->
+      send(server_pid, {:worker_reply, self(), work.()})
+    end)
+
+    receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
   end
 end
