@@ -1,6 +1,6 @@
 defmodule Aecore.Oracle.OracleQuery do
   @moduledoc """
-  Defines oracle query structure
+  Module defining the structure of an OracleQuery
   """
 
   alias Aecore.Oracle.OracleQuery

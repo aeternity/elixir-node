@@ -1,6 +1,6 @@
 defmodule AevmConst do
   @moduledoc """
-    Module for defining macros for general util
+  Module containing macro definitions for general utility
   """
 
   # credo:disable-for-this-file

@@ -1,6 +1,6 @@
 defmodule Aecore.Chain.Header do
   @moduledoc """
-  Structure of Header
+  Module defining the structure of the block header
   """
 
   alias Aecore.Chain.Header

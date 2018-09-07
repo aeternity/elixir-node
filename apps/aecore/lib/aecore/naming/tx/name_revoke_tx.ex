@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NameRevokeTx do
   @moduledoc """
-  Aecore structure of naming Update.
+  Module defining the NameRevoke transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -32,8 +32,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         }
 
   @doc """
-  Definition of Aecore NameRevokeTx structure
-  ## Parameters
+  Definition of the NameRevokeTx structure
+  # Parameters
   - hash: hash of name to be revoked
   """
   defstruct [:hash]
@@ -63,7 +63,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @doc """
-  Checks name hash byte size
+  Validates the transaction without considering state
   """
   @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameRevokeTx{hash: hash}, data_tx) do
@@ -115,8 +115,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameRevokeTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

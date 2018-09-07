@@ -1,6 +1,6 @@
 defmodule Aecore.Tx.SignedTx do
   @moduledoc """
-  Aecore structure of a signed transaction.
+  Module defining the Signed transaction
   """
 
   alias Aecore.Tx.SignedTx
@@ -35,6 +35,9 @@ defmodule Aecore.Tx.SignedTx do
     data
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
     if signatures_valid?(tx) do
@@ -69,7 +72,7 @@ defmodule Aecore.Tx.SignedTx do
   and the private key of the sender.
   Returns a signed tx
 
-  ## Parameters
+  # Parameters
      - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
 

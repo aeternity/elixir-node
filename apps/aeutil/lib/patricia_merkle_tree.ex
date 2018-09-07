@@ -116,7 +116,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Providing pretty print of a given trie in the shell.
   Depending on the atom it can print structure or key value pairs. The default output is :as_struct
 
-  ## Examples
+  # Examples
 
   If we want to print as pair and no serialization is needed
       iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie([output: :as_pair, deserialize: false])
