@@ -59,7 +59,7 @@ defmodule Aecore.Tx.Transaction do
   You may add as many as you need additional checks
   depending on your transaction specifications.
 
-  ## Example
+  # Example
       def preprocess_check(tx, account_state, fee, nonce, %{} = tx_type_state) do
         cond do
           account_state.balance - (tx.amount + fee) < 0 ->

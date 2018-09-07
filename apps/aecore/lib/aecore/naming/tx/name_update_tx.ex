@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NameUpdateTx do
   @moduledoc """
-  Aecore structure of naming Update.
+  Module defining the NameUpdate transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -38,8 +38,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         }
 
   @doc """
-  Definition of Aecore NameUpdateTx structure
-  ## Parameters
+  Definition of the NameUpdateTx structure
+  # Parameters
   - hash: hash of name to be updated
   - expire_by: expiration block of name update
   - client_ttl: ttl for client use
@@ -83,7 +83,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
   @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
@@ -148,8 +148,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameUpdateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

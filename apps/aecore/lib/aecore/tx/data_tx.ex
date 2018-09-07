@@ -1,7 +1,8 @@
 defmodule Aecore.Tx.DataTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the Data transaction which encapsulates all of the different sub-transactions
   """
+
   alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
   alias Aeutil.Bits
@@ -65,9 +66,9 @@ defmodule Aecore.Tx.DataTx do
         }
 
   @doc """
-  Definition of Aecore DataTx structure
+  Definition of the DataTx structure
 
-  ## Parameters
+  # Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
@@ -199,7 +200,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @doc """
-  Checks whether the fee is above 0.
+  Validates the transaction without considering state
   """
   @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
@@ -276,6 +277,9 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do

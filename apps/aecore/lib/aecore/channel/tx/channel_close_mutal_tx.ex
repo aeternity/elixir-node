@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @moduledoc """
-  Aecore structure of ChannelCloseMutalTx transaction data.
+  Module defining the ChannelCloseMutual transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -37,12 +37,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCloseMutalTx structure
+  Definition of the ChannelCloseMutalTx structure
 
-  ## Parameters
+  # Parameters
   - channel_id: channel id
-  - initiator_amount: amount that account first on the senders list commits
-  - responser_amount: amount that account second on the senders list commits
+  - initiator_amount: the amount that the first sender commits
+  - responder_amount: the amount that the second sender commits
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
   use ExConstructor
@@ -66,7 +66,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
@@ -85,7 +85,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and closes channel (drops channel object from chainstate)
+  Changes the account state (balance) of both parties and closes channel (drops the channel object from chainstate)
   """
   @spec process_chainstate(
           Chainstate.account(),
@@ -118,8 +118,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelCloseMutalTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.account(),

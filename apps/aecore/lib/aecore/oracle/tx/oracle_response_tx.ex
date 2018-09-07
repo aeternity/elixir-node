@@ -1,7 +1,6 @@
 defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @moduledoc """
-  Contains the transaction structure for oracle responses
-  and functions associated with those transactions.
+  Module defining the OracleResponse transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -46,6 +45,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
@@ -69,6 +71,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     Application.get_env(:aecore, :oracle_response_tx)[:query_id]
   end
 
+  @doc """
+  Enters a response for a certain query in the oracle state tree
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -106,6 +111,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     {:ok, {updated_accounts_state, updated_oracle_state}}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),

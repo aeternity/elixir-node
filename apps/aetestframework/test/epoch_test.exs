@@ -48,14 +48,14 @@ defmodule EpochTest do
     TestFramework.register_oracle("node2")
     TestFramework.mine_sync_block("node2")
 
-    # TestFramework.query_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
+    TestFramework.query_oracle("node2")
+    TestFramework.mine_sync_block("node2")
 
-    # TestFramework.extend_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
+    TestFramework.extend_oracle("node2")
+    TestFramework.mine_sync_block("node2")
 
-    # TestFramework.respond_oracle("node2")
-    # TestFramework.mine_sync_block("node2")
+    TestFramework.respond_oracle("node2")
+    TestFramework.mine_sync_block("node2")
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node2")
     assert :synced == Epoch.compare_hash "node1"
@@ -75,9 +75,9 @@ defmodule EpochTest do
     TestFramework.naming_claim("node2")
     TestFramework.mine_sync_block("node2")
 
-    # TestFramework.mine_sync_block("node2")
-    # TestFramework.naming_update("node2")
-    # TestFramework.mine_sync_block("node2")
+    TestFramework.mine_sync_block("node2")
+    TestFramework.naming_update("node2")
+    TestFramework.mine_sync_block("node2")
 
     TestFramework.mine_sync_block("node2")
     TestFramework.naming_transfer("node2")

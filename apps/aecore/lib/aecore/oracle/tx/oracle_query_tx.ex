@@ -1,7 +1,6 @@
 defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @moduledoc """
-  Contains the transaction structure for oracle queries
-  and functions associated with those transactions.
+  Module defining the OracleQuery transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -92,6 +91,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     }
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %OracleQueryTx{
@@ -127,6 +129,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     end
   end
 
+  @doc """
+  Enters a query in the oracle state tree
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -167,6 +172,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     {:ok, {updated_accounts_state, new_oracle_tree}}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),

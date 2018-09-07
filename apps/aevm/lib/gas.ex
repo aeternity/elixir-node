@@ -1,7 +1,7 @@
 defmodule Gas do
   @moduledoc """
-    Module for updating the current gas value and calculating
-    the additional costs for the opcodes, based on dynamic data
+  Module for updating the current gas value and calculating
+  the additional costs for the opcodes, based on dynamic data
   """
 
   use Bitwise

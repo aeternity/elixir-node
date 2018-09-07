@@ -13,7 +13,6 @@ defmodule Aehttpserver.Web.Router do
 
   scope "/", Aehttpserver.Web do
     pipe_through(:api)
-    # epoch gossip API
     get("/top", HeaderController, :top)
     get("/header-by-hash", HeaderController, :header_by_hash)
     get("/header-by-height", HeaderController, :header_by_height)

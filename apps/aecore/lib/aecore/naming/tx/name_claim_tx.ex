@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NameClaimTx do
   @moduledoc """
-  Aecore structure of naming claim.
+  Module defining the NameClaim transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -34,8 +34,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         }
 
   @doc """
-  Definition of Aecore NameClaimTx structure
-  ## Parameters
+  Definition of the NameClaimTx structure
+  # Parameters
   - name: name to be claimed
   - name_salt: salt that the name was pre-claimed with
   """
@@ -50,7 +50,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
   @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
@@ -108,8 +108,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameClaimTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

@@ -52,13 +52,13 @@ defmodule PersistenceTest do
       Chain.chain_state().accounts
       |> Account.balance(persistance_state.account1)
 
-    ## For specific account
+    # For specific account
     assert match?(%{balance: ^correct_balance}, get_account_state(persistance_state.account1))
 
-    ## Non existant accounts are empty
+    # Non existant accounts are empty
     assert :not_found = get_account_state(persistance_state.account2)
 
-    ## For all accounts
+    # For all accounts
     {:ok, all_accounts} = Persistence.get_all_chainstates(Chain.top_block_hash())
     assert false == Enum.empty?(Map.keys(all_accounts))
   end

@@ -1,7 +1,6 @@
 defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @moduledoc """
-  Contains the transaction structure for oracle extensions
-  and functions associated with those transactions.
+  Module defining the OracleExtend transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -39,6 +38,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
@@ -55,6 +57,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     end
   end
 
+  @doc """
+  Adds the TTL to the current oracle object expiry height
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -78,6 +83,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     {:ok, {accounts, updated_oracle_state}}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),

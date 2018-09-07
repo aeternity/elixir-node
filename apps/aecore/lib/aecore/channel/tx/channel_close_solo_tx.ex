@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @moduledoc """
-  Aecore structure of ChannelCloseSoloTx transaction data.
+  Module defining the ChannelCloseSolo transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -33,10 +33,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCloseSoloTx structure
+  Definition of the ChannelCloseSoloTx structure
 
-  ## Parameters
-  - state - the state to start close operation with
+  # Parameters
+  - state - the (final) state with which the channel is going to be closed
   """
   defstruct [:state]
   use ExConstructor
@@ -62,7 +62,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def channel_id(%ChannelCloseSoloTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCloseSoloTx{}, data_tx) do
@@ -76,7 +76,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Performs channel slash
+  Performs a channel slash
   """
   @spec process_chainstate(
           Chainstate.account(),
@@ -106,8 +106,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelSoloCloseTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.account(),

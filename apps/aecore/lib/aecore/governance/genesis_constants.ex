@@ -1,9 +1,8 @@
 defmodule Aecore.Governance.GenesisConstants do
   @moduledoc """
-  Aecore structure to provide genesis constants.
+  Module containing genesis block constants
   """
 
-  # Genesis block constants
   @prev_hash <<0::256>>
 
   @txs_hash <<0::256>>

@@ -1,6 +1,6 @@
 defmodule Aecore.Account.Tx.SpendTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the Spend transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -43,12 +43,13 @@ defmodule Aecore.Account.Tx.SpendTx do
         }
 
   @doc """
-  Definition of Aecore SpendTx structure
+  Definition of the SpendTx structure
 
-  ## Parameters
-  - receiver: To account is the public address of the account receiving the transaction
-  - amount: The amount of tokens send through the transaction
-  - version: States whats the version of the Spend Transaction
+  # Parameters
+  - receiver: the account to receive the transaction amount
+  - amount: the amount of coins to be sent
+  - version: specifies the version of the transaction
+  - payload: any binary data (a message, a picture etc.)
   """
   defstruct [:receiver, :amount, :version, :payload]
 
@@ -74,7 +75,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Checks wether the amount that is send is not a negative number
+  Validates the transaction without considering state
   """
   @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
@@ -103,7 +104,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Changes the account state (balance) of the sender and receiver.
+  Deducts the transaction amount from the sender account state and adds it to the receiver
   """
   @spec process_chainstate(
           Chainstate.accounts(),
@@ -128,8 +129,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
