@@ -188,7 +188,7 @@ defmodule Aetestframework.Worker do
 
   @spec extend_oracle(String.t()) :: :ok | :unknown_node
   def extend_oracle(node_name) do
-    send_command(node_name, "Oracle.extend(3, 10)")
+    send_command(node_name, "Oracle.extend(%{ttl: 3, type: :relative}, 10)")
   end
 
   @spec query_oracle(String.t()) :: :ok | :unknown_node
@@ -218,7 +218,12 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+      "tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+    )
+
+    send_command(
+      node_name,
+      "<_::binary-size(32), query_id::binary>> = tree_query_id"
     )
 
     send_command(node_name, "Oracle.respond(query_id, \"boolean\", 5)")
