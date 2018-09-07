@@ -123,44 +123,42 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee, tx_ttl \\ 0) do
-    payload = %{
+    payload = %OracleResponseTx{
       query_id: query_id,
       response: response
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
-    tx_data =
-      DataTx.init(
-        OracleResponseTx,
-        payload,
-        pubkey,
-        fee,
-        Chain.lowest_valid_nonce(),
-        tx_ttl
-      )
+    tx_data = %DataTx{
+      fee: fee,
+      nonce: Chain.lowest_valid_nonce(),
+      payload: payload,
+      senders: [%Identifier{type: :oracle, value: pubkey}],
+      ttl: tx_ttl,
+      type: OracleResponseTx
+    }
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
   end
 
-  @spec extend(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: :ok | :error
+  @spec extend(ttl(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def extend(ttl, fee, tx_ttl \\ 0) do
-    payload = %{
+    payload = %OracleExtendTx{
       ttl: ttl
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
-    tx_data =
-      DataTx.init(
-        OracleExtendTx,
-        payload,
-        pubkey,
-        fee,
-        Chain.lowest_valid_nonce(),
-        tx_ttl
-      )
+    tx_data = %DataTx{
+      fee: fee,
+      nonce: Chain.lowest_valid_nonce(),
+      payload: payload,
+      senders: [%Identifier{type: :oracle, value: pubkey}],
+      ttl: tx_ttl,
+      type: OracleExtendTx
+    }
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)

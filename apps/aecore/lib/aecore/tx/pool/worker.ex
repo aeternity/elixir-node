@@ -130,7 +130,7 @@ defmodule Aecore.Tx.Pool.Worker do
             true
 
           :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
         end
 
       %OracleExtendTx{} ->
