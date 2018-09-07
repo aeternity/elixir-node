@@ -9,7 +9,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   alias __MODULE__
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
-  alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree}
+  alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree, Dispatch}
   alias Aecore.Tx.Transaction
   alias Aecore.Tx.DataTx
   alias Aecore.Chain.Identifier

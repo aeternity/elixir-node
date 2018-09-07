@@ -1,4 +1,4 @@
-defmodule Dispatch do
+defmodule Aecore.Contract.Dispatch do
   @moduledoc """
     Module for running contracts on the right VM
   """

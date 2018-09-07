@@ -10,7 +10,7 @@
    alias Aecore.Tx.DataTx
    alias Aecore.Chain.Worker, as: Chain
    alias Aecore.Chain.{Identifier, Chainstate}
-   alias Aecore.Contract.{Call, CallStateTree, Dispatch, ContractStateTree}
+   alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
    alias Aecore.Tx.Transaction
 
    @version 1
@@ -159,12 +159,12 @@
 
      updated_chain_state = Map.put(chain_state, :accounts, updated_accounts_state)
 
-     init_call = Call.new(call_tx.caller, nonce, block_height, call_tx.contract, call_tx.gas_price)
+     init_call = Call.new(call_tx.caller.value, nonce, block_height, call_tx.contract.value, call_tx.gas_price)
 
      {call, update_chain_state1} =
        run_contract(call_tx, init_call, block_height, nonce, updated_chain_state)
 
-     accounts1 = update_chain_state1.account
+     accounts1 = update_chain_state1.accounts
 
      accounts2 =
        case context do
@@ -173,11 +173,11 @@
 
          :transaction ->
            gas_cost = call.gas_used * call_tx.gas_price
-           amount = call_tx.fee + gas_cost
+           amount = DataTx.fee(data_tx) + gas_cost
            caller1 = AccountStateTree.get(accounts1, sender)
 
            accounts1
-           |> AccountStateTree.update(caller1, fn acc ->
+           |> AccountStateTree.update(caller1.id.value, fn acc ->
              Account.apply_transfer!(acc, block_height, amount)
            end)
        end
@@ -185,11 +185,9 @@
      # Insert the call into the state tree. This is mainly to remember what the
      # return value was so that the caller can access it easily.
      # Each block starts with an empty calls tree.
-     updated_calls_tree =
-       calls
-       |> CallStateTree.insert_call(calls, call)
+     updated_calls_tree = CallStateTree.insert_call(calls, call)
 
-     {:ok, {accounts2, updated_calls_tree}}
+     {:ok, %{update_chain_state1 | accounts: accounts2, calls: updated_calls_tree}}
    end
 
    @spec preprocess_check(
@@ -300,8 +298,8 @@
    # maybe identified caller and contract
    defp run_contract(
           %ContractCallTx{
-            caller: caller,
-            contract: contract,
+            caller: caller_address,
+            contract: contract_address,
             vm_version: vm_version,
             amount: amount,
             gas: gas,
@@ -314,16 +312,13 @@
           _nonce,
           chain_state
         ) do
-     identified_caller = Identifier.create_identity(caller, :account)
-     identified_contract = Identifier.create_identity(contract, :contract)
-
      contracts_tree = chain_state.contracts
      # check the get_contract
-     contract = ContractStateTree.get_contact(contracts_tree, identified_contract.value)
+     contract = ContractStateTree.get_contract(contracts_tree, contract_address.value)
 
      call_definition = %{
-       caller: identified_caller.value,
-       contract: identified_contract.value,
+       caller: caller_address,
+       contract: contract_address,
        gas: gas,
        gas_price: gas_price,
        call_data: call_data,
@@ -334,7 +329,7 @@
        height: block_height
      }
 
-     Dispatch.run(vm_version, call_definition)
+     Dispatch.run(vm_version, call_definition, chain_state)
    end
 
    defp check_account_balance(accounts, sender, required_amount) do
@@ -361,8 +356,8 @@
           %ContractCallTx{contract: contract, vm_version: vm_version},
           chain_state
         ) do
-     case ContractStateTree.get(chain_state.contracts, contract.value) do
-       {:ok, contract} ->
+     case ContractStateTree.get_contract(chain_state.contracts, contract.value) do
+       %Contract{} = contract ->
          case contract.vm_version == vm_version do
            true -> :ok
            false -> {:error, "#{__MODULE__}: Wrong VM version"}
@@ -389,7 +384,7 @@
    defp validate_fns(checks), do: validate_fns(checks, [])
    defp validate_fns([], _args), do: :ok
 
-   defp validate_fns([fns, tail], args) do
+   defp validate_fns([fns | tail], args) do
      case apply(fns, args) do
        :ok ->
          validate_fns(tail, args)

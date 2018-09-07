@@ -29,8 +29,13 @@ defmodule Aecore.Contract.VmChain do
 
     case ContractStateTree.get_contract(contract_tree, pubkey) do
       %Contract{} = contract ->
-        Contract.store(contract)
+        store = Contract.store(contract)
 
+        Enum.reduce(store, %{}, fn{key, value}, acc ->
+          <<key_integer::256>> = key
+          <<value_integer::256>> = value
+          Map.put(acc, key_integer, value_integer)
+        end)
       :none ->
         %{}
     end

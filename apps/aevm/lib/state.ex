@@ -89,7 +89,12 @@ defmodule Aevm.State do
   end
 
   def save_storage(%{chain_api: chain_api, chain_state: chain_state, storage: storage} = state) do
-    %{state | chain_state: chain_api.set_store(storage, chain_state)}
+    binary_storage =
+      Enum.reduce(storage, %{}, fn {key, value}, acc ->
+        Map.put(acc, <<key::256>>, <<value::256>>)
+      end)
+
+    %{state | chain_state: chain_api.set_store(binary_storage, chain_state)}
   end
 
   def calldepth(state) do

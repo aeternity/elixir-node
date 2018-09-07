@@ -81,6 +81,7 @@ defmodule Aecore.Contract.ContractStateTree do
         end
 
       s_tree_key = <<store_id::binary, s_key::binary>>
+
       PatriciaMerkleTree.enter(tree_acc, s_tree_key, insert_value)
     end)
   end
