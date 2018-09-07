@@ -17,10 +17,15 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Expected structure for the OracleExtend Transaction"
   @type payload :: %{
           ttl: non_neg_integer()
         }
 
+  @typedoc "Structure of the OracleExtend Transaction type"
   @type t :: %OracleExtendTx{
           ttl: non_neg_integer()
         }
@@ -30,7 +35,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   defstruct [:ttl]
   use ExConstructor
 
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleExtendTx.t()
@@ -38,7 +43,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -83,7 +88,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           non_neg_integer(),
           OracleExtendTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
@@ -127,6 +132,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
+  @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list() | {:error, reason()}
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -140,6 +146,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, ttl_value, fee, ttl]) do
     payload = %{
       ttl: :binary.decode_unsigned(ttl_value)
