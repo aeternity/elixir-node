@@ -29,7 +29,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @name_claim_burned_fee 3
 
-  @max_txs_per_block 10946
+  @max_txs_per_block 10_946
 
   # getter functions with same name for use in other modules
 
