@@ -410,6 +410,9 @@ defmodule Aetestframework.Worker do
             new_state = update_data(state, result, ":respond_top_block", port, :top_block)
             {:reply, :ok, new_state}
 
+          result =~ "Interactive Elixir" ->
+            {:reply, :ok, state}
+
           result =~ ":respond_pool_tx" ->
             {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
             txs_count_str = Regex.run(~r/(\d)}/, result)
