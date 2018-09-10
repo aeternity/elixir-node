@@ -182,7 +182,7 @@ defmodule Aetestframework.Worker do
   def register_oracle(node_name) do
     send_command(
       node_name,
-      "Oracle.register(\"foo: bar\", \"foo: bar\", 5, 5, %{ttl: 10, type: :relative})"
+      "Oracle.register(\"{foo: bar}\",\"boolean()\", 5, 5, %{ttl: 100, type: :relative}, 1234)"
     )
   end
 
@@ -193,40 +193,34 @@ defmodule Aetestframework.Worker do
 
   @spec query_oracle(String.t()) :: :ok | :unknown_node
   def query_oracle(node_name) do
-    send_command(
-      node_name,
-      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
-    )
-
-    send_command(
-      node_name,
-      "oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()"
-    )
-
-    send_command(
-      node_name,
-      "Oracle.query(oracle_address, \"foo: bar\", 5, 10, %{ttl: 10, type: :relative}, %{ttl: 10, type: :relative})"
-    )
+    send_command(node_name, "{pub_key, _} = Keys.keypair(:sign)")
+    send_command(node_name, "query_ttl = %{ttl: 10, type: :relative}")
+    send_command(node_name, "response_ttl = %{ttl: 20, type: :relative}")
+    send_command(node_name, "Oracle.query(pub_key, \"How are you?\", 5, 5, query_ttl, response_ttl, 1234)")
   end
 
   @spec respond_oracle(String.t()) :: :ok | :unknown_node
   def respond_oracle(node_name) do
+    send_command(node_name, "[q]= Chain.top_block.txs")
+    send_command(node_name, "qq = q.data")
+    send_command(node_name, "[sender] = qq.senders")
+    send_command(node_name, "kk = OracleQueryTx.id(sender.value, qq.nonce, qq.payload.oracle_address.value)
+    ")
+
     send_command(
       node_name,
-      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
+      "kkk = qq.payload.oracle_address.value <> kk"
     )
 
     send_command(
       node_name,
-      "tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+      "OracleStateTree.get_query(Chain.chain_state().oracles, kkk)"
     )
 
     send_command(
       node_name,
-      "<_::binary-size(32), query_id::binary>> = tree_query_id"
+      "Oracle.respond(kk, \"I am fine, thanks!\", 5, 1234)"
     )
-
-    send_command(node_name, "Oracle.respond(query_id, \"boolean\", 5)")
   end
 
   def get_latest_tx_type(node_name) do

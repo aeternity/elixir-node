@@ -48,10 +48,10 @@ defmodule EpochTest do
     TestFramework.register_oracle("node2")
     TestFramework.mine_sync_block("node2")
 
-    TestFramework.query_oracle("node2")
+    TestFramework.extend_oracle("node2")
     TestFramework.mine_sync_block("node2")
 
-    TestFramework.extend_oracle("node2")
+    TestFramework.query_oracle("node2")
     TestFramework.mine_sync_block("node2")
 
     TestFramework.respond_oracle("node2")
