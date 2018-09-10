@@ -6,13 +6,14 @@ otp_release:
   - 20.2.2
 
 env:
-  - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
+  - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include EPOCH_PATH=$HOME/epoch PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include SYNC_PORT=3001 LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
 
 before_install:
   - wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
   - "[ -d libsodium-src ] || mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1"
   - cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && cd ..
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
+  - git clone https://github.com/aeternity/epoch.git  $HOME/epoch && cd $HOME/epoch && git checkout v0.16.0 && make dev1-build && cd -
   - source $HOME/.cargo/env
   - make aevm-test-deps
 

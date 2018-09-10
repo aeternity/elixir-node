@@ -355,12 +355,6 @@ defmodule Aetestframework.Worker do
     send_command(node_name, "Pool.add_transaction(revoke)")
   end
 
-  @spec chainstate_naming(String.t()) :: :ok | :unknown_node
-  def chainstate_naming(node_name) do
-    send_command(node_name, "naming_state = Chain.chain_state().naming")
-    send_command(node_name, "naming_state = Chain.chain_state().naming")
-  end
-
   @doc """
     Gets all peers for a given node
   """
@@ -415,6 +409,9 @@ defmodule Aetestframework.Worker do
           result =~ ":respond_top_block" ->
             new_state = update_data(state, result, ":respond_top_block", port, :top_block)
             {:reply, :ok, new_state}
+
+          result =~ "Interactive Elixir" ->
+            {:reply, :ok, state}
 
           result =~ ":respond_pool_tx" ->
             {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
