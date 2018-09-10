@@ -77,7 +77,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """

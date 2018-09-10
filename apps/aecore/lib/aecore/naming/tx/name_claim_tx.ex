@@ -23,7 +23,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
@@ -33,7 +33,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @typedoc "Structure of the NameClaimTx Transaction type"
   @type t :: %NameClaimTx{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @doc """
@@ -76,7 +76,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """

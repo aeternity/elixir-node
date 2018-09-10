@@ -52,7 +52,8 @@ defmodule Aecore.Account.Account do
   @spec empty() :: Account.t()
   def empty, do: %Account{balance: 0, nonce: 0, id: %Identifier{type: :account}}
 
-  @spec new(account_payload()) :: Account.t()
+  @spec new(%{balance: non_neg_integer(), nonce: non_neg_integer(), pubkey: Keys.pubkey()}) ::
+          Account.t()
   def new(%{balance: balance, nonce: nonce, pubkey: pubkey}) do
     id = Identifier.create_identity(pubkey, :account)
 
@@ -117,7 +118,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NamePreClaimTx where the miners public key is used as a sender
   """
-  @spec pre_claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
+  @spec pre_claim(String.t(), integer(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, reason()}
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
@@ -133,7 +134,7 @@ defmodule Aecore.Account.Account do
           Keys.pubkey(),
           Keys.sign_priv_key(),
           String.t(),
-          binary(),
+          integer(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
@@ -152,7 +153,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Builds a NameClaimTx where the miners public key is used as a sender
   """
-  @spec claim(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
+  @spec claim(String.t(), integer(), non_neg_integer(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, reason()}
   def claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
@@ -168,7 +169,7 @@ defmodule Aecore.Account.Account do
           Keys.pubkey(),
           Keys.sign_priv_key(),
           String.t(),
-          binary(),
+          integer(),
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()

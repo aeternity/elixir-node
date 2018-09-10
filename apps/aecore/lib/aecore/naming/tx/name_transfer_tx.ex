@@ -7,7 +7,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
+  alias Aecore.Naming.NamingStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Keys
@@ -80,7 +80,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """

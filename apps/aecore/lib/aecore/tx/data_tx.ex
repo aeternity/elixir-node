@@ -338,10 +338,12 @@ defmodule Aecore.Tx.DataTx do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce, data_tx.ttl)
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("th", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"th$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -385,12 +387,14 @@ defmodule Aecore.Tx.DataTx do
     [tag | tx.type.encode_to_list(tx.payload, tx)]
   end
 
+  @spec rlp_encode(DataTx.t()) :: binary()
   def rlp_encode(%DataTx{} = tx) do
     tx
     |> encode_to_list()
     |> ExRLP.encode()
   end
 
+  @spec rlp_decode(binary()) :: {:ok, DataTx.t()} | {:error, String.t()}
   def rlp_decode(binary) do
     case Serialization.rlp_decode_anything(binary) do
       {:ok, %DataTx{}} = result ->
