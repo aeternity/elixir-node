@@ -103,7 +103,7 @@ defmodule AecoreOracleTest do
     register_oracle(:valid)
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
-    Oracle.extend(3, 10)
+    Oracle.extend(%{ttl: 3, type: :relative}, 10)
     Miner.mine_sync_block_to_chain()
 
     oracle_tree_9 = Chain.chain_state().oracles.oracle_tree
@@ -187,7 +187,8 @@ defmodule AecoreOracleTest do
     case validity do
       :valid ->
         oracle_tree = Chain.chain_state().oracles.oracle_tree
-        query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+        tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+        <<_::binary-size(32), query_id::binary>> = tree_query_id
         Oracle.respond(query_id, "boolean", 5)
 
       :invalid ->
@@ -198,7 +199,8 @@ defmodule AecoreOracleTest do
 
           :response_data ->
             oracle_tree = Chain.chain_state().oracles.oracle_tree
-            query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+            tree_query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()
+            <<_::binary-size(32), query_id::binary>> = tree_query_id
             Oracle.respond(query_id, 70, 5)
         end
     end
