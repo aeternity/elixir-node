@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @moduledoc """
-  Aecore structure of ChannelCreateTx transaction data.
+  Module defining the ChannelCreate transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -37,11 +37,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCreateTx structure
+  Definition of the ChannelCreateTx structure
 
-  ## Parameters
-  - initiator_amount: amount that account first on the senders list commits
-  - responser_amount: amount that account second on the senders list commits
+  # Parameters
+  - initiator_amount: the amount that the first sender commits
+  - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
   """
   defstruct [:initiator_amount, :responder_amount, :locktime]
@@ -66,7 +66,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCreateTx{} = tx, data_tx) do
@@ -88,7 +88,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Changes the account state (balance) of both parties and creates a channel object
   """
   @spec process_chainstate(
           Chainstate.account(),
@@ -133,8 +133,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelCreateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.account(),

@@ -1,6 +1,6 @@
 defmodule Aecore.Governance.GovernanceConstants do
   @moduledoc """
-  Aecore structure to provide governance constants.
+  Module containing governance constantss
   """
 
   @number_of_blocks_for_target_recalculation 10

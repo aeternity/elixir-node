@@ -1,7 +1,6 @@
 defmodule Aecore.Tx.Pool.Worker do
   @moduledoc """
   Module for working with the transaction pool.
-  The pool itself is a map with an empty initial state.
   """
 
   use GenServer
@@ -56,7 +55,7 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
 
-  ## Server side
+  # Server side
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
     txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
@@ -131,7 +130,7 @@ defmodule Aecore.Tx.Pool.Worker do
             true
 
           :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
         end
 
       %OracleExtendTx{} ->
@@ -142,7 +141,7 @@ defmodule Aecore.Tx.Pool.Worker do
     end
   end
 
-  ## Private functions
+  # Private functions
 
   @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do

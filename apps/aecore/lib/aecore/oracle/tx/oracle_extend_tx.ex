@@ -1,17 +1,17 @@
 defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @moduledoc """
-  Contains the transaction structure for oracle extensions
-  and functions associated with those transactions.
+  Module defining the OracleExtend transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -22,12 +22,12 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   @typedoc "Expected structure for the OracleExtend Transaction"
   @type payload :: %{
-          ttl: non_neg_integer()
+          ttl: Oracle.ttl()
         }
 
   @typedoc "Structure of the OracleExtend Transaction type"
   @type t :: %OracleExtendTx{
-          ttl: non_neg_integer()
+          ttl: Oracle.ttl()
         }
 
   @type tx_type_state() :: Chainstate.oracles()
@@ -43,6 +43,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
     senders = DataTx.senders(data_tx)
@@ -59,6 +62,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     end
   end
 
+  @doc """
+  Adds the TTL to the current oracle object expiry height
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -76,12 +82,15 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     sender = DataTx.main_sender(data_tx)
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
-    updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl))
+    updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl.ttl))
     updated_oracle_state = OracleStateTree.enter_oracle(oracles, updated_registered_oracle)
 
     {:ok, {accounts, updated_oracle_state}}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),
@@ -129,7 +138,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def calculate_minimum_fee(ttl) do
     blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
     base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+    round(Float.ceil(ttl.ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list() | {:error, reason()}
@@ -140,16 +149,20 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
-      :binary.encode_unsigned(tx.ttl),
+      Serialization.encode_ttl_type(tx.ttl),
+      :binary.encode_unsigned(tx.ttl.ttl),
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
-  def decode_from_list(@version, [encoded_sender, nonce, ttl_value, fee, ttl]) do
+  def decode_from_list(@version, [encoded_sender, nonce, ttl_type, ttl_value, fee, ttl]) do
     payload = %{
-      ttl: :binary.decode_unsigned(ttl_value)
+      ttl: %{
+        ttl: :binary.decode_unsigned(ttl_value),
+        type: Serialization.decode_ttl_type(ttl_type)
+      }
     }
 
     DataTx.init_binary(

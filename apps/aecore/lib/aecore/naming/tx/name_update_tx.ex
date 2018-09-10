@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NameUpdateTx do
   @moduledoc """
-  Aecore structure of naming Update.
+  Module defining the NameUpdate transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -38,8 +38,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         }
 
   @doc """
-  Definition of Aecore NameUpdateTx structure
-  ## Parameters
+  Definition of the NameUpdateTx structure
+  # Parameters
   - hash: hash of name to be updated
   - expire_by: expiration block of name update
   - client_ttl: ttl for client use
@@ -83,7 +83,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
   @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
@@ -129,7 +129,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   def process_chainstate(
         accounts,
         naming_state,
-        _block_height,
+        block_height,
         %NameUpdateTx{} = tx,
         _data_tx
       ) do
@@ -138,8 +138,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     claim = %{
       claim_to_update
       | pointers: tx.pointers,
-        expires: tx.expire_by,
-        client_ttl: tx.client_ttl
+        expires: tx.client_ttl + block_height,
+        client_ttl: tx.expire_by
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
@@ -148,8 +148,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameUpdateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

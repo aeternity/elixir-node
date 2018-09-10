@@ -159,7 +159,7 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:db_handler, {:get, db_ref_name}})
   end
 
-  ## Server side
+  # Server side
 
   defp all_families do
     [
@@ -181,9 +181,9 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def init(_) do
-    ## We are ensuring that families for the blocks and chain state
-    ## are created. More about them -
-    ## https://github.com/facebook/rocksdb/wiki/Column-Families
+    # We are ensuring that families for the blocks and chain state
+    # are created. More about them -
+    # https://github.com/facebook/rocksdb/wiki/Column-Families
     {:ok, db,
      %{
        "blocks_family" => blocks_family,

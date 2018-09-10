@@ -1,6 +1,6 @@
 defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @moduledoc """
-  Aecore structure of naming pre claim data.
+  Module defining the NamePreClaim transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -29,14 +29,14 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   In the case of NamePreClaimTx we don't have a subdomain chainstate."
   @type tx_type_state() :: Chainstate.naming()
 
-  @typedoc "Structure of the Spend Transaction type"
+  @typedoc "Structure of the NamePreClaim Transaction type"
   @type t :: %NamePreClaimTx{
           commitment: commitment_hash()
         }
 
   @doc """
-  Definition of Aecore NamePreClaimTx structure
-  ## Parameters
+  Definition of the NamePreClaimTx structure
+  # Parameters
   - commitment: hash of the commitment for name claiming
   """
   defstruct [:commitment]
@@ -55,7 +55,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   @doc """
-  Checks commitment hash byte size
+  Validates the transaction without considering state
   """
   @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
@@ -107,8 +107,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NamePreClaimTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),

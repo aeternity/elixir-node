@@ -1,6 +1,6 @@
 defmodule Aecore.Contract.Contract do
   @moduledoc """
-  Aecore contact module implementation.
+  Module containing Contract interaction functionality
   """
   alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier

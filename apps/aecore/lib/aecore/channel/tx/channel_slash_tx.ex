@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @moduledoc """
-  Aecore structure of ChannelSlashTx transaction data.
+  Module defining the ChannelSlash transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -33,10 +33,10 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         }
 
   @doc """
-  Definition of Aecore ChannelSlashTx structure
+  Definition of the ChannelSlashTx structure
 
-  ## Parameters
-  - state - the state to slash with
+  # Parameters
+  - state - the state with which the channel is going to be slashed
   """
   defstruct [:state]
   use ExConstructor
@@ -61,7 +61,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   def channel_id(%ChannelSlashTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}}, data_tx) do
@@ -80,7 +80,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @doc """
-  Slashes channel.
+  Slashes the channel
   """
   @spec process_chainstate(
           Chainstate.account(),
@@ -110,8 +110,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelSlashTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.account(),

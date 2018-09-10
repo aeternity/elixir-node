@@ -1,6 +1,6 @@
 defmodule Aecore.Account.Account do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the state structure of a single account
   """
 
   require Logger
@@ -38,11 +38,12 @@ defmodule Aecore.Account.Account do
   @type chain_state_name :: :accounts
 
   @doc """
-  Definition of Account structure
+  Definition of the Account structure
 
-  ## Parameters
-  - balance: The acccount balance
-  - nonce: Out transaction count
+  # Parameters
+  - balance: the acccount balance
+  - nonce: an integer which is updated (always increased) whenever an outgoing transaction is made by the account
+  - id: the account itself
   """
   defstruct [:balance, :nonce, :id]
   use ExConstructor
@@ -79,7 +80,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Builds a SpendTx where the miners public key is used as a sender (sender)
+  Builds a SpendTx where the miners public key is used as a sender
   """
   @spec spend(Keys.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
           {:ok, SignedTx.t()} | {:error, reason()}
@@ -90,7 +91,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a SpendTx from the given sender keys to the receivers account
+  Builds a SpendTx from the given sender keys to the receivers account
   """
   @spec spend(
           Keys.pubkey(),
@@ -126,7 +127,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NamePreClaimTx from the given sender keys
+  Builds a NamePreClaimTx from the given sender keys
   """
   @spec pre_claim(
           Keys.pubkey(),
@@ -161,7 +162,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NameClaimTx from the given sender keys
+  Builds a NameClaimTx from the given sender keys
   """
   @spec claim(
           Keys.pubkey(),
@@ -201,7 +202,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NameUpdateTx from the given sender keys
+  Builds a NameUpdateTx from the given sender keys
   """
   @spec name_update(
           Keys.pubkey(),
@@ -253,7 +254,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NameTransferTx from the given sender keys
+  Builds a NameTransferTx from the given sender keys
   """
   @spec name_transfer(
           Keys.pubkey(),
@@ -288,7 +289,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Build a NameRevokeTx from the given sender keys
+  Builds a NameRevokeTx from the given sender keys
   """
   @spec name_revoke(
           Keys.pubkey(),
@@ -324,7 +325,7 @@ defmodule Aecore.Account.Account do
   end
 
   @doc """
-  Adds balance to a given Account state and updates last update block.
+  Adds balance to the given Account state
   """
   @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
   def apply_transfer!(account_state, _block_height, amount) do

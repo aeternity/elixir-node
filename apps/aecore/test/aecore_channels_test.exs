@@ -110,7 +110,7 @@ defmodule AecoreChannelTest do
   end
 
   @tag :channels
-  @tag timeout: 240_000
+  @tag timeout: 340_000
   test "create channel, transfer twice, slash with old, slash with corrent and settle", ctx do
     id = create_channel(ctx)
 

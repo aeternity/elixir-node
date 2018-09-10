@@ -89,6 +89,6 @@ end
 
 defmodule Mix.Tasks.Clean.Make do
   def run(_) do
-    ## Remove the compiled cpp files from `priv` dir
+    # Remove the compiled cpp files from `priv` dir
   end
 end

@@ -1,6 +1,6 @@
 defmodule Aecore.Chain.Genesis do
   @moduledoc """
-  Module for genesis block options
+  Module defining the Genesis block
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
