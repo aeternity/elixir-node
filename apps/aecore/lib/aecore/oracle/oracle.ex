@@ -23,12 +23,16 @@ defmodule Aecore.Oracle.Oracle do
 
   require Logger
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
 
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
 
+  @typedoc "Structure of the Oracle type"
   @type t :: %Oracle{
           owner: Keys.pubkey(),
           query_format: binary(),
@@ -282,7 +286,7 @@ defmodule Aecore.Oracle.Oracle do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, reason()}
   def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
     {:ok,
      %Oracle{

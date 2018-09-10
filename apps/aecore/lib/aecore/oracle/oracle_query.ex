@@ -10,6 +10,10 @@ defmodule Aecore.Oracle.OracleQuery do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Structure of the Query type"
   @type t :: %OracleQuery{
           expires: integer(),
           fee: integer(),
@@ -37,6 +41,7 @@ defmodule Aecore.Oracle.OracleQuery do
   use ExConstructor
   use Aecore.Util.Serializable
 
+  @spec encode_to_list(OracleQueryTx.t()) :: list()
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
       case oracle_query.has_response do
@@ -65,6 +70,7 @@ defmodule Aecore.Oracle.OracleQuery do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, OracleQuery.t()} | {:error, reason()}
   def decode_from_list(@version, [
         sender_address,
         sender_nonce,

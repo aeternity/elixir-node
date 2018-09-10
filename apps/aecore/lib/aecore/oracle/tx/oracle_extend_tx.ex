@@ -141,7 +141,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     round(Float.ceil(ttl.ttl / blocks_ttl_per_token) + base_fee)
   end
 
-  @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list() | {:error, reason()}
+  @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()
   def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 

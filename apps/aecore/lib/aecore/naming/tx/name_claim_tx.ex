@@ -17,6 +17,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
           name: String.t(),
@@ -27,7 +30,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   In the case of NameClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: Chainstate.naming()
 
-  @typedoc "Structure of the Spend Transaction type"
+  @typedoc "Structure of the NameClaimTx Transaction type"
   @type t :: %NameClaimTx{
           name: String.t(),
           name_salt: Naming.salt()
@@ -52,7 +55,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
@@ -116,7 +119,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           non_neg_integer(),
           NameClaimTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -172,6 +175,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameClaimTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -186,6 +190,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: :binary.decode_unsigned(name_salt)}
 

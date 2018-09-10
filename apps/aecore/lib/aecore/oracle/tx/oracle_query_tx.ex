@@ -57,7 +57,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   use ExConstructor
 
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleQueryTx.t()

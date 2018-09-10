@@ -17,6 +17,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
           hash: binary(),
@@ -51,7 +54,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   # Callbacks
 
   @spec init(payload()) :: NameUpdateTx.t()
-
   def init(%{
         hash: %Identifier{} = identified_hash,
         expire_by: expire_by,
@@ -85,7 +87,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %NameUpdateTx{
           hash: identified_hash,
@@ -156,7 +158,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           non_neg_integer(),
           NameUpdateTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -210,6 +212,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -226,6 +229,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

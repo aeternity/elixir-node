@@ -18,6 +18,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @type commitment_hash :: binary()
 
   @typedoc "Expected structure for the Pre Claim Transaction"
@@ -57,7 +60,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -115,7 +118,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           non_neg_integer(),
           NamePreClaimTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         _naming_state,
@@ -150,6 +153,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NamePreClaimTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -163,6 +167,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, encoded_commitment, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_commitment) do
       {:ok, commitment} ->

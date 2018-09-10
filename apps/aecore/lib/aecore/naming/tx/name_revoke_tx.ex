@@ -17,6 +17,9 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @typedoc "Expected structure for the Revoke Transaction"
   @type payload :: %{
           hash: binary()
@@ -65,7 +68,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameRevokeTx{hash: hash}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -123,7 +126,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           non_neg_integer(),
           NameRevokeTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -176,6 +179,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameRevokeTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -189,6 +193,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, encoded_hash, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_hash) do
       {:ok, hash} ->

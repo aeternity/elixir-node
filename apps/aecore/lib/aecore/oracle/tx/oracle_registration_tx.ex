@@ -15,6 +15,10 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Expected structure for the OracleRegistration Transaction"
   @type payload :: %{
           query_format: String.t(),
           response_format: String.t(),
@@ -22,6 +26,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure of the OracleRegistration Transaction type"
   @type t :: %OracleRegistrationTx{
           query_format: String.t(),
           response_format: String.t(),
@@ -38,7 +43,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     :ttl
   ]
 
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
   use ExConstructor
@@ -61,7 +66,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %OracleRegistrationTx{
           query_format: query_format,
@@ -134,7 +139,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
@@ -202,6 +207,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
+  @spec encode_to_list(OracleRegistrationTx.t(), DataTx.t()) :: list()
   def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
     ttl_type = Serialization.encode_ttl_type(tx.ttl)
     [sender] = datatx.senders
@@ -220,6 +226,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

@@ -16,11 +16,16 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Expected structure for the OracleResponseTx Transaction"
   @type payload :: %{
           query_id: binary(),
           response: String.t()
         }
 
+  @typedoc "Structure of the OracleResponseTx Transaction type"
   @type t :: %OracleResponseTx{
           query_id: binary(),
           response: String.t()
@@ -31,7 +36,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   defstruct [:query_id, :response]
   use ExConstructor
 
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleResponseTx.t()
@@ -48,7 +53,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
     senders = DataTx.senders(data_tx)
     oracle_id = DataTx.main_sender(data_tx)
@@ -120,7 +125,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           non_neg_integer(),
           OracleResponseTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
@@ -186,6 +191,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
+  @spec encode_to_list(OracleResponseTx.t(), DataTx.t()) :: list()
   def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -200,6 +206,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,
