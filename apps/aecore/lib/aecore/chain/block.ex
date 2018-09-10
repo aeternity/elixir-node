@@ -10,6 +10,7 @@ defmodule Aecore.Chain.Block do
 
   @version 15
 
+  @typedoc "Structure of the Block Transaction type"
   @type t :: %Block{
           header: Header.t(),
           txs: list(SignedTx.t())

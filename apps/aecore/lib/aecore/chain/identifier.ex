@@ -12,7 +12,9 @@ defmodule Aecore.Chain.Identifier do
   defstruct type: :undefined, value: ""
   use ExConstructor
 
+  @typedoc "Structure of the Identifier Transaction type"
   @type t() :: %Identifier{type: type(), value: value()}
+
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
   @type value() :: binary()
 
@@ -24,6 +26,7 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
+  @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
   def check_identity(%Identifier{} = id, type) do
     case create_identity(id.value, type) do
       {:ok, check_id} -> check_id == id
