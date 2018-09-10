@@ -62,15 +62,15 @@ defmodule MultiNodeSyncTest do
     TestFramework.mine_sync_block("node2")
     assert TestFramework.get_latest_tx_type("node2") == OracleQueryTx
 
-    TestFramework.extend_oracle("node2")
-    assert TestFramework.get_pool_tx_count("node2") == 1
-    TestFramework.mine_sync_block("node2")
-    assert TestFramework.get_latest_tx_type("node2") == OracleExtendTx
-
     TestFramework.respond_oracle("node2")
     assert TestFramework.get_pool_tx_count("node2") == 1
     TestFramework.mine_sync_block("node2")
     assert TestFramework.get_latest_tx_type("node2") == OracleResponseTx
+
+    TestFramework.extend_oracle("node2")
+    assert TestFramework.get_pool_tx_count("node2") == 1
+    TestFramework.mine_sync_block("node2")
+    assert TestFramework.get_latest_tx_type("node2") == OracleExtendTx
 
     assert :synced == TestFramework.compare_nodes_by_top_block_hash("node1", "node4")
 
