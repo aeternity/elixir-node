@@ -201,25 +201,25 @@ defmodule Aetestframework.Worker do
 
   @spec respond_oracle(String.t()) :: :ok | :unknown_node
   def respond_oracle(node_name) do
-    send_command(node_name, "[q]= Chain.top_block.txs")
-    send_command(node_name, "qq = q.data")
-    send_command(node_name, "[sender] = qq.senders")
-    send_command(node_name, "kk = OracleQueryTx.id(sender.value, qq.nonce, qq.payload.oracle_address.value)
+    send_command(node_name, "[tx]= Chain.top_block.txs")
+    send_command(node_name, "data = tx.data")
+    send_command(node_name, "[sender] = data.senders")
+    send_command(node_name, "query_id = OracleQueryTx.id(sender.value, data.nonce, data.payload.oracle_address.value)
     ")
 
     send_command(
       node_name,
-      "kkk = qq.payload.oracle_address.value <> kk"
+      "query = data.payload.oracle_address.value <> query_id"
     )
 
     send_command(
       node_name,
-      "OracleStateTree.get_query(Chain.chain_state().oracles, kkk)"
+      "OracleStateTree.get_query(Chain.chain_state().oracles, query)"
     )
 
     send_command(
       node_name,
-      "Oracle.respond(kk, \"I am fine, thanks!\", 5, 1234)"
+      "Oracle.respond(query_id, \"I am fine, thanks!\", 5, 1234)"
     )
   end
 
