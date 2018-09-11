@@ -47,7 +47,6 @@ defmodule Aecore.Oracle.OracleQuery do
     response =
       case oracle_query.response do
         :undefined -> <<>>
-        %DataTx{type: OracleResponseTx} = data -> data
         _ -> oracle_query.response
       end
 
