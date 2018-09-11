@@ -20,7 +20,7 @@ defmodule Aecore.Chain.Identifier do
 
   @tag_size 8
 
-  @spec create_identity(type(), value()) :: Identifier.t()
+  @spec create_identity(value(), type()) :: Identifier.t()
   def create_identity(value, type)
       when is_atom(type) and is_binary(value) do
     %Identifier{type: type, value: value}

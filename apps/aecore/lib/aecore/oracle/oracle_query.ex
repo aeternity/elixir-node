@@ -41,7 +41,7 @@ defmodule Aecore.Oracle.OracleQuery do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec encode_to_list(OracleQueryTx.t()) :: list()
+  @spec encode_to_list(OracleQuery.t()) :: list()
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
       case oracle_query.has_response do

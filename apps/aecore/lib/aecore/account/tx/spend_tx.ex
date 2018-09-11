@@ -17,7 +17,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          receiver: Keys.pubkey(),
+          receiver: Keys.pubkey() | Identifier.t(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
@@ -35,7 +35,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
-          receiver: Keys.pubkey(),
+          receiver: Keys.pubkey() | Identifier.t(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
