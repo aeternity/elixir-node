@@ -5,15 +5,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   require Logger
 
-  alias Aecore.Keys
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain}
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
+  alias Aecore.Keys
   alias Aeutil.Serialization
 
   @version 1
 
+  @typedoc "Structure of the ChannelStateOnChain Transaction type"
   @type t :: %ChannelStateOnChain{
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
@@ -188,7 +188,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(ChannelStateOnChain.t()) :: list()
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     [
       :binary.encode_unsigned(@version),

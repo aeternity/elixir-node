@@ -5,12 +5,11 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -41,7 +40,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   defstruct [:channel_id]
   use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
@@ -52,7 +51,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelSettleTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -67,7 +66,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Changes the account state (balance) of both parties and closes the channel (drops the channel object)
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
@@ -100,12 +99,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
@@ -139,7 +138,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelSettleTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
@@ -149,6 +148,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ChannelSettleTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
@@ -160,6 +160,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 

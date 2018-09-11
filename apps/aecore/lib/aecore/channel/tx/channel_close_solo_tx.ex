@@ -5,12 +5,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Account.AccountStateTree
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
-  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -41,7 +40,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   defstruct [:state]
   use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCloseSoloTx.t()
@@ -64,7 +63,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelCloseSoloTx{}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -79,7 +78,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Performs a channel slash
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
@@ -109,12 +108,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
@@ -151,7 +150,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
@@ -161,6 +160,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
@@ -172,6 +172,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
     state_ver = :binary.decode_unsigned(state_ver_bin)
 
