@@ -4,8 +4,8 @@ defmodule Aecore.Chain.Target do
   """
 
   alias Aecore.Chain.Block
-  alias Aeutil.Scientific
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Scientific
 
   use Bitwise
 

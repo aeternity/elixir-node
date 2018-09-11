@@ -6,17 +6,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
-  alias Aecore.Keys
+
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
-  alias Aeutil.Bits
-  alias Aeutil.Hash
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Tx.DataTx
+  alias Aeutil.{Bits, Hash}
   alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
 
   @version 1
 
@@ -43,6 +41,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
   @nonce_size 256

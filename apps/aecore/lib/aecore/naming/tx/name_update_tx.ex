@@ -5,12 +5,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.NamingStateTree
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.Hash
 
   require Logger

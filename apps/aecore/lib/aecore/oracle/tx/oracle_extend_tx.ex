@@ -6,11 +6,10 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   require Logger
@@ -30,6 +29,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [:ttl]

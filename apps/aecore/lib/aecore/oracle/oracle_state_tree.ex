@@ -2,16 +2,18 @@ defmodule Aecore.Oracle.OracleStateTree do
   @moduledoc """
   Top level oracle state tree.
   """
-  alias Aeutil.PatriciaMerkleTree
-  alias Aeutil.Serialization
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Oracle.{Oracle, OracleQuery}
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.OracleQuery
-  alias Aecore.Chain.Identifier
+  alias Aeutil.{PatriciaMerkleTree, Serialization}
   alias MerklePatriciaTree.Trie
 
+  @typedoc "Hash of the tree"
   @type hash :: binary()
+
+  @typedoc "Structure that holds Oracles Tree and Oracles Cache Tree"
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
+
   @dummy_val <<0>>
 
   @spec init_empty() :: oracles_state()

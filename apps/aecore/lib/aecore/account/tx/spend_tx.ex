@@ -5,15 +5,11 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Tx.DataTx
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.Account
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Keys
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
@@ -170,7 +166,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_tx_version() :: version()
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 
-  @spec encode_to_list(SpendTx.t(), DataTx.t()) :: list() | {:error, reason()}
+  @spec encode_to_list(SpendTx.t(), DataTx.t()) :: list()
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 

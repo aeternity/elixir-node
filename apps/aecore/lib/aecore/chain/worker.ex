@@ -6,17 +6,17 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys
-  alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Notify
-  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
   alias Aeutil.{Serialization, Hash, Scientific, PatriciaMerkleTree, Events}
 
   require Logger

@@ -3,17 +3,17 @@ defmodule Aecore.Account.Account do
   Module defining the state structure of a single account
   """
 
-  require Logger
-  alias Aecore.Keys
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Identifier
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Tx.{DataTx, SignedTx}
-  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Keys
   alias Aecore.Naming.{NameCommitment, NameUtil}
-  alias Aeutil.Serialization
-  alias Aeutil.Bits
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.{Bits, Serialization}
+
+  require Logger
 
   @version 1
 

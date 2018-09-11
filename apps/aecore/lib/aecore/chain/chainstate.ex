@@ -3,20 +3,17 @@ defmodule Aecore.Chain.Chainstate do
   Module containing functionality for calculating the chainstate
   """
 
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Genesis}
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Naming.NamingStateTree
-  alias Aeutil.Bits
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Contract.ContractStateTree
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Contract.{CallStateTree, ContractStateTree}
+  alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
   alias Aecore.Keys
-  alias Aecore.Governance.GenesisConstants
-  alias Aeutil.Hash
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.{Bits, Hash}
 
   require Logger
 

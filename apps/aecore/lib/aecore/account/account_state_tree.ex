@@ -3,10 +3,10 @@ defmodule Aecore.Account.AccountStateTree do
   Top level account state tree.
   """
   alias Aecore.Account.Account
+  alias Aecore.Chain.Identifier
   alias Aecore.Keys
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
-  alias Aecore.Chain.Identifier
 
   @typedoc "Accounts tree"
   @type accounts_state :: Trie.t()

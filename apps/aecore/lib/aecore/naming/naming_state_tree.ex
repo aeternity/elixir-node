@@ -8,7 +8,10 @@ defmodule Aecore.Naming.NamingStateTree do
   alias Aecore.Chain.Identifier
   alias MerklePatriciaTree.Trie
 
+  @typedoc "Namings tree"
   @type namings_state() :: Trie.t()
+
+  @typedoc "Hash of the tree"
   @type hash :: binary()
 
   @spec init_empty() :: namings_state()

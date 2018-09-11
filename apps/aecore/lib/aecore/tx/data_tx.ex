@@ -2,17 +2,12 @@ defmodule Aecore.Tx.DataTx do
   @moduledoc """
   Module defining the Data transaction which encapsulates all of the different sub-transactions
   """
-
-  alias Aecore.Tx.DataTx
-  alias Aeutil.Serialization
-  alias Aeutil.Bits
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Identifier
-  alias Aeutil.TypeToTag
+  alias Aecore.Keys
+  alias Aecore.Tx.DataTx
+  alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
 
@@ -382,6 +377,7 @@ defmodule Aecore.Tx.DataTx do
     true
   end
 
+  @spec encode_to_list(DataTx.t()) :: list()
   def encode_to_list(%DataTx{} = tx) do
     {:ok, tag} = TypeToTag.type_to_tag(tx.type)
     [tag | tx.type.encode_to_list(tx.payload, tx)]

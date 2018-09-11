@@ -5,13 +5,12 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 

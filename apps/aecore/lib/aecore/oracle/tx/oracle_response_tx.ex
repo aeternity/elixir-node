@@ -6,13 +6,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
+  alias Aecore.Oracle.OracleStateTree
+  alias Aecore.Tx.DataTx
 
   @version 1
 
@@ -31,6 +29,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           response: String.t()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [:query_id, :response]

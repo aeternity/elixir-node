@@ -7,16 +7,12 @@ defmodule Aecore.Miner.Worker do
   use GenServer
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.Block
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys
+  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
 

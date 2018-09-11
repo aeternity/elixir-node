@@ -4,8 +4,8 @@ defmodule Aecore.Chain.Header do
   """
 
   alias Aecore.Chain.Header
-  alias Aeutil.Bits
   alias Aecore.Keys
+  alias Aeutil.Bits
 
   @header_version_size 64
   @header_height_size 64
@@ -173,7 +173,7 @@ defmodule Aecore.Chain.Header do
     end
   end
 
-  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()}
+  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()} | {:error, String.t()}
   def binary_to_pow(<<pow_bin_list::binary-size(@pow_size)>>) do
     deserialize_pow(pow_bin_list, [])
   end

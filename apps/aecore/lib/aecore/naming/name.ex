@@ -3,12 +3,11 @@ defmodule Aecore.Naming.Name do
   Module defining the structure of a name
   """
 
-  alias Aecore.Keys
-  alias Aeutil.Bits
-  alias Aeutil.Serialization
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Naming.Name
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Name
+  alias Aeutil.{Bits, Serialization}
 
   @version 1
 

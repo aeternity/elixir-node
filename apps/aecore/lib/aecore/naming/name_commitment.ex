@@ -2,12 +2,10 @@ defmodule Aecore.Naming.NameCommitment do
   @moduledoc """
   Module defining the structure of a name commitment
   """
-
-  alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Chain.Identifier
   alias Aecore.Keys
-  alias Aeutil.{Bits, Hash}
-  alias Aeutil.Serialization
+  alias Aecore.Naming.{NameCommitment, NameUtil}
+  alias Aeutil.{Bits, Hash, Serialization}
 
   @version 1
 

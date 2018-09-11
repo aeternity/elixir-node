@@ -3,8 +3,7 @@ defmodule Aecore.Chain.Block do
   Module defining the Block structure
   """
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Header}
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
 
