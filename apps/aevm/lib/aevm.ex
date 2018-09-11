@@ -22,14 +22,7 @@ defmodule Aevm.Aevm do
     code = State.code(state)
 
     if pc >= byte_size(code) do
-      saved_storage_chain_state = State.save_storage(state)
-
-      {:ok,
-       %{
-         gas_left: State.gas(saved_storage_chain_state),
-         out: State.out(saved_storage_chain_state),
-         chain_state: State.chain_state(saved_storage_chain_state)
-       }}
+      State.save_storage(state)
     else
       op_code = AevmUtil.get_op_code(state)
       op_name = OpCodesUtil.mnemonic(op_code)
@@ -1283,10 +1276,7 @@ defmodule Aevm.Aevm do
     mem_gas_cost = Gas.memory_gas_cost(state_4, state)
     state_5 = Gas.update_gas(mem_gas_cost, state_4)
 
-    # This should be checked
-    # With this uncommented, the initial contract execution
-    # does not return any output message
-    # AevmUtil.stop_exec(state_5)
+    State.set_return_type(:revert, state_5)
   end
 
   # 0xfe INVALID

@@ -12,6 +12,7 @@
   "enoise": {:git, "https://github.com/aeternity/enoise.git", "6d793b711854a02d56c68d9959e1525389464c87", [ref: "6d793b7"]},
   "erl_base58": {:hex, :erl_base58, "0.0.1", "37710854461d71df338e73c65776302db41c4bab4674d2ec134ed7bcfc7b5552", [:rebar3], [], "hexpm"},
   "erlexec": {:hex, :erlexec, "1.9.3", "3d72ac65424ced35b9658a50e5a0c9dbd5f383e28ac9096e557f0d62926dd8e4", [:rebar3], [], "hexpm"},
+  "ex_parameterized": {:hex, :ex_parameterized, "1.3.4", "18604461bba78a544ed9cd146faabcc5e0799cfff5e650887846bfb9cf0025a4", [:mix], [], "hexpm"},
   "ex_rlp": {:hex, :ex_rlp, "0.2.1", "bd320900d6316cdfe01d365d4bda22eb2f39b359798daeeffd3bd1ca7ba958ec", [:mix], [], "hexpm"},
   "exconstructor": {:hex, :exconstructor, "1.1.0", "272623a7b203cb2901c20cbb92c5c3ab103cc0087ff7c881979e046043346752", [:mix], [], "hexpm"},
   "excoveralls": {:hex, :excoveralls, "0.8.2", "b941a08a1842d7aa629e0bbc969186a4cefdd035bad9fe15d43aaaaaeb8fae36", [:mix], [{:exjsx, ">= 3.0.0", [hex: :exjsx, repo: "hexpm", optional: false]}, {:hackney, ">= 0.12.0", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm"},

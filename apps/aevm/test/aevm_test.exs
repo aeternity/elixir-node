@@ -2,10 +2,17 @@ defmodule AevmTest do
   use ExUnit.Case
   use ExUnit.Parameterized
 
+  alias Aevm.State
+  alias Aevm.Aevm
+
   require Logger
-  alias Aevm
 
   doctest Aevm
+
+  setup do
+    Code.require_file("ethereum_test_chain.ex", "./test")
+    :ok
+  end
 
   defp validate_storage(%{:exec => %{:address => address}} = spec, storage_state) do
     case spec do
@@ -46,20 +53,23 @@ defmodule AevmTest do
 
   defp extract_and_validate(json_test, config_name) do
     spec = Map.get(json_test, config_name)
-
-    exec_values = Map.get(spec, :exec)
-    env_values = Map.get(spec, :env)
-    pre_values = Map.get(spec, :pre)
+    spec_state = %{
+      spec
+      | env:
+          Map.get(spec, :env)
+          |> Map.put(:chain_api, EthereumTestChain)
+          |> Map.put(:chain_state, spec)
+    }
 
     try do
-      {:ok, state} = Aevm.loop(State.init_vm(exec_values, env_values, pre_values, 0, test_opts()))
+      out_state = Aevm.loop(State.init_vm(spec_state, test_opts()))
 
-      validate_storage(spec, state.storage)
-      validate_gas(spec.gas, state.gas)
-      validate_out(spec.out, state.out)
-      validate_callcreates(spec, state.callcreates)
+      validate_storage(spec, State.storage_to_int(State.chain_state(out_state).storage))
+      validate_gas(spec.gas, State.gas(out_state))
+      validate_out(spec.out, State.out(out_state))
+      validate_callcreates(spec, State.callcreates(out_state))
 
-      {:ok, state}
+      {:ok, out_state}
     catch
       {:error, _reason, state} ->
         validate_no_post(spec)

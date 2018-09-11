@@ -29,6 +29,7 @@ defmodule Aevm.State do
       :out => <<>>,
       :logs => [],
       :callcreates => [],
+
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
       :caller => Map.get(exec, :caller),
@@ -39,15 +40,19 @@ defmodule Aevm.State do
       :value => Map.get(exec, :value),
       :return_data => Map.get(exec, :return_data, <<>>),
       :call_stack => Map.get(exec, :call_stack, []),
+
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
+
       :pre => pre,
       :vm_version => Map.get(env, :vm_version),
       :chain_api => chain_api,
       :chain_state => chain_state,
+      :return_type => :ok,
+
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
   end
@@ -89,12 +94,24 @@ defmodule Aevm.State do
   end
 
   def save_storage(%{chain_api: chain_api, chain_state: chain_state, storage: storage} = state) do
-    binary_storage =
-      Enum.reduce(storage, %{}, fn {key, value}, acc ->
-        Map.put(acc, <<key::256>>, <<value::256>>)
-      end)
+    binary_storage = storage_to_bin(storage)
 
     %{state | chain_state: chain_api.set_store(binary_storage, chain_state)}
+  end
+
+  def storage_to_bin(storage) do
+    Enum.reduce(storage, %{}, fn {key, value}, acc ->
+      Map.put(acc, <<key::256>>, <<value::256>>)
+    end)
+  end
+
+  def storage_to_int(storage) do
+    Enum.reduce(storage, %{}, fn {key, value}, acc ->
+      <<key_int::256>> = key
+      <<value_int::256>> = value
+
+      Map.put(acc, key_int, value_int)
+    end)
   end
 
   def calldepth(state) do
@@ -157,6 +174,10 @@ defmodule Aevm.State do
 
   def set_chain_state(chain_state, state) do
     Map.put(state, :chain_state, chain_state)
+  end
+
+  def set_return_type(return_type, state) do
+    Map.put(state, :return_type, return_type)
   end
 
   def stack(state) do
@@ -239,12 +260,24 @@ defmodule Aevm.State do
     Map.get(state, :out)
   end
 
+  def callcreates(state) do
+    Map.get(state, :callcreates)
+  end
+
   def chain_api(state) do
     Map.get(state, :chain_api)
   end
 
   def chain_state(state) do
     Map.get(state, :chain_state)
+  end
+
+  def vm_version(state) do
+    Map.get(state, :vm_version)
+  end
+
+  def return_type(state) do
+    Map.get(state, :return_type)
   end
 
   def get_balance(address, state) do
@@ -345,7 +378,11 @@ defmodule Aevm.State do
       :currentDifficulty => State.current_difficulty(state),
       :currentGasLimit => State.current_gas_limit(state),
       :currentNumber => State.current_number(state),
-      :currentTimestamp => State.current_timestamp(state)
+      :currentTimestamp => State.current_timestamp(state),
+
+      :chain_api => chain_api(state),
+      :chain_state => chain_state(state),
+      :vm_version => vm_version(state)
     }
   end
 end

@@ -153,7 +153,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
 
     final_state =
       case call_result.return_type do
-        :ok ->
+        return_type when return_type in [:ok, :revert] ->
           gas_cost = call_result.gas_used * gas_price
 
           accounts_after_gas_spent =

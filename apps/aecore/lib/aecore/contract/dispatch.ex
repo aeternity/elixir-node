@@ -92,21 +92,22 @@ defmodule Aecore.Contract.Dispatch do
     <<address::size(@pubkey_size_bits)>> = contract_pubkey.value
     <<caller_address::size(@pubkey_size_bits)>> = caller.value
 
-    spec = Map.put(spec, :exec, %{
-      code: code,
-      address: address,
-      data: call_data,
-      gas: gas,
-      gas_price: gas_price,
-      origin: caller_address,
-      value: value,
-      call_stack: call_stack
-    })
+    spec =
+      Map.put(spec, :exec, %{
+        code: code,
+        address: address,
+        data: call_data,
+        gas: gas,
+        gas_price: gas_price,
+        origin: caller_address,
+        value: value,
+        call_stack: call_stack
+      })
 
     state = State.init_vm(spec, %{})
 
     try do
-      {return_type, %{gas_left: gas_left, out: out, chain_state: chain_state}} =
+      %{gas: gas_left, out: out, chain_state: chain_state, return_type: return_type} =
         Aevm.loop(state)
 
       gas_used = gas - gas_left
