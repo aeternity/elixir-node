@@ -32,7 +32,6 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     :signatures
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   require Logger

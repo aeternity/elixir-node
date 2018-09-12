@@ -49,7 +49,6 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   - pointers: pointers from name update
   """
   defstruct [:hash, :expire_by, :client_ttl, :pointers]
-  use ExConstructor
 
   # Callbacks
 

@@ -43,7 +43,6 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   - target: target public key to transfer to
   """
   defstruct [:hash, :target]
-  use ExConstructor
 
   # Callbacks
 

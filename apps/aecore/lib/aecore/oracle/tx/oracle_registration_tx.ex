@@ -46,8 +46,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
-  use ExConstructor
-
   @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
         query_format: query_format,

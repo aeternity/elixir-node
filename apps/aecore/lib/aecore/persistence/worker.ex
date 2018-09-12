@@ -31,6 +31,7 @@ defmodule Aecore.Persistence.Worker do
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end

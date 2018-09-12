@@ -44,7 +44,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   - responder_amount: the amount that the second sender commits
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels

@@ -18,6 +18,7 @@ defmodule Aecore.Miner.Worker do
 
   @mersenne_prime 2_147_483_647
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(
       __MODULE__,

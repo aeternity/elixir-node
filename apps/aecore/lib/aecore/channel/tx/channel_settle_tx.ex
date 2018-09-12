@@ -38,7 +38,6 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   - channel_id: channel id
   """
   defstruct [:channel_id]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels

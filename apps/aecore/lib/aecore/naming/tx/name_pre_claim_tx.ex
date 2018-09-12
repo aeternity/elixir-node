@@ -42,11 +42,10 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   - commitment: hash of the commitment for name claiming
   """
   defstruct [:commitment]
-  use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: NamePreClaimTx.t()
+  @spec init(payload() | map()) :: NamePreClaimTx.t()
   def init(%{commitment: %Identifier{} = identified_commitment} = _payload) do
     %NamePreClaimTx{commitment: identified_commitment}
   end

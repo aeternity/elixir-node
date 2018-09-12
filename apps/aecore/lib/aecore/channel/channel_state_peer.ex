@@ -23,6 +23,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
 
+  require Logger
+
   @type fsm_state :: :initialized | :half_signed | :signed | :open | :update | :closing | :closed
 
   @typedoc "Structure of the ChannelStatePeer Transaction type"
@@ -48,10 +50,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :highest_signed_state,
     :channel_reserve
   ]
-
-  require Logger
-
-  use ExConstructor
 
   @spec id(ChannelStatePeer.t()) :: binary()
   def id(%ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{channel_id: id}}), do: id

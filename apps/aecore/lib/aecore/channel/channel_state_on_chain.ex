@@ -48,7 +48,6 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :slash_sequence
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(Keys.pubkey(), Keys.pubkey(), integer(), integer(), non_neg_integer()) ::

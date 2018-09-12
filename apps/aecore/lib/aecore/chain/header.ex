@@ -56,18 +56,6 @@ defmodule Aecore.Chain.Header do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer(),
-          Keys.pubkey(),
-          non_neg_integer()
-        ) :: Header.t()
-
-  @spec create(
-          non_neg_integer(),
-          binary(),
-          binary(),
-          binary(),
-          non_neg_integer(),
-          non_neg_integer(),
           non_neg_integer,
           Keys.pubkey(),
           non_neg_integer

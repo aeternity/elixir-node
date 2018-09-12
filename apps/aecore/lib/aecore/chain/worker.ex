@@ -27,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
   end

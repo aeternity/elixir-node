@@ -42,7 +42,6 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   - name_salt: salt that the name was pre-claimed with
   """
   defstruct [:name, :name_salt]
-  use ExConstructor
 
   # Callbacks
 

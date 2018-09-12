@@ -33,7 +33,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [:ttl]
-  use ExConstructor
 
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles

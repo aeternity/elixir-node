@@ -33,7 +33,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [:query_id, :response]
-  use ExConstructor
 
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles

@@ -23,7 +23,6 @@ defmodule Aecore.Naming.NameCommitment do
         }
 
   defstruct [:hash, :owner, :created, :expires]
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(

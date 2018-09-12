@@ -10,7 +10,6 @@ defmodule Aecore.Chain.Identifier do
 
   alias __MODULE__
   defstruct type: :undefined, value: ""
-  use ExConstructor
 
   @typedoc "Structure of the Identifier Transaction type"
   @type t() :: %Identifier{type: type(), value: value()}

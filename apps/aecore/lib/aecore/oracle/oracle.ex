@@ -38,7 +38,7 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
-  use ExConstructor
+  # use ExConstructor
   use Aecore.Util.Serializable
 
   @spec register(

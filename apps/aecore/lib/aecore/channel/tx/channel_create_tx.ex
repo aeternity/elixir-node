@@ -44,7 +44,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - locktime: number of blocks for dispute settling
   """
   defstruct [:initiator_amount, :responder_amount, :locktime]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels

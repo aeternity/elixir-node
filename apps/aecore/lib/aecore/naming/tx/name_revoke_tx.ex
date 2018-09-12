@@ -40,11 +40,10 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   - hash: hash of name to be revoked
   """
   defstruct [:hash]
-  use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: NameRevokeTx.t()
+  @spec init(payload() | map()) :: NameRevokeTx.t()
   def init(%{hash: hash}) do
     name_hash =
       case hash do

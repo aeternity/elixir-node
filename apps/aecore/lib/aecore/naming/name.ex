@@ -31,7 +31,6 @@ defmodule Aecore.Naming.Name do
         }
 
   defstruct [:hash, :owner, :expires, :status, :client_ttl, :pointers]
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(
