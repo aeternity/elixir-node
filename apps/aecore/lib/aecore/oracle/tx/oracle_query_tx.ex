@@ -162,7 +162,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       query: tx.query_data,
       has_response: false,
       response: :undefined,
-      expires: Oracle.calculate_absolute_ttl(tx.query_ttl, block_height),
+      expires: Oracle.calculate_ttl(tx.query_ttl, block_height),
       response_ttl: tx.response_ttl.ttl,
       fee: tx.query_fee
     }
@@ -250,11 +250,11 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         %{ttl: ttl, type: :relative} ->
           fee >= calculate_minimum_fee(ttl)
 
-        %{ttl: ttl, type: :absolute} ->
+        %{ttl: _ttl, type: :absolute} ->
           if block_height != nil do
             fee >=
-              ttl
-              |> Oracle.calculate_relative_ttl(block_height)
+              tx.query_ttl
+              |> Oracle.calculate_ttl(block_height)
               |> calculate_minimum_fee()
           else
             true

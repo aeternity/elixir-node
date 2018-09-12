@@ -164,8 +164,8 @@ defmodule Aecore.Oracle.Oracle do
     Pool.add_transaction(tx)
   end
 
-  @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
-  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
+  @spec calculate_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
+  def calculate_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
     case type do
       :absolute ->
         ttl
@@ -173,12 +173,6 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl + block_height_tx_included
     end
-  end
-
-  @spec calculate_relative_ttl(%{ttl: non_neg_integer(), type: :absolute}, non_neg_integer()) ::
-          non_neg_integer()
-  def calculate_relative_ttl(%{ttl: ttl, type: :absolute}, block_height) do
-    ttl - block_height
   end
 
   @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean

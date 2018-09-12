@@ -115,7 +115,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_format: tx.query_format,
       response_format: tx.response_format,
       query_fee: tx.query_fee,
-      expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
+      expires: Oracle.calculate_ttl(tx.ttl, block_height)
     }
 
     {:ok,
@@ -181,11 +181,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       %{ttl: ttl, type: :relative} ->
         fee >= calculate_minimum_fee(ttl)
 
-      %{ttl: ttl, type: :absolute} ->
+      %{ttl: _ttl, type: :absolute} ->
         if block_height != nil do
           fee >=
-            ttl
-            |> Oracle.calculate_relative_ttl(block_height)
+            tx.ttl
+            |> Oracle.calculate_ttl(block_height)
             |> calculate_minimum_fee()
         else
           true
