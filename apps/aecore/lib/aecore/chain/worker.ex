@@ -64,6 +64,7 @@ defmodule Aecore.Chain.Worker do
      }, 0}
   end
 
+  @spec clear_state() :: :ok
   def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()

@@ -46,7 +46,6 @@ defmodule Aecore.Account.Account do
   - id: the account itself
   """
   defstruct [:balance, :nonce, :id]
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec empty() :: Account.t()

@@ -56,9 +56,9 @@ defmodule Aecore.Chain.Header do
           binary(),
           non_neg_integer(),
           non_neg_integer(),
-          non_neg_integer,
+          non_neg_integer(),
           Keys.pubkey(),
-          non_neg_integer
+          non_neg_integer()
         ) :: Header.t()
   def create(height, prev_hash, txs_hash, root_hash, target, nonce, time, miner, version) do
     %Header{
