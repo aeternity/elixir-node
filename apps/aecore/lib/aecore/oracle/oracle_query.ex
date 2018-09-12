@@ -5,7 +5,6 @@ defmodule Aecore.Oracle.OracleQuery do
 
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   @version 1
@@ -52,7 +51,6 @@ defmodule Aecore.Oracle.OracleQuery do
     response =
       case oracle_query.response do
         :undefined -> <<>>
-        %DataTx{type: OracleResponseTx} = data -> data
         _ -> oracle_query.response
       end
 
