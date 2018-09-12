@@ -6,17 +6,17 @@ defmodule Aecore.Chain.Worker do
   use GenServer
   use Bitwise
 
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys
-  alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Notify
-  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
   alias Aeutil.{Serialization, Hash, Scientific, PatriciaMerkleTree, Events}
 
   require Logger
@@ -27,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
   end
@@ -63,6 +64,7 @@ defmodule Aecore.Chain.Worker do
      }, 0}
   end
 
+  @spec clear_state() :: :ok
   def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()

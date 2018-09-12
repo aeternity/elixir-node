@@ -23,8 +23,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
 
+  require Logger
+
   @type fsm_state :: :initialized | :half_signed | :signed | :open | :update | :closing | :closed
 
+  @typedoc "Structure of the ChannelStatePeer Transaction type"
   @type t :: %ChannelStatePeer{
           fsm_state: fsm_state(),
           initiator_pubkey: Keys.pubkey(),
@@ -35,6 +38,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           channel_reserve: non_neg_integer()
         }
 
+  @typedoc "Reason for the error"
   @type error :: {:error, binary()}
 
   defstruct [
@@ -46,10 +50,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :highest_signed_state,
     :channel_reserve
   ]
-
-  require Logger
-
-  use ExConstructor
 
   @spec id(ChannelStatePeer.t()) :: binary()
   def id(%ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{channel_id: id}}), do: id
@@ -548,6 +548,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:ok, new_peer_state, our_slash_tx}
   end
 
+  @spec slash(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.pubkey(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def slash(
         %ChannelStatePeer{highest_signed_state: our_state} = peer_state,
         fee,

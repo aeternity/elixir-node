@@ -39,7 +39,7 @@ defmodule Aecore.Tx.Transaction do
 
   @callback init(payload()) :: tx_types()
 
-  @callback validate(tx_types(), DataTx.t()) :: :ok | {:error, String.t()}
+  @callback validate(tx_types(), DataTx.t()) :: :ok | {:error, reason()}
 
   @doc """
   Default function for executing a given transaction type.
@@ -52,7 +52,7 @@ defmodule Aecore.Tx.Transaction do
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t()
-            ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, String.t()}
+            ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.

@@ -7,21 +7,18 @@ defmodule Aecore.Miner.Worker do
   use GenServer
 
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.Block
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys
+  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Oracle.Oracle
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
 
   @mersenne_prime 2_147_483_647
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(
       __MODULE__,

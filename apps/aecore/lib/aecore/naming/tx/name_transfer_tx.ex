@@ -5,17 +5,20 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.Hash
 
   require Logger
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @typedoc "Expected structure for the Transfer Transaction"
   @type payload :: %{
@@ -40,7 +43,6 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   - target: target public key to transfer to
   """
   defstruct [:hash, :target]
-  use ExConstructor
 
   # Callbacks
 
@@ -58,7 +60,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -77,7 +79,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -113,7 +115,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           non_neg_integer(),
           NameTransferTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -161,6 +163,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameTransferTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -175,6 +178,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

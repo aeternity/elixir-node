@@ -3,14 +3,11 @@ defmodule Aecore.Chain.BlockValidation do
   Contains functions used to validate data inside of the block structure
   """
 
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.{Block, Header, Genesis}
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Target
-  alias Aeutil.Hash
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.Hash
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie

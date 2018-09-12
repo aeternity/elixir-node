@@ -4,6 +4,7 @@ defmodule Aeutil.Bits do
   License: CC BY-SA 3.0
   """
 
+  @spec encode58c(binary(), binary()) :: binary()
   def encode58c(prefix, payload) when is_binary(payload) do
     prefix <> "$" <> encode58(payload)
   end
