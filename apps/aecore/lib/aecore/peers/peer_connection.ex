@@ -242,13 +242,13 @@ defmodule Aecore.Peers.PeerConnection do
             {:noreply, new_state}
 
           {:error, reason} ->
-            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
+            Logger.error(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
       {:error, reason} ->
-        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
+        Logger.error(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end

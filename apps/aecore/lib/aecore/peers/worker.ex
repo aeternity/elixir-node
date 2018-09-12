@@ -73,6 +73,7 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
+  @spec try_connect(map()) :: :ok
   def try_connect(peer_info) do
     GenServer.cast(__MODULE__, {:try_connect, peer_info})
   end
@@ -153,14 +154,6 @@ defmodule Aecore.Peers.Worker do
     {:reply, have_peer, state}
   end
 
-  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
-    Enum.each(peers, fn {_pubkey, peer} ->
-      PeerConnection.send_new_block(block, peer.connection)
-    end)
-
-    {:noreply, state}
-  end
-
   def handle_cast(
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
@@ -175,13 +168,21 @@ defmodule Aecore.Peers.Worker do
           {:noreply, state}
 
         true ->
-          Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+          Logger.error(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
           {:noreply, state}
       end
     else
-      Logger.info("Can't add ourself")
+      Logger.error(fn -> "Can't add ourself" end)
       {:noreply, state}
     end
+  end
+
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+    Enum.each(peers, fn {_pubkey, peer} ->
+      PeerConnection.send_new_block(block, peer.connection)
+    end)
+
+    {:noreply, state}
   end
 
   defp prepare_peers(peers) do
