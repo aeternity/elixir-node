@@ -5,7 +5,6 @@ defmodule Aecore.Oracle.OracleQuery do
 
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   @version 1
