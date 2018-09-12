@@ -26,8 +26,8 @@ Start the application in interactive Elixir
 - Development config: `make iex-0`
 - Production config: `MIX_ENV=prod make iex-0`
 
-The default sync port is 3015, this can be adjusted using `SYNC_PORT=some_port iex -S mix`.
-The node will run an http api at `localhost:4000`, this can be adjusted using `PORT=some_port iex -S mix`.
+The default sync port is 3015, this can be adjusted using `SYNC_PORT=some_port iex -S mix phx.server`.
+The node will run an http api at `localhost:4000`, this can be adjusted using `PORT=some_port iex -S mix phx.server`.
 
 ## Usage
 
@@ -40,7 +40,9 @@ The node will run an http api at `localhost:4000`, this can be adjusted using `P
 - `Chain.top_block_chain_state()` to get the top block chainstate
 - `Chain.chain_state(block_hash)` to get the chainstate of certain block
 
+
 - `Pool.get_pool()` to get all transactions from the pool
+
 
 - `Peers.all_peers()` to get all connected peers
 - `Peers.try_connect(%{host: host, port: port, pubkey: pubkey})` to manually connect a new peer
@@ -56,7 +58,7 @@ Debug, error, warning and info logs is found in `apps/aecore/logs`
 A `Dockerfile` and `docker-compose.yml` are found in the base directory, prebuilt images are not yet published.
 
  - Build container `docker build . -t elixir-node`
- - Run node in container `docker run --name elixir-node -it -p 4000:4000 elixir-node`
+ - Run node in container `docker run --name elixir-node -it -p 4000:4000 -p 3015:3015 elixir-node`
 
  - Run multiple nodes network with docker compose `docker-compose up` runs 3 connected nodes, with 2 mining
 
