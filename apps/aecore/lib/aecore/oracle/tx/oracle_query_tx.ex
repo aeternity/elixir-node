@@ -6,22 +6,24 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Account.Account
-  alias Aecore.Keys
+
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
-  alias Aeutil.Bits
-  alias Aeutil.Hash
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Tx.DataTx
+  alias Aeutil.{Bits, Hash}
   alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @type id :: binary()
 
+  @typedoc "Expected structure for the OracleQuery Transaction"
   @type payload :: %{
           oracle_address: Identifier.t(),
           query_data: String.t(),
@@ -30,6 +32,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure of the OracleQuery Transaction type"
   @type t :: %OracleQueryTx{
           oracle_address: Identifier.t(),
           query_data: String.t(),
@@ -38,6 +41,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
   @nonce_size 256
@@ -50,13 +54,10 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     :response_ttl
   ]
 
-  use ExConstructor
-
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
   @spec init(payload()) :: OracleQueryTx.t()
-
   def init(%{
         oracle_address: %Identifier{} = identified_oracle_address,
         query_data: query_data,
@@ -94,7 +95,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(OracleQueryTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %OracleQueryTx{
           query_ttl: query_ttl,
@@ -181,7 +182,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           non_neg_integer(),
           OracleQueryTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
@@ -270,10 +271,12 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     Hash.hash(bin)
   end
 
+  @spec base58c_encode(binary()) :: binary()
   def base58c_encode(bin) do
     Bits.encode58c("qy", bin)
   end
 
+  @spec base58c_decode(binary()) :: binary() | {:error, reason()}
   def base58c_decode(<<"qy$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -295,6 +298,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
+  @spec encode_to_list(OracleQueryTx.t(), DataTx.t()) :: list() | {:error, reason()}
   def encode_to_list(%OracleQueryTx{} = tx, %DataTx{} = datatx) do
     ttl_type_q = Serialization.encode_ttl_type(tx.query_ttl)
     ttl_type_r = Serialization.encode_ttl_type(tx.response_ttl)
@@ -316,6 +320,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

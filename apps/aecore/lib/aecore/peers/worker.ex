@@ -13,6 +13,7 @@ defmodule Aecore.Peers.Worker do
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     peers = %{}
 
@@ -27,14 +28,17 @@ defmodule Aecore.Peers.Worker do
     {:ok, state}
   end
 
+  @spec state() :: map()
   def state do
     GenServer.call(__MODULE__, :state)
   end
 
+  @spec all_peers() :: list()
   def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  @spec all_pids() :: list()
   def all_pids do
     GenServer.call(__MODULE__, :all_pids)
   end
@@ -43,6 +47,7 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
 
+  @spec remove_peer(Keys.pubkey()) :: :ok
   def remove_peer(pubkey) do
     GenServer.call(__MODULE__, {:remove_peer, pubkey})
   end

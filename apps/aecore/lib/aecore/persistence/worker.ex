@@ -6,11 +6,9 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
-  alias Rox.Batch
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
+  alias Aecore.Chain.{Block, BlockValidation, Target}
   alias Aeutil.Scientific
-  alias Aecore.Chain.Block
+  alias Rox.Batch
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -33,6 +31,7 @@ defmodule Aecore.Persistence.Worker do
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end

@@ -8,7 +8,7 @@ defmodule Aeutil.Scientific do
 
   @highest_target_int 0xFFFF000000000000000000000000000000000000000000000000000000000000
 
-  @spec scientific_to_integer(integer) :: integer()
+  @spec scientific_to_integer(integer()) :: integer()
   def scientific_to_integer(scientific) do
     {exp, significand} = break_scientific(scientific)
     exp3 = exp - 3
@@ -19,7 +19,7 @@ defmodule Aeutil.Scientific do
     end
   end
 
-  @spec integer_to_scientific(integer) :: integer()
+  @spec integer_to_scientific(integer()) :: integer()
   def integer_to_scientific(integer) do
     {exp, significand} = int_to_sci(integer, 3)
 

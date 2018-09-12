@@ -3,14 +3,16 @@ defmodule Aecore.Naming.Name do
   Module defining the structure of a name
   """
 
-  alias Aecore.Keys
-  alias Aeutil.Bits
-  alias Aeutil.Serialization
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Naming.Name
   alias Aecore.Chain.Identifier
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Name
+  alias Aeutil.{Bits, Serialization}
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @type name_status() :: :claimed | :revoked
 
@@ -18,6 +20,7 @@ defmodule Aecore.Naming.Name do
 
   @type hash :: binary()
 
+  @typedoc "Structure of the Name Transaction type"
   @type t :: %Name{
           hash: binary(),
           owner: Keys.pubkey(),
@@ -28,7 +31,6 @@ defmodule Aecore.Naming.Name do
         }
 
   defstruct [:hash, :owner, :expires, :status, :client_ttl, :pointers]
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(
@@ -37,7 +39,7 @@ defmodule Aecore.Naming.Name do
           non_neg_integer(),
           non_neg_integer(),
           list()
-        ) :: t()
+        ) :: Name.t()
   def create(hash, owner, expire_by, client_ttl, pointers \\ "[]") do
     identified_hash = Identifier.create_identity(hash, :name)
 
@@ -51,7 +53,7 @@ defmodule Aecore.Naming.Name do
     }
   end
 
-  @spec create(binary(), Keys.pubkey(), non_neg_integer()) :: t()
+  @spec create(binary(), Keys.pubkey(), non_neg_integer()) :: Name.t()
   def create(hash, owner, height) do
     identified_hash = Identifier.create_identity(hash, :name)
 
@@ -65,10 +67,12 @@ defmodule Aecore.Naming.Name do
     }
   end
 
+  @spec base58c_encode_hash(hash()) :: String.t()
   def base58c_encode_hash(bin) do
     Bits.encode58c("nm", bin)
   end
 
+  @spec base58c_decode_hash(String.t()) :: hash() | {:error, reason()}
   def base58c_decode_hash(<<"nm$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -77,7 +81,7 @@ defmodule Aecore.Naming.Name do
     {:error, "Wrong data"}
   end
 
-  @spec encode_to_list(t()) :: binary()
+  @spec encode_to_list(Name.t()) :: list()
   def encode_to_list(%Name{
         owner: owner,
         expires: expires,
@@ -95,7 +99,7 @@ defmodule Aecore.Naming.Name do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Name.t()} | {:error, reason()}
   def decode_from_list(@version, [owner, expires, status, client_ttl, pointers]) do
     {:ok,
      %Name{

@@ -3,32 +3,32 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Keys
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.PatriciaMerkleTree
-  alias Aecore.Chain.Identifier
 
   @version 1
 
   require Logger
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Oracle transactions that include TTL field"
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
 
+  @typedoc "Expected TTL structure for the oracle transactions"
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
 
+  @typedoc "Structure of the Oracle type"
   @type t :: %Oracle{
           owner: Keys.pubkey(),
           query_format: binary(),
@@ -38,7 +38,7 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
-  use ExConstructor
+  # use ExConstructor
   use Aecore.Util.Serializable
 
   @spec register(
@@ -295,7 +295,7 @@ defmodule Aecore.Oracle.Oracle do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, reason()}
   def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
     {:ok,
      %Oracle{

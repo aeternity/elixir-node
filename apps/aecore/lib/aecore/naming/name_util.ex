@@ -6,7 +6,10 @@ defmodule Aecore.Naming.NameUtil do
   alias Aeutil.Hash
   alias Aecore.Governance.GovernanceConstants
 
-  @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, String.t()}
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @spec normalized_namehash(String.t()) :: {:ok, binary()} | {:error, reason()}
   def normalized_namehash(name) do
     case normalize_and_validate_name(name) do
       {:ok, normalized_name} -> {:ok, namehash(normalized_name)}
@@ -14,7 +17,7 @@ defmodule Aecore.Naming.NameUtil do
     end
   end
 
-  @spec normalize_and_validate_name(String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec normalize_and_validate_name(String.t()) :: {:ok, String.t()} | {:error, reason()}
   def normalize_and_validate_name(name) do
     normalized_name = normalize_name(name)
 
@@ -47,7 +50,7 @@ defmodule Aecore.Naming.NameUtil do
     Hash.hash(<<rest_hash::binary, label_hash::binary>>)
   end
 
-  @spec validate_normalized_name(String.t()) :: :ok | {:error, String.t()}
+  @spec validate_normalized_name(String.t()) :: :ok | {:error, reason()}
   defp validate_normalized_name(name) do
     allowed_registrar =
       GovernanceConstants.name_registrars()
@@ -70,7 +73,7 @@ defmodule Aecore.Naming.NameUtil do
     Application.get_env(:aecore, :naming)[:max_name_length]
   end
 
-  @spec validate_name_length(String.t()) :: :ok | {:error, String.t()}
+  @spec validate_name_length(String.t()) :: :ok | {:error, reason()}
   defp validate_name_length(name) do
     case String.length(name) > 0 && String.length(name) < get_max_name_length() do
       true ->
