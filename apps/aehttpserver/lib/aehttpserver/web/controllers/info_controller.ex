@@ -3,7 +3,6 @@ defmodule Aehttpserver.Web.InfoController do
 
   alias Aecore.Chain.{Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Keys
   alias Aecore.Account.Account
 

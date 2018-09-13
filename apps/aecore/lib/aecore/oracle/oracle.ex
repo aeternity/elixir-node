@@ -3,32 +3,33 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Keys
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Keys
+  alias Aecore.Oracle.{Oracle, OracleStateTree, OracleQuery}
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.PatriciaMerkleTree
-  alias Aecore.Chain.Identifier
 
   @version 1
 
   require Logger
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Oracle transactions that include TTL field"
   @type oracle_txs_with_ttl :: OracleRegistrationTx.t() | OracleQueryTx.t() | OracleExtendTx.t()
 
+  @typedoc "Expected TTL structure for the oracle transactions"
   @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @pubkey_size 33
 
+  @typedoc "Structure of the Oracle type"
   @type t :: %Oracle{
           owner: Keys.pubkey(),
           query_format: binary(),
@@ -38,7 +39,7 @@ defmodule Aecore.Oracle.Oracle do
         }
 
   defstruct [:owner, :query_format, :response_format, :query_fee, :expires]
-  use ExConstructor
+  # use ExConstructor
   use Aecore.Util.Serializable
 
   @spec register(
@@ -123,44 +124,42 @@ defmodule Aecore.Oracle.Oracle do
   """
   @spec respond(binary(), String.t(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def respond(query_id, response, fee, tx_ttl \\ 0) do
-    payload = %{
+    payload = %OracleResponseTx{
       query_id: query_id,
       response: response
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
-    tx_data =
-      DataTx.init(
-        OracleResponseTx,
-        payload,
-        pubkey,
-        fee,
-        Chain.lowest_valid_nonce(),
-        tx_ttl
-      )
+    tx_data = %DataTx{
+      fee: fee,
+      nonce: Chain.lowest_valid_nonce(),
+      payload: payload,
+      senders: [%Identifier{type: :oracle, value: pubkey}],
+      ttl: tx_ttl,
+      type: OracleResponseTx
+    }
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
   end
 
-  @spec extend(non_neg_integer(), non_neg_integer(), non_neg_integer()) :: :ok | :error
+  @spec extend(ttl(), non_neg_integer(), non_neg_integer()) :: :ok | :error
   def extend(ttl, fee, tx_ttl \\ 0) do
-    payload = %{
+    payload = %OracleExtendTx{
       ttl: ttl
     }
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
-    tx_data =
-      DataTx.init(
-        OracleExtendTx,
-        payload,
-        pubkey,
-        fee,
-        Chain.lowest_valid_nonce(),
-        tx_ttl
-      )
+    tx_data = %DataTx{
+      fee: fee,
+      nonce: Chain.lowest_valid_nonce(),
+      payload: payload,
+      senders: [%Identifier{type: :oracle, value: pubkey}],
+      ttl: tx_ttl,
+      type: OracleExtendTx
+    }
 
     {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
     Pool.add_transaction(tx)
@@ -186,26 +185,26 @@ defmodule Aecore.Oracle.Oracle do
   @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
-      %OracleRegistrationTx{} ->
-        ttl_is_valid?(tx.ttl, block_height)
+      %OracleRegistrationTx{ttl: ttl} ->
+        ttl_is_valid?(ttl, block_height)
 
-      %OracleQueryTx{} ->
+      %OracleQueryTx{query_ttl: query_ttl, response_ttl: response_ttl} ->
         response_ttl_is_valid =
-          case tx.response_ttl do
+          case response_ttl do
             %{type: :absolute} ->
               Logger.error("#{__MODULE__}: Response TTL has to be relative")
               false
 
             %{type: :relative} ->
-              ttl_is_valid?(tx.response_ttl, block_height)
+              ttl_is_valid?(response_ttl, block_height)
           end
 
-        query_ttl_is_valid = ttl_is_valid?(tx.query_ttl, block_height)
+        query_ttl_is_valid = ttl_is_valid?(query_ttl, block_height)
 
         response_ttl_is_valid && query_ttl_is_valid
 
-      %OracleExtendTx{} ->
-        tx.ttl > 0
+      %OracleExtendTx{ttl: ttl} ->
+        ttl > 0
 
       _ ->
         true
@@ -232,12 +231,19 @@ defmodule Aecore.Oracle.Oracle do
     OracleStateTree.prune(chainstate, block_height)
   end
 
-  @spec refund_sender(map(), AccountStateTree.accounts_state()) ::
+  @spec refund_sender(OracleQuery.t(), AccountStateTree.accounts_state()) ::
           AccountStateTree.accounts_state()
-  def refund_sender(query, accounts_state) do
-    if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address.value, fn account ->
-        Map.update!(account, :balance, &(&1 + query.fee))
+  def refund_sender(
+        %OracleQuery{
+          sender_address: %Identifier{value: sender_address},
+          has_response: has_response,
+          fee: fee
+        },
+        accounts_state
+      ) do
+    if !has_response do
+      AccountStateTree.update(accounts_state, sender_address, fn account ->
+        Map.update!(account, :balance, &(&1 + fee))
       end)
     else
       accounts_state
@@ -284,7 +290,7 @@ defmodule Aecore.Oracle.Oracle do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Oracle.t()} | {:error, reason()}
   def decode_from_list(@version, [query_format, response_format, query_fee, expires]) do
     {:ok,
      %Oracle{

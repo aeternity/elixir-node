@@ -3,14 +3,10 @@ defmodule Aecore.Chain.BlockValidation do
   Contains functions used to validate data inside of the block structure
   """
 
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.{Block, Header, Genesis}
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Target
-  alias Aeutil.Hash
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Tx.SignedTx
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
@@ -31,7 +27,7 @@ defmodule Aecore.Chain.BlockValidation do
             target: target
           },
           txs: txs
-        },
+        } = new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
@@ -80,10 +76,12 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
-  def single_validate_block(%Block{
-        header: %Header{txs_hash: txs_hash, version: version} = header,
-        txs: txs
-      }) do
+  def single_validate_block(
+        %Block{
+          header: %Header{txs_hash: txs_hash, version: version} = header,
+          txs: txs
+        } = block
+      ) do
     server = self()
     work = fn -> Cuckoo.verify(header) end
 
@@ -160,7 +158,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec valid_header_time?(Block.t()) :: boolean()
   defp valid_header_time?(%Block{header: %Header{time: time}}) do
-    previous_block_height <
+    time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
   end
 end

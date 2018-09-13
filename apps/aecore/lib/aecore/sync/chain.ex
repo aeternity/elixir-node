@@ -2,11 +2,9 @@ defmodule Aecore.Sync.Chain do
   @moduledoc """
   Implements all the functions regarding the Chain structure of the SyncTask
   """
-
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Sync.Task
   alias __MODULE__
+  alias Aecore.Chain.Header
+  alias Aecore.Sync.Task
 
   @type peer_id :: pid()
   @type chain_id :: reference()

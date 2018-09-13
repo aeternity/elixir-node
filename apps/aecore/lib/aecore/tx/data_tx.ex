@@ -1,17 +1,13 @@
 defmodule Aecore.Tx.DataTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the Data transaction which encapsulates all of the different sub-transactions
   """
-  alias Aecore.Tx.DataTx
-  alias Aeutil.Serialization
-  alias Aeutil.Bits
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Identifier
-  alias Aeutil.TypeToTag
+  alias Aecore.Keys
+  alias Aecore.Tx.DataTx
+  alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
 
@@ -33,7 +29,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
 
-  @typedoc "Structure of a transaction that may be added to be blockchain"
+  @typedoc "Structure of a transaction that may be added to the blockchain"
   @type payload ::
           Aecore.Account.Tx.SpendTx.t()
           | Aecore.Oracle.Tx.OracleExtendTx.t()
@@ -65,9 +61,9 @@ defmodule Aecore.Tx.DataTx do
         }
 
   @doc """
-  Definition of Aecore DataTx structure
+  Definition of the DataTx structure
 
-  ## Parameters
+  # Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
@@ -170,11 +166,6 @@ defmodule Aecore.Tx.DataTx do
     List.first(senders(tx))
   end
 
-  @spec nonce(DataTx.t()) :: non_neg_integer()
-  def nonce(%DataTx{nonce: nonce}) do
-    nonce
-  end
-
   @spec ttl(DataTx.t()) :: non_neg_integer()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
@@ -183,18 +174,8 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec payload(DataTx.t()) :: map()
-  def payload(%DataTx{payload: payload, type: type}) do
-    if Enum.member?(valid_types(), type) do
-      payload
-    else
-      Logger.error("Call to DataTx payload with invalid transaction type")
-      %{}
-    end
-  end
-
   @doc """
-  Checks whether the fee is above 0.
+  Validates the transaction without considering state
   """
   @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
@@ -232,9 +213,8 @@ defmodule Aecore.Tx.DataTx do
   """
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
+  def process_chainstate(chainstate, block_height, %DataTx{payload: payload, fee: fee} = tx) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
@@ -247,46 +227,53 @@ defmodule Aecore.Tx.DataTx do
         end)
       end
 
-    with {:ok, {new_accounts_state, new_tx_type_state}} <-
-           nonce_accounts_state
-           |> tx.type.deduct_fee(block_height, payload, tx, fee)
-           |> tx.type.process_chainstate(
-             tx_type_state,
-             block_height,
-             payload,
-             tx
-           ) do
-      new_chainstate =
-        if tx.type.get_chain_state_name() == :accounts do
-          %{chainstate | accounts: new_accounts_state}
-        else
-          %{chainstate | accounts: new_accounts_state}
-          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
-        end
+    processed_states =
+      nonce_accounts_state
+      |> tx.type.deduct_fee(block_height, payload, tx, fee)
+      |> tx.type.process_chainstate(
+        tx_type_state,
+        block_height,
+        payload,
+        tx
+      )
 
-      {:ok, new_chainstate}
-    else
-      err ->
-        err
+    case processed_states do
+      {:ok, {new_accounts_state, new_tx_type_state}} ->
+        new_chainstate =
+          if tx.type.get_chain_state_name() == :accounts do
+            %{chainstate | accounts: new_accounts_state}
+          else
+            %{chainstate | accounts: new_accounts_state}
+            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+          end
+
+        {:ok, new_chainstate}
+
+      error ->
+        error
     end
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx) do
+  def preprocess_check(chainstate, block_height, %DataTx{payload: payload, type: type} = tx) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
-    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
-      if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
-        :ok
-      else
-        {:error, "#{__MODULE__}: Too small nonce"}
-      end
-    else
-      err ->
-        err
+    case type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
+      :ok ->
+        if main_sender(tx) == nil ||
+             Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
+          :ok
+        else
+          {:error, "#{__MODULE__}: Too small nonce"}
+        end
+
+      error ->
+        error
     end
   end
 
@@ -329,10 +316,12 @@ defmodule Aecore.Tx.DataTx do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce, data_tx.ttl)
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("th", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"th$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -371,17 +360,20 @@ defmodule Aecore.Tx.DataTx do
     true
   end
 
+  @spec encode_to_list(DataTx.t()) :: list()
   def encode_to_list(%DataTx{} = tx) do
     {:ok, tag} = TypeToTag.type_to_tag(tx.type)
     [tag | tx.type.encode_to_list(tx.payload, tx)]
   end
 
+  @spec rlp_encode(DataTx.t()) :: binary()
   def rlp_encode(%DataTx{} = tx) do
     tx
     |> encode_to_list()
     |> ExRLP.encode()
   end
 
+  @spec rlp_decode(binary()) :: {:ok, DataTx.t()} | {:error, String.t()}
   def rlp_decode(binary) do
     case Serialization.rlp_decode_anything(binary) do
       {:ok, %DataTx{}} = result ->

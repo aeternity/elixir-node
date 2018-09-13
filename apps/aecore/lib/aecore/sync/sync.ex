@@ -10,7 +10,6 @@ defmodule Aecore.Sync.Sync do
 
   alias Aecore.Sync.{Jobs, Chain, Task}
   alias Aecore.Chain.Worker, as: Chainstate
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Tx.SignedTx
@@ -321,7 +320,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   @doc """
-  Get all elements of the pool where the block is already taken from 
+  Get all elements of the pool where the block is already taken from
   the peer (the third element is not false)
   untill reaching an element whose block hasn't been picked yet.
   """
@@ -482,7 +481,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   @doc """
-  This worker has done it's job, 
+  This worker has done it's job,
   remove it from the task that it is related to.
   """
   @spec terminate_worker(pid(), Sync.t()) :: Sync.t()

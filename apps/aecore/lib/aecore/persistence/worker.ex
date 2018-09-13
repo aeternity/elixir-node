@@ -6,11 +6,9 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
-  alias Rox.Batch
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
+  alias Aecore.Chain.{Block, Header, Target}
   alias Aeutil.Scientific
-  alias Aecore.Chain.Block
+  alias Rox.Batch
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -33,6 +31,7 @@ defmodule Aecore.Persistence.Worker do
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -159,7 +158,7 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:db_handler, {:get, db_ref_name}})
   end
 
-  ## Server side
+  # Server side
 
   defp all_families do
     [
@@ -181,9 +180,9 @@ defmodule Aecore.Persistence.Worker do
   end
 
   def init(_) do
-    ## We are ensuring that families for the blocks and chain state
-    ## are created. More about them -
-    ## https://github.com/facebook/rocksdb/wiki/Column-Families
+    # We are ensuring that families for the blocks and chain state
+    # are created. More about them -
+    # https://github.com/facebook/rocksdb/wiki/Column-Families
     {:ok, db,
      %{
        "blocks_family" => blocks_family,

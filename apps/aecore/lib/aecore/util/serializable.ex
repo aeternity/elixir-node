@@ -1,6 +1,6 @@
 defmodule Aecore.Util.Serializable do
   @moduledoc """
-  Library that defines functions necessery for structure serialization
+  Module defining functions necessary for structure serialization
   """
   defmacro __using__(_) do
     quote location: :keep do

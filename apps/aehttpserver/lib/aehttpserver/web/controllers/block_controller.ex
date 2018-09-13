@@ -4,7 +4,6 @@ defmodule Aehttpserver.Web.BlockController do
   alias Aecore.Chain.Worker, as: Chain
   alias Aeutil.Serialization
   alias Aeutil.HTTPUtil
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.{Block, Header, Genesis}
   alias Aeutil.Serialization
 

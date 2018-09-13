@@ -1,19 +1,19 @@
 defmodule Aecore.Channel.ChannelStateOnChain do
   @moduledoc """
-  State Channel OnChain structure
+  Module defining the structure of the OnChain Channel state
   """
 
   require Logger
 
-  alias Aecore.Keys
-  alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelStateOffChain
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain}
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
+  alias Aecore.Keys
   alias Aeutil.Serialization
 
   @version 1
 
+  @typedoc "Structure of the ChannelStateOnChain Transaction type"
   @type t :: %ChannelStateOnChain{
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
@@ -27,9 +27,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @type id :: binary()
 
   @doc """
-  Definition of State Channel OnChain structure
+  Definition of the State Channel OnChain structure
 
-  ## Parameters
+  # Parameters
   - initiator_pubkey
   - responder_pubkey
   - initiator_amount - amount deposited by initiator or from slashing
@@ -48,7 +48,6 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :slash_sequence
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(Keys.pubkey(), Keys.pubkey(), integer(), integer(), non_neg_integer()) ::
@@ -66,17 +65,16 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Generates channel id from ChannelCreateTx.
+  Generates a channel id from a ChannelCreateTx.
   """
   @spec id(DataTx.t()) :: id()
-  def id(data_tx) do
-    nonce = DataTx.nonce(data_tx)
+  def id(%DataTx{nonce: nonce} = data_tx) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     id(initiator_pubkey, responder_pubkey, nonce)
   end
 
   @doc """
-  Generates channel id from detail of ChannelCreateTx.
+  Generates a channel id from detail of ChannelCreateTx.
   """
   @spec id(Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
@@ -102,7 +100,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Returns true if channel wasn't slashed. (Closed channels should be removed from Channels state tree)
+  Returns true if the channel wasn't slashed. (Closed channels should be removed from the Channels state tree)
   """
   @spec active?(ChannelStateOnChain.t()) :: boolean()
   def active?(%ChannelStateOnChain{slash_close: 0}) do
@@ -114,7 +112,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Returns true if Channel can be settled. (If Channel was slashed and current block height exceeds locktime)
+  Returns true if the Channel can be settled. (If the Channel has been slashed and the current block height exceeds the locktime)
   """
   @spec settled?(ChannelStateOnChain.t(), non_neg_integer()) :: boolean()
   def settled?(%ChannelStateOnChain{slash_close: slash_close} = channel, block_height) do
@@ -145,7 +143,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
-  def validate_slashing(%ChannelStateOnChain{} = channel, offchain_state) do
+  def validate_slashing(
+        %ChannelStateOnChain{} = channel,
+        %ChannelStateOffChain{} = offchain_state
+      ) do
     cond do
       channel.slash_sequence >= offchain_state.sequence ->
         {:error, "#{__MODULE__}: Offchain state is too old"}
@@ -160,45 +161,61 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Executes slashing on channel. Slashing should be validated before with validate_slashing.
+  Executes slashing on a channel. Slashing should be validated beforehand with validate_slashing.
   """
   @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelStateOffChain.t()) ::
           ChannelStateOnChain.t()
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
-        sequence: 0
-      }) do
+  def apply_slashing(
+        %ChannelStateOnChain{lock_period: lock_period} = channel,
+        block_height,
+        %ChannelStateOffChain{
+          sequence: 0
+        }
+      ) do
     %ChannelStateOnChain{
       channel
-      | slash_close: block_height + channel.lock_period,
+      | slash_close: block_height + lock_period,
         slash_sequence: 0
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelStateOffChain{
-        sequence: sequence,
-        initiator_amount: initiator_amount,
-        responder_amount: responder_amount
-      }) do
+  def apply_slashing(
+        %ChannelStateOnChain{lock_period: lock_period} = channel,
+        block_height,
+        %ChannelStateOffChain{
+          sequence: sequence,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        }
+      ) do
     %ChannelStateOnChain{
       channel
-      | slash_close: block_height + channel.lock_period,
+      | slash_close: block_height + lock_period,
         slash_sequence: sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
     }
   end
 
-  @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
-  def encode_to_list(%ChannelStateOnChain{} = channel) do
+  @spec encode_to_list(ChannelStateOnChain.t()) :: list()
+  def encode_to_list(%ChannelStateOnChain{
+        initiator_pubkey: initiator_pubkey,
+        responder_pubkey: responder_pubkey,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        lock_period: lock_period,
+        slash_close: slash_close,
+        slash_sequence: slash_sequence
+      }) do
     [
       :binary.encode_unsigned(@version),
-      channel.initiator_pubkey,
-      channel.responder_pubkey,
-      :binary.encode_unsigned(channel.initiator_amount),
-      :binary.encode_unsigned(channel.responder_amount),
-      :binary.encode_unsigned(channel.lock_period),
-      :binary.encode_unsigned(channel.slash_close),
-      :binary.encode_unsigned(channel.slash_sequence)
+      initiator_pubkey,
+      responder_pubkey,
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      :binary.encode_unsigned(lock_period),
+      :binary.encode_unsigned(slash_close),
+      :binary.encode_unsigned(slash_sequence)
     ]
   end
 

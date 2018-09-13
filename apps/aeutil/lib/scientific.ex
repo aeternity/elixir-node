@@ -1,14 +1,14 @@
 defmodule Aeutil.Scientific do
   @moduledoc """
   Converts integer to scientific notation.
-  It's used for the storing the target in the block and recalculating the next target
+  It's used for storing the target in blocks and recalculating the next target
   """
 
   use Bitwise
 
   @highest_target_int 0xFFFF000000000000000000000000000000000000000000000000000000000000
 
-  @spec scientific_to_integer(integer) :: integer()
+  @spec scientific_to_integer(integer()) :: integer()
   def scientific_to_integer(scientific) do
     {exp, significand} = break_scientific(scientific)
     exp3 = exp - 3
@@ -19,7 +19,7 @@ defmodule Aeutil.Scientific do
     end
   end
 
-  @spec integer_to_scientific(integer) :: integer()
+  @spec integer_to_scientific(integer()) :: integer()
   def integer_to_scientific(integer) do
     {exp, significand} = int_to_sci(integer, 3)
 
@@ -60,16 +60,16 @@ defmodule Aeutil.Scientific do
     end
   end
 
-  ## The Difficulty is calculated from the Target and is used in Sync.
-  ## Difficulty is used to select the winning fork of new blocks:
-  ## the difficulty of chain of blocks is the sum of the diffculty of each block.
+  # The Difficulty is calculated from the Target and is used in Sync.
+  # Difficulty is used to select the winning fork of new blocks:
+  # the difficulty of chain of blocks is the sum of the diffculty of each block.
 
   @spec target_to_difficulty(non_neg_integer()) :: float()
   def target_to_difficulty(target) do
     @highest_target_int / scientific_to_integer(target)
   end
 
-  ## Internal Functions
+  # Internal Functions
 
   @spec int_to_sci(integer(), integer()) :: tuple()
   defp int_to_sci(integer, exp) when integer > 0x7FFFFF do

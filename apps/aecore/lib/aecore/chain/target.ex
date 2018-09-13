@@ -3,9 +3,9 @@ defmodule Aecore.Chain.Target do
   Contains functions used to calculate the PoW difficulty.
   """
 
-  alias Aecore.Chain.Block
-  alias Aeutil.Scientific
+  alias Aecore.Chain.{Block, Header}
   alias Aecore.Governance.GovernanceConstants
+  alias Aeutil.Scientific
 
   use Bitwise
 

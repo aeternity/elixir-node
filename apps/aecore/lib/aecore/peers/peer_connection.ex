@@ -9,7 +9,6 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.Genesis
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Sync.Sync

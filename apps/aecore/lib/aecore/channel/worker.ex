@@ -26,7 +26,7 @@ defmodule Aecore.Channel.Worker do
   @type role :: :initiator | :responder
 
   @typedoc """
-  State is map channel_id -> channel_peer_state
+  State is a map channel_id -> channel_peer_state
   """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
@@ -42,7 +42,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about new mined tx
+  Notifies the channel manager about a new mined tx
   """
   def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCreateTx}} = tx) do
     opened(tx)
@@ -72,7 +72,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channels from ChannelStatePeer object. Useful for storage
+  Imports channels from a ChannelStatePeer object. Useful for storage
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
   def import_channel(%ChannelStatePeer{} = channel_state) do
@@ -81,7 +81,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Import channel from open tx. Assumes no transactions were made
+  Imports a channel from an open tx. Assumes no transactions were made
   """
   @spec import_from_open(SignedTx.t(), non_neg_integer(), role()) :: :ok | error()
   def import_from_open(%SignedTx{} = open_tx, reserve, role)
@@ -91,7 +91,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channel from open tx and ChannelStateOffChain.
+  Imports a channel from an open tx and ChannelStateOffChain.
   """
   @spec import_from_open_and_state(
           SignedTx.t(),
@@ -111,7 +111,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Initializes channel with temporary ID. This has to be called for every channel by both :initiator and :responder.
+  Initializes a channel with a temporary ID. This has to be called for every channel by both :initiator and :responder.
   """
   @spec initialize(
           binary(),
@@ -128,7 +128,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Creates open transaction. Can only be called once per channel by :initiator. Returns pair: generated channelID, half signed SignedTx.
+  Creates an open transaction. Can only be called once per channel by :initiator. Returns pair: generated channelID, half signed SignedTx.
   """
   @spec open(
           binary(),
@@ -144,7 +144,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Signs open transaction. Can only be called once per channel by :responder. Returns fully signed SignedTx and adds it to Pool.
+  Signs an open transaction. Can only be called once per channel by :responder. Returns a fully signed SignedTx and adds it to the Pool.
   """
   @spec sign_open(binary(), SignedTx.t(), Keys.sign_priv_key()) ::
           {:ok, binary(), SignedTx.t()} | error()
@@ -154,7 +154,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies Channels Manager about confirmed channel open tx. Called by block validation stack.
+  Notifies the Channels Manager about a confirmed channel open tx. Called by block validation stack.
   """
   @spec opened(SignedTx.t()) :: :ok
   def opened(%SignedTx{} = open_tx) do
@@ -245,7 +245,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about mined slash or solo close transaction. If channel Manager has newer state for corresponding channel it creates a slash transaction and add it to pool.
+  Notifies the channel manager about a mined slash or solo close transaction. If the channel manager has newer state for corresponding channel it creates a slash transaction and adds it to the pool.
   """
   @spec slashed(
           SignedTx.t(),
@@ -260,7 +260,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Creates settle transaction and adds it to the pool
+  Creates a settle transaction and adds it to the pool
   """
   @spec settle(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | :error | error()
@@ -276,7 +276,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about mined settle tx.
+  Notifies the channel manager about a mined settle tx.
   """
   @spec settled(SignedTx.t()) :: :ok | error()
   def settled(%SignedTx{} = settle_tx) do
@@ -284,7 +284,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Returns map of all ChannelStatePeer objects.
+  Returns a map of all ChannelStatePeer objects.
   """
   @spec get_all_channels :: %{binary() => ChannelStatePeer.t()}
   def get_all_channels do
@@ -292,15 +292,13 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Returns channel peer state of channel with specified id.
+  Returns the channel peer state of a channel with the specified id.
   """
   @spec get_channel(binary()) :: {:ok, ChannelStatePeer.t()} | error()
   def get_channel(channel_id) when is_binary(channel_id) do
     GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
 
-  ## Server side
-  #
   def handle_call({:import_channel, channel_id, channel_state}, _from, state) do
     {:reply, :ok, Map.put(state, channel_id, channel_state)}
   end
@@ -350,8 +348,8 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:opened, open_tx}, _from, state) do
-    id = ChannelStateOnChain.id(SignedTx.data_tx(open_tx))
+  def handle_call({:opened, %SignedTx{data: data_tx}}, _from, state) do
+    id = ChannelStateOnChain.id(data_tx)
 
     if Map.has_key?(state, id) do
       peer_state = Map.get(state, id)
@@ -365,10 +363,10 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:transfer, id, amount, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, offchain_state} <-
-           ChannelStatePeer.transfer(peer_state, amount, priv_key) do
-      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.transfer(peer_state, amount, priv_key) do
+      {:ok, new_peer_state, offchain_state} ->
+        {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -381,10 +379,10 @@ defmodule Aecore.Channel.Worker do
       ) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, offchain_state} <-
-           ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
-      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
+      {:ok, new_peer_state, offchain_state} ->
+        {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -393,10 +391,10 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:close, id, fees, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, close_tx} <-
-           ChannelStatePeer.close(peer_state, fees, nonce, priv_key) do
-      {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.close(peer_state, fees, nonce, priv_key) do
+      {:ok, new_peer_state, close_tx} ->
+        {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -420,12 +418,7 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:closed, close_tx}, _from, state) do
-    payload =
-      close_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
-
+  def handle_call({:closed, %SignedTx{data: %DataTx{payload: payload}}}, _from, state) do
     id =
       case payload do
         %ChannelCloseMutalTx{channel_id: id} ->
@@ -476,15 +469,18 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slashed, slash_tx, fee, nonce, pubkey, priv_key}, _from, state) do
-    data_tx = SignedTx.data_tx(slash_tx)
-
+  def handle_call(
+        {:slashed, %SignedTx{data: %DataTx{payload: payload} = slash_tx}, fee, nonce, pubkey,
+         priv_key},
+        _from,
+        state
+      ) do
     channel_id =
-      case DataTx.payload(data_tx) do
-        %ChannelCloseSoloTx{} = payload ->
+      case payload do
+        %ChannelCloseSoloTx{} ->
           ChannelCloseSoloTx.channel_id(payload)
 
-        %ChannelSlashTx{} = payload ->
+        %ChannelSlashTx{} ->
           ChannelSlashTx.channel_id(payload)
       end
 
@@ -510,14 +506,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:settled, settle_tx}, _from, state) do
-    %ChannelSettleTx{channel_id: channel_id} =
-      settle_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
+  def handle_call({:settled, %SignedTx{data: %DataTx{payload: payload}}}, _from, state) do
+    %ChannelSettleTx{channel_id: channel_id} = payload
 
     if Map.has_key?(state, channel_id) do
-      new_peer_state = ChannelStatePeer.settled(Map.get(state, channel_id))
+      new_peer_state = state |> Map.get(channel_id) |> ChannelStatePeer.settled()
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:reply, :ok, state}
@@ -536,12 +529,12 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+  def handle_info({:gproc_ps_event, event, %{info: %{txs: txs}}}, state) do
     case event do
       # info is a block
       :new_top_block ->
         spawn(fn ->
-          Enum.each(info.txs, fn tx -> new_tx_mined(tx) end)
+          Enum.each(txs, fn tx -> new_tx_mined(tx) end)
         end)
     end
 

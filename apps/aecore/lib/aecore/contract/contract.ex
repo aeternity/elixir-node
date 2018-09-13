@@ -1,6 +1,6 @@
 defmodule Aecore.Contract.Contract do
   @moduledoc """
-  Aecore contact module implementation.
+  Module containing Contract interaction functionality
   """
   alias Aecore.Contract.Contract
   alias Aecore.Chain.Identifier
@@ -12,7 +12,8 @@ defmodule Aecore.Contract.Contract do
   # all storage nodes in one subtree under the contract tree.
   @store_prefix 16
 
-  @type contract :: %Contract{
+  @typedoc "Structure of the Contract Transaction type"
+  @type t :: %Contract{
           id: Identifier.t(),
           owner: Identifier.t(),
           vm_version: byte(),
@@ -24,13 +25,11 @@ defmodule Aecore.Contract.Contract do
           deposit: non_neg_integer()
         }
 
-  @type t :: contract()
-
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
 
   use Aecore.Util.Serializable
 
-  @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: contract()
+  @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: Contract.t()
   def new(owner, nonce, vm_version, code, deposit) do
     contract_id = create_contract_id(owner, nonce)
     identified_contract = Identifier.create_identity(contract_id, :contract)
@@ -82,7 +81,7 @@ defmodule Aecore.Contract.Contract do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Contract.t()} | {:error, String.t()}
   def decode_from_list(@version, [
         owner,
         vm_version,
@@ -148,7 +147,7 @@ defmodule Aecore.Contract.Contract do
   end
 
   @spec store_id(Contract.t()) :: binary()
-  def store_id(%Contract{id: id}), do: <<id.value::binary, @store_prefix>>
+  def store_id(%Contract{id: %Identifier{value: value}}), do: <<value::binary, @store_prefix>>
 
   defp create_contract_id(owner, nonce) do
     nonce_binary = :binary.encode_unsigned(nonce)

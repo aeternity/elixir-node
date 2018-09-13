@@ -1,21 +1,24 @@
 defmodule Aecore.Naming.Tx.NameTransferTx do
   @moduledoc """
-  Aecore structure of naming transfer.
+  Module defining the NameTransfer transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.Hash
 
   require Logger
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @typedoc "Expected structure for the Transfer Transaction"
   @type payload :: %{
@@ -34,13 +37,12 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         }
 
   @doc """
-  Definition of Aecore NameTransferTx structure
-  ## Parameters
+  Definition of the NameTransferTx structure
+  # Parameters
   - hash: hash of name to be transfered
   - target: target public key to transfer to
   """
   defstruct [:hash, :target]
-  use ExConstructor
 
   # Callbacks
 
@@ -56,14 +58,17 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   end
 
   @doc """
-  Checks target and hash byte sizes
+  Validates the transaction without considering state
   """
-  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
+  @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  def validate(
+        %NameTransferTx{hash: %Identifier{value: hash}, target: target},
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
       !Keys.key_size_valid?(target) ->
@@ -77,7 +82,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -94,19 +99,18 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         accounts,
         naming_state,
         _block_height,
-        %NameTransferTx{} = tx,
+        %NameTransferTx{target: %Identifier{value: target}, hash: %Identifier{value: hash}},
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
-    claim = %{claim_to_update | owner: tx.target.value}
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
+    claim_to_update = NamingStateTree.get(naming_state, hash)
+    claim = %{claim_to_update | owner: target}
+    updated_naming_chainstate = NamingStateTree.put(naming_state, hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameTransferTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
@@ -114,18 +118,17 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           non_neg_integer(),
           NameTransferTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
         _block_height,
-        tx,
-        data_tx
+        %NameTransferTx{hash: %Identifier{value: hash}},
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash.value)
+    claim = NamingStateTree.get(naming_state, hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -153,29 +156,34 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
-  def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  @spec encode_to_list(NameTransferTx.t(), DataTx.t()) :: list()
+  def encode_to_list(%NameTransferTx{hash: hash, target: target}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      Identifier.encode_to_binary(tx.hash),
-      Identifier.encode_to_binary(tx.target),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      Identifier.encode_to_binary(hash),
+      Identifier.encode_to_binary(target),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

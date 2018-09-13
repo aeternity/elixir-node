@@ -4,7 +4,6 @@ defmodule Aecore.Pow.Hashcash do
   """
 
   alias Aeutil.Scientific
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Chain.Header
 
   use Bitwise

@@ -182,46 +182,58 @@ defmodule Aetestframework.Worker do
   def register_oracle(node_name) do
     send_command(
       node_name,
-      "Oracle.register(\"foo: bar\", \"foo: bar\", 5, 5, %{ttl: 10, type: :relative})"
+      "Oracle.register(\"{foo: bar}\",\"boolean()\", 5, 5, %{ttl: 100, type: :relative}, 1234)"
     )
   end
 
   @spec extend_oracle(String.t()) :: :ok | :unknown_node
   def extend_oracle(node_name) do
-    send_command(node_name, "Oracle.extend(3, 10)")
+    send_command(node_name, "Oracle.extend(%{ttl: 3, type: :relative}, 10)")
   end
 
   @spec query_oracle(String.t()) :: :ok | :unknown_node
   def query_oracle(node_name) do
-    send_command(
-      node_name,
-      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
-    )
-
-    send_command(
-      node_name,
-      "oracle_address = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.first()"
-    )
-
-    send_command(
-      node_name,
-      "Oracle.query(oracle_address, \"foo: bar\", 5, 10, %{ttl: 10, type: :relative}, %{ttl: 10, type: :relative})"
-    )
+    send_command(node_name, "{pub_key, _} = Keys.keypair(:sign)")
+    send_command(node_name, "query_ttl = %{ttl: 10, type: :relative}")
+    send_command(node_name, "response_ttl = %{ttl: 20, type: :relative}")
+    send_command(node_name, "Oracle.query(pub_key, \"How are you?\", 5, 5, query_ttl, response_ttl, 1234)")
   end
 
   @spec respond_oracle(String.t()) :: :ok | :unknown_node
   def respond_oracle(node_name) do
+    send_command(node_name, "[tx]= Chain.top_block.txs")
+    send_command(node_name, "data = tx.data")
+    send_command(node_name, "[sender] = data.senders")
+    send_command(node_name, "query_id = OracleQueryTx.id(sender.value, data.nonce, data.payload.oracle_address.value)
+    ")
+
     send_command(
       node_name,
-      "oracle_tree = Chain.chain_state().oracles.oracle_tree"
+      "query = data.payload.oracle_address.value <> query_id"
     )
 
     send_command(
       node_name,
-      "query_id = oracle_tree |> PatriciaMerkleTree.all_keys() |> List.last()"
+      "OracleStateTree.get_query(Chain.chain_state().oracles, query)"
     )
 
-    send_command(node_name, "Oracle.respond(query_id, \"boolean\", 5)")
+    send_command(
+      node_name,
+      "Oracle.respond(query_id, \"I am fine, thanks!\", 5, 1234)"
+    )
+  end
+
+  def get_latest_tx_type(node_name) do
+    send_command(node_name, "%Block{txs: txs} = Chain.top_block")
+    send_command(node_name, "[tx] = txs")
+    send_command(node_name, "encoded_type = :erlang.term_to_binary(tx.data.type)")
+    send_command(node_name, "{:respond_tx_type, Base.encode32(encoded_type)}")
+  end
+
+  # pool
+
+  def get_pool_tx_count(node) do
+    send_command(node, "{:respond_pool_tx, Enum.count(Pool.get_pool())}")
   end
 
   # spend_tx
@@ -368,13 +380,17 @@ defmodule Aetestframework.Worker do
 
   defp update_data(state, result, respond, port, type) do
     {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+    data = process_result(respond, result)
+
+    put_in(state[node][type], data)
+  end
+
+  defp process_result(respond, result) do
     one_line_res = String.replace(result, "\n", "")
     respond_res = Regex.run(~r/({#{respond}.*})/, one_line_res)
     res = Regex.run(~r/"(.*)"/, List.last(respond_res))
     base_decoded = Base.decode32!(List.last(res))
-    data = :erlang.binary_to_term(base_decoded)
-
-    put_in(state[node][type], data)
+    :erlang.binary_to_term(base_decoded)
   end
 
   def check_peers(state, port, result) do
@@ -399,6 +415,16 @@ defmodule Aetestframework.Worker do
           result =~ ":respond_top_block" ->
             new_state = update_data(state, result, ":respond_top_block", port, :top_block)
             {:reply, :ok, new_state}
+
+          result =~ ":respond_pool_tx" ->
+            {node, _} = Enum.find(state, fn {_, value} -> value.process_port == port end)
+            txs_count_str = Regex.run(~r/(\d)}/, result)
+            {tx_count, _} = txs_count_str |> List.last() |> Integer.parse()
+            {:reply, tx_count, state}
+
+          result =~ ":respond_tx_type" ->
+            tx_type = process_result(":respond_tx_type", result)
+            {:reply, tx_type, state}
 
           result =~ ":respond_hash" ->
             new_state = update_data(state, result, ":respond_hash", port, :top_block_hash)

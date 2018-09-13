@@ -1,6 +1,6 @@
 defmodule Stack do
   @moduledoc """
-    Module for working with the VM's internal stack
+  Module for working with the VM's internal stack
   """
 
   @maximum_stack_length 1024

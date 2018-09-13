@@ -1,16 +1,17 @@
 defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @moduledoc """
-  Aecore structure of ChannelCreateTx transaction data.
+  Module defining the ChannelCreate transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -37,27 +38,24 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCreateTx structure
+  Definition of the ChannelCreateTx structure
 
-  ## Parameters
-  - initiator_amount: amount that account first on the senders list commits
-  - responser_amount: amount that account second on the senders list commits
+  # Parameters
+  - initiator_amount: the amount that the first sender commits
+  - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
   """
   defstruct [:initiator_amount, :responder_amount, :locktime]
-  use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
-  def init(
-        %{
-          initiator_amount: initiator_amount,
-          responder_amount: responder_amount,
-          locktime: locktime
-        } = _payload
-      ) do
+  def init(%{
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        locktime: locktime
+      }) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
@@ -66,17 +64,24 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
-  @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelCreateTx{} = tx, data_tx) do
+  @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  def validate(
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
+      initiator_amount + responder_amount < 0 ->
         {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
 
-      tx.locktime < 0 ->
+      locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
@@ -88,10 +93,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Changes the account state (balance) of both parties and creates a channel object
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
@@ -101,28 +106,31 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         accounts,
         channels,
         block_height,
-        %ChannelCreateTx{} = tx,
-        data_tx
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{nonce: nonce} = data_tx
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
 
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.initiator_amount * -1)
+        Account.apply_transfer!(acc, block_height, initiator_amount * -1)
       end)
       |> AccountStateTree.update(responder_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.responder_amount * -1)
+        Account.apply_transfer!(acc, block_height, responder_amount * -1)
       end)
 
     channel =
       ChannelStateOnChain.create(
         initiator_pubkey,
         responder_pubkey,
-        tx.initiator_amount,
-        tx.responder_amount,
-        tx.locktime
+        initiator_amount,
+        responder_amount,
+        locktime
       )
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
@@ -133,32 +141,29 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelCreateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
         _block_height,
-        %ChannelCreateTx{} = tx,
-        data_tx
+        %ChannelCreateTx{initiator_amount: initiator_amount, responder_amount: responder_amount},
+        %DataTx{nonce: nonce, fee: fee} = data_tx
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
-    fee = DataTx.fee(data_tx)
 
     cond do
-      AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + tx.initiator_amount) < 0 ->
+      AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->
         {:error, "#{__MODULE__}: Negative initiator balance"}
 
-      AccountStateTree.get(accounts, responder_pubkey).balance - tx.responder_amount < 0 ->
+      AccountStateTree.get(accounts, responder_pubkey).balance - responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
       ChannelStateTree.has_key?(
@@ -179,28 +184,37 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.account()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
-  def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+  @spec encode_to_list(ChannelCreateTx.t(), DataTx.t()) :: list()
+  def encode_to_list(
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{senders: senders, nonce: nonce, fee: fee, ttl: ttl}
+      ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      :binary.encode_unsigned(tx.initiator_amount),
-      :binary.encode_unsigned(tx.responder_amount),
-      :binary.encode_unsigned(tx.locktime),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_list_to_binary(senders),
+      :binary.encode_unsigned(nonce),
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      :binary.encode_unsigned(locktime),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_senders,
         nonce,

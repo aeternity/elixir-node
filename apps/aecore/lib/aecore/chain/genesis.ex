@@ -1,10 +1,10 @@
 defmodule Aecore.Chain.Genesis do
   @moduledoc """
-  Module for genesis block options
+  Module defining the Genesis block
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header}
+  alias Aecore.Chain.{Block, Chainstate, Header}
   alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Governance.GenesisConstants, as: GenesisConstants
 
@@ -12,6 +12,7 @@ defmodule Aecore.Chain.Genesis do
 
   @dir Application.get_env(:aecore, :account_path)[:path]
 
+  @spec hash() :: binary()
   def hash do
     Header.hash(header())
   end

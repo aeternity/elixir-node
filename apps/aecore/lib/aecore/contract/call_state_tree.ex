@@ -8,8 +8,11 @@ defmodule Aecore.Contract.CallStateTree do
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
 
-  @type calls_state() :: Trie.t()
+  @typedoc "Hash of the tree"
   @type hash :: binary()
+
+  @typedoc "Calls tree"
+  @type calls_state() :: Trie.t()
 
   @spec init_empty() :: calls_state()
   def init_empty do

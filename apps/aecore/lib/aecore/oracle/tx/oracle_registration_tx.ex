@@ -1,21 +1,23 @@
 defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @moduledoc """
-  Contains the transaction structure for oracle registration
-  and functions associated with those transactions.
+  Module defining the OracleRegistration transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Tx.DataTx
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Expected structure for the OracleRegistration Transaction"
   @type payload :: %{
           query_format: String.t(),
           response_format: String.t(),
@@ -23,6 +25,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure of the OracleRegistration Transaction type"
   @type t :: %OracleRegistrationTx{
           query_format: String.t(),
           response_format: String.t(),
@@ -30,6 +33,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           ttl: Oracle.ttl()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.oracles()
 
   defstruct [
@@ -39,10 +43,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     :ttl
   ]
 
-  @spec get_chain_state_name() :: :oracles
+  @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
-
-  use ExConstructor
 
   @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
@@ -59,21 +61,21 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     }
   end
 
-  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @doc """
+  Validates the transaction without considering state
+  """
+  @spec validate(OracleRegistrationTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %OracleRegistrationTx{
           query_format: query_format,
           response_format: response_format,
           ttl: ttl
         },
-        data_tx
+        %DataTx{} = data_tx
       ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      ttl <= 0 ->
-        {:error, "#{__MODULE__}: Invalid ttl"}
-
       !is_binary(query_format) && !is_binary(response_format) ->
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
 
@@ -88,6 +90,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     end
   end
 
+  @doc """
+  Enters an oracle in the oracle state tree
+  """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
@@ -99,18 +104,23 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         accounts,
         oracles,
         block_height,
-        %OracleRegistrationTx{} = tx,
-        data_tx
+        %OracleRegistrationTx{
+          query_format: query_format,
+          response_format: response_format,
+          query_fee: query_fee,
+          ttl: ttl
+        },
+        %DataTx{} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
     identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
     oracle = %Oracle{
       owner: identified_oracle_owner,
-      query_format: tx.query_format,
-      response_format: tx.response_format,
-      query_fee: tx.query_fee,
-      expires: Oracle.calculate_absolute_ttl(tx.ttl, block_height)
+      query_format: query_format,
+      response_format: response_format,
+      query_fee: query_fee,
+      expires: Oracle.calculate_absolute_ttl(ttl, block_height)
     }
 
     {:ok,
@@ -120,29 +130,31 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
      }}
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
         block_height,
-        tx,
-        data_tx
+        %OracleRegistrationTx{ttl: ttl} = tx,
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
       !Oracle.tx_ttl_is_valid?(tx, block_height) ->
-        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(tx.ttl)}"}
+        {:error, "#{__MODULE__}: Invalid transaction TTL: #{inspect(ttl)}"}
 
       OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
@@ -162,14 +174,14 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::
           boolean()
-  def is_minimum_fee_met?(tx, fee, block_height) do
-    case tx.ttl do
+  def is_minimum_fee_met?(%OracleRegistrationTx{ttl: ttl}, fee, block_height) do
+    case ttl do
       %{ttl: ttl, type: :relative} ->
         fee >= calculate_minimum_fee(ttl)
 
@@ -194,24 +206,33 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
-  def encode_to_list(%OracleRegistrationTx{} = tx, %DataTx{} = datatx) do
-    ttl_type = Serialization.encode_ttl_type(tx.ttl)
-    [sender] = datatx.senders
+  @spec encode_to_list(OracleRegistrationTx.t(), DataTx.t()) :: list()
+  def encode_to_list(
+        %OracleRegistrationTx{
+          ttl: oracle_ttl,
+          query_format: query_format,
+          response_format: response_format,
+          query_fee: query_fee
+        },
+        %DataTx{senders: [sender], nonce: nonce, fee: fee, ttl: ttl}
+      ) do
+    ttl_type = Serialization.encode_ttl_type(oracle_ttl)
 
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.query_format,
-      tx.response_format,
-      tx.query_fee,
+      :binary.encode_unsigned(nonce),
+      query_format,
+      response_format,
+      query_fee,
       ttl_type,
-      :binary.encode_unsigned(tx.ttl.ttl),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(oracle_ttl.ttl),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,
