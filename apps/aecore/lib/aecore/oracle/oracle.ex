@@ -49,7 +49,15 @@ defmodule Aecore.Oracle.Oracle do
           ttl(),
           non_neg_integer()
         ) :: :ok | :error
-  def register(query_format, response_format, query_fee, fee, ttl, tx_ttl \\ 0) do
+  def register(
+        query_format,
+        response_format,
+        query_fee,
+        fee,
+        ttl,
+        tx_ttl \\ 0,
+        {pubkey, privkey} \\ {nil, nil}
+      ) do
     payload = %{
       query_format: query_format,
       response_format: response_format,
@@ -57,7 +65,12 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
-    {pubkey, privkey} = Keys.keypair(:sign)
+    {pubkey, privkey} =
+      if privkey == nil do
+        Keys.keypair(:sign)
+      else
+        {pubkey, privkey}
+      end
 
     tx_data =
       DataTx.init(
