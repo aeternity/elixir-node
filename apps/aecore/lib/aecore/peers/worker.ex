@@ -13,6 +13,7 @@ defmodule Aecore.Peers.Worker do
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     peers = %{}
 
@@ -27,14 +28,17 @@ defmodule Aecore.Peers.Worker do
     {:ok, state}
   end
 
+  @spec state() :: map()
   def state do
     GenServer.call(__MODULE__, :state)
   end
 
+  @spec all_peers() :: list()
   def all_peers do
     GenServer.call(__MODULE__, :all_peers)
   end
 
+  @spec all_pids() :: list()
   def all_pids do
     GenServer.call(__MODULE__, :all_pids)
   end
@@ -43,6 +47,7 @@ defmodule Aecore.Peers.Worker do
     GenServer.call(__MODULE__, {:add_peer, conn_info})
   end
 
+  @spec remove_peer(Keys.pubkey()) :: :ok
   def remove_peer(pubkey) do
     GenServer.call(__MODULE__, {:remove_peer, pubkey})
   end
@@ -73,6 +78,7 @@ defmodule Aecore.Peers.Worker do
     end
   end
 
+  @spec try_connect(map()) :: :ok
   def try_connect(peer_info) do
     GenServer.cast(__MODULE__, {:try_connect, peer_info})
   end
@@ -153,14 +159,6 @@ defmodule Aecore.Peers.Worker do
     {:reply, have_peer, state}
   end
 
-  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
-    Enum.each(peers, fn {_pubkey, peer} ->
-      PeerConnection.send_new_block(block, peer.connection)
-    end)
-
-    {:noreply, state}
-  end
-
   def handle_cast(
         {:try_connect, peer_info},
         %{peers: peers, local_peer: %{privkey: privkey, pubkey: pubkey}} = state
@@ -175,13 +173,21 @@ defmodule Aecore.Peers.Worker do
           {:noreply, state}
 
         true ->
-          Logger.info(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
+          Logger.error(fn -> "Won't add #{inspect(peer_info)}, already in peer list" end)
           {:noreply, state}
       end
     else
-      Logger.info("Can't add ourself")
+      Logger.error(fn -> "Can't add ourself" end)
       {:noreply, state}
     end
+  end
+
+  def handle_cast({:broadcast_block, block}, %{peers: peers} = state) do
+    Enum.each(peers, fn {_pubkey, peer} ->
+      PeerConnection.send_new_block(block, peer.connection)
+    end)
+
+    {:noreply, state}
   end
 
   defp prepare_peers(peers) do

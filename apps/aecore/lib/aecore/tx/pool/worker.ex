@@ -5,23 +5,20 @@ defmodule Aecore.Tx.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Events
+  alias Aecore.Chain.{Block, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.Events
   alias Aehttpserver.Web.Notify
 
   require Logger
 
   @type tx_pool :: map()
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end

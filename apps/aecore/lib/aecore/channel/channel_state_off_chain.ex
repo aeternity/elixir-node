@@ -12,6 +12,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
 
   @version 1
 
+  @typedoc "Structure of the ChannelStateOffChain Transaction type"
   @type t :: %ChannelStateOffChain{
           channel_id: binary(),
           sequence: non_neg_integer(),
@@ -20,6 +21,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
           signatures: {binary(), binary()}
         }
 
+  @typedoc "Reason for the error"
   @type error :: {:error, binary()}
 
   defstruct [
@@ -30,7 +32,6 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     :signatures
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   require Logger
@@ -282,6 +283,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     ExRLP.encode(list_form)
   end
 
+  @spec encode_to_list(ChannelStateOffChain.t()) :: list()
   def encode_to_list(%ChannelStateOffChain{
         channel_id: channel_id,
         sequence: sequence,
@@ -299,6 +301,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, ChannelStateOffChain.t()} | error()
   def decode_from_list(@version, [
         channel_id,
         sequence,
