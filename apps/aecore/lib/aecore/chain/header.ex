@@ -4,8 +4,8 @@ defmodule Aecore.Chain.Header do
   """
 
   alias Aecore.Chain.Header
-  alias Aeutil.Bits
   alias Aecore.Keys
+  alias Aeutil.Bits
 
   @header_version_size 64
   @header_height_size 64
@@ -21,6 +21,7 @@ defmodule Aecore.Chain.Header do
   @pow_element_size_bits @pow_element_size * 8
   @pow_length 42
 
+  @typedoc "Structure of the Header Transaction type"
   @type t :: %Header{
           height: non_neg_integer(),
           prev_hash: binary(),
@@ -59,7 +60,6 @@ defmodule Aecore.Chain.Header do
           Keys.pubkey(),
           non_neg_integer()
         ) :: Header.t()
-
   def create(height, prev_hash, txs_hash, root_hash, target, nonce, time, miner, version) do
     %Header{
       height: height,
@@ -74,10 +74,12 @@ defmodule Aecore.Chain.Header do
     }
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("bh", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"bh$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -86,7 +88,7 @@ defmodule Aecore.Chain.Header do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec encode_to_binary(Header.t()) :: binary()
+  @spec encode_to_binary(Header.t()) :: binary() | {:error, String.t()}
   def encode_to_binary(%Header{} = header) do
     <<
       header.version::@header_version_size,
@@ -159,7 +161,7 @@ defmodule Aecore.Chain.Header do
     end
   end
 
-  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()}
+  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()} | {:error, String.t()}
   def binary_to_pow(<<pow_bin_list::binary-size(@pow_size)>>) do
     deserialize_pow(pow_bin_list, [])
   end
