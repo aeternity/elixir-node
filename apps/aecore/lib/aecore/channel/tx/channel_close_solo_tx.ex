@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @moduledoc """
-  Aecore structure of ChannelCloseSoloTx transaction data.
+  Module defining the ChannelCloseSolo transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -39,15 +39,15 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCloseSoloTx structure
+  Definition of the ChannelCloseSoloTx structure
 
-  ## Parameters
-  - state - the state to start close operation with
+  # Parameters
+  - state - the (final) state with which the channel is going to be closed
   """
   defstruct [:channel_id, :offchain_tx, :poi]
   use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCloseSoloTx.t()
@@ -59,11 +59,20 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     }
   end
 
+  @spec create(ChannelStateOffChain.t()) :: ChannelCloseSoloTx.t()
+  def create(state) do
+    %ChannelCloseSoloTx{state: state}
+  end
+
+  @spec sequence(ChannelCloseSoloTx.t()) :: non_neg_integer()
+  def sequence(%ChannelCloseSoloTx{state: %ChannelStateOffChain{sequence: sequence}}),
+    do: sequence
+
   @spec channel_id(ChannelCloseSoloTx.t()) :: binary()
   def channel_id(%ChannelCloseSoloTx{channel_id: channel_id}), do: channel_id
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
   @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(%ChannelCloseSoloTx{offchain_tx: :empty}, data_tx) do
@@ -76,29 +85,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     end
   end
 
-  def validate(%ChannelCloseSoloTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffchainTx{channel_id: offchain_tx_channel_id, state_hash: state_hash}, poi: poi}, data_tx) do
-    senders = DataTx.senders(data_tx)
-
-    cond do
-      length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
-
-      internal_channel_id !== offchain_tx_channel_id ->
-        {:error, "#{__MODULE__}: Channel id mismatch"}
-
-      Poi.calculate_root_hash(poi) !== state_hash ->
-        {:error, "#{__MODULE__}: Invalid state_hash"}
-
-    true ->
-      :ok
-    end
-  end
-
   @doc """
-  Performs channel slash
+  Performs a channel slash
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
@@ -124,16 +115,15 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelSoloCloseTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseSoloTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
@@ -170,7 +160,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
@@ -180,6 +170,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = datatx) do
     main_sender = Identifier.create_identity(DataTx.main_sender(datatx), :account)
     [
@@ -199,6 +190,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     value
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [channel_id, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
     case ChannelOffchainTx.decode_from_payload(payload) do
       {:ok, offchain_tx} ->

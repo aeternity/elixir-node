@@ -1,6 +1,6 @@
 defmodule Aecore.Tx.SignedTx do
   @moduledoc """
-  Aecore structure of a signed transaction.
+  Module defining the Signed transaction
   """
 
   alias Aecore.Tx.SignedTx
@@ -15,6 +15,7 @@ defmodule Aecore.Tx.SignedTx do
 
   require Logger
 
+  @typedoc "Structure of the SignedTx Transaction type"
   @type t :: %SignedTx{
           data: DataTx.t(),
           signatures: list(Keys.pubkey())
@@ -35,6 +36,9 @@ defmodule Aecore.Tx.SignedTx do
     data
   end
 
+  @doc """
+  Validates the transaction without considering state
+  """
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
     if signatures_valid?(tx) do
@@ -69,7 +73,7 @@ defmodule Aecore.Tx.SignedTx do
   and the private key of the sender.
   Returns a signed tx
 
-  ## Parameters
+  # Parameters
      - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
   """
@@ -111,10 +115,12 @@ defmodule Aecore.Tx.SignedTx do
     type.reward(payload, account_state)
   end
 
+  @spec base58c_encode(binary) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("tx", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"tx$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -123,10 +129,12 @@ defmodule Aecore.Tx.SignedTx do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
+  @spec base58c_encode_root(binary) :: String.t()
   def base58c_encode_root(bin) do
     Bits.encode58c("bx", bin)
   end
 
+  @spec base58c_decode_root(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode_root(<<"bx$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -135,6 +143,7 @@ defmodule Aecore.Tx.SignedTx do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
+  @spec base58c_encode_signature(binary) :: nil | String.t()
   def base58c_encode_signature(bin) do
     if bin == nil do
       nil
@@ -143,6 +152,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
+  @spec base58c_decode_signature(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode_signature(<<"sg$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -277,6 +287,7 @@ defmodule Aecore.Tx.SignedTx do
     :error
   end
 
+  @spec encode_to_list(SignedTx.t()) :: list()
   def encode_to_list(%SignedTx{} = tx) do
     [
       :binary.encode_unsigned(@version),
@@ -285,6 +296,7 @@ defmodule Aecore.Tx.SignedTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def decode_from_list(@version, [signatures, data]) do
     case DataTx.rlp_decode(data) do
       {:ok, data} ->

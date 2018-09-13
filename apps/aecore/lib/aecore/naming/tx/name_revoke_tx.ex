@@ -1,21 +1,24 @@
 defmodule Aecore.Naming.Tx.NameRevokeTx do
   @moduledoc """
-  Aecore structure of naming Update.
+  Module defining the NameRevoke transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Naming.Tx.NameRevokeTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Naming.Tx.NameRevokeTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.Hash
 
   require Logger
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @typedoc "Expected structure for the Revoke Transaction"
   @type payload :: %{
@@ -32,16 +35,15 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         }
 
   @doc """
-  Definition of Aecore NameRevokeTx structure
-  ## Parameters
+  Definition of the NameRevokeTx structure
+  # Parameters
   - hash: hash of name to be revoked
   """
   defstruct [:hash]
-  use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: NameRevokeTx.t()
+  @spec init(payload() | map()) :: NameRevokeTx.t()
   def init(%{hash: hash}) do
     name_hash =
       case hash do
@@ -63,9 +65,9 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @doc """
-  Checks name hash byte size
+  Validates the transaction without considering state
   """
-  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameRevokeTx{hash: hash}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -81,7 +83,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -115,8 +117,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameRevokeTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
@@ -124,7 +125,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
           non_neg_integer(),
           NameRevokeTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -177,6 +178,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameRevokeTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -190,6 +192,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, encoded_hash, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_hash) do
       {:ok, hash} ->

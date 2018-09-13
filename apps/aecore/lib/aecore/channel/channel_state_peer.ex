@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.ChannelStatePeer do
   @moduledoc """
-  Structure of Channel Peer State
+  Module defining the structure of the Channel Peer state
   """
 
   alias Aecore.Channel.{
@@ -31,6 +31,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   @type fsm_state :: :initialized | :awaiting_full_tx | :awaiting_tx_confirmed | :open | :closing | :closed
 
+  @typedoc "Structure of the ChannelStatePeer Transaction type"
   @type t :: %ChannelStatePeer{
           fsm_state: fsm_state(),
           initiator_pubkey: Keys.pubkey(),
@@ -44,7 +45,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
           sequence: non_neg_integer()
         }
 
-  @type error :: {:error, String.t()}
+  @typedoc "Reason for the error"
+  @type error :: {:error, binary()}
 
   defstruct [
     :fsm_state,
@@ -194,8 +196,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec initialize(
           binary(),
-          Wallet.pubkey(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
@@ -206,6 +208,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
         channel_reserve,
         role
       ) do
+    initial_state =
+      ChannelStateOffChain.create(temporary_id, 0, initiator_amount, responder_amount)
 
     %ChannelStatePeer{
       fsm_state: :initialized,
@@ -256,7 +260,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer(),
-          Keys.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
   def open(
         %ChannelStatePeer{
@@ -309,7 +313,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Signs provided open tx if it verifies. Can only be called in initialized state by responder. Returns altered ChannelPeerState, generated channel id and fully signed openTx.
+  Signs provided open tx if it verifies. Can only be called in initialized state by the responder. Returns an altered ChannelPeerState, generated channel id and fully signed open tx.
   """
   @spec sign_open(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), SignedTx.t(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
@@ -694,7 +698,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Changes channel state to closed. Should only be called when ChannelCloseMutalTx is mined.
+  Changes the channel state to closed. Should only be called when a ChannelCloseMutalTx is mined.
   """
   @spec closed(ChannelStatePeer.t()) :: ChannelStatePeer.t()
   def closed(%ChannelStatePeer{} = peer_state) do
@@ -735,6 +739,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         %ChannelStatePeer{mutually_signed_tx: [most_recent_tx | _]} = peer_state,
         fee,
         nonce,
+        pubkey,
         priv_key
       ) do
     new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}
@@ -759,7 +764,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           SignedTx.t(),
           non_neg_integer(),
           non_neg_integer(),
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t() | nil} | error()
   def slashed(
         %ChannelStatePeer{
@@ -768,6 +773,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         slash_tx,
         fee,
         nonce,
+        pubkey,
         privkey
       ) do
     payload =
@@ -824,7 +830,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Returns our pubkey from in channel.
   """
-  @spec our_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
+  @spec our_pubkey(ChannelStatePeer.t()) :: Keys.pubkey()
   def our_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do
     pubkey
   end
@@ -836,7 +842,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Returns the pubkey of the other peer in channel.
   """
-  @spec foreign_pubkey(ChannelStatePeer.t()) :: Wallet.pubkey()
+  @spec foreign_pubkey(ChannelStatePeer.t()) :: Keys.pubkey()
   def foreign_pubkey(%ChannelStatePeer{role: :initiator, responder_pubkey: pubkey}) do
     pubkey
   end

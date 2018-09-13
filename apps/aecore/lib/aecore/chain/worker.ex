@@ -1,22 +1,22 @@
 defmodule Aecore.Chain.Worker do
   @moduledoc """
-  Module for working with chain
+  Module containing Chain interaction functionality
   """
 
   use GenServer
   use Bitwise
 
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Tx.NameTransferTx
   alias Aecore.Oracle.Tx.OracleQueryTx
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys
-  alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Tx.SignedTx
   alias Aehttpserver.Web.Notify
-  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
   alias Aeutil.{Serialization, Hash, Scientific, PatriciaMerkleTree, Events}
 
   require Logger
@@ -27,6 +27,7 @@ defmodule Aecore.Chain.Worker do
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
   end
@@ -63,6 +64,7 @@ defmodule Aecore.Chain.Worker do
      }, 0}
   end
 
+  @spec clear_state() :: :ok
   def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()
@@ -168,8 +170,8 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
-    ## At first we are making attempt to get the block from the chain state.
-    ## If there is no such block then we check into the db.
+    # At first we are making attempt to get the block from the chain state.
+    # If there is no such block then we check the db.
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->
         err
@@ -286,8 +288,6 @@ defmodule Aecore.Chain.Worker do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
-  ## Server side
-
   def handle_call(:clear_state, _from, _state) do
     {:ok, new_state, _} = init(:empty)
     {:reply, :ok, new_state}
@@ -366,7 +366,7 @@ defmodule Aecore.Chain.Worker do
 
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
-    # This allows for log n findning of block with given height.
+    # This allows for log n findning of block with a given height.
 
     new_refs = refs(@max_refs, blocks_data_map, new_block.header.prev_hash)
 
@@ -395,7 +395,7 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        ## Transfrom from chain state
+        # Transfrom from chain state
         :chain_state => %{
           new_block_hash =>
             transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})

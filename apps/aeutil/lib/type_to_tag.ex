@@ -1,6 +1,6 @@
 defmodule Aeutil.TypeToTag do
   @moduledoc """
-  Conversion from structure types to numeric tags for RLP encoding end reverse.
+  Conversion from structure types to numeric tags for RLP encoding and reverse.
   """
 
   @spec tag_to_type(non_neg_integer()) :: {:ok, atom()} | {:error, String.t()}

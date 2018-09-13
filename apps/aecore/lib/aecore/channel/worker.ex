@@ -26,7 +26,7 @@ defmodule Aecore.Channel.Worker do
   @type role :: :initiator | :responder
 
   @typedoc """
-  State is map channel_id -> channel_peer_state
+  State is a map channel_id -> channel_peer_state
   """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
@@ -42,7 +42,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about new mined tx
+  Notifies the channel manager about a new mined tx
   """
   def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do  #, ChannelWidhdrawTx, ChannelDepositTx]  do
     recv_confirmed_tx(tx)
@@ -72,7 +72,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channels from ChannelStatePeer object. Useful for storage
+  Imports channels from a ChannelStatePeer object. Useful for storage
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
   def import_channel(%ChannelStatePeer{} = channel_state) do
@@ -81,7 +81,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Import channel from open tx. Assumes no transactions were made
+  Imports a channel from an open tx. Assumes no transactions were made
   """
   @spec import_from_open(SignedTx.t(), role()) :: :ok | error()
   def import_from_open(%SignedTx{data: %DataTx{type: ChannelOpenTx}} = open_tx, role)
@@ -115,7 +115,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Initializes channel with temporary ID. This has to be called for every channel by both :initiator and :responder.
+  Initializes a channel with a temporary ID. This has to be called for every channel by both :initiator and :responder.
   """
   @spec initialize(
           binary(),
@@ -266,7 +266,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Creates settle transaction and adds it to the pool
+  Creates a settle transaction and adds it to the pool
   """
   @spec settle(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | :error | error()
@@ -282,7 +282,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Notifies channel manager about mined settle tx.
+  Notifies the channel manager about a mined settle tx.
   """
   @spec settled(SignedTx.t()) :: :ok | error()
   def settled(%SignedTx{} = settle_tx) do
@@ -290,7 +290,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Returns map of all ChannelStatePeer objects.
+  Returns a map of all ChannelStatePeer objects.
   """
   @spec get_all_channels :: %{binary() => ChannelStatePeer.t()}
   def get_all_channels do
@@ -298,15 +298,13 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Returns channel peer state of channel with specified id.
+  Returns the channel peer state of a channel with the specified id.
   """
   @spec get_channel(binary()) :: {:ok, ChannelStatePeer.t()} | error()
   def get_channel(channel_id) when is_binary(channel_id) do
     GenServer.call(__MODULE__, {:get_channel, channel_id})
   end
 
-  ## Server side
-  #
   def handle_call({:import_channel, channel_id, channel_state}, _from, state) do
     {:reply, :ok, Map.put(state, channel_id, channel_state)}
   end

@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @moduledoc """
-  Aecore structure of ChannelCloseMutalTx transaction data.
+  Module defining the ChannelCloseMutual transaction
   """
 
   @behaviour Aecore.Tx.Transaction
@@ -38,17 +38,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCloseMutalTx structure
+  Definition of the ChannelCloseMutalTx structure
 
-  ## Parameters
+  # Parameters
   - channel_id: channel id
-  - initiator_amount: amount that account first on the senders list commits
-  - responser_amount: amount that account second on the senders list commits
+  - initiator_amount: the amount that the first sender commits
+  - responder_amount: the amount that the second sender commits
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
   use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCloseMutalTx.t()
@@ -67,9 +67,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
-  @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -89,7 +89,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Changes the account state (balance) of both parties and closes channel (drops channel object from chainstate)
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
@@ -119,16 +119,15 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelCloseMutalTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCloseMutalTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         _accounts,
         channels,
@@ -164,7 +163,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, _block_height, _tx, _data_tx, _fee) do
     # Fee is deducted from channel
     accounts
@@ -175,6 +174,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ChannelCloseMutalTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
@@ -193,6 +193,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     value
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_senders,
         nonce,

@@ -49,13 +49,13 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         }
 
   @doc """
-  Definition of Aecore ChannelCreateTx structure
+  Definition of the ChannelCreateTx structure
 
-  ## Parameters
+  # Parameters
   - initiator: initiator of the channel creation
-  - initiator_amount: amount that account first on the senders list commits
+  - initiator_amount: the amount that the first sender commits
   - responder: responder of the channel creation
-  - responder_amount: amount that account second on the senders list commits
+  - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
   - state_hash: root hash of the initial offchain chainstate
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
@@ -64,7 +64,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id]
   use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
@@ -93,9 +93,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks transactions internal contents validity
+  Validates the transaction without considering state
   """
-  @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelCreateTx{} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -126,10 +126,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Changes the account state (balance) of both parties and creates channel object
+  Changes the account state (balance) of both parties and creates a channel object
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
@@ -173,16 +173,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the ChannelCreateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
@@ -218,7 +217,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelCreateTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
+        ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
@@ -228,6 +227,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ChannelCreateTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
@@ -249,6 +249,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     value
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_initiator,
         initiator_amount,

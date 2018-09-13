@@ -22,7 +22,7 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Aehttpserver.Application, []},
+      mod: {Aehttpserver, []},
       extra_applications: [:logger, :logger_file_backend, :runtime_tools]
     ]
   end

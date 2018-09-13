@@ -1,17 +1,13 @@
 defmodule Aecore.Tx.DataTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the Data transaction which encapsulates all of the different sub-transactions
   """
-  alias Aecore.Tx.DataTx
-  alias Aeutil.Serialization
-  alias Aeutil.Bits
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Keys
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.Identifier
-  alias Aeutil.TypeToTag
+  alias Aecore.Keys
+  alias Aecore.Tx.DataTx
+  alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
 
@@ -67,9 +63,9 @@ defmodule Aecore.Tx.DataTx do
         }
 
   @doc """
-  Definition of Aecore DataTx structure
+  Definition of the DataTx structure
 
-  ## Parameters
+  # Parameters
   - type: The type of transaction that may be added to the blockchain
   - payload: The strcuture of the specified transaction type
   - senders: The public addresses of the accounts originating the transaction. First element of this list is special - it's the main sender. Nonce is applied to main sender Account.
@@ -201,7 +197,7 @@ defmodule Aecore.Tx.DataTx do
   end
 
   @doc """
-  Checks whether the fee is above 0.
+  Validates the transaction without considering state
   """
   @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
@@ -278,6 +274,9 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @doc """
+  Validates the transaction with state considered
+  """
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
   def preprocess_check(chainstate, block_height, tx) do
@@ -336,10 +335,12 @@ defmodule Aecore.Tx.DataTx do
     init(data_tx.type, data_tx.payload, senders, data_tx.fee, data_tx.nonce, data_tx.ttl)
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("th", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"th$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -378,17 +379,20 @@ defmodule Aecore.Tx.DataTx do
     true
   end
 
+  @spec encode_to_list(DataTx.t()) :: list()
   def encode_to_list(%DataTx{} = tx) do
     {:ok, tag} = TypeToTag.type_to_tag(tx.type)
     [tag | tx.type.encode_to_list(tx.payload, tx)]
   end
 
+  @spec rlp_encode(DataTx.t()) :: binary()
   def rlp_encode(%DataTx{} = tx) do
     tx
     |> encode_to_list()
     |> ExRLP.encode()
   end
 
+  @spec rlp_decode(binary()) :: {:ok, DataTx.t()} | {:error, String.t()}
   def rlp_decode(binary) do
     case Serialization.rlp_decode_anything(binary) do
       {:ok, %DataTx{}} = result ->

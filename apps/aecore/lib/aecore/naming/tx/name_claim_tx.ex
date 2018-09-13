@@ -1,46 +1,47 @@
 defmodule Aecore.Naming.Tx.NameClaimTx do
   @moduledoc """
-  Aecore structure of naming claim.
+  Module defining the NameClaim transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: Chainstate.naming()
 
-  @typedoc "Structure of the Spend Transaction type"
+  @typedoc "Structure of the NameClaimTx Transaction type"
   @type t :: %NameClaimTx{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @doc """
-  Definition of Aecore NameClaimTx structure
-  ## Parameters
+  Definition of the NameClaimTx structure
+  # Parameters
   - name: name to be claimed
   - name_salt: salt that the name was pre-claimed with
   """
   defstruct [:name, :name_salt]
-  use ExConstructor
 
   # Callbacks
 
@@ -50,9 +51,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
-  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
@@ -73,7 +74,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -108,8 +109,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameClaimTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
@@ -117,7 +117,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           non_neg_integer(),
           NameClaimTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -173,6 +173,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameClaimTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -187,6 +188,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
     payload = %NameClaimTx{name: name, name_salt: :binary.decode_unsigned(name_salt)}
 

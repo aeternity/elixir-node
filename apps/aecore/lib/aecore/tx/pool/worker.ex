@@ -1,28 +1,24 @@
 defmodule Aecore.Tx.Pool.Worker do
   @moduledoc """
   Module for working with the transaction pool.
-  The pool itself is a map with an empty initial state.
   """
 
   use GenServer
 
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Events
+  alias Aecore.Chain.{Block, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.Events
   alias Aehttpserver.Web.Notify
 
   require Logger
 
   @type tx_pool :: map()
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -56,7 +52,7 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
 
-  ## Server side
+  # Server side
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
     txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
@@ -131,7 +127,7 @@ defmodule Aecore.Tx.Pool.Worker do
             true
 
           :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
         end
 
       %OracleExtendTx{} ->
@@ -142,7 +138,7 @@ defmodule Aecore.Tx.Pool.Worker do
     end
   end
 
-  ## Private functions
+  # Private functions
 
   @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do

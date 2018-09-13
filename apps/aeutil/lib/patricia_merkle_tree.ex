@@ -127,6 +127,21 @@ defmodule Aeutil.PatriciaMerkleTree do
   def delete(trie, key), do: Trie.delete(trie, key)
 
   @doc """
+  This is a dirty workaround that fixes problems with MerklePatriciaTree till
+  https://github.com/aeternity/elixir-merkle-patricia-tree/issues/13 is resolved.
+  """
+  @spec fix_trie(Trie.t()) :: Trie.t()
+  def fix_trie(trie) do
+    Enum.reduce(
+      print_trie(trie, output: :as_pair, deserialize: false),
+      Trie.new(trie.db),
+      fn {key, value}, acc ->
+        Trie.update(acc, key, value)
+      end
+    )
+  end
+
+  @doc """
   Providing debug print of a given trie in the shell
   """
   @spec print_debug(Trie.t()) :: Trie.t() | list() | {:error, term()}
@@ -136,7 +151,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Providing pretty print of a given trie in the shell.
   Depending on the atom it can print structure or key value pairs. The default output is :as_struct
 
-  ## Examples
+  # Examples
 
   If we want to print as pair and no serialization is needed
       iex> Aeutil.PatriciaMerkleTree.new(:test_trie) |> Aeutil.PatriciaMerkleTree.enter("111", "val1") |> Aeutil.PatriciaMerkleTree.enter("112", "val2") |> Aeutil.PatriciaMerkleTree.print_trie([output: :as_pair, deserialize: false])
