@@ -16,7 +16,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aeutil.{Bits, Hash}
   alias Aeutil.PatriciaMerkleTree
 
-
   require Logger
 
   @protocol_version_field_size 64
