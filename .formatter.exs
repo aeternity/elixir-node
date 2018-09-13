@@ -3,6 +3,7 @@
     "apps/aecore/{lib,config,test}/**/*.{ex,exs}",
     "apps/aehttpclient/{lib,config,test}/**/*.{ex,exs}",
     "apps/aehttpserver/{lib,config,test}/**/*.{ex,exs}",
+    "apps/aetestframework/{lib,config,test}/**/*.{ex,exs}",
     "apps/aeutil/{lib,config,test}/**/*.{ex,exs}",
     "apps/aevm/config/**/*.exs",
     "apps/aevm/lib/aevm_util.ex",
