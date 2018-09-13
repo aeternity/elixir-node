@@ -82,18 +82,6 @@ defmodule Aecore.Chain.BlockValidation do
           txs: txs
         } = block
       ) do
-    server = self()
-    work = fn -> Cuckoo.verify(header) end
-
-    spawn(fn ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
-
-    is_target_met =
-      receive do
-        {:worker_reply, _from, verified?} -> verified?
-      end
-
     block_txs_count = length(txs)
     max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
@@ -113,7 +101,7 @@ defmodule Aecore.Chain.BlockValidation do
       !valid_header_time?(block) ->
         {:error, "#{__MODULE__}: Invalid header time"}
 
-      !is_target_met ->
+      !is_target_met?(header) ->
         {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
@@ -123,7 +111,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(%Block{txs: txs}) do
-    txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
+    Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -160,5 +148,19 @@ defmodule Aecore.Chain.BlockValidation do
   defp valid_header_time?(%Block{header: %Header{time: time}}) do
     time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
+  end
+
+  @spec is_target_met?(Header.t()) :: true | false
+  defp is_target_met?(%Header{} = header) do
+    server_pid = self()
+    work = fn -> Cuckoo.verify(header) end
+
+    Task.start(fn ->
+      send(server_pid, {:worker_reply, self(), work.()})
+    end)
+
+    receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
   end
 end

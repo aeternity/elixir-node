@@ -77,8 +77,9 @@ defmodule Aecore.Chain.Header do
 
   @spec hash(Header.t()) :: binary()
   def hash(%Header{} = header) do
-    header_binary = encode_to_binary(header)
-    Hash.hash(header_binary)
+    header
+    |> encode_to_binary()
+    |> Hash.hash()
   end
 
   @spec base58c_encode(binary()) :: String.t()
