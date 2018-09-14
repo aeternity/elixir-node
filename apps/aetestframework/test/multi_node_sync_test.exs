@@ -2,9 +2,10 @@ defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
   alias Aetestframework.Worker, as: TestFramework
+  alias Aetestframework.Worker.Supervisor, as: FrameworkSup
 
   setup do
-    TestFramework.start_link()
+    FrameworkSup.start_link()
 
     port1 = find_port(1)
     TestFramework.new_node(:node1, port1)
