@@ -15,7 +15,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   alias Aecore.Chain.Identifier
   alias Aecore.Chain.Worker, as: Chain
 
-  require ContractConstants
+  require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1
 
@@ -149,7 +149,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     }
 
     {call_result, updated_state} =
-      Dispatch.run(ContractConstants.aevm_solidity_01(), call_definition, chain_state)
+      Dispatch.run(Constants.aevm_solidity_01(), call_definition, chain_state)
 
     final_state =
       case call_result.return_type do
@@ -256,7 +256,6 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas_price,
         call_data
       ]) do
-
     payload = %{
       code: code,
       vm_version: :binary.decode_unsigned(vm_version),

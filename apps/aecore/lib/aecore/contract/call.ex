@@ -2,16 +2,20 @@ defmodule Aecore.Contract.Call do
   @moduledoc """
   Aecore call module implementation.
   """
-  alias Aecore.Chain.Identifier
   alias Aecore.Contract.Call
+  alias Aecore.Contract.Tx.ContractCallTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aeutil.Parser
   alias Aeutil.Hash
 
   require Logger
 
   @version 1
-
-  @type ttl :: %{ttl: non_neg_integer(), type: :relative | :absolute}
 
   @type t :: %Call{
           caller_address: Identifier.t(),
@@ -40,6 +44,55 @@ defmodule Aecore.Contract.Call do
   use Aecore.Util.Serializable
 
   @nonce_size 256
+
+  @spec call_contract(
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary(),
+          list(binary()),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: :ok | :error
+  def call_contract(
+        contract,
+        vm_version,
+        amount,
+        gas,
+        gas_price,
+        call_data,
+        call_stack,
+        fee,
+        ttl \\ 0
+      ) do
+    payload = %{
+      contract: contract,
+      vm_version: vm_version,
+      amount: amount,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data,
+      call_stack: call_stack
+    }
+
+    {pubkey, privkey} = Keys.keypair(:sign)
+
+    tx_data =
+      DataTx.init(
+        ContractCallTx,
+        payload,
+        pubkey,
+        fee,
+        Chain.lowest_valid_nonce(),
+        ttl
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
+
+    Pool.add_transaction(tx)
+  end
 
   @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
           t()
@@ -144,29 +197,5 @@ defmodule Aecore.Contract.Call do
         contract_address.value::binary>>
 
     Hash.hash(binary)
-  end
-
-  def gas_used(%Call{gas_used: gas_used}) do
-    gas_used
-  end
-
-  def return_value(%Call{return_value: return_value}) do
-    return_value
-  end
-
-  def return_type(%Call{return_type: return_type}) do
-    return_type
-  end
-
-  def set_gas_used(call, gas_used) do
-    %Call{call | gas_used: gas_used}
-  end
-
-  def set_return_value(call, return_value) do
-    %Call{call | return_value: return_value}
-  end
-
-  def set_return_type(call, return_type) do
-    %Call{call | return_type: return_type}
   end
 end

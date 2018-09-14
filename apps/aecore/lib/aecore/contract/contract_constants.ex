@@ -1,4 +1,4 @@
-defmodule ContractConstants do
+defmodule Aecore.Contract.ContractConstants do
   @moduledoc """
     Module for constants/macros for contract related operations
   """

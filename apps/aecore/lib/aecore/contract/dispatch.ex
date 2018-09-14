@@ -10,7 +10,7 @@ defmodule Aecore.Contract.Dispatch do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
 
-  require ContractConstants, as: Constants
+  require Aecore.Contract.ContractConstants, as: Constants
 
   @pubkey_size_bits 256
 
@@ -112,11 +112,7 @@ defmodule Aecore.Contract.Dispatch do
 
       gas_used = gas - gas_left
 
-      updated_call =
-        call
-        |> Call.set_gas_used(gas_used)
-        |> Call.set_return_type(return_type)
-        |> Call.set_return_value(out)
+      updated_call = %{call | gas_used: gas_used, return_type: return_type, return_value: out}
 
       {updated_call, chain_state.chain_state}
     catch

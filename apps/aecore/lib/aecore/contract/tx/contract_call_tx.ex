@@ -18,7 +18,6 @@
    @type id :: binary()
 
    @type payload :: %{
-           caller: Identifier.t(),
            contract: Identifier.t(),
            vm_version: integer(),
            amount: non_neg_integer(),
@@ -29,7 +28,6 @@
          }
 
    @type t :: %ContractCallTx{
-           caller: Identifier.t(),
            contract: Identifier.t(),
            vm_version: integer(),
            amount: non_neg_integer(),
@@ -42,7 +40,6 @@
    @type tx_type_state() :: Chainstate.calls()
 
    defstruct [
-     :caller,
      :contract,
      :vm_version,
      :amount,
@@ -61,7 +58,6 @@
 
    @spec init(payload()) :: t()
    def init(%{
-         caller: %Identifier{} = identified_caller,
          contract: %Identifier{} = identified_contract,
          vm_version: vm_version,
          amount: amount,
@@ -71,7 +67,6 @@
          call_stack: call_stack
        }) do
      %ContractCallTx{
-       caller: identified_caller,
        contract: identified_contract,
        vm_version: vm_version,
        amount: amount,
@@ -83,7 +78,6 @@
    end
 
    def init(%{
-         caller: caller,
          contract: contract,
          vm_version: vm_version,
          amount: amount,
@@ -92,11 +86,9 @@
          call_data: call_data,
          call_stack: call_stack
        }) do
-     identified_caller = Identifier.create_identity(caller, :account)
      identified_contract = Identifier.create_identity(contract, :contract)
 
      %ContractCallTx{
-       caller: identified_caller,
        contract: identified_contract,
        vm_version: vm_version,
        amount: amount,
@@ -110,22 +102,16 @@
    @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
    def validate(
          %ContractCallTx{
-           caller: caller,
            contract: contract
          },
          _data_tx
        ) do
-     #sender = DataTx.senders(data_tx)
-
      cond do
-       !validate_identifier(caller, :account) ->
-         {:error, "#{__MODULE__}: Invalid contract address: #{inspect(caller)}"}
-
        !validate_identifier(contract, :contract) ->
          {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
 
-      true ->
-        :ok
+       true ->
+         :ok
      end
    end
 
@@ -159,7 +145,7 @@
 
      updated_chain_state = Map.put(chain_state, :accounts, updated_accounts_state)
 
-     init_call = Call.new(call_tx.caller.value, nonce, block_height, call_tx.contract.value, call_tx.gas_price)
+     init_call = Call.new(sender, nonce, block_height, call_tx.contract.value, call_tx.gas_price)
 
      {call, update_chain_state1} =
        run_contract(call_tx, init_call, block_height, nonce, updated_chain_state)
@@ -186,7 +172,7 @@
      # return value was so that the caller can access it easily.
      # Each block starts with an empty calls tree.
      updated_calls_tree = CallStateTree.insert_call(calls, call)
-
+     
      {:ok, %{update_chain_state1 | accounts: accounts2, calls: updated_calls_tree}}
    end
 
@@ -278,7 +264,6 @@
          call_data
        ]) do
      payload = %ContractCallTx{
-       caller: encoded_sender,
        contract: encoded_contract,
        vm_version: vm_version,
        amount: amount,
@@ -295,10 +280,8 @@
      tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
    end
 
-   # maybe identified caller and contract
    defp run_contract(
           %ContractCallTx{
-            caller: caller_address,
             contract: contract_address,
             vm_version: vm_version,
             amount: amount,
@@ -307,7 +290,7 @@
             call_data: call_data,
             call_stack: call_stack
           },
-          call,
+          %{caller_address: caller_address} = call,
           block_height,
           _nonce,
           chain_state
