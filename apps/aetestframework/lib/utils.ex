@@ -3,9 +3,9 @@ defmodule Aetestframework.Utils do
   Helper functions and all used cmd commands 
   for sending calls to the nodes.
   """
-  
+
   alias Aetestframework.Worker, as: TestFramework
-  
+
   def sync_nodes(node1, node2) do
     {node2_pub, _priv} = TestFramework.get(peer_keys_cmd(), :keypair, node2)
     %{sync_port: sync_port} = Map.get(TestFramework.state(), node2)

@@ -30,7 +30,7 @@ defmodule MultiNodeSyncTest do
                &TestFramework.get/4,
                :peer_pids,
                :node1,
-               3000
+               5000
              )
            ) == 3
 
@@ -63,7 +63,7 @@ defmodule MultiNodeSyncTest do
                &TestFramework.get/4,
                :top_header_hash,
                :node4,
-               5000
+               10_000
              )
 
     TestFramework.delete_all_nodes()
@@ -144,7 +144,7 @@ defmodule MultiNodeSyncTest do
                &TestFramework.get/4,
                :top_header_hash,
                :node4,
-               5000
+               10_000
              )
 
     TestFramework.delete_all_nodes()
@@ -219,7 +219,7 @@ defmodule MultiNodeSyncTest do
                &TestFramework.get/4,
                :top_header_hash,
                :node3,
-               5000
+               10_000
              )
 
     TestFramework.delete_all_nodes()
@@ -283,7 +283,7 @@ defmodule MultiNodeSyncTest do
 
     # Check that the transaction is added to the pool
     assert Utils.pool_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node3, 1000)
+           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node3, 3000)
            |> Map.to_list()
            |> length() == 1
 
@@ -309,7 +309,7 @@ defmodule MultiNodeSyncTest do
 
     # Check that the transaction is added to the pool
     assert Utils.pool_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node2, 1000)
+           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node2, 3000)
            |> Map.to_list()
            |> length() == 1
 
@@ -318,7 +318,7 @@ defmodule MultiNodeSyncTest do
     # Check that node4 has 10 tokens
     assert node4_pub
            |> Utils.balance_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :balance, :node4, 1000) == 10
+           |> TestFramework.call_with_delay(&TestFramework.get/4, :balance, :node4, 3000) == 10
 
     TestFramework.delete_all_nodes()
   end

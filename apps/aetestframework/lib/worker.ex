@@ -86,7 +86,12 @@ defmodule Aetestframework.Worker do
 
       true ->
         # Running the new elixir-node using Port
-        port_id = Port.open({:spawn, "make iex-test-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: project_dir()])
+        port_id =
+          Port.open({:spawn, "make iex-test-node NODE_NUMBER=#{iex_num}"}, [
+            :binary,
+            cd: project_dir()
+          ])
+
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
@@ -155,7 +160,7 @@ defmodule Aetestframework.Worker do
   @doc """
   Checking if the port is busy
   """
-  @spec busy_port?(non_neg_integer()) :: true | :false
+  @spec busy_port?(non_neg_integer()) :: true | false
   def busy_port?(port) do
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
   end
