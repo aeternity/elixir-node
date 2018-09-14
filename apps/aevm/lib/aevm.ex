@@ -4,12 +4,17 @@ defmodule Aevm.Aevm do
   """
 
   alias Aevm.State
+  alias Aevm.Storage
+  alias Aevm.Stack
+  alias Aevm.Memory
+  alias Aevm.Gas
+  alias Aevm.AevmUtil
 
   use Bitwise
 
-  require OpCodes
-  require OpCodesUtil
-  require AevmConst
+  require Aevm.OpCodes, as: OpCodes
+  require Aevm.OpCodesUtil, as: OpCodesUtil
+  require Aevm.AevmConst, as: AevmConst
 
   @spec loop(map()) :: map()
   def loop(state) do

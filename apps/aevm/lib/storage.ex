@@ -1,4 +1,4 @@
-defmodule Storage do
+defmodule Aevm.Storage do
   @moduledoc """
     Module for working with the VM's internal storage
   """

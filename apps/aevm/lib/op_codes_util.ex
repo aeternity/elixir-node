@@ -1,12 +1,12 @@
-defmodule OpCodesUtil do
+defmodule Aevm.OpCodesUtil do
   @moduledoc """
     Module for defining mnemonics and utils for the OpCodes
   """
 
   # credo:disable-for-this-file
 
-  require OpCodes
-  require GasCodes
+  require Aevm.OpCodes, as: OpCodes
+  require Aevm.GasCodes, as: GasCodes
 
   def mnemonic(OpCodes._STOP) do "STOP" end
   def mnemonic(OpCodes._ADD) do "ADD" end

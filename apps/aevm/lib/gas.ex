@@ -1,15 +1,18 @@
-defmodule Gas do
+defmodule Aevm.Gas do
   @moduledoc """
     Module for updating the current gas value and calculating
     the additional costs for the opcodes, based on dynamic data
   """
 
   alias Aevm.State
+  alias Aevm.Storage
+  alias Aevm.Stack
+  alias Aevm.Memory
 
   use Bitwise
 
-  require OpCodesUtil
-  require GasCodes
+  require Aevm.OpCodesUtil, as: OpCodesUtil
+  require Aevm.GasCodes, as: GasCodes
 
   @doc """
   Subtract a given `gas_cost` from the current gas in the state

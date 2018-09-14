@@ -7,7 +7,6 @@ defmodule Aecore.Contract.Dispatch do
   alias Aecore.Contract.VmChain
   alias Aevm.State, as: State
   alias Aevm.Aevm, as: Aevm
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
 
   require Aecore.Contract.ContractConstants, as: Constants

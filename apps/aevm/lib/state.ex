@@ -4,6 +4,7 @@ defmodule Aevm.State do
   """
 
   alias __MODULE__
+  alias Aevm.AevmUtil
 
   @doc """
   Initialize the VM's internal state.

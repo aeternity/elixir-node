@@ -1,4 +1,7 @@
 defmodule EthereumTestChain do
+  @moduledoc """
+  Aevm chain API implementation for the ethereum vm tests
+  """
 
   use Bitwise
 
@@ -28,7 +31,7 @@ defmodule EthereumTestChain do
     Map.put(state, :storage, store)
   end
 
-  def call_contract(_,_,_,_,_,_) do
+  def call_contract(_, _, _, _, _, _) do
     {:error, :cant_call_contracts_with_dummy_chain}
   end
 

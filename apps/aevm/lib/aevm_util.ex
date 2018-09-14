@@ -1,15 +1,19 @@
-defmodule AevmUtil do
+defmodule Aevm.AevmUtil do
   @moduledoc """
     Module containing all the VM utility functions
   """
 
   alias Aevm.State
+  alias Aevm.Stack
+  alias Aevm.Memory
+  alias Aevm.Gas
 
   use Bitwise
 
-  require AevmConst
-  require OpCodes
-  require GasCodes
+  require Aevm.AevmConst, as: AevmConst
+  require Aevm.OpCodes, as: OpCodes
+  require Aevm.GasCodes, as: GasCodes
+  require Aevm.OpCodesUtil, as: OpCodesUtil
 
   @call_depth_limit 1024
 

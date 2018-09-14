@@ -1,4 +1,4 @@
-defmodule Memory do
+defmodule Aevm.Memory do
   @moduledoc """
     Module for working with the VM's internal memory.
 

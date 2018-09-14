@@ -1,4 +1,4 @@
-defmodule AevmConst do
+defmodule Aevm.AevmConst do
   @moduledoc """
     Module for defining macros for general util
   """

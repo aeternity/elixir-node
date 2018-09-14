@@ -109,7 +109,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           gas: gas,
           gas_price: gas_price,
           call_data: call_data
-        } = tx,
+        },
         data_tx,
         _context
       ) do
@@ -197,7 +197,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, String.t()}
-  def preprocess_check(accounts, _contracts, block_height, tx, data_tx, _context) do
+  def preprocess_check(accounts, _contracts, _block_height, tx, data_tx, _context) do
     sender = DataTx.main_sender(data_tx)
     total_deduction = data_tx.fee + tx.amount + tx.deposit + tx.gas * tx.gas_price
 
