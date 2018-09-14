@@ -129,7 +129,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   def process_chainstate(
         accounts,
         naming_state,
-        _block_height,
+        block_height,
         %NameUpdateTx{
           hash: %Identifier{value: hash},
           pointers: pointers,
@@ -143,8 +143,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     claim = %{
       claim_to_update
       | pointers: pointers,
-        expires: expire_by,
-        client_ttl: client_ttl
+        expires: client_ttl + block_height,
+        client_ttl: expire_by
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, hash, claim)

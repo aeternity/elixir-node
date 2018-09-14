@@ -3,6 +3,7 @@ defmodule Aecore.Channel.Worker do
   Module for managing Channels
   """
 
+  alias Aecore.Chain.Block
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
@@ -529,7 +530,7 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_info({:gproc_ps_event, event, %{info: %{txs: txs}}}, state) do
+  def handle_info({:gproc_ps_event, event, %{info: %Block{txs: txs}}}, state) do
     case event do
       # info is a block
       :new_top_block ->

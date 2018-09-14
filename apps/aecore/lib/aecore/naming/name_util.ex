@@ -56,7 +56,9 @@ defmodule Aecore.Naming.NameUtil do
       GovernanceConstants.name_registrars()
       |> Enum.any?(fn registrar ->
         name_split_count =
-          name |> String.split(GovernanceConstants.split_name_symbol()) |> Enum.count()
+          name
+          |> String.split(GovernanceConstants.split_name_symbol())
+          |> Enum.count()
 
         String.ends_with?(name, registrar) &&
           name_split_count == GovernanceConstants.name_split_check()
