@@ -57,7 +57,8 @@ defmodule AeutilPatriciaMerkleTreeTest do
   test "Insert", %{trie: empty_trie} do
     trie = PatriciaMerkleTree.insert(empty_trie, "key", "a")
     assert {:ok, "a"} = PatriciaMerkleTree.lookup(trie, "key")
-    assert {:error, :already_present} = PatriciaMerkleTree.insert(trie, "key", "a")
+    assert {:error, :already_present} = PatriciaMerkleTree.insert(trie, "key", "b")
+    assert {:error, :already_present} = PatriciaMerkleTree.insert(trie, "key", "c")
   end
 
   @tag :patricia_merkle_tree
