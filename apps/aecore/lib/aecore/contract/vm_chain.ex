@@ -4,8 +4,6 @@ defmodule Aecore.Contract.VmChain do
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
   alias Aecore.Keys
   alias Aevm.ChainApi
@@ -66,7 +64,7 @@ defmodule Aecore.Contract.VmChain do
         value,
         call_data,
         call_stack,
-        %{pubkey: contract_key, chain_state: chain_state} = state
+        %{pubkey: contract_key, chain_state: chain_state}
       ) do
     contract_tree = chain_state.contracts
 
