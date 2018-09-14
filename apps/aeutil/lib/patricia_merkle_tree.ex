@@ -80,7 +80,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @spec insert(Trie.t(), Trie.key(), Trie.value()) :: Trie.t() | {:error, term}
   def insert(trie, key, value) do
     case lookup(trie, key) do
-      {:ok, ^value} ->
+      {:ok, _value} ->
         {:error, :already_present}
 
       :none ->
