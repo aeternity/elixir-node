@@ -14,6 +14,11 @@ defmodule AecoreChannelTest do
     ChannelStateTree
   }
 
+  alias Aecore.Channel.Tx.{
+    ChannelCloseMutalTx,
+    ChannelSettleTx
+  }
+
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
 
   alias Aeutil.PatriciaMerkleTree
@@ -204,6 +209,99 @@ defmodule AecoreChannelTest do
     TestUtils.assert_balance(ctx.pk1, 40 - 20 + 150)
     TestUtils.assert_balance(ctx.pk2, 50 + 150)
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+  end
+
+  @tag :channels
+  @tag :compatibility
+  test "Id compatibility test" do
+    epoch_id =
+      <<241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40, 171, 173, 182, 207,
+        111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229>>
+
+    initiator =
+      <<195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162, 143, 84, 114, 8, 161, 100,
+        45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133>>
+
+    responder =
+      <<17, 55, 63, 88, 77, 225, 1, 101, 89, 143, 139, 221, 208, 94, 177, 213, 198, 84, 133, 203,
+        110, 84, 190, 84, 142, 192, 5, 152, 111, 6, 235, 215>>
+
+    initiator_nonce = 5
+
+    assert ChannelStateOnChain.id(initiator, responder, initiator_nonce) == epoch_id
+  end
+
+  @tag :channels
+  @tag :compatibility
+  test "MutalCloseTx compatibility test" do
+    epoch_MutalCloseTx =
+      <<234, 53, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40,
+        171, 173, 182, 207, 111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229, 100, 129,
+        200, 0, 30, 5>>
+
+    id =
+      <<241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40, 171, 173, 182, 207,
+        111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229>>
+
+    initiator_nonce = 5
+    initiator_amount = 100
+    responder_amount = 200
+    fee = 30
+
+    tx =
+      DataTx.init(
+        ChannelCloseMutalTx,
+        %{
+          channel_id: id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        [],
+        fee,
+        initiator_nonce
+      )
+
+    {:ok, epoch_tx_decoded} = DataTx.rlp_decode(epoch_MutalCloseTx)
+    assert tx == epoch_tx_decoded
+    assert DataTx.rlp_encode(tx) == epoch_MutalCloseTx
+    assert DataTx.validate(tx) == :ok
+  end
+
+  @tag :channels
+  @tag :compatibility
+  test "ChannelSettleTx compatibility test" do
+    epoch_SettleTx =
+      <<248, 76, 56, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60,
+        40, 171, 173, 182, 207, 111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229, 161, 1,
+        195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162, 143, 84, 114, 8, 161, 100,
+        45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133, 100, 129, 200, 0, 30, 5>>
+
+    id =
+      <<241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40, 171, 173, 182, 207,
+        111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229>>
+
+    nonce = 5
+    initiator_amount = 100
+    responder_amount = 200
+    fee = 30
+
+    pk =
+      <<195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162, 143, 84, 114, 8, 161, 100,
+        45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133>>
+
+    tx =
+      DataTx.init(
+        ChannelSettleTx,
+        %{channel_id: id, initiator_amount: initiator_amount, responder_amount: responder_amount},
+        pk,
+        fee,
+        nonce
+      )
+
+    {:ok, epoch_tx_decoded} = DataTx.rlp_decode(epoch_SettleTx)
+    assert tx == epoch_tx_decoded
+    assert DataTx.rlp_encode(tx) == epoch_SettleTx
+    assert DataTx.validate(tx) == :ok
   end
 
   defp create_channel(ctx) do
