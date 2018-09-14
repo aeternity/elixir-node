@@ -149,7 +149,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(nonce),
-      Serialization.encode_ttl_type(extend_ttl)
+      Serialization.encode_ttl_type(extend_ttl),
       :binary.encode_unsigned(extend_ttl_value),
       :binary.encode_unsigned(fee),
       :binary.encode_unsigned(ttl)
