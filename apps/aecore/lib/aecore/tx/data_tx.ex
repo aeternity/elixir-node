@@ -65,6 +65,8 @@ defmodule Aecore.Tx.DataTx do
           ttl: non_neg_integer()
         }
 
+  @nonce_size 256
+
   @doc """
   Definition of Aecore DataTx structure
 
@@ -97,6 +99,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelSettleTx
     ]
   end
+
+  def nonce_size, do: @nonce_size
 
   @spec init(
           tx_types(),

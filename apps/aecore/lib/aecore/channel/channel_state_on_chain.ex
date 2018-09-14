@@ -5,13 +5,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   require Logger
 
-  alias Aecore.Keys.Wallet
+  alias Aecore.Keys
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
   alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
+  alias Aecore.Tx.DataTx
 
   @version 1
 
@@ -26,6 +27,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         }
 
   @type id :: binary()
+
+  @pubkey_size Keys.pubkey_size()
+  @nonce_size DataTx.nonce_size()
 
   @doc """
   Definition of State Channel OnChain structure
@@ -81,7 +85,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   """
   @spec id(Wallet.pubkey(), Wallet.pubkey(), non_neg_integer()) :: id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
-    binary_data = initiator_pubkey <> <<nonce::size(64)>> <> responder_pubkey
+    binary_data = <<
+      initiator_pubkey::binary-size(@pubkey_size),
+      nonce::size(@nonce_size),
+      responder_pubkey::binary-size(@pubkey_size)
+    >>
 
     Hash.hash_blake2b(binary_data)
   end

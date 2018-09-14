@@ -35,6 +35,8 @@ defmodule Aecore.Keys do
   @filename_peer_pub "peer_key.pub"
   @filename_peer_priv "peer_key"
 
+  def pubkey_size, do: @pub_size
+
   @doc """
   Signs the given message and returns the signature
   """
