@@ -1,6 +1,6 @@
 defmodule Aevm.Stack do
   @moduledoc """
-    Module for working with the VM's internal stack
+  Module for working with the VM's internal stack
   """
 
   alias Aevm.State

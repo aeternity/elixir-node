@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.ChannelStatePeer do
   @moduledoc """
-  Structure of Channel Peer State
+  Module defining the structure of the Channel Peer state
   """
 
   alias Aecore.Channel.{
@@ -23,8 +23,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
 
+  require Logger
+
   @type fsm_state :: :initialized | :half_signed | :signed | :open | :update | :closing | :closed
 
+  @typedoc "Structure of the ChannelStatePeer Transaction type"
   @type t :: %ChannelStatePeer{
           fsm_state: fsm_state(),
           initiator_pubkey: Keys.pubkey(),
@@ -35,6 +38,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           channel_reserve: non_neg_integer()
         }
 
+  @typedoc "Reason for the error"
   @type error :: {:error, binary()}
 
   defstruct [
@@ -47,15 +51,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :channel_reserve
   ]
 
-  require Logger
-
-  use ExConstructor
-
   @spec id(ChannelStatePeer.t()) :: binary()
   def id(%ChannelStatePeer{highest_signed_state: %ChannelStateOffChain{channel_id: id}}), do: id
 
   @doc """
-  Creates channel from signed channel state.
+  Creates a channel from a signed channel state.
   """
   @spec from_state(
           ChannelStateOffChain.t(),
@@ -77,7 +77,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates channel from open transaction assuming no transactions in channel.
+  Creates a channel from an open transaction assuming no transactions in channel.
   """
   @spec from_open(SignedTx.t(), non_neg_integer(), Channel.role()) :: ChannelStatePeer.t()
   def from_open(open_tx, channel_reserve, role) do
@@ -103,7 +103,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates channel from open transaction and signed state.
+  Creates a channel from an open transaction and signed state.
   """
   @spec from_open_and_state(
           SignedTx.t(),
@@ -118,7 +118,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates initialized channel.
+  Creates an initialized channel.
   """
   @spec initialize(
           binary(),
@@ -147,7 +147,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates channel open tx. Can only be called in initialized state by initiator. Changes fsm state to half_signed. Specified fee and nonce are for the created tx. Returns altered ChannelPeerState, generated channel id, open tx.
+  Creates a channel open tx. Can only be called in initialized state by the initiator. Changes fsm state to half_signed. Specified fee and nonce are for the created tx. Returns an altered ChannelPeerState, generated channel id and open tx.
   """
   @spec open(
           ChannelStatePeer.t(),
@@ -209,7 +209,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Signs provided open tx if it verifies. Can only be called in initialized state by responder. Returns altered ChannelPeerState, generated channel id and fully signed openTx.
+  Signs provided open tx if it verifies. Can only be called in initialized state by the responder. Returns an altered ChannelPeerState, generated channel id and fully signed open tx.
   """
   @spec sign_open(ChannelStatePeer.t(), SignedTx.t(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
@@ -269,7 +269,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Changes channel state to open from signed and half_signed. Should only be called when ChannelCreateTx is mined.
+  Changes channel state to open from signed and half_signed. Should only be called when a ChannelCreateTx is mined.
   """
   @spec opened(ChannelStatePeer.t()) :: ChannelStatePeer.t()
   def opened(%ChannelStatePeer{fsm_state: :signed} = peer_state) do
@@ -286,7 +286,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates a transfer on channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfer. Returns altered ChannelStatePeer and new half-signed offchain state.
+  Creates a transfer on a channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfers. Returns an altered ChannelStatePeer and new half-signed offchain state.
   """
   @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
@@ -319,7 +319,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Handles incoming ChannelOffChainState. If incoming state is a half signed transfer validates it and signs it. If incoming state is fully signed and has higher sequence then current then stores it. Returns altered ChannelPeerState and if it signed a half signed state: fully signed state else nil.
+  Handles incoming ChannelOffChainState. If incoming state is a half signed transfer validates it and signs it. If incoming state is fully signed and has higher sequence then current then stores it. Returns an altered ChannelPeerState and if it signed a half signed state - fully signed state, else - nil.
   """
   @spec recv_state(ChannelStatePeer.t(), ChannelStateOffChain.t(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t() | nil} | error()
@@ -403,7 +403,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates mutal close tx for open channel. This blocks any new transfers on channel. Returns: altered ChannelStatePeer and ChannelCloseMutalTx
+  Creates a mutal close tx for an open channel. This blocks any new transfers on the channel. Returns: altered ChannelStatePeer and ChannelCloseMutalTx
   """
   @spec close(
           ChannelStatePeer.t(),
@@ -518,14 +518,14 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Changes channel state to closed. Should only be called when ChannelCloseMutalTx is mined.
+  Changes the channel state to closed. Should only be called when a ChannelCloseMutalTx is mined.
   """
   def closed(%ChannelStatePeer{} = peer_state) do
     %ChannelStatePeer{peer_state | fsm_state: :closed}
   end
 
   @doc """
-  Creates solo close tx for channel. Should only be called when no solo close tx-s were mined for this channel. Returns altered ChannelStatePeer and ChannelCloseSoloTx
+  Creates a solo close tx for a channel. Should only be called when no solo close tx-s were mined for this channel. Returns altered an ChannelStatePeer and ChannelCloseSoloTx
   """
   @spec solo_close(
           ChannelStatePeer.t(),
@@ -548,6 +548,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
     {:ok, new_peer_state, our_slash_tx}
   end
 
+  @spec slash(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.pubkey(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def slash(
         %ChannelStatePeer{highest_signed_state: our_state} = peer_state,
         fee,
@@ -564,7 +571,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Handles mined ChnanelSlashTx and ChannelCloseSoloTx. Provided fee and nonce are for potentially created SlashTx. Pubkey and Privkey don't have to match any of channel parties. Returns altered ChannelPeerState and ChannelSlashTx if we have higher signed state.
+  Handles mined ChannelSlashTx and ChannelCloseSoloTx. Provided fee and nonce are for potentially created SlashTx. Pubkey and Privkey don't have to match any of the channel parties. Returns altered ChannelPeerState and ChannelSlashTx if we have higher signed state.
   """
   @spec slashed(
           ChannelStatePeer.t(),
@@ -609,7 +616,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Creates channel settle tx.
+  Creates a channel settle tx.
   """
   @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, SignedTx.t()} | error()
@@ -627,7 +634,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Changes channel state to closed. Should only be called when ChannelSettleTx is mined.
+  Changes the channel state to closed. Should only be called when a ChannelSettleTx is mined.
   """
   @spec settled(ChannelStatePeer.t()) :: ChannelStatePeer.t()
   def settled(%ChannelStatePeer{} = peer_state) do
@@ -635,7 +642,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Returns our pubkey from in channel.
+  Returns our pubkey from the channel.
   """
   @spec node_pubkey(ChannelStatePeer.t()) :: Keys.pubkey()
   def node_pubkey(%ChannelStatePeer{role: :initiator, initiator_pubkey: pubkey}) do

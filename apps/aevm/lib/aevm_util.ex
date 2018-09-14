@@ -1,6 +1,6 @@
 defmodule Aevm.AevmUtil do
   @moduledoc """
-    Module containing all the VM utility functions
+  Module containing VM utility functions
   """
 
   alias Aevm.State

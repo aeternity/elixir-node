@@ -1,11 +1,11 @@
 defmodule Aevm.Memory do
   @moduledoc """
-    Module for working with the VM's internal memory.
+  Module for working with the VM's internal memory.
 
-    The VM's internal memory is indexed (chunked) every 32 bytes,
-    thus represented with a mapping between index and a 32-byte integer (word).
+  The VM's internal memory is indexed (chunked) every 32 bytes,
+  thus represented with a mapping between index and a 32-byte integer (word).
 
-    Data from the memory can be accessed at byte level.
+  Data from the memory can be accessed at byte level.
   """
 
   alias Aevm.State

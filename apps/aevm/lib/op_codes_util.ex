@@ -1,6 +1,6 @@
 defmodule Aevm.OpCodesUtil do
   @moduledoc """
-    Module for defining mnemonics and utils for the OpCodes
+  Module containing mnemonics and utils for the OpCodes
   """
 
   # credo:disable-for-this-file

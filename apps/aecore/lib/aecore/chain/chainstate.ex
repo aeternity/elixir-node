@@ -1,22 +1,20 @@
 defmodule Aecore.Chain.Chainstate do
   @moduledoc """
-  Module used for calculating the block and chain states.
-  The chain state is a map, telling us what amount of tokens each account has.
+  Module containing functionality for calculating the chainstate
   """
 
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Genesis}
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Naming.NamingStateTree
-  alias Aeutil.Bits
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Contract.{CallStateTree, ContractStateTree}
-  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
   alias Aecore.Keys
-  alias Aecore.Governance.GenesisConstants
-  alias Aeutil.Hash
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.{Bits, Hash}
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
@@ -40,6 +38,7 @@ defmodule Aecore.Chain.Chainstate do
   @type calls :: CallStateTree.calls_state()
   @type chain_state_types :: :accounts | :oracles | :naming | :channels | :contracts | :calls
 
+  @typedoc "Structure of the Chainstate"
   @type t :: %Chainstate{
           accounts: accounts(),
           oracles: oracles(),
@@ -84,9 +83,30 @@ defmodule Aecore.Chain.Chainstate do
         end
       end)
 
-    case updated_chainstate do
+    updated_chainstate2 =
+      case updated_chainstate do
+        %Chainstate{} = new_chainstate ->
+          Oracle.remove_expired(new_chainstate, block_height)
+
+        error ->
+          {:error, error}
+      end
+
+    case updated_chainstate2 do
       %Chainstate{} = new_chainstate ->
-        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
+        {:ok,
+         %Chainstate{
+           accounts: PatriciaMerkleTree.fix_trie(new_chainstate.accounts),
+           oracles: %{
+             oracle_tree: PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_tree),
+             oracle_cache_tree:
+               PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_cache_tree)
+           },
+           naming: PatriciaMerkleTree.fix_trie(new_chainstate.naming),
+           channels: PatriciaMerkleTree.fix_trie(new_chainstate.channels),
+           contracts: PatriciaMerkleTree.fix_trie(new_chainstate.contracts),
+           calls: PatriciaMerkleTree.fix_trie(new_chainstate.calls)
+         }}
 
       error ->
         {:error, error}
@@ -137,17 +157,17 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Create the root hash of the tree.
+  Calculates the root hash of a chainstate tree.
   """
   @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
-      NamingStateTree.root_hash(chainstate.naming),
-      OracleStateTree.root_hash(chainstate.oracles),
+      CallStateTree.root_hash(chainstate.calls),
       @canonical_root_hash,
       ContractStateTree.root_hash(chainstate.contracts),
-      CallStateTree.root_hash(chainstate.calls)
+      NamingStateTree.root_hash(chainstate.naming),
+      OracleStateTree.root_hash(chainstate.oracles)
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn root_hash, acc ->
       acc <> pad_empty(root_hash)
@@ -165,7 +185,7 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Goes through all the transactions and only picks the valid ones
+  Filters the invalid transactions out of the given list
   """
   @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
@@ -184,10 +204,12 @@ defmodule Aecore.Chain.Chainstate do
     Enum.reverse(txs_list)
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("bs", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"bs$", payload::binary>>) do
     Bits.decode58(payload)
   end

@@ -12,8 +12,7 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
-  alias Aecore.Peers.Sync
-  alias Aecore.Peers.Jobs
+  alias Aecore.Sync.Sync
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
@@ -24,6 +23,8 @@ defmodule Aecore.Peers.PeerConnection do
 
   @p2p_protocol_vsn 3
   @p2p_msg_version 1
+  @get_header_by_height_version 2
+  @get_n_successors_version 2
   @noise_timeout 5000
 
   @msg_fragment 0
@@ -112,18 +113,19 @@ defmodule Aecore.Peers.PeerConnection do
     |> send_request_msg(pid)
   end
 
-  @spec get_header_by_height(non_neg_integer(), pid()) :: {:ok, Header.t()} | {:error, term()}
-  def get_header_by_height(height, pid) when is_pid(pid) do
+  @spec get_header_by_height(non_neg_integer(), binary(), pid()) ::
+          {:ok, Header.t()} | {:error, term()}
+  def get_header_by_height(pid, height, top_hash) when is_pid(pid) do
     @get_header_by_height
-    |> pack_msg(%{height: height})
+    |> pack_msg(%{height: height, top_hash: top_hash})
     |> send_request_msg(pid)
   end
 
-  @spec get_n_successors(binary(), non_neg_integer(), pid()) ::
+  @spec get_n_successors(binary(), binary(), non_neg_integer(), pid()) ::
           {:ok, list(Header.t())} | {:error, term()}
-  def get_n_successors(hash, n, pid) when is_pid(pid) do
+  def get_n_successors(start_hash, target_hash, n, pid) when is_pid(pid) do
     @get_n_successors
-    |> pack_msg(%{hash: hash, n: n})
+    |> pack_msg(%{starting_hash: start_hash, target_hash: target_hash, n: n})
     |> send_request_msg(pid)
   end
 
@@ -145,6 +147,13 @@ defmodule Aecore.Peers.PeerConnection do
   def send_new_block(block, pid) when is_pid(pid) do
     @block
     |> pack_msg(block)
+    |> send_msg_no_response(pid)
+  end
+
+  @spec send_new_tx(SignedTx.t(), pid()) :: :ok | :error
+  def send_new_tx(%SignedTx{} = tx, pid) when is_pid(pid) do
+    @mempool
+    |> pack_msg(%{txs: [tx]})
     |> send_msg_no_response(pid)
   end
 
@@ -233,13 +242,13 @@ defmodule Aecore.Peers.PeerConnection do
             {:noreply, new_state}
 
           {:error, reason} ->
-            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
+            Logger.error(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
       {:error, reason} ->
-        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
+        Logger.error(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end
@@ -362,10 +371,11 @@ defmodule Aecore.Peers.PeerConnection do
     ExRLP.encode([:binary.encode_unsigned(@p2p_msg_version), hash])
   end
 
-  def rlp_encode(@get_header_by_height, %{height: height}) do
+  def rlp_encode(@get_header_by_height, %{height: height, top_hash: top_hash}) do
     ExRLP.encode([
-      :binary.encode_unsigned(@p2p_msg_version),
-      :binary.encode_unsigned(height)
+      :binary.encode_unsigned(@get_header_by_height_version),
+      :binary.encode_unsigned(height),
+      top_hash
     ])
   end
 
@@ -375,12 +385,14 @@ defmodule Aecore.Peers.PeerConnection do
   end
 
   def rlp_encode(@get_n_successors, %{
-        hash: hash,
+        starting_hash: starting_hash,
+        target_hash: target_hash,
         n: n
       }) do
     ExRLP.encode([
-      :binary.encode_unsigned(@p2p_msg_version),
-      hash,
+      :binary.encode_unsigned(@get_n_successors_version),
+      starting_hash,
+      target_hash,
       :binary.encode_unsigned(n)
     ])
   end
@@ -489,8 +501,13 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_header_by_height, encoded_get_header_by_height) do
     # vsn should be addititonaly decoded with :binary.decode_unsigned
-    [_vsn, height] = ExRLP.decode(encoded_get_header_by_height)
-    %{height: :binary.decode_unsigned(height)}
+    [
+      _vsn,
+      height,
+      top_hash
+    ] = ExRLP.decode(encoded_get_header_by_height)
+
+    %{height: :binary.decode_unsigned(height), top_hash: top_hash}
   end
 
   def rlp_decode(@header, encoded_header) do
@@ -506,14 +523,15 @@ defmodule Aecore.Peers.PeerConnection do
 
   def rlp_decode(@get_n_successors, encoded_get_n_successors) do
     [
-      # vsn should be addititonaly decoded with :binary.decode_unsigned
       _vsn,
-      hash,
+      starting_hash,
+      target_hash,
       n
     ] = ExRLP.decode(encoded_get_n_successors)
 
     %{
-      hash: hash,
+      starting_hash: starting_hash,
+      target_hash: target_hash,
       n: :binary.decode_unsigned(n)
     }
   end
@@ -525,7 +543,7 @@ defmodule Aecore.Peers.PeerConnection do
     ] = ExRLP.decode(encoded_header_hashes)
 
     deserialized_hashes =
-      Enum.map(header_hashes, fn <<height::64, hash::binary>> -> %{height: height, hash: hash} end)
+      Enum.map(header_hashes, fn <<height::64, hash::binary>> -> {height, hash} end)
 
     %{hashes: deserialized_hashes}
   end
@@ -710,8 +728,6 @@ defmodule Aecore.Peers.PeerConnection do
       end)
 
       tx_pool_sync_init(conn_pid)
-
-      Jobs.dequeue(:sync_jobs)
     else
       Logger.info("Genesis hash mismatch")
     end
@@ -786,20 +802,22 @@ defmodule Aecore.Peers.PeerConnection do
     send_response(result, @header, pid)
   end
 
-  defp handle_get_n_successors(%{hash: starting_header, target_hash: _, n: count}, pid) do
+  defp handle_get_n_successors(
+         %{starting_hash: starting_hash, target_hash: target_hash, n: count},
+         pid
+       ) do
     result =
-      case Chain.get_headers_forward(starting_header, count) do
-        {:ok, headers} ->
-          header_hashes =
-            Enum.map(headers, fn header ->
-              {header.height, BlockValidation.block_header_hash(header)}
-              <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
-            end)
+      with {:ok, headers} <- Chain.get_headers_forward(starting_hash, count),
+           true <- Chain.hash_is_in_main_chain?(target_hash) do
+        header_hashes =
+          Enum.map(headers, fn header ->
+            <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
+          end)
 
-          {:ok, Enum.reverse(header_hashes)}
-
-        {:error, reason} ->
-          {:error, reason}
+        {:ok, Enum.reverse(header_hashes)}
+      else
+        {:error, _} = error -> error
+        false -> {:error, :not_on_chain}
       end
 
     send_response(result, @header_hashes, pid)

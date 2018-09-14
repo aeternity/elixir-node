@@ -1,6 +1,6 @@
 defmodule Aecore.Contract.Call do
   @moduledoc """
-  Aecore call module implementation.
+  Module defining the structure of a contract call
   """
   alias Aecore.Contract.Call
   alias Aecore.Contract.Tx.ContractCallTx
@@ -17,6 +17,7 @@ defmodule Aecore.Contract.Call do
 
   @version 1
 
+  @typedoc "Structure of the Call Transaction type"
   @type t :: %Call{
           caller_address: Identifier.t(),
           caller_nonce: integer(),
@@ -95,7 +96,7 @@ defmodule Aecore.Contract.Call do
   end
 
   @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
-          t()
+          Call.t()
   def new(caller_address, nonce, block_height, contract_address, gas_price) do
     identified_caller_address = Identifier.create_identity(caller_address, :account)
     identified_contract_address = Identifier.create_identity(contract_address, :contract)
@@ -139,7 +140,7 @@ defmodule Aecore.Contract.Call do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) :: {:ok, t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list()) :: {:ok, Call.t()} | {:error, String.t()}
   def decode_from_list(@version, [
         encoded_caller_address,
         caller_nonce,

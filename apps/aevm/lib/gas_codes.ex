@@ -1,7 +1,7 @@
 defmodule Aevm.GasCodes do
   @moduledoc """
-    Module for defining macros for gas cost
-    From https://github.com/ethereum/go-ethereum/blob/master/params/gas_table.go
+  Module containing macro definitions for gas cost
+  From https://github.com/ethereum/go-ethereum/blob/master/params/gas_table.go
   """
 
   # credo:disable-for-this-file

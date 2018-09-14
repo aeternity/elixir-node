@@ -1,21 +1,24 @@
 defmodule Aecore.Naming.Tx.NameUpdateTx do
   @moduledoc """
-  Aecore structure of naming Update.
+  Module defining the NameUpdate transaction
   """
 
   @behaviour Aecore.Tx.Transaction
 
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Naming.{Naming, NamingStateTree}
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Naming.Tx.NameUpdateTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.Hash
 
   require Logger
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
@@ -38,20 +41,18 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         }
 
   @doc """
-  Definition of Aecore NameUpdateTx structure
-  ## Parameters
+  Definition of the NameUpdateTx structure
+  # Parameters
   - hash: hash of name to be updated
   - expire_by: expiration block of name update
   - client_ttl: ttl for client use
   - pointers: pointers from name update
   """
   defstruct [:hash, :expire_by, :client_ttl, :pointers]
-  use ExConstructor
 
   # Callbacks
 
   @spec init(payload()) :: NameUpdateTx.t()
-
   def init(%{
         hash: %Identifier{} = identified_hash,
         expire_by: expire_by,
@@ -83,9 +84,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
-  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %NameUpdateTx{
           hash: identified_hash,
@@ -113,7 +114,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -130,7 +131,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   def process_chainstate(
         accounts,
         naming_state,
-        _block_height,
+        block_height,
         %NameUpdateTx{} = tx,
         _data_tx,
         _context
@@ -140,8 +141,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     claim = %{
       claim_to_update
       | pointers: tx.pointers,
-        expires: tx.expire_by,
-        client_ttl: tx.client_ttl
+        expires: tx.client_ttl + block_height,
+        client_ttl: tx.expire_by
     }
 
     updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
@@ -150,8 +151,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameUpdateTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
@@ -160,7 +160,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           NameUpdateTx.t(),
           DataTx.t(),
           Transaction.context()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -215,6 +215,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -231,6 +232,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

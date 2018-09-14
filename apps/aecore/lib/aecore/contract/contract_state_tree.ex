@@ -9,7 +9,10 @@ defmodule Aecore.Contract.ContractStateTree do
 
   @contract_key_size 32
 
+  @typedoc "Hash of the tree"
   @type hash :: binary()
+
+  @typedoc "Contracts tree"
   @type contracts_state() :: Trie.t()
 
   @spec init_empty() :: contracts_state()

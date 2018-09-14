@@ -1,15 +1,18 @@
 defmodule Aecore.Oracle.OracleQuery do
   @moduledoc """
-  Defines oracle query structure
+  Module defining the structure of an OracleQuery
   """
 
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Structure of the Query type"
   @type t :: %OracleQuery{
           expires: integer(),
           fee: integer(),
@@ -37,6 +40,7 @@ defmodule Aecore.Oracle.OracleQuery do
   use ExConstructor
   use Aecore.Util.Serializable
 
+  @spec encode_to_list(OracleQuery.t()) :: list()
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
       case oracle_query.has_response do
@@ -47,7 +51,6 @@ defmodule Aecore.Oracle.OracleQuery do
     response =
       case oracle_query.response do
         :undefined -> <<>>
-        %DataTx{type: OracleResponseTx} = data -> data
         _ -> oracle_query.response
       end
 
@@ -65,6 +68,7 @@ defmodule Aecore.Oracle.OracleQuery do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, OracleQuery.t()} | {:error, reason()}
   def decode_from_list(@version, [
         sender_address,
         sender_nonce,
