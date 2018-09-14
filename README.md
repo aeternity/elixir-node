@@ -34,9 +34,10 @@ The node will run an http api at `localhost:4000`, this can be adjusted using `P
 ### Elixir interactive api-calls
 - `Miner.resume()` to start the miner
 - `Miner.suspend() ` to stop the miner
+- `Miner.mine_sync_block_to_chain()` mine the next block
 
 
-- `Chain.top_block()` to add get the top block of the current chain
+- `Chain.top_block()` to get the top block of the current chain
 - `Chain.top_block_chain_state()` to get the top block chainstate
 - `Chain.chain_state(block_hash)` to get the chainstate of certain block
 
