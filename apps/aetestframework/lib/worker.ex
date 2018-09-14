@@ -10,6 +10,7 @@ defmodule Aetestframework.Worker do
   use ExConstructor
 
   @default_timeout 5_000
+  @new_node_timeout 10_000
 
   # Client API
 
@@ -24,7 +25,7 @@ defmodule Aetestframework.Worker do
   """
   @spec new_node(atom(), non_neg_integer()) :: :ok
   def new_node(node_name, iex_num) do
-    GenServer.call(__MODULE__, {:new_node, node_name, iex_num}, 10_000)
+    GenServer.call(__MODULE__, {:new_node, node_name, iex_num}, @new_node_timeout)
   end
 
   @doc """
@@ -85,8 +86,7 @@ defmodule Aetestframework.Worker do
 
       true ->
         # Running the new elixir-node using Port
-        path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
-        port_id = Port.open({:spawn, "make iex-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: path])
+        port_id = Port.open({:spawn, "make iex-test-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: project_dir()])
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
@@ -121,10 +121,10 @@ defmodule Aetestframework.Worker do
     Enum.each(state, fn {_node, %{port_id: port_id, node_port: port}} ->
       Port.command(port_id, ":erlang.halt()\n")
       Port.close(port_id)
-      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> "/apps/aecore/priv/"
-      File.rm_rf(path <> "aewallet_#{port}")
-      File.rm_rf(path <> "peerkeys_#{port}")
-      File.rm_rf(path <> "rox_db_#{port}")
+      path_to_priv_dir = project_dir() <> "/apps/aecore/priv/"
+      File.rm_rf(path_to_priv_dir <> "test_signkeys_#{port}")
+      File.rm_rf(path_to_priv_dir <> "test_peerkeys_#{port}")
+      File.rm_rf(path_to_priv_dir <> "test_rox_db_#{port}")
     end)
 
     {:reply, :ok, %{}}
@@ -155,7 +155,16 @@ defmodule Aetestframework.Worker do
   @doc """
   Checking if the port is busy
   """
+  @spec busy_port?(non_neg_integer()) :: true | :false
   def busy_port?(port) do
     :os.cmd('lsof -i -P -n | grep -w #{port}') != []
+  end
+
+  @doc """
+  Gets the path to the project directory
+  """
+  @spec project_dir() :: String.t()
+  def project_dir do
+    String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
   end
 end
