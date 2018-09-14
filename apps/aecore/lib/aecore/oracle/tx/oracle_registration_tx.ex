@@ -185,11 +185,11 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       %{ttl: ttl, type: :relative} ->
         fee >= calculate_minimum_fee(ttl)
 
-      %{ttl: ttl, type: :absolute} ->
+      %{ttl: _ttl, type: :absolute} ->
         if block_height != nil do
           fee >=
-            ttl
-            |> Oracle.calculate_relative_ttl(block_height)
+            tx.ttl
+            |> Oracle.calculate_ttl(block_height)
             |> calculate_minimum_fee()
         else
           true

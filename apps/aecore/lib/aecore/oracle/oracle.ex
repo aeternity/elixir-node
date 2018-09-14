@@ -50,7 +50,15 @@ defmodule Aecore.Oracle.Oracle do
           ttl(),
           non_neg_integer()
         ) :: :ok | :error
-  def register(query_format, response_format, query_fee, fee, ttl, tx_ttl \\ 0) do
+  def register(
+        query_format,
+        response_format,
+        query_fee,
+        fee,
+        ttl,
+        tx_ttl \\ 0,
+        {pubkey, privkey} \\ {nil, nil}
+      ) do
     payload = %{
       query_format: query_format,
       response_format: response_format,
@@ -58,7 +66,12 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
-    {pubkey, privkey} = Keys.keypair(:sign)
+    {pubkey, privkey} =
+      if privkey == nil do
+        Keys.keypair(:sign)
+      else
+        {pubkey, privkey}
+      end
 
     tx_data =
       DataTx.init(
@@ -165,8 +178,8 @@ defmodule Aecore.Oracle.Oracle do
     Pool.add_transaction(tx)
   end
 
-  @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
-  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
+  @spec calculate_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
+  def calculate_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
     case type do
       :absolute ->
         ttl
@@ -174,12 +187,6 @@ defmodule Aecore.Oracle.Oracle do
       :relative ->
         ttl + block_height_tx_included
     end
-  end
-
-  @spec calculate_relative_ttl(%{ttl: non_neg_integer(), type: :absolute}, non_neg_integer()) ::
-          non_neg_integer()
-  def calculate_relative_ttl(%{ttl: ttl, type: :absolute}, block_height) do
-    ttl - block_height
   end
 
   @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
