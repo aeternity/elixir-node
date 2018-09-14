@@ -139,7 +139,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%OracleExtendTx{ttl: %{ttl: extend_ttl}}, %DataTx{
+  def encode_to_list(%OracleExtendTx{ttl: %{ttl: extend_ttl_value} = extend_ttl}, %DataTx{
         senders: [sender],
         nonce: nonce,
         fee: fee,
@@ -149,7 +149,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(nonce),
-      :binary.encode_unsigned(extend_ttl),
+      Serialization.encode_ttl_type(extend_ttl)
+      :binary.encode_unsigned(extend_ttl_value),
       :binary.encode_unsigned(fee),
       :binary.encode_unsigned(ttl)
     ]
