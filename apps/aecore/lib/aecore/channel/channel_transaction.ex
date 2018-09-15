@@ -1,6 +1,6 @@
 defmodule Aecore.Channel.ChannelTransaction do
   @moduledoc """
-    Behaviour specifying the necesary functions which any onchain/offchain transaction modifying the offchain chainstate must implement.
+    Behaviour specifying the necessary functions which any onchain/offchain transaction modifying the offchain chainstate must implement.
   """
 
   alias Aecore.Channel.ChannelOffchainUpdate
@@ -34,32 +34,17 @@ defmodule Aecore.Channel.ChannelTransaction do
   @type error :: {:error, String.t()}
 
   @doc """
-  Get the sequence number of the channel after applying the transaction to the offchain channel's state
-  """
-  @callback get_sequence(channel_tx()) :: non_neg_integer
-
-  @doc """
-  Get the state hash of the offchain chainstate after applying the transaction to the offchain channel's state
-  """
-  @callback get_state_hash(channel_tx()) :: binary()
-
-  @doc """
-  Get the id of the channel for which the transaction is ment to be applied
-  """
-  @callback get_channel_id(channel_tx()) :: Identifier.t()
-
-  @doc """
   Get a list of offchain updates to the offchain chainstate
   """
-  @callback get_updates(channel_tx()) :: list(ChannelOffchainUpdate.update_types())
+  @callback offchain_updates(channel_tx()) :: list(ChannelOffchainUpdate.update_types())
 
   @doc """
-  Helper for verifying signatures under a signed channel_tx() object.
+  Helper for verifying signatures under a signed_tx() object.
   If the function received a list of public keys then fails if the transaction was signed parties not included in the list.
   If the function received a public key and the signature validates then the function succedes if the transaction was signed by other parties.
   """
-  @spec signed_with?(signed_tx(), list(Keys.pubkey()) | Keys.pubkey()) :: boolean()
-  def signed_with?(%SignedTx{data: %DataTx{type: type} = data} = tx, pubkey_list) when type in @allowed_onchain_tx and is_list(pubkey_list) do
+  @spec verify_signatures_for_the_expected_parties(signed_tx(), list(Keys.pubkey()) | Keys.pubkey()) :: boolean()
+  def verify_signatures_for_the_expected_parties(%SignedTx{data: %DataTx{type: type} = data} = tx, pubkey_list) when type in @allowed_onchain_tx and is_list(pubkey_list) do
     #Check if the TX was send by the expected parties
     senders = DataTx.senders(data)
     cond do
@@ -73,19 +58,19 @@ defmodule Aecore.Channel.ChannelTransaction do
     end
   end
 
-  def signed_with?(%SignedTx{data: %DataTx{type: type}} = tx, pubkey) when type in @allowed_onchain_tx and is_binary(pubkey) do
+  def verify_signatures_for_the_expected_parties(%SignedTx{data: %DataTx{type: type}} = tx, pubkey) when type in @allowed_onchain_tx and is_binary(pubkey) do
     SignedTx.signature_valid_for?(tx, pubkey)
   end
 
-  def signed_with?(%ChannelOffchainTx{} = tx, [initiator_pubkey, responder_pubkey]) do
-    ChannelOffchainTx.validate(tx, {initiator_pubkey, responder_pubkey}) === :ok
+  def verify_signatures_for_the_expected_parties(%ChannelOffchainTx{} = tx, [initiator_pubkey, responder_pubkey]) do
+    ChannelOffchainTx.verify_signatures(tx, {initiator_pubkey, responder_pubkey}) === :ok
   end
 
-  def signed_with?(%ChannelOffchainTx{} = tx, pubkey) when is_binary(pubkey) do
-    ChannelOffchainTx.signature_valid_for?(tx, pubkey)
+  def verify_signatures_for_the_expected_parties(%ChannelOffchainTx{} = tx, pubkey) when is_binary(pubkey) do
+    ChannelOffchainTx.verify_signature_for_key(tx, pubkey)
   end
 
-  def signed_with?(_, _) do
+  def verify_signatures_for_the_expected_parties(_, _) do
     false
   end
 
@@ -102,20 +87,22 @@ defmodule Aecore.Channel.ChannelTransaction do
   end
 
   def add_signature(%ChannelOffchainTx{} = tx, privkey) do
-    ChannelOffchainTx.sign_with(tx, privkey)
+    ChannelOffchainTx.sign(tx, privkey)
   end
 
-  #Normalizes the data structure for dispatching function calls
-  @spec unpack_tx(signed_tx() | channel_tx()) :: channel_tx()
-  defp unpack_tx(%SignedTx{} = signed_tx) do
-    unpack_tx(SignedTx.data_tx(signed_tx))
+  @doc """
+  Retrieves the unsigned payload from a signed/unsigned channel transaction
+  """
+  @spec unsigned_payload(signed_tx() | channel_tx()) :: channel_tx()
+  def unsigned_payload(%SignedTx{} = signed_tx) do
+    unsigned_payload(SignedTx.data_tx(signed_tx))
   end
 
-  defp unpack_tx(%DataTx{type: type, payload: payload}) when type in @allowed_onchain_tx do
+  def unsigned_payload(%DataTx{type: type, payload: payload}) when type in @allowed_onchain_tx do
     payload
   end
 
-  defp unpack_tx(%ChannelOffchainTx{} = tx) do
+  def unsigned_payload(%ChannelOffchainTx{} = tx) do
     tx
   end
 
@@ -135,22 +122,13 @@ defmodule Aecore.Channel.ChannelTransaction do
   Specifies whether the effect of the transaction on the channel offchain state is instant.
   If it's not then after receiving the Tx the channel is locked until the Tx was mined and min_depth confirmations were made
   """
-  @spec is_instant?(signed_tx()) :: boolean()
-  def is_instant?(%ChannelOffchainTx{}) do
-    true
-  end
-
-  def is_instant?(%SignedTx{data: %DataTx{type: type}}) when type in @allowed_onchain_tx do
+  @spec requires_onchain_confirmation?(signed_tx()) :: boolean()
+  def requires_onchain_confirmation?(%ChannelOffchainTx{}) do
     false
   end
 
-  @doc """
-  Retrieves the sequence of the offchain state after applying the channel transaction to the state channel
-  """
-  @spec get_sequence(signed_tx() | channel_tx()) :: non_neg_integer()
-  def get_sequence(tx) do
-    structure = unpack_tx(tx)
-    structure.__struct__.get_sequence(structure)
+  def requires_onchain_confirmation?(%SignedTx{data: %DataTx{type: type}}) when type in @allowed_onchain_tx do
+    true
   end
 
   @doc """
@@ -171,24 +149,6 @@ defmodule Aecore.Channel.ChannelTransaction do
   end
 
   @doc """
-  Get the channel id for which the transaction is applied
-  """
-  @spec get_channel_id(signed_tx() | channel_tx()) :: Identifier.t()
-  def get_channel_id(tx) do
-    structure = unpack_tx(tx)
-    structure.__struct__.get_channel_id(structure)
-  end
-
-  @doc """
-  Get the state hash of the offchain chainstate after the transaction is applied to the state channel
-  """
-  @spec get_state_hash(signed_tx()) :: binary()
-  def get_state_hash(tx) do
-    structure = unpack_tx(tx)
-    structure.__struct__.get_state_hash(structure)
-  end
-
-  @doc """
   Sets the state hash of the offchain chainstate after the transaction is applied to the state channel
   """
   @spec set_state_hash(channel_tx(), binary()) :: channel_tx()
@@ -204,9 +164,9 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of updates to the offchain chainstate
   """
-  @spec get_updates(signed_tx()) :: list(ChannelOffchainUpdate.update_types())
-  def get_updates(tx) do
-    structure = unpack_tx(tx)
-    structure.__struct__.get_updates(structure)
+  @spec offchain_updates(signed_tx()) :: list(ChannelOffchainUpdate.update_types())
+  def offchain_updates(tx) do
+    structure = unsigned_payload(tx)
+    structure.__struct__.offchain_updates(structure)
   end
 end

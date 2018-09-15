@@ -312,14 +312,14 @@ defmodule AecoreChannelTest do
   end
 
   defp assert_custom_tx_fails(%SignedTx{} = tx) do
-    assert :ok === Pool.add_transaction(tx)
+    assert :ok == Pool.add_transaction(tx)
 
     Miner.mine_sync_block_to_chain()
     assert Enum.empty?(Pool.get_and_empty_pool()) == false
   end
 
   def assert_custom_tx_succeeds(%SignedTx{} = tx) do
-    assert :ok === Pool.add_transaction(tx)
+    assert :ok == Pool.add_transaction(tx)
 
     TestUtils.assert_transactions_mined()
   end

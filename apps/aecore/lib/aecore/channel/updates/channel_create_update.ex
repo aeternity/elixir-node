@@ -73,6 +73,18 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
     {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
   end
 
+  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) :: Chainstate.t()
+  defp create_account_in_chainstate({pubkey, amount}, %Chainstate{accounts: accounts} = chainstate, channel_reserve) do
+    account =
+      Account.empty
+      |> Account.apply_transfer!(nil, amount)
+      |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+    %Chainstate{
+      chainstate
+      | accounts: AccountStateTree.put(accounts, pubkey.value, account)
+    }
+  end
+
   @doc """
   Creates the initial chainstate. Assumes no chainstate is present. Returns an error in the creation failed or a chainstate is already present.
   """
@@ -85,23 +97,15 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
           responder_amount: responder_amount
         },
         channel_reserve) do
-    new_chainstate = Enum.reduce(
+    initial_chainstate = Enum.reduce(
       [
         {initiator, initiator_amount},
         {responder, responder_amount}
       ],
       Chainstate.create_chainstate_trees(),
-      fn {pubkey, amount}, acc ->
-        account =
-          Account.empty
-          |> Account.apply_transfer!(nil, amount)
-          |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
-        %Chainstate{
-          acc
-          | accounts: AccountStateTree.put(acc.accounts, pubkey.value, account)
-        }
-      end)
-    {:ok, new_chainstate}
+      &create_account_in_chainstate(&1, &2, channel_reserve)
+    )
+    {:ok, initial_chainstate}
   catch
     {:error, _} = err ->
       err

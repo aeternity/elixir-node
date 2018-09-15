@@ -59,15 +59,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     }
   end
 
-  @spec create(ChannelStateOffChain.t()) :: ChannelCloseSoloTx.t()
-  def create(state) do
-    %ChannelCloseSoloTx{state: state}
-  end
-
-  @spec sequence(ChannelCloseSoloTx.t()) :: non_neg_integer()
-  def sequence(%ChannelCloseSoloTx{state: %ChannelStateOffChain{sequence: sequence}}),
-    do: sequence
-
   @spec channel_id(ChannelCloseSoloTx.t()) :: binary()
   def channel_id(%ChannelCloseSoloTx{channel_id: channel_id}), do: channel_id
 
@@ -81,6 +72,24 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     if length(senders) != 1 do
       {:error, "#{__MODULE__}: Invalid senders size"}
     else
+      :ok
+    end
+  end
+
+  def validate(%ChannelCloseSoloTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffchainTx{channel_id: offchain_tx_channel_id, state_hash: state_hash}, poi: poi}, data_tx) do
+    senders = DataTx.senders(data_tx)
+
+    cond do
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size"}
+
+      internal_channel_id !== offchain_tx_channel_id ->
+        {:error, "#{__MODULE__}: Channel id mismatch"}
+
+      Poi.calculate_root_hash(poi) !== state_hash ->
+        {:error, "#{__MODULE__}: Invalid state_hash"}
+
+    true ->
       :ok
     end
   end

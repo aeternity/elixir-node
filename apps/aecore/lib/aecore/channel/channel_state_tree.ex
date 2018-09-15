@@ -70,10 +70,10 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec normalize_key(id()) :: ChannelStateOnChain.id()
   def normalize_key(%Identifier{type: :channel, value: key}) do
-      key
+    key
   end
 
   def normalize_key(key) when is_binary(key) do
-      key
+    key
   end
 end

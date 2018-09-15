@@ -1,9 +1,9 @@
 defmodule Aecore.Poi.PoiProof do
   @moduledoc """
-  Implements a POI for a single Merkle Patricia Trie.
+  Implements a Proof Of Inclusion(POI) for a single Merkle Patricia Trie. This module is type agnostic, any keys or values passed to this module must be serialized beforehand. The POI is tied to the original merkle patricia tree - we can cryptographicly proof that the POI was generated from a merkle tree with a given root hash.
   """
 
-  alias Aecore.Poi.PoiDB
+  alias Aecore.Poi.PoiPersistence
   alias Aecore.Poi.PoiProof
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
@@ -45,7 +45,7 @@ defmodule Aecore.Poi.PoiProof do
   @spec construct(Trie.t()) :: PoiProof.t()
   def construct(%Trie{} = trie) do
     %PoiProof{
-      root_hash: trie_root_hash(trie),
+      root_hash: patricia_merkle_trie_root_hash_to_internal_root_hash(trie),
     }
   end
 
@@ -71,21 +71,21 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   #Returns the database handles for making changes to the poi proof
-  #This will initialize the PoiDB wrapper
-  #To obtain the modified database just call PoiDB.finilize()
-  @spec get_proof_construction_handles(PoiProof.t()) :: Map.t()
-  defp get_proof_construction_handles(%PoiProof{db: proof_db}) do
-    PoiDB.prepare_for_requests(proof_db)
+  #This will initialize the PoiPersistence wrapper
+  #To obtain the modified database just call PoiPersistence.finalize()
+  @spec get_proof_database_write_only_callbacks(PoiProof.t()) :: map()
+  defp get_proof_database_write_only_callbacks(%PoiProof{db: proof_db}) do
+    PoiPersistence.prepare_for_requests(proof_db)
     %{
       get: fn _ -> :error end,
-      put: &PoiDB.put/2
+      put: &PoiPersistence.put/2
     }
   end
 
   #Returns database handles for reading the database
   #Writing to the database will fail
-  @spec get_proof_readonly_handles(PoiProof.t()) :: Map.t()
-  defp get_proof_readonly_handles(%PoiProof{db: proof_db}) do
+  @spec get_proof_database_readonly_callbacks(PoiProof.t()) :: map()
+  defp get_proof_database_readonly_callbacks(%PoiProof{db: proof_db}) do
     %{
       get:
         fn key ->
@@ -100,8 +100,8 @@ defmodule Aecore.Poi.PoiProof do
     }
   end
 
-  @spec trie_root_hash(Trie.t()) :: :empty | binary()
-  defp trie_root_hash(%Trie{} = trie) do
+  @spec patricia_merkle_trie_root_hash_to_internal_root_hash(Trie.t()) :: :empty | binary()
+  defp patricia_merkle_trie_root_hash_to_internal_root_hash(%Trie{} = trie) do
     case PatriciaMerkleTree.root_hash(trie) do
       @canonical_root_hash ->
         :empty
@@ -110,12 +110,12 @@ defmodule Aecore.Poi.PoiProof do
     end
   end
 
-  @spec poi_root_hash_to_trie_root_hash(PoiProof.t()) :: binary()
-  defp poi_root_hash_to_trie_root_hash(%PoiProof{root_hash: :empty}) do
+  @spec internal_root_hash_to_patricia_merkle_trie_root_hash(PoiProof.t()) :: binary()
+  defp internal_root_hash_to_patricia_merkle_trie_root_hash(%PoiProof{root_hash: :empty}) do
     @canonical_root_hash
   end
 
-  defp poi_root_hash_to_trie_root_hash(%PoiProof{root_hash: root_hash}) do
+  defp internal_root_hash_to_patricia_merkle_trie_root_hash(%PoiProof{root_hash: root_hash}) do
     root_hash
   end
 
@@ -124,7 +124,7 @@ defmodule Aecore.Poi.PoiProof do
   defp get_proof_construction_trie(%PoiProof{} = poi_proof) do
     len = Storage.max_rlp_len()
     Trie.new(
-      ExternalDB.init(get_proof_construction_handles(poi_proof)),
+      ExternalDB.init(get_proof_database_write_only_callbacks(poi_proof)),
       <<0::size(len)-unit(8)>> #this will avoid writing the initial root hash to the DB
     )
   end
@@ -134,17 +134,17 @@ defmodule Aecore.Poi.PoiProof do
   defp get_readonly_proof_trie(%PoiProof{} = poi_proof) do
     len = Storage.max_rlp_len()
     Trie.new(
-      ExternalDB.init(get_proof_readonly_handles(poi_proof)),
+      ExternalDB.init(get_proof_database_readonly_callbacks(poi_proof)),
       <<0::size(len)-unit(8)>> #this will avoid writing the initial root hash to the readonly DB
     )
   end
 
-  #Invokes proof construction on the Poi proof. Uses the PoiDB wrapper for obtaining imperative behaviour.
+  #Invokes proof construction on the Poi proof. Uses the PoiPersistence wrapper for obtaining imperative behaviour.
   @spec invoke_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), Map.t()} | {:error, :key_not_found}
   defp invoke_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
     proof_trie = get_proof_construction_trie(poi_proof)
     {value, _} = Proof.construct_proof({trie, key, proof_trie})
-    new_proof_db = PoiDB.finalize()
+    new_proof_db = PoiPersistence.finalize()
     case value do
       nil ->
         {:error, :key_not_found}
@@ -158,16 +158,15 @@ defmodule Aecore.Poi.PoiProof do
   """
   @spec add_to_poi(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
   def add_to_poi(%PoiProof{root_hash: root_hash} = poi_proof, %Trie{} = trie, key) do
-    case trie_root_hash(trie) do
-      ^root_hash ->
-        case invoke_proof_construction(poi_proof, trie, key) do
-          {:error, _} = err ->
-            err
-          {:ok, value, proof_db} ->
-            {:ok, value, %PoiProof{poi_proof | db: proof_db}}
-        end
-      _ ->
+    with ^root_hash <- patricia_merkle_trie_root_hash_to_internal_root_hash(trie),
+         {:ok, value, proof_db} <- invoke_proof_construction(poi_proof, trie, key) do
+      {:ok, value, %PoiProof{poi_proof | db: proof_db}}
+    else
+      h when is_binary(h) or h === :empty ->
         {:error, :wrong_root_hash}
+
+      {:error, _} = err ->
+            err
     end
   end
 
@@ -176,7 +175,7 @@ defmodule Aecore.Poi.PoiProof do
   """
   @spec verify_poi_entry(PoiProof.t(), Trie.key, Trie.value()) :: boolean()
   def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
-    root_hash = poi_root_hash_to_trie_root_hash(poi_proof)
+    root_hash = internal_root_hash_to_patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
     PatriciaMerkleTree.verify_proof(key, serialized_value, root_hash, proof_trie)
   end
@@ -186,7 +185,7 @@ defmodule Aecore.Poi.PoiProof do
   """
   @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
-    root_hash = poi_root_hash_to_trie_root_hash(poi_proof)
+    root_hash = internal_root_hash_to_patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
     PatriciaMerkleTree.lookup_proof(key, root_hash, proof_trie)
   end

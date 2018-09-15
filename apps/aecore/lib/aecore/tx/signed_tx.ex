@@ -218,7 +218,7 @@ defmodule Aecore.Tx.SignedTx do
       false
     else
       data_binary = DataTx.rlp_encode(data)
-      many_signatures_check(sigs, data_binary, senders)
+      check_multiple_signatures(sigs, data_binary, senders)
     end
   end
 
@@ -240,21 +240,21 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec many_signatures_check(list(binary()), binary(), list(Keys.pubkey())) :: boolean()
-  defp many_signatures_check(signatures, data_binary, [pubkey | remaining_pubkeys]) do
+  @spec check_multiple_signatures(list(binary()), binary(), list(Keys.pubkey())) :: boolean()
+  defp check_multiple_signatures(signatures, data_binary, [pubkey | remaining_pubkeys]) do
     case single_signature_check(signatures, data_binary, pubkey) do
       {:ok, remaining_signatures} ->
-        many_signatures_check(remaining_signatures, data_binary, remaining_pubkeys)
+        check_multiple_signatures(remaining_signatures, data_binary, remaining_pubkeys)
       :error ->
         false
     end
   end
 
-  defp many_signatures_check([], _data_binary, []) do
+  defp check_multiple_signatures([], _data_binary, []) do
     true
   end
 
-  defp many_signatures_check(_, _, _) do
+  defp check_multiple_signatures(_, _, _) do
     false
   end
 

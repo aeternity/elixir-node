@@ -28,7 +28,6 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelCloseSoloTx
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
-          | Aecore.Channel.Tx.ChannelOffchainTx
 
   @typedoc "Structure of a transaction that may be added to be blockchain"
   @type payload ::
@@ -47,7 +46,6 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
-          | Aecore.Channel.Tx.ChannelOffchainTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

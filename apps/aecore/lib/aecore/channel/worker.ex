@@ -371,29 +371,22 @@ defmodule Aecore.Channel.Worker do
         _from,
         state
       ) do
-    channel_id = ChannelTransaction.get_channel_id(half_signed_tx).value
+    channel_id = ChannelTransaction.unsigned_payload(half_signed_tx).channel_id.value
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, fully_signed_tx} <-
-           ChannelStatePeer.recv_half_signed_tx(peer_state, half_signed_tx, priv_key) do
-      if ChannelTransaction.is_instant?(fully_signed_tx) do
-        {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
-      else
-        with :ok <- Pool.add_transaction(fully_signed_tx) do
-          {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
-        else
-          :error ->
-            {:reply, {:error, "Pool error"}, state}
-        end
-      end
+    with {:ok, new_peer_state, fully_signed_tx} <- ChannelStatePeer.recv_half_signed_tx(peer_state, half_signed_tx, priv_key),
+         :ok <- ((ChannelTransaction.requires_onchain_confirmation?(fully_signed_tx) && Pool.add_transaction(fully_signed_tx)) || :ok) do
+      {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
     else
+      :error ->
+        {:reply, {:error, "Pool error"}, state}
       {:error, _} = err ->
         {:reply, err, state}
     end
   end
 
   def handle_call({:recv_fully_signed_tx, fully_signed_tx}, _from, state) do
-    channel_id = ChannelTransaction.get_channel_id(fully_signed_tx).value
+    channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id.value
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state} <-
@@ -406,7 +399,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:recv_confirmed_tx, confirmed_onchain_tx}, _from, state) do
-    channel_id = ChannelTransaction.get_channel_id(confirmed_onchain_tx).value
+    channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id.value
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
@@ -569,27 +562,34 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
+  #Calculates the most recent state hash for the given channel id
   def handle_call({:calculate_state_hash, channel_id}, _from, state) do
-    invoke_channel_getter(state, channel_id, &ChannelStatePeer.calculate_state_hash/1)
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.calculate_state_hash/1)
   end
 
+  #Retrieves the most recent chainstate for the given channel id
   def handle_call({:most_recent_chainstate, channel_id}, _from, state) do
-    invoke_channel_getter(state, channel_id, &ChannelStatePeer.most_recent_chainstate/1)
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.most_recent_chainstate/1)
   end
 
+  #Retrieves the sequence of the highest offchain chainstate for the given channel id
   def handle_call({:highest_sequence, channel_id}, _from, state) do
-    invoke_channel_getter(state, channel_id, &ChannelStatePeer.highest_sequence/1)
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.highest_sequence/1)
   end
 
+  #Retrieves the amount of funds belonging to our account according to the most recent chainstate for the given channel id
   def handle_call({:our_offchain_account_balance, channel_id}, _from, state) do
-    invoke_channel_getter(state, channel_id, &ChannelStatePeer.our_offchain_account_balance/1)
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.our_offchain_account_balance/1)
   end
 
+  #Retrieves the amount of funds belonging to the other peer according to the most recent chainstate for the given channel id
   def handle_call({:foreign_offchain_account_balance, channel_id}, _from, state) do
-    invoke_channel_getter(state, channel_id, &ChannelStatePeer.foreign_offchain_account_balance/1)
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.foreign_offchain_account_balance/1)
   end
 
-  defp invoke_channel_getter(state, channel_id, fun) when is_function(fun, 1) do
+  #Safely invokes the given function for the given channel id
+  @spec dispatch_function_call_to_channel(state(), binary(), function()) :: {:reply, error() | {:ok, any()}, state()}
+  defp dispatch_function_call_to_channel(state, channel_id, fun) when is_function(fun, 1) do
     if Map.has_key?(state, channel_id) do
       {:reply, {:ok, fun.(Map.get(state, channel_id))}, state}
     else

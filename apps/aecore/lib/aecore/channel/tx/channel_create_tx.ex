@@ -45,7 +45,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           locktime: non_neg_integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer(),
-          channel_id: Identifier.t()
+          channel_id: Identifier.t(),
+          sequence: non_neg_integer()
         }
 
   @doc """
@@ -61,7 +62,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
   - channel_id: id of the created channel - not sent to the blockchain but calculated here for convenience
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id]
+  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id, sequence: 1]
   use ExConstructor
 
   @spec get_chain_state_name :: atom()
@@ -295,34 +296,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   end
 
   @doc """
-    Get the sequence number of the channel after applying the transaction to the offchain channel's state
-  """
-  @spec get_sequence(ChannelCreateTx.t()) :: non_neg_integer()
-  def get_sequence(%ChannelCreateTx{}) do
-    1
-  end
-
-  @doc """
-    Get the state hash of the offchain chainstate after applying the transaction to the offchain channel's state
-  """
-  @spec get_state_hash(ChannelCreateTx.t()) :: binary()
-  def get_state_hash(%ChannelCreateTx{state_hash: state_hash}) do
-    state_hash
-  end
-
-  @doc """
-    Get the id of the channel for which the transaction is ment to be applied
-  """
-  @callback get_channel_id(ChannelCreateTx.t()) :: Identifier.t()
-  def get_channel_id(%ChannelCreateTx{channel_id: channel_id}) do
-    channel_id
-  end
-
-  @doc """
     Get a list of offchain updates to the offchain chainstate
   """
-  @spec get_updates(ChannelCreateTx.t()) :: list(ChannelOffchainUpdate.update_types())
-  def get_updates(%ChannelCreateTx{} = tx) do
+  @spec offchain_updates(ChannelCreateTx.t()) :: list(ChannelOffchainUpdate.update_types())
+  def offchain_updates(%ChannelCreateTx{} = tx) do
     [ChannelCreateUpdate.new(tx)]
   end
 end

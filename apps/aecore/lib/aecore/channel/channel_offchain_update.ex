@@ -95,27 +95,23 @@ defmodule Aecore.Channel.ChannelOffchainUpdate do
     module.update_offchain_chainstate(chainstate, object, channel_reserve)
   end
 
+  #Function passed to Enum.reduce. Aplies the given update to the chainstate.
+  @spec apply_single_update_to_chainstate(update_types(), {:ok, Chainstate.t() | nil}, non_neg_integer()) :: {:ok, Chainstate.t()} | {:halt, error()}
+  defp apply_single_update_to_chainstate(update, {:ok, chainstate}, channel_reserve) do
+    case update_offchain_chainstate(chainstate, update, channel_reserve) do
+      {:ok, _} = updated_chainstate ->
+        {:cont, updated_chainstate}
+      {:error, _} = err ->
+        {:halt, err}
+    end
+  end
+
   @doc """
-  Aplies each update in a list of updates to the offchain chainstate. Breaks on the first encountered error.
+  Applies each update in a list of updates to the offchain chainstate. Breaks on the first encountered error.
   """
   @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
   def apply_updates(chainstate, updates, channel_reserve) do
-    new_chainstate =
-      Enum.reduce_while(updates, chainstate,
-        fn update, acc ->
-          case update_offchain_chainstate(acc, update, channel_reserve) do
-            {:ok, new_acc} ->
-              {:cont, new_acc}
-            {:error, _} = err ->
-              {:halt, err}
-          end
-        end)
-    case new_chainstate do
-      {:error, _} = err ->
-        err
-      _ ->
-        {:ok, new_chainstate}
-    end
+    Enum.reduce_while(updates, {:ok, chainstate}, &apply_single_update_to_chainstate(&1, &2, channel_reserve))
   end
 
   @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) :: Account.t() | no_return()

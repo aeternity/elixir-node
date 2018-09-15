@@ -1,6 +1,8 @@
 defmodule Aecore.Poi.Poi do
   @moduledoc """
-  Implements a Poi for the entire chainstate
+  Module implementing a Proof of Inclusion(POI) on state trees for the entire chainstate.
+  The POI is an abstraction for sharing and accesing a subset of an existing chainstate to any intrested party.
+  The POI is cryptographically tied to the chainstate from which the POI was generated (we can proof that the POI is a subset of a chainstate with a given state hash).
   """
 
   alias Aecore.Account.Account
@@ -96,13 +98,13 @@ defmodule Aecore.Poi.Poi do
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn proof, acc ->
       acc <> PoiProof.root_hash(proof) end)
-    |> Hash.hash_blake2b()
+    |> Hash.hash()
   end
 
   @doc """
   Adds an entry for the specified key to the Poi
   """
-  @spec add_to_poi(tree_type(), Keys.pubkey(), Chainstate.t(), Poi.t()) :: {:ok, Poi.t()} | {:error, :wrong_root_hash | :key_not_found | :nyi}
+  @spec add_to_poi(tree_type(), Keys.pubkey(), Chainstate.t(), Poi.t()) :: {:ok, Poi.t()} | {:error, :wrong_root_hash | :key_not_found | :not_yet_implemented}
   def add_to_poi(:accounts, pub_key, %Chainstate{accounts: accounts}, %Poi{accounts: accounts_proof} = poi) do
     case PoiProof.add_to_poi(accounts_proof, accounts, pub_key) do
       {:error, _} = err ->
@@ -118,7 +120,7 @@ defmodule Aecore.Poi.Poi do
 
   def add_to_poi(_, _, _, _) do
     # epoch currently only implemented accounts and contracts
-    {:error, :nyi}
+    {:error, :not_yet_implemented}
   end
 
   @doc """
@@ -135,7 +137,7 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Lookups the entry associated with the given key in the Poi
   """
-  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_present | String.t() | :nyi}
+  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_present | String.t() | :not_yet_implemented}
   def lookup_poi(:accounts, %Poi{accounts: accounts_proof}, pub_key) do
     case PoiProof.lookup_in_poi(accounts_proof, pub_key) do
       :error ->
@@ -155,7 +157,7 @@ defmodule Aecore.Poi.Poi do
 
   def lookup_poi(_, _, _) do
       # epoch currently only implemented accounts and contracts
-      {:error, :nyi}
+      {:error, :not_yet_implemented}
   end
 
   @doc """
@@ -183,15 +185,14 @@ defmodule Aecore.Poi.Poi do
     calls: calls_proof,
     contracts: contracts_proof
   }) do
-    payload = [
+    payload = Enum.map([
       accounts_proof,
       calls_proof,
       channels_proof,
       contracts_proof,
       naming_proof,
       oracles_proof
-    ]
-    |> Enum.map(&PoiProof.encode_to_list/1)
+    ], &PoiProof.encode_to_list/1)
 
     [:binary.encode_unsigned(@version)] ++ payload
   end

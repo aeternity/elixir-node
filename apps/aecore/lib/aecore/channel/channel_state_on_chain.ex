@@ -140,28 +140,27 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         :empty,
         %Poi{} = poi
       ) do
-    cond do
-      #No payload is only allowed for SoloCloseTx
-      channel.slash_sequence != 0 ->
-        {:error, "#{__MODULE__}: Channel already slashed"}
+    with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
+      cond do
+        #No payload is only allowed for SoloCloseTx
+        channel.slash_sequence != 0 ->
+          {:error, "#{__MODULE__}: Channel already slashed"}
 
-      channel.state_hash !== Poi.calculate_root_hash(poi) ->
-        {:error, "#{__MODULE__}: Invalid state hash"}
+        channel.state_hash !== Poi.calculate_root_hash(poi) ->
+          {:error, "#{__MODULE__}: Invalid state hash"}
 
-      true ->
-        case get_final_balances_from_poi(channel, poi) do
-          {:ok, poi_initiator_amount, poi_responder_amount} ->
-            cond do
-              poi_initiator_amount !== channel.initiator_amount ->
-                {:error, "#{__MODULE__}: Invalid initiator amount"}
-              poi_responder_amount !== channel.responder_amount ->
-                {:error, "#{__MODULE__}: Invalid responder amount"}
-              true ->
-                :ok
-            end
-          {:error, _} = err ->
-            err
-        end
+        poi_initiator_amount !== channel.initiator_amount ->
+          {:error, "#{__MODULE__}: Invalid initiator amount"}
+
+        poi_responder_amount !== channel.responder_amount ->
+          {:error, "#{__MODULE__}: Invalid responder amount"}
+
+        true ->
+          :ok
+      end
+    else
+      {:error, _} = err ->
+        err
     end
   end
 
@@ -169,42 +168,36 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelStateOnChain{} = channel,
         %ChannelOffchainTx{} = offchain_tx,
         %Poi{} = poi) do
-    cond do
-      channel.slash_sequence >= offchain_tx.sequence ->
-        {:error, "#{__MODULE__}: Offchain state is too old"}
+     with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
+       cond do
+         channel.slash_sequence >= offchain_tx.sequence ->
+           {:error, "#{__MODULE__}: Offchain state is too old"}
 
-      offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
-        {:error, "#{__MODULE__}: Invalid state hash"}
+         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
+           {:error, "#{__MODULE__}: Invalid state hash"}
 
-      true ->
-        case get_final_balances_from_poi(channel, poi) do
-          {:ok, poi_initiator_amount, poi_responder_amount} ->
-            if poi_initiator_amount + poi_responder_amount !== channel.initiator_amount + channel.responder_amount do
-              #The total amount MUST never change
-              {:error, "#{__MODULE__}: Invalid total amount"}
-            else
-              ChannelOffchainTx.validate(offchain_tx, pubkeys(channel))
-            end
-          {:error, _} = err ->
-            err
-        end
-    end
+         poi_initiator_amount + poi_responder_amount !== channel.initiator_amount + channel.responder_amount ->
+           {:error, "#{__MODULE__}: Invalid total amount"}
+
+         true ->
+           ChannelOffchainTx.verify_signatures(offchain_tx, pubkeys(channel))
+       end
+     else
+       {:error, _} = err ->
+         err
+     end
   end
 
   @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
   defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
-    case Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey) do
-      {:ok, poi_initiator_amount} ->
-        case Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
-          {:ok, poi_respoder_amount} ->
-            #Later we will need to factor in contracts
-            {:ok, poi_initiator_amount, poi_respoder_amount}
-          {:error, _} ->
-            {:error, "#{__MODULE__}: Poi does not contain responder's offchain account."}
-        end
-      {:error, _} ->
-        {:error, "#{__MODULE__}: Poi does not contain initiator's offchain account."}
-    end
+      with {:ok, poi_initiator_amount} <- Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
+           {:ok, poi_responder_amount} <- Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+        #Later we will need to factor in contracts
+        {:ok, poi_initiator_amount, poi_responder_amount}
+      else
+        {:error, _} ->
+          {:error, "#{__MODULE__}: Poi is missing an offchain account."}
+      end
   end
 
   @doc """
