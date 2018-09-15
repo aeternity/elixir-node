@@ -375,7 +375,7 @@ defmodule Aecore.Channel.Worker do
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state, fully_signed_tx} <- ChannelStatePeer.receive_half_signed_tx(peer_state, half_signed_tx, priv_key),
-         :ok <- ((ChannelTransaction.requires_onchain_confirmation?(fully_signed_tx) && Pool.add_transaction(fully_signed_tx)) || :ok) do
+         :ok <- send_tx_to_pool_if_confirmation_is_required(fully_signed_tx) do
       {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
     else
       :error ->
@@ -594,6 +594,15 @@ defmodule Aecore.Channel.Worker do
       {:reply, {:ok, fun.(Map.get(state, channel_id))}, state}
     else
       {:reply, {:error, "#{__MODULE__}: No such channel"}, state}
+    end
+  end
+
+  @spec send_tx_to_pool_if_confirmation_is_required(ChannelTransaction.signed_tx()) :: :ok | :error
+  defp send_tx_to_pool_if_confirmation_is_required(tx) do
+    if ChannelTransaction.requires_onchain_confirmation?(tx) do
+      Pool.add_transaction(tx)
+    else
+      :ok
     end
   end
 
