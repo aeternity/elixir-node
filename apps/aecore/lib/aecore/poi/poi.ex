@@ -137,7 +137,7 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Lookups the entry associated with the given key in the Poi
   """
-  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_present | String.t() | :not_yet_implemented}
+  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_found | String.t() | :not_yet_implemented}
   def lookup_poi(:accounts, %Poi{accounts: accounts_proof}, pub_key) do
     case PoiProof.lookup_in_poi(accounts_proof, pub_key) do
       :error ->

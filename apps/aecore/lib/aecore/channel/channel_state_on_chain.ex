@@ -6,7 +6,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   require Logger
 
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.ChannelOffchainTx
+  alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Poi.Poi
   alias Aecore.Tx.DataTx
   alias Aeutil.Hash
@@ -166,7 +166,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
-        %ChannelOffchainTx{} = offchain_tx,
+        %ChannelOffChainTx{} = offchain_tx,
         %Poi{} = poi) do
      with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
        cond do
@@ -180,7 +180,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
            {:error, "#{__MODULE__}: Invalid total amount"}
 
          true ->
-           ChannelOffchainTx.verify_signatures(offchain_tx, pubkeys(channel))
+           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
        end
      else
        {:error, _} = err ->
@@ -203,7 +203,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Executes slashing on a channel. Slashing should be validated beforehand with validate_slashing.
   """
-  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelOffchainTx.t() | :empty, Poi.t()) ::
+  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
           ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
@@ -218,7 +218,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelOffchainTx{} = offchain_tx, %Poi{} = poi) do
+  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelOffChainTx{} = offchain_tx, %Poi{} = poi) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
     {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
     %ChannelStateOnChain{

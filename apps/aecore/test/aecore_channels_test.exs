@@ -64,7 +64,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, transfer funds, mutal close channel", ctx do
+  test "Create channel, transfer funds, mutal close channel", ctx do
     id = create_channel(ctx)
 
     # Can't transfer more then reserve allows
@@ -97,7 +97,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 240_000
-  test "create channel, transfer twice, slash with old, slash with correct and settle", ctx do
+  test "Create channel, transfer twice, slash with old, slash with correct and settle", ctx do
     id = create_channel(ctx)
 
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
@@ -136,7 +136,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "create channel, responder dissapears, solo close", ctx do
+  test "Create channel, responder dissapears, solo close", ctx do
     id = create_channel(ctx)
 
     {:ok, _state} = call_s1({:transfer, id, 50, ctx.sk1})
@@ -218,7 +218,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Onchain transaction basic serialization tests", ctx do
+  test "OnChain transaction basic serialization tests", ctx do
     id = create_channel(ctx)
 
     {:ok, initiator_state} = call_s1({:get_channel, id})

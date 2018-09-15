@@ -5,7 +5,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
 
   alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.Updates.ChannelTransferUpdate
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Channel.ChannelTransaction
   alias Aecore.Keys
   alias Aeutil.Serialization
@@ -22,7 +22,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @type t :: %ChannelOffChainTx{
           channel_id: Identifier.t(),
           sequence:   non_neg_integer(),
-          updates:    list(ChannelOffchainUpdate.update_types()),
+          updates:    list(ChannelOffChainUpdate.update_types()),
           state_hash: binary(),
           signatures: {binary(), binary()}
         }
@@ -195,7 +195,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     updates:    updates,
     state_hash: state_hash
   }) do
-    encoded_updates = Enum.map(updates, &ChannelOffchainUpdate.to_list/1)
+    encoded_updates = Enum.map(updates, &ChannelOffChainUpdate.to_list/1)
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(channel_id),
@@ -219,7 +219,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     %ChannelOffChainTx{
       channel_id: channel_id,
       sequence: :binary.decode_unsigned(sequence),
-      updates: Enum.map(encoded_updates, &ChannelOffchainUpdate.from_list/1),
+      updates: Enum.map(encoded_updates, &ChannelOffChainUpdate.from_list/1),
       state_hash: state_hash
     }
   end

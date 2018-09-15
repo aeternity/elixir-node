@@ -21,11 +21,21 @@ defmodule Aecore.Poi.PoiProof do
   @state_hash_bytes 32
 
   @typedoc """
+  Type of state hash used by the Merkle Patricia Trie library
+  """
+  @type state_hash :: binary()
+
+  @typedoc """
+  Type of the state hash used by this module
+  """
+  @type internal_state_hash :: :empty | state_hash()
+
+  @typedoc """
   Structure of a Poi proof for a single trie
   """
   @type t :: %PoiProof{
-          root_hash: :empty | binary(),
-          db: Map.t()
+          root_hash: internal_state_hash(),
+          db: map()
         }
 
   @doc """
@@ -63,7 +73,7 @@ defmodule Aecore.Poi.PoiProof do
   Calculates the root hash of the given Poi proof.
   Returns a hash of all zeroes for proofs for empty tries.
   """
-  @spec root_hash(PoiProof.t()) :: binary()
+  @spec root_hash(PoiProof.t()) :: state_hash()
   def root_hash(%PoiProof{root_hash: :empty}) do
     <<0::size(@state_hash_bytes)-unit(8)>>
   end
@@ -102,7 +112,7 @@ defmodule Aecore.Poi.PoiProof do
     }
   end
 
-  @spec patricia_merkle_trie_root_hash_to_internal_root_hash(Trie.t()) :: :empty | binary()
+  @spec patricia_merkle_trie_root_hash_to_internal_root_hash(Trie.t()) :: internal_state_hash()
   defp patricia_merkle_trie_root_hash_to_internal_root_hash(%Trie{} = trie) do
     case PatriciaMerkleTree.root_hash(trie) do
       @canonical_root_hash ->
@@ -112,7 +122,7 @@ defmodule Aecore.Poi.PoiProof do
     end
   end
 
-  @spec internal_root_hash_to_patricia_merkle_trie_root_hash(PoiProof.t()) :: binary()
+  @spec internal_root_hash_to_patricia_merkle_trie_root_hash(PoiProof.t()) :: state_hash()
   defp internal_root_hash_to_patricia_merkle_trie_root_hash(%PoiProof{root_hash: :empty}) do
     @canonical_root_hash
   end
@@ -142,7 +152,7 @@ defmodule Aecore.Poi.PoiProof do
   end
 
   #Wrapper for proof construction on merkle patricia trees. Uses the PoiPersistence wrapper for obtaining functional behaviour although the underlaying library relies on side effects in order to achieve persistence.
-  @spec side_efects_encapsulating_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), Map.t()} | {:error, :key_not_found}
+  @spec side_efects_encapsulating_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), map()} | {:error, :key_not_found}
   defp side_efects_encapsulating_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
     proof_trie = get_proof_construction_trie(poi_proof)
     {value, _} = Proof.construct_proof({trie, key, proof_trie})
@@ -195,7 +205,7 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
   Serializes the poi proof to a list
   """
-  @spec encode_to_list(PoiProof.t()) :: list()
+  @spec encode_to_list(PoiProof.t()) :: list(list(binary()))
   def encode_to_list(%PoiProof{root_hash: :empty}) do
     []
   end
@@ -211,7 +221,7 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
   Deserialized the poi proof from a list
   """
-  @spec decode_from_list(list()) :: PoiProof.t() | {:error, String.t()}
+  @spec decode_from_list(list(list(binary()))) :: PoiProof.t() | {:error, String.t()}
   def decode_from_list([]) do
     construct_empty()
   end

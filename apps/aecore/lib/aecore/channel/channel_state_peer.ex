@@ -9,7 +9,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     ChannelStatePeer,
     ChannelCreateTx,
     ChannelTransaction,
-    ChannelOffchainUpdate
+    ChannelOffChainUpdate
   }
 
   alias Aecore.Channel.Worker, as: Channel
@@ -91,7 +91,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         {:error, "#{__MODULE__}: Invalid sequence in tx"}
       true ->
         #apply updates
-        ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.offchain_updates(tx), channel_reserve)
+        ChannelOffChainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.offchain_updates(tx), channel_reserve)
     end
   end
 
@@ -131,7 +131,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec from_signed_tx_list(
           list(ChannelTransaction.channel_tx()),
           Channel.role()
-        ) :: {:ok, ChannelStatePeer.t()} | {:error, String.t()}
+        ) :: {:ok, ChannelStatePeer.t()} | error()
   def from_signed_tx_list(offchain_tx_list, role) do
 
     offchain_tx_list_from_oldest = Enum.reverse(offchain_tx_list)
@@ -186,7 +186,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     Calculates the state hash of the offchain chainstate after aplying the transaction.
     Only basic verification is done.
   """
-  @spec calculate_next_state_hash_for_new_tx(ChannelTransaction.channel_tx(), ChannelStatePeer.t()) :: {:ok, binary()} | {:error, String.t()}
+  @spec calculate_next_state_hash_for_new_tx(ChannelTransaction.channel_tx(), ChannelStatePeer.t()) :: {:ok, binary()} | error()
   def calculate_next_state_hash_for_new_tx(tx, %ChannelStatePeer{
     channel_reserve: channel_reserve,
     offchain_chainstate: offchain_chainstate,
@@ -195,7 +195,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     if ChannelTransaction.unsigned_payload(tx).sequence <= sequence do
       {:error, "#{__MODULE__}: Invalid sequence in tx"}
     else
-      case ChannelOffchainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.offchain_updates(tx), channel_reserve) do
+      case ChannelOffChainUpdate.apply_updates(offchain_chainstate, ChannelTransaction.offchain_updates(tx), channel_reserve) do
         {:ok, new_offchain_chainstate} ->
           {:ok, Chainstate.calculate_root_hash(new_offchain_chainstate)}
         {:error, _} = err ->
