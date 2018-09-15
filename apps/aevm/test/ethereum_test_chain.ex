@@ -7,7 +7,7 @@ defmodule EthereumTestChain do
 
   alias Aecore.Keys
 
-  require AevmConst
+  require Aevm.AevmConst, as: AevmConst
 
   @behaviour Aevm.ChainApi
 
