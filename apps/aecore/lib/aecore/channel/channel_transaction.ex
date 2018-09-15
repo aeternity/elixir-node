@@ -6,13 +6,13 @@ defmodule Aecore.Channel.ChannelTransaction do
   alias Aecore.Channel.ChannelOffchainUpdate
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Channel.ChannelOffchainTx
+  alias Aecore.Channel.ChannelOffChainTx
 
   @typedoc """
   Data structures capable of mutating the offchain chainstate off an state channel
   """
   @type channel_tx ::
-          Aecore.Channel.ChannelOffchainTx
+          Aecore.Channel.ChannelOffChainTx
           | Aecore.Channel.Tx.ChannelCreateTx
           #| Aecore.Channel.Tx.ChannelWidhdrawTx
           #| Aecore.Channel.Tx.ChannelDepositTx
@@ -20,7 +20,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   @typedoc """
   Type of a signed channel transaction
   """
-  @type signed_tx :: SignedTx.t() | ChannelOffchainTx.t()
+  @type signed_tx :: SignedTx.t() | ChannelOffChainTx.t()
 
   @allowed_onchain_tx [
       Aecore.Channel.Tx.ChannelCreateTx
@@ -62,12 +62,12 @@ defmodule Aecore.Channel.ChannelTransaction do
     SignedTx.signature_valid_for?(tx, pubkey)
   end
 
-  def verify_signatures_for_the_expected_parties(%ChannelOffchainTx{} = tx, [initiator_pubkey, responder_pubkey]) do
-    ChannelOffchainTx.verify_signatures(tx, {initiator_pubkey, responder_pubkey}) === :ok
+  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, [initiator_pubkey, responder_pubkey]) do
+    ChannelOffChainTx.verify_signatures(tx, {initiator_pubkey, responder_pubkey}) === :ok
   end
 
-  def verify_signatures_for_the_expected_parties(%ChannelOffchainTx{} = tx, pubkey) when is_binary(pubkey) do
-    ChannelOffchainTx.verify_signature_for_key(tx, pubkey)
+  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, pubkey) when is_binary(pubkey) do
+    ChannelOffChainTx.verify_signature_for_key(tx, pubkey)
   end
 
   def verify_signatures_for_the_expected_parties(_, _) do
@@ -77,7 +77,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Helper function for signing a channel transaction
   """
-  @spec add_signature(signed_tx(), Keys.sign_priv_key()) :: {:ok, SignedTx.t() | ChannelOffchainTx.t()} | error()
+  @spec add_signature(signed_tx(), Keys.sign_priv_key()) :: {:ok, SignedTx.t() | ChannelOffChainTx.t()} | error()
   def add_signature(%SignedTx{data: %DataTx{type: type}} = tx, privkey) when type in @allowed_onchain_tx do
     SignedTx.sign_tx(tx, privkey)
   end
@@ -86,8 +86,8 @@ defmodule Aecore.Channel.ChannelTransaction do
     SignedTx.sign_tx(tx, privkey)
   end
 
-  def add_signature(%ChannelOffchainTx{} = tx, privkey) do
-    ChannelOffchainTx.sign(tx, privkey)
+  def add_signature(%ChannelOffChainTx{} = tx, privkey) do
+    ChannelOffChainTx.sign(tx, privkey)
   end
 
   @doc """
@@ -102,15 +102,15 @@ defmodule Aecore.Channel.ChannelTransaction do
     payload
   end
 
-  def unsigned_payload(%ChannelOffchainTx{} = tx) do
+  def unsigned_payload(%ChannelOffChainTx{} = tx) do
     tx
   end
 
   @doc """
   Converts the transaction to a form suitable for initializing the payload in ChannelSoloCloseTx, ChannelSlashTx and ChannelSnapshotSoloTx
   """
-  @spec dispute_payload(signed_tx()) :: ChannelOffchainTx.t() | :empty
-  def dispute_payload(%ChannelOffchainTx{} = tx) do
+  @spec dispute_payload(signed_tx()) :: ChannelOffChainTx.t() | :empty
+  def dispute_payload(%ChannelOffChainTx{} = tx) do
     tx
   end
 
@@ -123,7 +123,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   If it's not then after receiving the Tx the channel is locked until the Tx was mined and min_depth confirmations were made
   """
   @spec requires_onchain_confirmation?(signed_tx()) :: boolean()
-  def requires_onchain_confirmation?(%ChannelOffchainTx{}) do
+  def requires_onchain_confirmation?(%ChannelOffChainTx{}) do
     false
   end
 
@@ -144,8 +144,8 @@ defmodule Aecore.Channel.ChannelTransaction do
     %DataTx{data_tx | payload: Map.put(payload, :sequence, sequence)}
   end
 
-  def set_sequence(%ChannelOffchainTx{} = tx, sequence) do
-    %ChannelOffchainTx{tx | sequence: sequence}
+  def set_sequence(%ChannelOffChainTx{} = tx, sequence) do
+    %ChannelOffChainTx{tx | sequence: sequence}
   end
 
   @doc """
@@ -157,8 +157,8 @@ defmodule Aecore.Channel.ChannelTransaction do
     %DataTx{data_tx | payload: Map.put(payload, :state_hash, state_hash)}
   end
 
-  def set_state_hash(%ChannelOffchainTx{} = tx, state_hash) do
-    %ChannelOffchainTx{tx | state_hash: state_hash}
+  def set_state_hash(%ChannelOffChainTx{} = tx, state_hash) do
+    %ChannelOffChainTx{tx | state_hash: state_hash}
   end
 
   @doc """

@@ -98,7 +98,7 @@ defmodule Aecore.Channel.Worker do
   Imports channel from open tx and ChannelStateOffChain.
   """
   @spec import_from_signed_tx_list(
-          list(SignedTx.t() | ChannelOffchainTx.t()),
+          list(SignedTx.t() | ChannelOffChainTx.t()),
           role()
         ) :: :ok | error()
   def import_from_signed_tx_list(

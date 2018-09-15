@@ -5,12 +5,12 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelWithdrawUpdate
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
-  @behaviour ChannelOffchainUpdate
+  @behaviour ChannelOffChainUpdate
 
   @typedoc """
   Structure of the ChannelWithdrawUpdate type
@@ -77,7 +77,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
       AccountStateTree.update(accounts, to, fn account ->
         account
         |> Account.apply_transfer!(nil, -amount)
-        |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+        |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
       end)
     {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
   catch

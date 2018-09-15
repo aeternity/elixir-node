@@ -9,7 +9,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelOffchainTx, ChannelStateTree}
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Chain.Identifier
   alias Aecore.Poi.Poi
   alias Aeutil.Serialization
@@ -34,7 +34,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @typedoc "Structure of the ChannelCloseSoloTx Transaction type"
   @type t :: %ChannelCloseSoloTx{
           channel_id: Identifier.t(),
-          offchain_tx: ChannelOffchainTx.t() | :empty,
+          offchain_tx: ChannelOffChainTx.t() | :empty,
           poi: Poi.t()
         }
 
@@ -76,7 +76,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     end
   end
 
-  def validate(%ChannelCloseSoloTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffchainTx{channel_id: offchain_tx_channel_id, state_hash: state_hash}, poi: poi}, data_tx) do
+  def validate(%ChannelCloseSoloTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, state_hash: state_hash}, poi: poi}, data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -186,7 +186,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(tx.channel_id),
       Identifier.encode_to_binary(main_sender),
-      ChannelOffchainTx.encode_to_payload(tx.offchain_tx),
+      ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
@@ -201,7 +201,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [channel_id, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
-    case ChannelOffchainTx.decode_from_payload(payload) do
+    case ChannelOffChainTx.decode_from_payload(payload) do
       {:ok, offchain_tx} ->
         case Serialization.rlp_decode_only(rlp_encoded_poi, Poi) do
           {:ok, poi} ->

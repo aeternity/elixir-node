@@ -5,12 +5,12 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelTransferUpdate
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
-  @behaviour ChannelOffchainUpdate
+  @behaviour ChannelOffChainUpdate
 
   @typedoc """
   Structure of the ChannelTransferUpdate type
@@ -94,7 +94,7 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
         account
         |> Account.apply_transfer!(nil, -amount)
         |> Account.apply_nonce!(account.nonce+1)
-        |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+        |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
       end)
     updated_accounts2 =
       AccountStateTree.update(updated_accounts1, to, fn account ->

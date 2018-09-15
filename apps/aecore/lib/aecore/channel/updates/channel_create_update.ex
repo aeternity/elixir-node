@@ -5,14 +5,14 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelCreateUpdate
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
   alias Aecore.Channel.Tx.ChannelCreateTx
 
-  @behaviour ChannelOffchainUpdate
+  @behaviour ChannelOffChainUpdate
 
   @typedoc """
   Structure of the ChannelCreateUpdate type
@@ -78,7 +78,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
     account =
       Account.empty
       |> Account.apply_transfer!(nil, amount)
-      |> ChannelOffchainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+      |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
     %Chainstate{
       chainstate
       | accounts: AccountStateTree.put(accounts, pubkey.value, account)

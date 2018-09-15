@@ -1,9 +1,9 @@
-defmodule Aecore.Channel.ChannelOffchainTx do
+defmodule Aecore.Channel.ChannelOffChainTx do
   @moduledoc """
   Structure of an Offchain Channel Transaction. Implements a cryptographically signed  container for channel updates associated with an offchain chainstate.
   """
 
-  alias Aecore.Channel.ChannelOffchainTx
+  alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.Updates.ChannelTransferUpdate
   alias Aecore.Channel.ChannelOffchainUpdate
   alias Aecore.Channel.ChannelTransaction
@@ -17,9 +17,9 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @signed_tx_tag 11 #TypeToTag.type_to_tag(Aecore.Tx.SignedTx)
 
   @typedoc """
-  Structure of the ChannelOffchainTx type
+  Structure of the ChannelOffChainTx type
   """
-  @type t :: %ChannelOffchainTx{
+  @type t :: %ChannelOffChainTx{
           channel_id: Identifier.t(),
           sequence:   non_neg_integer(),
           updates:    list(ChannelOffchainUpdate.update_types()),
@@ -33,7 +33,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @type error :: {:error, String.t()}
 
   @doc """
-  Definition of Aecore ChannelOffchainTx structure
+  Definition of Aecore ChannelOffChainTx structure
 
   ## Parameters
   - channel_id: ID of the channel
@@ -58,8 +58,8 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @doc """
   Validates the signatures under the offchain transaction.
   """
-  @spec verify_signatures(ChannelOffchainTx.t(), {Keys.pubkey(), Keys.pubkey()}) :: :ok | error()
-  def verify_signatures(%ChannelOffchainTx{signatures: {_, _}} = state, {
+  @spec verify_signatures(ChannelOffChainTx.t(), {Keys.pubkey(), Keys.pubkey()}) :: :ok | error()
+  def verify_signatures(%ChannelOffChainTx{signatures: {_, _}} = state, {
         initiator_pubkey,
         responder_pubkey
       }) do
@@ -75,28 +75,28 @@ defmodule Aecore.Channel.ChannelOffchainTx do
     end
   end
 
-  def verify_signatures(%ChannelOffchainTx{}, _) do
+  def verify_signatures(%ChannelOffChainTx{}, _) do
     {:error, "#{__MODULE__}: Invalid signatures count"}
   end
 
   @doc """
   Checks if there is a signature for the specified pubkey.
   """
-  @spec verify_signature_for_key(ChannelOffchainTx.t(), Keys.pubkey()) :: boolean()
-  def verify_signature_for_key(%ChannelOffchainTx{signatures: {<<>>, _}}, _) do
+  @spec verify_signature_for_key(ChannelOffChainTx.t(), Keys.pubkey()) :: boolean()
+  def verify_signature_for_key(%ChannelOffChainTx{signatures: {<<>>, _}}, _) do
     false
   end
 
   def verify_signature_for_key(
-        %ChannelOffchainTx{signatures: {sig1, sig2}} = state,
+        %ChannelOffChainTx{signatures: {sig1, sig2}} = state,
         pubkey
       ) do
     binary_form = Serialization.rlp_encode(state)
-    Keys.verify(binary_form, sig1, pubkey) or verify_signature_for_key(%ChannelOffchainTx{state | signatures: {sig2, <<>>}}, pubkey)
+    Keys.verify(binary_form, sig1, pubkey) or verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
   end
 
-  @spec signature_for_offchain_tx(ChannelOffchainTx.t(), Keys.sign_priv_key()) :: binary()
-  defp signature_for_offchain_tx(%ChannelOffchainTx{} = offchain_tx, priv_key) when is_binary(priv_key) do
+  @spec signature_for_offchain_tx(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: binary()
+  defp signature_for_offchain_tx(%ChannelOffChainTx{} = offchain_tx, priv_key) when is_binary(priv_key) do
     offchain_tx
     |> Serialization.rlp_encode()
     |> Keys.sign(priv_key)
@@ -105,46 +105,46 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @doc """
   Signs the offchain transaction with the provided private key.
   """
-  @spec sign(ChannelOffchainTx.t(), Keys.sign_priv_key()) ::
-          ChannelOffchainTx.t()
-  def sign(%ChannelOffchainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
+  @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) ::
+          ChannelOffChainTx.t()
+  def sign(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
     sig = signature_for_offchain_tx(offchain_tx, priv_key)
 
-    {:ok, %ChannelOffchainTx{offchain_tx | signatures: {sig, <<>>}}}
+    {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig, <<>>}}}
   end
 
-  def sign(%ChannelOffchainTx{signatures: {sig1, <<>>}} = offchain_tx, priv_key) do
+  def sign(%ChannelOffChainTx{signatures: {sig1, <<>>}} = offchain_tx, priv_key) do
     sig2 = signature_for_offchain_tx(offchain_tx, priv_key)
 
     if sig2 > sig1 do
-      {:ok, %ChannelOffchainTx{offchain_tx | signatures: {sig1, sig2}}}
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig1, sig2}}}
     else
-      {:ok, %ChannelOffchainTx{offchain_tx | signatures: {sig2, sig1}}}
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig2, sig1}}}
     end
   end
 
   @doc """
   Creates a new offchain transaction containing a transfer update between the specified accounts. The resulting offchain transaction is not tied to any offchain chainstate.
   """
-  @spec initialize_transfer(Identifier.t(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: ChannelOffchainTx.t()
+  @spec initialize_transfer(Identifier.t(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: ChannelOffChainTx.t()
   def initialize_transfer(channel_id, from, to, amount) do
-    %ChannelOffchainTx{
+    %ChannelOffChainTx{
       channel_id: channel_id,
       updates: [ChannelTransferUpdate.new(from, to, amount)],
       signatures: {<<>>, <<>>}
     }
   end
 
-  @spec offchain_updates(ChannelOffchainTx.t()) :: list(ChannelUpdates.update_types())
-  def offchain_updates(%ChannelOffchainTx{updates: updates}) do
+  @spec offchain_updates(ChannelOffChainTx.t()) :: list(ChannelUpdates.update_types())
+  def offchain_updates(%ChannelOffChainTx{updates: updates}) do
     updates
   end
 
   @doc """
   Encodes the offchain transaction to a form embeddable in ChannelSoloCloseTx, ChannelSlashTx, ChannelSnapshotTx
   """
-  @spec encode_to_payload(ChannelOffchainTx.t() | :empty) :: binary()
-  def encode_to_payload(%ChannelOffchainTx{signatures: {sig1, sig2}} = state) do
+  @spec encode_to_payload(ChannelOffChainTx.t() | :empty) :: binary()
+  def encode_to_payload(%ChannelOffChainTx{signatures: {sig1, sig2}} = state) do
     [
       :binary.encode_unsigned(@signed_tx_tag),
       :binary.encode_unsigned(@version),
@@ -161,15 +161,15 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @doc """
   Decodes the embedded payload of ChannelSoloCloseTx, ChannelSlashTx, ChannelSnapshotTx
   """
-  @spec decode_from_payload(binary()) :: ChannelOffchainTx.t() | :empty | error()
+  @spec decode_from_payload(binary()) :: ChannelOffChainTx.t() | :empty | error()
   def decode_from_payload(<<>>) do
     {:ok, :empty}
   end
 
   def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do
-    decoded_tx = Serialization.rlp_decode_only(encoded_tx, ChannelOffchainTx)
+    decoded_tx = Serialization.rlp_decode_only(encoded_tx, ChannelOffChainTx)
     {:ok,
-      %ChannelOffchainTx{decoded_tx | signatures: {sig1, sig2}}
+      %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}
     }
   end
 
@@ -188,8 +188,8 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @doc """
   Serializes the offchain transaction - signatures are not being included
   """
-  @spec encode_to_list(ChannelOffchainTx.t()) :: list(binary())
-  def encode_to_list(%ChannelOffchainTx{
+  @spec encode_to_list(ChannelOffChainTx.t()) :: list(binary())
+  def encode_to_list(%ChannelOffChainTx{
     channel_id: %Identifier{type: :channel} = channel_id,
     sequence:   sequence,
     updates:    updates,
@@ -208,7 +208,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
   @doc """
   Deserializes the serialized offchain transaction. The resulting transaction does not contain any signatures.
   """
-  @spec decode_from_list(non_neg_integer(), list(binary())) :: ChannelOffchainTx.t() | error()
+  @spec decode_from_list(non_neg_integer(), list(binary())) :: ChannelOffChainTx.t() | error()
   def decode_from_list(@version, [
         encoded_channel_id,
         sequence,
@@ -216,7 +216,7 @@ defmodule Aecore.Channel.ChannelOffchainTx do
         state_hash
       ]) do
     {:ok, channel_id} = Identifier.decode_from_binary(encoded_channel_id)
-    %ChannelOffchainTx{
+    %ChannelOffChainTx{
       channel_id: channel_id,
       sequence: :binary.decode_unsigned(sequence),
       updates: Enum.map(encoded_updates, &ChannelOffchainUpdate.from_list/1),

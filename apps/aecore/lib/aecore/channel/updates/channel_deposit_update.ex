@@ -5,12 +5,12 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelDepositUpdate
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
   alias Aecore.Account.Account
 
-  @behaviour ChannelOffchainUpdate
+  @behaviour ChannelOffChainUpdate
 
   @typedoc """
   Structure of the ChannelDepositUpdate type

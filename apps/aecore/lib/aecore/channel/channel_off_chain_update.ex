@@ -1,4 +1,4 @@
-defmodule Aecore.Channel.ChannelOffchainUpdate do
+defmodule Aecore.Channel.ChannelOffChainUpdate do
   @moduledoc """
   Behaviour that states all the necessary functions that every update of the offchain state should implement.
   This module implements helpers for applying updates to an offchain chainstate

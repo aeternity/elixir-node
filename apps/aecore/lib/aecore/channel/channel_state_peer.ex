@@ -4,7 +4,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
 
   alias Aecore.Channel.{
-    ChannelOffchainTx,
+    ChannelOffChainTx,
     ChannelStateOnChain,
     ChannelStatePeer,
     ChannelCreateTx,
@@ -37,7 +37,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder_pubkey: Keys.pubkey(),
           role: Channel.role(),
           channel_id: Identifier.t(),
-          mutually_signed_tx: list(ChannelOffchainTx.t()),
+          mutually_signed_tx: list(ChannelOffChainTx.t()),
           highest_half_signed_tx: ChannelOffChainTx.t() | nil,
           channel_reserve: non_neg_integer(),
           offchain_chainstate: Chainstate.t() | nil,
@@ -491,7 +491,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         amount,
         priv_key
       ) do
-    unsigned_tx = ChannelOffchainTx.initialize_transfer(channel_id, our_pubkey(peer_state), foreign_pubkey(peer_state), amount)
+    unsigned_tx = ChannelOffChainTx.initialize_transfer(channel_id, our_pubkey(peer_state), foreign_pubkey(peer_state), amount)
 
     case validate_prepare_and_sign_new_channel_tx(peer_state, unsigned_tx, priv_key) do
       {:ok, half_signed_transfer_tx} ->

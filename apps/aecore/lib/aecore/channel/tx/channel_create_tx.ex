@@ -10,7 +10,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffchainUpdate}
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
   alias Aecore.Chain.Identifier
   alias Aecore.Channel.Updates.ChannelCreateUpdate
 
@@ -298,7 +298,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @doc """
     Get a list of offchain updates to the offchain chainstate
   """
-  @spec offchain_updates(ChannelCreateTx.t()) :: list(ChannelOffchainUpdate.update_types())
+  @spec offchain_updates(ChannelCreateTx.t()) :: list(ChannelOffChainUpdate.update_types())
   def offchain_updates(%ChannelCreateTx{} = tx) do
     [ChannelCreateUpdate.new(tx)]
   end
