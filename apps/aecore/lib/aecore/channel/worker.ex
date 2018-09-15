@@ -45,7 +45,7 @@ defmodule Aecore.Channel.Worker do
   Notifies the channel manager about a new mined tx
   """
   def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do  #, ChannelWidhdrawTx, ChannelDepositTx]  do
-    recv_confirmed_tx(tx)
+    receive_confirmed_tx(tx)
   end
 
   def new_tx_mined(%SignedTx{data: %DataTx{type: ChannelCloseMutalTx}} = tx) do
@@ -173,25 +173,25 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received channel state. If it's half signed and validates: signs it and returns it.
   """
-  @spec recv_half_signed_tx(ChannelTransaction.channel_tx(), Keys.sign_priv_key()) ::
+  @spec receive_half_signed_tx(ChannelTransaction.channel_tx(), Keys.sign_priv_key()) ::
           {:ok, ChannelTransaction.channel_tx()} | error()
-  def recv_half_signed_tx(half_signed_tx, priv_key) when is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:recv_half_signed_tx, half_signed_tx, priv_key})
+  def receive_half_signed_tx(half_signed_tx, priv_key) when is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:receive_half_signed_tx, half_signed_tx, priv_key})
   end
 
   @doc """
   Handles incoming uncorfirmed fully signed onchain Tx or confirmed fully signed offchain Tx.
   """
-  @spec recv_fully_signed_tx(ChannelTransaction.channel_tx()) :: :ok | error()
-  def recv_fully_signed_tx(fully_signed_tx) do
-    GenServer.call(__MODULE__, {:recv_fully_signed_tx, fully_signed_tx})
+  @spec receive_fully_signed_tx(ChannelTransaction.channel_tx()) :: :ok | error()
+  def receive_fully_signed_tx(fully_signed_tx) do
+    GenServer.call(__MODULE__, {:receive_fully_signed_tx, fully_signed_tx})
   end
 
   @doc """
   Handles mined and confirmed ChannelCreateTx, ChannelWidthdrawTx, ChannelDepositTx
   """
-  def recv_confirmed_tx(confirmed_onchain_tx) do
-    GenServer.call(__MODULE__, {:recv_confirmed_tx, confirmed_onchain_tx})
+  def receive_confirmed_tx(confirmed_onchain_tx) do
+    GenServer.call(__MODULE__, {:receive_confirmed_tx, confirmed_onchain_tx})
   end
 
   @doc """
@@ -211,15 +211,15 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Handles received half signed close tx. If it validates returns fully signed close tx and adds it to Pool.
   """
-  @spec recv_close_tx(
+  @spec receive_close_tx(
           binary(),
           SignedTx.t(),
           {non_neg_integer(), non_neg_integer()},
           Keys.sign_priv_key()
         ) :: {:ok, SignedTx.t()} | error()
-  def recv_close_tx(channel_id, %SignedTx{} = close_tx, {_, _} = fees, priv_key)
+  def receive_close_tx(channel_id, %SignedTx{} = close_tx, {_, _} = fees, priv_key)
       when is_binary(channel_id) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:recv_close_tx, channel_id, close_tx, fees, priv_key})
+    GenServer.call(__MODULE__, {:receive_close_tx, channel_id, close_tx, fees, priv_key})
   end
 
   @doc """
@@ -367,14 +367,14 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:recv_half_signed_tx, half_signed_tx, priv_key},
+        {:receive_half_signed_tx, half_signed_tx, priv_key},
         _from,
         state
       ) do
     channel_id = ChannelTransaction.unsigned_payload(half_signed_tx).channel_id.value
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, fully_signed_tx} <- ChannelStatePeer.recv_half_signed_tx(peer_state, half_signed_tx, priv_key),
+    with {:ok, new_peer_state, fully_signed_tx} <- ChannelStatePeer.receive_half_signed_tx(peer_state, half_signed_tx, priv_key),
          :ok <- ((ChannelTransaction.requires_onchain_confirmation?(fully_signed_tx) && Pool.add_transaction(fully_signed_tx)) || :ok) do
       {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
     else
@@ -385,12 +385,12 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:recv_fully_signed_tx, fully_signed_tx}, _from, state) do
+  def handle_call({:receive_fully_signed_tx, fully_signed_tx}, _from, state) do
     channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id.value
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state} <-
-           ChannelStatePeer.recv_fully_signed_tx(peer_state, fully_signed_tx) do
+           ChannelStatePeer.receive_fully_signed_tx(peer_state, fully_signed_tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:error, _} = err ->
@@ -398,14 +398,14 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:recv_confirmed_tx, confirmed_onchain_tx}, _from, state) do
+  def handle_call({:receive_confirmed_tx, confirmed_onchain_tx}, _from, state) do
     channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id.value
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
 
       with {:ok, new_peer_state} <-
-             ChannelStatePeer.recv_confirmed_tx(peer_state, confirmed_onchain_tx) do
+             ChannelStatePeer.receive_confirmed_tx(peer_state, confirmed_onchain_tx) do
         {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
       else
         {:error, _} = err ->
@@ -428,11 +428,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:recv_close_tx, id, close_tx, fees, priv_key}, _from, state) do
+  def handle_call({:receive_close_tx, id, close_tx, fees, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
     with {:ok, new_peer_state, signed_close_tx} <-
-           ChannelStatePeer.recv_close_tx(peer_state, close_tx, fees, priv_key),
+           ChannelStatePeer.receive_close_tx(peer_state, close_tx, fees, priv_key),
          :ok <- Pool.add_transaction(signed_close_tx) do
       {:reply, {:ok, signed_close_tx}, Map.put(state, id, new_peer_state)}
     else

@@ -396,7 +396,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
       true ->
         #validate the state
-        case recv_half_signed_tx(
+        case receive_half_signed_tx(
           %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: Identifier.create_identity(raw_channel_id, :channel)},
           half_signed_create_tx, priv_key
         ) do
@@ -415,8 +415,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Receives a half signed transaction. Can only be called when the channel is fully open. If the transaction validates then returns a fully signed tx together with the altered state. If the received transaction requires onchain confirmation then stores it and waits for min_depth confirmations.
   """
-  @spec recv_half_signed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx(), Keys.sign_priv_key()) :: {:ok, ChannelStatePeer.t(), ChannelTransaction.signed_tx()} | error()
-  def recv_half_signed_tx(%ChannelStatePeer{fsm_state: :open} = peer_state, tx, privkey) do
+  @spec receive_half_signed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx(), Keys.sign_priv_key()) :: {:ok, ChannelStatePeer.t(), ChannelTransaction.signed_tx()} | error()
+  def receive_half_signed_tx(%ChannelStatePeer{fsm_state: :open} = peer_state, tx, privkey) do
     with {:ok, new_peer_state} <- verify_tx_and_apply(tx, peer_state, foreign_pubkey(peer_state)),
          #The update validates on our side -> sign it
          {:ok, fully_signed_tx} <- ChannelTransaction.add_signature(tx, privkey) do
@@ -432,8 +432,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Receives a fully signed transaction. Can only be called when the peer awaits an incoming transaction. If the transaction is the awaited one and it fully validates then returns the altered state.
   If the received transaction requires onchain confirmation then waits for min_depth confirmations.
   """
-  @spec recv_fully_signed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx()) :: {:ok, ChannelStatePeer.t()} | error()
-  def recv_fully_signed_tx(%ChannelStatePeer{
+  @spec receive_fully_signed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx()) :: {:ok, ChannelStatePeer.t()} | error()
+  def receive_fully_signed_tx(%ChannelStatePeer{
     fsm_state: :awaiting_full_tx,
     initiator_pubkey: initiator_pubkey,
     responder_pubkey: responder_pubkey,
@@ -451,15 +451,15 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_fully_signed_tx(%ChannelStatePeer{fsm_state: fsm_state}, _) do
-    {:error, "Unexpected 'recv_fully_signed_tx' call. Current state is: #{fsm_state}"}
+  def receive_fully_signed_tx(%ChannelStatePeer{fsm_state: fsm_state}, _) do
+    {:error, "Unexpected 'receive_fully_signed_tx' call. Current state is: #{fsm_state}"}
   end
 
   @doc """
   This is a callback for the future transaction watcher logic. This callback must be called when the last onchain TX from this channel has reached min_depth of confirmations. Verifies if the transaction was expected and applies it to the channel state.
   """
-  @spec recv_confirmed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx()) :: {:ok, ChannelStatePeer.t()} | error()
-  def recv_confirmed_tx(%ChannelStatePeer{
+  @spec receive_confirmed_tx(ChannelStatePeer.t(), ChannelTransaction.signed_tx()) :: {:ok, ChannelStatePeer.t()} | error()
+  def receive_confirmed_tx(%ChannelStatePeer{
     fsm_state: state,
     initiator_pubkey: initiator_pubkey,
     responder_pubkey: responder_pubkey,
@@ -476,8 +476,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_confirmed_tx(%ChannelStatePeer{} = peer_state, tx) do
-    {:error, "Unexpected 'recv_confirmed_tx' call. Peer state is #{inspect(peer_state)}. Received confimation on #{inspect(tx)}"}
+  def receive_confirmed_tx(%ChannelStatePeer{} = peer_state, tx) do
+    {:error, "Unexpected 'receive_confirmed_tx' call. Peer state is #{inspect(peer_state)}. Received confimation on #{inspect(tx)}"}
   end
 
   @doc """
@@ -632,13 +632,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Handles incoming channel close tx. If our highest state matches the incoming signs the tx and blocks any new transfers. Returns altered ChannelStatePeer and signed ChannelCloseMutalTx
   """
-  @spec recv_close_tx(
+  @spec receive_close_tx(
           ChannelStatePeer.t(),
           SignedTx.t(),
           {non_neg_integer(), non_neg_integer()},
           Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
-  def recv_close_tx(
+  def receive_close_tx(
         %ChannelStatePeer{
           fsm_state: :open,
           initiator_pubkey: initiator_pubkey,
@@ -683,7 +683,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_close_tx(%ChannelStatePeer{} = state, _, {_, _}, _) do
+  def receive_close_tx(%ChannelStatePeer{} = state, _, {_, _}, _) do
     {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{state.fsm_state}"}
   end
 
