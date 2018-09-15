@@ -116,7 +116,7 @@ defmodule Aecore.Contract.Dispatch do
       {updated_call, chain_state.chain_state}
     catch
       _error ->
-        updated_call = call |> Call.set_gas_used(gas) |> Call.set_return_type(:error)
+        updated_call = %{call | gas_used: gas, return_type: :error}
 
         {updated_call, spec.env.chain_state.chain_state}
     end

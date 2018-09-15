@@ -30,7 +30,7 @@ defmodule Aecore.Contract.CallStateTree do
   @spec insert_call(calls_state(), Call.t()) :: calls_state()
   def insert_call(call_tree, %Call{contract_address: contract_address} = call) do
     call_id = Call.id(call)
-    call_tree_id = construct_call_tree_id(contract_address, call_id)
+    call_tree_id = construct_call_tree_id(contract_address.value, call_id)
 
     serialized = Serialization.rlp_encode(call)
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)
@@ -54,7 +54,7 @@ defmodule Aecore.Contract.CallStateTree do
   end
 
   @spec construct_call_tree_id(binary(), binary()) :: binary()
-  def construct_call_tree_id(contract_id, call_id) do
-    <<contract_id.value::binary, call_id::binary>>
+  def construct_call_tree_id(contract_address, call_id) do
+    <<contract_address::binary, call_id::binary>>
   end
 end

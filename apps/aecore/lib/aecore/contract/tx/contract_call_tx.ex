@@ -106,12 +106,10 @@
          },
          _data_tx
        ) do
-     cond do
-       !validate_identifier(contract, :contract) ->
-         {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
-
-       true ->
-         :ok
+     if validate_identifier(contract, :contract) do
+       :ok
+     else
+       {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
      end
    end
 
@@ -172,7 +170,7 @@
      # return value was so that the caller can access it easily.
      # Each block starts with an empty calls tree.
      updated_calls_tree = CallStateTree.insert_call(calls, call)
-     
+
      {:ok, %{update_chain_state1 | accounts: accounts2, calls: updated_calls_tree}}
    end
 

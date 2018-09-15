@@ -1,6 +1,12 @@
 defmodule Aecore.Contract.VmChain do
+  @moduledoc """
+  VM chain api implementation for interaction with our chain
+  """
+
   alias Aecore.Contract.ContractStateTree
+  alias Aecore.Contract.CallStateTree
   alias Aecore.Contract.Contract
+  alias Aecore.Contract.Call
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Account.Account
@@ -29,11 +35,12 @@ defmodule Aecore.Contract.VmChain do
       %Contract{} = contract ->
         store = Contract.store(contract)
 
-        Enum.reduce(store, %{}, fn{key, value}, acc ->
+        Enum.reduce(store, %{}, fn {key, value}, acc ->
           <<key_integer::256>> = key
           <<value_integer::256>> = value
           Map.put(acc, key_integer, value_integer)
         end)
+
       :none ->
         %{}
     end
@@ -102,19 +109,17 @@ defmodule Aecore.Contract.VmChain do
            payload: %{caller: contract_key, contract: target}
          } = tx
        ) do
-    identified_contract = Identifier.create_identity(contract_key, :contract)
-    identified_target = Identifier.create_identity(target, :contract)
-
     with :ok <- DataTx.preprocess_check(chain_state, height, tx),
          {:ok, new_chain_state} <- DataTx.process_chainstate(chain_state, height, tx) do
-      call_id = Call.id(identified_contract, nonce, identified_target)
-      call = CallStateTree.get_call(new_chain_state.calls, call_id)
-      gas_used = Call.gas_used(call)
+      call_id = Call.id(contract_key, nonce, target)
+      call_tree_key = CallStateTree.construct_call_tree_id(contract_key, call_id)
+      call = CallStateTree.get_call(new_chain_state.calls, call_tree_key)
+      gas_used = call.gas_used
 
       result =
-        case Call.return_type(call) do
+        case call.return_type do
           return_type when return_type in [:ok, :revert] ->
-            %{result: Call.return_value(call), gas_spent: gas_used}
+            %{result: call.return_value, gas_spent: gas_used}
 
           :error ->
             %{result: :out_of_gas, gas_spent: gas_used}

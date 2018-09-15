@@ -193,9 +193,12 @@ defmodule Aecore.Contract.Call do
         caller_nonce: caller_nonce,
         contract_address: contract_address
       }) do
-    binary =
-      <<caller_address.value::binary, caller_nonce::size(@nonce_size),
-        contract_address.value::binary>>
+    id(caller_address.value, caller_nonce, contract_address.value)
+  end
+
+  @spec id(Keys.pubkey(), non_neg_integer(), Keys.pubkey()) :: binary()
+  def id(caller_address, caller_nonce, contract_address) do
+    binary = <<caller_address::binary, caller_nonce::size(@nonce_size), contract_address::binary>>
 
     Hash.hash(binary)
   end

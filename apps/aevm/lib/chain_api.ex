@@ -1,4 +1,8 @@
 defmodule Aevm.ChainApi do
+  @moduledoc """
+  Functions needed for the VM to interact with the chain
+  """
+
   alias Aecore.Keys
 
   @type chain_state :: any()

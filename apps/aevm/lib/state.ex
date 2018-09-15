@@ -30,7 +30,7 @@ defmodule Aevm.State do
       :out => <<>>,
       :logs => [],
       :callcreates => [],
-
+      # exec
       :address => Map.get(exec, :address),
       :origin => Map.get(exec, :origin),
       :caller => Map.get(exec, :caller),
@@ -41,19 +41,20 @@ defmodule Aevm.State do
       :value => Map.get(exec, :value),
       :return_data => Map.get(exec, :return_data, <<>>),
       :call_stack => Map.get(exec, :call_stack, []),
-
+      # env
       :currentCoinbase => Map.get(env, :currentCoinbase),
       :currentDifficulty => Map.get(env, :currentDifficulty),
       :currentGasLimit => Map.get(env, :currentGasLimit),
       :currentNumber => Map.get(env, :currentNumber),
       :currentTimestamp => Map.get(env, :currentTimestamp),
-
+      # pre
       :pre => pre,
+      # chain
       :vm_version => Map.get(env, :vm_version),
       :chain_api => chain_api,
       :chain_state => chain_state,
       :return_type => :ok,
-
+      # opts
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
   end
@@ -116,7 +117,9 @@ defmodule Aevm.State do
   end
 
   def calldepth(state) do
-    __MODULE__.call_stack(state) |> Enum.count()
+    call_stack = __MODULE__.call_stack(state)
+
+    call_stack |> Enum.count()
   end
 
   def call_stack(state) do
@@ -380,7 +383,6 @@ defmodule Aevm.State do
       :currentGasLimit => State.current_gas_limit(state),
       :currentNumber => State.current_number(state),
       :currentTimestamp => State.current_timestamp(state),
-
       :chain_api => chain_api(state),
       :chain_state => chain_state(state),
       :vm_version => vm_version(state)

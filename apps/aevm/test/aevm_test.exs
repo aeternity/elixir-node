@@ -53,10 +53,12 @@ defmodule AevmTest do
 
   defp extract_and_validate(json_test, config_name) do
     spec = Map.get(json_test, config_name)
+    env = Map.get(spec, :env)
+
     spec_state = %{
       spec
       | env:
-          Map.get(spec, :env)
+          env
           |> Map.put(:chain_api, EthereumTestChain)
           |> Map.put(:chain_state, spec)
     }
@@ -959,7 +961,6 @@ defmodule AevmTest do
          [{_, :bin_int} | s_rest] = _structure,
          result
        ) do
-
     c_value =
       if c_value == "" do
         "0x0"
