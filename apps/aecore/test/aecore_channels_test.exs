@@ -77,7 +77,7 @@ defmodule AecoreChannelTest do
     assert_offchain_state(id, 270, 30, 3)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
-    {:ok, signed_close_tx} = call_s2({:recv_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk2})
     assert :closing == get_fsm_state_s1(id)
     assert :closing == get_fsm_state_s2(id)
 
@@ -251,7 +251,7 @@ defmodule AecoreChannelTest do
     assert :awaiting_tx_confirmed == get_fsm_state_s2(id)
     assert id == id2
 
-    :ok = call_s1({:recv_fully_signed_tx, open_tx})
+    :ok = call_s1({:receive_fully_signed_tx, open_tx})
     assert :awaiting_tx_confirmed == get_fsm_state_s1(id)
 
     TestUtils.assert_transactions_mined()
@@ -260,8 +260,8 @@ defmodule AecoreChannelTest do
 
     TestUtils.assert_balance(ctx.pk1, 40)
     TestUtils.assert_balance(ctx.pk2, 50)
-    assert :ok == call_s1({:recv_confirmed_tx, open_tx})
-    assert :ok == call_s2({:recv_confirmed_tx, open_tx})
+    assert :ok == call_s1({:receive_confirmed_tx, open_tx})
+    assert :ok == call_s2({:receive_confirmed_tx, open_tx})
     assert_offchain_state(id, 150, 150, 1)
     id
   end
@@ -293,10 +293,10 @@ defmodule AecoreChannelTest do
     {:ok, half_signed_transfer_tx} = initiator_fun.({:transfer, id, amount, initiator_sk})
     %ChannelOffChainTx{} = half_signed_transfer_tx
     assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
-    {:ok, fully_signed_transfer_tx} = responder_fun.({:recv_half_signed_tx, half_signed_transfer_tx, responder_sk})
+    {:ok, fully_signed_transfer_tx} = responder_fun.({:receive_half_signed_tx, half_signed_transfer_tx, responder_sk})
     %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
-    :ok = initiator_fun.({:recv_fully_signed_tx, fully_signed_transfer_tx})
+    :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})
   end
 
   defp prepare_slash_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do
