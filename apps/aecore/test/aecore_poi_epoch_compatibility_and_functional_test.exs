@@ -11,7 +11,6 @@ defmodule PoiEpochCompabilityTest do
   alias Aecore.Chain.Chainstate
   alias Aeutil.Serialization
 
-
   @typedoc """
   Type specifying a list of accounts together with their pubkeys
   """

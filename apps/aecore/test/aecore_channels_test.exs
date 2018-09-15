@@ -14,7 +14,7 @@ defmodule AecoreChannelTest do
     ChannelStateOnChain,
     ChannelStatePeer,
     ChannelStateTree,
-    ChannelOffchainTx
+    ChannelOffChainTx
   }
 
   alias Aeutil.PatriciaMerkleTree
@@ -291,10 +291,10 @@ defmodule AecoreChannelTest do
     assert :open === get_fsm_state(id, responder_fun)
 
     {:ok, half_signed_transfer_tx} = initiator_fun.({:transfer, id, amount, initiator_sk})
-    %ChannelOffchainTx{} = half_signed_transfer_tx
+    %ChannelOffChainTx{} = half_signed_transfer_tx
     assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
     {:ok, fully_signed_transfer_tx} = responder_fun.({:recv_half_signed_tx, half_signed_transfer_tx, responder_sk})
-    %ChannelOffchainTx{} = fully_signed_transfer_tx
+    %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:recv_fully_signed_tx, fully_signed_transfer_tx})
   end
