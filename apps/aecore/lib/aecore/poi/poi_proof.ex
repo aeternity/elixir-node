@@ -1,6 +1,8 @@
 defmodule Aecore.Poi.PoiProof do
   @moduledoc """
-  Implements a Proof Of Inclusion(POI) for a single Merkle Patricia Trie. This module is type agnostic, any keys or values passed to this module must be serialized beforehand. The POI is tied to the original merkle patricia tree - we can cryptographicly proof that the POI was generated from a merkle tree with a given root hash.
+  Implements a Proof Of Inclusion(POI) for a single Merkle Patricia Trie. This module is type agnostic, any keys or values passed to this module must be serialized beforehand. This is an abstraction layer for providing a view into a subset of a given merkle patricia trie. The POI is cryptographicaly tied to the original merkle patricia tree - we can cryptographicly proof that the POI was generated from a merkle patricia trie with a given root hash.
+
+  Standard merkle patricia tries rely on a persistent key value store which is accesed by callbacks. This module uses a in memory map as the key value store and uses the PoiPersistence wrapper in order to encapsulate the side effects of the PatriciaMerkleTree module.
   """
 
   alias Aecore.Poi.PoiPersistence
@@ -139,9 +141,9 @@ defmodule Aecore.Poi.PoiProof do
     )
   end
 
-  #Invokes proof construction on the Poi proof. Uses the PoiPersistence wrapper for obtaining imperative behaviour.
-  @spec invoke_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), Map.t()} | {:error, :key_not_found}
-  defp invoke_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
+  #Wrapper for proof construction on merkle patricia trees. Uses the PoiPersistence wrapper for obtaining functional behaviour although the underlaying library relies on side effects in order to achieve persistence.
+  @spec side_efects_encapsulating_proof_construction(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), Map.t()} | {:error, :key_not_found}
+  defp side_efects_encapsulating_proof_construction(%PoiProof{} = poi_proof, %Trie{} = trie, key) do
     proof_trie = get_proof_construction_trie(poi_proof)
     {value, _} = Proof.construct_proof({trie, key, proof_trie})
     new_proof_db = PoiPersistence.finalize()
@@ -159,7 +161,7 @@ defmodule Aecore.Poi.PoiProof do
   @spec add_to_poi(PoiProof.t(), Trie.t(), Trie.key()) :: {:ok, Trie.value(), PoiProof.t()} | {:error, :wrong_root_hash | :key_not_found}
   def add_to_poi(%PoiProof{root_hash: root_hash} = poi_proof, %Trie{} = trie, key) do
     with ^root_hash <- patricia_merkle_trie_root_hash_to_internal_root_hash(trie),
-         {:ok, value, proof_db} <- invoke_proof_construction(poi_proof, trie, key) do
+         {:ok, value, proof_db} <- side_efects_encapsulating_proof_construction(poi_proof, trie, key) do
       {:ok, value, %PoiProof{poi_proof | db: proof_db}}
     else
       h when is_binary(h) or h === :empty ->
