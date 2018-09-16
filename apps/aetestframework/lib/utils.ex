@@ -123,20 +123,20 @@ defmodule Aetestframework.Utils do
     |> Pool.add_transaction()"
   end
 
-  def name_transfer_cmd do
+  def name_transfer_cmd(transfer_to) do
     "Account.name_transfer(\"test.aet\", 
-    Keys.keypair(:sign) |> elem(0), 10)
+    #{inspect(transfer_to)}, 10)
     |> elem(1)
     |> Pool.add_transaction()"
   end
 
-  def name_revoke_cmd do
-    "Keys.keypair(:sign)
-    |> elem(0)
-    |> Account.name_revoke(Keys.keypair(:sign) |> elem(1), 
-    \"test.aet\", 10,
-    Account.nonce(Chain.chain_state().accounts, 
-    Keys.keypair(:sign) |> elem(0)) + 1)
+  def name_revoke_cmd(pubkey, privkey) do
+    "Account.name_revoke(
+    #{inspect(pubkey)}, 
+    #{inspect(privkey, limit: :infinity)},
+    \"test.aet\", 
+    10,
+    Account.nonce(Chain.chain_state().accounts, #{inspect(pubkey)}) + 1)
     |> elem(1)
     |> Pool.add_transaction()"
   end

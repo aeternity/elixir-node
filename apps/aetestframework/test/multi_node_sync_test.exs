@@ -24,22 +24,21 @@ defmodule MultiNodeSyncTest do
     Utils.sync_nodes(:node2, :node3)
     Utils.sync_nodes(:node3, :node4)
 
-    assert length(
-             TestFramework.call_with_delay(
-               Utils.all_pids_cmd(),
-               &TestFramework.get/4,
-               :peer_pids,
-               :node1,
-               5000
-             )
-           ) == 3
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.all_pids_cmd()
+               |> TestFramework.get(:peer_pids, :node1)
+               |> length() == 3
+             end,
+             5
+           ) == true
 
     on_exit(fn ->
       :ok
     end)
   end
 
-  @tag :sync_test
+  @tag :sync_test_spend
   test "spend_tx test" do
     Utils.mine_blocks(1, :node1)
 
@@ -54,22 +53,49 @@ defmodule MultiNodeSyncTest do
 
     Utils.mine_blocks(1, :node1)
 
-    # Check if the top Header hash is equal between node2 and node4
-    # Delay for 2 seconds to be sure the blocks from node2 are
-    # gossiped to node4
-    assert TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1) ==
-             TestFramework.call_with_delay(
-               Utils.top_header_hash_cmd(),
-               &TestFramework.get/4,
-               :top_header_hash,
-               :node4,
-               10_000
-             )
+    # Check if the top Header hash is equal between node1 and node4
+    assert TestFramework.verify_with_delay(
+             fn ->
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
+                 label: "node1"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
+                 label: "node2"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
+                 label: "node3"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
+                 label: "node4"
+               )
+
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
+                 |> IO.inspect(),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
+                 |> IO.inspect()
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
+                   |> IO.inspect(),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
+                   |> IO.inspect()
+                 ]
+             end,
+             5
+           ) == true
 
     TestFramework.delete_all_nodes()
   end
 
-  @tag :sync_test
+  @tag :sync_test_oracles
   @tag timeout: 100_000
   test "oracles test" do
     Utils.mine_blocks(1, :node2)
@@ -114,7 +140,11 @@ defmodule MultiNodeSyncTest do
     } = data
 
     # Make a OracleRespond transaction and add it to the pool
-    TestFramework.post(Utils.oracle_respond_cmd(sender, nonce, oracle_address), :oracle_respond, :node2)
+    TestFramework.post(
+      Utils.oracle_respond_cmd(sender, nonce, oracle_address),
+      :oracle_respond,
+      :node2
+    )
 
     # Check that the pool has only 1 transaction
     assert Utils.pool_cmd()
@@ -136,21 +166,48 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check if the top Header hash is equal between node2 and node4
-    # Delay for 2 seconds to be sure the blocks from node2 are
-    # gossiped to node4
-    assert TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2) ==
-             TestFramework.call_with_delay(
-               Utils.top_header_hash_cmd(),
-               &TestFramework.get/4,
-               :top_header_hash,
-               :node4,
-               10_000
-             )
+    assert TestFramework.verify_with_delay(
+             fn ->
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
+                 label: "node1"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
+                 label: "node2"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
+                 label: "node3"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
+                 label: "node4"
+               )
+
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
+                 |> IO.inspect(),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
+                 |> IO.inspect()
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
+                   |> IO.inspect(),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
+                   |> IO.inspect()
+                 ]
+             end,
+             5
+           ) == true
 
     TestFramework.delete_all_nodes()
   end
 
-  @tag :sync_test
+  @tag :sync_test_naming
   @tag timeout: 100_000
   test "namings test" do
     Utils.mine_blocks(1, :node2)
@@ -158,7 +215,7 @@ defmodule MultiNodeSyncTest do
     # Create a Naming PreClaim transaction and add it to the pool
     TestFramework.post(Utils.name_preclaim_cmd(), :name_preclaim_tx, :node2)
 
-    # Check if the pool is filed with one trasactiona
+    # Check if the pool is filed with one transaction
     assert Utils.pool_cmd()
            |> TestFramework.get(:txs_pool, :node2)
            |> Map.to_list()
@@ -169,7 +226,7 @@ defmodule MultiNodeSyncTest do
     # Create a Naming Claim transaction and add it to the pool
     TestFramework.post(Utils.name_claim_cmd(), :name_claim_tx, :node2)
 
-    # Check if the pool is filed with one trasactiona
+    # Check if the pool is filed with one transaction
     assert Utils.pool_cmd()
            |> TestFramework.get(:txs_pool, :node2)
            |> Map.to_list()
@@ -180,7 +237,7 @@ defmodule MultiNodeSyncTest do
     # Create a Naming Update transaction and add it to the pool
     TestFramework.post(Utils.name_update_cmd(), :name_update, :node2)
 
-    # Check if the pool is filed with one trasactiona
+    # Check if the pool is filed with one transaction
     assert Utils.pool_cmd()
            |> TestFramework.get(:txs_pool, :node2)
            |> Map.to_list()
@@ -188,10 +245,12 @@ defmodule MultiNodeSyncTest do
 
     Utils.mine_blocks(1, :node2)
 
-    # Create a Name Transfer transaction and add it to the pool
-    TestFramework.post(Utils.name_transfer_cmd(), :name_transfer, :node2)
+    {node1_pub, node1_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node1)
 
-    # Check if the pool is filed with one trasactiona
+    # Create a Name Transfer transaction and add it to the pool
+    TestFramework.post(Utils.name_transfer_cmd(node1_pub), :name_transfer, :node2)
+
+    # Check if the pool is filed with one trasaction
     assert Utils.pool_cmd()
            |> TestFramework.get(:txs_pool, :node2)
            |> Map.to_list()
@@ -200,9 +259,9 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Create a Naming Revoke transaction and add it to the pool
-    TestFramework.post(Utils.name_revoke_cmd(), :name_revoke, :node2)
+    TestFramework.post(Utils.name_revoke_cmd(node1_pub, node1_priv), :name_revoke, :node2)
 
-    # Check if the pool is filed with one trasactiona
+    # Check if the pool is filed with one transaction
     assert Utils.pool_cmd()
            |> TestFramework.get(:txs_pool, :node2)
            |> Map.to_list()
@@ -211,21 +270,48 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check if the top Header hash is equal between node2 and node4
-    # Delay for 2 seconds to be sure the blocks from node2 are
-    # gossiped to node4
-    assert TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2) ==
-             TestFramework.call_with_delay(
-               Utils.top_header_hash_cmd(),
-               &TestFramework.get/4,
-               :top_header_hash,
-               :node3,
-               10_000
-             )
+    assert TestFramework.verify_with_delay(
+             fn ->
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
+                 label: "node1"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
+                 label: "node2"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
+                 label: "node3"
+               )
+
+               IO.inspect(
+                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
+                 label: "node4"
+               )
+
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
+                 |> IO.inspect(),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
+                 |> IO.inspect()
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node3)
+                   |> IO.inspect(),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
+                   |> IO.inspect()
+                 ]
+             end,
+             6
+           ) == true
 
     TestFramework.delete_all_nodes()
   end
 
-  @tag :sync_test
+  @tag :sync_test_accounts
   test "balance test" do
     # Mine 2 blocks, so that node1 has enough tokens to spend
     Utils.mine_blocks(2, :node1)
@@ -282,10 +368,15 @@ defmodule MultiNodeSyncTest do
     )
 
     # Check that the transaction is added to the pool
-    assert Utils.pool_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node3, 3000)
-           |> Map.to_list()
-           |> length() == 1
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.pool_cmd()
+               |> TestFramework.get(:txs_pool, :node3)
+               |> Map.to_list()
+               |> length() == 1
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node3)
 
@@ -308,17 +399,26 @@ defmodule MultiNodeSyncTest do
     )
 
     # Check that the transaction is added to the pool
-    assert Utils.pool_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :txs_pool, :node2, 3000)
-           |> Map.to_list()
-           |> length() == 1
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.pool_cmd()
+               |> TestFramework.get(:txs_pool, :node2)
+               |> Map.to_list()
+               |> length() == 1
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node2)
 
     # Check that node4 has 10 tokens
-    assert node4_pub
-           |> Utils.balance_cmd()
-           |> TestFramework.call_with_delay(&TestFramework.get/4, :balance, :node4, 3000) == 10
+    assert TestFramework.verify_with_delay(
+             fn ->
+               block = TestFramework.get(Utils.top_block_cmd(), :top_block, :node4)
+               block.header.height == 5
+             end,
+             5
+           ) == true
 
     TestFramework.delete_all_nodes()
   end

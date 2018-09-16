@@ -59,11 +59,20 @@ defmodule Aetestframework.Worker do
   @doc """
   Call a GenServer API function with specific delay
   """
-  @spec call_with_delay(String.t(), reference(), atom(), atom(), non_neg_integer()) :: any
-  def call_with_delay(cmd, fun, match_by, node, delay) do
-    :timer.sleep(delay)
-    new_timeout = @default_timeout + delay
-    fun.(cmd, match_by, node, new_timeout)
+  @spec verify_with_delay(reference(), non_neg_integer()) :: any
+  def verify_with_delay(valid?, 0) do
+    valid?.()
+  end
+
+  def verify_with_delay(valid?, execute_times) do
+    if valid?.() do
+      IO.inspect("executing: #{execute_times}")
+      true
+    else
+      IO.inspect("not executing: #{execute_times}")
+      :timer.sleep(1000)
+      verify_with_delay(valid?, execute_times - 1)
+    end
   end
 
   # Server side
@@ -124,7 +133,9 @@ defmodule Aetestframework.Worker do
 
   def handle_call(:delete_nodes, _from, state) do
     Enum.each(state, fn {_node, %{port_id: port_id, node_port: port}} ->
-      Port.command(port_id, ":erlang.halt()\n")
+      Port.command(port_id, "{:stop, System.stop()}\n")
+      expected_result = fn _ -> :ok end
+      :ok = receive_result(":stop", expected_result)
       Port.close(port_id)
       path_to_priv_dir = project_dir() <> "/apps/aecore/priv/"
       File.rm_rf(path_to_priv_dir <> "test_signkeys_#{port}")
