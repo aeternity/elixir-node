@@ -83,30 +83,9 @@ defmodule Aecore.Chain.Chainstate do
         end
       end)
 
-    updated_chainstate2 =
-      case updated_chainstate do
-        %Chainstate{} = new_chainstate ->
-          Oracle.remove_expired(new_chainstate, block_height)
-
-        error ->
-          {:error, error}
-      end
-
-    case updated_chainstate2 do
+    case updated_chainstate do
       %Chainstate{} = new_chainstate ->
-        {:ok,
-         %Chainstate{
-           accounts: PatriciaMerkleTree.fix_trie(new_chainstate.accounts),
-           oracles: %{
-             oracle_tree: PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_tree),
-             oracle_cache_tree:
-               PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_cache_tree)
-           },
-           naming: PatriciaMerkleTree.fix_trie(new_chainstate.naming),
-           channels: PatriciaMerkleTree.fix_trie(new_chainstate.channels),
-           contracts: PatriciaMerkleTree.fix_trie(new_chainstate.contracts),
-           calls: PatriciaMerkleTree.fix_trie(new_chainstate.calls)
-         }}
+        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
 
       error ->
         {:error, error}
