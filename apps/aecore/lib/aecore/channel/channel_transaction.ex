@@ -52,10 +52,15 @@ defmodule Aecore.Channel.ChannelTransaction do
         pubkey_list
       )
       when type in @allowed_onchain_tx and is_list(pubkey_list) do
-    # Check if the TX was send by the expected parties
-    senders = DataTx.senders(data)
+    senders =
+      if DataTx.chainstate_senders?(data) do
+        pubkey_list
+      else
+        DataTx.senders(data)
+      end
 
     cond do
+      # Check if the TX was send by the expected parties
       length(senders) != length(pubkey_list) ->
         false
 
@@ -64,7 +69,7 @@ defmodule Aecore.Channel.ChannelTransaction do
 
       true ->
         # Make sure that the signatures are valid
-        SignedTx.signatures_valid?(tx)
+        SignedTx.signatures_valid?(tx, senders)
     end
   end
 

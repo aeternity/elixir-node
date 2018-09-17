@@ -115,7 +115,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       responder_pubkey::binary-size(@pubkey_size)
     >>
 
-    Hash.hash_blake2b(binary_data)
+    Hash.hash(binary_data)
   end
 
   @spec amounts(ChannelStateOnChain.t()) :: {non_neg_integer(), non_neg_integer()}

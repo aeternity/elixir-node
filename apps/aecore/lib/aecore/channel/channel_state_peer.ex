@@ -9,8 +9,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     ChannelStatePeer,
     ChannelCreateTx,
     ChannelTransaction,
-    ChannelOffChainUpdate,
-    ChannelStateTree
+    ChannelOffChainUpdate
   }
 
   alias Aecore.Channel.Worker, as: Channel
@@ -25,7 +24,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
   alias Aecore.Poi.Poi
@@ -953,10 +951,18 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, SignedTx.t()} | error()
-  def settle(%ChannelStatePeer{fsm_state: :closing} = peer_state, fee, nonce, priv_key) do
-    %ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount} =
-      Chain.chain_state().channels
-      |> ChannelStateTree.get(channel_id(peer_state))
+  def settle(
+        %ChannelStatePeer{
+          fsm_state: :closing,
+          initiator_pubkey: initiator_pubkey,
+          responder_pubkey: responder_pubkey
+        } = peer_state,
+        fee,
+        nonce,
+        priv_key
+      ) do
+    initiator_amount = final_channel_balance_for(peer_state, initiator_pubkey)
+    responder_amount = final_channel_balance_for(peer_state, responder_pubkey)
 
     data =
       DataTx.init(

@@ -150,10 +150,10 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
       !ChannelStateOnChain.settled?(channel, block_height) ->
         {:error, "#{__MODULE__}: Channel isn't settled"}
 
-      channel.initiator_amount == initiator_amount ->
+      channel.initiator_amount != initiator_amount ->
         {:error, "#{__MODULE__}: Wrong initiator amount"}
 
-      channel.responder_amount == responder_amount ->
+      channel.responder_amount != responder_amount ->
         {:error, "#{__MODULE__}: Wrong responder amount"}
 
       true ->

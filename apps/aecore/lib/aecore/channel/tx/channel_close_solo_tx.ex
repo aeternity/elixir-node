@@ -225,9 +225,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           poi: poi
         },
         [encoded_sender],
-        :binary.encode_unsigned(fee),
-        :binary.encode_unsigned(nonce),
-        :binary.encode_unsigned(ttl)
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
       )
     else
       {:ok, %Identifier{}} ->

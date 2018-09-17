@@ -5,7 +5,7 @@ defmodule AecoreChannelTest do
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Keys
   alias Aecore.Channel.Worker, as: Channels
   alias Aeutil.Serialization
@@ -159,6 +159,8 @@ defmodule AecoreChannelTest do
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
+    assert 150 == settle_tx.data.payload.initiator_amount
+    assert 150 == settle_tx.data.payload.responder_amount
     assert :ok == Pool.add_transaction(settle_tx)
 
     :ok = Miner.mine_sync_block_to_chain()
@@ -258,7 +260,7 @@ defmodule AecoreChannelTest do
 
     for tx <- to_test do
       serialized = Serialization.rlp_encode(tx)
-      {:ok, %SignedTx{} = deserialized_tx} = Serialization.rlp_decode_only(serialized, SignedTx)
+      {:ok, %SignedTx{} = deserialized_tx} = SignedTx.rlp_decode(serialized)
 
       assert SignedTx.hash_tx(deserialized_tx) === SignedTx.hash_tx(tx)
       assert deserialized_tx === tx

@@ -267,8 +267,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         ttl,
         fee,
         state_hash,
-        nonce
+        encoded_nonce
       ]) do
+    nonce = :binary.decode_unsigned(encoded_nonce)
+
     with {:ok, %Identifier{type: :account, value: initiator}} <-
            Identifier.decode_from_binary(encoded_initiator),
          {:ok, %Identifier{type: :account, value: responder}} <-
@@ -289,7 +291,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         payload,
         [encoded_initiator, encoded_responder],
         :binary.decode_unsigned(fee),
-        :binary.decode_unsigned(nonce),
+        nonce,
         :binary.decode_unsigned(ttl)
       )
     else
