@@ -197,7 +197,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   def decode_from_list(@version, [
         encoded_channel_id,
         encoded_sender,
-        payload, 
+        payload,
         rlp_encoded_poi,
         ttl,
         fee,
@@ -207,24 +207,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
            Identifier.decode_from_binary(encoded_channel_id),
          {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
-      if channel_id != state.channel_id do
-        {:error, "#{__MODULE__}: channel_id mismatch"}
-      else
-        payload = %ChannelCloseSoloTx{state: state}
-
-        DataTx.init_binary(
-          ChannelCloseSoloTx,
-          %ChannelCloseSoloTx{
-            channel_id: channel_id,
-            offchain_tx: offchain_tx,
-            poi: poi
-          },
-          [encoded_sender],
-          :binary.encode_unsigned(fee),
-          :binary.encode_unsigned(nonce),
-          :binary.encode_unsigned(ttl)
-        )
-      end
+      DataTx.init_binary(
+        ChannelCloseSoloTx,
+        %ChannelCloseSoloTx{
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
+        },
+        [encoded_sender],
+        :binary.encode_unsigned(fee),
+        :binary.encode_unsigned(nonce),
+        :binary.encode_unsigned(ttl)
+      )
     else
       {:ok, %Identifier{}} ->
         {:error, "#{__MODULE__}: Wrong channel_id identifier type"}

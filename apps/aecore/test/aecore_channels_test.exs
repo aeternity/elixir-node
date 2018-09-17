@@ -19,8 +19,7 @@ defmodule AecoreChannelTest do
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
-    ChannelSettleTx,
-    ChannelCloseSoloTx
+    ChannelSettleTx
   }
 
   alias Aeutil.PatriciaMerkleTree

@@ -215,7 +215,7 @@ defmodule Aecore.Tx.SignedTx do
   @doc """
   Checks if SignedTx contains a valid signature for each sender
   """
-  @spec signatures_valid?(SignedTx.t()) :: boolean()
+  @spec signatures_valid?(SignedTx.t(), list(Keys.pubkey())) :: boolean()
   def signatures_valid?(%SignedTx{data: data, signatures: sigs}, senders) do
     if length(sigs) != length(senders) do
       Logger.error("Wrong signature count")

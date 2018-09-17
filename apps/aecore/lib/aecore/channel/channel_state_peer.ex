@@ -397,11 +397,11 @@ defmodule Aecore.Channel.ChannelStatePeer do
       true ->
         #validate the state
         case receive_half_signed_tx(
-          %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: Identifier.create_identity(raw_channel_id, :channel)},
+          %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: id},
           half_signed_create_tx, priv_key
         ) do
           {:ok, new_peer_state, fully_signed_create_tx} ->
-            {:ok, new_peer_state, raw_channel_id, fully_signed_create_tx}
+            {:ok, new_peer_state, id, fully_signed_create_tx}
           {:error, _} = err ->
             err
         end
@@ -608,7 +608,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           DataTx.init(
             ChannelCloseMutalTx,
             %{
-              channel_id: id,
+              channel_id: channel_id,
               initiator_amount: initiator_amount - fee_initiator,
               responder_amount: responder_amount - fee_responder
             },
@@ -792,17 +792,17 @@ defmodule Aecore.Channel.ChannelStatePeer do
   def settle(%ChannelStatePeer{fsm_state: :closing} = peer_state, fee, nonce, priv_key) do
     %ChannelStateOnChain{initiator_amount: initiator_amount, responder_amount: responder_amount} =
       Chain.chain_state().channels
-      |> ChannelStateTree.get(id(peer_state))
+      |> ChannelStateTree.get(channel_id(peer_state))
 
     data =
       DataTx.init(
         ChannelSettleTx,
         %{
-          channel_id: id(peer_state),
+          channel_id: channel_id(peer_state),
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
-        node_pubkey(peer_state),
+        our_pubkey(peer_state),
         fee,
         nonce
       )

@@ -192,14 +192,12 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   def decode_from_list(@version, [
         encoded_channel_id,
         encoded_sender,
-        # TODO payload + poi instead
-        [state_ver_bin | state],
+        payload,
+        rlp_encoded_poi,
         ttl,
         fee,
         nonce
       ]) do
-    state_ver = :binary.decode_unsigned(state_ver_bin)
-
     with {:ok, %Identifier{type: :channel, value: channel_id}} <-
            Identifier.decode_from_binary(encoded_channel_id),
          {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
@@ -207,7 +205,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       DataTx.init_binary(
         ChannelSlashTx,
         %ChannelSlashTx{
-          channel_id: decode_channel_identifier_to_binary(channel_id),
+          channel_id: channel_id,
           offchain_tx: offchain_tx,
           poi: poi
         },
