@@ -248,7 +248,7 @@ defmodule Aecore.Oracle.Oracle do
         },
         accounts_state
       ) do
-    unless has_response do
+    if not has_response do
       AccountStateTree.update(accounts_state, sender_address, fn account ->
         Map.update!(account, :balance, &(&1 + fee))
       end)
