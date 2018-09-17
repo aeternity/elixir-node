@@ -63,9 +63,24 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(Keys.pubkey(), Keys.pubkey(), integer(), integer(), non_neg_integer(), non_neg_integer(), binary()) ::
-          ChannelStateOnChain.t()
-  def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period, channel_reserve, state_hash) do
+  @spec create(
+          Keys.pubkey(),
+          Keys.pubkey(),
+          integer(),
+          integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary()
+        ) :: ChannelStateOnChain.t()
+  def create(
+        initiator_pubkey,
+        responder_pubkey,
+        initiator_amount,
+        responder_amount,
+        lock_period,
+        channel_reserve,
+        state_hash
+      ) do
     %ChannelStateOnChain{
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
@@ -149,9 +164,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         :empty,
         %Poi{} = poi
       ) do
-    with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <-
+           get_final_balances_from_poi(channel, poi) do
       cond do
-        #No payload is only allowed for SoloCloseTx
+        # No payload is only allowed for SoloCloseTx
         channel.slash_sequence != 0 ->
           {:error, "#{__MODULE__}: Channel already slashed"}
 
@@ -176,60 +192,76 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         %ChannelOffChainTx{} = offchain_tx,
-        %Poi{} = poi) do
-     with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
-       cond do
-         channel.slash_sequence >= offchain_tx.sequence ->
-           {:error, "#{__MODULE__}: Offchain state is too old"}
+        %Poi{} = poi
+      ) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <-
+           get_final_balances_from_poi(channel, poi) do
+      cond do
+        channel.slash_sequence >= offchain_tx.sequence ->
+          {:error, "#{__MODULE__}: Offchain state is too old"}
 
-         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
-           {:error, "#{__MODULE__}: Invalid state hash"}
+        offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
+          {:error, "#{__MODULE__}: Invalid state hash"}
 
-         poi_initiator_amount + poi_responder_amount !== channel.initiator_amount + channel.responder_amount ->
-           {:error, "#{__MODULE__}: Invalid total amount"}
+        poi_initiator_amount + poi_responder_amount !==
+            channel.initiator_amount + channel.responder_amount ->
+          {:error, "#{__MODULE__}: Invalid total amount"}
 
-         true ->
-           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
-       end
-     else
-       {:error, _} = err ->
-         err
-     end
+        true ->
+          ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
+      end
+    else
+      {:error, _} = err ->
+        err
+    end
   end
 
-  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
+  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
+          {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
   defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
-      with {:ok, poi_initiator_amount} <- Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
-           {:ok, poi_responder_amount} <- Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
-        #Later we will need to factor in contracts
-        {:ok, poi_initiator_amount, poi_responder_amount}
-      else
-        {:error, _} ->
-          {:error, "#{__MODULE__}: Poi is missing an offchain account."}
-      end
+    with {:ok, poi_initiator_amount} <-
+           Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
+         {:ok, poi_responder_amount} <-
+           Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+      # Later we will need to factor in contracts
+      {:ok, poi_initiator_amount, poi_responder_amount}
+    else
+      {:error, _} ->
+        {:error, "#{__MODULE__}: Poi is missing an offchain account."}
+    end
   end
 
   @doc """
   Executes slashing on a channel. Slashing should be validated beforehand with validate_slashing.
   """
-  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
-          ChannelStateOnChain.t()
+  @spec apply_slashing(
+          ChannelStateOnChain.t(),
+          non_neg_integer(),
+          ChannelOffChainTx.t() | :empty,
+          Poi.t()
+        ) :: ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
     {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+
     %ChannelStateOnChain{
       channel
-      |
-        initiator_amount: initiator_amount,
+      | initiator_amount: initiator_amount,
         responder_amount: responder_amount,
         slash_close: block_height + channel.lock_period,
         slash_sequence: 0
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelOffChainTx{} = offchain_tx, %Poi{} = poi) do
+  def apply_slashing(
+        %ChannelStateOnChain{} = channel,
+        block_height,
+        %ChannelOffChainTx{} = offchain_tx,
+        %Poi{} = poi
+      ) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
     {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,

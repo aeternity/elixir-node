@@ -100,6 +100,7 @@ defmodule Aeutil.PatriciaMerkleTree do
     case Proof.verify_proof(key, value, root_hash, proof) do
       :ok ->
         true
+
       {:error, _} ->
         false
     end
@@ -113,8 +114,10 @@ defmodule Aeutil.PatriciaMerkleTree do
     case Proof.lookup_proof(key, root_hash, proof) do
       nil ->
         :error
+
       {:error, _} ->
         :error
+
       val ->
         {:ok, val}
     end

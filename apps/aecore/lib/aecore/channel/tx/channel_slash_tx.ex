@@ -70,7 +70,18 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     {:error, "#{__MODULE__}: Can't slash without an offchain tx"}
   end
 
-  def validate(%ChannelSlashTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, sequence: sequence, state_hash: state_hash}, poi: poi}, data_tx) do
+  def validate(
+        %ChannelSlashTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            sequence: sequence,
+            state_hash: state_hash
+          },
+          poi: poi
+        },
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do

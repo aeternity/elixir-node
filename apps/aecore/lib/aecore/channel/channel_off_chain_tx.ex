@@ -14,15 +14,16 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @behaviour ChannelTransaction
 
   @version 1
-  @signed_tx_tag 11 #TypeToTag.type_to_tag(Aecore.Tx.SignedTx)
+  # TypeToTag.type_to_tag(Aecore.Tx.SignedTx)
+  @signed_tx_tag 11
 
   @typedoc """
   Structure of the ChannelOffChainTx type
   """
   @type t :: %ChannelOffChainTx{
           channel_id: Identifier.t(),
-          sequence:   non_neg_integer(),
-          updates:    list(ChannelOffChainUpdate.update_types()),
+          sequence: non_neg_integer(),
+          updates: list(ChannelOffChainUpdate.update_types()),
           state_hash: binary(),
           signatures: {binary(), binary()}
         }
@@ -92,11 +93,14 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         pubkey
       ) do
     binary_form = Serialization.rlp_encode(state)
-    Keys.verify(binary_form, sig1, pubkey) or verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
+
+    Keys.verify(binary_form, sig1, pubkey) or
+      verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
   end
 
   @spec signature_for_offchain_tx(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: binary()
-  defp signature_for_offchain_tx(%ChannelOffChainTx{} = offchain_tx, priv_key) when is_binary(priv_key) do
+  defp signature_for_offchain_tx(%ChannelOffChainTx{} = offchain_tx, priv_key)
+       when is_binary(priv_key) do
     offchain_tx
     |> Serialization.rlp_encode()
     |> Keys.sign(priv_key)
@@ -105,8 +109,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Signs the offchain transaction with the provided private key.
   """
-  @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) ::
-          ChannelOffChainTx.t()
+  @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: ChannelOffChainTx.t()
   def sign(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
     sig = signature_for_offchain_tx(offchain_tx, priv_key)
 
@@ -126,7 +129,8 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Creates a new offchain transaction containing a transfer update between the specified accounts. The resulting offchain transaction is not tied to any offchain chainstate.
   """
-  @spec initialize_transfer(Identifier.t(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: ChannelOffChainTx.t()
+  @spec initialize_transfer(Identifier.t(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) ::
+          ChannelOffChainTx.t()
   def initialize_transfer(channel_id, from, to, amount) do
     %ChannelOffChainTx{
       channel_id: channel_id,
@@ -151,7 +155,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
       [sig1, sig2],
       Serialization.rlp_encode(state)
     ]
-    |> ExRLP.encode
+    |> ExRLP.encode()
   end
 
   def encode_to_payload(:empty) do
@@ -168,13 +172,12 @@ defmodule Aecore.Channel.ChannelOffChainTx do
 
   def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do
     decoded_tx = Serialization.rlp_decode_only(encoded_tx, ChannelOffChainTx)
-    {:ok,
-      %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}
-    }
+    {:ok, %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}}
   end
 
   def decode_from_payload([@signed_tx_tag, @version | invalid_data]) do
-    {:error, "#{__MODULE__}: decode_from_payload: Invalid serialization - #{inspect(invalid_data)}"}
+    {:error,
+     "#{__MODULE__}: decode_from_payload: Invalid serialization - #{inspect(invalid_data)}"}
   end
 
   def decode_from_payload([@signed_tx_tag, version | _]) do
@@ -190,12 +193,13 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @spec encode_to_list(ChannelOffChainTx.t()) :: list(binary())
   def encode_to_list(%ChannelOffChainTx{
-    channel_id: %Identifier{type: :channel} = channel_id,
-    sequence:   sequence,
-    updates:    updates,
-    state_hash: state_hash
-  }) do
+        channel_id: %Identifier{type: :channel} = channel_id,
+        sequence: sequence,
+        updates: updates,
+        state_hash: state_hash
+      }) do
     encoded_updates = Enum.map(updates, &ChannelOffChainUpdate.to_list/1)
+
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(channel_id),
@@ -216,6 +220,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         state_hash
       ]) do
     {:ok, channel_id} = Identifier.decode_from_binary(encoded_channel_id)
+
     %ChannelOffChainTx{
       channel_id: channel_id,
       sequence: :binary.decode_unsigned(sequence),

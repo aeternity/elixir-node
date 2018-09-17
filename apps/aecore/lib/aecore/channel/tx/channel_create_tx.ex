@@ -62,7 +62,18 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
   - channel_id: id of the created channel - not sent to the blockchain but calculated here for convenience
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id, sequence: 1]
+  defstruct [
+    :initiator,
+    :initiator_amount,
+    :responder,
+    :responder_amount,
+    :locktime,
+    :state_hash,
+    :channel_reserve,
+    :channel_id,
+    sequence: 1
+  ]
+
   use ExConstructor
 
   @spec get_chain_state_name :: atom()
@@ -119,7 +130,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       byte_size(tx.state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
 
-      #Should we recreate the offchain chainstate and make sure that the state hash is correct?
+      # Should we recreate the offchain chainstate and make sure that the state hash is correct?
 
       true ->
         :ok
@@ -258,7 +269,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         state_hash,
         nonce
       ]) do
-
     with {:ok, initiator} <- Identifier.decode_from_binary(encoded_initiator),
          {:ok, responder} <- Identifier.decode_from_binary(encoded_responder) do
       payload = %ChannelCreateTx{

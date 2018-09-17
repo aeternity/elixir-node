@@ -82,8 +82,7 @@ defmodule Aecore.Tx.SignedTx do
      - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
   """
-  @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) ::
-          {:ok, SignedTx.t()} | {:error, String.t()}
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def sign_tx(%DataTx{} = tx, priv_key) do
     sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
   end
@@ -94,7 +93,7 @@ defmodule Aecore.Tx.SignedTx do
       |> DataTx.rlp_encode()
       |> Keys.sign(priv_key)
 
-    #We need to make sure the sigs are sorted in order for the json/websocket api to function properly
+    # We need to make sure the sigs are sorted in order for the json/websocket api to function properly
     {:ok, %SignedTx{data: data, signatures: Enum.sort([new_signature | sigs])}}
   end
 
@@ -232,12 +231,14 @@ defmodule Aecore.Tx.SignedTx do
   @spec signature_valid_for?(SignedTx.t(), Keys.pubkey()) :: boolean()
   def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
     data_binary = DataTx.rlp_encode(data)
+
     if pubkey not in DataTx.senders(data) do
       false
     else
       case single_signature_check(signatures, data_binary, pubkey) do
         {:ok, _} ->
           true
+
         :error ->
           false
       end
@@ -249,6 +250,7 @@ defmodule Aecore.Tx.SignedTx do
     case single_signature_check(signatures, data_binary, pubkey) do
       {:ok, remaining_signatures} ->
         check_multiple_signatures(remaining_signatures, data_binary, remaining_pubkeys)
+
       :error ->
         false
     end
@@ -262,7 +264,8 @@ defmodule Aecore.Tx.SignedTx do
     false
   end
 
-  @spec single_signature_check(list(binary()), binary(), Keys.pubkey()) :: {:ok, list(binary())} | :error
+  @spec single_signature_check(list(binary()), binary(), Keys.pubkey()) ::
+          {:ok, list(binary())} | :error
   defp single_signature_check(signatures, data_binary, pubkey) do
     if Keys.key_size_valid?(pubkey) do
       do_single_signature_check(signatures, data_binary, pubkey)
@@ -272,7 +275,8 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec do_single_signature_check(list(binary()), binary(), Keys.pubkey()) :: {:ok, list(binary())} | :error
+  @spec do_single_signature_check(list(binary()), binary(), Keys.pubkey()) ::
+          {:ok, list(binary())} | :error
   defp do_single_signature_check([signature | rest_signatures], data_binary, pubkey) do
     if Keys.verify(data_binary, signature, pubkey) do
       {:ok, rest_signatures}
@@ -280,6 +284,7 @@ defmodule Aecore.Tx.SignedTx do
       case do_single_signature_check(rest_signatures, data_binary, pubkey) do
         {:ok, unchecked_sigs} ->
           {:ok, [signature | unchecked_sigs]}
+
         :error ->
           :error
       end
@@ -304,7 +309,7 @@ defmodule Aecore.Tx.SignedTx do
   def decode_from_list(@version, [signatures, data]) do
     case DataTx.rlp_decode(data) do
       {:ok, data} ->
-        #make sure that the sigs are sorted - we cannot trust user input ;)
+        # make sure that the sigs are sorted - we cannot trust user input ;)
         {:ok, %SignedTx{data: data, signatures: Enum.sort(signatures)}}
 
       {:error, _} = error ->

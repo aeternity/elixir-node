@@ -76,7 +76,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     end
   end
 
-  def validate(%ChannelCloseSoloTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, state_hash: state_hash}, poi: poi}, data_tx) do
+  def validate(
+        %ChannelCloseSoloTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            state_hash: state_hash
+          },
+          poi: poi
+        },
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -89,8 +99,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       Poi.calculate_root_hash(poi) !== state_hash ->
         {:error, "#{__MODULE__}: Invalid state_hash"}
 
-    true ->
-      :ok
+      true ->
+        :ok
     end
   end
 

@@ -45,10 +45,11 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   """
   @spec new(ChannelCreateTx.t()) :: ChannelCreateUpdate.t()
   def new(%ChannelCreateTx{
-      initiator: initiator,
-      initiator_amount: initiator_amount,
-      responder: responder,
-      responder_amount: responder_amount}) do
+        initiator: initiator,
+        initiator_amount: initiator_amount,
+        responder: responder,
+        responder_amount: responder_amount
+      }) do
     %ChannelCreateUpdate{
       initiator: initiator,
       initiator_amount: initiator_amount,
@@ -73,12 +74,18 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
     {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
   end
 
-  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) :: Chainstate.t()
-  defp create_account_in_chainstate({pubkey, amount}, %Chainstate{accounts: accounts} = chainstate, channel_reserve) do
+  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) ::
+          Chainstate.t()
+  defp create_account_in_chainstate(
+         {pubkey, amount},
+         %Chainstate{accounts: accounts} = chainstate,
+         channel_reserve
+       ) do
     account =
-      Account.empty
+      Account.empty()
       |> Account.apply_transfer!(nil, amount)
       |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
+
     %Chainstate{
       chainstate
       | accounts: AccountStateTree.put(accounts, pubkey.value, account)
@@ -88,23 +95,28 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @doc """
   Creates the initial chainstate. Assumes no chainstate is present. Returns an error in the creation failed or a chainstate is already present.
   """
-  @spec update_offchain_chainstate(Chainstate.t() | nil, ChannelCreateUpdate.t()) :: {:ok, Chainstate.t()} | error()
-  def update_offchain_chainstate(nil,
+  @spec update_offchain_chainstate(Chainstate.t() | nil, ChannelCreateUpdate.t()) ::
+          {:ok, Chainstate.t()} | error()
+  def update_offchain_chainstate(
+        nil,
         %ChannelCreateUpdate{
           initiator: initiator,
           initiator_amount: initiator_amount,
           responder: responder,
           responder_amount: responder_amount
         },
-        channel_reserve) do
-    initial_chainstate = Enum.reduce(
-      [
-        {initiator, initiator_amount},
-        {responder, responder_amount}
-      ],
-      Chainstate.create_chainstate_trees(),
-      &create_account_in_chainstate(&1, &2, channel_reserve)
-    )
+        channel_reserve
+      ) do
+    initial_chainstate =
+      Enum.reduce(
+        [
+          {initiator, initiator_amount},
+          {responder, responder_amount}
+        ],
+        Chainstate.create_chainstate_trees(),
+        &create_account_in_chainstate(&1, &2, channel_reserve)
+      )
+
     {:ok, initial_chainstate}
   catch
     {:error, _} = err ->

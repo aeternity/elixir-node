@@ -44,7 +44,8 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Notifies the channel manager about a new mined tx
   """
-  def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do  #, ChannelWidhdrawTx, ChannelDepositTx]  do
+  # , ChannelWidhdrawTx, ChannelDepositTx]  do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do
     receive_confirmed_tx(tx)
   end
 
@@ -89,6 +90,7 @@ defmodule Aecore.Channel.Worker do
     case ChannelStatePeer.from_open(open_tx, role) do
       {:ok, peer_state} ->
         import_channel(peer_state)
+
       {:error, _} = err ->
         err
     end
@@ -109,6 +111,7 @@ defmodule Aecore.Channel.Worker do
     case ChannelStatePeer.from_signed_tx_list(mutually_signed_tx_list, role) do
       {:ok, peer_state} ->
         import_channel(peer_state)
+
       {:error, _} = err ->
         err
     end
@@ -147,7 +150,10 @@ defmodule Aecore.Channel.Worker do
   def open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)
       when is_binary(temporary_id) and is_integer(locktime) and is_integer(fee) and
              is_integer(nonce) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key})
+    GenServer.call(
+      __MODULE__,
+      {:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key}
+    )
   end
 
   @doc """
@@ -246,8 +252,7 @@ defmodule Aecore.Channel.Worker do
   @spec slash(binary(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           :ok | error()
   def slash(channel_id, fee, nonce, priv_key)
-      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and
-             is_binary(priv_key) do
+      when is_binary(channel_id) and is_integer(fee) and is_integer(nonce) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:slash, channel_id, fee, nonce, priv_key})
   end
 
@@ -314,16 +319,35 @@ defmodule Aecore.Channel.Worker do
         _from,
         state
       ) do
-    peer_state = ChannelStatePeer.initialize(temporary_id, initiator_pubkey, responder_pubkey, channel_reserve, role)
+    peer_state =
+      ChannelStatePeer.initialize(
+        temporary_id,
+        initiator_pubkey,
+        responder_pubkey,
+        channel_reserve,
+        role
+      )
 
     {:reply, :ok, Map.put(state, temporary_id, peer_state)}
   end
 
-  def handle_call({:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key}, _from, state) do
+  def handle_call(
+        {:open, temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key},
+        _from,
+        state
+      ) do
     peer_state = Map.get(state, temporary_id)
 
     {:ok, new_peer_state, new_id, open_tx} =
-      ChannelStatePeer.open(peer_state, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)
+      ChannelStatePeer.open(
+        peer_state,
+        initiator_amount,
+        responder_amount,
+        locktime,
+        fee,
+        nonce,
+        priv_key
+      )
 
     new_state =
       state
@@ -333,11 +357,21 @@ defmodule Aecore.Channel.Worker do
     {:reply, {:ok, new_id, open_tx}, new_state}
   end
 
-  def handle_call({:sign_open, temporary_id, initiator_amount, responder_amount, open_tx, priv_key}, _from, state) do
+  def handle_call(
+        {:sign_open, temporary_id, initiator_amount, responder_amount, open_tx, priv_key},
+        _from,
+        state
+      ) do
     peer_state = Map.get(state, temporary_id)
 
     with {:ok, new_peer_state, id, signed_open_tx} <-
-           ChannelStatePeer.sign_open(peer_state, initiator_amount, responder_amount, open_tx, priv_key),
+           ChannelStatePeer.sign_open(
+             peer_state,
+             initiator_amount,
+             responder_amount,
+             open_tx,
+             priv_key
+           ),
          :ok <- Pool.add_transaction(signed_open_tx) do
       new_state =
         state
@@ -374,12 +408,14 @@ defmodule Aecore.Channel.Worker do
     channel_id = ChannelTransaction.unsigned_payload(half_signed_tx).channel_id.value
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, fully_signed_tx} <- ChannelStatePeer.receive_half_signed_tx(peer_state, half_signed_tx, priv_key),
+    with {:ok, new_peer_state, fully_signed_tx} <-
+           ChannelStatePeer.receive_half_signed_tx(peer_state, half_signed_tx, priv_key),
          :ok <- send_tx_to_pool_if_confirmation_is_required(fully_signed_tx) do
       {:reply, {:ok, fully_signed_tx}, Map.put(state, channel_id, new_peer_state)}
     else
       :error ->
         {:reply, {:error, "Pool error"}, state}
+
       {:error, _} = err ->
         {:reply, err, state}
     end
@@ -489,8 +525,7 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:slash, channel_id, fee, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, channel_id)
 
-    with {:ok, new_peer_state, tx} <-
-           ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
+    with {:ok, new_peer_state, tx} <- ChannelStatePeer.slash(peer_state, fee, nonce, priv_key),
          :ok <- Pool.add_transaction(tx) do
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
@@ -562,33 +597,46 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  #Calculates the most recent state hash for the given channel id
+  # Calculates the most recent state hash for the given channel id
   def handle_call({:calculate_state_hash, channel_id}, _from, state) do
     dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.calculate_state_hash/1)
   end
 
-  #Retrieves the most recent chainstate for the given channel id
+  # Retrieves the most recent chainstate for the given channel id
   def handle_call({:most_recent_chainstate, channel_id}, _from, state) do
-    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.most_recent_chainstate/1)
+    dispatch_function_call_to_channel(
+      state,
+      channel_id,
+      &ChannelStatePeer.most_recent_chainstate/1
+    )
   end
 
-  #Retrieves the sequence of the highest offchain chainstate for the given channel id
+  # Retrieves the sequence of the highest offchain chainstate for the given channel id
   def handle_call({:highest_sequence, channel_id}, _from, state) do
     dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.highest_sequence/1)
   end
 
-  #Retrieves the amount of funds belonging to our account according to the most recent chainstate for the given channel id
+  # Retrieves the amount of funds belonging to our account according to the most recent chainstate for the given channel id
   def handle_call({:our_offchain_account_balance, channel_id}, _from, state) do
-    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.our_offchain_account_balance/1)
+    dispatch_function_call_to_channel(
+      state,
+      channel_id,
+      &ChannelStatePeer.our_offchain_account_balance/1
+    )
   end
 
-  #Retrieves the amount of funds belonging to the other peer according to the most recent chainstate for the given channel id
+  # Retrieves the amount of funds belonging to the other peer according to the most recent chainstate for the given channel id
   def handle_call({:foreign_offchain_account_balance, channel_id}, _from, state) do
-    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.foreign_offchain_account_balance/1)
+    dispatch_function_call_to_channel(
+      state,
+      channel_id,
+      &ChannelStatePeer.foreign_offchain_account_balance/1
+    )
   end
 
-  #Safely invokes the given function for the given channel id
-  @spec dispatch_function_call_to_channel(state(), binary(), function()) :: {:reply, error() | {:ok, any()}, state()}
+  # Safely invokes the given function for the given channel id
+  @spec dispatch_function_call_to_channel(state(), binary(), function()) ::
+          {:reply, error() | {:ok, any()}, state()}
   defp dispatch_function_call_to_channel(state, channel_id, fun) when is_function(fun, 1) do
     if Map.has_key?(state, channel_id) do
       {:reply, {:ok, fun.(Map.get(state, channel_id))}, state}
@@ -597,7 +645,8 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  @spec send_tx_to_pool_if_confirmation_is_required(ChannelTransaction.signed_tx()) :: :ok | :error
+  @spec send_tx_to_pool_if_confirmation_is_required(ChannelTransaction.signed_tx()) ::
+          :ok | :error
   defp send_tx_to_pool_if_confirmation_is_required(tx) do
     if ChannelTransaction.requires_onchain_confirmation?(tx) do
       Pool.add_transaction(tx)
