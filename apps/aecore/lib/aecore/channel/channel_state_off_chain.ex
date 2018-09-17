@@ -79,11 +79,13 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @doc """
   Validates ChannelStateOffChain signatures.
   """
-  @spec validate(ChannelStateOffChain.t(), {Keys.pubkey(), Keys.pubkey()}) :: :ok | error()
-  def validate(%ChannelStateOffChain{signatures: {_, _}} = state, {
-        initiator_pubkey,
-        responder_pubkey
-      }) do
+  @spec validate(ChannelStateOffChain.t(), {Keys.pubkey(), Keys.pubkey()}, non_neg_integer()) ::
+          :ok | error()
+  def validate(
+        %ChannelStateOffChain{signatures: {_, _}} = state,
+        {initiator_pubkey, responder_pubkey},
+        channel_reserve
+      ) do
     cond do
       !valid_initiator?(state, initiator_pubkey) ->
         {:error, "#{__MODULE__}: Invalid initiator signature"}
@@ -91,12 +93,18 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       !valid_responder?(state, responder_pubkey) ->
         {:error, "#{__MODULE__}: Invalid responder signature"}
 
+      state.initiator_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: initiator_amount too low for channel reserve"}
+
+      state.responder_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: responder_amount too low for channel reserve"}
+
       true ->
         :ok
     end
   end
 
-  def validate(%ChannelStateOffChain{}, _) do
+  def validate(%ChannelStateOffChain{}, _, _) do
     {:error, "#{__MODULE__}: Invalid signatures count"}
   end
 
@@ -107,9 +115,16 @@ defmodule Aecore.Channel.ChannelStateOffChain do
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
           {Keys.pubkey(), Keys.pubkey()},
-          Channel.role()
+          Channel.role(),
+          non_neg_integer()
         ) :: :ok | error()
-  def validate_half_update(prev_state, new_state, {initiator_pubkey, responder_pubkey}, role) do
+  def validate_half_update(
+        prev_state,
+        new_state,
+        {initiator_pubkey, responder_pubkey},
+        role,
+        channel_reserve
+      ) do
     cond do
       new_state.sequence <= prev_state.sequence ->
         {:error, "#{__MODULE__}: Invalid sequence"}
@@ -120,6 +135,12 @@ defmodule Aecore.Channel.ChannelStateOffChain do
       prev_state.initiator_amount + prev_state.responder_amount !=
           new_state.initiator_amount + new_state.responder_amount ->
         {:error, "#{__MODULE__}: Invalid new total amount"}
+
+      new_state.initiator_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: initiator_amount too low for channel reserve"}
+
+      new_state.responder_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: responder_amount too low for channel reserve"}
 
       role == :initiator && !valid_responder?(new_state, responder_pubkey) ->
         {:error, "#{__MODULE__}: Invalid responder signature"}
@@ -144,9 +165,10 @@ defmodule Aecore.Channel.ChannelStateOffChain do
   @spec validate_full_update(
           ChannelStateOffChain.t(),
           ChannelStateOffChain.t(),
-          {Keys.pubkey(), Keys.pubkey()}
+          {Keys.pubkey(), Keys.pubkey()},
+          non_neg_integer()
         ) :: :ok | error()
-  def validate_full_update(prev_state, new_state, pubkeys) do
+  def validate_full_update(prev_state, new_state, pubkeys, channel_reserve) do
     cond do
       new_state.sequence <= prev_state.sequence ->
         {:error, "#{__MODULE__}: Invalid sequence"}
@@ -159,7 +181,7 @@ defmodule Aecore.Channel.ChannelStateOffChain do
         {:error, "#{__MODULE__}: Invalid new total amount"}
 
       true ->
-        validate(new_state, pubkeys)
+        validate(new_state, pubkeys, channel_reserve)
     end
   end
 

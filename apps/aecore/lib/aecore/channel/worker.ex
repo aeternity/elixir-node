@@ -83,10 +83,10 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Import channel from open tx. Assumes no transactions were made
   """
-  @spec import_from_open(SignedTx.t(), non_neg_integer(), role()) :: :ok | error()
-  def import_from_open(%SignedTx{} = open_tx, reserve, role)
-      when is_integer(reserve) and is_atom(role) do
-    peer_state = ChannelStatePeer.from_open(open_tx, reserve, role)
+  @spec import_from_open(SignedTx.t(), role()) :: :ok | error()
+  def import_from_open(%SignedTx{} = open_tx, role)
+      when is_atom(role) do
+    peer_state = ChannelStatePeer.from_open(open_tx, role)
     import_channel(peer_state)
   end
 
@@ -96,17 +96,15 @@ defmodule Aecore.Channel.Worker do
   @spec import_from_open_and_state(
           SignedTx.t(),
           ChannelStateOffChain.t(),
-          non_neg_integer(),
           role()
         ) :: :ok | error()
   def import_from_open_and_state(
         %SignedTx{} = open_tx,
         %ChannelStateOffChain{} = state,
-        reserve,
         role
       )
-      when is_integer(reserve) and is_atom(role) do
-    peer_state = ChannelStatePeer.from_open_and_state(open_tx, state, reserve, role)
+      when is_atom(role) do
+    peer_state = ChannelStatePeer.from_open_and_state(open_tx, state, role)
     import_channel(peer_state)
   end
 

@@ -20,7 +20,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type payload :: %{
           initiator_amount: non_neg_integer(),
           responser_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          locktime: non_neg_integer(),
+          channel_reserve: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -33,7 +34,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type t :: %ChannelCreateTx{
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          locktime: non_neg_integer(),
+          channel_reserve: non_neg_integer()
         }
 
   @doc """
@@ -44,7 +46,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - responser_amount: amount that account second on the senders list commits
   - locktime: number of blocks for dispute settling
   """
-  defstruct [:initiator_amount, :responder_amount, :locktime]
+  defstruct [:initiator_amount, :responder_amount, :locktime, :channel_reserve]
   use ExConstructor
 
   @spec get_chain_state_name :: :channels
@@ -55,13 +57,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
-          locktime: locktime
+          locktime: locktime,
+          channel_reserve: channel_reserve
         } = _payload
       ) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      locktime: locktime
+      locktime: locktime,
+      channel_reserve: channel_reserve
     }
   end
 
@@ -81,6 +85,12 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
       length(senders) != 2 ->
         {:error, "#{__MODULE__}: Invalid senders size"}
+
+      tx.initiator_amount < tx.channel_reserve ->
+        {:error, "#{__MODULE__}: initiator_amount too low for channel_reserve"}
+
+      tx.responder_amount < tx.channel_reserve ->
+        {:error, "#{__MODULE__}: responder_amount too low for channel_reserve"}
 
       true ->
         :ok
@@ -122,7 +132,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         responder_pubkey,
         tx.initiator_amount,
         tx.responder_amount,
-        tx.locktime
+        tx.locktime,
+        tx.channel_reserve
       )
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
@@ -197,7 +208,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       :binary.encode_unsigned(tx.initiator_amount),
       Identifier.encode_to_binary(responder),
       :binary.encode_unsigned(tx.responder_amount),
-      # TODO channel reserve
+      :binary.encode_unsigned(tx.channel_reserve),
       :binary.encode_unsigned(tx.locktime),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
@@ -211,7 +222,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         initiator_amount,
         encoded_responder,
         responder_amount,
-        # TODO channel reserve
+        channel_reserve,
         locktime,
         ttl,
         fee,
@@ -221,7 +232,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     payload = %ChannelCreateTx{
       initiator_amount: :binary.decode_unsigned(initiator_amount),
       responder_amount: :binary.decode_unsigned(responder_amount),
-      locktime: :binary.decode_unsigned(locktime)
+      locktime: :binary.decode_unsigned(locktime),
+      channel_reserve: :binary.decode_unsigned(channel_reserve)
     }
 
     with {:ok, initiator} <- Identifier.decode_from_binary(encoded_initiator),
