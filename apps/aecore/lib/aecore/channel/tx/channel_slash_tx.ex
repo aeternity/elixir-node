@@ -33,7 +33,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           offchain_tx: ChannelOffChainTx.t(),
           poi: Poi.t()
         }
@@ -53,7 +53,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec init(payload()) :: SpendTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{
-      channel_id: Identifier.create_identity(channel_id, :channel),
+      channel_id: channel_id,
       offchain_tx: offchain_tx,
       poi: poi
     }
@@ -190,7 +190,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.create_encoded_to_binary(tx.state.channel_id, :channel),
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
       ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),

@@ -16,7 +16,6 @@ defmodule Aecore.Channel.Worker do
 
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Chain.Identifier
   alias Aeutil.Events
 
   use GenServer
@@ -405,7 +404,7 @@ defmodule Aecore.Channel.Worker do
         _from,
         state
       ) do
-    channel_id = ChannelTransaction.unsigned_payload(half_signed_tx).channel_id.value
+    channel_id = ChannelTransaction.unsigned_payload(half_signed_tx).channel_id
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state, fully_signed_tx} <-
@@ -422,7 +421,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_fully_signed_tx, fully_signed_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id.value
+    channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state} <-
@@ -435,7 +434,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_confirmed_tx, confirmed_onchain_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id.value
+    channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
@@ -491,10 +490,10 @@ defmodule Aecore.Channel.Worker do
     id =
       case payload do
         %ChannelCloseMutalTx{channel_id: id} ->
-          id.value
+          id
 
         %ChannelSettleTx{channel_id: id} ->
-          id.value
+          id
       end
 
     if Map.has_key?(state, id) do
@@ -540,7 +539,7 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:slashed, slash_tx, fee, nonce, priv_key}, _from, state) do
     data_tx = SignedTx.data_tx(slash_tx)
 
-    %Identifier{type: :channel, value: channel_id} =
+    channel_id =
       case DataTx.payload(data_tx) do
         %ChannelCloseSoloTx{} = payload ->
           ChannelCloseSoloTx.channel_id(payload)

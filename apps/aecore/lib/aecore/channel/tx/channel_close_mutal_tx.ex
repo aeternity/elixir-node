@@ -11,7 +11,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
   alias Aecore.Channel.{ChannelStateTree, ChannelStateOnChain}
-  alias Aecore.Chain.Identifier
 
   require Logger
 

@@ -9,7 +9,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     ChannelStatePeer,
     ChannelCreateTx,
     ChannelTransaction,
-    ChannelOffChainUpdate
+    ChannelOffChainUpdate,
+    ChannelStateTree
   }
 
   alias Aecore.Channel.Worker, as: Channel
@@ -25,8 +26,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Chain.Chainstate
   alias Aecore.Account.Account
+  alias Aecore.Poi.Poi
 
   @type fsm_state ::
           :initialized | :awaiting_full_tx | :awaiting_tx_confirmed | :open | :closing | :closed
@@ -37,7 +39,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           initiator_pubkey: Keys.pubkey(),
           responder_pubkey: Keys.pubkey(),
           role: Channel.role(),
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           mutually_signed_tx: list(ChannelOffChainTx.t()),
           highest_half_signed_tx: ChannelOffChainTx.t() | nil,
           channel_reserve: non_neg_integer(),
@@ -68,8 +70,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Gets the id of the channel
   """
-  @spec channel_id(ChannelStatePeer.t()) :: Identifier.t()
-  def channel_id(%ChannelStatePeer{channel_id: channel_id}), do: channel_id.value
+  @spec channel_id(ChannelStatePeer.t()) :: binary()
+  def channel_id(%ChannelStatePeer{channel_id: channel_id}), do: channel_id
 
   @spec basic_checks_for_tx_and_calculate_updated_chainstate(
           ChannelTransaction.signed_tx() | ChannelTransaction.channel_tx(),
@@ -178,15 +180,15 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     initial_state = %ChannelStatePeer{
       fsm_state: :open,
-      initiator_pubkey: initiator_pubkey.value,
-      responder_pubkey: responder_pubkey.value,
+      initiator_pubkey: initiator_pubkey,
+      responder_pubkey: responder_pubkey,
       role: role,
       channel_id: channel_id,
       channel_reserve: channel_reserve
     }
 
     Enum.reduce_while(offchain_tx_list_from_oldest, {:ok, initial_state}, fn tx, {:ok, state} ->
-      case verify_tx_and_apply(tx, state, [initiator_pubkey.value, responder_pubkey.value]) do
+      case verify_tx_and_apply(tx, state, [initiator_pubkey, responder_pubkey]) do
         {:ok, _} = new_acc ->
           {:cont, new_acc}
 
@@ -412,7 +414,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         nonce,
         priv_key
       ) do
-    raw_channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
+    channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     channel_create_tx_spec = %{
       initiator: initiator_pubkey,
@@ -421,7 +423,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       responder_amount: responder_amount,
       locktime: locktime,
       channel_reserve: channel_reserve,
-      channel_id: raw_channel_id,
+      channel_id: channel_id,
       state_hash: <<>>
     }
 
@@ -437,10 +439,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
         {:ok,
          %ChannelStatePeer{
            peer_state
-           | channel_id: Identifier.create_identity(raw_channel_id, :channel)
+           | channel_id: channel_id
          }
          |> channel_fsm_transition_on_validated_signed_tx(half_signed_create_tx, :half_signed),
-         raw_channel_id, half_signed_create_tx}
+         channel_id, half_signed_create_tx}
 
       {:error, _} = err ->
         err

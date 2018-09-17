@@ -21,7 +21,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   Structure of the ChannelOffChainTx type
   """
   @type t :: %ChannelOffChainTx{
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           sequence: non_neg_integer(),
           updates: list(ChannelOffChainUpdate.update_types()),
           state_hash: binary(),
@@ -129,7 +129,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Creates a new offchain transaction containing a transfer update between the specified accounts. The resulting offchain transaction is not tied to any offchain chainstate.
   """
-  @spec initialize_transfer(Identifier.t(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) ::
+  @spec initialize_transfer(binary(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) ::
           ChannelOffChainTx.t()
   def initialize_transfer(channel_id, from, to, amount) do
     %ChannelOffChainTx{
@@ -193,7 +193,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @spec encode_to_list(ChannelOffChainTx.t()) :: list(binary())
   def encode_to_list(%ChannelOffChainTx{
-        channel_id: %Identifier{type: :channel} = channel_id,
+        channel_id: channel_id,
         sequence: sequence,
         updates: updates,
         state_hash: state_hash
@@ -202,7 +202,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(channel_id),
+      Identifier.create_encoded_to_binary(channel_id, :channel),
       :binary.encode_unsigned(sequence),
       encoded_updates,
       state_hash
@@ -219,14 +219,21 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         encoded_updates,
         state_hash
       ]) do
-    {:ok, channel_id} = Identifier.decode_from_binary(encoded_channel_id)
+    with {:ok, %Identifier{type: :channel, value: channel_id}} <-
+           Identifier.decode_from_binary(encoded_channel_id) do
+      %ChannelOffChainTx{
+        channel_id: channel_id,
+        sequence: :binary.decode_unsigned(sequence),
+        updates: Enum.map(encoded_updates, &ChannelOffChainUpdate.from_list/1),
+        state_hash: state_hash
+      }
+    else
+      {:ok, %Identifier{}} ->
+        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
 
-    %ChannelOffChainTx{
-      channel_id: channel_id,
-      sequence: :binary.decode_unsigned(sequence),
-      updates: Enum.map(encoded_updates, &ChannelOffChainUpdate.from_list/1),
-      state_hash: state_hash
-    }
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do

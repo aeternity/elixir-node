@@ -38,14 +38,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
-          initiator: Identifier.t(),
+          initiator: binary(),
           initiator_amount: non_neg_integer(),
-          responder: Identifier.t(),
+          responder: binary(),
           responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer(),
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           sequence: non_neg_integer()
         }
 
@@ -93,14 +93,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         } = _payload
       ) do
     %ChannelCreateTx{
-      initiator: Identifier.create_identity(initiator, :account),
+      initiator: initiator,
       initiator_amount: initiator_amount,
-      responder: Identifier.create_identity(responder, :account),
+      responder: responder,
       responder_amount: responder_amount,
       locktime: locktime,
       state_hash: state_hash,
       channel_reserve: channel_reserve,
-      channel_id: Identifier.create_identity(channel_id, :channel)
+      channel_id: channel_id
     }
   end
 
@@ -243,9 +243,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(tx.initiator),
+      Identifier.create_encoded_to_binary(tx.initiator, :account),
       :binary.encode_unsigned(tx.initiator_amount),
-      Identifier.encode_to_binary(tx.responder),
+      Identifier.create_encoded_to_binary(tx.responder, :account),
       :binary.encode_unsigned(tx.responder_amount),
       :binary.encode_unsigned(tx.channel_reserve),
       :binary.encode_unsigned(tx.locktime),
@@ -269,8 +269,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         state_hash,
         nonce
       ]) do
-    with {:ok, initiator} <- Identifier.decode_from_binary(encoded_initiator),
-         {:ok, responder} <- Identifier.decode_from_binary(encoded_responder) do
+    with {:ok, %Identifier{type: :account, value: initiator}} <-
+           Identifier.decode_from_binary(encoded_initiator),
+         {:ok, %Identifier{type: :account, value: responder}} <-
+           Identifier.decode_from_binary(encoded_responder) do
       payload = %ChannelCreateTx{
         initiator: initiator,
         initiator_amount: :binary.decode_unsigned(initiator_amount),
@@ -291,7 +293,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         :binary.decode_unsigned(ttl)
       )
     else
-      {:error, _} = error -> error
+      {:ok, %Identifier{}} ->
+        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
+
+      {:error, _} = error ->
+        error
     end
   end
 
