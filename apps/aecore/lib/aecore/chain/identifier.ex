@@ -2,38 +2,25 @@ defmodule Aecore.Chain.Identifier do
   @moduledoc """
   Utility module for interacting with identifiers.
 
-  Our binaries like account pubkey or hashes will already be represented as encoded (with already specified tag) binaries, following  the next formula:
-   <<Tag:1/unsigned-integer-unit:8, Binary:32/binary-unit:8>>, Where
-   Tag - is  a non-negative integer , a number from a range of 1..6 (at the current state of this documentation, for more info get in config.exs file and find :aecore, :binary_ids list),
-   Binary - is a regular binary , which byte size is 32 bytes.
-  Example:
-  Epoch has a separate structure for id's:
-  %Identifier{tag: atom(), value: value() }
-  Account structure:
-
-   In Epoch's erlang core implementation (as it would look like the following Elixir code):
-   %Account{
-    pubkey: %Identifier{tag: :account, value: <<"some_pub_key">>},
-    nonce: non_neg_integer(),
-    balance: non_neg_integer()
-  }
+  Our binaries like account pubkey or hashes will already be represented as encoded (with already specified tag) binaries, using the following format:
+   <<Tag:1/unsigned-integer-unit:8, Binary:32/binary-unit:8>>,
+   Where Tag is a non-negative integer ranging from 1 to 6 (at the current state of this documentation, for more info - :aecore, :binary_ids list in config.exs)
+   and Binary is a regular 32 byte binary
   """
 
   alias __MODULE__
   defstruct type: :undefined, value: ""
   use ExConstructor
 
+  @typedoc "Structure of the Identifier Transaction type"
   @type t() :: %Identifier{type: type(), value: value()}
+
   @type type() :: :account | :name | :commitment | :oracle | :contract | :channel
   @type value() :: binary()
 
-  # Use the binary size as guard for correct value size
-  # This requires special look over the code
-  # @bdata_size 32
   @tag_size 8
 
-  @spec create_identity(type(), value()) :: Identifier.t()
-  # byte_size(data) == @data_size data should be stricted to 32 bytes only
+  @spec create_identity(value(), type()) :: Identifier.t()
   def create_identity(value, type)
       when is_atom(type) and is_binary(value) do
     %Identifier{type: type, value: value}
@@ -45,6 +32,7 @@ defmodule Aecore.Chain.Identifier do
     |> encode_to_binary()
   end
 
+  @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
   def check_identity(%Identifier{} = id, type) do
     case create_identity(id.value, type) do
       {:ok, check_id} -> check_id == id
@@ -56,15 +44,13 @@ defmodule Aecore.Chain.Identifier do
     {:error, "#{__MODULE__}: Invalid ID"}
   end
 
-  # ==============API needed for RLP===============
-  # byte_size(data.value) == 32 # data should be stricted to 32 bytes only
+  # API needed for RLP
   @spec encode_to_binary(Identifier.t()) :: binary()
   def encode_to_binary(%Identifier{} = data) do
     tag = type_to_tag(data.type)
     <<tag::unsigned-integer-size(@tag_size), data.value::binary>>
   end
 
-  # byte_size(data) == @data_size # data should be stricted to 32 bytes only
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}
   def decode_from_binary(<<tag::unsigned-integer-size(@tag_size), data::binary>>)
       when is_binary(data) do
@@ -84,7 +70,8 @@ defmodule Aecore.Chain.Identifier do
     [encode_to_binary(head) | encode_list_to_binary(rest)]
   end
 
-  @spec decode_list_from_binary(list(binary())) :: {:ok, list(t())} | {:error, String.t()}
+  @spec decode_list_from_binary(list(binary())) ::
+          {:ok, list(Identifier.t())} | {:error, String.t()}
   def decode_list_from_binary([]), do: {:ok, []}
 
   def decode_list_from_binary([head | rest]) do

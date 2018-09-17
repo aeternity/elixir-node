@@ -1,23 +1,24 @@
 defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @moduledoc """
-  Aecore structure of naming pre claim data.
+  Module defining the NamePreClaim transaction
   """
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.Tx.NamePreClaimTx
-  alias Aecore.Naming.{NameCommitment, NamingStateTree}
-  alias Aeutil.Hash
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.{NameCommitment, NamingStateTree}
+  alias Aecore.Naming.Tx.NamePreClaimTx
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.Hash
 
   require Logger
 
   @version 1
+
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
 
   @type commitment_hash :: binary()
 
@@ -30,22 +31,21 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   In the case of NamePreClaimTx we don't have a subdomain chainstate."
   @type tx_type_state() :: Chainstate.naming()
 
-  @typedoc "Structure of the Spend Transaction type"
+  @typedoc "Structure of the NamePreClaim Transaction type"
   @type t :: %NamePreClaimTx{
           commitment: commitment_hash()
         }
 
   @doc """
-  Definition of Aecore NamePreClaimTx structure
-  ## Parameters
+  Definition of the NamePreClaimTx structure
+  # Parameters
   - commitment: hash of the commitment for name claiming
   """
   defstruct [:commitment]
-  use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload() | map()) :: NamePreClaimTx.t()
   def init(%{commitment: %Identifier{} = identified_commitment} = _payload) do
     %NamePreClaimTx{commitment: identified_commitment}
   end
@@ -56,9 +56,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   @doc """
-  Checks commitment hash byte size
+  Validates the transaction without considering state
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NamePreClaimTx{commitment: commitment}, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -75,7 +75,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -85,7 +85,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NamePreClaimTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -108,16 +108,15 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NamePreClaimTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NamePreClaimTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         _naming_state,
@@ -139,7 +138,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NamePreClaimTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -152,10 +151,13 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NamePreClaimTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NamePreClaimTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       Identifier.encode_to_binary(tx.commitment),
       :binary.encode_unsigned(datatx.fee),
@@ -163,7 +165,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, encoded_commitment, fee, ttl]) do
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
+  def decode_from_list(@version, [encoded_sender, nonce, encoded_commitment, fee, ttl]) do
     case Identifier.decode_from_binary(encoded_commitment) do
       {:ok, commitment} ->
         payload = %NamePreClaimTx{commitment: commitment}
@@ -171,7 +174,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         DataTx.init_binary(
           NamePreClaimTx,
           payload,
-          encoded_senders,
+          [encoded_sender],
           :binary.decode_unsigned(fee),
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)

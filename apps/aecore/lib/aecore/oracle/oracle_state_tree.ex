@@ -2,15 +2,18 @@ defmodule Aecore.Oracle.OracleStateTree do
   @moduledoc """
   Top level oracle state tree.
   """
-  alias Aeutil.PatriciaMerkleTree
-  alias Aeutil.Serialization
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Oracle.{Oracle, OracleQuery}
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.OracleQuery
+  alias Aeutil.{PatriciaMerkleTree, Serialization}
   alias MerklePatriciaTree.Trie
 
+  @typedoc "Hash of the tree"
   @type hash :: binary()
+
+  @typedoc "Structure that holds Oracles Tree and Oracles Cache Tree"
   @type oracles_state :: %{oracle_tree: Trie.t(), oracle_cache_tree: Trie.t()}
+
   @dummy_val <<0>>
 
   @spec init_empty() :: oracles_state()
@@ -140,11 +143,11 @@ defmodule Aecore.Oracle.OracleStateTree do
   end
 
   defp add_query(tree, query, how) do
-    oracle_id = query.oracle_address.value
+    oracle_id = query.oracle_address
 
     id =
       OracleQueryTx.id(
-        query.sender_address.value,
+        query.sender_address,
         query.sender_nonce,
         oracle_id
       )
@@ -192,7 +195,14 @@ defmodule Aecore.Oracle.OracleStateTree do
     case PatriciaMerkleTree.lookup(tree, key) do
       {:ok, serialized} ->
         {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
-        deserialized
+
+        case deserialized do
+          %Oracle{} ->
+            %{deserialized | owner: Identifier.create_identity(key, :oracle)}
+
+          _ ->
+            deserialized
+        end
 
       _ ->
         :none

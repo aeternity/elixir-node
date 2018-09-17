@@ -9,7 +9,6 @@ defmodule Aehttpserver.Web.TxPoolController do
   def show(conn, params) do
     pool_txs = Map.values(Pool.get_pool())
     acc = Account.base58c_decode(params["account"])
-
     acc_txs = get_acc_txs(pool_txs, acc)
     json(conn, Enum.map(acc_txs, fn tx -> SignedTx.serialize(tx) end))
   end

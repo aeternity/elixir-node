@@ -6,7 +6,11 @@ defmodule EpochElixir.Mixfile do
       app: :elixir_node,
       apps_path: "apps",
       version: "0.1.0",
-      elixir: "~> 1.6.4",
+      build_path: "./_build",
+      config_path: "./config/config.exs",
+      deps_path: "./deps",
+      lockfile: "./mix.lock",
+      elixir: "~> 1.6",
       build_embedded: Mix.env() == :prod,
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -47,24 +51,11 @@ defmodule EpochElixir.Mixfile do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
-      {:sha3, [github: "szktty/erlang-sha3", ref: "dbdfd12", manager: :rebar]},
-      {:idna, [github: "aeternity/erlang-idna", ref: "24bf647", manager: :rebar, override: true]},
-      {:gen_state_machine, "~> 2.0.1"},
-      {:logger_file_backend, "~> 0.0.10"},
       {:excoveralls, "~> 0.8.1", only: :test},
-      {:ex_json_schema, "~> 0.5.4"},
-      {:erl_base58, "~> 0.0.1"},
-      {:sext, [github: "uwiger/sext", tag: "1.4.1", manager: :rebar, override: true]},
-      {:edown, "~> 0.8", override: true},
-      {:enacl, github: "aeternity/enacl", ref: "2f50ba6", override: true},
-      {:enoise, github: "aeternity/enoise", ref: "6d793b711854a02d56c68d9959e1525389464c87"},
-      {:ranch,
-       github: "ninenines/ranch", ref: "55c2a9d623454f372a15e99721a37093d8773b48", override: true},
-      {:ex_parameterized, "~> 1.3.1"},
-      {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"},
-      {:ex_rlp, "~> 0.2.1"},
-      {:merkle_patricia_tree, git: "https://github.com/aeternity/elixir-merkle-patricia-tree.git"}
+
+      # aecore deps, they are needed here, as we can only override umbrella-apps dependencies here (https://github.com/elixir-lang/elixir/issues/5232)
+      {:idna, github: "aeternity/erlang-idna", tag: "5.1.1", manager: :rebar, override: true},
+      {:ranch, github: "ninenines/ranch", tag: "1.4.0", override: true}
     ]
   end
 end

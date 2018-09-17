@@ -1,6 +1,6 @@
 defmodule Aevm do
   @moduledoc """
-    Module for the execution of a contract
+  Module for contract execution
   """
 
   use Bitwise

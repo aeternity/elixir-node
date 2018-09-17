@@ -1,32 +1,23 @@
 defmodule Aecore.Chain.Worker do
   @moduledoc """
-  Module for working with chain
+  Module containing Chain interaction functionality
   """
 
   use GenServer
   use Bitwise
 
-  alias Aecore.Chain.Block
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Chain.Header
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Chain.BlockValidation
-  alias Aeutil.Events
-  alias Aecore.Persistence.Worker, as: Persistence
-  alias Aecore.Keys
-  alias Aehttpserver.Web.Notify
-  alias Aeutil.Serialization
-  alias Aeutil.Hash
-  alias Aeutil.Scientific
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Naming.Tx.NameTransferTx
-  alias Aeutil.PatriciaMerkleTree
+  alias Aecore.Chain.{Header, BlockValidation, Block, Chainstate, Genesis}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Keys
+  alias Aecore.Naming.Tx.NameTransferTx
+  alias Aecore.Oracle.Tx.OracleQueryTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Tx.SignedTx
+  alias Aehttpserver.Web.Notify
+  alias Aeutil.{Serialization, Hash, Scientific, PatriciaMerkleTree, Events}
 
   require Logger
 
@@ -36,17 +27,18 @@ defmodule Aecore.Chain.Worker do
   # upper limit for number of blocks is 2^max_refs
   @max_refs 30
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, {}, name: __MODULE__)
   end
 
   def init(_) do
-    genesis_block_header = Block.genesis_block().header
+    genesis_block_header = Genesis.block().header
     genesis_block_hash = BlockValidation.block_header_hash(genesis_block_header)
 
     {:ok, genesis_chain_state} =
       Chainstate.calculate_and_validate_chain_state(
-        Block.genesis_block().txs,
+        Genesis.block().txs,
         build_chain_state(),
         genesis_block_header.height,
         genesis_block_header.miner
@@ -54,13 +46,13 @@ defmodule Aecore.Chain.Worker do
 
     blocks_data_map = %{
       genesis_block_hash => %{
-        block: Block.genesis_block(),
+        block: Genesis.block(),
         chain_state: genesis_chain_state,
         refs: []
       }
     }
 
-    txs_index = calculate_block_acc_txs_info(Block.genesis_block())
+    txs_index = calculate_block_acc_txs_info(Genesis.block())
 
     {:ok,
      %{
@@ -72,6 +64,7 @@ defmodule Aecore.Chain.Worker do
      }, 0}
   end
 
+  @spec clear_state() :: :ok
   def clear_state, do: GenServer.call(__MODULE__, :clear_state)
 
   @spec top_block() :: Block.t()
@@ -129,11 +122,14 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_headers_forward(binary(), non_neg_integer()) ::
           {:ok, list(Header.t())} | {:error, atom()}
-  def get_headers_forward(starting_header, count) do
-    case get_header_by_hash(starting_header) do
+  def get_headers_forward(starting_hash, count) do
+    case get_header_by_hash(starting_hash) do
       {:ok, header} ->
         blocks_to_get = min(top_height() - header.height, count)
-        get_headers_forward([], header.height, blocks_to_get + 1)
+
+        ## Start from the first block we don't have
+        start_from = header.height + 1
+        get_headers_forward([], start_from, blocks_to_get)
 
       {:error, reason} ->
         {:error, reason}
@@ -157,6 +153,13 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
+  @spec hash_is_in_main_chain?(binary()) :: boolean()
+  def hash_is_in_main_chain?(header_hash) do
+    longest_blocks_chain()
+    |> Enum.map(fn block -> BlockValidation.block_header_hash(block.header) end)
+    |> Enum.member?(header_hash)
+  end
+
   @spec get_header_by_height(non_neg_integer()) :: Header.t() | {:error, reason()}
   def get_header_by_height(height) do
     case get_block_info_by_height(height, nil, :block) do
@@ -167,8 +170,8 @@ defmodule Aecore.Chain.Worker do
 
   @spec get_block(binary()) :: {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block(block_hash) do
-    ## At first we are making attempt to get the block from the chain state.
-    ## If there is no such block then we check into the db.
+    # At first we are making attempt to get the block from the chain state.
+    # If there is no such block then we check the db.
     case GenServer.call(__MODULE__, {:get_block_info_from_memory_unsafe, block_hash}) do
       {:error, _} = err ->
         err
@@ -285,8 +288,6 @@ defmodule Aecore.Chain.Worker do
     get_blocks(top_block_hash(), top_height() + 1)
   end
 
-  ## Server side
-
   def handle_call(:clear_state, _from, _state) do
     {:ok, new_state, _} = init(:empty)
     {:reply, :ok, new_state}
@@ -365,7 +366,7 @@ defmodule Aecore.Chain.Worker do
 
     # refs_list is generated so it contains n-th prev blocks for n-s beeing a power of two.
     # So for chain A<-B<-C<-D<-E<-F<-G<-H. H refs will be [G,F,D,A].
-    # This allows for log n findning of block with given height.
+    # This allows for log n findning of block with a given height.
 
     new_refs = refs(@max_refs, blocks_data_map, new_block.header.prev_hash)
 
@@ -394,7 +395,7 @@ defmodule Aecore.Chain.Worker do
 
     if top_height < new_block.header.height do
       Persistence.batch_write(%{
-        ## Transfrom from chain state
+        # Transfrom from chain state
         :chain_state => %{
           new_block_hash =>
             transform_chainstate(:from_chainstate, {:ok, Map.from_struct(new_chain_state)})
@@ -584,6 +585,10 @@ defmodule Aecore.Chain.Worker do
     Application.get_env(:aecore, :persistence)[:number_of_blocks_in_memory]
   end
 
+  defp get_headers_forward(headers, _next_header_height, 0) do
+    {:ok, headers}
+  end
+
   defp get_headers_forward(headers, next_header_height, count) when count > 0 do
     case get_header_by_height(next_header_height) do
       {:ok, header} ->
@@ -592,10 +597,6 @@ defmodule Aecore.Chain.Worker do
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp get_headers_forward(headers, _next_header_height, count) when count == 0 do
-    {:ok, headers}
   end
 
   defp get_block_info_by_height(height, nil, info) do
@@ -698,6 +699,12 @@ defmodule Aecore.Chain.Worker do
 
       {key = :channels, root_hash}, acc_state ->
         Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :contracts, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
+
+      {key = :calls, root_hash}, acc_state ->
+        Map.put(acc_state, key, PatriciaMerkleTree.new(key, root_hash))
     end
   end
 
@@ -716,6 +723,12 @@ defmodule Aecore.Chain.Worker do
         })
 
       {key = :channels, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :contracts, value}, acc_state ->
+        Map.put(acc_state, key, value.root_hash)
+
+      {key = :calls, value}, acc_state ->
         Map.put(acc_state, key, value.root_hash)
     end
   end

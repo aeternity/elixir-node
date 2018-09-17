@@ -5,28 +5,21 @@ defmodule AecoreTxTest do
 
   use ExUnit.Case
 
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Account.Account
+  alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Keys
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
@@ -49,7 +42,7 @@ defmodule AecoreTxTest do
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
     {_, priv_key} = Keys.keypair(:sign)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     assert :ok = SignedTx.validate(signed_tx)
     [signature] = signed_tx.signatures
@@ -72,35 +65,36 @@ defmodule AecoreTxTest do
   end
 
   test "invalid spend transaction", tx do
+    reward = Governance.coinbase_transaction_amount()
     {sender, priv_key} = Keys.keypair(:sign)
-    amount = 200
+    amount = reward * 2
     fee = 50
 
     :ok = Miner.mine_sync_block_to_chain()
-    assert Account.balance(Chain.chain_state().accounts, sender) == 100
+    assert Account.balance(Chain.chain_state().accounts, sender) == reward
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
 
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
 
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(Chain.chain_state().accounts, sender) == 200
+    assert Account.balance(Chain.chain_state().accounts, sender) == amount
 
     :ok = Miner.mine_sync_block_to_chain()
-    # At this poing the sender should have 300 tokens,
+    # At this poing the sender should have (reward * 3) tokens,
     # enough to mine the transaction in the pool
 
-    assert Account.balance(Chain.chain_state().accounts, sender) == 300
+    assert Account.balance(Chain.chain_state().accounts, sender) == reward * 3
 
     # This block should add the transaction
     :ok = Miner.mine_sync_block_to_chain()
 
-    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 200
-    assert Account.balance(Chain.chain_state().accounts, tx.receiver) == 200
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             Account.balance(TestUtils.get_accounts_chainstate(), tx.receiver)
   end
 
   test "nonce is too small", tx do
@@ -110,12 +104,13 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, 0)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
     # the nonce is small or equal to account nonce, so the transaction is invalid
-    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) == 100
+    assert Account.balance(TestUtils.get_accounts_chainstate(), sender) ==
+             10_000_000_000_000_000_000
   end
 
   test "sender pub_key is too small", tx do
@@ -160,7 +155,7 @@ defmodule AecoreTxTest do
 
     payload = %{receiver: acc1, amount: amount, version: 1, payload: <<"payload">>}
     tx_data = DataTx.init(SpendTx, payload, sender, fee, tx.nonce)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, sender, priv_key)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
     :ok = Miner.mine_sync_block_to_chain()
@@ -174,7 +169,7 @@ defmodule AecoreTxTest do
 
     payload2 = %{receiver: acc2, amount: amount2, version: 1, payload: <<"payload">>}
     tx_data2 = DataTx.init(SpendTx, payload2, acc1, fee2, 1)
-    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, acc1, priv_key2)
+    {:ok, signed_tx2} = SignedTx.sign_tx(tx_data2, priv_key2)
 
     :ok = Pool.add_transaction(signed_tx2)
     :ok = Miner.mine_sync_block_to_chain()

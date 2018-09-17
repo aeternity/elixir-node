@@ -1,6 +1,6 @@
 defmodule Aecore.Tx.SignedTx do
   @moduledoc """
-  Aecore structure of a signed transaction.
+  Module defining the Signed transaction
   """
 
   alias Aecore.Tx.SignedTx
@@ -15,6 +15,7 @@ defmodule Aecore.Tx.SignedTx do
 
   require Logger
 
+  @typedoc "Structure of the SignedTx Transaction type"
   @type t :: %SignedTx{
           data: DataTx.t(),
           signatures: list(Keys.pubkey())
@@ -26,7 +27,7 @@ defmodule Aecore.Tx.SignedTx do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(DataTx.t(), list(Keys.pubkey())) :: t()
+  @spec create(DataTx.t(), list(Keys.pubkey())) :: SignedTx.t()
   def create(data, signatures \\ []) do
     %SignedTx{data: data, signatures: signatures}
   end
@@ -35,7 +36,10 @@ defmodule Aecore.Tx.SignedTx do
     data
   end
 
-  @spec validate(t()) :: :ok | {:error, String.t()}
+  @doc """
+  Validates the transaction without considering state
+  """
+  @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
     if DataTx.chainstate_senders?(data) || signatures_valid?(tx, DataTx.senders(data)) do
       DataTx.validate(data)
@@ -44,7 +48,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec validate(t(), non_neg_integer()) :: :ok | {:error, String.t()}
+  @spec validate(SignedTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx, block_height) do
     if DataTx.chainstate_senders?(data) || signatures_valid?(tx, DataTx.senders(data)) do
       DataTx.validate(data, block_height)
@@ -53,7 +57,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data} = tx) do
     if DataTx.chainstate_senders?(data) &&
@@ -74,49 +78,27 @@ defmodule Aecore.Tx.SignedTx do
   and the private key of the sender.
   Returns a signed tx
 
-  ## Parameters
+  # Parameters
      - tx: The transaction data that it's going to be signed
      - priv_key: The priv key to sign with
-
   """
-
-  @spec sign_tx(DataTx.t() | t(), binary(), binary()) :: {:ok, t()} | {:error, String.t()}
-  def sign_tx(%DataTx{} = tx, pub_key, priv_key) do
-    signatures =
-      for _ <- DataTx.senders(tx) do
-        nil
-      end
-
-    sign_tx(%SignedTx{data: tx, signatures: signatures}, pub_key, priv_key)
+  @spec sign_tx(DataTx.t() | SignedTx.t(), binary()) ::
+          {:ok, SignedTx.t()} | {:error, String.t()}
+  def sign_tx(%DataTx{} = tx, priv_key) do
+    sign_tx(%SignedTx{data: tx, signatures: []}, priv_key)
   end
 
-  def sign_tx(%SignedTx{data: data, signatures: sigs}, pub_key, priv_key) do
+  def sign_tx(%SignedTx{data: data, signatures: sigs}, priv_key) do
     new_signature =
       data
       |> DataTx.rlp_encode()
       |> Keys.sign(priv_key)
 
-    {success, new_sigs_reversed} =
-      sigs
-      |> Enum.zip(DataTx.senders(data))
-      |> Enum.reduce({false, []}, fn {sig, sender}, {success, acc} ->
-        if sender == pub_key do
-          {true, [new_signature | acc]}
-        else
-          {success, [sig | acc]}
-        end
-      end)
-
-    new_sigs = Enum.reverse(new_sigs_reversed)
-
-    if success do
-      {:ok, %SignedTx{data: data, signatures: new_sigs}}
-    else
-      {:error, "#{__MODULE__}: Not in senders"}
-    end
+    #We need to make sure the sigs are sorted in order for the json/websocket api to function properly
+    {:ok, %SignedTx{data: data, signatures: Enum.sort([new_signature | sigs])}}
   end
 
-  def sign_tx(tx, _pub_key, _priv_key) do
+  def sign_tx(tx, _priv_key) do
     {:error, "#{__MODULE__}: Wrong Transaction data structure: #{inspect(tx)}"}
   end
 
@@ -138,10 +120,12 @@ defmodule Aecore.Tx.SignedTx do
     type.reward(payload, account_state)
   end
 
+  @spec base58c_encode(binary) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("tx", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"tx$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -150,10 +134,12 @@ defmodule Aecore.Tx.SignedTx do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
+  @spec base58c_encode_root(binary) :: String.t()
   def base58c_encode_root(bin) do
     Bits.encode58c("bx", bin)
   end
 
+  @spec base58c_decode_root(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode_root(<<"bx$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -162,6 +148,7 @@ defmodule Aecore.Tx.SignedTx do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
+  @spec base58c_encode_signature(binary) :: nil | String.t()
   def base58c_encode_signature(bin) do
     if bin == nil do
       nil
@@ -170,6 +157,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
+  @spec base58c_decode_signature(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode_signature(<<"sg$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -207,7 +195,7 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec deserialize(map()) :: t()
+  @spec deserialize(map()) :: SignedTx.t()
   def deserialize(tx) do
     signed_tx = Serialization.deserialize_value(tx)
     data = DataTx.deserialize(signed_tx.data)
@@ -224,48 +212,100 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  defp signatures_valid?(%SignedTx{data: data, signatures: sigs}, senders) do
+  @doc """
+  Checks if SignedTx contains a valid signature for each sender
+  """
+  @spec signatures_valid?(SignedTx.t()) :: boolean()
+  def signatures_valid?(%SignedTx{data: data, signatures: sigs}, senders) do
     if length(sigs) != length(senders) do
       Logger.error("Wrong signature count")
       false
     else
       data_binary = DataTx.rlp_encode(data)
-
-      sigs
-      |> Enum.zip(senders)
-      |> Enum.reduce(true, fn {sig, acc}, validity ->
-        cond do
-          sig == nil ->
-            Logger.error("Missing signature of #{inspect(acc)}")
-            false
-
-          !Keys.key_size_valid?(acc) ->
-            Logger.error("Wrong sender size #{inspect(acc)}")
-            false
-
-          Keys.verify(data_binary, sig, acc) ->
-            validity
-
-          true ->
-            Logger.error("Signature of #{inspect(acc)} invalid")
-            false
-        end
-      end)
+      check_multiple_signatures(sigs, data_binary, senders)
     end
   end
 
+  @doc """
+  Checks if the SignedTx contains a valid signature for the provided public key
+  """
+  @spec signature_valid_for?(SignedTx.t(), Keys.pubkey()) :: boolean()
+  def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
+    data_binary = DataTx.rlp_encode(data)
+    if pubkey not in DataTx.senders(data) do
+      false
+    else
+      case single_signature_check(signatures, data_binary, pubkey) do
+        {:ok, _} ->
+          true
+        :error ->
+          false
+      end
+    end
+  end
+
+  @spec check_multiple_signatures(list(binary()), binary(), list(Keys.pubkey())) :: boolean()
+  defp check_multiple_signatures(signatures, data_binary, [pubkey | remaining_pubkeys]) do
+    case single_signature_check(signatures, data_binary, pubkey) do
+      {:ok, remaining_signatures} ->
+        check_multiple_signatures(remaining_signatures, data_binary, remaining_pubkeys)
+      :error ->
+        false
+    end
+  end
+
+  defp check_multiple_signatures([], _data_binary, []) do
+    true
+  end
+
+  defp check_multiple_signatures(_, _, _) do
+    false
+  end
+
+  @spec single_signature_check(list(binary()), binary(), Keys.pubkey()) :: {:ok, list(binary())} | :error
+  defp single_signature_check(signatures, data_binary, pubkey) do
+    if Keys.key_size_valid?(pubkey) do
+      do_single_signature_check(signatures, data_binary, pubkey)
+    else
+      Logger.error("Wrong pubkey size #{inspect(pubkey)}")
+      :error
+    end
+  end
+
+  @spec do_single_signature_check(list(binary()), binary(), Keys.pubkey()) :: {:ok, list(binary())} | :error
+  defp do_single_signature_check([signature | rest_signatures], data_binary, pubkey) do
+    if Keys.verify(data_binary, signature, pubkey) do
+      {:ok, rest_signatures}
+    else
+      case do_single_signature_check(rest_signatures, data_binary, pubkey) do
+        {:ok, unchecked_sigs} ->
+          {:ok, [signature | unchecked_sigs]}
+        :error ->
+          :error
+      end
+    end
+  end
+
+  defp do_single_signature_check([], _data_binary, pubkey) do
+    Logger.error("Signature of #{inspect(pubkey)} invalid")
+    :error
+  end
+
+  @spec encode_to_list(SignedTx.t()) :: list()
   def encode_to_list(%SignedTx{} = tx) do
     [
       :binary.encode_unsigned(@version),
-      tx.signatures,
+      Enum.sort(tx.signatures),
       DataTx.rlp_encode(tx.data)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def decode_from_list(@version, [signatures, data]) do
     case DataTx.rlp_decode(data) do
       {:ok, data} ->
-        {:ok, %SignedTx{data: data, signatures: signatures}}
+        #make sure that the sigs are sorted - we cannot trust user input ;)
+        {:ok, %SignedTx{data: data, signatures: Enum.sort(signatures)}}
 
       {:error, _} = error ->
         error

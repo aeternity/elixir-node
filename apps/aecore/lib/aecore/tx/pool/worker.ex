@@ -1,30 +1,24 @@
 defmodule Aecore.Tx.Pool.Worker do
   @moduledoc """
   Module for working with the transaction pool.
-  The pool itself is a map with an empty initial state.
   """
 
   use GenServer
 
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Block
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Oracle.Tx.OracleRegistrationTx
-  alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aecore.Oracle.Tx.OracleResponseTx
-  alias Aecore.Oracle.Tx.OracleExtendTx
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Peers.Worker, as: Peers
-  alias Aeutil.Events
+  alias Aecore.Chain.{Block, BlockValidation}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aeutil.Hash
-  alias Aecore.Tx.DataTx
+  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Peers.Worker, as: Peers
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.Events
   alias Aehttpserver.Web.Notify
 
   require Logger
 
   @type tx_pool :: map()
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -58,7 +52,7 @@ defmodule Aecore.Tx.Pool.Worker do
     GenServer.call(__MODULE__, {:get_txs_for_address, address})
   end
 
-  ## Server side
+  # Server side
 
   def handle_call({:get_txs_for_address, address}, _from, state) do
     txs_list = split_blocks(Chain.longest_blocks_chain(), address, [])
@@ -109,26 +103,6 @@ defmodule Aecore.Tx.Pool.Worker do
     {:reply, tx_pool, %{}}
   end
 
-  @doc """
-  A function that adds a merkle proof for every single transaction
-  """
-  @spec add_proof_to_txs(list()) :: list()
-  def add_proof_to_txs(user_txs) do
-    for tx <- user_txs do
-      block = Chain.get_block(tx.block_hash)
-      tree = BlockValidation.build_merkle_tree(block.txs)
-
-      key =
-        tx.type
-        |> DataTx.init(tx.payload, tx.sender, tx.fee, tx.nonce)
-        |> DataTx.rlp_encode()
-
-      hashed_key = Hash.hash(key)
-      merkle_proof = :gb_merkle_trees.merkle_proof(hashed_key, tree)
-      Map.put_new(tx, :proof, merkle_proof)
-    end
-  end
-
   @spec get_tx_size_bytes(SignedTx.t()) :: non_neg_integer()
   def get_tx_size_bytes(tx) do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
@@ -153,7 +127,7 @@ defmodule Aecore.Tx.Pool.Worker do
             true
 
           :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
         end
 
       %OracleExtendTx{} ->
@@ -164,7 +138,7 @@ defmodule Aecore.Tx.Pool.Worker do
     end
   end
 
-  ## Private functions
+  # Private functions
 
   @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
   defp split_blocks([block | blocks], address, txs) do

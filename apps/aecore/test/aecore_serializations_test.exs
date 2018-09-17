@@ -9,30 +9,20 @@ defmodule AecoreSerializationTest do
   alias Aecore.Account.Account
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Tx.{DataTx, SignedTx}
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
-  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Chain.Block
-  alias Aecore.Naming.{NameClaim, NameCommitment}
+  alias Aecore.Naming.{Name, NameCommitment}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx.NameTransferTx}
   alias Aecore.Chain.Identifier
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-
-    Persistence.start_link([])
-    Miner.start_link([])
-    Chain.clear_state()
-    Pool.get_and_empty_pool()
+    TestUtils.clean_blockchain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      Pool.get_and_empty_pool()
-      :ok
+      TestUtils.clean_blockchain()
     end)
   end
 
@@ -113,22 +103,22 @@ defmodule AecoreSerializationTest do
 
   @tag :rlp_test
   test "Naming System chainstate structures serialization" do
-    name_state = create_data(NameClaim, :elixir)
-    serialized_name_state = NameClaim.rlp_encode(name_state)
-    {:ok, deserialized_name_state} = NameClaim.rlp_decode(serialized_name_state)
-    deserialized_name_state1 = %NameClaim{deserialized_name_state | hash: name_state.hash}
+    name_state = create_data(Name, :elixir)
+    serialized_name_state = Name.rlp_encode(name_state)
+    {:ok, deserialized_name_state} = Name.rlp_decode(serialized_name_state)
+    deserialized_name_state1 = %Name{deserialized_name_state | hash: name_state.hash}
     assert deserialized_name_state1 == name_state
 
     name_commitment = create_data(NameCommitment, :elixir)
     serialized_name_commitment = NameCommitment.rlp_encode(name_commitment)
     {:ok, deserialized_name_commitment} = NameCommitment.rlp_decode(serialized_name_commitment)
 
-    deserialized_name_commitment1 = %NameCommitment{
+    updated_deserialized_name_commitment = %NameCommitment{
       deserialized_name_commitment
       | hash: name_commitment.hash
     }
 
-    assert deserialized_name_commitment1 == name_commitment
+    assert updated_deserialized_name_commitment == name_commitment
   end
 
   @tag :rlp_test
@@ -171,38 +161,37 @@ defmodule AecoreSerializationTest do
           expires: 9,
           fee: 5,
           has_response: false,
-          oracle_address: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :oracle
-          },
+          oracle_address:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           query: "foo: bar",
           response: :undefined,
           response_ttl: 86_000,
-          sender_address: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :account
-          },
+          sender_address:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           sender_nonce: 4
         }
 
       Block ->
         Miner.mine_sync_block_to_chain()
-        Chain.top_block()
+        %{public: pk1, secret: _} = :enacl.sign_keypair()
+        TestUtils.miner_spend(pk1, 10)
+        TestUtils.assert_transactions_mined()
+        block = Chain.top_block()
+        assert length(block.txs) == 1
+        block
 
       NamePreClaimTx ->
-        {:ok, pre_claim} = Account.pre_claim("test.aet", <<1::256>>, 50)
+        {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 50)
         pre_claim.data
 
       NameClaimTx ->
-        {:ok, claim} = Account.claim("test.aet", <<1::256>>, 50)
+        {:ok, claim} = Account.claim("test.aet", 123, 50)
         claim.data
 
       NameUpdateTx ->
-        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50)
+        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50)
         update.data
 
       NameTransferTx ->
@@ -221,8 +210,8 @@ defmodule AecoreSerializationTest do
 
         revoke.data
 
-      NameClaim ->
-        %NameClaim{
+      Name ->
+        %Name{
           expires: 50_003,
           hash: %Identifier{
             value:
@@ -230,15 +219,12 @@ defmodule AecoreSerializationTest do
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
             type: :name
           },
-          owner: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :account
-          },
+          owner:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           pointers: [],
           status: :claimed,
-          ttl: 86_400
+          client_ttl: 86_400
         }
 
       NameCommitment ->
@@ -249,12 +235,9 @@ defmodule AecoreSerializationTest do
                 186, 187, 183, 8, 76, 226, 193, 29, 207, 59, 204, 216, 247, 250>>,
             type: :name
           },
-          owner: %Identifier{
-            value:
-              <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
-                75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
-            type: :account
-          },
+          owner:
+            <<183, 82, 43, 247, 176, 2, 118, 61, 57, 250, 89, 250, 197, 31, 24, 159, 228, 23, 4,
+              75, 105, 32, 60, 200, 63, 71, 223, 83, 201, 235, 246, 16>>,
           created: 8500,
           expires: 86_400
         }
@@ -264,9 +247,23 @@ defmodule AecoreSerializationTest do
   def create_data(data_type, :erlang) do
     case data_type do
       Block ->
-        Base.decode64!(
-          "+QFWZA65AVAAAAAAAAAADgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOXmmv/3SQdDjexUzDIgBElzLw7DGKrzrhx70NclO9hFAAAAACEA//8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADA"
-        )
+        <<249, 1, 86, 100, 15, 185, 1, 80, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 2, 70,
+          232, 114, 212, 18, 108, 204, 235, 233, 192, 49, 218, 52, 167, 135, 71, 24, 198, 211, 64,
+          156, 75, 216, 247, 136, 45, 74, 238, 60, 80, 12, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 183, 175, 98, 228, 87, 246,
+          184, 206, 22, 241, 73, 195, 144, 3, 76, 194, 90, 54, 223, 149, 69, 89, 162, 235, 61, 48,
+          141, 195, 220, 221, 61, 64, 0, 0, 0, 0, 33, 0, 255, 255, 0, 85, 109, 212, 0, 106, 136,
+          16, 0, 201, 0, 73, 1, 81, 174, 18, 1, 131, 203, 85, 1, 164, 167, 200, 1, 248, 238, 66,
+          2, 42, 216, 59, 2, 49, 199, 46, 2, 55, 149, 74, 2, 108, 201, 70, 2, 212, 151, 124, 2,
+          246, 67, 204, 3, 42, 20, 171, 3, 67, 149, 55, 3, 200, 89, 122, 3, 216, 9, 15, 3, 253,
+          207, 228, 4, 3, 237, 63, 4, 20, 114, 51, 4, 21, 0, 10, 4, 73, 37, 143, 4, 109, 219, 139,
+          4, 125, 54, 103, 4, 125, 159, 24, 4, 143, 65, 163, 4, 231, 200, 225, 5, 12, 12, 198, 5,
+          149, 121, 159, 5, 179, 12, 121, 5, 185, 231, 135, 5, 200, 197, 205, 5, 214, 163, 89, 5,
+          252, 71, 33, 6, 84, 73, 45, 6, 162, 99, 222, 6, 179, 13, 141, 6, 214, 224, 78, 6, 250,
+          49, 81, 7, 5, 20, 151, 7, 174, 12, 120, 7, 235, 38, 48, 105, 46, 55, 65, 102, 75, 193,
+          178, 0, 0, 1, 101, 133, 141, 8, 155, 76, 237, 100, 77, 197, 106, 186, 228, 31, 175, 63,
+          244, 75, 58, 240, 122, 14, 137, 10, 248, 70, 110, 54, 209, 168, 11, 202, 184, 162, 220,
+          176, 251, 192>>
     end
   end
 end

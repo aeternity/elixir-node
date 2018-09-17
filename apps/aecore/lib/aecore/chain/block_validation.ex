@@ -3,19 +3,14 @@ defmodule Aecore.Chain.BlockValidation do
   Contains functions used to validate data inside of the block structure
   """
 
-  alias Aecore.Pow.Cuckoo
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Target
-  alias Aeutil.Hash
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Pow.Cuckoo
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.Hash
   alias Aeutil.PatriciaMerkleTree
-
-  @type tree :: :gb_merkle_trees.tree()
+  alias Aeutil.Serialization
+  alias MerklePatriciaTree.Trie
 
   @spec calculate_and_validate_block(
           Block.t(),
@@ -29,7 +24,7 @@ defmodule Aecore.Chain.BlockValidation do
         old_chain_state,
         blocks_for_target_calculation
       ) do
-    is_genesis = new_block == Block.genesis_block() && previous_block == nil
+    is_genesis = new_block == Genesis.block() && previous_block == nil
 
     case single_validate_block(new_block) do
       :ok ->
@@ -134,14 +129,17 @@ defmodule Aecore.Chain.BlockValidation do
     |> PatriciaMerkleTree.root_hash()
   end
 
-  @spec build_merkle_tree(list(SignedTx.t())) :: tree()
-  def build_merkle_tree([]), do: <<0::256>>
-
+  @spec build_merkle_tree(list(SignedTx.t())) :: Trie.t()
   def build_merkle_tree(txs) do
-    Enum.reduce(txs, PatriciaMerkleTree.new(:txs), fn tx, trie ->
-      encoded_tx = tx.data |> DataTx.rlp_encode()
-      PatriciaMerkleTree.enter(trie, encoded_tx |> Hash.hash(), encoded_tx)
-    end)
+    build_merkle_tree(txs, 0, PatriciaMerkleTree.new(:txs))
+  end
+
+  defp build_merkle_tree([], _position, tree), do: tree
+
+  defp build_merkle_tree([%SignedTx{} = signed_tx | list_txs], position, tree) do
+    key = :binary.encode_unsigned(position)
+    val = Serialization.rlp_encode(signed_tx)
+    build_merkle_tree(list_txs, position + 1, PatriciaMerkleTree.enter(tree, key, val))
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()

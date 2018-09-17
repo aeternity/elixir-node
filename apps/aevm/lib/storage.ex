@@ -1,6 +1,6 @@
 defmodule Storage do
   @moduledoc """
-    Module for working with the VM's internal storage
+  Module for working with the VM's internal storage
   """
 
   @spec sstore(integer(), integer(), map()) :: map()

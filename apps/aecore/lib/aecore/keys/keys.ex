@@ -1,7 +1,7 @@
 defmodule Aecore.Keys do
   @moduledoc """
   Module for handling the Wallet (signing) keys and Peer keys.
-  Keys are created on first run of the project and saved in respective dirs.
+  Keys are created on the first run of the project and saved in their respective directories.
   """
 
   alias Aeutil.Bits
@@ -92,7 +92,7 @@ defmodule Aecore.Keys do
     * `:sign` - returns a tuple with signing keys {pub, priv}
     * `:peer` - returns a tuple with peers keys {pub, priv}
 
-  ## Examples
+  # Examples
       iex> keypair(:sign)
       iex> {pubkey(), sign_priv_key()}
 
@@ -153,9 +153,8 @@ defmodule Aecore.Keys do
   defp gen_dir(false, keys_dir), do: File.mkdir!(keys_dir)
   defp gen_dir(true, _), do: :ok
 
-  ## Reads the keys from their respectve directory and returns
-  ## their decrypted result. If the either of the file is not readable
-  ## return an error
+  # Reads the keys from their respectve directory and returns
+  # their decrypted result. If either of the files is not readable - return an error
   defp read_keypair(pwd, pub_file, priv_file) do
     case {File.read(pub_file), File.read(priv_file)} do
       {{:ok, encr_pub}, {:ok, encr_priv}} ->
@@ -179,7 +178,7 @@ defmodule Aecore.Keys do
 
   defp hash(binary), do: :crypto.hash(:sha256, binary)
 
-  ## Checks weather the keypairs are working accordingly
+  # Checks whether the keypairs are working accordingly
   defp check_keypair(pubkey, privkey, :sign) do
     sample_msg = <<"sample message">>
     signature = :enacl.sign_detached(sample_msg, privkey)
@@ -199,7 +198,7 @@ defmodule Aecore.Keys do
   end
 
   @doc """
-  Returns decoded version of a Peer key, public or private
+  Returns a decoded version of a Peer key, public or private
   """
   @spec peer_decode(binary()) :: pubkey() | peer_priv_key()
   def peer_decode(<<@peer_key_decode, payload::binary>>) do

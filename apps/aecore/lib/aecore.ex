@@ -1,11 +1,9 @@
 defmodule Aecore do
   @moduledoc """
-  Supervisor responsible for all of the worker modules in his folder
+  Main application supervisor
   """
 
   use Application
-
-  import Supervisor.Spec
 
   def start(_type, _args) do
     children = [
@@ -14,10 +12,9 @@ defmodule Aecore do
       Aecore.Miner.Worker.Supervisor,
       Aecore.Tx.Pool.Worker.Supervisor,
       Aecore.Peers.Worker.Supervisor,
-      Aecore.Channel.Worker.Supervisor,
-      supervisor(Exexec, [], function: :start)
+      Aecore.Channel.Worker.Supervisor
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end
 end

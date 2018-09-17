@@ -19,7 +19,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
     Enum.each(trie_list, fn {key, value} ->
       {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(trie, key)
-      assert true = PatriciaMerkleTree.verify_proof(trie, key, value, proof)
+      assert true = PatriciaMerkleTree.verify_proof(key, value, trie.root_hash, proof)
     end)
 
     assert :none = PatriciaMerkleTree.lookup_with_proof(trie, "not_existing_key")
@@ -28,18 +28,18 @@ defmodule AeutilPatriciaMerkleTreeTest do
   @tag :patricia_merkle_tree
   @tag timeout: 30_000
   test "Lookup", %{db_ref_name: db_ref_name, trie: empty_trie} do
-    ## Creating trie with only one leaf node.
+    # Creating trie with only one leaf node.
     trie = PatriciaMerkleTree.enter(empty_trie, "key", "val")
 
-    ## Retrieving the value of the leaf
+    # Retrieving the value of the leaf
     assert {:ok, "val"} = PatriciaMerkleTree.lookup(trie, "key")
 
-    ## There is no such path `key2` so we should get `:none`
+    # There is no such path `key2` so we should get `:none`
     assert :none = PatriciaMerkleTree.lookup(trie, "key2")
 
-    ## Creating new trie from previous root_hash
-    ## and the expected result should be the value
-    ## of the existing leaf in the first trie.
+    # Creating new trie from previous root_hash
+    # and the expected result should be the value
+    # of the existing leaf in the first trie.
     trie2 = PatriciaMerkleTree.new(db_ref_name, trie.root_hash)
 
     assert {:ok, "val"} = PatriciaMerkleTree.lookup(trie2, "key")

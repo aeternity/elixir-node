@@ -1,6 +1,6 @@
 defmodule OpCodes do
   @moduledoc """
-    Module for defining macros for the Opcodes
+  Module containing OpCode macro definitions
   """
 
   # credo:disable-for-this-file

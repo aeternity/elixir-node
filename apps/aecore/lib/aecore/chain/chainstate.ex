@@ -1,25 +1,25 @@
 defmodule Aecore.Chain.Chainstate do
   @moduledoc """
-  Module used for calculating the block and chain states.
-  The chain state is a map, telling us what amount of tokens each account has.
+  Module containing functionality for calculating the chainstate
   """
 
-  alias Aecore.Tx.SignedTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.NamingStateTree
-  alias Aeutil.Bits
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Chain.{Chainstate, Genesis}
   alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Contract.{CallStateTree, ContractStateTree}
+  alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
   alias Aecore.Keys
-  alias Aecore.Governance.GovernanceConstants
-  alias Aeutil.Hash
+  alias Aecore.Miner.Worker, as: Miner
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.{Bits, Hash}
+  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
   @protocol_version_field_size 64
-  @protocol_version 17
+  @protocol_version 15
 
   @doc """
   This is the canonical root hash of an empty Patricia merkle tree
@@ -27,45 +27,47 @@ defmodule Aecore.Chain.Chainstate do
   @canonical_root_hash <<69, 176, 207, 194, 32, 206, 236, 91, 124, 28, 98, 196, 212, 25, 61, 56,
                          228, 235, 164, 142, 136, 21, 114, 156, 231, 95, 156, 10, 176, 228, 193,
                          192>>
-
+  @genesis_miner GenesisConstants.miner()
   @state_hash_bytes 32
 
   @type accounts :: AccountStateTree.accounts_state()
   @type oracles :: OracleStateTree.oracles_state()
   @type naming :: NamingStateTree.namings_state()
   @type channels :: ChannelStateTree.channel_state()
-  @type chain_state_types :: :accounts | :oracles | :naming | :channels
+  @type contracts :: ContractStateTree.contracts_state()
+  @type calls :: CallStateTree.calls_state()
+  @type chain_state_types :: :accounts | :oracles | :naming | :channels | :contracts | :calls
 
+  @typedoc "Structure of the Chainstate"
   @type t :: %Chainstate{
           accounts: accounts(),
           oracles: oracles(),
           naming: naming(),
-          channels: channels()
+          channels: channels(),
+          contracts: contracts(),
+          calls: calls()
         }
 
   defstruct [
     :accounts,
     :oracles,
     :naming,
-    :channels
+    :channels,
+    :contracts,
+    :calls
   ]
 
-  @spec init :: t()
+  @spec init :: Chainstate.t()
   def init do
-    %Chainstate{
-      :accounts => AccountStateTree.init_empty(),
-      :oracles => OracleStateTree.init_empty(),
-      :naming => NamingStateTree.init_empty(),
-      :channels => ChannelStateTree.init_empty()
-    }
+    Genesis.populated_trees()
   end
 
   @spec calculate_and_validate_chain_state(
           list(),
-          t(),
+          Chainstate.t(),
           non_neg_integer(),
           Keys.pubkey()
-        ) :: {:ok, t()} | {:error, String.t()}
+        ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
     chainstate_with_coinbase =
       calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
@@ -81,18 +83,51 @@ defmodule Aecore.Chain.Chainstate do
         end
       end)
 
-    case updated_chainstate do
+    updated_chainstate2 =
+      case updated_chainstate do
+        %Chainstate{} = new_chainstate ->
+          Oracle.remove_expired(new_chainstate, block_height)
+
+        error ->
+          {:error, error}
+      end
+
+    case updated_chainstate2 do
       %Chainstate{} = new_chainstate ->
-        {:ok, Oracle.remove_expired(new_chainstate, block_height)}
+        {:ok,
+         %Chainstate{
+           accounts: PatriciaMerkleTree.fix_trie(new_chainstate.accounts),
+           oracles: %{
+             oracle_tree: PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_tree),
+             oracle_cache_tree:
+               PatriciaMerkleTree.fix_trie(new_chainstate.oracles.oracle_cache_tree)
+           },
+           naming: PatriciaMerkleTree.fix_trie(new_chainstate.naming),
+           channels: PatriciaMerkleTree.fix_trie(new_chainstate.channels),
+           contracts: PatriciaMerkleTree.fix_trie(new_chainstate.contracts),
+           calls: PatriciaMerkleTree.fix_trie(new_chainstate.calls)
+         }}
 
       error ->
         {:error, error}
     end
   end
 
+  @spec create_chainstate_trees() :: Chainstate.t()
+  def create_chainstate_trees do
+    %Chainstate{
+      :accounts => AccountStateTree.init_empty(),
+      :oracles => OracleStateTree.init_empty(),
+      :naming => NamingStateTree.init_empty(),
+      :channels => ChannelStateTree.init_empty(),
+      :contracts => ContractStateTree.init_empty(),
+      :calls => CallStateTree.init_empty()
+    }
+  end
+
   defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
     case miner do
-      <<0::264>> ->
+      @genesis_miner ->
         chainstate
 
       miner_pubkey ->
@@ -109,8 +144,8 @@ defmodule Aecore.Chain.Chainstate do
     end
   end
 
-  @spec apply_transaction_on_state(t(), non_neg_integer(), SignedTx.t()) ::
-          t() | {:error, String.t()}
+  @spec apply_transaction_on_state(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+          Chainstate.t() | {:error, String.t()}
   def apply_transaction_on_state(chainstate, block_height, tx) do
     case SignedTx.validate(tx, block_height) do
       :ok ->
@@ -122,12 +157,15 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Create the root hash of the tree.
+  Calculates the root hash of a chainstate tree.
   """
-  @spec calculate_root_hash(t()) :: binary()
+  @spec calculate_root_hash(Chainstate.t()) :: binary()
   def calculate_root_hash(chainstate) do
     [
       AccountStateTree.root_hash(chainstate.accounts),
+      CallStateTree.root_hash(chainstate.calls),
+      @canonical_root_hash,
+      ContractStateTree.root_hash(chainstate.contracts),
       NamingStateTree.root_hash(chainstate.naming),
       OracleStateTree.root_hash(chainstate.oracles)
     ]
@@ -147,9 +185,9 @@ defmodule Aecore.Chain.Chainstate do
   end
 
   @doc """
-  Goes through all the transactions and only picks the valid ones
+  Filters the invalid transactions out of the given list
   """
-  @spec get_valid_txs(list(), t(), non_neg_integer()) :: list()
+  @spec get_valid_txs(list(), Chainstate.t(), non_neg_integer()) :: list()
   def get_valid_txs(txs_list, chainstate, block_height) do
     {txs_list, _} =
       List.foldl(txs_list, {[], chainstate}, fn tx, {valid_txs_list, chainstate} ->
@@ -166,10 +204,12 @@ defmodule Aecore.Chain.Chainstate do
     Enum.reverse(txs_list)
   end
 
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("bs", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"bs$", payload::binary>>) do
     Bits.decode58(payload)
   end

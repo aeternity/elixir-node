@@ -22,7 +22,7 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help compile.app` for more information.
   def application do
     [
-      mod: {Aehttpserver.Application, []},
+      mod: {Aehttpserver, []},
       extra_applications: [:logger, :logger_file_backend, :runtime_tools]
     ]
   end
@@ -36,11 +36,12 @@ defmodule Aehttpserver.Mixfile do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:aeutil, in_umbrella: true},
       {:phoenix, "~> 1.3.0"},
       {:cowboy, "~> 1.0"},
       {:cors_plug, "~> 1.5.0"},
-      {:uuid, "~> 1.1.8"},
-      {:aeutil, in_umbrella: true}
+      {:erl_base58, "~> 0.0.1"},
+      {:uuid, "~> 1.1.8"}
     ]
   end
 end

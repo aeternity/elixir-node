@@ -1,19 +1,15 @@
 defmodule Aecore.Account.Tx.SpendTx do
   @moduledoc """
-  Aecore structure of a transaction data.
+  Module defining the Spend transaction
   """
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Tx.DataTx
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Account.Account
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Keys
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
@@ -21,14 +17,17 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Expected structure for the Spend Transaction"
   @type payload :: %{
-          receiver: Keys.pubkey(),
+          receiver: Keys.pubkey() | Identifier.t(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
         }
 
-  @typedoc "Reason for the error"
+  @typedoc "Reason of the error"
   @type reason :: String.t()
+
+  @typedoc "Version of SpendTx"
+  @type version :: non_neg_integer()
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of SpendTx we don't have a subdomain chainstate."
@@ -36,19 +35,20 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   @typedoc "Structure of the Spend Transaction type"
   @type t :: %SpendTx{
-          receiver: Keys.pubkey(),
+          receiver: Keys.pubkey() | Identifier.t(),
           amount: non_neg_integer(),
           version: non_neg_integer(),
           payload: binary()
         }
 
   @doc """
-  Definition of Aecore SpendTx structure
+  Definition of the SpendTx structure
 
-  ## Parameters
-  - receiver: To account is the public address of the account receiving the transaction
-  - amount: The amount of tokens send through the transaction
-  - version: States whats the version of the Spend Transaction
+  # Parameters
+  - receiver: the account to receive the transaction amount
+  - amount: the amount of coins to be sent
+  - version: specifies the version of the transaction
+  - payload: any binary data (a message, a picture etc.)
   """
   defstruct [:receiver, :amount, :version, :payload]
 
@@ -57,7 +57,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :accounts
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: SpendTx.t()
   def init(%{
         receiver: %Identifier{} = identified_receiver,
         amount: amount,
@@ -74,9 +74,9 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Checks wether the amount that is send is not a negative number
+  Validates the transaction without considering state
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%SpendTx{receiver: receiver} = tx, data_tx) do
     senders = DataTx.senders(data_tx)
 
@@ -103,13 +103,13 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Changes the account state (balance) of the sender and receiver.
+  Deducts the transaction amount from the sender account state and adds it to the receiver
   """
   @spec process_chainstate(
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(accounts, %{}, block_height, %SpendTx{} = tx, data_tx) do
@@ -128,16 +128,15 @@ defmodule Aecore.Account.Tx.SpendTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the SpendTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(accounts, %{}, _block_height, tx, data_tx) do
     sender_state = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
 
@@ -151,7 +150,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          SpendTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -164,12 +163,16 @@ defmodule Aecore.Account.Tx.SpendTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec get_tx_version() :: version()
   def get_tx_version, do: Application.get_env(:aecore, :spend_tx)[:version]
 
+  @spec encode_to_list(SpendTx.t(), DataTx.t()) :: list()
   def encode_to_list(%SpendTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       Identifier.encode_to_binary(tx.receiver),
       :binary.encode_unsigned(tx.amount),
       :binary.encode_unsigned(datatx.fee),
@@ -179,8 +182,9 @@ defmodule Aecore.Account.Tx.SpendTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
-        encoded_senders,
+        encoded_sender,
         encoded_receiver,
         amount,
         fee,
@@ -197,7 +201,7 @@ defmodule Aecore.Account.Tx.SpendTx do
           version: @version,
           payload: payload
         },
-        encoded_senders,
+        [encoded_sender],
         :binary.decode_unsigned(fee),
         :binary.decode_unsigned(nonce),
         :binary.decode_unsigned(ttl)

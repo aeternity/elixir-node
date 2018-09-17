@@ -6,11 +6,9 @@ defmodule Aecore.Persistence.Worker do
 
   use GenServer
 
-  alias Rox.Batch
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Chain.Target
+  alias Aecore.Chain.{Block, BlockValidation, Target}
   alias Aeutil.Scientific
-  alias Aecore.Chain.Block
+  alias Rox.Batch
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -20,10 +18,20 @@ defmodule Aecore.Persistence.Worker do
   map in our state
   """
 
-  @type db_ref_name :: :proof | :txs | :accounts | :oracles | :oracles_cache | :naming | :channels
+  @type db_ref_name ::
+          :proof
+          | :txs
+          | :accounts
+          | :oracles
+          | :oracles_cache
+          | :naming
+          | :channels
+          | :contracts
+          | :calls
 
   require Logger
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -129,12 +137,9 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, :get_total_difficulty)
   end
 
-  def delete_all_blocks do
-    GenServer.call(__MODULE__, :delete_all_blocks)
-  end
-
-  def delete_chainstate do
-    GenServer.call(__MODULE__, :delete_chainstate)
+  @spec delete_all() :: :ok | {:error, any()}
+  def delete_all do
+    GenServer.call(__MODULE__, :delete_all)
   end
 
   @doc """
@@ -153,12 +158,31 @@ defmodule Aecore.Persistence.Worker do
     GenServer.call(__MODULE__, {:db_handler, {:get, db_ref_name}})
   end
 
-  ## Server side
+  # Server side
+
+  defp all_families do
+    [
+      "blocks_family",
+      "latest_block_info_family",
+      "chain_state_family",
+      "blocks_info_family",
+      "patricia_proof_family",
+      "patricia_oracles_family",
+      "patricia_oracles_cache_family",
+      "patricia_txs_family",
+      "patricia_account_family",
+      "patricia_naming_family",
+      "total_difficulty_family",
+      "patricia_channels_family",
+      "patricia_contracts_family",
+      "patricia_calls_family"
+    ]
+  end
 
   def init(_) do
-    ## We are ensuring that families for the blocks and chain state
-    ## are created. More about them -
-    ## https://github.com/facebook/rocksdb/wiki/Column-Families
+    # We are ensuring that families for the blocks and chain state
+    # are created. More about them -
+    # https://github.com/facebook/rocksdb/wiki/Column-Families
     {:ok, db,
      %{
        "blocks_family" => blocks_family,
@@ -172,26 +196,20 @@ defmodule Aecore.Persistence.Worker do
        "patricia_account_family" => patricia_accounts_family,
        "patricia_naming_family" => patricia_naming_family,
        "total_difficulty_family" => total_difficulty_family,
-       "patricia_channels_family" => patricia_channels_family
-     }} =
-      Rox.open(persistence_path(), [create_if_missing: true, auto_create_column_families: true], [
-        "blocks_family",
-        "latest_block_info_family",
-        "chain_state_family",
-        "blocks_info_family",
-        "patricia_proof_family",
-        "patricia_oracles_family",
-        "patricia_oracles_cache_family",
-        "patricia_txs_family",
-        "patricia_account_family",
-        "patricia_naming_family",
-        "total_difficulty_family",
-        "patricia_channels_family"
-      ])
+       "patricia_channels_family" => patricia_channels_family,
+       "patricia_contracts_family" => patricia_contracts_family,
+       "patricia_calls_family" => patricia_calls_family
+     } = families_map} =
+      Rox.open(
+        persistence_path(),
+        [create_if_missing: true, auto_create_column_families: true],
+        all_families()
+      )
 
     {:ok,
      %{
        db: db,
+       families_map: families_map,
        blocks_family: blocks_family,
        latest_block_info_family: latest_block_info_family,
        chain_state_family: chain_state_family,
@@ -205,7 +223,9 @@ defmodule Aecore.Persistence.Worker do
          txs: patricia_txs_family,
          test_trie: db,
          naming: patricia_naming_family,
-         channels: patricia_channels_family
+         channels: patricia_channels_family,
+         contracts: patricia_contracts_family,
+         calls: patricia_calls_family
        }
      }}
   end
@@ -304,7 +324,7 @@ defmodule Aecore.Persistence.Worker do
         blocks_family
         |> Rox.stream()
         |> Enum.reduce([], fn {_hash, %{header: %{height: height}}} = record, acc ->
-          if threshold < height do
+          if threshold <= height do
             [record | acc]
           else
             acc
@@ -352,20 +372,20 @@ defmodule Aecore.Persistence.Worker do
     {:reply, total_diff, state}
   end
 
-  def handle_call(:delete_all_blocks, _from, %{blocks_family: blocks_family} = state) do
-    blocks_family
-    |> Rox.stream()
-    |> Enum.each(fn {key, _} -> Rox.delete(blocks_family, key) end)
+  def handle_call(:delete_all, _from, %{db: db, families_map: families_map} = state) do
+    status =
+      families_map
+      |> Map.values()
+      |> Enum.reduce(Batch.new(), fn family, batch_acc ->
+        family
+        |> Rox.stream()
+        |> Enum.reduce(batch_acc, fn {key, _}, batch_acc ->
+          Batch.delete(batch_acc, family, key)
+        end)
+      end)
+      |> Batch.write(db)
 
-    {:reply, :ok, state}
-  end
-
-  def handle_call(:delete_chainstate, _from, %{chain_state_family: chain_state_family} = state) do
-    chain_state_family
-    |> Rox.stream()
-    |> Enum.each(fn {key, _} -> Rox.delete(chain_state_family, key) end)
-
-    {:reply, :ok, state}
+    {:reply, status, state}
   end
 
   def handle_call(

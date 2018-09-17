@@ -33,9 +33,6 @@ defmodule Aecore.Pow.Cuckoo do
   @spec generate(map()) :: {:ok, map()} | error :: term()
   def generate(%{} = header), do: process(:generate, header)
 
-  ### =============================================================================
-  ### Internal functions
-  ### =============================================================================
   defp process(process, header) do
     with {:ok, builder} <- hash_header(builder(process, header)),
          {:ok, builder} <- get_os_cmd(builder),
@@ -119,7 +116,7 @@ defmodule Aecore.Pow.Cuckoo do
     ["export ", ldpathvar, "=../lib:$", ldpathvar, "; "]
   end
 
-  ## Consider buffer
+  # Consider buffer
   defp wait_for_result(process, buff) do
     receive do
       {:stdout, _os_pid, msg} ->
@@ -133,7 +130,7 @@ defmodule Aecore.Pow.Cuckoo do
         exit(:shutdown)
 
       {:DOWN, _, :process, _pid, :normal} ->
-        ## Here we suppose to have the whole data from the os port
+        # Here we are supposed to have the whole data from the os port
         handle_raw_data(process, buff)
 
       any ->
@@ -175,9 +172,9 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  ## White paper, section 9: rather than adjusting the nodes/edges ratio, a
-  ## hash-based difficulty is suggested: the sha256 hash of the cycle nonces
-  ## is restricted to be under the difficulty value (0 < difficulty < 2^256)
+  # White paper, section 9: rather than adjusting the nodes/edges ratio, a
+  # hash-based difficulty is suggested: the sha256 hash of the cycle nonces
+  # is restricted to be under the difficulty value (0 < difficulty < 2^256)
   @spec test_target(list(), non_neg_integer()) :: boolean()
   defp test_target(soln, target) do
     nodesize = get_node_size()
@@ -186,9 +183,9 @@ defmodule Aecore.Pow.Cuckoo do
     Hashcash.verify(hash, target)
   end
 
-  ## The Cuckoo solution is a list of uint32 integers unless the graph size is
-  ## greater than 33 (when it needs u64 to store). Hash result for difficulty
-  ## control accordingly.
+  # The Cuckoo solution is a list of uint32 integers unless the graph size is
+  # greater than 33 (when it needs u64 to store). Hash result for difficulty
+  # control accordingly.
   @spec get_node_size() :: non_neg_integer()
   defp get_node_size do
     case Application.get_env(:aecore, :pow)[:params] do
@@ -197,7 +194,7 @@ defmodule Aecore.Pow.Cuckoo do
     end
   end
 
-  ## Convert solution (a list of 42 numbers) to a binary
+  # Convert solution (a list of 42 numbers) to a binary
   defp solution_to_binary([], _Bits, acc), do: acc
 
   defp solution_to_binary([h | t], bits, acc) do

@@ -60,7 +60,7 @@ internal-attach:
 
 iex-node:
 	@rm -rf apps/aecore/priv/rox_db_400$(NODE_NUMBER)
-	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ AEWALLET_PATH=apps/aecore/priv/aewallet_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
+	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ SIGN_KEYS_PATH=apps/aecore/priv/signkeys_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
 
 #
 # utility
@@ -77,6 +77,9 @@ iex-2: iex-node
 
 iex-3: NODE_NUMBER=3
 iex-3: iex-node
+
+iex-n: NODE_NUMBER=$(IEX_NUM)
+iex-n: iex-node
 
 clean:
 	@rm -rf deps
@@ -100,7 +103,7 @@ killall:
 	multinode-build, multinode-start, multinode-stop, multinode-clean \
 	dev-build, dev-start, dev-stop, dev-attach, dev-clean \
 	prod-build, prod-start, prod-stop, prod-attach, prod-clean \
-	iex-0, iex-1, iex-2, iex-3 \
+	iex-0, iex-1, iex-2, iex-3, iex-n \
  	clean, clean-deps, killall \
 
 	#

@@ -1,6 +1,6 @@
 defmodule State do
   @moduledoc """
-    Module for handling and accessing values from the VM's internal state.
+  Module for handling and accessing values from the VM's internal state.
   """
 
   @doc """

@@ -36,7 +36,7 @@ defmodule Aecore.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [
-      extra_applications: [:gproc, :logger, :rox, :exconstructor, :ranch, :jobs],
+      extra_applications: [:erlexec, :gproc, :logger, :rox, :exconstructor, :ranch, :jobs],
       mod: {Aecore, []}
     ]
   end
@@ -58,11 +58,14 @@ defmodule Aecore.Mixfile do
     [
       {:rox, "~> 2.2.1"},
       {:exconstructor, "~> 1.1"},
-      {:gb_merkle_trees, git: "https://github.com/aeternity/gb_merkle_trees.git", ref: "4db7aad"},
-      {:excoveralls, "~> 0.8.1", only: :test},
+      {:logger_file_backend, "~> 0.0.10"},
+      {:erl_base58, "~> 0.0.1"},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
-      {:gproc, "~> 0.6.1"}
+      {:ex_rlp, "~> 0.2.1"},
+      {:gproc, "~> 0.6.1"},
+      {:enoise, github: "aeternity/enoise", ref: "6d793b7"},
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", ref: "863d9d433cc069806655d3e77913ac653cb9f1e6"},
     ]
   end
 end
@@ -86,6 +89,6 @@ end
 
 defmodule Mix.Tasks.Clean.Make do
   def run(_) do
-    ## Remove the compiled cpp files from `priv` dir
+    # Remove the compiled cpp files from `priv` dir
   end
 end

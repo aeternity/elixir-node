@@ -3,12 +3,15 @@ defmodule Aecore.Account.AccountStateTree do
   Top level account state tree.
   """
   alias Aecore.Account.Account
+  alias Aecore.Chain.Identifier
   alias Aecore.Keys
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
-  alias Aecore.Chain.Identifier
 
+  @typedoc "Accounts tree"
   @type accounts_state :: Trie.t()
+
+  @typedoc "Hash of the tree"
   @type hash :: binary()
 
   @spec init_empty() :: accounts_state()
@@ -17,9 +20,9 @@ defmodule Aecore.Account.AccountStateTree do
   end
 
   @spec put(accounts_state(), Keys.pubkey(), Account.t()) :: accounts_state()
-  def put(trie, key, value) do
+  def put(tree, key, value) do
     serialized_account_state = Account.rlp_encode(value)
-    PatriciaMerkleTree.enter(trie, key, serialized_account_state)
+    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()

@@ -1,59 +1,59 @@
 defmodule Aecore.Naming.Tx.NameClaimTx do
   @moduledoc """
-  Aecore structure of naming claim.
+  Module defining the NameClaim transaction
   """
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Chain.Chainstate
-  alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Naming.{NameClaim, NameCommitment, NamingStateTree}
-  alias Aecore.Naming.NameUtil
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
+  alias Aecore.Naming.Tx.NameClaimTx
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
   @typedoc "Expected structure for the Claim Transaction"
   @type payload :: %{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @typedoc "Structure that holds specific transaction info in the chainstate.
   In the case of NameClaimTx we have the naming subdomain chainstate."
   @type tx_type_state() :: Chainstate.naming()
 
-  @typedoc "Structure of the Spend Transaction type"
+  @typedoc "Structure of the NameClaimTx Transaction type"
   @type t :: %NameClaimTx{
           name: String.t(),
-          name_salt: Naming.salt()
+          name_salt: Name.salt()
         }
 
   @doc """
-  Definition of Aecore NameClaimTx structure
-  ## Parameters
+  Definition of the NameClaimTx structure
+  # Parameters
   - name: name to be claimed
   - name_salt: salt that the name was pre-claimed with
   """
   defstruct [:name, :name_salt]
-  use ExConstructor
 
   # Callbacks
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: NameClaimTx.t()
   def init(%{name: name, name_salt: name_salt}) do
     %NameClaimTx{name: name, name_salt: name_salt}
   end
 
   @doc """
-  Checks name format
+  Validates the transaction without considering state
   """
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
@@ -62,9 +62,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       validate_name |> elem(0) == :error ->
         {:error, "#{__MODULE__}: #{validate_name |> elem(1)}: #{inspect(name)}"}
 
-      byte_size(name_salt) != NameClaim.get_name_salt_byte_size() ->
+      !is_integer(name_salt) ->
         {:error,
-         "#{__MODULE__}: Name salt bytes size not correct: #{inspect(byte_size(name_salt))}"}
+         "#{__MODULE__}: Name salt is not correct: #{inspect(name_salt)}, should be integer"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -74,7 +74,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     end
   end
 
-  @spec get_chain_state_name :: Naming.chain_state_name()
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
   @doc """
@@ -84,7 +84,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
@@ -96,9 +96,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
-    claim = NameClaim.create(claim_hash, tx.name, sender, block_height)
+    claim = Name.create(claim_hash, sender, block_height)
 
     updated_naming_chainstate =
       naming_state
@@ -109,16 +109,15 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   end
 
   @doc """
-  Checks whether all the data is valid according to the NameClaimTx requirements,
-  before the transaction is executed.
+  Validates the transaction with state considered
   """
   @spec preprocess_check(
           Chainstate.accounts(),
           tx_type_state(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
@@ -130,7 +129,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = NameCommitment.hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
     {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
@@ -143,7 +142,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
       pre_claim == :none ->
         {:error, "#{__MODULE__}: Name has not been pre-claimed: #{inspect(pre_claim)}"}
 
-      pre_claim.owner.value != sender ->
+      pre_claim.owner != sender ->
         {:error,
          "#{__MODULE__}: Sender is not pre-claim owner: #{inspect(pre_claim.owner)}, #{
            inspect(sender)
@@ -160,12 +159,13 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          t(),
+          NameClaimTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
   def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+    total_fee = fee + GovernanceConstants.name_claim_burned_fee()
+    DataTx.standard_deduct_fee(accounts, block_height, data_tx, total_fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
@@ -173,25 +173,29 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(NameClaimTx.t(), DataTx.t()) :: list()
   def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
+      Identifier.encode_to_binary(sender),
       :binary.encode_unsigned(datatx.nonce),
       tx.name,
-      tx.name_salt,
+      :binary.encode_unsigned(tx.name_salt),
       :binary.encode_unsigned(datatx.fee),
       :binary.encode_unsigned(datatx.ttl)
     ]
   end
 
-  def decode_from_list(@version, [encoded_senders, nonce, name, name_salt, fee, ttl]) do
-    payload = %NameClaimTx{name: name, name_salt: name_salt}
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
+  def decode_from_list(@version, [encoded_sender, nonce, name, name_salt, fee, ttl]) do
+    payload = %NameClaimTx{name: name, name_salt: :binary.decode_unsigned(name_salt)}
 
     DataTx.init_binary(
       NameClaimTx,
       payload,
-      encoded_senders,
+      [encoded_sender],
       :binary.decode_unsigned(fee),
       :binary.decode_unsigned(nonce),
       :binary.decode_unsigned(ttl)

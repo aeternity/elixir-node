@@ -10,21 +10,18 @@ defmodule PersistenceTest do
   alias Aecore.Account.{Account, AccountStateTree}
 
   setup do
-    Persistence.start_link([])
-    Miner.start_link([])
-
-    Chain.clear_state()
-
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
-    Miner.mine_sync_block_to_chain()
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
+    :ok = Miner.mine_sync_block_to_chain()
 
     on_exit(fn ->
-      Persistence.delete_all_blocks()
-      Chain.clear_state()
-      :ok
+      TestUtils.clean_blockchain()
     end)
+  end
 
+  setup do
     account1 = elem(Keys.keypair(:sign), 0)
 
     account2 =
@@ -55,13 +52,13 @@ defmodule PersistenceTest do
       Chain.chain_state().accounts
       |> Account.balance(persistance_state.account1)
 
-    ## For specific account
+    # For specific account
     assert match?(%{balance: ^correct_balance}, get_account_state(persistance_state.account1))
 
-    ## Non existant accounts are empty
+    # Non existant accounts are empty
     assert :not_found = get_account_state(persistance_state.account2)
 
-    ## For all accounts
+    # For all accounts
     {:ok, all_accounts} = Persistence.get_all_chainstates(Chain.top_block_hash())
     assert false == Enum.empty?(Map.keys(all_accounts))
   end
@@ -70,6 +67,9 @@ defmodule PersistenceTest do
   @tag :persistence
   test "Get latest two blocks from rocksdb" do
     top_height = Chain.top_height()
+
+    assert length(Map.values(Persistence.get_all_blocks())) == 4
+    assert length(Map.values(Persistence.get_blocks(2))) == 2
 
     [block1, block2] =
       Enum.sort(Map.values(Persistence.get_blocks(2)), fn b1, b2 ->

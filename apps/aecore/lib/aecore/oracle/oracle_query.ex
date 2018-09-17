@@ -1,16 +1,18 @@
 defmodule Aecore.Oracle.OracleQuery do
   @moduledoc """
-  Defines oracle query structure
+  Module defining the structure of an OracleQuery
   """
 
   alias Aecore.Oracle.OracleQuery
-  alias Aecore.Keys.Wallet
-  alias Aecore.Tx.DataTx
+  alias Aecore.Keys
   alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Structure of the Query type"
   @type t :: %OracleQuery{
           expires: integer(),
           fee: integer(),
@@ -19,7 +21,7 @@ defmodule Aecore.Oracle.OracleQuery do
           query: binary(),
           response: map() | atom(),
           response_ttl: integer(),
-          sender_address: Wallet.pubkey(),
+          sender_address: Keys.pubkey(),
           sender_nonce: integer()
         }
 
@@ -38,6 +40,7 @@ defmodule Aecore.Oracle.OracleQuery do
   use ExConstructor
   use Aecore.Util.Serializable
 
+  @spec encode_to_list(OracleQuery.t()) :: list()
   def encode_to_list(%OracleQuery{} = oracle_query) do
     has_response =
       case oracle_query.has_response do
@@ -47,16 +50,15 @@ defmodule Aecore.Oracle.OracleQuery do
 
     response =
       case oracle_query.response do
-        :undefined -> "undefined"
-        %DataTx{type: OracleResponseTx} = data -> data
+        :undefined -> <<>>
         _ -> oracle_query.response
       end
 
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(oracle_query.sender_address),
+      oracle_query.sender_address,
       :binary.encode_unsigned(oracle_query.sender_nonce),
-      Identifier.encode_to_binary(oracle_query.oracle_address),
+      oracle_query.oracle_address,
       oracle_query.query,
       has_response,
       response,
@@ -66,10 +68,11 @@ defmodule Aecore.Oracle.OracleQuery do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, OracleQuery.t()} | {:error, reason()}
   def decode_from_list(@version, [
-        encoded_sender_address,
+        sender_address,
         sender_nonce,
-        encoded_oracle_address,
+        oracle_address,
         query,
         has_response,
         response,
@@ -85,27 +88,22 @@ defmodule Aecore.Oracle.OracleQuery do
 
     new_response =
       case response do
-        "undefined" -> :undefined
+        <<>> -> :undefined
         _ -> response
       end
 
-    with {:ok, oracle_address} <- Identifier.decode_from_binary(encoded_oracle_address),
-         {:ok, sender_address} <- Identifier.decode_from_binary(encoded_sender_address) do
-      {:ok,
-       %OracleQuery{
-         expires: :binary.decode_unsigned(expires),
-         fee: :binary.decode_unsigned(fee),
-         has_response: has_response,
-         oracle_address: oracle_address,
-         query: query,
-         response: new_response,
-         response_ttl: :binary.decode_unsigned(response_ttl),
-         sender_address: sender_address,
-         sender_nonce: :binary.decode_unsigned(sender_nonce)
-       }}
-    else
-      {:error, _} = error -> error
-    end
+    {:ok,
+     %OracleQuery{
+       expires: :binary.decode_unsigned(expires),
+       fee: :binary.decode_unsigned(fee),
+       has_response: has_response,
+       oracle_address: oracle_address,
+       query: query,
+       response: new_response,
+       response_ttl: :binary.decode_unsigned(response_ttl),
+       sender_address: sender_address,
+       sender_nonce: :binary.decode_unsigned(sender_nonce)
+     }}
   end
 
   def decode_from_list(@version, data) do
