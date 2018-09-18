@@ -6,7 +6,8 @@ defmodule Aecore.Tx.Pool.Worker do
   use GenServer
 
   alias Aecore.Tx.{SignedTx, DataTx}
-  alias Aecore.Chain.Block
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.{Header, Block}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
   alias Aecore.Peers.Worker, as: Peers
