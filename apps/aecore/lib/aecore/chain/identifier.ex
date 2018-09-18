@@ -28,7 +28,8 @@ defmodule Aecore.Chain.Identifier do
 
   @spec create_encoded_to_binary(type(), value()) :: binary()
   def create_encoded_to_binary(value, type) do
-    create_identity(value, type)
+    value
+    |> create_identity(type)
     |> encode_to_binary()
   end
 

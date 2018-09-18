@@ -84,8 +84,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
+      tx.initiator_amount < 0 ->
+        {:error, "#{__MODULE__}: initiator_amount can't be negative"}
+
+      tx.responder_amount < 0 ->
+        {:error, "#{__MODULE__}: responder_amount can't be negative"}
 
       true ->
         :ok

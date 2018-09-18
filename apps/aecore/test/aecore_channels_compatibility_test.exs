@@ -74,7 +74,7 @@ defmodule AecoreChannelCompatibilityTest do
   @tag :channels
   @tag :compatibility
   test "CreateTx compatibility test", ctx do
-    epoch_CreateTx =
+    epoch_create_tx =
       <<248, 111, 50, 1, 161, 1, 195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162,
         143, 84, 114, 8, 161, 100, 45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133, 100,
         161, 1, 246, 50, 15, 95, 253, 247, 7, 8, 114, 192, 202, 92, 31, 249, 69, 161, 170, 113,
@@ -90,8 +90,8 @@ defmodule AecoreChannelCompatibilityTest do
     locktime = 6
 
     {:ok, _statepeer, _id, %SignedTx{data: data_tx}} =
-      ChannelStatePeer.initialize(
-        <<>>,
+      <<>>
+      |> ChannelStatePeer.initialize(
         ctx.pk_initiator,
         ctx.pk_responder,
         channel_reserve,
@@ -106,7 +106,7 @@ defmodule AecoreChannelCompatibilityTest do
         ctx.sk_initiator
       )
 
-    assert_txs_equal(data_tx, epoch_CreateTx)
+    assert_txs_equal(data_tx, epoch_create_tx)
 
     signed_tx =
       data_tx
@@ -137,7 +137,7 @@ defmodule AecoreChannelCompatibilityTest do
   @tag :channels
   @tag :compatibility
   test "MutalCloseTx compatibility test" do
-    epoch_MutalCloseTx =
+    epoch_mutal_close_tx =
       <<234, 53, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60, 40,
         171, 173, 182, 207, 111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229, 100, 129,
         200, 0, 30, 5>>
@@ -164,13 +164,13 @@ defmodule AecoreChannelCompatibilityTest do
         initiator_nonce
       )
 
-    assert_txs_equal(tx, epoch_MutalCloseTx)
+    assert_txs_equal(tx, epoch_mutal_close_tx)
   end
 
   @tag :channels
   @tag :compatibility
   test "ChannelSettleTx compatibility test", ctx do
-    epoch_SettleTx =
+    epoch_settle_tx =
       <<248, 76, 56, 1, 161, 6, 241, 22, 174, 6, 3, 175, 147, 100, 202, 226, 36, 81, 132, 3, 60,
         40, 171, 173, 182, 207, 111, 210, 134, 134, 237, 24, 132, 27, 201, 239, 42, 229, 161, 1,
         195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162, 143, 84, 114, 8, 161, 100,
@@ -194,7 +194,7 @@ defmodule AecoreChannelCompatibilityTest do
         nonce
       )
 
-    assert_txs_equal(tx, epoch_SettleTx)
+    assert_txs_equal(tx, epoch_settle_tx)
   end
 
   defp chainable_calculate_validate_chain_state(chainstate, txs, block_height, miner) do
