@@ -9,8 +9,8 @@ defmodule Aecore.Sync.Sync do
   use GenServer
 
   alias Aecore.Sync.{Jobs, Chain, Task}
+  alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chainstate
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Tx.SignedTx
@@ -321,7 +321,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   @doc """
-  Get all elements of the pool where the block is already taken from 
+  Get all elements of the pool where the block is already taken from
   the peer (the third element is not false)
   untill reaching an element whose block hasn't been picked yet.
   """
@@ -482,7 +482,7 @@ defmodule Aecore.Sync.Sync do
   end
 
   @doc """
-  This worker has done it's job, 
+  This worker has done it's job,
   remove it from the task that it is related to.
   """
   @spec terminate_worker(pid(), Sync.t()) :: Sync.t()
@@ -639,7 +639,7 @@ defmodule Aecore.Sync.Sync do
         %Chain{chain: [%{height: top_block_height, hash: top_header_hash} | _]} = chain
         local_block_height = Chainstate.top_height()
         {:ok, %{header: genesis}} = Chainstate.get_block_by_height(0)
-        min_agreed_hash = BlockValidation.block_header_hash(genesis)
+        min_agreed_hash = Header.hash(genesis)
         max_agree = min(local_block_height, top_block_height)
 
         case agree_on_height(
@@ -793,7 +793,7 @@ defmodule Aecore.Sync.Sync do
           "#{__MODULE__}: New header received from #{inspect(peer_id)}: #{inspect(header)}"
         )
 
-        new_remote_header_hash = BlockValidation.block_header_hash(header)
+        new_remote_header_hash = Header.hash(header)
 
         agree_on_height(
           peer_id,
@@ -856,7 +856,7 @@ defmodule Aecore.Sync.Sync do
   defp fetch_block_ext(header_hash, peer_pid) do
     case PeerConnection.get_block(header_hash, peer_pid) do
       {:ok, %{block: block}} ->
-        case BlockValidation.block_header_hash(block.header) === header_hash do
+        case Header.hash(block.header) === header_hash do
           true ->
             Logger.debug(fn ->
               "#{__MODULE__}: Block #{inspect(block)} fetched from #{inspect(peer_pid)}"

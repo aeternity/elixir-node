@@ -4,6 +4,7 @@ defmodule Aecore.Chain.Header do
   """
 
   alias Aecore.Chain.Header
+  alias Aeutil.{Hash, Bits}
   alias Aecore.Keys
   alias Aeutil.Bits
 
@@ -74,6 +75,13 @@ defmodule Aecore.Chain.Header do
     }
   end
 
+  @spec hash(Header.t()) :: binary()
+  def hash(%Header{} = header) do
+    header
+    |> encode_to_binary()
+    |> Hash.hash()
+  end
+
   @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("bh", bin)
@@ -88,19 +96,30 @@ defmodule Aecore.Chain.Header do
     {:error, "#{__MODULE__}: Wrong data: #{inspect(bin)}"}
   end
 
-  @spec encode_to_binary(Header.t()) :: binary() | {:error, String.t()}
-  def encode_to_binary(%Header{} = header) do
+  @spec encode_to_binary(Header.t()) :: binary()
+  def encode_to_binary(%Header{
+        version: version,
+        height: height,
+        prev_hash: prev_hash,
+        txs_hash: txs_hash,
+        root_hash: root_hash,
+        target: target,
+        pow_evidence: pow_evidence,
+        nonce: nonce,
+        time: time,
+        miner: miner
+      }) do
     <<
-      header.version::@header_version_size,
-      header.height::@header_height_size,
-      header.prev_hash::binary-size(@header_hash_size),
-      header.txs_hash::binary-size(@txs_hash_size),
-      header.root_hash::binary-size(@root_hash_size),
-      header.target::@header_target_size,
-      pow_to_binary(header.pow_evidence)::binary-size(@pow_size),
-      header.nonce::@header_nonce_size,
-      header.time::@header_time_size,
-      header.miner::binary-size(@pubkey_size)
+      version::@header_version_size,
+      height::@header_height_size,
+      prev_hash::binary-size(@header_hash_size),
+      txs_hash::binary-size(@txs_hash_size),
+      root_hash::binary-size(@root_hash_size),
+      target::@header_target_size,
+      pow_to_binary(pow_evidence)::binary-size(@pow_size),
+      nonce::@header_nonce_size,
+      time::@header_time_size,
+      miner::binary-size(@pubkey_size)
     >>
   end
 
@@ -171,8 +190,7 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec serialize_pow(binary(), binary()) :: binary()
-  defp serialize_pow(pow, acc) when pow != <<>> do
-    <<elem::binary-size(@pow_element_size), rest::binary>> = pow
+  defp serialize_pow(<<elem::binary-size(@pow_element_size), rest::binary>>, acc) do
     serialize_pow(rest, acc <> elem)
   end
 

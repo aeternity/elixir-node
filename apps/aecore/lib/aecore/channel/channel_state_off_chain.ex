@@ -270,14 +270,19 @@ defmodule Aecore.Channel.ChannelStateOffChain do
     {:ok, new_state}
   end
 
-  defp signing_form(%ChannelStateOffChain{} = state) do
+  defp signing_form(%ChannelStateOffChain{
+         channel_id: channel_id,
+         initiator_amount: initiator_amount,
+         responder_amount: responder_amount,
+         sequence: sequence
+       }) do
     list_form = [
       :binary.encode_unsigned(@signing_tag),
       :binary.encode_unsigned(@version),
-      state.channel_id,
-      :binary.encode_unsigned(state.initiator_amount),
-      :binary.encode_unsigned(state.responder_amount),
-      :binary.encode_unsigned(state.sequence)
+      channel_id,
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      :binary.encode_unsigned(sequence)
     ]
 
     ExRLP.encode(list_form)

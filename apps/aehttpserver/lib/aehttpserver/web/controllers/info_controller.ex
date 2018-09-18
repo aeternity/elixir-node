@@ -3,7 +3,6 @@ defmodule Aehttpserver.Web.InfoController do
 
   alias Aecore.Chain.{Header, Genesis}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Keys
   alias Aecore.Account.Account
 
@@ -14,14 +13,14 @@ defmodule Aehttpserver.Web.InfoController do
 
     top_block_header =
       top_block.header
-      |> BlockValidation.block_header_hash()
+      |> Header.hash()
       |> Header.base58c_encode()
 
     genesis_block_header = Genesis.block().header
 
     genesis_block_hash =
       genesis_block_header
-      |> BlockValidation.block_header_hash()
+      |> Header.hash()
       |> Header.base58c_encode()
 
     {sign_pubkey, _} = Keys.keypair(:sign)

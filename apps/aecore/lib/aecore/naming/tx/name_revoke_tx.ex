@@ -47,13 +47,13 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   def init(%{hash: hash}) do
     name_hash =
       case hash do
-        %Identifier{} ->
+        %Identifier{value: value} ->
           if validate_identifier(hash) == true do
             hash
           else
             {:error,
              "#{__MODULE__}: Invalid specified type: #{inspect(hash.type)}, for given data: #{
-               inspect(hash.value)
+               inspect(value)
              }"}
           end
 
@@ -68,12 +68,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Validates the transaction without considering state
   """
   @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameRevokeTx{hash: hash}, data_tx) do
+  def validate(%NameRevokeTx{hash: %Identifier{value: hash}}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
-        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash.value))}"}
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
+        {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -100,10 +100,10 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         accounts,
         naming_state,
         block_height,
-        %NameRevokeTx{} = tx,
+        %NameRevokeTx{hash: %Identifier{value: value}},
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
+    claim_to_update = NamingStateTree.get(naming_state, value)
 
     claim = %{
       claim_to_update
@@ -111,7 +111,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         expires: block_height + GovernanceConstants.revoke_expiration_ttl()
     }
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, value, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -130,13 +130,12 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         accounts,
         naming_state,
         _block_height,
-        tx,
-        data_tx
+        %NameRevokeTx{hash: %Identifier{value: value}},
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash.value)
+    claim = NamingStateTree.get(naming_state, value)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -169,26 +168,29 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   end
 
   @spec validate_identifier(Identifier.t()) :: boolean()
-  defp validate_identifier(%Identifier{} = id) do
-    Identifier.create_identity(id.value, :name) == id
+  defp validate_identifier(%Identifier{value: value} = id) do
+    Identifier.create_identity(value, :name) == id
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   @spec encode_to_list(NameRevokeTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%NameRevokeTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(%NameRevokeTx{hash: hash}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      Identifier.encode_to_binary(tx.hash),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      Identifier.encode_to_binary(hash),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

@@ -11,7 +11,7 @@ defmodule Aecore.Pow.Cuckoo do
 
   require Logger
 
-  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
   alias Aeutil.Hash
 
@@ -47,7 +47,7 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp hash_header(%{header: header} = builder) do
-    blake2b = BlockValidation.block_header_hash(%{header | nonce: 0, pow_evidence: :no_value})
+    blake2b = Header.hash(%{header | nonce: 0, pow_evidence: :no_value})
     {:ok, %{builder | hash: pack_header_and_nonce(blake2b, header.nonce)}}
   end
 
