@@ -4,6 +4,9 @@ defmodule MultiNodeSyncTest do
   alias Aetestframework.Worker, as: TestFramework
   alias Aetestframework.Utils
   alias Aetestframework.Worker.Supervisor, as: FrameworkSup
+  alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
+  alias Aecore.Oracle.Tx.{OracleExtendTx, OracleRegistrationTx, OracleResponseTx, OracleQueryTx}
+  alias Aecore.Account.Tx.SpendTx
 
   setup do
     FrameworkSup.start_link()
@@ -24,11 +27,25 @@ defmodule MultiNodeSyncTest do
     Utils.sync_nodes(:node2, :node3)
     Utils.sync_nodes(:node3, :node4)
 
+    # Check that all nodes have enough number of peers
     assert TestFramework.verify_with_delay(
              fn ->
-               Utils.all_pids_cmd()
-               |> TestFramework.get(:peer_pids, :node1)
-               |> length() == 3
+               [
+                 Utils.all_peers_cmd()
+                 |> TestFramework.get(:peers_cmd, :node1)
+                 |> length(),
+                 Utils.all_peers_cmd()
+                 |> TestFramework.get(:peers_cmd, :node3)
+                 |> length()
+               ] ==
+                 [
+                   Utils.all_peers_cmd()
+                   |> TestFramework.get(:peers_cmd, :node2)
+                   |> length(),
+                   Utils.all_peers_cmd()
+                   |> TestFramework.get(:peers_cmd, :node4)
+                   |> length()
+                 ]
              end,
              5
            ) == true
@@ -43,50 +60,31 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node1)
 
     # Create a Spend transaction and add it to the pool
-    TestFramework.post(Utils.simulate_spend_tx_cmd(), :spend_tx, :node1)
+    TestFramework.post(Utils.simulate_spend_tx_cmd(), :spend_tx_cmd, :node1)
 
-    # Check that we have only 1 transaction added to the pool
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node1)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that Spend transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == SpendTx &&
+                 Utils.get_tx_from_pool(:node2) == SpendTx &&
+                 Utils.get_tx_from_pool(:node3) == SpendTx &&
+                 Utils.get_tx_from_pool(:node4) == SpendTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node1)
 
-    # Check if the top Header hash is equal between node1 and node4
+    # Check if the top Header hash is equal among the nodes
     assert TestFramework.verify_with_delay(
              fn ->
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
-                 label: "node1"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
-                 label: "node2"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
-                 label: "node3"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
-                 label: "node4"
-               )
-
                [
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
-                 |> IO.inspect(),
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
-                 |> IO.inspect()
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
                ] ==
                  [
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
-                   |> IO.inspect(),
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
-                   |> IO.inspect()
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
                  ]
              end,
              5
@@ -101,30 +99,41 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Create an Oracle Register transaction and add it to the pool
-    TestFramework.post(Utils.oracle_register_cmd(), :oracle_register, :node2)
+    TestFramework.post(Utils.oracle_register_cmd(), :oracle_register_cmd, :node2)
 
-    # Check that the pool has only 1 transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that OracleRegister transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == OracleRegistrationTx &&
+                 Utils.get_tx_from_pool(:node2) == OracleRegistrationTx &&
+                 Utils.get_tx_from_pool(:node3) == OracleRegistrationTx &&
+                 Utils.get_tx_from_pool(:node4) == OracleRegistrationTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node2)
 
     # Create an Oracle Query transaction and add it to the pool
     query_ttl = "%{ttl: 10, type: :relative}"
     response_ttl = "%{ttl: 20, type: :relative}"
-    TestFramework.post(Utils.oracle_query_cmd(query_ttl, response_ttl), :oracle_query, :node2)
+    TestFramework.post(Utils.oracle_query_cmd(query_ttl, response_ttl), :oracle_query_cmd, :node2)
 
-    # Check that the pool has only 1 transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that OracleQuery transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == OracleQueryTx &&
+                 Utils.get_tx_from_pool(:node2) == OracleQueryTx &&
+                 Utils.get_tx_from_pool(:node3) == OracleQueryTx &&
+                 Utils.get_tx_from_pool(:node4) == OracleQueryTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node2)
 
-    %Aecore.Chain.Block{txs: txs} = TestFramework.get(Utils.top_block_cmd(), :top_block, :node2)
+    %Aecore.Chain.Block{txs: txs} =
+      TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
 
     # Get the required data for creating the correct OracleQueryTxId
     [%Aecore.Tx.SignedTx{data: data}] = txs
@@ -142,63 +151,49 @@ defmodule MultiNodeSyncTest do
     # Make a OracleRespond transaction and add it to the pool
     TestFramework.post(
       Utils.oracle_respond_cmd(sender, nonce, oracle_address),
-      :oracle_respond,
+      :oracle_respond_cmd,
       :node2
     )
 
-    # Check that the pool has only 1 transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that OracleResponse transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == OracleResponseTx &&
+                 Utils.get_tx_from_pool(:node2) == OracleResponseTx &&
+                 Utils.get_tx_from_pool(:node3) == OracleResponseTx &&
+                 Utils.get_tx_from_pool(:node4) == OracleResponseTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node2)
 
     # Create OracleExtend transaction and add it to the pool
-    TestFramework.post(Utils.oracle_extend_cmd(), :oracle_extend, :node2)
+    TestFramework.post(Utils.oracle_extend_cmd(), :oracle_extend_cmd, :node2)
 
-    # Check if the pool is filed with one trasaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that OracleExtend transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == OracleExtendTx &&
+                 Utils.get_tx_from_pool(:node2) == OracleExtendTx &&
+                 Utils.get_tx_from_pool(:node3) == OracleExtendTx &&
+                 Utils.get_tx_from_pool(:node4) == OracleExtendTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node2)
 
-    # Check if the top Header hash is equal between node2 and node4
+    # Check if the top Header hash is equal among the nodes
     assert TestFramework.verify_with_delay(
              fn ->
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
-                 label: "node1"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
-                 label: "node2"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
-                 label: "node3"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
-                 label: "node4"
-               )
-
                [
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
-                 |> IO.inspect(),
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
-                 |> IO.inspect()
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
                ] ==
                  [
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
-                   |> IO.inspect(),
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
-                   |> IO.inspect()
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
                  ]
              end,
              5
@@ -212,100 +207,175 @@ defmodule MultiNodeSyncTest do
   test "namings test" do
     Utils.mine_blocks(1, :node2)
 
-    # Create a Naming PreClaim transaction and add it to the pool
-    TestFramework.post(Utils.name_preclaim_cmd(), :name_preclaim_tx, :node2)
-
-    # Check if the pool is filed with one transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
-
-    Utils.mine_blocks(1, :node2)
-
-    # Create a Naming Claim transaction and add it to the pool
-    TestFramework.post(Utils.name_claim_cmd(), :name_claim_tx, :node2)
-
-    # Check if the pool is filed with one transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
-
-    Utils.mine_blocks(1, :node2)
-
-    # Create a Naming Update transaction and add it to the pool
-    TestFramework.post(Utils.name_update_cmd(), :name_update, :node2)
-
-    # Check if the pool is filed with one transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
-
-    Utils.mine_blocks(1, :node2)
-
-    {node1_pub, node1_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node1)
-
-    # Create a Name Transfer transaction and add it to the pool
-    TestFramework.post(Utils.name_transfer_cmd(node1_pub), :name_transfer, :node2)
-
-    # Check if the pool is filed with one trasaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
-
-    Utils.mine_blocks(1, :node2)
-
-    # Create a Naming Revoke transaction and add it to the pool
-    TestFramework.post(Utils.name_revoke_cmd(node1_pub, node1_priv), :name_revoke, :node2)
-
-    # Check if the pool is filed with one transaction
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node2)
-           |> Map.to_list()
-           |> length() == 1
-
-    Utils.mine_blocks(1, :node2)
-
-    # Check if the top Header hash is equal between node2 and node4
+    # Check that top block is equal among the nodes
     assert TestFramework.verify_with_delay(
              fn ->
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node1).header.height,
-                 label: "node1"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node2).header.height,
-                 label: "node2"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node3).header.height,
-                 label: "node3"
-               )
-
-               IO.inspect(
-                 TestFramework.get(Utils.top_block_cmd(), :top_block, :node4).header.height,
-                 label: "node4"
-               )
-
                [
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node1)
-                 |> IO.inspect(),
-                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node2)
-                 |> IO.inspect()
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
                ] ==
                  [
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node3)
-                   |> IO.inspect(),
-                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash, :node4)
-                   |> IO.inspect()
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
                  ]
              end,
-             6
+             5
+           ) == true
+
+    # Create a Naming PreClaim transaction and add it to the pool
+    TestFramework.post(Utils.name_preclaim_cmd(), :name_preclaim_cmd, :node2)
+
+    # Check that NamePreClaim transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == NamePreClaimTx &&
+                 Utils.get_tx_from_pool(:node2) == NamePreClaimTx &&
+                 Utils.get_tx_from_pool(:node3) == NamePreClaimTx &&
+                 Utils.get_tx_from_pool(:node4) == NamePreClaimTx
+             end,
+             5
+           ) == true
+
+    Utils.mine_blocks(1, :node2)
+
+    # Check that top block is equal among the nodes
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    # Check that NameClaim transaction is added to the pool
+    TestFramework.post(Utils.name_claim_cmd(), :name_claim_cmd, :node2)
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == NameClaimTx &&
+                 Utils.get_tx_from_pool(:node2) == NameClaimTx &&
+                 Utils.get_tx_from_pool(:node3) == NameClaimTx &&
+                 Utils.get_tx_from_pool(:node4) == NameClaimTx
+             end,
+             5
+           ) == true
+
+    Utils.mine_blocks(1, :node2)
+
+    # Check that top block is equal among the nodes
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    # Create a Naming Update transaction and add it to the pool
+    TestFramework.post(Utils.name_update_cmd(), :name_update_cmd, :node2)
+
+    # Check that NameUpdate transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == NameUpdateTx &&
+                 Utils.get_tx_from_pool(:node2) == NameUpdateTx &&
+                 Utils.get_tx_from_pool(:node3) == NameUpdateTx &&
+                 Utils.get_tx_from_pool(:node4) == NameUpdateTx
+             end,
+             5
+           ) == true
+
+    Utils.mine_blocks(1, :node2)
+
+    # Check that top block is equal among the nodes
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    {node2_pub, node2_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node2)
+
+    # Create a Name Transfer transaction and add it to the pool
+    TestFramework.post(Utils.name_transfer_cmd(node2_pub), :name_transfer, :node2)
+
+    # Check that NameTransfer transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == NameTransferTx &&
+                 Utils.get_tx_from_pool(:node2) == NameTransferTx &&
+                 Utils.get_tx_from_pool(:node3) == NameTransferTx &&
+                 Utils.get_tx_from_pool(:node4) == NameTransferTx
+             end,
+             5
+           ) == true
+
+    Utils.mine_blocks(1, :node2)
+
+    # Check that top block is equal among the nodes
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
+                 TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
+                   TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    # Create a Naming Revoke transaction and add it to the pool
+    TestFramework.post(Utils.name_revoke_cmd(node2_pub, node2_priv), :name_revoke_cmd, :node2)
+
+    # Check that NameRevoke transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == NameRevokeTx &&
+                 Utils.get_tx_from_pool(:node2) == NameRevokeTx &&
+                 Utils.get_tx_from_pool(:node3) == NameRevokeTx &&
+                 Utils.get_tx_from_pool(:node4) == NameRevokeTx
+             end,
+             5
+           ) == true
+
+    Utils.mine_blocks(1, :node2)
+
+    # Check if the top Header hash is equal among the nodes
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
+                 ]
+             end,
+             5
            ) == true
 
     TestFramework.delete_all_nodes()
@@ -313,13 +383,36 @@ defmodule MultiNodeSyncTest do
 
   @tag :sync_test_accounts
   test "balance test" do
+    # Get signing keys of all nodes
+    {node1_pub, node1_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node1)
+    {node2_pub, node2_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node2)
+    {node3_pub, node3_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node3)
+    {node4_pub, _} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node4)
+
     # Mine 2 blocks, so that node1 has enough tokens to spend
     Utils.mine_blocks(2, :node1)
 
-    {node1_pub, node1_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node1)
-    {node2_pub, node2_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node2)
-    {node3_pub, node3_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node3)
-    {node4_pub, _} = TestFramework.get(Utils.sign_keys_cmd(), :keypair, :node4)
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               TestFramework.get(Utils.balance_cmd(node1_pub), :balance_cmd, :node1) ==
+                 20_000_000_000_000_000_000
+             end,
+             5
+           ) == true
 
     amount1 = 50
     fee = 10
@@ -337,17 +430,43 @@ defmodule MultiNodeSyncTest do
         fee,
         payload
       ),
-      :send_tokens,
+      :send_tokens_cmd,
       :node1
     )
 
-    # Check that the transaction is added to the pool
-    assert Utils.pool_cmd()
-           |> TestFramework.get(:txs_pool, :node1)
-           |> Map.to_list()
-           |> length() == 1
+    # Check that Spend transaction is added to the pool
+    assert TestFramework.verify_with_delay(
+             fn ->
+               Utils.get_tx_from_pool(:node1) == SpendTx &&
+                 Utils.get_tx_from_pool(:node2) == SpendTx &&
+                 Utils.get_tx_from_pool(:node3) == SpendTx &&
+                 Utils.get_tx_from_pool(:node4) == SpendTx
+             end,
+             5
+           ) == true
 
     Utils.mine_blocks(1, :node1)
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               TestFramework.get(Utils.balance_cmd(node3_pub), :balance_cmd, :node3) == 50
+             end,
+             10
+           ) == true
 
     # Create SpendTx transaction
     # Send 20 tokens from node3 to node2
@@ -363,22 +482,43 @@ defmodule MultiNodeSyncTest do
         fee,
         payload
       ),
-      :send_tokens,
+      :send_tokens_cmd,
       :node3
     )
 
-    # Check that the transaction is added to the pool
+    # Check that Spend transaction is added to the pool
     assert TestFramework.verify_with_delay(
              fn ->
-               Utils.pool_cmd()
-               |> TestFramework.get(:txs_pool, :node3)
-               |> Map.to_list()
-               |> length() == 1
+               Utils.get_tx_from_pool(:node1) == SpendTx &&
+                 Utils.get_tx_from_pool(:node2) == SpendTx &&
+                 Utils.get_tx_from_pool(:node3) == SpendTx &&
+                 Utils.get_tx_from_pool(:node4) == SpendTx
              end,
              5
            ) == true
 
     Utils.mine_blocks(1, :node3)
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    assert TestFramework.verify_with_delay(
+             fn ->
+               TestFramework.get(Utils.balance_cmd(node2_pub), :balance_cmd, :node2) == 20
+             end,
+             5
+           ) == true
 
     # Create SpendTx transaction
     # Send 10 tokens from node2 to node4
@@ -394,28 +534,47 @@ defmodule MultiNodeSyncTest do
         fee,
         payload
       ),
-      :send_tokens,
+      :send_tokens_cmd,
       :node2
     )
 
-    # Check that the transaction is added to the pool
+    # Check that Spend transaction is added to the pool
     assert TestFramework.verify_with_delay(
              fn ->
-               Utils.pool_cmd()
-               |> TestFramework.get(:txs_pool, :node2)
-               |> Map.to_list()
-               |> length() == 1
+               Utils.get_tx_from_pool(:node1) == SpendTx &&
+                 Utils.get_tx_from_pool(:node2) == SpendTx &&
+                 Utils.get_tx_from_pool(:node3) == SpendTx &&
+                 Utils.get_tx_from_pool(:node4) == SpendTx
              end,
              5
            ) == true
 
     Utils.mine_blocks(1, :node2)
 
-    # Check that node4 has 10 tokens
     assert TestFramework.verify_with_delay(
              fn ->
-               block = TestFramework.get(Utils.top_block_cmd(), :top_block, :node4)
-               block.header.height == 5
+               [
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
+                 TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
+               ] ==
+                 [
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
+                   TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
+                 ]
+             end,
+             5
+           ) == true
+
+    # Check that all nodes have correct amount
+    assert TestFramework.verify_with_delay(
+             fn ->
+               TestFramework.get(Utils.balance_cmd(node1_pub), :balance_cmd, :node4) ==
+                 29_999_999_999_999_999_950 &&
+                 TestFramework.get(Utils.balance_cmd(node2_pub), :balance_cmd, :node4) ==
+                   10_000_000_000_000_000_010 &&
+                 TestFramework.get(Utils.balance_cmd(node3_pub), :balance_cmd, :node4) ==
+                   10_000_000_000_000_000_030 &&
+                 TestFramework.get(Utils.balance_cmd(node4_pub), :balance_cmd, :node4) == 10
              end,
              5
            ) == true

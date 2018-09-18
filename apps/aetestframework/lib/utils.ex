@@ -7,23 +7,30 @@ defmodule Aetestframework.Utils do
   alias Aetestframework.Worker, as: TestFramework
 
   def sync_nodes(node1, node2) do
-    {node2_pub, _priv} = TestFramework.get(peer_keys_cmd(), :keypair, node2)
+    {node2_pub, _priv} = TestFramework.get(peer_keys_cmd(), :keypair_cmd, node2)
     %{sync_port: sync_port} = Map.get(TestFramework.state(), node2)
-    TestFramework.post(connect_to_peer_cmd(sync_port, node2_pub), :peer_connect, node1)
+    TestFramework.post(connect_to_peer_cmd(sync_port, node2_pub), :peer_connect_cmd, node1)
   end
 
   def mine_blocks(num_of_blocks_to_mine, node) do
     Enum.each(1..num_of_blocks_to_mine, fn _ ->
-      TestFramework.post("Miner.mine_sync_block_to_chain()", :mine_block, node, 20_000)
+      TestFramework.post("Miner.mine_sync_block_to_chain()", :mine_block_cmd, node, 20_000)
     end)
+  end
+
+  def get_tx_from_pool(node) do
+    case TestFramework.get(pool_cmd(), :txs_pool_cmd, node) do
+      txs when txs == %{} -> false
+      txs -> hd(Map.values(txs)).data.type
+    end
   end
 
   def connect_to_peer_cmd(sync_port, pubkey) do
     "Peers.try_connect(%{host: 'localhost', port: #{sync_port}, pubkey: #{inspect(pubkey)}})"
   end
 
-  def all_pids_cmd do
-    "Peers.all_pids()
+  def all_peers_cmd do
+    "Peers.all_peers()
     |> :erlang.term_to_binary()
     |> Base.encode32()"
   end

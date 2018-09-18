@@ -66,10 +66,8 @@ defmodule Aetestframework.Worker do
 
   def verify_with_delay(valid?, execute_times) do
     if valid?.() do
-      IO.inspect("executing: #{execute_times}")
       true
     else
-      IO.inspect("not executing: #{execute_times}")
       :timer.sleep(1000)
       verify_with_delay(valid?, execute_times - 1)
     end
@@ -151,8 +149,12 @@ defmodule Aetestframework.Worker do
   end
 
   def process_result(result) do
-    filtered_result = String.replace(result, "\n", "")
-    matched_result = Regex.run(~r/\"(.*?)\"/, filtered_result)
+    filtered_result =
+      result
+      |> String.replace("\n", "")
+      |> String.replace("\"", "")
+
+    matched_result = Regex.run(~r/cmd, (.*?)}/, filtered_result)
     base_decoded = Base.decode32!(List.last(matched_result))
     :erlang.binary_to_term(base_decoded)
   end
