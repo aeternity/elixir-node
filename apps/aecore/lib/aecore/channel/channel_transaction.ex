@@ -3,7 +3,7 @@ defmodule Aecore.Channel.ChannelTransaction do
     Behaviour specifying the necessary functions which any onchain/offchain transaction modifying the offchain chainstate must implement.
   """
 
-  alias Aecore.Channel.ChannelOffchainUpdate
+  alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Channel.ChannelOffChainTx
@@ -36,42 +36,65 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of offchain updates to the offchain chainstate
   """
-  @callback offchain_updates(channel_tx()) :: list(ChannelOffchainUpdate.update_types())
+  @callback offchain_updates(channel_tx()) :: list(ChannelOffChainUpdate.update_types())
 
   @doc """
-  Helper for verifying signatures under a signed_tx() object.
-  If the function received a list of public keys then fails if the transaction was signed parties not included in the list.
-  If the function received a public key and the signature validates then the function succedes if the transaction was signed by other parties.
+  Preprocess checks for an incoming half signed transaction.
+  This callback should check if the transaction is not malicious
+  (for instance transfer updates should validate if the transfer is in the correct direction).
   """
-  @spec verify_signatures_for_the_expected_parties(signed_tx(), list(Keys.pubkey()) | Keys.pubkey()) :: boolean()
-  def verify_signatures_for_the_expected_parties(%SignedTx{data: %DataTx{type: type} = data} = tx, pubkey_list) when type in @allowed_onchain_tx and is_list(pubkey_list) do
-    #Check if the TX was send by the expected parties
-    senders = DataTx.senders(data)
-    cond do
-      length(senders) != length(pubkey_list) ->
-        false
-      Enum.reduce(senders, false, fn s, acc -> acc or s not in pubkey_list end) ->
-        false
-      true ->
-        #Make sure that the signatures are valid
-        SignedTx.signatures_valid?(tx)
+  @spec half_signed_preprocess_check(signed_tx(), map()) :: :ok | error()
+  def half_signed_preprocess_check(tx, opts) do
+      tx
+      |> offchain_updates
+      |> do_half_signed_preprocess_check(opts)
+  end
+
+  @spec do_half_signed_preprocess_check(list(ChannelOffChainUpdate.update_types()), map()) :: :ok | error()
+  defp do_half_signed_preprocess_check([update | rest], opts) do
+    case ChannelOffChainUpdate.half_signed_preprocess_check(update, opts) do
+      :ok ->
+        do_half_signed_preprocess_check(rest, opts)
+      {:error, _} = err ->
+        err
     end
   end
 
-  def verify_signatures_for_the_expected_parties(%SignedTx{data: %DataTx{type: type}} = tx, pubkey) when type in @allowed_onchain_tx and is_binary(pubkey) do
-    SignedTx.signature_valid_for?(tx, pubkey)
+  defp do_half_signed_preprocess_check([], _) do
+    :ok
   end
 
-  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, [initiator_pubkey, responder_pubkey]) do
-    ChannelOffChainTx.verify_signatures(tx, {initiator_pubkey, responder_pubkey}) === :ok
+  @doc """
+  Verifies if the provided signed transaction was signed by the provided pubkey.
+  Fails when the transaction was signed by more keys than expected.
+  """
+  @spec verify_half_signed_tx(signed_tx(), Keys.pubkey()) :: boolean()
+  def verify_half_signed_tx(%SignedTx{data: %DataTx{type: type} = data_tx, signatures: signatures} = tx, pubkey) when type in @allowed_onchain_tx do
+    senders = DataTx.senders(data_tx)
+
+    length(senders) == 2 and pubkey in senders and length(signatures) == 1 and SignedTx.signature_valid_for?(tx, pubkey)
   end
 
-  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, pubkey) when is_binary(pubkey) do
+  def verify_half_signed_tx(%ChannelOffChainTx{signatures: {_, <<>>}} = tx, pubkey) do
     ChannelOffChainTx.verify_signature_for_key(tx, pubkey)
   end
 
-  def verify_signatures_for_the_expected_parties(_, _) do
+  def verify_half_signed_tx(%ChannelOffChainTx{}, _) do
     false
+  end
+
+  @doc """
+  Verifies if the transaction was signed by both of the provided parties.
+  """
+  @spec verify_fully_signed_tx(signed_tx(), tuple()) :: boolean
+  def verify_fully_signed_tx(%SignedTx{data: %DataTx{type: type} = data_tx} = tx, {pubkey1, pubkey2}) when type in @allowed_onchain_tx do
+    senders = DataTx.senders(data_tx)
+
+    length(senders) == 2 and pubkey1 in senders and pubkey2 in senders and SignedTx.signatures_valid?(tx)
+  end
+
+  def verify_fully_signed_tx(%ChannelOffChainTx{} = tx, pubkeys) do
+    ChannelOffChainTx.verify_signatures(tx, pubkeys)
   end
 
   @doc """

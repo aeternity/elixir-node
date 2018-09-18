@@ -42,6 +42,13 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @callback decode_from_list(list(binary())) :: update_types()
 
   @doc """
+  Preprocess checks for an incoming half signed update.
+  This callback should check for signs of the update being malicious(for instance transfer updates should validate if the transfer is in the correct direction).
+  The provided map contains values to check against.
+  """
+  @callback half_signed_preprocess_check(update_types(), map()) :: :ok | error()
+
+  @doc """
   Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
   To make upgrading easy updates will need to specify their ID which will act as their tag. To upgrade
   to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
@@ -120,5 +127,10 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
       throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{channel_reserve} tokens)"}
     end
     account
+  end
+
+  def half_signed_preprocess_check(update, opts) do
+    module = update.__struct__
+    module.half_signed_preprocess_check(update, opts)
   end
 end

@@ -153,11 +153,11 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Signs open transaction. Can only be called once per channel by :responder. Returns fully signed SignedTx and adds it to Pool.
   """
-  @spec sign_open(binary(), SignedTx.t(), Keys.sign_priv_key()) ::
+  @spec sign_open(binary(), non_neg_integer(), non_neg_integer(), non_neg_integer(), SignedTx.t(), Keys.sign_priv_key()) ::
           {:ok, binary(), SignedTx.t()} | error()
-  def sign_open(temporary_id, %SignedTx{} = open_tx, priv_key)
+  def sign_open(temporary_id, initiator_amount, responder_amount, locktime, %SignedTx{} = open_tx, priv_key)
       when is_binary(temporary_id) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:sign_open, temporary_id, open_tx, priv_key})
+    GenServer.call(__MODULE__, {:sign_open, temporary_id, initiator_amount, responder_amount, locktime, open_tx, priv_key})
   end
 
   @doc """
@@ -333,11 +333,11 @@ defmodule Aecore.Channel.Worker do
     {:reply, {:ok, new_id, open_tx}, new_state}
   end
 
-  def handle_call({:sign_open, temporary_id, initiator_amount, responder_amount, open_tx, priv_key}, _from, state) do
+  def handle_call({:sign_open, temporary_id, initiator_amount, responder_amount, locktime, open_tx, priv_key}, _from, state) do
     peer_state = Map.get(state, temporary_id)
 
     with {:ok, new_peer_state, id, signed_open_tx} <-
-           ChannelStatePeer.sign_open(peer_state, initiator_amount, responder_amount, open_tx, priv_key),
+           ChannelStatePeer.sign_open(peer_state, initiator_amount, responder_amount, locktime, open_tx, priv_key),
          :ok <- Pool.add_transaction(signed_open_tx) do
       new_state =
         state
