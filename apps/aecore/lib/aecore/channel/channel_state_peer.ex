@@ -64,6 +64,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   use ExConstructor
 
+  @spec process_fully_signed_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) :: {:ok, ChannelStatePeer.t()} | error()
   defp process_fully_signed_tx(tx, %ChannelStatePeer{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey} = peer) do
     if ChannelTransaction.verify_fully_signed_tx(tx, {initiator_pubkey, responder_pubkey}) do
       process_tx(tx, peer)
@@ -72,6 +73,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
+  @spec process_half_signed_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) :: {:ok, ChannelStatePeer.t()} | error()
   defp process_half_signed_tx(tx, %ChannelStatePeer{} = peer) do
     if ChannelTransaction.verify_half_signed_tx(tx, foreign_pubkey(peer)) do
       process_tx(tx, peer)
@@ -80,6 +82,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
+  @spec process_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) :: {:ok, ChannelStatePeer.t()} | error()
   defp process_tx(tx, %ChannelStatePeer{} = peer) do
     unsigned_payload = ChannelTransaction.unsigned_payload(tx)
     new_sequence = unsigned_payload.sequence
@@ -117,6 +120,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
+  @spec update_offchain_chainstate(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) :: {:ok, Chainstate.t()} | error()
   defp update_offchain_chainstate(tx, %ChannelStatePeer{channel_reserve: channel_reserve, offchain_chainstate: offchain_chainstate}) do
     unsigned_tx = ChannelTransaction.unsigned_payload(tx)
     state_hash = unsigned_tx.state_hash
@@ -136,10 +140,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates a channel from a list of mutually signed tx. The first tx in the list must be ChannelCreateTX. All the tx and updates are verified for corectness along the way.
   """
-  @spec from_signed_tx_list(
-          list(ChannelTransaction.channel_tx()),
-          Channel.role()
-        ) :: {:ok, ChannelStatePeer.t()} | error()
+  @spec from_signed_tx_list(list(ChannelTransaction.signed_tx()), Channel.role()) :: {:ok, ChannelStatePeer.t()} | error()
   def from_signed_tx_list(offchain_tx_list, role) do
 
     offchain_tx_list_from_oldest = Enum.reverse(offchain_tx_list)

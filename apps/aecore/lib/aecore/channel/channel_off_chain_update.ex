@@ -121,6 +121,9 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     Enum.reduce_while(updates, {:ok, chainstate}, &apply_single_update_to_chainstate(&1, &2, channel_reserve))
   end
 
+  @doc """
+  Makes sure that for the given account the channel reserve was meet
+  """
   @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
   def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
     if balance < channel_reserve do
@@ -129,6 +132,10 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     account
   end
 
+  @doc """
+  Runs preprocess checks for an update which was signed by the foreign peer in the channel.
+  """
+  @spec half_signed_preprocess_check(update_types(), map()) :: :ok | error()
   def half_signed_preprocess_check(update, opts) do
     module = update.__struct__
     module.half_signed_preprocess_check(update, opts)
