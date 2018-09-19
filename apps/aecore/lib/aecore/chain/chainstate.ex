@@ -14,7 +14,6 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Oracle.{Oracle, OracleStateTree}
   alias Aecore.Tx.SignedTx
   alias Aeutil.{Bits, Hash}
-  alias Aeutil.PatriciaMerkleTree
 
   require Logger
 
