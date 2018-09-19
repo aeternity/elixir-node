@@ -35,7 +35,7 @@ defmodule AecoreChannelTest do
     %{public: pk1, secret: prk1} = :enacl.sign_keypair()
     %{public: pk2, secret: prk2} = :enacl.sign_keypair()
 
-    for _ <- 1..5, do: Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
