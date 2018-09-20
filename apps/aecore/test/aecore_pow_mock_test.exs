@@ -1,4 +1,4 @@
-defmodule AecoreCuckooTest do
+defmodule AecorePowMockTest do
   @moduledoc """
   Unit tests for the mock miner module
   """

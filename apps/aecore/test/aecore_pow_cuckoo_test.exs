@@ -22,14 +22,14 @@ defmodule AecoreCuckooTest do
   @tag timeout: 60_000
   @tag :cuckoo
   test "Generate solution with a winning nonce and high target threshold" do
-    %{pow_evidence: found_solution} = Cuckoo.generate(block_candidate().header)
+    {:ok, %{pow_evidence: found_solution}} = Cuckoo.generate(block_candidate().header)
     assert found_solution == wining_solution()
   end
 
   @tag timeout: 60_000
   @tag :cuckoo
   test "Verify solution with a high target threshold" do
-    header = Cuckoo.generate(block_candidate().header)
+    {:ok, header} = Cuckoo.generate(block_candidate().header)
     assert true == Cuckoo.verify(header)
   end
 

@@ -25,7 +25,8 @@ defmodule Aecore.Pow.Cuckoo do
   @spec verify(Header.t()) :: boolean()
   def verify(%Header{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
-      process(:verify, header)
+      {:ok, response} = process(:verify, header)
+      response
     else
       false
     end
@@ -43,7 +44,7 @@ defmodule Aecore.Pow.Cuckoo do
          {:ok, builder} <- exec_os_cmd(builder),
          {:ok, builder} <- build_response(builder) do
       {:ok, %{response: response} = builder}
-      response
+      {:ok, response}
     else
       {:error, %{error: reason}} ->
         {:error, reason}

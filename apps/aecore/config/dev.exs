@@ -42,6 +42,8 @@ config :aecore, :peers,
 
 config :aecore, :miner, resumed_by_default: false
 
+config :aecore, :pow_module, Aecore.Pow.Cuckoo
+
 config :aecore, :tx_data,
   minimum_fee: 1,
   max_txs_per_block: 100,
