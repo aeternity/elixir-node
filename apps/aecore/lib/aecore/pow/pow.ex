@@ -23,5 +23,5 @@ defmodule Aecore.Pow.Pow do
     pow_module().generate(header)
   end
 
-  defp pow_module(), do: Application.get_env(:aecore, :pow_module)
+  defp pow_module, do: Application.get_env(:aecore, :pow_module)
 end

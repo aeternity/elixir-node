@@ -24,8 +24,12 @@ defmodule AecoreValidationTest do
       File.rm_rf(path)
     end
 
+    tests_pow = Application.get_env(:aecore, :pow_module)
+    Application.put_env(:aecore, :pow_module, Aecore.Pow.Cuckoo)
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
+      Application.put_env(:aecore, :pow_module, tests_pow)
     end)
   end
 

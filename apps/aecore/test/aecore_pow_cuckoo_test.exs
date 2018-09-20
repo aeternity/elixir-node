@@ -10,15 +10,6 @@ defmodule AecoreCuckooTest do
   alias Aecore.Pow.Cuckoo
   alias Aecore.Chain.{Block, Header}
 
-  setup do
-    Code.require_file("test_utils.ex", "./test")
-    TestUtils.clean_blockchain()
-
-    on_exit(fn ->
-      TestUtils.clean_blockchain()
-    end)
-  end
-
   @tag timeout: 60_000
   @tag :cuckoo
   test "Generate solution with a winning nonce and high target threshold" do
