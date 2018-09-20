@@ -208,8 +208,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         fee,
         nonce
       ]) do
-    with {:ok, %Identifier{type: :channel, value: channel_id}} <-
-           Identifier.decode_from_binary(encoded_channel_id),
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
          {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
@@ -225,9 +225,6 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         :binary.decode_unsigned(ttl)
       )
     else
-      {:ok, %Identifier{}} ->
-        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
-
       {:error, _} = error ->
         error
     end

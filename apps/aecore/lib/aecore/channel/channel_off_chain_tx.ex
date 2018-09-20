@@ -218,8 +218,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         encoded_updates,
         state_hash
       ]) do
-    with {:ok, %Identifier{type: :channel, value: channel_id}} <-
-           Identifier.decode_from_binary(encoded_channel_id) do
+    with {:ok, channel_id} <- Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
       %ChannelOffChainTx{
         channel_id: channel_id,
         sequence: :binary.decode_unsigned(sequence),
@@ -227,9 +226,6 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         state_hash: state_hash
       }
     else
-      {:ok, %Identifier{}} ->
-        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
-
       {:error, _} = error ->
         error
     end

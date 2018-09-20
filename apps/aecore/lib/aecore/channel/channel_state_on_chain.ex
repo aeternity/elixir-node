@@ -304,10 +304,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     responder_amount =
       :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
 
-    with {:ok, %Identifier{type: :account, value: initiator_pubkey}} <-
-           Identifier.decode_from_binary(encoded_initiator_pubkey),
-         {:ok, %Identifier{type: :account, value: responder_pubkey}} <-
-           Identifier.decode_from_binary(encoded_responder_pubkey) do
+    with {:ok, initiator_pubkey} <-
+           Identifier.decode_from_binary_to_value(encoded_initiator_pubkey, :account),
+         {:ok, responder_pubkey} <-
+           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account) do
       {:ok,
        %ChannelStateOnChain{
          initiator_pubkey: initiator_pubkey,
@@ -321,9 +321,6 @@ defmodule Aecore.Channel.ChannelStateOnChain do
          channel_reserve: :binary.decode_unsigned(channel_reserve)
        }}
     else
-      {:ok, %Identifier{}} ->
-        {:error, "#{__MODULE__}: Expected account identifier"}
-
       {:error, _} = error ->
         error
     end

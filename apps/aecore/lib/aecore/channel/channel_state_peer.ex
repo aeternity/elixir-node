@@ -63,7 +63,6 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   require Logger
 
-
   @doc """
   Gets the id of the channel
   """

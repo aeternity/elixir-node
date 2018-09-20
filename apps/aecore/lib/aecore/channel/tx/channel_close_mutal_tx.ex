@@ -204,8 +204,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         fee,
         nonce
       ]) do
-    case Identifier.decode_from_binary(encoded_channel_id) do
-      {:ok, %Identifier{type: :channel, value: channel_id}} ->
+    case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
+      {:ok, channel_id} ->
         payload = %ChannelCloseMutalTx{
           channel_id: channel_id,
           initiator_amount: :binary.decode_unsigned(initiator_amount),
@@ -220,9 +220,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
           :binary.decode_unsigned(nonce),
           :binary.decode_unsigned(ttl)
         )
-
-      {:ok, %Identifier{}} ->
-        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
 
       {:error, _} = error ->
         error

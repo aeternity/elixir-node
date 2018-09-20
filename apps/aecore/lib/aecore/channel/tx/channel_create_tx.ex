@@ -74,7 +74,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     sequence: 1
   ]
 
-
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
@@ -270,10 +269,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       ]) do
     nonce = :binary.decode_unsigned(encoded_nonce)
 
-    with {:ok, %Identifier{type: :account, value: initiator}} <-
-           Identifier.decode_from_binary(encoded_initiator),
-         {:ok, %Identifier{type: :account, value: responder}} <-
-           Identifier.decode_from_binary(encoded_responder) do
+    with {:ok, initiator} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
+         {:ok, responder} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
       payload = %ChannelCreateTx{
         initiator: initiator,
         initiator_amount: :binary.decode_unsigned(initiator_amount),
@@ -294,9 +291,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         :binary.decode_unsigned(ttl)
       )
     else
-      {:ok, %Identifier{}} ->
-        {:error, "#{__MODULE__}: Wrong channel_id identifier type"}
-
       {:error, _} = error ->
         error
     end

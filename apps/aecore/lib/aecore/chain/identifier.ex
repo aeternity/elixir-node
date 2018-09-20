@@ -63,6 +63,20 @@ defmodule Aecore.Chain.Identifier do
     end
   end
 
+  @spec decode_from_binary_to_value(binary(), type()) :: value() | {:error, String.t()}
+  def decode_from_binary_to_value(data, type) do
+    case decode_from_binary(data) do
+      {:ok, %Identifier{type: ^type, value: value}} ->
+        {:ok, value}
+
+      {:ok, %Identifier{type: received_type}} ->
+        {:error, "#{__MODULE__}: Unexpected type. Expected #{type}, but got #{received_type}"}
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
   @spec encode_list_to_binary(list(t())) :: list(binary())
   def encode_list_to_binary([]), do: []
 
