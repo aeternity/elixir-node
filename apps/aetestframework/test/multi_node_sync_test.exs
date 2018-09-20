@@ -32,6 +32,7 @@ defmodule MultiNodeSyncTest do
     end)
   end
 
+  @tag disabled: true
   @tag :sync_test
   test "spend_tx test" do
     TestFramework.mine_sync_block("node1")
