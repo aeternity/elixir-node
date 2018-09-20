@@ -51,6 +51,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   def chainstate_senders?(), do: true
 
+  @doc """
+  ChannelCloseMutalTx senders are not passed with tx, but are supposed to be retrived from Chainstate. The senders have to be channel initiator and responder.
+  """
   @spec senders_from_chainstate(ChannelMutalCloseTx.t(), Chainstate.t()) :: list(binary())
   def senders_from_chainstate(%ChannelCloseMutalTx{channel_id: channel_id}, chainstate) do
     case ChannelStateTree.get(chainstate.channels, channel_id) do
