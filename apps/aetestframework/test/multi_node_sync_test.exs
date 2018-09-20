@@ -48,6 +48,7 @@ defmodule MultiNodeSyncTest do
     TestFramework.delete_all_nodes()
   end
 
+  @tag disabled: true
   @tag :sync_test
   @tag timeout: 100_000
   test "oracles test" do
@@ -77,6 +78,7 @@ defmodule MultiNodeSyncTest do
     TestFramework.delete_all_nodes()
   end
 
+  @tag disabled: true
   @tag :sync_test
   @tag timeout: 100_000
   test "namings test" do
@@ -114,6 +116,7 @@ defmodule MultiNodeSyncTest do
     TestFramework.delete_all_nodes()
   end
 
+  @tag disabled: true
   @tag :sync_test
   test "balance test" do
     TestFramework.update_pubkeys_state()
