@@ -3,6 +3,7 @@ defmodule Aecore.Channel.Worker do
   Module for managing Channels
   """
 
+  alias Aecore.Chain.Block
   alias Aecore.Channel.ChannelStateOffChain
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.ChannelStatePeer
@@ -348,8 +349,8 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:opened, open_tx}, _from, state) do
-    id = ChannelStateOnChain.id(SignedTx.data_tx(open_tx))
+  def handle_call({:opened, %SignedTx{data: data_tx}}, _from, state) do
+    id = ChannelStateOnChain.id(data_tx)
 
     if Map.has_key?(state, id) do
       peer_state = Map.get(state, id)
@@ -363,10 +364,10 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:transfer, id, amount, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, offchain_state} <-
-           ChannelStatePeer.transfer(peer_state, amount, priv_key) do
-      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.transfer(peer_state, amount, priv_key) do
+      {:ok, new_peer_state, offchain_state} ->
+        {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -379,10 +380,10 @@ defmodule Aecore.Channel.Worker do
       ) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, offchain_state} <-
-           ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
-      {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.recv_state(peer_state, recv_state, priv_key) do
+      {:ok, new_peer_state, offchain_state} ->
+        {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -391,10 +392,10 @@ defmodule Aecore.Channel.Worker do
   def handle_call({:close, id, fees, nonce, priv_key}, _from, state) do
     peer_state = Map.get(state, id)
 
-    with {:ok, new_peer_state, close_tx} <-
-           ChannelStatePeer.close(peer_state, fees, nonce, priv_key) do
-      {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
-    else
+    case ChannelStatePeer.close(peer_state, fees, nonce, priv_key) do
+      {:ok, new_peer_state, close_tx} ->
+        {:reply, {:ok, close_tx}, Map.put(state, id, new_peer_state)}
+
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -418,12 +419,7 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:closed, close_tx}, _from, state) do
-    payload =
-      close_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
-
+  def handle_call({:closed, %SignedTx{data: %DataTx{payload: payload}}}, _from, state) do
     id =
       case payload do
         %ChannelCloseMutalTx{channel_id: id} ->
@@ -474,15 +470,18 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slashed, slash_tx, fee, nonce, pubkey, priv_key}, _from, state) do
-    data_tx = SignedTx.data_tx(slash_tx)
-
+  def handle_call(
+        {:slashed, %SignedTx{data: %DataTx{payload: payload} = slash_tx}, fee, nonce, pubkey,
+         priv_key},
+        _from,
+        state
+      ) do
     channel_id =
-      case DataTx.payload(data_tx) do
-        %ChannelCloseSoloTx{} = payload ->
+      case payload do
+        %ChannelCloseSoloTx{} ->
           ChannelCloseSoloTx.channel_id(payload)
 
-        %ChannelSlashTx{} = payload ->
+        %ChannelSlashTx{} ->
           ChannelSlashTx.channel_id(payload)
       end
 
@@ -508,14 +507,11 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:settled, settle_tx}, _from, state) do
-    %ChannelSettleTx{channel_id: channel_id} =
-      settle_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
+  def handle_call({:settled, %SignedTx{data: %DataTx{payload: payload}}}, _from, state) do
+    %ChannelSettleTx{channel_id: channel_id} = payload
 
     if Map.has_key?(state, channel_id) do
-      new_peer_state = ChannelStatePeer.settled(Map.get(state, channel_id))
+      new_peer_state = state |> Map.get(channel_id) |> ChannelStatePeer.settled()
       {:reply, :ok, Map.put(state, channel_id, new_peer_state)}
     else
       {:reply, :ok, state}
@@ -534,12 +530,12 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_info({:gproc_ps_event, event, %{info: info}}, state) do
+  def handle_info({:gproc_ps_event, event, %{info: %Block{txs: txs}}}, state) do
     case event do
       # info is a block
       :new_top_block ->
         spawn(fn ->
-          Enum.each(info.txs, fn tx -> new_tx_mined(tx) end)
+          Enum.each(txs, fn tx -> new_tx_mined(tx) end)
         end)
     end
 

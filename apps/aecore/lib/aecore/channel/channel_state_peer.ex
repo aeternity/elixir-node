@@ -80,14 +80,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Creates a channel from an open transaction assuming no transactions in channel.
   """
   @spec from_open(SignedTx.t(), non_neg_integer(), Channel.role()) :: ChannelStatePeer.t()
-  def from_open(open_tx, channel_reserve, role) do
-    data_tx = SignedTx.data_tx(open_tx)
-
-    %ChannelCreateTx{
-      initiator_amount: initiator_amount,
-      responder_amount: responder_amount
-    } = DataTx.payload(data_tx)
-
+  def from_open(
+        %SignedTx{
+          data:
+            %DataTx{
+              payload: %ChannelCreateTx{
+                initiator_amount: initiator_amount,
+                responder_amount: responder_amount
+              }
+            } = data_tx
+        },
+        channel_reserve,
+        role
+      ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     id = ChannelStateOnChain.id(data_tx)
 
@@ -111,8 +116,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           Channel.role()
         ) :: ChannelPeerState.t()
-  def from_open_and_state(open_tx, state, channel_reserve, role) do
-    data_tx = SignedTx.data_tx(open_tx)
+  def from_open_and_state(%SignedTx{data: data_tx}, state, channel_reserve, role) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
     from_state(state, initiator_pubkey, responder_pubkey, channel_reserve, role)
   end
@@ -224,17 +228,18 @@ defmodule Aecore.Channel.ChannelStatePeer do
             responder_amount: correct_responder_amount
           }
         } = peer_state,
-        half_signed_open_tx,
+        %SignedTx{
+          data:
+            %DataTx{
+              nonce: nonce,
+              payload: %ChannelCreateTx{
+                initiator_amount: tx_initiator_amount,
+                responder_amount: tx_responder_amount
+              }
+            } = data_tx
+        } = half_signed_open_tx,
         priv_key
       ) do
-    data_tx = SignedTx.data_tx(half_signed_open_tx)
-    nonce = DataTx.nonce(data_tx)
-
-    %ChannelCreateTx{
-      initiator_amount: tx_initiator_amount,
-      responder_amount: tx_responder_amount
-    } = DataTx.payload(data_tx)
-
     id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     cond do
@@ -314,8 +319,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def transfer(%ChannelStatePeer{} = state, _amount, _priv_key) do
-    {:error, "#{__MODULE__}: Can't transfer now; channel state is #{state.fsm_state}"}
+  def transfer(%ChannelStatePeer{fsm_state: fsm_state}, _amount, _priv_key) do
+    {:error, "#{__MODULE__}: Can't transfer now; channel state is #{fsm_state}"}
   end
 
   @doc """
@@ -336,35 +341,37 @@ defmodule Aecore.Channel.ChannelStatePeer do
     recv_full_state(peer_state, new_state)
   end
 
-  def recv_state(%ChannelStatePeer{} = state) do
-    {:error, "#{__MODULE__}: Can't receive state now; channel state is #{state.fsm_state}"}
+  def recv_state(%ChannelStatePeer{fsm_state: fsm_state}) do
+    {:error, "#{__MODULE__}: Can't receive state now; channel state is #{fsm_state}"}
   end
 
   defp recv_full_state(
          %ChannelStatePeer{
            highest_signed_state: highest_signed_state,
-           highest_state: highest_state
+           highest_state: highest_state,
+           initiator_pubkey: initiator_pubkey,
+           responder_pubkey: responder_pubkey
          } = peer_state,
          new_state
        ) do
-    pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
+    pubkeys = {initiator_pubkey, responder_pubkey}
 
-    with :ok <-
-           ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
-      if highest_state.sequence <= new_state.sequence do
-        {:ok,
-         %ChannelStatePeer{
-           peer_state
-           | fsm_state: :open,
-             highest_signed_state: new_state,
-             highest_state: new_state
-         }, nil}
-      else
-        {:ok, %ChannelStatePeer{peer_state | highest_signed_state: new_state}, nil}
-      end
-    else
-      {:error, reason} ->
-        {:error, reason}
+    case ChannelStateOffChain.validate_full_update(highest_signed_state, new_state, pubkeys) do
+      :ok ->
+        if highest_state.sequence <= new_state.sequence do
+          {:ok,
+           %ChannelStatePeer{
+             peer_state
+             | fsm_state: :open,
+               highest_signed_state: new_state,
+               highest_state: new_state
+           }, nil}
+        else
+          {:ok, %ChannelStatePeer{peer_state | highest_signed_state: new_state}, nil}
+        end
+
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -375,30 +382,31 @@ defmodule Aecore.Channel.ChannelStatePeer do
        ) do
     pubkeys = {peer_state.initiator_pubkey, peer_state.responder_pubkey}
 
-    with :ok <-
-           ChannelStateOffChain.validate_half_update(
-             prev_state,
-             new_state,
-             pubkeys,
-             peer_state.role
-           ) do
-      signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
+    case ChannelStateOffChain.validate_half_update(
+           prev_state,
+           new_state,
+           pubkeys,
+           peer_state.role
+         ) do
+      :ok ->
+        signed_new_state = ChannelStateOffChain.sign(new_state, peer_state.role, priv_key)
 
-      new_peer_state = %ChannelStatePeer{
-        peer_state
-        | highest_signed_state: signed_new_state,
-          highest_state: signed_new_state
-      }
+        new_peer_state = %ChannelStatePeer{
+          peer_state
+          | highest_signed_state: signed_new_state,
+            highest_state: signed_new_state
+        }
 
-      with :ok <- ChannelStateOffChain.validate(signed_new_state, pubkeys) do
-        {:ok, new_peer_state, signed_new_state}
-      else
-        {:error, reason} ->
-          {:error, reason}
-      end
-    else
-      {:error, reason} ->
-        {:error, reason}
+        case ChannelStateOffChain.validate(signed_new_state, pubkeys) do
+          :ok ->
+            {:ok, new_peer_state, signed_new_state}
+
+          {:error, _} = error ->
+            error
+        end
+
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -454,8 +462,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def close(%ChannelStatePeer{} = state) do
-    {:error, "#{__MODULE__}: Can't close now; channel state is #{state.fsm_state}"}
+  def close(%ChannelStatePeer{fsm_state: fsm_state}) do
+    {:error, "#{__MODULE__}: Can't close now; channel state is #{fsm_state}"}
   end
 
   @doc """
@@ -478,18 +486,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
             responder_amount: correct_responder_amount
           }
         } = peer_state,
-        half_signed_tx,
+        %SignedTx{
+          data:
+            %DataTx{
+              payload: %ChannelCloseMutalTx{
+                channel_id: tx_id,
+                initiator_amount: tx_initiator_amount,
+                responder_amount: tx_responder_amount
+              }
+            } = data_tx
+        } = half_signed_tx,
         {fee_initiator, fee_responder},
         priv_key
       ) do
-    data_tx = SignedTx.data_tx(half_signed_tx)
-
-    %ChannelCloseMutalTx{
-      channel_id: tx_id,
-      initiator_amount: tx_initiator_amount,
-      responder_amount: tx_responder_amount
-    } = DataTx.payload(data_tx)
-
     cond do
       DataTx.senders(data_tx) != [initiator_pubkey, responder_pubkey] ->
         {:error, "#{__MODULE__}: Invalid senders"}
@@ -513,8 +522,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def recv_close_tx(%ChannelStatePeer{} = state, _, {_, _}, _) do
-    {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{state.fsm_state}"}
+  def recv_close_tx(%ChannelStatePeer{fsm_state: fsm_state}, _, {_, _}, _) do
+    {:error, "#{__MODULE__}: Can't receive close tx now; channel state is #{fsm_state}"}
   end
 
   @doc """
@@ -587,17 +596,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
             sequence: best_sequence
           }
         } = peer_state,
-        slash_tx,
+        %DataTx{payload: payload},
         fee,
         nonce,
         pubkey,
         privkey
       ) do
-    payload =
-      slash_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
-
     slash_sequence =
       case payload do
         %ChannelCloseSoloTx{} ->

@@ -49,8 +49,8 @@ defmodule Aecore.Naming.NameCommitment do
         hash_name = Hash.hash(normalized_name)
         {:ok, Hash.hash(hash_name <> <<name_salt::integer-size(256)>>)}
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -69,12 +69,12 @@ defmodule Aecore.Naming.NameCommitment do
   end
 
   @spec encode_to_list(NameCommitment.t()) :: list()
-  def encode_to_list(%NameCommitment{} = name_commitment) do
+  def encode_to_list(%NameCommitment{owner: owner, created: created, expires: expires}) do
     [
       :binary.encode_unsigned(@version),
-      name_commitment.owner,
-      :binary.encode_unsigned(name_commitment.created),
-      :binary.encode_unsigned(name_commitment.expires)
+      owner,
+      :binary.encode_unsigned(created),
+      :binary.encode_unsigned(expires)
     ]
   end
 

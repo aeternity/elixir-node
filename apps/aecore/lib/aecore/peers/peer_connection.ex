@@ -9,7 +9,6 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.Genesis
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Sync.Sync
@@ -811,7 +810,7 @@ defmodule Aecore.Peers.PeerConnection do
            true <- Chain.hash_is_in_main_chain?(target_hash) do
         header_hashes =
           Enum.map(headers, fn header ->
-            <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
+            <<header.height::64, Header.hash(header)::binary>>
           end)
 
         {:ok, Enum.reverse(header_hashes)}

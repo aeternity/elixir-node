@@ -89,12 +89,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %NameUpdateTx{
-          hash: identified_hash,
+          hash: %Identifier{value: hash},
           expire_by: _expire_by,
           client_ttl: client_ttl,
           pointers: _pointers
         },
-        data_tx
+        %DataTx{} = data_tx
       ) do
     senders = DataTx.senders(data_tx)
 
@@ -102,9 +102,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
       client_ttl > GovernanceConstants.client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
 
-      byte_size(identified_hash.value) != Hash.get_hash_bytes_size() ->
-        {:error,
-         "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(identified_hash.value))}"}
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
+        {:error, "#{__MODULE__}: Hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -131,19 +130,24 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         accounts,
         naming_state,
         block_height,
-        %NameUpdateTx{} = tx,
+        %NameUpdateTx{
+          hash: %Identifier{value: hash},
+          pointers: pointers,
+          expire_by: expire_by,
+          client_ttl: client_ttl
+        },
         _data_tx
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
+    claim_to_update = NamingStateTree.get(naming_state, hash)
 
     claim = %{
       claim_to_update
-      | pointers: tx.pointers,
-        expires: tx.client_ttl + block_height,
-        client_ttl: tx.expire_by
+      | pointers: pointers,
+        expires: client_ttl + block_height,
+        client_ttl: expire_by
     }
 
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
+    updated_naming_chainstate = NamingStateTree.put(naming_state, hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -162,13 +166,12 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         accounts,
         naming_state,
         block_height,
-        tx,
-        data_tx
+        %NameUpdateTx{hash: %Identifier{value: hash}, expire_by: expire_by},
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash.value)
+    claim = NamingStateTree.get(naming_state, hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -181,9 +184,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         {:error,
          "#{__MODULE__}: Sender is not claim owner: #{inspect(claim.owner)}, #{inspect(sender)}"}
 
-      tx.expire_by <= block_height ->
+      expire_by <= block_height ->
         {:error,
-         "#{__MODULE__}: Name expiration is now or in the past: #{inspect(tx.expire_by)}, #{
+         "#{__MODULE__}: Name expiration is now or in the past: #{inspect(expire_by)}, #{
            inspect(block_height)
          }"}
 
@@ -207,24 +210,30 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%NameUpdateTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(
+        %NameUpdateTx{
+          hash: hash,
+          client_ttl: client_ttl,
+          pointers: pointers,
+          expire_by: expire_by
+        },
+        %DataTx{senders: [sender], nonce: nonce, fee: fee, ttl: ttl}
+      ) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      Identifier.encode_to_binary(tx.hash),
-      :binary.encode_unsigned(tx.client_ttl),
-      tx.pointers,
-      :binary.encode_unsigned(tx.expire_by),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      Identifier.encode_to_binary(hash),
+      :binary.encode_unsigned(client_ttl),
+      pointers,
+      :binary.encode_unsigned(expire_by),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

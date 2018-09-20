@@ -13,7 +13,7 @@ defmodule Aecore.Naming.NameUtil do
   def normalized_namehash(name) do
     case normalize_and_validate_name(name) do
       {:ok, normalized_name} -> {:ok, namehash(normalized_name)}
-      err -> err
+      {:error, _} = error -> error
     end
   end
 
@@ -23,7 +23,7 @@ defmodule Aecore.Naming.NameUtil do
 
     case validate_normalized_name(normalized_name) do
       :ok -> {:ok, normalized_name}
-      {:error, reason} -> {:error, reason}
+      {:error, _} = error -> error
     end
   end
 
@@ -55,9 +55,13 @@ defmodule Aecore.Naming.NameUtil do
     allowed_registrar =
       GovernanceConstants.name_registrars()
       |> Enum.any?(fn registrar ->
+        name_split_count =
+          name
+          |> String.split(GovernanceConstants.split_name_symbol())
+          |> Enum.count()
+
         String.ends_with?(name, registrar) &&
-          Enum.count(String.split(name, GovernanceConstants.split_name_symbol())) ==
-            GovernanceConstants.name_split_check()
+          name_split_count == GovernanceConstants.name_split_check()
       end)
 
     if allowed_registrar do

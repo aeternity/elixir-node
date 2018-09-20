@@ -29,7 +29,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
 
-  @typedoc "Structure of a transaction that may be added to be blockchain"
+  @typedoc "Structure of a transaction that may be added to the blockchain"
   @type payload ::
           Aecore.Account.Tx.SpendTx.t()
           | Aecore.Oracle.Tx.OracleExtendTx.t()
@@ -154,11 +154,6 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec fee(DataTx.t()) :: non_neg_integer()
-  def fee(%DataTx{fee: fee}) do
-    fee
-  end
-
   @spec senders(DataTx.t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
     for sender <- senders do
@@ -171,26 +166,11 @@ defmodule Aecore.Tx.DataTx do
     List.first(senders(tx))
   end
 
-  @spec nonce(DataTx.t()) :: non_neg_integer()
-  def nonce(%DataTx{nonce: nonce}) do
-    nonce
-  end
-
   @spec ttl(DataTx.t()) :: non_neg_integer()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
       0 -> :max_ttl
       ttl -> ttl
-    end
-  end
-
-  @spec payload(DataTx.t()) :: map()
-  def payload(%DataTx{payload: payload, type: type}) do
-    if Enum.member?(valid_types(), type) do
-      payload
-    else
-      Logger.error("Call to DataTx payload with invalid transaction type")
-      %{}
     end
   end
 
@@ -233,9 +213,8 @@ defmodule Aecore.Tx.DataTx do
   """
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx) do
+  def process_chainstate(chainstate, block_height, %DataTx{payload: payload, fee: fee} = tx) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
@@ -248,27 +227,30 @@ defmodule Aecore.Tx.DataTx do
         end)
       end
 
-    with {:ok, {new_accounts_state, new_tx_type_state}} <-
-           nonce_accounts_state
-           |> tx.type.deduct_fee(block_height, payload, tx, fee)
-           |> tx.type.process_chainstate(
-             tx_type_state,
-             block_height,
-             payload,
-             tx
-           ) do
-      new_chainstate =
-        if tx.type.get_chain_state_name() == :accounts do
-          %{chainstate | accounts: new_accounts_state}
-        else
-          %{chainstate | accounts: new_accounts_state}
-          |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
-        end
+    processed_states =
+      nonce_accounts_state
+      |> tx.type.deduct_fee(block_height, payload, tx, fee)
+      |> tx.type.process_chainstate(
+        tx_type_state,
+        block_height,
+        payload,
+        tx
+      )
 
-      {:ok, new_chainstate}
-    else
-      err ->
-        err
+    case processed_states do
+      {:ok, {new_accounts_state, new_tx_type_state}} ->
+        new_chainstate =
+          if tx.type.get_chain_state_name() == :accounts do
+            %{chainstate | accounts: new_accounts_state}
+          else
+            %{chainstate | accounts: new_accounts_state}
+            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+          end
+
+        {:ok, new_chainstate}
+
+      error ->
+        error
     end
   end
 
@@ -277,20 +259,21 @@ defmodule Aecore.Tx.DataTx do
   """
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx) do
+  def preprocess_check(chainstate, block_height, %DataTx{payload: payload, type: type} = tx) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
-    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
-      if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
-        :ok
-      else
-        {:error, "#{__MODULE__}: Too small nonce"}
-      end
-    else
-      err ->
-        err
+    case type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
+      :ok ->
+        if main_sender(tx) == nil ||
+             Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
+          :ok
+        else
+          {:error, "#{__MODULE__}: Too small nonce"}
+        end
+
+      error ->
+        error
     end
   end
 
