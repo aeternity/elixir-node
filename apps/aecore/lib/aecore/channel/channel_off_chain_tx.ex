@@ -51,7 +51,6 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     :signatures
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   require Logger

@@ -60,7 +60,6 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :channel_reserve
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
   @spec create(

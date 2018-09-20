@@ -74,7 +74,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     sequence: 1
   ]
 
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels

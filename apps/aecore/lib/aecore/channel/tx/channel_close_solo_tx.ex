@@ -45,7 +45,6 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   - state - the (final) state with which the channel is going to be closed
   """
   defstruct [:channel_id, :offchain_tx, :poi]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels

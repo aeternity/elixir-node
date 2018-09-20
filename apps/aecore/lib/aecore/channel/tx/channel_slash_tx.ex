@@ -45,7 +45,6 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   - state - the state with which the channel is going to be slashed
   """
   defstruct [:channel_id, :offchain_tx, :poi]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
