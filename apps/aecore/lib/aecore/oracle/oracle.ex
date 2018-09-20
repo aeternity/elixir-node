@@ -56,8 +56,7 @@ defmodule Aecore.Oracle.Oracle do
         query_fee,
         fee,
         ttl,
-        tx_ttl \\ 0,
-        {pubkey, privkey} \\ {nil, nil}
+        tx_ttl \\ 0
       ) do
     payload = %{
       query_format: query_format,
@@ -66,12 +65,7 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
-    {pubkey, privkey} =
-      if privkey == nil do
-        Keys.keypair(:sign)
-      else
-        {pubkey, privkey}
-      end
+    {pubkey, privkey} = Keys.keypair(:sign)
 
     tx_data =
       DataTx.init(
