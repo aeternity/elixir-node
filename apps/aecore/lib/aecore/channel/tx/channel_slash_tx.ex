@@ -5,11 +5,11 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Channel.Tx.ChannelSlashTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
-  alias Aecore.Channel.Tx.ChannelSlashTx
-  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -43,7 +43,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: SpendTx.t()
-  def init(%{state: state} = _payload) do
+  def init(%{state: state}) do
     %ChannelSlashTx{state: ChannelStateOffChain.init(state)}
   end
 
@@ -62,7 +62,10 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}}, data_tx) do
+  def validate(
+        %ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}},
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -122,10 +125,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         channels,
         _block_height,
         %ChannelSlashTx{state: state},
-        data_tx
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
 
     channel = ChannelStateTree.get(channels, state.channel_id)
 
@@ -151,24 +153,29 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   @spec encode_to_list(ChannelSlashTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
+  def encode_to_list(%ChannelSlashTx{state: state}, %DataTx{
+        senders: senders,
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      ChannelStateOffChain.encode_to_list(tx.state),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_list_to_binary(senders),
+      :binary.encode_unsigned(nonce),
+      ChannelStateOffChain.encode_to_list(state),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

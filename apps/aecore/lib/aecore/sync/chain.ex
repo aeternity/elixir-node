@@ -2,11 +2,9 @@ defmodule Aecore.Sync.Chain do
   @moduledoc """
   Implements all the functions regarding the Chain structure of the SyncTask
   """
-
-  alias Aecore.Chain.Header
-  alias Aecore.Chain.BlockValidation
-  alias Aecore.Sync.Task
   alias __MODULE__
+  alias Aecore.Chain.Header
+  alias Aecore.Sync.Task
 
   @type peer_id :: pid()
   @type chain_id :: reference()
@@ -29,7 +27,7 @@ defmodule Aecore.Sync.Chain do
 
   @spec init_chain(chain_id(), peer_id(), Header.t()) :: Chain.t()
   def init_chain(chain_id, peers, %Header{height: height, prev_hash: prev_hash} = header) do
-    header_hash = BlockValidation.block_header_hash(header)
+    header_hash = Header.hash(header)
 
     prev_header_data =
       if height > 1 do

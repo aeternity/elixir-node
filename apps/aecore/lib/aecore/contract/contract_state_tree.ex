@@ -21,10 +21,13 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
-  def insert_contract(contract_tree, %Contract{id: id, store: store} = contract) do
+  def insert_contract(
+        contract_tree,
+        %Contract{id: %Identifier{value: value}, store: store} = contract
+      ) do
     serialized = Serialization.rlp_encode(contract)
 
-    new_contract_tree = PatriciaMerkleTree.insert(contract_tree, id.value, serialized)
+    new_contract_tree = PatriciaMerkleTree.insert(contract_tree, value, serialized)
     store_id = Contract.store_id(contract)
 
     Enum.reduce(store, new_contract_tree, fn {s_key, s_value}, tree_acc ->
@@ -34,10 +37,13 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec enter_contract(contracts_state(), Contract.t()) :: contracts_state()
-  def enter_contract(contract_tree, %Contract{id: id, store: store} = contract) do
+  def enter_contract(
+        contract_tree,
+        %Contract{id: %Identifier{value: value}, store: store} = contract
+      ) do
     serialized = Serialization.rlp_encode(contract)
 
-    updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, id.value, serialized)
+    updated_contract_tree = PatriciaMerkleTree.enter(contract_tree, value, serialized)
     store_id = Contract.store_id(contract)
     old_contract_store = get_store(store_id, contract_tree)
 

@@ -4,7 +4,7 @@ defmodule Aecore.Chain.Genesis do
   """
 
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header}
+  alias Aecore.Chain.{Block, Chainstate, Header}
   alias Aecore.Governance.GovernanceConstants, as: Governance
   alias Aecore.Governance.GenesisConstants, as: GenesisConstants
 
@@ -14,7 +14,7 @@ defmodule Aecore.Chain.Genesis do
 
   @spec hash() :: binary()
   def hash do
-    BlockValidation.block_header_hash(header())
+    Header.hash(header())
   end
 
   @spec block() :: Block.t()
@@ -64,7 +64,7 @@ defmodule Aecore.Chain.Genesis do
 
     case File.read(preset_accounts_file) do
       {:ok, _} = file -> file
-      {:error, reason} -> {:error, reason}
+      {:error, _} = error -> error
     end
   end
 

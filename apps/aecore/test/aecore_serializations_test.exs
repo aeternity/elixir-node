@@ -63,19 +63,19 @@ defmodule AecoreSerializationTest do
   @tag :rlp_test
   test "Oracle interaction objects serialization" do
     oracle_query_chainstate = create_data(OracleQuery, :elixir)
-    serialized_orc_obj = OracleQuery.rlp_encode(oracle_query_chainstate)
-    {:ok, deserialized_orc_obj} = OracleQuery.rlp_decode(serialized_orc_obj)
+    serialized_oracle_obj = OracleQuery.rlp_encode(oracle_query_chainstate)
+    {:ok, deserialized_oracle_obj} = OracleQuery.rlp_decode(serialized_oracle_obj)
 
-    assert oracle_query_chainstate == deserialized_orc_obj
+    assert oracle_query_chainstate == deserialized_oracle_obj
   end
 
   @tag :rlp_test
   test "Registered oracles serialization" do
     oracle_registered_chainstate = create_data(Oracle, :elixir)
-    serialized_orc = Oracle.rlp_encode(oracle_registered_chainstate)
-    {:ok, deserialized_orc} = Oracle.rlp_decode(serialized_orc)
+    serialized_oracle = Oracle.rlp_encode(oracle_registered_chainstate)
+    {:ok, deserialized_oracle} = Oracle.rlp_decode(serialized_oracle)
 
-    assert oracle_registered_chainstate == deserialized_orc
+    assert oracle_registered_chainstate == deserialized_oracle
   end
 
   @tag :rlp_test
