@@ -142,7 +142,6 @@ defmodule Aetestframework.Worker do
   def update_balance(node_name) do
     send_command(node_name, "{pubkey, _} = Keys.keypair :sign")
     send_command(node_name, "{:acc_balance, Account.balance(Chain.chain_state().accounts, pubkey)}")
-    send_command(node_name, "")
   end
 
   # oracles
@@ -170,8 +169,6 @@ defmodule Aetestframework.Worker do
       node_name,
       "{:respond_oracle_int_obj, Base.encode32(encoded_int_object)}"
     )
-
-    send_command(node_name, " ")
   end
 
   @doc """
@@ -271,15 +268,12 @@ defmodule Aetestframework.Worker do
       node_name,
       "{:respond_top_block, Base.encode32(encoded_block)}"
     )
-
-    send_command(node_name, " ")
   end
 
   @spec update_node_top_block_hash(String.t()) :: :ok | :unknown_node
   def update_node_top_block_hash(node_name) do
     send_command(node_name, "block_hash = Chain.top_block_hash() |> :erlang.term_to_binary()")
     send_command(node_name, "{:respond_hash, Base.encode32(block_hash)}")
-    send_command(node_name, " ")
   end
 
   # naming txs
@@ -443,7 +437,10 @@ defmodule Aetestframework.Worker do
             balance_str = Regex.run(~r/\d+/, result)
             {balance, _} = balance_str |> List.first() |> Integer.parse()
             new_state = put_in(state[node].miner_balance, balance)
-            {:reply, result, new_state}
+            {:reply, :ok, new_state}
+
+          result =~ "Interactive Elixir" ->
+            {:reply, :node_started, state}
 
           result =~ "error" ->
             Logger.error(fn -> result end)
@@ -576,7 +573,7 @@ defmodule Aetestframework.Worker do
         # Running the new elixir-node using Port
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
         process_port = Port.open({:spawn, "make iex-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: path])
-        receive_result(state)
+        {:reply, :node_started, state} = receive_result(state)
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
