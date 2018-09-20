@@ -9,7 +9,6 @@ defmodule Aecore.Peers.PeerConnection do
   alias Aecore.Chain.Genesis
   alias Aecore.Chain.Header
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor
   alias Aecore.Sync.Sync
@@ -242,13 +241,13 @@ defmodule Aecore.Peers.PeerConnection do
             {:noreply, new_state}
 
           {:error, reason} ->
-            Logger.debug(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
+            Logger.error(fn -> ":enoise.connect ERROR: #{inspect(reason)}" end)
             :gen_tcp.close(socket)
             {:stop, :normal, state}
         end
 
       {:error, reason} ->
-        Logger.debug(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
+        Logger.error(fn -> ":get_tcp.connect ERROR: #{inspect(reason)}" end)
         {:stop, :normal, state}
     end
   end
@@ -811,7 +810,7 @@ defmodule Aecore.Peers.PeerConnection do
            true <- Chain.hash_is_in_main_chain?(target_hash) do
         header_hashes =
           Enum.map(headers, fn header ->
-            <<header.height::64, BlockValidation.block_header_hash(header)::binary>>
+            <<header.height::64, Header.hash(header)::binary>>
           end)
 
         {:ok, Enum.reverse(header_hashes)}

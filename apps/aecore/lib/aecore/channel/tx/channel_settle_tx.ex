@@ -6,11 +6,10 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @behaviour Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSettleTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aecore.Chain.Identifier
 
   require Logger
 
@@ -39,21 +38,20 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   - channel_id: channel id
   """
   defstruct [:channel_id]
-  use ExConstructor
 
-  @spec get_chain_state_name :: :channels
+  @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
-  def init(%{channel_id: channel_id} = _payload) do
+  def init(%{channel_id: channel_id}) do
     %ChannelSettleTx{channel_id: channel_id}
   end
 
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelSettleTx{}, data_tx) do
+  @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  def validate(%ChannelSettleTx{}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     if length(senders) != 1 do
@@ -67,7 +65,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Changes the account state (balance) of both parties and closes the channel (drops the channel object)
   """
   @spec process_chainstate(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
@@ -100,20 +98,19 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Validates the transaction with state considered
   """
   @spec preprocess_check(
-          Chainstate.account(),
+          Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
           DataTx.t()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
         block_height,
         %ChannelSettleTx{channel_id: channel_id},
-        data_tx
+        %DataTx{fee: fee} = data_tx
       ) do
-    fee = DataTx.fee(data_tx)
     sender = DataTx.main_sender(data_tx)
 
     channel = ChannelStateTree.get(channels, channel_id)
@@ -139,27 +136,34 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelSettleTx.t(),
           DataTx.t(),
           non_neg_integer()
-        ) :: Chainstate.account()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+        ) :: Chainstate.accounts()
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
-  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
+  @spec encode_to_list(ChannelSettleTx.t(), DataTx.t()) :: list()
+  def encode_to_list(%ChannelSettleTx{channel_id: channel_id}, %DataTx{
+        senders: senders,
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.channel_id,
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_list_to_binary(senders),
+      :binary.encode_unsigned(nonce),
+      channel_id,
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [encoded_senders, nonce, channel_id, fee, ttl]) do
     payload = %ChannelSettleTx{channel_id: channel_id}
 

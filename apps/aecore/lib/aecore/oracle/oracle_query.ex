@@ -5,11 +5,14 @@ defmodule Aecore.Oracle.OracleQuery do
 
   alias Aecore.Oracle.OracleQuery
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Structure of the Query type"
   @type t :: %OracleQuery{
           expires: integer(),
           fee: integer(),
@@ -37,34 +40,46 @@ defmodule Aecore.Oracle.OracleQuery do
   use ExConstructor
   use Aecore.Util.Serializable
 
-  def encode_to_list(%OracleQuery{} = oracle_query) do
-    has_response =
-      case oracle_query.has_response do
-        true -> <<1>>
-        false -> <<0>>
+  @spec encode_to_list(OracleQuery.t()) :: list()
+  def encode_to_list(%OracleQuery{
+        sender_address: sender_address,
+        has_response: has_response,
+        sender_nonce: sender_nonce,
+        response: response,
+        oracle_address: oracle_address,
+        query: query,
+        expires: expires,
+        response_ttl: response_ttl,
+        fee: fee
+      }) do
+    serialized_has_response =
+      if has_response do
+        <<1>>
+      else
+        <<0>>
       end
 
-    response =
-      case oracle_query.response do
+    serialized_response =
+      case response do
         :undefined -> <<>>
-        %DataTx{type: OracleResponseTx} = data -> data
-        _ -> oracle_query.response
+        _ -> response
       end
 
     [
       :binary.encode_unsigned(@version),
-      oracle_query.sender_address,
-      :binary.encode_unsigned(oracle_query.sender_nonce),
-      oracle_query.oracle_address,
-      oracle_query.query,
-      has_response,
-      response,
-      :binary.encode_unsigned(oracle_query.expires),
-      :binary.encode_unsigned(oracle_query.response_ttl),
-      :binary.encode_unsigned(oracle_query.fee)
+      sender_address,
+      :binary.encode_unsigned(sender_nonce),
+      oracle_address,
+      query,
+      serialized_has_response,
+      serialized_response,
+      :binary.encode_unsigned(expires),
+      :binary.encode_unsigned(response_ttl),
+      :binary.encode_unsigned(fee)
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, OracleQuery.t()} | {:error, reason()}
   def decode_from_list(@version, [
         sender_address,
         sender_nonce,

@@ -44,7 +44,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(
@@ -79,7 +79,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(

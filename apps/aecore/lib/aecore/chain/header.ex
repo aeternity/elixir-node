@@ -4,8 +4,9 @@ defmodule Aecore.Chain.Header do
   """
 
   alias Aecore.Chain.Header
-  alias Aeutil.Bits
+  alias Aeutil.{Hash, Bits}
   alias Aecore.Keys
+  alias Aeutil.Bits
 
   @header_version_size 64
   @header_height_size 64
@@ -21,6 +22,7 @@ defmodule Aecore.Chain.Header do
   @pow_element_size_bits @pow_element_size * 8
   @pow_length 42
 
+  @typedoc "Structure of the Header Transaction type"
   @type t :: %Header{
           height: non_neg_integer(),
           prev_hash: binary(),
@@ -59,7 +61,6 @@ defmodule Aecore.Chain.Header do
           Keys.pubkey(),
           non_neg_integer()
         ) :: Header.t()
-
   def create(height, prev_hash, txs_hash, root_hash, target, nonce, time, miner, version) do
     %Header{
       height: height,
@@ -74,10 +75,19 @@ defmodule Aecore.Chain.Header do
     }
   end
 
+  @spec hash(Header.t()) :: binary()
+  def hash(%Header{} = header) do
+    header
+    |> encode_to_binary()
+    |> Hash.hash()
+  end
+
+  @spec base58c_encode(binary()) :: String.t()
   def base58c_encode(bin) do
     Bits.encode58c("bh", bin)
   end
 
+  @spec base58c_decode(String.t()) :: binary() | {:error, String.t()}
   def base58c_decode(<<"bh$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -87,18 +97,29 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec encode_to_binary(Header.t()) :: binary()
-  def encode_to_binary(%Header{} = header) do
+  def encode_to_binary(%Header{
+        version: version,
+        height: height,
+        prev_hash: prev_hash,
+        txs_hash: txs_hash,
+        root_hash: root_hash,
+        target: target,
+        pow_evidence: pow_evidence,
+        nonce: nonce,
+        time: time,
+        miner: miner
+      }) do
     <<
-      header.version::@header_version_size,
-      header.height::@header_height_size,
-      header.prev_hash::binary-size(@header_hash_size),
-      header.txs_hash::binary-size(@txs_hash_size),
-      header.root_hash::binary-size(@root_hash_size),
-      header.target::@header_target_size,
-      pow_to_binary(header.pow_evidence)::binary-size(@pow_size),
-      header.nonce::@header_nonce_size,
-      header.time::@header_time_size,
-      header.miner::binary-size(@pubkey_size)
+      version::@header_version_size,
+      height::@header_height_size,
+      prev_hash::binary-size(@header_hash_size),
+      txs_hash::binary-size(@txs_hash_size),
+      root_hash::binary-size(@root_hash_size),
+      target::@header_target_size,
+      pow_to_binary(pow_evidence)::binary-size(@pow_size),
+      nonce::@header_nonce_size,
+      time::@header_time_size,
+      miner::binary-size(@pubkey_size)
     >>
   end
 
@@ -159,7 +180,7 @@ defmodule Aecore.Chain.Header do
     end
   end
 
-  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()}
+  @spec binary_to_pow(binary()) :: {:ok, list()} | {:error, atom()} | {:error, String.t()}
   def binary_to_pow(<<pow_bin_list::binary-size(@pow_size)>>) do
     deserialize_pow(pow_bin_list, [])
   end
@@ -169,8 +190,7 @@ defmodule Aecore.Chain.Header do
   end
 
   @spec serialize_pow(binary(), binary()) :: binary()
-  defp serialize_pow(pow, acc) when pow != <<>> do
-    <<elem::binary-size(@pow_element_size), rest::binary>> = pow
+  defp serialize_pow(<<elem::binary-size(@pow_element_size), rest::binary>>, acc) do
     serialize_pow(rest, acc <> elem)
   end
 
