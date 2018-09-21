@@ -5,7 +5,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Pow.Cuckoo
+  alias Aecore.Pow.Pow
   alias Aecore.Tx.SignedTx
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
@@ -152,7 +152,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec is_target_met?(Header.t()) :: true | false
   defp is_target_met?(%Header{} = header) do
     server_pid = self()
-    work = fn -> Cuckoo.verify(header) end
+    work = fn -> Pow.verify(header) end
 
     Task.start(fn ->
       send(server_pid, {:worker_reply, self(), work.()})

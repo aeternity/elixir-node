@@ -7,3 +7,5 @@ config :aecore, :pow,
   max_target_change: 1
 
 config :aecore, :miner, resumed_by_default: true
+
+config :aecore, :pow_module, Aecore.Pow.Cuckoo
