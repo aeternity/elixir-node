@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   Module defining the ChannelSlash transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.DataTx
@@ -33,7 +33,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           offchain_tx: ChannelOffChainTx.t(),
           poi: Poi.t()
         }
@@ -45,7 +45,6 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   - state - the state with which the channel is going to be slashed
   """
   defstruct [:channel_id, :offchain_tx, :poi]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
@@ -53,7 +52,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec init(payload()) :: SpendTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{
-      channel_id: Identifier.create_identity(channel_id, :channel),
+      channel_id: channel_id,
       offchain_tx: offchain_tx,
       poi: poi
     }
@@ -70,7 +69,18 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     {:error, "#{__MODULE__}: Can't slash without an offchain tx"}
   end
 
-  def validate(%ChannelSlashTx{channel_id: internal_channel_id, offchain_tx: %ChannelOffChainTx{channel_id: offchain_tx_channel_id, sequence: sequence, state_hash: state_hash}, poi: poi}, data_tx) do
+  def validate(
+        %ChannelSlashTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            sequence: sequence,
+            state_hash: state_hash
+          },
+          poi: poi
+        },
+        data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
@@ -175,11 +185,12 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @spec encode_to_list(ChannelSlashTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
-    main_sender = Identifier.create_identity(DataTx.main_sender(datatx), :account)
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(tx.channel_id),
-      Identifier.encode_to_binary(main_sender),
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.encode_to_binary(sender),
       ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(datatx.ttl),
@@ -188,34 +199,34 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     ]
   end
 
-  defp decode_channel_identifier_to_binary(encoded_identifier) do
-  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
-    value
-  end
-
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
-  def decode_from_list(@version, [channel_id, encoded_sender, payload, rlp_encoded_poi, ttl, fee, nonce]) do
-    case ChannelOffChainTx.decode_from_payload(payload) do
-      {:ok, offchain_tx} ->
-        case Serialization.rlp_decode_only(rlp_encoded_poi, Poi) do
-          {:ok, poi} ->
-            DataTx.init_binary(
-              ChannelSlashTx,
-              %{
-                channel_id: decode_channel_identifier_to_binary(channel_id),
-                offchain_tx: offchain_tx,
-                poi: poi
-              },
-              [encoded_sender],
-              :binary.decode_unsigned(fee),
-              :binary.decode_unsigned(nonce),
-              :binary.decode_unsigned(ttl)
-            )
-          {:error, _} = err ->
-            err
-        end
-      {:error, _} = err ->
-        err
+  def decode_from_list(@version, [
+        encoded_channel_id,
+        encoded_sender,
+        payload,
+        rlp_encoded_poi,
+        ttl,
+        fee,
+        nonce
+      ]) do
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
+         {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
+      DataTx.init_binary(
+        ChannelSlashTx,
+        %ChannelSlashTx{
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
+        },
+        [encoded_sender],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error ->
+        error
     end
   end
 

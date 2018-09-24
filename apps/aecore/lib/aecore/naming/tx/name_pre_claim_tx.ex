@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Module defining the NamePreClaim transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}

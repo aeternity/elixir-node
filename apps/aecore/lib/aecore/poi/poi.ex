@@ -50,7 +50,7 @@ defmodule Aecore.Poi.Poi do
     :naming,
     :channels,
     :calls,
-    :contracts,
+    :contracts
   ]
 
   use ExConstructor
@@ -61,17 +61,17 @@ defmodule Aecore.Poi.Poi do
   """
   @spec construct(Chainstate.t()) :: Poi.t()
   def construct(%Chainstate{
-    accounts: accounts,
-    oracles: %{oracle_tree: oracles},
-    naming: naming,
-    channels: channels
-  }) do
+        accounts: accounts,
+        oracles: %{oracle_tree: oracles},
+        naming: naming,
+        channels: channels
+      }) do
     %Poi{
-      accounts:  PoiProof.construct(accounts),
-      oracles:   PoiProof.construct(oracles),
-      naming:    PoiProof.construct(naming),
-      channels:  PoiProof.construct(channels),
-      calls:     PoiProof.construct_empty(),
+      accounts: PoiProof.construct(accounts),
+      oracles: PoiProof.construct(oracles),
+      naming: PoiProof.construct(naming),
+      channels: PoiProof.construct(channels),
+      calls: PoiProof.construct_empty(),
       contracts: PoiProof.construct_empty()
     }
   end
@@ -81,13 +81,13 @@ defmodule Aecore.Poi.Poi do
   """
   @spec calculate_root_hash(Poi.t()) :: binary()
   def calculate_root_hash(%Poi{
-    accounts: accounts_proof,
-    oracles: oracles_proof,
-    naming: naming_proof,
-    channels: channels_proof,
-    calls: calls_proof,
-    contracts: contracts_proof
-  }) do
+        accounts: accounts_proof,
+        oracles: oracles_proof,
+        naming: naming_proof,
+        channels: channels_proof,
+        calls: calls_proof,
+        contracts: contracts_proof
+      }) do
     [
       accounts_proof,
       oracles_proof,
@@ -97,26 +97,34 @@ defmodule Aecore.Poi.Poi do
       contracts_proof
     ]
     |> Enum.reduce(<<@protocol_version::size(@protocol_version_field_size)>>, fn proof, acc ->
-      acc <> PoiProof.root_hash(proof) end)
+      acc <> PoiProof.root_hash(proof)
+    end)
     |> Hash.hash()
   end
 
   @doc """
   Adds an entry for the specified key to the Poi
   """
-  @spec add_to_poi(tree_type(), Keys.pubkey(), Chainstate.t(), Poi.t()) :: {:ok, Poi.t()} | {:error, :wrong_root_hash | :key_not_found | :not_yet_implemented}
-  def add_to_poi(:accounts, pub_key, %Chainstate{accounts: accounts}, %Poi{accounts: accounts_proof} = poi) do
+  @spec add_to_poi(tree_type(), Keys.pubkey(), Chainstate.t(), Poi.t()) ::
+          {:ok, Poi.t()} | {:error, :wrong_root_hash | :key_not_found | :not_yet_implemented}
+  def add_to_poi(
+        :accounts,
+        pub_key,
+        %Chainstate{accounts: accounts},
+        %Poi{accounts: accounts_proof} = poi
+      ) do
     case PoiProof.add_to_poi(accounts_proof, accounts, pub_key) do
       {:error, _} = err ->
         err
+
       {:ok, _, proof} ->
         {:ok, %Poi{poi | accounts: proof}}
     end
   end
 
-  #def add_to_poi(:contracts, _, _, _) do
+  # def add_to_poi(:contracts, _, _, _) do
   # Placeholder
-  #end
+  # end
 
   def add_to_poi(_, _, _, _) do
     # epoch currently only implemented accounts and contracts
@@ -131,19 +139,21 @@ defmodule Aecore.Poi.Poi do
     PoiProof.verify_poi_entry(accounts_proof, pub_key, Account.rlp_encode(account))
   end
 
-  #Placeholder
-  #def verify_poi(%Poi{contracts: contracts_proof}, %Contract{})
+  # Placeholder
+  # def verify_poi(%Poi{contracts: contracts_proof}, %Contract{})
 
   @doc """
   Lookups the entry associated with the given key in the Poi
   """
-  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) :: {:ok, Account.t()} | {:error, :key_not_found | String.t() | :not_yet_implemented}
+  @spec lookup_poi(tree_type(), Poi.t(), Keys.pubkey()) ::
+          {:ok, Account.t()} | {:error, :key_not_found | String.t() | :not_yet_implemented}
   def lookup_poi(:accounts, %Poi{accounts: accounts_proof}, pub_key) do
     case PoiProof.lookup_in_poi(accounts_proof, pub_key) do
       :error ->
         {:error, :key_not_present}
+
       {:ok, serialized_account} ->
-        #deserialization of wrong data sometimes throws an exception
+        # deserialization of wrong data sometimes throws an exception
         try do
           Account.rlp_decode(serialized_account)
         rescue
@@ -152,22 +162,24 @@ defmodule Aecore.Poi.Poi do
     end
   end
 
-  #Placeholder
-  #def lookup_poi(:contracts, _, _)
+  # Placeholder
+  # def lookup_poi(:contracts, _, _)
 
   def lookup_poi(_, _, _) do
-      # epoch currently only implemented accounts and contracts
-      {:error, :not_yet_implemented}
+    # epoch currently only implemented accounts and contracts
+    {:error, :not_yet_implemented}
   end
 
   @doc """
   Retrieves the balance for an account included in the Poi.
   """
-  @spec get_account_balance_from_poi(Poi.t(), Keys.pubkey()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  @spec get_account_balance_from_poi(Poi.t(), Keys.pubkey()) ::
+          {:ok, non_neg_integer()} | {:error, String.t()}
   def get_account_balance_from_poi(%Poi{} = poi, pubkey) do
     case Poi.lookup_poi(:accounts, poi, pubkey) do
       {:ok, account} ->
         {:ok, account.balance}
+
       {:error, _} = err ->
         err
     end
@@ -178,21 +190,25 @@ defmodule Aecore.Poi.Poi do
   """
   @spec encode_to_list(Poi.t()) :: list()
   def encode_to_list(%Poi{
-    accounts: accounts_proof,
-    oracles: oracles_proof,
-    naming: naming_proof,
-    channels: channels_proof,
-    calls: calls_proof,
-    contracts: contracts_proof
-  }) do
-    payload = Enum.map([
-      accounts_proof,
-      calls_proof,
-      channels_proof,
-      contracts_proof,
-      naming_proof,
-      oracles_proof
-    ], &PoiProof.encode_to_list/1)
+        accounts: accounts_proof,
+        oracles: oracles_proof,
+        naming: naming_proof,
+        channels: channels_proof,
+        calls: calls_proof,
+        contracts: contracts_proof
+      }) do
+    payload =
+      Enum.map(
+        [
+          accounts_proof,
+          calls_proof,
+          channels_proof,
+          contracts_proof,
+          naming_proof,
+          oracles_proof
+        ],
+        &PoiProof.encode_to_list/1
+      )
 
     [:binary.encode_unsigned(@version)] ++ payload
   end
@@ -202,27 +218,25 @@ defmodule Aecore.Poi.Poi do
   """
   @spec decode_from_list(non_neg_integer(), list()) :: Poi.t() | {:error, String.t()}
   def decode_from_list(@version, [
-      accounts,
-      calls,
-      channels,
-      contracts,
-      naming,
-      oracles
-    ]) do
+        accounts,
+        calls,
+        channels,
+        contracts,
+        naming,
+        oracles
+      ]) do
     {:ok,
-      %Poi{
-        accounts:  PoiProof.decode_from_list(accounts),
-        calls:     PoiProof.decode_from_list(calls),
-        channels:  PoiProof.decode_from_list(channels),
-        contracts: PoiProof.decode_from_list(contracts),
-        naming:    PoiProof.decode_from_list(naming),
-        oracles:   PoiProof.decode_from_list(oracles)
-      }
-    }
+     %Poi{
+       accounts: PoiProof.decode_from_list(accounts),
+       calls: PoiProof.decode_from_list(calls),
+       channels: PoiProof.decode_from_list(channels),
+       contracts: PoiProof.decode_from_list(contracts),
+       naming: PoiProof.decode_from_list(naming),
+       oracles: PoiProof.decode_from_list(oracles)
+     }}
   end
 
   def decode_from_list(_, _) do
     {:error, "#{__MODULE__} deserialization of POI failed"}
   end
-
 end

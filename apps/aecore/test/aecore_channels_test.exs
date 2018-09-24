@@ -35,7 +35,7 @@ defmodule AecoreChannelTest do
     %{public: pk1, secret: prk1} = :enacl.sign_keypair()
     %{public: pk2, secret: prk2} = :enacl.sign_keypair()
 
-    for _ <- 1..5, do: Miner.mine_sync_block_to_chain()
+    Miner.mine_sync_block_to_chain()
 
     {pubkey, privkey} = Keys.keypair(:sign)
 
@@ -103,14 +103,16 @@ defmodule AecoreChannelTest do
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
     assert_offchain_state(id, 100, 200, 2)
 
-    #prepare solo close but do not submit to pool
+    # prepare solo close but do not submit to pool
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
 
     perform_transfer(id, 170, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
     assert_offchain_state(id, 270, 30, 3)
 
     assert_custom_tx_succeeds(solo_close_tx)
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
 
     assert :ok == call_s1({:slashed, solo_close_tx, 10, 2, ctx.sk1})
 
@@ -152,6 +154,8 @@ defmodule AecoreChannelTest do
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
+    assert 150 == settle_tx.data.payload.initiator_amount
+    assert 150 == settle_tx.data.payload.responder_amount
     assert :ok == Pool.add_transaction(settle_tx)
 
     :ok = Miner.mine_sync_block_to_chain()
@@ -170,7 +174,8 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Slashing an active channel does not work. Solo closing an inactive channel does not work", ctx do
+  test "Slashing an active channel does not work. Solo closing an inactive channel does not work",
+       ctx do
     id = create_channel(ctx)
 
     solo_close_tx1 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
@@ -180,18 +185,24 @@ defmodule AecoreChannelTest do
 
     solo_close_tx2 = prepare_solo_close_tx(id, &call_s2/1, 15, 2, ctx.sk2)
 
-    #slashing an active channel fails
+    # slashing an active channel fails
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
     assert_custom_tx_fails(slash_tx)
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === true
 
-    #solo closing an active channel succeeds
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             true
+
+    # solo closing an active channel succeeds
     assert_custom_tx_succeeds(solo_close_tx1)
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
 
-    #solo closing an inactive channel fails
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
+
+    # solo closing an inactive channel fails
     assert_custom_tx_fails(solo_close_tx2)
-    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) === false
+
+    assert ChannelStateOnChain.active?(ChannelStateTree.get(Chain.chain_state().channels, id)) ===
+             false
   end
 
   @tag :channels
@@ -212,8 +223,12 @@ defmodule AecoreChannelTest do
 
     {:ok, imported_initiator_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :initiator)
     {:ok, imported_responder_state} = ChannelStatePeer.from_signed_tx_list(tx_list, :responder)
-    assert ChannelStatePeer.calculate_state_hash(initiator_state) === ChannelStatePeer.calculate_state_hash(imported_initiator_state)
-    assert ChannelStatePeer.calculate_state_hash(responder_state) === ChannelStatePeer.calculate_state_hash(imported_responder_state)
+
+    assert ChannelStatePeer.calculate_state_hash(initiator_state) ===
+             ChannelStatePeer.calculate_state_hash(imported_initiator_state)
+
+    assert ChannelStatePeer.calculate_state_hash(responder_state) ===
+             ChannelStatePeer.calculate_state_hash(imported_responder_state)
   end
 
   @tag :channels
@@ -225,14 +240,22 @@ defmodule AecoreChannelTest do
     [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
-    {:ok, settle_tx} = ChannelStatePeer.settle(%ChannelStatePeer{initiator_state | fsm_state: :closing}, 10, 3, ctx.sk1)
+
+    {:ok, settle_tx} =
+      ChannelStatePeer.settle(
+        %ChannelStatePeer{initiator_state | fsm_state: :closing},
+        10,
+        3,
+        ctx.sk1
+      )
+
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
 
     to_test = [channel_create_tx, solo_close_tx, slash_tx, settle_tx, close_tx]
 
     for tx <- to_test do
       serialized = Serialization.rlp_encode(tx)
-      {:ok, %SignedTx{} = deserialized_tx} = Serialization.rlp_decode_only(serialized, SignedTx)
+      {:ok, %SignedTx{} = deserialized_tx} = SignedTx.rlp_decode(serialized)
 
       assert SignedTx.hash_tx(deserialized_tx) === SignedTx.hash_tx(tx)
       assert deserialized_tx === tx
@@ -286,14 +309,19 @@ defmodule AecoreChannelTest do
     fsm_state
   end
 
-  defp perform_transfer(id, amount, initiator_fun, initiator_sk, responder_fun, responder_sk) when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and initiator_fun != responder_fun do
+  defp perform_transfer(id, amount, initiator_fun, initiator_sk, responder_fun, responder_sk)
+       when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and
+              initiator_fun != responder_fun do
     assert :open === get_fsm_state(id, initiator_fun)
     assert :open === get_fsm_state(id, responder_fun)
 
     {:ok, half_signed_transfer_tx} = initiator_fun.({:transfer, id, amount, initiator_sk})
     %ChannelOffChainTx{} = half_signed_transfer_tx
     assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
-    {:ok, fully_signed_transfer_tx} = responder_fun.({:receive_half_signed_tx, half_signed_transfer_tx, responder_sk})
+
+    {:ok, fully_signed_transfer_tx} =
+      responder_fun.({:receive_half_signed_tx, half_signed_transfer_tx, responder_sk})
+
     %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})

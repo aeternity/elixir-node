@@ -60,6 +60,8 @@ defmodule Aecore.Tx.DataTx do
           ttl: non_neg_integer()
         }
 
+  @nonce_size 256
+
   @doc """
   Definition of the DataTx structure
 
@@ -92,6 +94,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelSettleTx
     ]
   end
+
+  def nonce_size, do: @nonce_size
 
   @spec init(
           tx_types(),
@@ -194,12 +198,23 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @spec chainstate_senders?(DataTx.t()) :: boolean()
+  def chainstate_senders?(%DataTx{type: type}) do
+    type.chainstate_senders?()
+  end
+
+  @spec senders_from_chainstate(DataTx.t(), Chainstate.t()) :: list(binary())
+  def senders_from_chainstate(%DataTx{payload: payload, type: type}, chainstate) do
+    type.senders_from_chainstate(payload, chainstate)
+  end
+
   @doc """
   Validates the transaction without considering state
   """
   @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
   def validate(
         %DataTx{fee: fee, type: type, senders: senders} = tx,
+        # FIXME
         block_height \\ Chain.top_height()
       ) do
     cond do

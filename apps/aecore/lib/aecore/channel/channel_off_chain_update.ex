@@ -27,7 +27,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Callback for aplying the update to the offchain chainstate.
   """
-  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
+  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) ::
+              {:ok, Chainstate.t()} | error()
 
   @doc """
   Encodes the update to list of binaries. This callback is compatible with the Serializable behaviour.
@@ -60,7 +61,9 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
   def module_to_tag(ChannelWidthdrawUpdate), do: {:ok, 2}
-  def module_to_tag(module), do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
+
+  def module_to_tag(module),
+    do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}
 
   @doc """
   Encodes the given update to a list of binaries.
@@ -78,9 +81,11 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @spec from_list(list(binary())) :: update_types()
   def from_list([tag | rest]) do
     decoded_tag = :binary.decode_unsigned(tag)
+
     case tag_to_module(decoded_tag) do
       {:ok, module} ->
         module.decode_from_list(rest)
+
       {:error, _} = err ->
         err
     end
@@ -89,18 +94,24 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Updates the offchain chainstate acording to the specified update.
   """
-  @spec update_offchain_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
+  @spec update_offchain_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) ::
+          {:ok, Chainstate.t()} | error()
   def update_offchain_chainstate(chainstate, object, channel_reserve) do
     module = object.__struct__
     module.update_offchain_chainstate(chainstate, object, channel_reserve)
   end
 
-  #Function passed to Enum.reduce. Aplies the given update to the chainstate.
-  @spec apply_single_update_to_chainstate(update_types(), {:ok, Chainstate.t() | nil}, non_neg_integer()) :: {:ok, Chainstate.t()} | {:halt, error()}
+  # Function passed to Enum.reduce. Aplies the given update to the chainstate.
+  @spec apply_single_update_to_chainstate(
+          update_types(),
+          {:ok, Chainstate.t() | nil},
+          non_neg_integer()
+        ) :: {:ok, Chainstate.t()} | {:halt, error()}
   defp apply_single_update_to_chainstate(update, {:ok, chainstate}, channel_reserve) do
     case update_offchain_chainstate(chainstate, update, channel_reserve) do
       {:ok, _} = updated_chainstate ->
         {:cont, updated_chainstate}
+
       {:error, _} = err ->
         {:halt, err}
     end
@@ -109,16 +120,28 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Applies each update in a list of updates to the offchain chainstate. Breaks on the first encountered error.
   """
-  @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) :: {:ok, Chainstate.t()} | error()
+  @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) ::
+          {:ok, Chainstate.t()} | error()
   def apply_updates(chainstate, updates, channel_reserve) do
-    Enum.reduce_while(updates, {:ok, chainstate}, &apply_single_update_to_chainstate(&1, &2, channel_reserve))
+    Enum.reduce_while(
+      updates,
+      {:ok, chainstate},
+      &apply_single_update_to_chainstate(&1, &2, channel_reserve)
+    )
   end
 
-  @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) ::
+          Account.t() | no_return()
   def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
     if balance < channel_reserve do
-      throw {:error, "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{channel_reserve} tokens)"}
+      throw(
+        {:error,
+         "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{
+           channel_reserve
+         } tokens)"}
+      )
     end
+
     account
   end
 end

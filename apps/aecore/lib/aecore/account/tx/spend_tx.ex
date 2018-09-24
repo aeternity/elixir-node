@@ -3,7 +3,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Module defining the Spend transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx

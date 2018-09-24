@@ -3,13 +3,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Module defining the ChannelSettle transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
-  alias Aecore.Chain.Identifier
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
   alias Aecore.Chain.Identifier
 
@@ -19,7 +18,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @typedoc "Expected structure for the ChannelSettle Transaction"
   @type payload :: %{
-          channel_id: binary()
+          channel_id: binary(),
+          initiator_amount: non_neg_integer(),
+          responder_amount: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -30,7 +31,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
   @typedoc "Structure of the ChannelSettle Transaction type"
   @type t :: %ChannelSettleTx{
-          channel_id: Identifier.t()
+          channel_id: binary(),
+          initiator_amount: non_neg_integer(),
+          responder_amount: non_neg_integer()
         }
 
   @doc """
@@ -39,15 +42,24 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   # Parameters
   - channel_id: channel id
   """
-  defstruct [:channel_id]
-  use ExConstructor
+  defstruct [:channel_id, :initiator_amount, :responder_amount]
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
-  def init(%{channel_id: channel_id} = _payload) do
-    %ChannelSettleTx{channel_id: Identifier.create_identity(channel_id, :channel)}
+  def init(
+        %{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        } = _payload
+      ) do
+    %ChannelSettleTx{
+      channel_id: channel_id,
+      initiator_amount: initiator_amount,
+      responder_amount: responder_amount
+    }
   end
 
   @doc """
@@ -78,7 +90,11 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         accounts,
         channels,
         block_height,
-        %ChannelSettleTx{channel_id: channel_id},
+        %ChannelSettleTx{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
         _data_tx
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
@@ -86,10 +102,10 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
     new_accounts =
       accounts
       |> AccountStateTree.update(channel.initiator_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, channel.initiator_amount)
+        Account.apply_transfer!(acc, block_height, initiator_amount)
       end)
       |> AccountStateTree.update(channel.responder_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, channel.responder_amount)
+        Account.apply_transfer!(acc, block_height, responder_amount)
       end)
 
     new_channels = ChannelStateTree.delete(channels, channel_id)
@@ -111,7 +127,11 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
         accounts,
         channels,
         block_height,
-        %ChannelSettleTx{channel_id: channel_id},
+        %ChannelSettleTx{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
         data_tx
       ) do
     fee = DataTx.fee(data_tx)
@@ -128,6 +148,12 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
 
       !ChannelStateOnChain.settled?(channel, block_height) ->
         {:error, "#{__MODULE__}: Channel isn't settled"}
+
+      channel.initiator_amount != initiator_amount ->
+        {:error, "#{__MODULE__}: Wrong initiator amount"}
+
+      channel.responder_amount != responder_amount ->
+        {:error, "#{__MODULE__}: Wrong responder amount"}
 
       true ->
         :ok
@@ -151,34 +177,50 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @spec encode_to_list(ChannelSettleTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = datatx) do
+  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = data_tx) do
+    [sender] = data_tx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(tx.channel_id),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.encode_to_binary(sender),
+      :binary.encode_unsigned(tx.initiator_amount),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(data_tx.ttl),
+      :binary.encode_unsigned(data_tx.fee),
+      :binary.encode_unsigned(data_tx.nonce)
     ]
   end
 
-  defp decode_channel_identifier_to_binary(encoded_identifier) do
-  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
-    value
-  end
+  def decode_from_list(@version, [
+        encoded_channel_id,
+        encoded_sender,
+        initiator_amount,
+        responder_amount,
+        ttl,
+        fee,
+        nonce
+      ]) do
+    case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
+      {:ok, channel_id} ->
+        payload = %ChannelSettleTx{
+          channel_id: channel_id,
+          initiator_amount: :binary.decode_unsigned(initiator_amount),
+          responder_amount: :binary.decode_unsigned(responder_amount)
+        }
 
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
-  def decode_from_list(@version, [channel_id, encoded_senders, nonce, fee, ttl]) do
-    payload = %ChannelSettleTx{channel_id: decode_channel_identifier_to_binary(channel_id)}
+        DataTx.init_binary(
+          ChannelSettleTx,
+          payload,
+          [encoded_sender],
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
 
-    DataTx.init_binary(
-      ChannelSettleTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do

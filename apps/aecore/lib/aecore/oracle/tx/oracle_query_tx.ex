@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   Module defining the OracleQuery transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
 

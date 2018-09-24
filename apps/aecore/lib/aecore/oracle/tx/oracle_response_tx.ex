@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   Module defining the OracleResponse transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Account.{Account, AccountStateTree}

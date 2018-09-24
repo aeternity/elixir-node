@@ -12,6 +12,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   alias Aeutil.Hash
   alias Aecore.Keys
   alias Aeutil.Serialization
+  alias Aecore.Chain.Identifier
+  alias Aecore.Tx.DataTx
 
   @version 1
 
@@ -28,6 +30,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         }
 
   @type id :: binary()
+
+  @pubkey_size Keys.pubkey_size()
+  @nonce_size DataTx.nonce_size()
 
   @doc """
   Definition of State Channel OnChain structure
@@ -55,12 +60,26 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :channel_reserve
   ]
 
-  use ExConstructor
   use Aecore.Util.Serializable
 
-  @spec create(Keys.pubkey(), Keys.pubkey(), integer(), integer(), non_neg_integer(), non_neg_integer(), binary()) ::
-          ChannelStateOnChain.t()
-  def create(initiator_pubkey, responder_pubkey, initiator_amount, responder_amount, lock_period, channel_reserve, state_hash) do
+  @spec create(
+          Keys.pubkey(),
+          Keys.pubkey(),
+          integer(),
+          integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary()
+        ) :: ChannelStateOnChain.t()
+  def create(
+        initiator_pubkey,
+        responder_pubkey,
+        initiator_amount,
+        responder_amount,
+        lock_period,
+        channel_reserve,
+        state_hash
+      ) do
     %ChannelStateOnChain{
       initiator_pubkey: initiator_pubkey,
       responder_pubkey: responder_pubkey,
@@ -75,7 +94,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Generates a channel id from a ChannelCreateTx.
+  Generates the channel id from a ChannelCreateTx.
   """
   @spec id(DataTx.t()) :: id()
   def id(data_tx) do
@@ -85,13 +104,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @doc """
-  Generates a channel id from detail of ChannelCreateTx.
+  Generates the channel id from details of a ChannelCreateTx.
   """
   @spec id(Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
-    binary_data = initiator_pubkey <> <<nonce::size(64)>> <> responder_pubkey
+    binary_data = <<
+      initiator_pubkey::binary-size(@pubkey_size),
+      nonce::size(@nonce_size),
+      responder_pubkey::binary-size(@pubkey_size)
+    >>
 
-    Hash.hash_blake2b(binary_data)
+    Hash.hash(binary_data)
   end
 
   @spec amounts(ChannelStateOnChain.t()) :: {non_neg_integer(), non_neg_integer()}
@@ -140,9 +163,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         :empty,
         %Poi{} = poi
       ) do
-    with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <-
+           get_final_balances_from_poi(channel, poi) do
       cond do
-        #No payload is only allowed for SoloCloseTx
+        # No payload is only allowed for SoloCloseTx
         channel.slash_sequence != 0 ->
           {:error, "#{__MODULE__}: Channel already slashed"}
 
@@ -167,60 +191,76 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         %ChannelOffChainTx{} = offchain_tx,
-        %Poi{} = poi) do
-     with {:ok, poi_initiator_amount, poi_responder_amount} <- get_final_balances_from_poi(channel, poi) do
-       cond do
-         channel.slash_sequence >= offchain_tx.sequence ->
-           {:error, "#{__MODULE__}: Offchain state is too old"}
+        %Poi{} = poi
+      ) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <-
+           get_final_balances_from_poi(channel, poi) do
+      cond do
+        channel.slash_sequence >= offchain_tx.sequence ->
+          {:error, "#{__MODULE__}: Offchain state is too old"}
 
-         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
-           {:error, "#{__MODULE__}: Invalid state hash"}
+        offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
+          {:error, "#{__MODULE__}: Invalid state hash"}
 
-         poi_initiator_amount + poi_responder_amount !== channel.initiator_amount + channel.responder_amount ->
-           {:error, "#{__MODULE__}: Invalid total amount"}
+        poi_initiator_amount + poi_responder_amount !==
+            channel.initiator_amount + channel.responder_amount ->
+          {:error, "#{__MODULE__}: Invalid total amount"}
 
-         true ->
-           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
-       end
-     else
-       {:error, _} = err ->
-         err
-     end
+        true ->
+          ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
+      end
+    else
+      {:error, _} = err ->
+        err
+    end
   end
 
-  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) :: {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
+  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
+          {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
   defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
-      with {:ok, poi_initiator_amount} <- Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
-           {:ok, poi_responder_amount} <- Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
-        #Later we will need to factor in contracts
-        {:ok, poi_initiator_amount, poi_responder_amount}
-      else
-        {:error, _} ->
-          {:error, "#{__MODULE__}: Poi is missing an offchain account."}
-      end
+    with {:ok, poi_initiator_amount} <-
+           Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
+         {:ok, poi_responder_amount} <-
+           Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+      # Later we will need to factor in contracts
+      {:ok, poi_initiator_amount, poi_responder_amount}
+    else
+      {:error, _} ->
+        {:error, "#{__MODULE__}: Poi is missing an offchain account."}
+    end
   end
 
   @doc """
   Executes slashing on a channel. Slashing should be validated beforehand with validate_slashing.
   """
-  @spec apply_slashing(ChannelStateOnChain.t(), non_neg_integer(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
-          ChannelStateOnChain.t()
+  @spec apply_slashing(
+          ChannelStateOnChain.t(),
+          non_neg_integer(),
+          ChannelOffChainTx.t() | :empty,
+          Poi.t()
+        ) :: ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
     {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+
     %ChannelStateOnChain{
       channel
-      |
-        initiator_amount: initiator_amount,
+      | initiator_amount: initiator_amount,
         responder_amount: responder_amount,
         slash_close: block_height + channel.lock_period,
         slash_sequence: 0
     }
   end
 
-  def apply_slashing(%ChannelStateOnChain{} = channel, block_height, %ChannelOffChainTx{} = offchain_tx, %Poi{} = poi) do
+  def apply_slashing(
+        %ChannelStateOnChain{} = channel,
+        block_height,
+        %ChannelOffChainTx{} = offchain_tx,
+        %Poi{} = poi
+      ) do
     {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
     {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,
@@ -232,11 +272,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
   @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelStateOnChain{} = channel) do
+    total_amount = channel.initiator_amount + channel.responder_amount
+
     [
       :binary.encode_unsigned(@version),
-      channel.initiator_pubkey,
-      channel.responder_pubkey,
-      :binary.encode_unsigned(channel.initiator_amount + channel.responder_amount),
+      Identifier.create_encoded_to_binary(channel.initiator_pubkey, :account),
+      Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
+      :binary.encode_unsigned(total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
       :binary.encode_unsigned(channel.channel_reserve),
       channel.state_hash,
@@ -249,30 +291,39 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec decode_from_list(integer(), list()) ::
           {:ok, ChannelStateOnChain.t()} | {:error, String.t()}
   def decode_from_list(@version, [
-        initiator_pubkey,
-        responder_pubkey,
-        encoded_total_amount,
-        encoded_initiator_amount,
+        encoded_initiator_pubkey,
+        encoded_responder_pubkey,
+        total_amount,
+        initiator_amount,
         channel_reserve,
         state_hash,
         slash_sequence,
         lock_period,
         slash_close
       ]) do
-    initiator_amount = :binary.decode_unsigned(encoded_initiator_amount)
-    total_amount = :binary.decode_unsigned(encoded_total_amount)
-    {:ok,
-     %ChannelStateOnChain{
-       initiator_pubkey: initiator_pubkey,
-       responder_pubkey: responder_pubkey,
-       initiator_amount: initiator_amount,
-       responder_amount: total_amount - initiator_amount,
-       lock_period: :binary.decode_unsigned(lock_period),
-       slash_close: :binary.decode_unsigned(slash_close),
-       slash_sequence: :binary.decode_unsigned(slash_sequence),
-       state_hash: state_hash,
-       channel_reserve: :binary.decode_unsigned(channel_reserve)
-     }}
+    responder_amount =
+      :binary.decode_unsigned(total_amount) - :binary.decode_unsigned(initiator_amount)
+
+    with {:ok, initiator_pubkey} <-
+           Identifier.decode_from_binary_to_value(encoded_initiator_pubkey, :account),
+         {:ok, responder_pubkey} <-
+           Identifier.decode_from_binary_to_value(encoded_responder_pubkey, :account) do
+      {:ok,
+       %ChannelStateOnChain{
+         initiator_pubkey: initiator_pubkey,
+         responder_pubkey: responder_pubkey,
+         initiator_amount: :binary.decode_unsigned(initiator_amount),
+         responder_amount: responder_amount,
+         lock_period: :binary.decode_unsigned(lock_period),
+         slash_close: :binary.decode_unsigned(slash_close),
+         slash_sequence: :binary.decode_unsigned(slash_sequence),
+         state_hash: state_hash,
+         channel_reserve: :binary.decode_unsigned(channel_reserve)
+       }}
+    else
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do
