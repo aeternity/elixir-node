@@ -3,6 +3,7 @@ defmodule Aecore.Contract.Call do
   Module defining the structure of a contract call
   """
   alias Aecore.Contract.Call
+  alias Aecore.Contract.CallStateTree
   alias Aecore.Contract.Tx.ContractCallTx
   alias Aecore.Tx.DataTx
   alias Aecore.Tx.SignedTx
@@ -201,5 +202,10 @@ defmodule Aecore.Contract.Call do
     binary = <<caller_address::binary, caller_nonce::size(@nonce_size), contract_address::binary>>
 
     Hash.hash(binary)
+  end
+
+  @spec reset_calls(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def reset_calls(chainstate, block_height) do
+    CallStateTree.prune(chainstate, block_height)
   end
 end
