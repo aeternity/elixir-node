@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   Module defining the OracleExtend transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Account.AccountStateTree

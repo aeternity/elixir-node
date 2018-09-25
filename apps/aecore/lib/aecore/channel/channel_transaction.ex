@@ -3,7 +3,7 @@ defmodule Aecore.Channel.ChannelTransaction do
     Behaviour specifying the necessary functions which any onchain/offchain transaction modifying the offchain chainstate must implement.
   """
 
-  alias Aecore.Channel.ChannelOffChainUpdate
+  alias Aecore.Channel.ChannelOffchainUpdate
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Channel.ChannelOffChainTx
@@ -14,8 +14,8 @@ defmodule Aecore.Channel.ChannelTransaction do
   @type channel_tx ::
           Aecore.Channel.ChannelOffChainTx
           | Aecore.Channel.Tx.ChannelCreateTx
-          #| Aecore.Channel.Tx.ChannelWidhdrawTx
-          #| Aecore.Channel.Tx.ChannelDepositTx
+  # | Aecore.Channel.Tx.ChannelWidhdrawTx
+  # | Aecore.Channel.Tx.ChannelDepositTx
 
   @typedoc """
   Type of a signed channel transaction
@@ -23,10 +23,10 @@ defmodule Aecore.Channel.ChannelTransaction do
   @type signed_tx :: SignedTx.t() | ChannelOffChainTx.t()
 
   @allowed_onchain_tx [
-      Aecore.Channel.Tx.ChannelCreateTx
-      #Aecore.Channel.Tx.ChannelWidhdrawTx,
-      #Aecore.Channel.Tx.ChannelDepositTx
-    ]
+    Aecore.Channel.Tx.ChannelCreateTx
+    # Aecore.Channel.Tx.ChannelWidhdrawTx,
+    # Aecore.Channel.Tx.ChannelDepositTx
+  ]
 
   @typedoc """
   The type of errors returned by the functions in this module
@@ -36,72 +36,74 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of offchain updates to the offchain chainstate
   """
-  @callback offchain_updates(channel_tx()) :: list(ChannelOffChainUpdate.update_types())
+  @callback offchain_updates(channel_tx()) :: list(ChannelOffchainUpdate.update_types())
 
   @doc """
-  Preprocess checks for an incoming half signed transaction.
-  This callback should check if the transaction is not malicious
-  (for instance transfer updates should validate if the transfer is in the correct direction).
+  Helper for verifying signatures under a signed_tx() object.
+  If the function received a list of public keys then fails if the transaction was signed parties not included in the list.
+  If the function received a public key and the signature validates then the function succedes if the transaction was signed by other parties.
   """
-  @spec half_signed_preprocess_check(signed_tx(), map()) :: :ok | error()
-  def half_signed_preprocess_check(tx, opts) do
-      tx
-      |> offchain_updates
-      |> do_half_signed_preprocess_check(opts)
-  end
+  @spec verify_signatures_for_the_expected_parties(
+          signed_tx(),
+          list(Keys.pubkey()) | Keys.pubkey()
+        ) :: boolean()
+  def verify_signatures_for_the_expected_parties(
+        %SignedTx{data: %DataTx{type: type} = data} = tx,
+        pubkey_list
+      )
+      when type in @allowed_onchain_tx and is_list(pubkey_list) do
+    senders =
+      if DataTx.chainstate_senders?(data) do
+        pubkey_list
+      else
+        DataTx.senders(data)
+      end
 
-  @spec do_half_signed_preprocess_check(list(ChannelOffChainUpdate.update_types()), map()) :: :ok | error()
-  defp do_half_signed_preprocess_check([update | rest], opts) do
-    case ChannelOffChainUpdate.half_signed_preprocess_check(update, opts) do
-      :ok ->
-        do_half_signed_preprocess_check(rest, opts)
-      {:error, _} = err ->
-        err
+    cond do
+      # Check if the TX was send by the expected parties
+      length(senders) != length(pubkey_list) ->
+        false
+
+      Enum.reduce(senders, false, fn s, acc -> acc or s not in pubkey_list end) ->
+        false
+
+      true ->
+        # Make sure that the signatures are valid
+        SignedTx.signatures_valid?(tx, senders)
     end
   end
 
-  defp do_half_signed_preprocess_check([], _) do
-    :ok
+  def verify_signatures_for_the_expected_parties(
+        %SignedTx{data: %DataTx{type: type}} = tx,
+        pubkey
+      )
+      when type in @allowed_onchain_tx and is_binary(pubkey) do
+    SignedTx.signature_valid_for?(tx, pubkey)
   end
 
-  @doc """
-  Verifies if the provided signed transaction was signed by the provided pubkey.
-  Fails when the transaction was signed by more keys than expected.
-  """
-  @spec verify_half_signed_tx(signed_tx(), Keys.pubkey()) :: boolean()
-  def verify_half_signed_tx(%SignedTx{data: %DataTx{type: type} = data_tx, signatures: signatures} = tx, pubkey) when type in @allowed_onchain_tx do
-    senders = DataTx.senders(data_tx)
-
-    length(senders) == 2 and pubkey in senders and length(signatures) == 1 and SignedTx.signature_valid_for?(tx, pubkey)
+  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, [
+        initiator_pubkey,
+        responder_pubkey
+      ]) do
+    ChannelOffChainTx.verify_signatures(tx, {initiator_pubkey, responder_pubkey}) === :ok
   end
 
-  def verify_half_signed_tx(%ChannelOffChainTx{signatures: {_, <<>>}} = tx, pubkey) do
+  def verify_signatures_for_the_expected_parties(%ChannelOffChainTx{} = tx, pubkey)
+      when is_binary(pubkey) do
     ChannelOffChainTx.verify_signature_for_key(tx, pubkey)
   end
 
-  def verify_half_signed_tx(%ChannelOffChainTx{}, _) do
+  def verify_signatures_for_the_expected_parties(_, _) do
     false
-  end
-
-  @doc """
-  Verifies if the transaction was signed by both of the provided parties.
-  """
-  @spec verify_fully_signed_tx(signed_tx(), tuple()) :: boolean
-  def verify_fully_signed_tx(%SignedTx{data: %DataTx{type: type} = data_tx} = tx, {pubkey1, pubkey2}) when type in @allowed_onchain_tx do
-    senders = DataTx.senders(data_tx)
-
-    length(senders) == 2 and pubkey1 in senders and pubkey2 in senders and SignedTx.signatures_valid?(tx)
-  end
-
-  def verify_fully_signed_tx(%ChannelOffChainTx{} = tx, pubkeys) do
-    ChannelOffChainTx.verify_signatures(tx, pubkeys)
   end
 
   @doc """
   Helper function for signing a channel transaction
   """
-  @spec add_signature(signed_tx(), Keys.sign_priv_key()) :: {:ok, SignedTx.t() | ChannelOffChainTx.t()} | error()
-  def add_signature(%SignedTx{data: %DataTx{type: type}} = tx, privkey) when type in @allowed_onchain_tx do
+  @spec add_signature(signed_tx(), Keys.sign_priv_key()) ::
+          {:ok, SignedTx.t() | ChannelOffChainTx.t()} | error()
+  def add_signature(%SignedTx{data: %DataTx{type: type}} = tx, privkey)
+      when type in @allowed_onchain_tx do
     SignedTx.sign_tx(tx, privkey)
   end
 
@@ -150,7 +152,8 @@ defmodule Aecore.Channel.ChannelTransaction do
     false
   end
 
-  def requires_onchain_confirmation?(%SignedTx{data: %DataTx{type: type}}) when type in @allowed_onchain_tx do
+  def requires_onchain_confirmation?(%SignedTx{data: %DataTx{type: type}})
+      when type in @allowed_onchain_tx do
     true
   end
 
@@ -158,12 +161,14 @@ defmodule Aecore.Channel.ChannelTransaction do
   Sets the sequence of the offchain state after applying the channel transaction to the state channel
   """
   @spec set_sequence(channel_tx(), non_neg_integer()) :: channel_tx()
-  def set_sequence(%DataTx{type: type} = data_tx, _sequence) when type === Aecore.Channel.Tx.ChannelCreateTx do
+  def set_sequence(%DataTx{type: type} = data_tx, _sequence)
+      when type === Aecore.Channel.Tx.ChannelCreateTx do
     data_tx
   end
 
-  def set_sequence(%DataTx{type: type, payload: payload} = data_tx, sequence) when type in @allowed_onchain_tx and type !== Aecore.Channel.Tx.ChannelCreateTx do
-    #Maybe consider doing proper dispatching here?
+  def set_sequence(%DataTx{type: type, payload: payload} = data_tx, sequence)
+      when type in @allowed_onchain_tx and type !== Aecore.Channel.Tx.ChannelCreateTx do
+    # Maybe consider doing proper dispatching here?
     %DataTx{data_tx | payload: Map.put(payload, :sequence, sequence)}
   end
 
@@ -175,8 +180,9 @@ defmodule Aecore.Channel.ChannelTransaction do
   Sets the state hash of the offchain chainstate after the transaction is applied to the state channel
   """
   @spec set_state_hash(channel_tx(), binary()) :: channel_tx()
-  def set_state_hash(%DataTx{type: type, payload: payload} = data_tx, state_hash) when type in @allowed_onchain_tx do
-    #Maybe consider doing proper dispatching here?
+  def set_state_hash(%DataTx{type: type, payload: payload} = data_tx, state_hash)
+      when type in @allowed_onchain_tx do
+    # Maybe consider doing proper dispatching here?
     %DataTx{data_tx | payload: Map.put(payload, :state_hash, state_hash)}
   end
 

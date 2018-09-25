@@ -5,13 +5,12 @@ defmodule Aecore.Channel.ChannelStateTree do
   alias Aecore.Channel.ChannelStateOnChain
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
-  alias Aecore.Chain.Identifier
 
   @type channel_state :: Trie.t()
 
   @type t :: channel_state()
 
-  @type id :: Identifier.t() | ChannelStateOnChain.id()
+  @type id :: ChannelStateOnChain.id()
 
   @type hash :: binary()
 
@@ -23,12 +22,12 @@ defmodule Aecore.Channel.ChannelStateTree do
   @spec put(channel_state(), id(), ChannelSteteOnChain.t()) :: channel_state()
   def put(tree, key, value) do
     serialized_account_state = ChannelStateOnChain.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, normalize_key(key), serialized_account_state)
+    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
   end
 
   @spec get(channel_state(), id()) :: :none | ChannelStateOnChain.t()
   def get(tree, key) do
-    case PatriciaMerkleTree.lookup(tree, normalize_key(key)) do
+    case PatriciaMerkleTree.lookup(tree, key) do
       :none ->
         :none
 
@@ -40,7 +39,7 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec delete(channel_state(), id()) :: channel_state()
   def delete(tree, key) do
-    PatriciaMerkleTree.delete(tree, normalize_key(key))
+    PatriciaMerkleTree.delete(tree, key)
   end
 
   @spec update!(
@@ -60,20 +59,11 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec has_key?(channel_state(), id()) :: boolean()
   def has_key?(tree, key) do
-    PatriciaMerkleTree.lookup(tree, normalize_key(key)) != :none
+    PatriciaMerkleTree.lookup(tree, key) != :none
   end
 
   @spec root_hash(channel_state()) :: hash()
   def root_hash(tree) do
     PatriciaMerkleTree.root_hash(tree)
-  end
-
-  @spec normalize_key(id()) :: ChannelStateOnChain.id()
-  def normalize_key(%Identifier{type: :channel, value: key}) do
-    key
-  end
-
-  def normalize_key(key) when is_binary(key) do
-    key
   end
 end

@@ -47,7 +47,7 @@ defmodule Aecore.Poi.PoiPersistence do
     GenServer.call(__MODULE__, {:put, key, value})
   end
 
-  #Server side
+  # Server side
 
   def handle_call({:finalize}, _from, state) do
     {:reply, state, %{}}

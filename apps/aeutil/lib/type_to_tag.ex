@@ -27,11 +27,17 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
   # Channel deposit transaction - 51
   # Channel withdraw transaction - 52
+  # Channel force progress transaction - 521
   def tag_to_type(53), do: {:ok, Aecore.Channel.Tx.ChannelCloseMutalTx}
   def tag_to_type(54), do: {:ok, Aecore.Channel.Tx.ChannelCloseSoloTx}
   def tag_to_type(55), do: {:ok, Aecore.Channel.Tx.ChannelSlashTx}
   def tag_to_type(56), do: {:ok, Aecore.Channel.Tx.ChannelSettleTx}
   def tag_to_type(57), do: {:ok, Aecore.Channel.ChannelOffChainTx}
+  # Channel off-chain update transfer - 570
+  # Channel off-chain update deposit - 571
+  # Channel off-chain update withdrawal - 572
+  # Channel off-chain update create contract - 573
+  # Channel off-chain update call contract - 574
   def tag_to_type(58), do: {:ok, Aecore.Channel.ChannelStateOnChain}
   # Channel snapshot transaction - 59
   def tag_to_type(60), do: {:ok, Aecore.Poi.Poi}
@@ -63,11 +69,17 @@ defmodule Aeutil.TypeToTag do
   def type_to_tag(Aecore.Channel.Tx.ChannelCreateTx), do: {:ok, 50}
   # Channel deposit transaction - 51
   # Channel withdraw transaction - 52
+  # Channel force progress transaction - 521
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseMutalTx), do: {:ok, 53}
   def type_to_tag(Aecore.Channel.Tx.ChannelCloseSoloTx), do: {:ok, 54}
   def type_to_tag(Aecore.Channel.Tx.ChannelSlashTx), do: {:ok, 55}
   def type_to_tag(Aecore.Channel.Tx.ChannelSettleTx), do: {:ok, 56}
   def type_to_tag(Aecore.Channel.ChannelOffChainTx), do: {:ok, 57}
+  # Channel off-chain update transfer - 570
+  # Channel off-chain update deposit - 571
+  # Channel off-chain update withdrawal - 572
+  # Channel off-chain update create contract - 573
+  # Channel off-chain update call contract - 574
   def type_to_tag(Aecore.Channel.ChannelStateOnChain), do: {:ok, 58}
   # Channel snapshot transaction - 59
   def type_to_tag(Aecore.Poi.Poi), do: {:ok, 60}

@@ -3,15 +3,14 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Module defining the ChannelCloseMutual transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
-  alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Chain.Identifier
+  alias Aecore.Channel.{ChannelStateTree, ChannelStateOnChain}
 
   require Logger
 
@@ -32,7 +31,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   @typedoc "Structure of the ChannelMutalClose Transaction type"
   @type t :: %ChannelCloseMutalTx{
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer()
         }
@@ -46,10 +45,25 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   - responder_amount: the amount that the second sender commits
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
-  use ExConstructor
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
+
+  def chainstate_senders?(), do: true
+
+  @doc """
+  ChannelCloseMutalTx senders are not passed with tx, but are supposed to be retrived from Chainstate. The senders have to be channel initiator and responder.
+  """
+  @spec senders_from_chainstate(ChannelMutalCloseTx.t(), Chainstate.t()) :: list(binary())
+  def senders_from_chainstate(%ChannelCloseMutalTx{channel_id: channel_id}, chainstate) do
+    case ChannelStateTree.get(chainstate.channels, channel_id) do
+      %ChannelStateOnChain{} = channel ->
+        [channel.initiator_pubkey, channel.responder_pubkey]
+
+      :none ->
+        []
+    end
+  end
 
   @spec init(payload()) :: ChannelCloseMutalTx.t()
   def init(
@@ -60,7 +74,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         } = _payload
       ) do
     %ChannelCloseMutalTx{
-      channel_id: Identifier.create_identity(channel_id, :channel),
+      channel_id: channel_id,
       initiator_amount: initiator_amount,
       responder_amount: responder_amount
     }
@@ -70,15 +84,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
+      tx.initiator_amount < 0 ->
+        {:error, "#{__MODULE__}: initiator_amount can't be negative"}
 
-      length(senders) != 2 ->
-        {:error, "#{__MODULE__}: Invalid from_accs size"}
+      tx.responder_amount < 0 ->
+        {:error, "#{__MODULE__}: responder_amount can't be negative"}
 
       true ->
         :ok
@@ -100,16 +112,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         channels,
         block_height,
         %ChannelCloseMutalTx{channel_id: channel_id} = tx,
-        data_tx
+        _data_tx
       ) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     new_accounts =
       accounts
-      |> AccountStateTree.update(initiator_pubkey, fn acc ->
+      |> AccountStateTree.update(channel.initiator_pubkey, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.initiator_amount)
       end)
-      |> AccountStateTree.update(responder_pubkey, fn acc ->
+      |> AccountStateTree.update(channel.responder_pubkey, fn acc ->
         Account.apply_transfer!(acc, block_height, tx.responder_amount)
       end)
 
@@ -178,45 +190,43 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      Identifier.encode_to_binary(tx.channel_id),
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       :binary.encode_unsigned(tx.initiator_amount),
       :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
-  defp decode_channel_identifier_to_binary(encoded_identifier) do
-  {:ok, %Identifier{type: :channel, value: value}} = Identifier.decode_from_binary(encoded_identifier)
-    value
-  end
-
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
-        encoded_senders,
-        nonce,
-        channel_id,
+        encoded_channel_id,
         initiator_amount,
         responder_amount,
+        ttl,
         fee,
-        ttl
+        nonce
       ]) do
-    payload = %{
-      channel_id: decode_channel_identifier_to_binary(channel_id),
-      initiator_amount: :binary.decode_unsigned(initiator_amount),
-      responder_amount: :binary.decode_unsigned(responder_amount)
-    }
+    case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
+      {:ok, channel_id} ->
+        payload = %ChannelCloseMutalTx{
+          channel_id: channel_id,
+          initiator_amount: :binary.decode_unsigned(initiator_amount),
+          responder_amount: :binary.decode_unsigned(responder_amount)
+        }
 
-    DataTx.init_binary(
-      ChannelCloseMutalTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+        DataTx.init_binary(
+          ChannelCloseMutalTx,
+          payload,
+          [],
+          :binary.decode_unsigned(fee),
+          :binary.decode_unsigned(nonce),
+          :binary.decode_unsigned(ttl)
+        )
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do

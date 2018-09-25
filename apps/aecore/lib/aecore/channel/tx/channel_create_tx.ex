@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   Aecore structure of ChannelCreateTx transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
   @behaviour Aecore.Channel.ChannelTransaction
 
   alias Aecore.Channel.Tx.ChannelCreateTx
@@ -38,14 +38,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @typedoc "Structure of the ChannelCreate Transaction type"
   @type t :: %ChannelCreateTx{
-          initiator: Identifier.t(),
+          initiator: binary(),
           initiator_amount: non_neg_integer(),
-          responder: Identifier.t(),
+          responder: binary(),
           responder_amount: non_neg_integer(),
           locktime: non_neg_integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer(),
-          channel_id: Identifier.t(),
+          channel_id: binary(),
           sequence: non_neg_integer()
         }
 
@@ -62,8 +62,17 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - channel_reserve: minimal ammount of tokens held by the initiator or responder
   - channel_id: id of the created channel - not sent to the blockchain but calculated here for convenience
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :locktime, :state_hash, :channel_reserve, :channel_id, sequence: 1]
-  use ExConstructor
+  defstruct [
+    :initiator,
+    :initiator_amount,
+    :responder,
+    :responder_amount,
+    :locktime,
+    :state_hash,
+    :channel_reserve,
+    :channel_id,
+    sequence: 1
+  ]
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
@@ -82,14 +91,14 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         } = _payload
       ) do
     %ChannelCreateTx{
-      initiator: Identifier.create_identity(initiator, :account),
+      initiator: initiator,
       initiator_amount: initiator_amount,
-      responder: Identifier.create_identity(responder, :account),
+      responder: responder,
       responder_amount: responder_amount,
       locktime: locktime,
       state_hash: state_hash,
       channel_reserve: channel_reserve,
-      channel_id: Identifier.create_identity(channel_id, :channel)
+      channel_id: channel_id
     }
   end
 
@@ -111,15 +120,15 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         {:error, "#{__MODULE__}: Invalid senders size"}
 
       tx.initiator_amount < tx.channel_reserve ->
-        {:error, "#{__MODULE__}: Initiator amount does not meet minimal deposit"}
+        {:error, "#{__MODULE__}: Initiator amount does not meet channel reserve"}
 
       tx.responder_amount < tx.channel_reserve ->
-        {:error, "#{__MODULE__}: Responder amount does not meet minimal deposit"}
+        {:error, "#{__MODULE__}: Responder amount does not meet channel reserve"}
 
       byte_size(tx.state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
 
-      #Should we recreate the offchain chainstate and make sure that the state hash is correct?
+      # Should we recreate the offchain chainstate and make sure that the state hash is correct?
 
       true ->
         :ok
@@ -232,9 +241,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_to_binary(tx.initiator),
+      Identifier.create_encoded_to_binary(tx.initiator, :account),
       :binary.encode_unsigned(tx.initiator_amount),
-      Identifier.encode_to_binary(tx.responder),
+      Identifier.create_encoded_to_binary(tx.responder, :account),
       :binary.encode_unsigned(tx.responder_amount),
       :binary.encode_unsigned(tx.channel_reserve),
       :binary.encode_unsigned(tx.locktime),
@@ -243,11 +252,6 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       tx.state_hash,
       :binary.encode_unsigned(datatx.nonce)
     ]
-  end
-
-  defp decode_account_identifier_to_binary(encoded_identifier) do
-  {:ok, %Identifier{type: :account, value: value}} = Identifier.decode_from_binary(encoded_identifier)
-    value
   end
 
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
@@ -263,28 +267,33 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         state_hash,
         encoded_nonce
       ]) do
-    initiator = decode_account_identifier_to_binary(encoded_initiator)
-    responder = decode_account_identifier_to_binary(encoded_responder)
     nonce = :binary.decode_unsigned(encoded_nonce)
-    payload = %ChannelCreateTx{
-      initiator: initiator,
-      initiator_amount: :binary.decode_unsigned(initiator_amount),
-      responder: responder,
-      responder_amount: :binary.decode_unsigned(responder_amount),
-      channel_reserve: :binary.decode_unsigned(channel_reserve),
-      locktime: :binary.decode_unsigned(locktime),
-      state_hash: state_hash,
-      channel_id: ChannelStateOnChain.id(initiator, responder, nonce)
-    }
 
-    DataTx.init_binary(
-      ChannelCreateTx,
-      payload,
-      [encoded_initiator, encoded_responder],
-      :binary.decode_unsigned(fee),
-      nonce,
-      :binary.decode_unsigned(ttl)
-    )
+    with {:ok, initiator} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
+         {:ok, responder} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
+      payload = %ChannelCreateTx{
+        initiator: initiator,
+        initiator_amount: :binary.decode_unsigned(initiator_amount),
+        responder: responder,
+        responder_amount: :binary.decode_unsigned(responder_amount),
+        channel_reserve: :binary.decode_unsigned(channel_reserve),
+        locktime: :binary.decode_unsigned(locktime),
+        state_hash: state_hash,
+        channel_id: ChannelStateOnChain.id(initiator, responder, nonce)
+      }
+
+      DataTx.init_binary(
+        ChannelCreateTx,
+        payload,
+        [encoded_initiator, encoded_responder],
+        :binary.decode_unsigned(fee),
+        nonce,
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do
