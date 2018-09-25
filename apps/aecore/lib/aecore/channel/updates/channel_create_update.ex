@@ -17,11 +17,13 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   Structure of the ChannelCreateUpdate type
   """
   @type t :: %ChannelCreateUpdate{
-          initiator: binary(),
-          initiator_amount: non_neg_integer(),
-          responder: binary(),
-          responder_amount: non_neg_integer()
-        }
+               initiator: binary(),
+               initiator_amount: non_neg_integer(),
+               responder: binary(),
+               responder_amount: non_neg_integer(),
+               channel_reserve: non_neg_integer(),
+               locktime: non_neg_integer()
+             }
 
   @typedoc """
   The type of errors returned by this module
@@ -36,24 +38,29 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   - initiator_amount: amount that the initiator account commits
   - responder: responder of the channel creation
   - responder_amount: amount that the responder account commits
+  - channel_reserve: the reserve of the channel
+  - locktime: amount of blocks before disputes are settled
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount]
+  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :channel_reserve, :locktime]
 
   @doc """
   Creates a ChannelCreateUpdate from a ChannelCreateTx
   """
   @spec new(ChannelCreateTx.t()) :: ChannelCreateUpdate.t()
   def new(%ChannelCreateTx{
-        initiator: initiator,
-        initiator_amount: initiator_amount,
-        responder: responder,
-        responder_amount: responder_amount
-      }) do
+    initiator: initiator,
+    initiator_amount: initiator_amount,
+    responder: responder,
+    responder_amount: responder_amount,
+    channel_reserve: channel_reserve,
+    locktime: locktime}) do
     %ChannelCreateUpdate{
       initiator: initiator,
       initiator_amount: initiator_amount,
       responder: responder,
-      responder_amount: responder_amount
+      responder_amount: responder_amount,
+      channel_reserve: channel_reserve,
+      locktime: locktime
     }
   end
 
@@ -124,5 +131,50 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
 
   def update_offchain_chainstate(%Chainstate{}, _) do
     {:error, "#{__MODULE__}: The create update may only be aplied once"}
+  end
+
+  @spec half_signed_preprocess_check(ChannelCreateUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(%ChannelCreateUpdate{
+          initiator: initiator,
+          initiator_amount: initiator_amount,
+          responder: responder,
+          responder_amount: responder_amount,
+          channel_reserve: channel_reserve,
+          locktime: locktime
+        },
+        %{
+          our_pubkey: correct_responder,
+          responder_amount: correct_responder_amount,
+          foreign_pubkey: correct_initiator,
+          initiator_amount: correct_initiator_amount,
+          channel_reserve: correct_channel_reserve,
+          locktime: correct_locktime
+        }) do
+    cond do
+      initiator != correct_initiator ->
+        {:error, "#{__MODULE__}: Wrong initiator"}
+
+      initiator_amount != correct_initiator_amount ->
+        {:error, "#{__MODULE__}: Wrong initiator amount"}
+
+      responder != correct_responder ->
+        {:error, "#{__MODULE__}: Wrong responder"}
+
+      responder_amount != correct_responder_amount ->
+        {:error, "#{__MODULE__}: Wrong responder amount"}
+
+      channel_reserve != correct_channel_reserve ->
+        {:error, "#{__MODULE__}: Wrong channel reserve"}
+
+      locktime != correct_locktime ->
+        {:error, "#{__MODULE__}: Wrong locktime}"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelCreateUpdate{}, _) do
+    {:error, "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
   end
 end

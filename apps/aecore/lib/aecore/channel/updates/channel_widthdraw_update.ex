@@ -83,4 +83,24 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
     {:error, _} = err ->
       err
   end
+
+  @spec half_signed_preprocess_check(ChannelWithdrawUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(%ChannelWithdrawUpdate{
+          to: to,
+        },
+        %{
+          foreign_pubkey: correct_to
+        }) do
+    cond do
+      to != correct_to ->
+        {:error, "#{__MODULE__}: Funds can be only widthdrawn from the update initiator's account"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelWithdrawUpdate{}, _) do
+    {:error, "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
 end

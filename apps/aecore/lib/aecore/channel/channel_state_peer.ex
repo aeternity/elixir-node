@@ -447,8 +447,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelStatePeer.t(),
           non_neg_integer(),
           non_neg_integer(),
+          non_neg_integer(),
           SignedTx.t(),
-          Wallet.privkey()
+          Keys.sign_priv_key()
         ) :: {:ok, ChannelStatePeer.t(), binary(), SignedTx.t()} | error()
   def sign_open(
         %ChannelStatePeer{
@@ -469,7 +470,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     case receive_half_signed_tx(
-      %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: Identifier.create_identity(raw_channel_id, :channel)},
+      %ChannelStatePeer{peer_state | fsm_state: :open, channel_id: channel_id},
       half_signed_create_tx, priv_key,
            %{
             initiator_amount: correct_initiator_amount,
@@ -813,7 +814,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec solo_close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
           {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def solo_close(
-        %ChannelStatePeer{mutually_signed_tx: [most_recent_tx | _]} = peer_state,
+        %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} = peer_state,
         fee,
         nonce,
         priv_key
@@ -824,7 +825,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       DataTx.init(
         ChannelCloseSoloTx,
         %{
-          channel_id: channel_id(peer_state),
+          channel_id: channel_id,
           poi: dispute_poi_for_latest_state(peer_state),
           offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
         },
@@ -843,7 +844,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec slash(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, ChannelStatePeer.t(), SignedTx.t()}
   def slash(
-        %ChannelStatePeer{mutually_signed_tx: [most_recent_tx | _]} = peer_state,
+        %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} = peer_state,
         fee,
         nonce,
         priv_key
@@ -854,7 +855,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       DataTx.init(
         ChannelSlashTx,
         %{
-          channel_id: channel_id(peer_state),
+          channel_id: channel_id,
           poi: dispute_poi_for_latest_state(peer_state),
           offchain_tx: ChannelTransaction.dispute_payload(most_recent_tx)
         },
@@ -918,6 +919,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           {:ok, SignedTx.t()} | error()
   def settle(
         %ChannelStatePeer{
+          channel_id: channel_id,
           fsm_state: :closing,
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey
@@ -933,7 +935,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       DataTx.init(
         ChannelSettleTx,
         %{
-          channel_id: channel_id(peer_state),
+          channel_id: channel_id,
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },

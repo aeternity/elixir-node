@@ -81,4 +81,24 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
     {:error, _} = err ->
       err
   end
+
+  @spec half_signed_preprocess_check(ChannelDepositUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(%ChannelDepositUpdate{
+          from: from,
+        },
+        %{
+          foreign_pubkey: correct_from
+        }) do
+    cond do
+      from != correct_from ->
+        {:error, "#{__MODULE__}: Funds can only be deposited to the update initiator's account"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelDepositUpdate{}, _) do
+    {:error, "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
 end

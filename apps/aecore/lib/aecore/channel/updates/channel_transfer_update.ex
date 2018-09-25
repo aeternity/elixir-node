@@ -106,4 +106,30 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
     {:error, _} = err ->
       err
   end
+
+  @spec half_signed_preprocess_check(ChannelTransferUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(%ChannelTransferUpdate{
+          from: from,
+          to: to
+        },
+        %{
+          our_pubkey: correct_to,
+          foreign_pubkey: correct_from
+        }) do
+    cond do
+      from != correct_from ->
+        {:error, "#{__MODULE__}: Transfer must originate from the initiator of the update"}
+
+      to != correct_to ->
+        {:error, "#{__MODULE__}: Transfer must be to the peer responding to the update"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelTransferUpdate{}, _) do
+    {:error, "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
+
 end
