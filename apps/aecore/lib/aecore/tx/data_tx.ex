@@ -4,7 +4,6 @@ defmodule Aecore.Tx.DataTx do
   """
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
   alias Aeutil.{Bits, Serialization, TypeToTag}
@@ -177,11 +176,8 @@ defmodule Aecore.Tx.DataTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def validate(
-        %DataTx{fee: fee, type: type, senders: senders} = tx,
-        block_height \\ Chain.top_height()
-      ) do
+  @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{fee: fee, type: type, senders: senders} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
         {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
@@ -195,12 +191,6 @@ defmodule Aecore.Tx.DataTx do
       DataTx.ttl(tx) < 0 ->
         {:error,
          "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
-
-      DataTx.ttl(tx) < block_height ->
-        {:error,
-         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
-           block_height
-         }"}
 
       true ->
         payload_validate(tx)
@@ -219,13 +209,9 @@ defmodule Aecore.Tx.DataTx do
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     nonce_accounts_state =
-      if Enum.empty?(tx.senders) do
-        accounts_state
-      else
-        AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
-          Account.apply_nonce!(acc, tx.nonce)
-        end)
-      end
+      AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
+        Account.apply_nonce!(acc, tx.nonce)
+      end)
 
     processed_states =
       nonce_accounts_state
@@ -263,17 +249,24 @@ defmodule Aecore.Tx.DataTx do
     accounts_state = chainstate.accounts
     tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
 
-    case type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx) do
-      :ok ->
-        if main_sender(tx) == nil ||
-             Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
-          :ok
-        else
-          {:error, "#{__MODULE__}: Too small nonce"}
-        end
+    tx_type_preprocess_check =
+      type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx)
 
-      error ->
-        error
+    cond do
+      tx_type_preprocess_check != :ok ->
+        tx_type_preprocess_check
+
+      DataTx.ttl(tx) < block_height ->
+        {:error,
+         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
+           block_height
+         }"}
+
+      Account.nonce(chainstate.accounts, main_sender(tx)) >= tx.nonce ->
+        {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
+
+      true ->
+        :ok
     end
   end
 
