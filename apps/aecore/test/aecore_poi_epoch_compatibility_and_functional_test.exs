@@ -223,11 +223,11 @@ defmodule PoiEpochCompabilityTest do
   defp test_poi(poi, included_accounts, excluded_accounts) do
     Enum.each(included_accounts, fn {pub_key, account} ->
       # test verification
-      assert true === Poi.verify_poi(poi, pub_key, account)
+      assert true === Poi.verify_poi?(poi, pub_key, account)
 
       # test verification of invalid accounts
       assert false ===
-               Poi.verify_poi(poi, pub_key, %Account{account | balance: account.balance + 1})
+               Poi.verify_poi?(poi, pub_key, %Account{account | balance: account.balance + 1})
 
       # test lookups
       {:ok, account_lookup} = Poi.lookup_poi(:accounts, poi, pub_key)
@@ -236,7 +236,7 @@ defmodule PoiEpochCompabilityTest do
 
     Enum.each(excluded_accounts, fn {pub_key, account} ->
       # test verification fails
-      assert false === Poi.verify_poi(poi, pub_key, account)
+      assert false === Poi.verify_poi?(poi, pub_key, account)
 
       # test lookups
       {:error, :key_not_present} = Poi.lookup_poi(:accounts, poi, pub_key)

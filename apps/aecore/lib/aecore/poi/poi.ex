@@ -134,8 +134,8 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Verifies whether the poi contains the given entry under the given key
   """
-  @spec verify_poi(Poi.t(), Keys.pubkey(), Account.t()) :: boolean()
-  def verify_poi(%Poi{accounts: accounts_proof}, pub_key, %Account{} = account) do
+  @spec verify_poi?(Poi.t(), Keys.pubkey(), Account.t()) :: boolean()
+  def verify_poi?(%Poi{accounts: accounts_proof}, pub_key, %Account{} = account) do
     PoiProof.verify_poi_entry(accounts_proof, pub_key, Account.rlp_encode(account))
   end
 

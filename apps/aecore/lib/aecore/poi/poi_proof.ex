@@ -198,7 +198,7 @@ defmodule Aecore.Poi.PoiProof do
   def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
     root_hash = internal_root_hash_to_patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
-    PatriciaMerkleTree.verify_proof(key, serialized_value, root_hash, proof_trie)
+    PatriciaMerkleTree.verify_proof?(key, serialized_value, root_hash, proof_trie)
   end
 
   @doc """

@@ -105,9 +105,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelTransaction.signed_tx() | ChannelTransaction.channel_tx(),
           ChannelStatePeer.t()
         ) :: :ok | error()
-  defp validate_tx(tx, %ChannelStatePeer{
-         channel_id: channel_id
-       } = peer_state) do
+  defp validate_tx(
+         tx,
+         %ChannelStatePeer{
+           channel_id: channel_id
+         } = peer_state
+       ) do
     cur_sequence = ChannelStatePeer.sequence(peer_state)
 
     tx_channel_id = ChannelTransaction.channel_id(tx)
@@ -231,10 +234,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelTransaction.channel_tx(),
           ChannelStatePeer.t()
         ) :: {:ok, binary()} | error()
-  def calculate_next_state_hash_for_new_tx(tx, %ChannelStatePeer{
-        channel_reserve: channel_reserve,
-        offchain_chainstate: offchain_chainstate
-      } = peer_state) do
+  def calculate_next_state_hash_for_new_tx(
+        tx,
+        %ChannelStatePeer{
+          channel_reserve: channel_reserve,
+          offchain_chainstate: offchain_chainstate
+        } = peer_state
+      ) do
     if ChannelTransaction.sequence(tx) <= ChannelStatePeer.sequence(peer_state) do
       {:error, "#{__MODULE__}: Invalid sequence in tx"}
     else
@@ -313,8 +319,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
          priv_key
        ) do
     cur_sequence = ChannelStatePeer.sequence(peer_state)
-    unvalidated_unsigned_tx =
-      ChannelTransaction.set_sequence(raw_unsigned_tx, cur_sequence + 1)
+    unvalidated_unsigned_tx = ChannelTransaction.set_sequence(raw_unsigned_tx, cur_sequence + 1)
 
     case calculate_next_state_hash_for_new_tx(unvalidated_unsigned_tx, peer_state) do
       {:ok, state_hash} ->

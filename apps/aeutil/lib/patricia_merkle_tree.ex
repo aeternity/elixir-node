@@ -95,8 +95,8 @@ defmodule Aeutil.PatriciaMerkleTree do
   Verify if value is present in the proof trie for the provided key.
   The key represents the path in the proof trie.
   """
-  @spec verify_proof(Trie.key(), Trie.value(), binary(), Trie.t()) :: boolean
-  def verify_proof(key, value, root_hash, proof) do
+  @spec verify_proof?(Trie.key(), Trie.value(), binary(), Trie.t()) :: boolean
+  def verify_proof?(key, value, root_hash, proof) do
     case Proof.verify_proof(key, value, root_hash, proof) do
       :ok ->
         true
