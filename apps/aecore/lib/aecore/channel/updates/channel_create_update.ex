@@ -80,7 +80,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   """
   @spec decode_from_list(list(binary())) :: error()
   def decode_from_list(_) do
-    {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
+    raise {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
   end
 
   @doc """
@@ -88,7 +88,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   """
   @spec encode_to_list(ChannelCreateUpdate.t()) :: error()
   def encode_to_list(_) do
-    {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
+    raise {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
   end
 
   @doc """
