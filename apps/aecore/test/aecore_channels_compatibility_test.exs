@@ -8,12 +8,17 @@ defmodule AecoreChannelCompatibilityTest do
     ChannelStateTree
   }
 
+  alias Aecore.Channel.Worker, as: Channels
+
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
     ChannelSettleTx
   }
 
   alias Aecore.Chain.Chainstate
+
+  @s1_name {:global, :Channels_S1}
+  @s2_name {:global, :Channels_S2}
 
   setup do
     pk_initiator =
@@ -45,6 +50,11 @@ defmodule AecoreChannelCompatibilityTest do
       |> chainable_calculate_validate_chain_state([], 5, pk_responder)
       |> chainable_calculate_validate_chain_state([], 6, pk_responder)
 
+    GenServer.start_link(Channels, %{}, name: @s1_name)
+    GenServer.start_link(Channels, %{}, name: @s2_name)
+    assert %{} == call_s1(:get_all_channels)
+    assert %{} == call_s2(:get_all_channels)
+
     %{
       pk_initiator: pk_initiator,
       sk_initiator: sk_initiator,
@@ -53,6 +63,15 @@ defmodule AecoreChannelCompatibilityTest do
       chainstate: chainstate,
       next_height: 7
     }
+  end
+
+  setup do
+    Code.require_file("test_utils.ex", "./test")
+    TestUtils.clean_blockchain()
+
+    on_exit(fn ->
+      TestUtils.clean_blockchain()
+    end)
   end
 
   @tag :channels
@@ -107,31 +126,6 @@ defmodule AecoreChannelCompatibilityTest do
       )
 
     assert_txs_equal(data_tx, epoch_create_tx)
-
-    signed_tx =
-      data_tx
-      |> chainable_sign_tx(ctx.sk_initiator)
-      |> chainable_sign_tx(ctx.sk_responder)
-
-    epoch_channel =
-      <<248, 111, 58, 1, 161, 1, 195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162,
-        143, 84, 114, 8, 161, 100, 45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133, 161,
-        1, 246, 50, 15, 95, 253, 247, 7, 8, 114, 192, 202, 92, 31, 249, 69, 161, 170, 113, 41, 30,
-        168, 250, 11, 241, 209, 7, 58, 85, 192, 148, 250, 1, 130, 1, 44, 100, 40, 160, 197, 119,
-        126, 105, 194, 1, 235, 15, 248, 31, 86, 174, 29, 186, 242, 64, 110, 152, 19, 149, 123,
-        111, 63, 231, 79, 148, 218, 78, 165, 165, 37, 21, 0, 6, 0>>
-
-    {:ok, %Chainstate{channels: channels}} =
-      Chainstate.calculate_and_validate_chain_state(
-        [signed_tx],
-        ctx.chainstate,
-        ctx.next_height,
-        ctx.pk_initiator
-      )
-
-    our_channel = ChannelStateTree.get(channels, ChannelStateOnChain.id(data_tx))
-
-    assert_channels_equal(our_channel, epoch_channel)
   end
 
   @tag :channels
@@ -197,6 +191,110 @@ defmodule AecoreChannelCompatibilityTest do
     assert_txs_equal(tx, epoch_settle_tx)
   end
 
+  @tag :channels
+  @tag :compatibility
+  test "Full compatibility test (create, 2xtransfer, mutal close)", ctx do
+    # create
+    initiator_amount = 100
+    responder_amount = 200
+    channel_reserve = 40
+    initiator_nonce = 1
+    fee = 1
+    locktime = 6
+
+    tmp_id = <<1, 2, 3, 4, 5>>
+
+    assert :ok ==
+             call_s1(
+               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, :initiator,
+                channel_reserve}
+             )
+
+    assert :ok ==
+             call_s2(
+               {:initialize, tmp_id, ctx.pk_initiator, ctx.pk_responder, :responder,
+                channel_reserve}
+             )
+
+    {:ok, id, half_open_tx} =
+      call_s1(
+        {:open, tmp_id, initiator_amount, responder_amount, locktime, fee, initiator_nonce,
+         ctx.sk_initiator}
+      )
+
+    {:ok, ^id, open_tx} =
+      call_s2(
+        {:sign_open, tmp_id, initiator_amount, responder_amount, half_open_tx, ctx.sk_responder}
+      )
+
+    epoch_channel =
+      <<248, 111, 58, 1, 161, 1, 195, 127, 140, 188, 222, 21, 148, 121, 3, 245, 220, 105, 162,
+        143, 84, 114, 8, 161, 100, 45, 92, 39, 172, 108, 6, 12, 3, 120, 185, 238, 238, 133, 161,
+        1, 246, 50, 15, 95, 253, 247, 7, 8, 114, 192, 202, 92, 31, 249, 69, 161, 170, 113, 41, 30,
+        168, 250, 11, 241, 209, 7, 58, 85, 192, 148, 250, 1, 130, 1, 44, 100, 40, 160, 197, 119,
+        126, 105, 194, 1, 235, 15, 248, 31, 86, 174, 29, 186, 242, 64, 110, 152, 19, 149, 123,
+        111, 63, 231, 79, 148, 218, 78, 165, 165, 37, 21, 0, 6, 0>>
+
+    {:ok, %Chainstate{channels: channels} = open_chainstate} =
+      Chainstate.calculate_and_validate_chain_state(
+        [open_tx],
+        ctx.chainstate,
+        ctx.next_height,
+        ctx.pk_initiator
+      )
+
+    our_channel = ChannelStateTree.get(channels, id)
+
+    assert_channels_equal(our_channel, epoch_channel)
+
+    # transfer from responder to initiator with amount 70
+    epoch_transfer1 =
+      Bits.decode58(
+        "G6DYbwbT9jsa4M7dKjQAw1bSwcPN3TcaCKtxBBAk28QaXfEugae4HGVNxSHSrSd59vPCLAssWmX8vN48LWwTypFq2FYy8AVAev68Q5WerLhcsCViNAtgNdzdeGhRMYHBHxYwnPdMRjKThcQAogdqjrtnMKnwqVE6awwDPYPmRjsDT3JW8HY8m43SWB9QeiauG3EZx8KnjejyXuNZNPGVjFiGnjQCAhwVb5nPXuhs4KXgTKjB5w1Huch5wJg3HUzyQXhuoCk4gn7vcQvjX7P4rthpo1CMNfJj6WXFowKpVzUCQrVrTYUMHzvbYuymzh1CdcmfgJouxHQmDSHXJwRW6Uw6uwRY192oKMbhsanuLjRJC9YB8SzSLdrSu828c6QLHnWqPedsHwW"
+      )
+
+    amount1 = 70
+
+    {:ok, half_signed_transfer_tx1} = call_s2({:transfer, id, amount1, ctx.sk_responder})
+
+    {:ok, fully_signed_transfer_tx1} =
+      call_s1({:receive_half_signed_tx, half_signed_transfer_tx1, ctx.sk_initiator})
+
+    :ok = call_s2({:receive_fully_signed_tx, fully_signed_transfer_tx1})
+
+    assert_offchain_txs_equal(fully_signed_transfer_tx1, epoch_transfer1)
+
+    # transfer from initiator to responder with amount 30
+
+    epoch_transfer2 =
+      Bits.decode58(
+        "G6DYbwbT9jsa4gQAzzxjJuc5AVpowq47hFUNHrtdaU8hn97S1LaKVnE3vp5FW7q9PbXTuP5wwAD9BBHx7WdgfQZw9t7hh5mfS3NNsWHEmBYnyVwodP1EAM4uH3qaaKuNRY1R11VFmRP7zTfcHHU9wssEKFkrLiDqtvK2W9mfcrJFmcFkfLNTQfs633PNbySgQTVW8PG1Fu1F1cahh2kor4HhiDEGBC4xUN6kF2LhhN9w8cMPFYX62QxL1BqmKKzDcbRULXfN6yDnAbd7gKYP53iTNW1quMmMf8wMNr4mCfFwTVdAjsp8LGt2HJ4NitTHe3mmNjD6Vqaoc2CY3S53su7d37ZwJPvKLB5HRa4gmxaRvp1muScA8dNi18GnRmKr8aed7Mpc1NC"
+      )
+
+    amount2 = 30
+
+    {:ok, half_signed_transfer_tx2} = call_s1({:transfer, id, amount2, ctx.sk_initiator})
+
+    {:ok, fully_signed_transfer_tx2} =
+      call_s2({:receive_half_signed_tx, half_signed_transfer_tx2, ctx.sk_responder})
+
+    :ok = call_s1({:receive_fully_signed_tx, fully_signed_transfer_tx2})
+
+    assert_offchain_txs_equal(fully_signed_transfer_tx2, epoch_transfer2)
+
+    # close mutal
+
+    epoch_mutal_close_tx =
+      Bits.decode58(
+        "5WatK72bxX5ndWpzzYHAPvg2NQCF4DnUu4F7jMaVCeBTm2FBubskMwhHLDVJUYUkfarQePuoWWrhR25uzfYghn7RhSXsZcLRnNL5LW6Nt1nwsqhjvjRF14Dxm3HSTVjQoMSANeAgLZDfYDNDd7kVeFPpeqBvaNdSv5GK3vk6mkcsfeHQ5tv2wkRtmoJ2McmnzbKjb1tc19BP4XUHNa7wyFD59gNZkaxV7ggdV4vEUjpZC5JSiGEQX8aa8ziLCgFg"
+      )
+
+    {:ok, close_tx} = call_s1({:close, id, {1, 0}, 2, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {1, 0}, ctx.sk2})
+
+    assert_txs_equal(signed_close_tx, epoch_mutal_close_tx)
+  end
+
   defp chainable_calculate_validate_chain_state(chainstate, txs, block_height, miner) do
     {:ok, state} =
       Chainstate.calculate_and_validate_chain_state(txs, chainstate, block_height, miner)
@@ -216,9 +314,31 @@ defmodule AecoreChannelCompatibilityTest do
     assert DataTx.validate(our) == :ok
   end
 
+  defp assert_offchain_txs_equal(our, epoch_rlp) do
+    {:ok, epoch_tx_decoded} = ChannelOffChainTx.rlp_decode(epoch_rlp)
+    assert our == epoch_tx_decoded
+    assert ChannelOffChainTx.rlp_encode(our) == epoch_rlp
+  end
+
   defp assert_channels_equal(our, epoch_rlp) do
     {:ok, epoch_channel_decoded} = ChannelStateOnChain.rlp_decode(epoch_rlp)
     assert our == epoch_channel_decoded
     assert ChannelStateOnChain.rlp_encode(our) == epoch_rlp
+  end
+
+  defp call_s1(call) do
+    GenServer.call(@s1_name, call)
+  end
+
+  defp call_s2(call) do
+    GenServer.call(@s2_name, call)
+  end
+
+  defp get_fsm_state_s1(id) do
+    get_fsm_state(id, &call_s1/1)
+  end
+
+  defp get_fsm_state_s2(id) do
+    get_fsm_state(id, &call_s2/1)
   end
 end
