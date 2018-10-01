@@ -438,7 +438,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_fully_signed_tx, fully_signed_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id
+    channel_id = ChannelTransaction.channel_id(fully_signed_tx)
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state} <-
@@ -451,7 +451,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_confirmed_tx, confirmed_onchain_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id
+    channel_id = ChannelTransaction.channel_id(confirmed_onchain_tx)
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)

@@ -163,8 +163,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         :empty,
         %Poi{} = poi
       ) do
-    with {:ok, poi_initiator_amount, poi_responder_amount} <-
-           get_final_balances_from_poi(channel, poi) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <- balances_from_poi(channel, poi) do
       cond do
         # No payload is only allowed for SoloCloseTx
         channel.slash_sequence != 0 ->
@@ -172,6 +171,12 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         channel.state_hash !== Poi.calculate_root_hash(poi) ->
           {:error, "#{__MODULE__}: Invalid state hash"}
+
+        channel.channel_reserve > poi_initiator_amount ->
+          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+
+        channel.channel_reserve > poi_responder_amount ->
+          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
 
         poi_initiator_amount !== channel.initiator_amount ->
           {:error, "#{__MODULE__}: Invalid initiator amount"}
@@ -193,14 +198,19 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelOffChainTx{} = offchain_tx,
         %Poi{} = poi
       ) do
-    with {:ok, poi_initiator_amount, poi_responder_amount} <-
-           get_final_balances_from_poi(channel, poi) do
+    with {:ok, poi_initiator_amount, poi_responder_amount} <- balances_from_poi(channel, poi) do
       cond do
-        channel.slash_sequence >= offchain_tx.sequence ->
-          {:error, "#{__MODULE__}: Offchain state is too old"}
-
         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
           {:error, "#{__MODULE__}: Invalid state hash"}
+
+        channel.slash_sequence >= offchain_tx.sequence ->
+          {:error, "#{__MODULE__}: OffChain state is too old"}
+
+        channel.channel_reserve > poi_initiator_amount ->
+          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+
+        channel.channel_reserve > poi_responder_amount ->
+          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
 
         poi_initiator_amount + poi_responder_amount !==
             channel.initiator_amount + channel.responder_amount ->
@@ -215,18 +225,18 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     end
   end
 
-  @spec get_final_balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
+  @spec balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
           {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
-  defp get_final_balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
+  defp balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
     with {:ok, poi_initiator_amount} <-
-           Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey),
+           Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey),
          {:ok, poi_responder_amount} <-
-           Poi.get_account_balance_from_poi(poi, channel.responder_pubkey) do
+           Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey) do
       # Later we will need to factor in contracts
       {:ok, poi_initiator_amount, poi_responder_amount}
     else
       {:error, _} ->
-        {:error, "#{__MODULE__}: Poi is missing an offchain account."}
+        {:error, "#{__MODULE__}: Poi is missing an OffChain account."}
     end
   end
 
@@ -240,8 +250,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           Poi.t()
         ) :: ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
-    {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
-    {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+    {:ok, initiator_amount} = Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey)
 
     %ChannelStateOnChain{
       channel
@@ -258,8 +268,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelOffChainTx{} = offchain_tx,
         %Poi{} = poi
       ) do
-    {:ok, initiator_amount} = Poi.get_account_balance_from_poi(poi, channel.initiator_pubkey)
-    {:ok, responder_amount} = Poi.get_account_balance_from_poi(poi, channel.responder_pubkey)
+    {:ok, initiator_amount} = Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey)
 
     %ChannelStateOnChain{
       channel

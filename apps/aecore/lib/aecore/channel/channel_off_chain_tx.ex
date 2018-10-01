@@ -3,14 +3,13 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   Structure of an Offchain Channel Transaction. Implements a cryptographically signed container for channel updates associated with an offchain chainstate.
   """
 
+  @behaviour Aecore.Channel.ChannelTransaction
+
   alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.Updates.ChannelTransferUpdate
   alias Aecore.Channel.ChannelOffChainUpdate
-  alias Aecore.Channel.ChannelTransaction
   alias Aecore.Keys
   alias Aecore.Chain.Identifier
-
-  @behaviour ChannelTransaction
 
   @version 1
   # TypeToTag.type_to_tag(Aecore.Tx.SignedTx)

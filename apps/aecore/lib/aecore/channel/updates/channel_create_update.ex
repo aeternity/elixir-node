@@ -28,7 +28,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @typedoc """
   The type of errors returned by this module
   """
-  @type error :: {:error, String.t()}
+  @type error :: {:error, binary()}
 
   @doc """
   Definition of ChannelCreateUpdate structure
@@ -53,15 +53,18 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @doc """
   Creates a ChannelCreateUpdate from a ChannelCreateTx
   """
-  @spec new(ChannelCreateTx.t()) :: ChannelCreateUpdate.t()
-  def new(%ChannelCreateTx{
-        initiator: initiator,
-        initiator_amount: initiator_amount,
-        responder: responder,
-        responder_amount: responder_amount,
-        channel_reserve: channel_reserve,
-        locktime: locktime
-      }) do
+  @spec new(ChannelCreateTx.t(), Keys.pubkey(), Keys.pubkey()) :: ChannelCreateUpdate.t()
+  def new(
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          channel_reserve: channel_reserve,
+          locktime: locktime
+        },
+        initiator,
+        responder
+      )
+      when is_binary(initiator) and is_binary(responder) do
     %ChannelCreateUpdate{
       initiator: initiator,
       initiator_amount: initiator_amount,

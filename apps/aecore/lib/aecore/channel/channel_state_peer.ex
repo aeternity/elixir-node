@@ -90,8 +90,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @spec process_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) ::
           {:ok, ChannelStatePeer.t()} | error()
   defp process_tx(tx, %ChannelStatePeer{} = peer) do
-    unsigned_payload = ChannelTransaction.unsigned_payload(tx)
-    new_sequence = unsigned_payload.sequence
+    tx_sequence = ChannelTransaction.sequence(tx)
 
     with :ok <- validate_tx(tx, peer),
          {:ok, updated_offchain_chainstate} <- update_offchain_chainstate(tx, peer) do
@@ -99,7 +98,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
        %ChannelStatePeer{
          peer
          | offchain_chainstate: updated_offchain_chainstate,
-           sequence: new_sequence
+           sequence: tx_sequence
        }}
     else
       {:error, _} = err ->
@@ -115,18 +114,18 @@ defmodule Aecore.Channel.ChannelStatePeer do
          channel_id: channel_id,
          sequence: sequence
        }) do
-    unsigned_payload = ChannelTransaction.unsigned_payload(tx)
-    new_sequence = unsigned_payload.sequence
+    tx_channel_id = ChannelTransaction.channel_id(tx)
+    tx_sequence = ChannelTransaction.sequence(tx)
 
     cond do
-      unsigned_payload.channel_id !== channel_id ->
+      tx_channel_id !== channel_id ->
         {:error,
          "#{__MODULE__}: Wrong channel id in tx. Expected: #{inspect(channel_id)}, received: #{
-           inspect(unsigned_payload.channel_id)
+           inspect(tx_channel_id)
          }"}
 
       # check sequence
-      new_sequence <= sequence ->
+      tx_sequence <= sequence ->
         {:error, "#{__MODULE__}: Invalid sequence in tx"}
 
       true ->
@@ -176,16 +175,21 @@ defmodule Aecore.Channel.ChannelStatePeer do
     [create_tx | _] = offchain_tx_list_from_oldest
 
     %SignedTx{
-      data: %DataTx{
-        type: ChannelCreateTx,
-        payload: %ChannelCreateTx{
-          initiator: initiator_pubkey,
-          responder: responder_pubkey,
-          channel_reserve: channel_reserve,
-          channel_id: channel_id
-        }
-      }
+      data:
+        %DataTx{
+          type: ChannelCreateTx,
+          payload: %ChannelCreateTx{
+            channel_reserve: channel_reserve
+          }
+        } = data_tx
     } = create_tx
+
+    [
+      initiator_pubkey,
+      responder_pubkey
+    ] = DataTx.senders(data_tx)
+
+    channel_id = ChannelStateOnChain.id(data_tx)
 
     initial_state = %ChannelStatePeer{
       fsm_state: :open,
@@ -236,7 +240,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         offchain_chainstate: offchain_chainstate,
         sequence: sequence
       }) do
-    if ChannelTransaction.unsigned_payload(tx).sequence <= sequence do
+    if ChannelTransaction.sequence(tx) <= sequence do
       {:error, "#{__MODULE__}: Invalid sequence in tx"}
     else
       case ChannelOffChainUpdate.apply_updates(

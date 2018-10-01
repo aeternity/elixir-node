@@ -7,13 +7,15 @@ defmodule Aecore.Channel.ChannelTransaction do
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
   alias Aecore.Channel.ChannelOffChainTx
+  alias Aecore.Channel.ChannelStateOnChain
+  alias Aecore.Channel.Tx.ChannelCreateTx
 
   @typedoc """
   Data structures capable of mutating the offchain chainstate off an state channel
   """
   @type channel_tx ::
-          Aecore.Channel.ChannelOffChainTx
-          | Aecore.Channel.Tx.ChannelCreateTx
+          ChannelOffChainTx
+          | ChannelCreateTx
   # | Aecore.Channel.Tx.ChannelWidhdrawTx
   # | Aecore.Channel.Tx.ChannelDepositTx
 
@@ -23,7 +25,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   @type signed_tx :: SignedTx.t() | ChannelOffChainTx.t()
 
   @allowed_onchain_tx [
-    Aecore.Channel.Tx.ChannelCreateTx
+    ChannelCreateTx
     # Aecore.Channel.Tx.ChannelWidhdrawTx,
     # Aecore.Channel.Tx.ChannelDepositTx
   ]
@@ -36,7 +38,8 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of offchain updates to the offchain chainstate
   """
-  @callback offchain_updates(channel_tx()) :: list(ChannelOffChainUpdate.update_types())
+  @callback offchain_updates(signed_tx() | DataTx.t()) ::
+              list(ChannelOffChainUpdate.update_types())
 
   @doc """
   Preprocess checks for an incoming half signed transaction.
@@ -170,6 +173,38 @@ defmodule Aecore.Channel.ChannelTransaction do
   end
 
   @doc """
+  Sequence of the state after applying the transaction to the chainstate.
+  """
+  @spec sequence(signed_tx() | DataTx.t()) :: non_neg_integer()
+  def sequence(%SignedTx{data: data_tx}) do
+    sequence(data_tx)
+  end
+
+  def sequence(%DataTx{type: ChannelCreateTx}) do
+    1
+  end
+
+  def sequence(tx) do
+    unsigned_payload(tx).sequence
+  end
+
+  @doc """
+  Channel id for which the transaction is designated.
+  """
+  @spec channel_id(signed_tx() | DataTx.t()) :: binary()
+  def channel_id(%SignedTx{data: data_tx}) do
+    channel_id(data_tx)
+  end
+
+  def channel_id(%DataTx{type: ChannelCreateTx} = data_tx) do
+    ChannelStateOnChain.id(data_tx)
+  end
+
+  def channel_id(tx) do
+    unsigned_payload(tx).channel_id
+  end
+
+  @doc """
   Sets the sequence of the offchain state after applying the channel transaction to the state channel
   """
   @spec set_sequence(channel_tx(), non_neg_integer()) :: channel_tx()
@@ -205,9 +240,9 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of updates to the offchain chainstate
   """
-  @spec offchain_updates(signed_tx()) :: list(ChannelOffchainUpdate.update_types())
+  @spec offchain_updates(signed_tx() | DataTx.t()) :: list(ChannelOffchainUpdate.update_types())
   def offchain_updates(tx) do
     structure = unsigned_payload(tx)
-    structure.__struct__.offchain_updates(structure)
+    structure.__struct__.offchain_updates(tx)
   end
 end

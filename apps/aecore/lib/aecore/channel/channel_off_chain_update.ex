@@ -145,7 +145,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def ensure_channel_reserve_is_met(%Account{balance: balance}, channel_reserve) do
     if balance < channel_reserve do
       {:error,
-       "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{
+       "#{__MODULE__} Account does not met channel reserve (We have #{balance} tokens vs channel reserve of #{
          channel_reserve
        } tokens)"}
     else
