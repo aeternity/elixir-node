@@ -270,7 +270,7 @@ defmodule AecoreChannelTest do
     assert :ok == call_s2({:initialize, tmp_id, ctx.pk1, ctx.pk2, :responder, 10})
     {:ok, id, half_open_tx} = call_s1({:open, tmp_id, 150, 150, 2, 10, 1, ctx.sk1})
     assert :awaiting_full_tx == get_fsm_state_s1(id)
-    {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, 150, 150, half_open_tx, ctx.sk2})
+    {:ok, id2, open_tx} = call_s2({:sign_open, tmp_id, 150, 150, 2, half_open_tx, ctx.sk2})
     assert :awaiting_tx_confirmed == get_fsm_state_s2(id)
     assert id == id2
 
@@ -299,7 +299,7 @@ defmodule AecoreChannelTest do
     assert {:ok, peer2_amount} === call_s2({:our_offchain_account_balance, id})
     assert {:ok, peer1_amount} === call_s2({:foreign_offchain_account_balance, id})
 
-    assert {:ok, sequence} === call_s1({:highest_sequence, id})
+    assert {:ok, sequence} === call_s1({:sequence, id})
 
     assert call_s1({:most_recent_chainstate, id}) === call_s2({:most_recent_chainstate, id})
   end

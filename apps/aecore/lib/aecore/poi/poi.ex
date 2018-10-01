@@ -134,8 +134,8 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Verifies whether the poi contains the given entry under the given key
   """
-  @spec verify_poi(Poi.t(), Keys.pubkey(), Account.t()) :: boolean()
-  def verify_poi(%Poi{accounts: accounts_proof}, pub_key, %Account{} = account) do
+  @spec verify_poi?(Poi.t(), Keys.pubkey(), Account.t()) :: boolean()
+  def verify_poi?(%Poi{accounts: accounts_proof}, pub_key, %Account{} = account) do
     PoiProof.verify_poi_entry(accounts_proof, pub_key, Account.rlp_encode(account))
   end
 
@@ -173,9 +173,8 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Retrieves the balance for an account included in the Poi.
   """
-  @spec get_account_balance_from_poi(Poi.t(), Keys.pubkey()) ::
-          {:ok, non_neg_integer()} | {:error, String.t()}
-  def get_account_balance_from_poi(%Poi{} = poi, pubkey) do
+  @spec account_balance(Poi.t(), Keys.pubkey()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def account_balance(%Poi{} = poi, pubkey) do
     case Poi.lookup_poi(:accounts, poi, pubkey) do
       {:ok, account} ->
         {:ok, account.balance}
@@ -210,30 +209,39 @@ defmodule Aecore.Poi.Poi do
         &PoiProof.encode_to_list/1
       )
 
-    [:binary.encode_unsigned(@version)] ++ payload
+    [:binary.encode_unsigned(@version) | payload]
   end
 
   @doc """
   Deserializes the Poi from a list
   """
   @spec decode_from_list(non_neg_integer(), list()) :: Poi.t() | {:error, String.t()}
-  def decode_from_list(@version, [
-        accounts,
-        calls,
-        channels,
-        contracts,
-        naming,
-        oracles
-      ]) do
-    {:ok,
-     %Poi{
-       accounts: PoiProof.decode_from_list(accounts),
-       calls: PoiProof.decode_from_list(calls),
-       channels: PoiProof.decode_from_list(channels),
-       contracts: PoiProof.decode_from_list(contracts),
-       naming: PoiProof.decode_from_list(naming),
-       oracles: PoiProof.decode_from_list(oracles)
-     }}
+  def decode_from_list(@version, [accounts, calls, channels, contracts, naming, oracles]) do
+    decoded_components =
+      Enum.map(
+        [
+          accounts: accounts,
+          calls: calls,
+          channels: channels,
+          contracts: contracts,
+          naming: naming,
+          oracles: oracles
+        ],
+        fn {key, value} -> {key, PoiProof.decode_from_list(value)} end
+      )
+
+    errors = for {key, {:error, reason}} <- decoded_components, do: {key, reason}
+
+    case List.first(errors) do
+      nil ->
+        {:ok,
+         Enum.reduce(decoded_components, %Poi{}, fn {key, {:ok, value}}, acc ->
+           Map.put(acc, key, value)
+         end)}
+
+      {key, reason} ->
+        {:error, "#{__MODULE__}: Deserialization of key #{key} failed with reason: #{reason}"}
+    end
   end
 
   def decode_from_list(_, _) do

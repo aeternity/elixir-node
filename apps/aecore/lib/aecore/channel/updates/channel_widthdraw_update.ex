@@ -41,7 +41,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   def decode_from_list([to, to, amount]) do
     %ChannelWithdrawUpdate{
       to: to,
-      amount: amount
+      amount: :binary.decode_unsigned(amount)
     }
   end
 
@@ -53,7 +53,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
         to: to,
         amount: amount
       }) do
-    [to, to, amount]
+    [to, to, :binary.encode_unsigned(amount)]
   end
 
   @doc """
@@ -71,16 +71,55 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
         },
         channel_reserve
       ) do
-    updated_accounts =
-      AccountStateTree.update(accounts, to, fn account ->
-        account
-        |> Account.apply_transfer!(nil, -amount)
-        |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
-      end)
+    case AccountStateTree.safe_update(
+           accounts,
+           to,
+           &widthdraw_from_account(&1, amount, channel_reserve)
+         ) do
+      {:ok, updated_accounts} ->
+        {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
 
-    {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
-  catch
-    {:error, _} = err ->
-      err
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec widthdraw_from_account(Account.t(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, Account.t()} | error()
+  defp widthdraw_from_account(account, amount, channel_reserve) do
+    with {:ok, account1} <- Account.apply_transfer(account, nil, -amount),
+         :ok <- ChannelOffChainUpdate.ensure_channel_reserve_is_met(account1, channel_reserve) do
+      {:ok, account1}
+    else
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec half_signed_preprocess_check(ChannelWithdrawUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(
+        %ChannelWithdrawUpdate{
+          to: to,
+          amount: amount
+        },
+        %{
+          foreign_pubkey: correct_to
+        }
+      ) do
+    cond do
+      amount <= 0 ->
+        {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
+
+      to != correct_to ->
+        {:error, "#{__MODULE__}: Funds can be only withdrawn from the update initiator's account"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelWithdrawUpdate{}, _) do
+    {:error,
+     "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
   end
 end

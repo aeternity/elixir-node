@@ -305,15 +305,26 @@ defmodule Aecore.Tx.SignedTx do
     ]
   end
 
+  # Consider making a ListUtils module
+  @spec is_sorted?(list(binary)) :: boolean()
+  defp is_sorted?([]), do: true
+  defp is_sorted?([sig]) when is_binary(sig), do: true
+
+  defp is_sorted?([sig1, sig2 | rest]) when is_binary(sig1) and is_binary(sig2) do
+    sig1 < sig2 and is_sorted?([sig2 | rest])
+  end
+
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, SignedTx.t()} | {:error, String.t()}
   def decode_from_list(@version, [signatures, data]) do
-    case DataTx.rlp_decode(data) do
-      {:ok, data} ->
-        # make sure that the sigs are sorted - we cannot trust user input ;)
-        {:ok, %SignedTx{data: data, signatures: Enum.sort(signatures)}}
-
+    with {:ok, data} <- DataTx.rlp_decode(data),
+         true <- is_sorted?(signatures) do
+      {:ok, %SignedTx{data: data, signatures: signatures}}
+    else
       {:error, _} = error ->
         error
+
+      false ->
+        {:error, "#{__MODULE__}: Signatures are not sorted"}
     end
   end
 

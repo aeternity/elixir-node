@@ -122,12 +122,12 @@ defmodule Aecore.Poi.PoiProof do
     end
   end
 
-  @spec internal_root_hash_to_patricia_merkle_trie_root_hash(PoiProof.t()) :: state_hash()
-  defp internal_root_hash_to_patricia_merkle_trie_root_hash(%PoiProof{root_hash: :empty}) do
+  @spec patricia_merkle_trie_root_hash(PoiProof.t()) :: state_hash()
+  defp patricia_merkle_trie_root_hash(%PoiProof{root_hash: :empty}) do
     @canonical_root_hash
   end
 
-  defp internal_root_hash_to_patricia_merkle_trie_root_hash(%PoiProof{root_hash: root_hash}) do
+  defp patricia_merkle_trie_root_hash(%PoiProof{root_hash: root_hash}) do
     root_hash
   end
 
@@ -196,9 +196,9 @@ defmodule Aecore.Poi.PoiProof do
   """
   @spec verify_poi_entry(PoiProof.t(), Trie.key(), Trie.value()) :: boolean()
   def verify_poi_entry(%PoiProof{} = poi_proof, key, serialized_value) do
-    root_hash = internal_root_hash_to_patricia_merkle_trie_root_hash(poi_proof)
+    root_hash = patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
-    PatriciaMerkleTree.verify_proof(key, serialized_value, root_hash, proof_trie)
+    PatriciaMerkleTree.verify_proof?(key, serialized_value, root_hash, proof_trie)
   end
 
   @doc """
@@ -206,7 +206,7 @@ defmodule Aecore.Poi.PoiProof do
   """
   @spec lookup_in_poi(PoiProof.t(), Trie.key()) :: {:ok, Trie.value()} | :error
   def lookup_in_poi(%PoiProof{} = poi_proof, key) do
-    root_hash = internal_root_hash_to_patricia_merkle_trie_root_hash(poi_proof)
+    root_hash = patricia_merkle_trie_root_hash(poi_proof)
     proof_trie = get_readonly_proof_trie(poi_proof)
     PatriciaMerkleTree.lookup_proof(key, root_hash, proof_trie)
   end
@@ -232,9 +232,9 @@ defmodule Aecore.Poi.PoiProof do
   @doc """
   Deserialized the poi proof from a list
   """
-  @spec decode_from_list(list(list(binary()))) :: PoiProof.t() | {:error, String.t()}
+  @spec decode_from_list(list(list(binary()))) :: {:ok, PoiProof.t()} | {:error, String.t()}
   def decode_from_list([]) do
-    construct_empty()
+    {:ok, construct_empty()}
   end
 
   def decode_from_list([[root_hash, contents]]) when is_binary(root_hash) and is_list(contents) do
@@ -243,7 +243,7 @@ defmodule Aecore.Poi.PoiProof do
         Map.put(acc, key, ExRLP.encode(value))
       end)
 
-    %PoiProof{root_hash: root_hash, db: db}
+    {:ok, %PoiProof{root_hash: root_hash, db: db}}
   end
 
   def decode_from_list(_) do

@@ -43,6 +43,13 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @callback decode_from_list(list(binary())) :: update_types()
 
   @doc """
+  Preprocess checks for an incoming half signed update.
+  This callback should check for signs of the update being malicious(for instance transfer updates should validate if the transfer is in the correct direction).
+  The provided map contains values to check against.
+  """
+  @callback half_signed_preprocess_check(update_types(), map()) :: :ok | error()
+
+  @doc """
   Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
   To make upgrading easy updates will need to specify their ID which will act as their tag. To upgrade
   to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
@@ -52,6 +59,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
   def tag_to_module(2), do: {:ok, ChannelWidthdrawUpdate}
+
   def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
 
   @doc """
@@ -68,8 +76,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Encodes the given update to a list of binaries.
   """
-  @spec to_list(update_types()) :: list(binary())
-  def to_list(object) do
+  @spec encode_to_list(update_types()) :: list(binary())
+  def encode_to_list(object) do
     module = object.__struct__
     {:ok, tag} = module_to_tag(module)
     [:binary.encode_unsigned(tag)] ++ module.encode_to_list(object)
@@ -78,8 +86,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Decodes the given update from a list of binaries.
   """
-  @spec from_list(list(binary())) :: update_types()
-  def from_list([tag | rest]) do
+  @spec decode_from_list(list(binary())) :: update_types() | error()
+  def decode_from_list([tag | rest]) do
     decoded_tag = :binary.decode_unsigned(tag)
 
     case tag_to_module(decoded_tag) do
@@ -130,18 +138,27 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     )
   end
 
-  @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) ::
-          Account.t() | no_return()
-  def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
+  @doc """
+  Makes sure that for the given account the channel reserve was meet
+  """
+  @spec ensure_channel_reserve_is_met(Account.t(), non_neg_integer()) :: :ok | error()
+  def ensure_channel_reserve_is_met(%Account{balance: balance}, channel_reserve) do
     if balance < channel_reserve do
-      throw(
-        {:error,
-         "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{
-           channel_reserve
-         } tokens)"}
-      )
+      {:error,
+       "#{__MODULE__} Account does not met channel reserve (We have #{balance} tokens vs channel reserve of #{
+         channel_reserve
+       } tokens)"}
+    else
+      :ok
     end
+  end
 
-    account
+  @doc """
+  Runs preprocess checks for an update which was signed by the foreign peer in the channel.
+  """
+  @spec half_signed_preprocess_check(update_types(), map()) :: :ok | error()
+  def half_signed_preprocess_check(update, opts) do
+    module = update.__struct__
+    module.half_signed_preprocess_check(update, opts)
   end
 end

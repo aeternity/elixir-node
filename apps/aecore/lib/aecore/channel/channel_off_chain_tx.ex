@@ -1,17 +1,15 @@
 defmodule Aecore.Channel.ChannelOffChainTx do
   @moduledoc """
-  Structure of an Offchain Channel Transaction. Implements a cryptographically signed  container for channel updates associated with an offchain chainstate.
+  Structure of an Offchain Channel Transaction. Implements a cryptographically signed container for channel updates associated with an offchain chainstate.
   """
+
+  @behaviour Aecore.Channel.ChannelTransaction
 
   alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.Updates.ChannelTransferUpdate
   alias Aecore.Channel.ChannelOffChainUpdate
-  alias Aecore.Channel.ChannelTransaction
   alias Aecore.Keys
-  alias Aeutil.Serialization
   alias Aecore.Chain.Identifier
-
-  @behaviour ChannelTransaction
 
   @version 1
   # TypeToTag.type_to_tag(Aecore.Tx.SignedTx)
@@ -91,7 +89,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         %ChannelOffChainTx{signatures: {sig1, sig2}} = state,
         pubkey
       ) do
-    binary_form = Serialization.rlp_encode(state)
+    binary_form = rlp_encode(state)
 
     Keys.verify(binary_form, sig1, pubkey) or
       verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
@@ -101,7 +99,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   defp signature_for_offchain_tx(%ChannelOffChainTx{} = offchain_tx, priv_key)
        when is_binary(priv_key) do
     offchain_tx
-    |> Serialization.rlp_encode()
+    |> rlp_encode()
     |> Keys.sign(priv_key)
   end
 
@@ -152,7 +150,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
       :binary.encode_unsigned(@signed_tx_tag),
       :binary.encode_unsigned(@version),
       [sig1, sig2],
-      Serialization.rlp_encode(state)
+      rlp_encode(state)
     ]
     |> ExRLP.encode()
   end
@@ -164,14 +162,19 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   @doc """
   Decodes the embedded payload of ChannelSoloCloseTx, ChannelSlashTx, ChannelSnapshotTx
   """
-  @spec decode_from_payload(binary()) :: ChannelOffChainTx.t() | :empty | error()
+  @spec decode_from_payload(binary()) :: {:ok, ChannelOffChainTx.t()} | :empty | error()
   def decode_from_payload(<<>>) do
     {:ok, :empty}
   end
 
   def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do
-    decoded_tx = Serialization.rlp_decode_only(encoded_tx, ChannelOffChainTx)
-    {:ok, %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}}
+    case rlp_decode(encoded_tx) do
+      {:ok, %ChannelOffChainTx{} = decoded_tx} ->
+        {:ok, %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}}
+
+      {:error, _} = err ->
+        err
+    end
   end
 
   def decode_from_payload([@signed_tx_tag, @version | invalid_data]) do
@@ -197,7 +200,7 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         updates: updates,
         state_hash: state_hash
       }) do
-    encoded_updates = Enum.map(updates, &ChannelOffChainUpdate.to_list/1)
+    encoded_updates = Enum.map(updates, &ChannelOffChainUpdate.encode_to_list/1)
 
     [
       :binary.encode_unsigned(@version),
@@ -218,11 +221,16 @@ defmodule Aecore.Channel.ChannelOffChainTx do
         encoded_updates,
         state_hash
       ]) do
-    with {:ok, channel_id} <- Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         decoded_updates <- Enum.map(encoded_updates, &ChannelOffChainUpdate.decode_from_list/1),
+         # Look for errors
+         errors <- for({:error, _} = err <- decoded_updates, do: err),
+         nil <- List.first(errors) do
       %ChannelOffChainTx{
         channel_id: channel_id,
         sequence: :binary.decode_unsigned(sequence),
-        updates: Enum.map(encoded_updates, &ChannelOffChainUpdate.from_list/1),
+        updates: decoded_updates,
         state_hash: state_hash
       }
     else

@@ -19,7 +19,7 @@ defmodule AeutilPatriciaMerkleTreeTest do
 
     Enum.each(trie_list, fn {key, value} ->
       {:ok, ^value, proof} = PatriciaMerkleTree.lookup_with_proof(trie, key)
-      assert true = PatriciaMerkleTree.verify_proof(key, value, trie.root_hash, proof)
+      assert true = PatriciaMerkleTree.verify_proof?(key, value, trie.root_hash, proof)
     end)
 
     assert :none = PatriciaMerkleTree.lookup_with_proof(trie, "not_existing_key")

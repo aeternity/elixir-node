@@ -41,7 +41,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   def decode_from_list([from, from, amount]) do
     %ChannelDepositUpdate{
       from: from,
-      amount: amount
+      amount: :binary.decode_unsigned(amount)
     }
   end
 
@@ -53,7 +53,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
         from: from,
         amount: amount
       }) do
-    [from, from, amount]
+    [from, from, :binary.encode_unsigned(amount)]
   end
 
   @doc """
@@ -71,14 +71,39 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
         },
         _channel_reserve
       ) do
-    updated_accounts =
-      AccountStateTree.update(accounts, from, fn account ->
-        Account.apply_transfer!(account, nil, amount)
-      end)
+    case AccountStateTree.safe_update(accounts, from, &Account.apply_transfer(&1, nil, amount)) do
+      {:ok, updated_accounts} ->
+        {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
 
-    {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
-  catch
-    {:error, _} = err ->
-      err
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec half_signed_preprocess_check(ChannelDepositUpdate.t(), map()) :: :ok | error()
+  def half_signed_preprocess_check(
+        %ChannelDepositUpdate{
+          from: from,
+          amount: amount
+        },
+        %{
+          foreign_pubkey: correct_from
+        }
+      ) do
+    cond do
+      amount <= 0 ->
+        {:error, "#{__MODULE__}: Can't deposit zero or negative amount of tokens"}
+
+      from != correct_from ->
+        {:error, "#{__MODULE__}: Funds can only be deposited to the update initiator's account"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def half_signed_preprocess_check(%ChannelDepositUpdate{}, _) do
+    {:error,
+     "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
   end
 end

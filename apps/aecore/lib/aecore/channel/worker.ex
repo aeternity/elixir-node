@@ -75,8 +75,7 @@ defmodule Aecore.Channel.Worker do
   Imports channels from a ChannelStatePeer object. Useful for storage
   """
   @spec import_channel(ChannelStatePeer.t()) :: :ok | error()
-  def import_channel(%ChannelStatePeer{} = channel_state) do
-    channel_id = ChannelStatePeer.channel_id(channel_state)
+  def import_channel(%ChannelStatePeer{channel_id: channel_id} = channel_state) do
     GenServer.call(__MODULE__, {:import_channel, channel_id, channel_state})
   end
 
@@ -158,11 +157,27 @@ defmodule Aecore.Channel.Worker do
   @doc """
   Signs open transaction. Can only be called once per channel by :responder. Returns fully signed SignedTx and adds it to Pool.
   """
-  @spec sign_open(binary(), SignedTx.t(), Keys.sign_priv_key()) ::
-          {:ok, binary(), SignedTx.t()} | error()
-  def sign_open(temporary_id, %SignedTx{} = open_tx, priv_key)
+  @spec sign_open(
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          SignedTx.t(),
+          Keys.sign_priv_key()
+        ) :: {:ok, binary(), SignedTx.t()} | error()
+  def sign_open(
+        temporary_id,
+        initiator_amount,
+        responder_amount,
+        locktime,
+        %SignedTx{} = open_tx,
+        priv_key
+      )
       when is_binary(temporary_id) and is_binary(priv_key) do
-    GenServer.call(__MODULE__, {:sign_open, temporary_id, open_tx, priv_key})
+    GenServer.call(
+      __MODULE__,
+      {:sign_open, temporary_id, initiator_amount, responder_amount, locktime, open_tx, priv_key}
+    )
   end
 
   @doc """
@@ -357,7 +372,8 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call(
-        {:sign_open, temporary_id, initiator_amount, responder_amount, open_tx, priv_key},
+        {:sign_open, temporary_id, initiator_amount, responder_amount, locktime, open_tx,
+         priv_key},
         _from,
         state
       ) do
@@ -368,6 +384,7 @@ defmodule Aecore.Channel.Worker do
              peer_state,
              initiator_amount,
              responder_amount,
+             locktime,
              open_tx,
              priv_key
            ),
@@ -421,7 +438,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_fully_signed_tx, fully_signed_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(fully_signed_tx).channel_id
+    channel_id = ChannelTransaction.channel_id(fully_signed_tx)
     peer_state = Map.get(state, channel_id)
 
     with {:ok, new_peer_state} <-
@@ -434,7 +451,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   def handle_call({:receive_confirmed_tx, confirmed_onchain_tx}, _from, state) do
-    channel_id = ChannelTransaction.unsigned_payload(confirmed_onchain_tx).channel_id
+    channel_id = ChannelTransaction.channel_id(confirmed_onchain_tx)
 
     if Map.has_key?(state, channel_id) do
       peer_state = Map.get(state, channel_id)
@@ -611,8 +628,8 @@ defmodule Aecore.Channel.Worker do
   end
 
   # Retrieves the sequence of the highest offchain chainstate for the given channel id
-  def handle_call({:highest_sequence, channel_id}, _from, state) do
-    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.highest_sequence/1)
+  def handle_call({:sequence, channel_id}, _from, state) do
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.sequence/1)
   end
 
   # Retrieves the amount of funds belonging to our account according to the most recent chainstate for the given channel id
