@@ -628,8 +628,8 @@ defmodule Aecore.Channel.Worker do
   end
 
   # Retrieves the sequence of the highest offchain chainstate for the given channel id
-  def handle_call({:highest_sequence, channel_id}, _from, state) do
-    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.highest_sequence/1)
+  def handle_call({:sequence, channel_id}, _from, state) do
+    dispatch_function_call_to_channel(state, channel_id, &ChannelStatePeer.sequence/1)
   end
 
   # Retrieves the amount of funds belonging to our account according to the most recent chainstate for the given channel id

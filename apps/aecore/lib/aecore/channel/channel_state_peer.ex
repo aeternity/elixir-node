@@ -41,8 +41,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           mutually_signed_tx: list(ChannelOffChainTx.t()),
           highest_half_signed_tx: ChannelOffChainTx.t() | nil,
           channel_reserve: non_neg_integer(),
-          offchain_chainstate: Chainstate.t() | nil,
-          sequence: non_neg_integer()
+          offchain_chainstate: Chainstate.t() | nil
         }
 
   @typedoc "Reason for the error"
@@ -57,8 +56,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     :channel_reserve,
     mutually_signed_tx: [],
     highest_half_signed_tx: nil,
-    offchain_chainstate: nil,
-    sequence: 0
+    offchain_chainstate: nil
   ]
 
   require Logger
@@ -68,10 +66,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
   defp process_fully_signed_tx(
          tx,
          %ChannelStatePeer{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey} =
-           peer
+           peer_state
        ) do
     if ChannelTransaction.verify_fully_signed_tx(tx, {initiator_pubkey, responder_pubkey}) do
-      process_tx(tx, peer)
+      process_tx(tx, peer_state)
     else
       {:error, "#{__MODULE__}: Transaction was not signed by both parties"}
     end
@@ -79,9 +77,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   @spec process_half_signed_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) ::
           {:ok, ChannelStatePeer.t()} | error()
-  defp process_half_signed_tx(tx, %ChannelStatePeer{} = peer) do
-    if ChannelTransaction.verify_half_signed_tx(tx, foreign_pubkey(peer)) do
-      process_tx(tx, peer)
+  defp process_half_signed_tx(tx, %ChannelStatePeer{} = peer_state) do
+    if ChannelTransaction.verify_half_signed_tx(tx, foreign_pubkey(peer_state)) do
+      process_tx(tx, peer_state)
     else
       {:error, "#{__MODULE__}: Transaction was not signed by the foreign party"}
     end
@@ -89,16 +87,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   @spec process_tx(ChannelTransaction.signed_tx(), ChannelStatePeer.t()) ::
           {:ok, ChannelStatePeer.t()} | error()
-  defp process_tx(tx, %ChannelStatePeer{} = peer) do
-    tx_sequence = ChannelTransaction.sequence(tx)
-
-    with :ok <- validate_tx(tx, peer),
-         {:ok, updated_offchain_chainstate} <- update_offchain_chainstate(tx, peer) do
+  defp process_tx(tx, %ChannelStatePeer{} = peer_state) do
+    with :ok <- validate_tx(tx, peer_state),
+         {:ok, updated_offchain_chainstate} <- update_offchain_chainstate(tx, peer_state) do
       {:ok,
        %ChannelStatePeer{
-         peer
-         | offchain_chainstate: updated_offchain_chainstate,
-           sequence: tx_sequence
+         peer_state
+         | offchain_chainstate: updated_offchain_chainstate
        }}
     else
       {:error, _} = err ->
@@ -111,9 +106,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelStatePeer.t()
         ) :: :ok | error()
   defp validate_tx(tx, %ChannelStatePeer{
-         channel_id: channel_id,
-         sequence: sequence
-       }) do
+         channel_id: channel_id
+       } = peer_state) do
+    cur_sequence = ChannelStatePeer.sequence(peer_state)
+
     tx_channel_id = ChannelTransaction.channel_id(tx)
     tx_sequence = ChannelTransaction.sequence(tx)
 
@@ -125,7 +121,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
          }"}
 
       # check sequence
-      tx_sequence <= sequence ->
+      tx_sequence <= cur_sequence ->
         {:error, "#{__MODULE__}: Invalid sequence in tx"}
 
       true ->
@@ -237,10 +233,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
         ) :: {:ok, binary()} | error()
   def calculate_next_state_hash_for_new_tx(tx, %ChannelStatePeer{
         channel_reserve: channel_reserve,
-        offchain_chainstate: offchain_chainstate,
-        sequence: sequence
-      }) do
-    if ChannelTransaction.sequence(tx) <= sequence do
+        offchain_chainstate: offchain_chainstate
+      } = peer_state) do
+    if ChannelTransaction.sequence(tx) <= ChannelStatePeer.sequence(peer_state) do
       {:error, "#{__MODULE__}: Invalid sequence in tx"}
     else
       case ChannelOffChainUpdate.apply_updates(
@@ -313,12 +308,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
           Keys.sign_priv_key()
         ) :: ChannelTransaction.signed_tx()
   defp validate_prepare_and_sign_new_channel_tx(
-         %ChannelStatePeer{sequence: highest_sequence} = peer_state,
+         %ChannelStatePeer{} = peer_state,
          raw_unsigned_tx,
          priv_key
        ) do
+    cur_sequence = ChannelStatePeer.sequence(peer_state)
     unvalidated_unsigned_tx =
-      ChannelTransaction.set_sequence(raw_unsigned_tx, highest_sequence + 1)
+      ChannelTransaction.set_sequence(raw_unsigned_tx, cur_sequence + 1)
 
     case calculate_next_state_hash_for_new_tx(unvalidated_unsigned_tx, peer_state) do
       {:ok, state_hash} ->
@@ -696,11 +692,16 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
-  Retrieves the sequence of the current round of offchain updates
+  Retrieves the sequence of the current round of updates
   """
-  @spec highest_sequence(ChannelStatePeer.t()) :: non_neg_integer()
-  def highest_sequence(%ChannelStatePeer{sequence: sequence}) do
-    sequence
+  @spec sequence(ChannelStatePeer.t()) :: non_neg_integer()
+  def sequence(%ChannelStatePeer{mutually_signed_tx: [last_tx | _]}) do
+    ChannelTransaction.sequence(last_tx)
+  end
+
+  def sequence(%ChannelStatePeer{}) do
+    # The initial sequence is 0. ChannelCreateTx SHOULD have sequence 1 but MUST have sequence larger than 0.
+    0
   end
 
   @doc """

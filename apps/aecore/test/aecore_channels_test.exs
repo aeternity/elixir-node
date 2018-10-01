@@ -299,7 +299,7 @@ defmodule AecoreChannelTest do
     assert {:ok, peer2_amount} === call_s2({:our_offchain_account_balance, id})
     assert {:ok, peer1_amount} === call_s2({:foreign_offchain_account_balance, id})
 
-    assert {:ok, sequence} === call_s1({:highest_sequence, id})
+    assert {:ok, sequence} === call_s1({:sequence, id})
 
     assert call_s1({:most_recent_chainstate, id}) === call_s2({:most_recent_chainstate, id})
   end
