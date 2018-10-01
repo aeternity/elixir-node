@@ -17,13 +17,13 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   Structure of the ChannelCreateUpdate type
   """
   @type t :: %ChannelCreateUpdate{
-               initiator: binary(),
-               initiator_amount: non_neg_integer(),
-               responder: binary(),
-               responder_amount: non_neg_integer(),
-               channel_reserve: non_neg_integer(),
-               locktime: non_neg_integer()
-             }
+          initiator: binary(),
+          initiator_amount: non_neg_integer(),
+          responder: binary(),
+          responder_amount: non_neg_integer(),
+          channel_reserve: non_neg_integer(),
+          locktime: non_neg_integer()
+        }
 
   @typedoc """
   The type of errors returned by this module
@@ -41,19 +41,27 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   - channel_reserve: the reserve of the channel
   - locktime: amount of blocks before disputes are settled
   """
-  defstruct [:initiator, :initiator_amount, :responder, :responder_amount, :channel_reserve, :locktime]
+  defstruct [
+    :initiator,
+    :initiator_amount,
+    :responder,
+    :responder_amount,
+    :channel_reserve,
+    :locktime
+  ]
 
   @doc """
   Creates a ChannelCreateUpdate from a ChannelCreateTx
   """
   @spec new(ChannelCreateTx.t()) :: ChannelCreateUpdate.t()
   def new(%ChannelCreateTx{
-    initiator: initiator,
-    initiator_amount: initiator_amount,
-    responder: responder,
-    responder_amount: responder_amount,
-    channel_reserve: channel_reserve,
-    locktime: locktime}) do
+        initiator: initiator,
+        initiator_amount: initiator_amount,
+        responder: responder,
+        responder_amount: responder_amount,
+        channel_reserve: channel_reserve,
+        locktime: locktime
+      }) do
     %ChannelCreateUpdate{
       initiator: initiator,
       initiator_amount: initiator_amount,
@@ -77,25 +85,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   """
   @spec encode_to_list(ChannelCreateUpdate.t()) :: error()
   def encode_to_list(_) do
-    raise {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
-  end
-
-  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) ::
-          Chainstate.t()
-  defp create_account_in_chainstate(
-         {pubkey, amount},
-         %Chainstate{accounts: accounts} = chainstate,
-         channel_reserve
-       ) do
-    account =
-      Account.empty()
-      |> Account.apply_transfer!(nil, amount)
-      |> ChannelOffChainUpdate.ensure_channel_reserve_is_meet!(channel_reserve)
-
-    %Chainstate{
-      chainstate
-      | accounts: AccountStateTree.put(accounts, pubkey, account)
-    }
+    {:error, "#{__MODULE__}: ChannelCreateUpdate MUST not be included in ChannelOffchainTx"}
   end
 
   @doc """
@@ -113,20 +103,58 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
         },
         channel_reserve
       ) do
-    initial_chainstate =
-      Enum.reduce(
-        [
-          {initiator, initiator_amount},
-          {responder, responder_amount}
-        ],
-        Chainstate.create_chainstate_trees(),
-        &create_account_in_chainstate(&1, &2, channel_reserve)
-      )
+    Enum.reduce_while(
+      [
+        {initiator, initiator_amount},
+        {responder, responder_amount}
+      ],
+      {:ok, Chainstate.create_chainstate_trees()},
+      fn account_specification, {:ok, chainstate} ->
+        case create_account_in_chainstate(account_specification, chainstate, channel_reserve) do
+          {:ok, _} = new_acc ->
+            {:cont, new_acc}
 
-    {:ok, initial_chainstate}
-  catch
-    {:error, _} = err ->
-      err
+          {:error, _} = err ->
+            {:halt, err}
+        end
+      end
+    )
+  end
+
+  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) ::
+          {:ok, Chainstate.t()} | error()
+  defp create_account_in_chainstate(
+         {pubkey, amount},
+         %Chainstate{accounts: accounts} = chainstate,
+         channel_reserve
+       ) do
+    case AccountStateTree.safe_update(
+           accounts,
+           pubkey,
+           &setup_initial_account(&1, amount, channel_reserve)
+         ) do
+      {:ok, updated_accounts} ->
+        {:ok,
+         %Chainstate{
+           chainstate
+           | accounts: updated_accounts
+         }}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  @spec setup_initial_account(Account.t(), non_neg_integer(), non_neg_integer()) ::
+          {:ok, Account.t()} | error()
+  defp setup_initial_account(account, amount, channel_reserve) do
+    with {:ok, account1} <- Account.apply_transfer(account, nil, amount),
+         :ok <- ChannelOffChainUpdate.ensure_channel_reserve_is_met(account1, channel_reserve) do
+      {:ok, account1}
+    else
+      {:error, _} = err ->
+        err
+    end
   end
 
   def update_offchain_chainstate(%Chainstate{}, _) do
@@ -134,7 +162,8 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   end
 
   @spec half_signed_preprocess_check(ChannelCreateUpdate.t(), map()) :: :ok | error()
-  def half_signed_preprocess_check(%ChannelCreateUpdate{
+  def half_signed_preprocess_check(
+        %ChannelCreateUpdate{
           initiator: initiator,
           initiator_amount: initiator_amount,
           responder: responder,
@@ -149,8 +178,12 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
           initiator_amount: correct_initiator_amount,
           channel_reserve: correct_channel_reserve,
           locktime: correct_locktime
-        }) do
+        }
+      ) do
     cond do
+      initiator == responder ->
+        {:error, "#{__MODULE__}: Initiator and responder cannot be the same"}
+
       initiator != correct_initiator ->
         {:error, "#{__MODULE__}: Wrong initiator"}
 
@@ -175,6 +208,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   end
 
   def half_signed_preprocess_check(%ChannelCreateUpdate{}, _) do
-    {:error, "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+    {:error,
+     "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
   end
 end

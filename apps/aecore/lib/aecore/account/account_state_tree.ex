@@ -14,6 +14,8 @@ defmodule Aecore.Account.AccountStateTree do
   @typedoc "Hash of the tree"
   @type hash :: binary()
 
+  @type error :: {:error, binary()}
+
   @spec init_empty() :: accounts_state()
   def init_empty do
     PatriciaMerkleTree.new(:accounts)
@@ -42,6 +44,23 @@ defmodule Aecore.Account.AccountStateTree do
   @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) :: accounts_state()
   def update(tree, key, fun) do
     put(tree, key, fun.(get(tree, key)))
+  end
+
+  @spec safe_update(
+          accounts_state(),
+          Keys.pubkey(),
+          (Account.t() -> {:ok, Account.t()} | error())
+        ) :: {:ok, accounts_state()} | error()
+  def safe_update(tree, key, fun) do
+    account = get(tree, key)
+
+    case fun.(account) do
+      {:ok, updated_account} ->
+        {:ok, put(tree, key, updated_account)}
+
+      {:error, _} = err ->
+        err
+    end
   end
 
   @spec has_key?(accounts_state(), Keys.pubkey()) :: boolean()

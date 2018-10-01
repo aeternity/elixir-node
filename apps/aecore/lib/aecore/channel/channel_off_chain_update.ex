@@ -59,6 +59,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
   def tag_to_module(2), do: {:ok, ChannelWidthdrawUpdate}
+
   def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
 
   @doc """
@@ -75,8 +76,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Encodes the given update to a list of binaries.
   """
-  @spec to_list(update_types()) :: list(binary())
-  def to_list(object) do
+  @spec encode_to_list(update_types()) :: list(binary())
+  def encode_to_list(object) do
     module = object.__struct__
     {:ok, tag} = module_to_tag(module)
     [:binary.encode_unsigned(tag)] ++ module.encode_to_list(object)
@@ -85,8 +86,8 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Decodes the given update from a list of binaries.
   """
-  @spec from_list(list(binary())) :: update_types()
-  def from_list([tag | rest]) do
+  @spec decode_from_list(list(binary())) :: update_types() | error()
+  def decode_from_list([tag | rest]) do
     decoded_tag = :binary.decode_unsigned(tag)
 
     case tag_to_module(decoded_tag) do
@@ -140,19 +141,16 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Makes sure that for the given account the channel reserve was meet
   """
-  @spec ensure_channel_reserve_is_meet!(Account.t(), non_neg_integer()) ::
-          Account.t() | no_return()
-  def ensure_channel_reserve_is_meet!(%Account{balance: balance} = account, channel_reserve) do
+  @spec ensure_channel_reserve_is_met(Account.t(), non_neg_integer()) :: :ok | error()
+  def ensure_channel_reserve_is_met(%Account{balance: balance}, channel_reserve) do
     if balance < channel_reserve do
-      throw(
-        {:error,
-         "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{
-           channel_reserve
-         } tokens)"}
-      )
+      {:error,
+       "#{__MODULE__} Account does not meet minimal deposit (We have #{balance} tokens vs minimal deposit of #{
+         channel_reserve
+       } tokens)"}
+    else
+      :ok
     end
-
-    account
   end
 
   @doc """
