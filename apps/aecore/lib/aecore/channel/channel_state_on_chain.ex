@@ -228,10 +228,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
           {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
   defp balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
-    with {:ok, poi_initiator_amount} <-
-           Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey),
-         {:ok, poi_responder_amount} <-
-           Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey) do
+    with {:ok, poi_initiator_amount} <- Poi.account_balance(poi, channel.initiator_pubkey),
+         {:ok, poi_responder_amount} <- Poi.account_balance(poi, channel.responder_pubkey) do
       # Later we will need to factor in contracts
       {:ok, poi_initiator_amount, poi_responder_amount}
     else
@@ -250,8 +248,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           Poi.t()
         ) :: ChannelStateOnChain.t()
   def apply_slashing(%ChannelStateOnChain{} = channel, block_height, :empty, %Poi{} = poi) do
-    {:ok, initiator_amount} = Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey)
-    {:ok, responder_amount} = Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey)
+    {:ok, initiator_amount} = Poi.account_balance(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.account_balance(poi, channel.responder_pubkey)
 
     %ChannelStateOnChain{
       channel
@@ -268,8 +266,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelOffChainTx{} = offchain_tx,
         %Poi{} = poi
       ) do
-    {:ok, initiator_amount} = Poi.lookup_account_balance_in_poi(poi, channel.initiator_pubkey)
-    {:ok, responder_amount} = Poi.lookup_account_balance_in_poi(poi, channel.responder_pubkey)
+    {:ok, initiator_amount} = Poi.account_balance(poi, channel.initiator_pubkey)
+    {:ok, responder_amount} = Poi.account_balance(poi, channel.responder_pubkey)
 
     %ChannelStateOnChain{
       channel

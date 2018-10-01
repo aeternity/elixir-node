@@ -173,9 +173,8 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Retrieves the balance for an account included in the Poi.
   """
-  @spec lookup_account_balance_in_poi(Poi.t(), Keys.pubkey()) ::
-          {:ok, non_neg_integer()} | {:error, String.t()}
-  def lookup_account_balance_in_poi(%Poi{} = poi, pubkey) do
+  @spec account_balance(Poi.t(), Keys.pubkey()) :: {:ok, non_neg_integer()} | {:error, String.t()}
+  def account_balance(%Poi{} = poi, pubkey) do
     case Poi.lookup_poi(:accounts, poi, pubkey) do
       {:ok, account} ->
         {:ok, account.balance}
