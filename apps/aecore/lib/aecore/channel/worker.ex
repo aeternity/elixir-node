@@ -549,16 +549,28 @@ defmodule Aecore.Channel.Worker do
     end
   end
 
-  def handle_call({:slashed, slash_tx, fee, nonce, priv_key}, _from, state) do
-    data_tx = SignedTx.data_tx(slash_tx)
-
+  def handle_call(
+        {
+          :slashed,
+          %SignedTx{
+            data: %DataTx{
+              payload: payload
+            }
+          } = slash_tx,
+          fee,
+          nonce,
+          priv_key
+        },
+        _from,
+        state
+      ) do
     channel_id =
-      case DataTx.payload(data_tx) do
-        %ChannelCloseSoloTx{} = payload ->
-          ChannelCloseSoloTx.channel_id(payload)
+      case payload do
+        %ChannelCloseSoloTx{channel_id: channel_id} ->
+          channel_id
 
-        %ChannelSlashTx{} = payload ->
-          ChannelSlashTx.channel_id(payload)
+        %ChannelSlashTx{channel_id: channel_id} ->
+          channel_id
       end
 
     if Map.has_key?(state, channel_id) do

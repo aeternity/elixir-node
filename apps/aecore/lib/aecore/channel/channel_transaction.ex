@@ -134,8 +134,8 @@ defmodule Aecore.Channel.ChannelTransaction do
   Retrieves the unsigned payload from a signed/unsigned channel transaction
   """
   @spec unsigned_payload(signed_tx() | channel_tx()) :: channel_tx()
-  def unsigned_payload(%SignedTx{} = signed_tx) do
-    unsigned_payload(SignedTx.data_tx(signed_tx))
+  def unsigned_payload(%SignedTx{data: data_tx}) do
+    unsigned_payload(data_tx)
   end
 
   def unsigned_payload(%DataTx{type: type, payload: payload}) when type in @allowed_onchain_tx do

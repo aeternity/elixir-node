@@ -812,18 +812,18 @@ defmodule Aecore.Channel.ChannelStatePeer do
           responder_pubkey: responder_pubkey,
           channel_id: channel_id
         } = peer_state,
-        half_signed_tx,
+        %SignedTx{
+          data: %DataTx{
+            payload: %ChannelCloseMutalTx{
+              channel_id: tx_id,
+              initiator_amount: tx_initiator_amount,
+              responder_amount: tx_responder_amount
+            }
+          }
+        } = half_signed_tx,
         {fee_initiator, fee_responder},
         priv_key
       ) do
-    data_tx = SignedTx.data_tx(half_signed_tx)
-
-    %ChannelCloseMutalTx{
-      channel_id: tx_id,
-      initiator_amount: tx_initiator_amount,
-      responder_amount: tx_responder_amount
-    } = DataTx.payload(data_tx)
-
     initiator_amount = final_channel_balance_for(peer_state, initiator_pubkey)
     responder_amount = final_channel_balance_for(peer_state, responder_pubkey)
 
@@ -934,16 +934,15 @@ defmodule Aecore.Channel.ChannelStatePeer do
         %ChannelStatePeer{
           mutually_signed_tx: [most_recent_tx | _]
         } = peer_state,
-        slash_tx,
+        %SignedTx{
+          data: %DataTx{
+            payload: payload
+          }
+        },
         fee,
         nonce,
         privkey
       ) do
-    payload =
-      slash_tx
-      |> SignedTx.data_tx()
-      |> DataTx.payload()
-
     slash_hash =
       case payload do
         %ChannelCloseSoloTx{poi: poi} ->

@@ -3,7 +3,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   Module defining the ChannelSlash transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.{SignedTx, DataTx}
