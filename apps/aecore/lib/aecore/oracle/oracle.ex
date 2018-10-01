@@ -3,11 +3,12 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
+  alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys
-  alias Aecore.Oracle.{Oracle, OracleStateTree}
+  alias Aecore.Oracle.{Oracle, OracleStateTree, OracleQuery}
   alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
@@ -55,8 +56,7 @@ defmodule Aecore.Oracle.Oracle do
         query_fee,
         fee,
         ttl,
-        tx_ttl \\ 0,
-        {pubkey, privkey} \\ {nil, nil}
+        tx_ttl \\ 0
       ) do
     payload = %{
       query_format: query_format,
@@ -65,12 +65,7 @@ defmodule Aecore.Oracle.Oracle do
       ttl: ttl
     }
 
-    {pubkey, privkey} =
-      if privkey == nil do
-        Keys.keypair(:sign)
-      else
-        {pubkey, privkey}
-      end
+    {pubkey, privkey} = Keys.keypair(:sign)
 
     tx_data =
       DataTx.init(
@@ -190,26 +185,26 @@ defmodule Aecore.Oracle.Oracle do
   @spec tx_ttl_is_valid?(oracle_txs_with_ttl() | SignedTx.t(), non_neg_integer()) :: boolean
   def tx_ttl_is_valid?(tx, block_height) do
     case tx do
-      %OracleRegistrationTx{} ->
-        ttl_is_valid?(tx.ttl, block_height)
+      %OracleRegistrationTx{ttl: ttl} ->
+        ttl_is_valid?(ttl, block_height)
 
-      %OracleQueryTx{} ->
+      %OracleQueryTx{query_ttl: query_ttl, response_ttl: response_ttl} ->
         response_ttl_is_valid =
-          case tx.response_ttl do
+          case response_ttl do
             %{type: :absolute} ->
               Logger.error("#{__MODULE__}: Response TTL has to be relative")
               false
 
             %{type: :relative} ->
-              ttl_is_valid?(tx.response_ttl, block_height)
+              ttl_is_valid?(response_ttl, block_height)
           end
 
-        query_ttl_is_valid = ttl_is_valid?(tx.query_ttl, block_height)
+        query_ttl_is_valid = ttl_is_valid?(query_ttl, block_height)
 
         response_ttl_is_valid && query_ttl_is_valid
 
-      %OracleExtendTx{} ->
-        tx.ttl > 0
+      %OracleExtendTx{ttl: ttl} ->
+        ttl > 0
 
       _ ->
         true
@@ -236,12 +231,19 @@ defmodule Aecore.Oracle.Oracle do
     OracleStateTree.prune(chainstate, block_height)
   end
 
-  @spec refund_sender(map(), AccountStateTree.accounts_state()) ::
+  @spec refund_sender(OracleQuery.t(), AccountStateTree.accounts_state()) ::
           AccountStateTree.accounts_state()
-  def refund_sender(query, accounts_state) do
-    if not query.has_response do
-      AccountStateTree.update(accounts_state, query.sender_address.value, fn account ->
-        Map.update!(account, :balance, &(&1 + query.fee))
+  def refund_sender(
+        %OracleQuery{
+          sender_address: %Identifier{value: sender_address},
+          has_response: has_response,
+          fee: fee
+        },
+        accounts_state
+      ) do
+    if not has_response do
+      AccountStateTree.update(accounts_state, sender_address, fn account ->
+        Map.update!(account, :balance, &(&1 + fee))
       end)
     else
       accounts_state

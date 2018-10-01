@@ -65,9 +65,7 @@ defmodule Aecore.Mixfile do
       {:ex_rlp, "~> 0.2.1"},
       {:gproc, "~> 0.6.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b7"},
-      {:merkle_patricia_tree,
-       github: "aeternity/elixir-merkle-patricia-tree",
-       ref: "863d9d433cc069806655d3e77913ac653cb9f1e6"}
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", ref: "0a763cc"}
     ]
   end
 end

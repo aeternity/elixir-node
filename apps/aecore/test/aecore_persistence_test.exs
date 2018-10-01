@@ -6,7 +6,7 @@ defmodule PersistenceTest do
   alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Header
   alias Aecore.Account.{Account, AccountStateTree}
 
   setup do
@@ -34,7 +34,7 @@ defmodule PersistenceTest do
   @tag timeout: 30_000
   @tag :persistence
   test "Get last mined block by his hash from the rocksdb" do
-    hash = BlockValidation.block_header_hash(Chain.top_block().header)
+    hash = Header.hash(Chain.top_block().header)
     assert {:ok, %{header: _header}} = Persistence.get_block_by_hash(hash)
   end
 

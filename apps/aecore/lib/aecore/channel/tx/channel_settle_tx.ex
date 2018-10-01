@@ -6,7 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   use Aecore.Tx.Transaction
 
   alias Aecore.Channel.Tx.ChannelSettleTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
@@ -66,7 +66,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelSettleTx{}, data_tx) do
+  def validate(%ChannelSettleTx{}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     if length(senders) != 1 do
@@ -132,9 +132,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
-        data_tx
+        %DataTx{fee: fee} = data_tx
       ) do
-    fee = DataTx.fee(data_tx)
     sender = DataTx.main_sender(data_tx)
 
     channel = ChannelStateTree.get(channels, channel_id)
@@ -167,13 +166,13 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   @spec encode_to_list(ChannelSettleTx.t(), DataTx.t()) :: list()

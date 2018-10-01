@@ -5,9 +5,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Chain.{Block, BlockValidation}
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.{Header, Block}
+  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Tx.SignedTx
@@ -110,13 +111,17 @@ defmodule Aecore.Tx.Pool.Worker do
 
   @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer() | nil) ::
           boolean()
-  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
-    case tx.data.payload do
+  def is_minimum_fee_met?(
+        %SignedTx{data: %DataTx{payload: payload, fee: fee, type: type} = data_tx} = tx,
+        identifier,
+        block_height \\ nil
+      ) do
+    case payload do
       %SpendTx{} ->
         SpendTx.is_minimum_fee_met?(tx)
 
       %OracleRegistrationTx{} ->
-        OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
+        OracleRegistrationTx.is_minimum_fee_met?(payload, fee, block_height)
 
       %OracleQueryTx{} ->
         true
@@ -127,14 +132,14 @@ defmodule Aecore.Tx.Pool.Worker do
             true
 
           :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
+            OracleResponseTx.is_minimum_fee_met?(data_tx, fee)
         end
 
-      %OracleExtendTx{} ->
-        tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
+      %OracleExtendTx{ttl: ttl} ->
+        fee >= OracleExtendTx.calculate_minimum_fee(ttl)
 
       _ ->
-        tx.data.type.is_minimum_fee_met?(tx)
+        type.is_minimum_fee_met?(tx)
     end
   end
 
@@ -151,7 +156,7 @@ defmodule Aecore.Tx.Pool.Worker do
         for block_user_txs <- user_txs do
           block_user_txs
           |> Map.put_new(:txs_hash, block.header.txs_hash)
-          |> Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
+          |> Map.put_new(:block_hash, Header.hash(block.header))
           |> Map.put_new(:block_height, block.header.height)
         end
 

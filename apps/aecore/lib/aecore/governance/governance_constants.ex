@@ -29,6 +29,8 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @name_claim_burned_fee 3
 
+  @max_txs_per_block 10_946
+
   # getter functions with same name for use in other modules
 
   @spec number_of_blocks_for_target_recalculation :: non_neg_integer()
@@ -66,4 +68,7 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec name_claim_burned_fee :: non_neg_integer()
   def name_claim_burned_fee, do: @name_claim_burned_fee
+
+  @spec max_txs_per_block :: non_neg_integer()
+  def max_txs_per_block, do: @max_txs_per_block
 end

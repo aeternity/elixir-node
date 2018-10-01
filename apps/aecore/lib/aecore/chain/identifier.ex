@@ -33,8 +33,8 @@ defmodule Aecore.Chain.Identifier do
   end
 
   @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
-  def check_identity(%Identifier{} = id, type) do
-    case create_identity(id.value, type) do
+  def check_identity(%Identifier{value: value} = id, type) do
+    case create_identity(value, type) do
       {:ok, check_id} -> check_id == id
       {:error, msg} -> {:error, msg}
     end
@@ -46,9 +46,9 @@ defmodule Aecore.Chain.Identifier do
 
   # API needed for RLP
   @spec encode_to_binary(Identifier.t()) :: binary()
-  def encode_to_binary(%Identifier{} = data) do
-    tag = type_to_tag(data.type)
-    <<tag::unsigned-integer-size(@tag_size), data.value::binary>>
+  def encode_to_binary(%Identifier{value: value, type: type}) do
+    tag = type_to_tag(type)
+    <<tag::unsigned-integer-size(@tag_size), value::binary>>
   end
 
   @spec decode_from_binary(binary()) :: tuple() | {:error, String.t()}

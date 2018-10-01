@@ -29,9 +29,7 @@ defmodule Aeutil.Mixfile do
       {:edown, "~> 0.8", override: true},
       {:sext, github: "uwiger/sext", tag: "1.4.1", manager: :rebar},
       {:enacl, github: "aeternity/enacl", ref: "2f50ba6"},
-      {:merkle_patricia_tree,
-       github: "aeternity/elixir-merkle-patricia-tree",
-       ref: "863d9d433cc069806655d3e77913ac653cb9f1e6"}
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", ref: "0a763cc"}
     ]
   end
 end

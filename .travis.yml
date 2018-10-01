@@ -21,7 +21,6 @@ script:
   - mix compile.xref --warnings-as-errors
   - mix credo list
   - mix coveralls -u --exclude disabled
-  - mix dialyzer
 
 cache:
   directories:

@@ -5,9 +5,8 @@ defmodule Aecore.Chain.BlockValidation do
 
   alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Pow.Cuckoo
+  alias Aecore.Pow.Pow
   alias Aecore.Tx.SignedTx
-  alias Aeutil.Hash
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
@@ -19,7 +18,16 @@ defmodule Aecore.Chain.BlockValidation do
           list(Block.t())
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_block(
-        new_block,
+        %Block{
+          header: %Header{
+            height: height,
+            miner: miner,
+            time: time,
+            root_hash: root_hash,
+            target: target
+          },
+          txs: txs
+        } = new_block,
         previous_block,
         old_chain_state,
         blocks_for_target_calculation
@@ -30,17 +38,17 @@ defmodule Aecore.Chain.BlockValidation do
       :ok ->
         {:ok, new_chain_state} =
           Chainstate.calculate_and_validate_chain_state(
-            new_block.txs,
+            txs,
             old_chain_state,
-            new_block.header.height,
-            new_block.header.miner
+            height,
+            miner
           )
 
-        root_hash = Chainstate.calculate_root_hash(new_chain_state)
+        expected_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-        target =
+        expected_target =
           Target.calculate_next_target(
-            new_block.header.time,
+            time,
             blocks_for_target_calculation
           )
 
@@ -52,55 +60,47 @@ defmodule Aecore.Chain.BlockValidation do
           !valid_header_time?(new_block) ->
             {:error, "#{__MODULE__}: Invalid header time"}
 
-          new_block.header.root_hash != root_hash ->
+          root_hash != expected_root_hash ->
             {:error, "#{__MODULE__}: Root hash not matching"}
 
-          target != new_block.header.target ->
+          target != expected_target ->
             {:error, "#{__MODULE__}: Invalid block target"}
 
           true ->
             {:ok, new_chain_state}
         end
 
-      err ->
-        err
+      {:error, _} = error ->
+        error
     end
   end
 
   @spec single_validate_block(Block.t()) :: :ok | {:error, String.t()}
-  def single_validate_block(block) do
-    server = self()
-    work = fn -> Cuckoo.verify(block.header) end
-
-    spawn(fn ->
-      send(server, {:worker_reply, self(), work.()})
-    end)
-
-    is_target_met =
-      receive do
-        {:worker_reply, _from, verified?} -> verified?
-      end
-
-    block_txs_count = length(block.txs)
-    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
+  def single_validate_block(
+        %Block{
+          header: %Header{txs_hash: txs_hash, version: version} = header,
+          txs: txs
+        } = block
+      ) do
+    block_txs_count = length(txs)
 
     cond do
-      block.header.txs_hash != calculate_txs_hash(block.txs) ->
+      txs_hash != calculate_txs_hash(txs) ->
         {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         {:error, "#{__MODULE__}: One or more transactions not valid"}
 
-      block.header.version != Block.current_block_version() ->
+      version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
 
-      block_txs_count > max_txs_for_block ->
+      block_txs_count > GovernanceConstants.max_txs_per_block() ->
         {:error, "#{__MODULE__}: Too many transactions"}
 
       !valid_header_time?(block) ->
         {:error, "#{__MODULE__}: Invalid header time"}
 
-      !is_target_met ->
+      !is_target_met?(header) ->
         {:error, "#{__MODULE__}: Header hash doesnt meet the target"}
 
       true ->
@@ -108,15 +108,9 @@ defmodule Aecore.Chain.BlockValidation do
     end
   end
 
-  @spec block_header_hash(Header.t()) :: binary()
-  def block_header_hash(%Header{} = header) do
-    block_header_bin = Header.encode_to_binary(header)
-    Hash.hash(block_header_bin)
-  end
-
   @spec validate_block_transactions(Block.t()) :: list(boolean())
-  def validate_block_transactions(block) do
-    block.txs |> Enum.map(fn tx -> :ok == SignedTx.validate(tx) end)
+  def validate_block_transactions(%Block{txs: txs}) do
+    Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -143,13 +137,29 @@ defmodule Aecore.Chain.BlockValidation do
   end
 
   @spec check_correct_height?(Block.t(), Block.t()) :: boolean()
-  defp check_correct_height?(new_block, previous_block) do
-    previous_block.header.height + 1 == new_block.header.height
+  defp check_correct_height?(%Block{header: %Header{height: new_block_height}}, %Block{
+         header: %Header{height: previous_block_height}
+       }) do
+    previous_block_height + 1 == new_block_height
   end
 
   @spec valid_header_time?(Block.t()) :: boolean()
-  defp valid_header_time?(%Block{header: new_block_header}) do
-    new_block_header.time <
+  defp valid_header_time?(%Block{header: %Header{time: time}}) do
+    time <
       System.system_time(:milliseconds) + GovernanceConstants.time_validation_future_limit_ms()
+  end
+
+  @spec is_target_met?(Header.t()) :: true | false
+  defp is_target_met?(%Header{} = header) do
+    server_pid = self()
+    work = fn -> Pow.verify(header) end
+
+    Task.start(fn ->
+      send(server_pid, {:worker_reply, self(), work.()})
+    end)
+
+    receive do
+      {:worker_reply, _from, verified?} -> verified?
+    end
   end
 end

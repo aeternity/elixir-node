@@ -656,8 +656,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def transfer(%ChannelStatePeer{} = state, _amount, _priv_key) do
-    {:error, "#{__MODULE__}: Can't transfer now; channel state is #{state.fsm_state}"}
+  def transfer(%ChannelStatePeer{fsm_state: fsm_state}, _amount, _priv_key) do
+    {:error, "#{__MODULE__}: Can't transfer now; channel state is #{fsm_state}"}
   end
 
   @doc """
@@ -792,8 +792,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def close(%ChannelStatePeer{} = state) do
-    {:error, "#{__MODULE__}: Can't close now; channel state is #{state.fsm_state}"}
+  def close(%ChannelStatePeer{fsm_state: fsm_state}) do
+    {:error, "#{__MODULE__}: Can't close now; channel state is #{fsm_state}"}
   end
 
   @doc """

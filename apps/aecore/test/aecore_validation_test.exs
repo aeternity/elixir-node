@@ -24,8 +24,12 @@ defmodule AecoreValidationTest do
       File.rm_rf(path)
     end
 
+    tests_pow = Application.get_env(:aecore, :pow_module)
+    Application.put_env(:aecore, :pow_module, Aecore.Pow.Cuckoo)
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
+      Application.put_env(:aecore, :pow_module, tests_pow)
     end)
   end
 
@@ -44,7 +48,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(
@@ -79,7 +83,7 @@ defmodule AecoreValidationTest do
     prev_block = get_prev_block()
 
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     blocks_for_target_calculation =
       Chain.get_blocks(

@@ -25,15 +25,15 @@ defmodule Aecore.Chain.Block do
   end
 
   @spec encode_to_map(Block.t()) :: map()
-  def encode_to_map(%Block{} = block) do
-    serialized_header = Serialization.serialize_value(block.header)
-    serialized_txs = Enum.map(block.txs, fn tx -> SignedTx.serialize(tx) end)
+  def encode_to_map(%Block{header: header, txs: txs}) do
+    serialized_header = Serialization.serialize_value(header)
+    serialized_txs = Enum.map(txs, fn tx -> SignedTx.serialize(tx) end)
     Map.put(serialized_header, "transactions", serialized_txs)
   end
 
   @spec decode_from_map(map()) :: Block.t()
-  def decode_from_map(%{} = block) do
-    txs = Enum.map(block["transactions"], fn tx -> SignedTx.deserialize(tx) end)
+  def decode_from_map(%{"transactions" => txs} = block) do
+    txs = Enum.map(txs, fn tx -> SignedTx.deserialize(tx) end)
 
     built_header =
       block
@@ -45,16 +45,16 @@ defmodule Aecore.Chain.Block do
   end
 
   @spec encode_to_list(Block.t()) :: list()
-  def encode_to_list(%Block{} = block) do
-    txs =
-      for tx <- block.txs do
+  def encode_to_list(%Block{header: %Header{version: version} = header, txs: txs}) do
+    encoded_txs =
+      for tx <- txs do
         SignedTx.rlp_encode(tx)
       end
 
     [
-      :binary.encode_unsigned(block.header.version),
-      Header.encode_to_binary(block.header),
-      txs
+      :binary.encode_unsigned(version),
+      Header.encode_to_binary(header),
+      encoded_txs
     ]
   end
 

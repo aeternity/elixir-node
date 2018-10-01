@@ -48,11 +48,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     }
   end
 
-  @doc """
-  Validates the transaction without considering state
-  """
   @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%OracleResponseTx{query_id: query_id}, data_tx) do
+  def validate(%OracleResponseTx{query_id: query_id}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
     oracle_id = DataTx.main_sender(data_tx)
     tree_query_id = oracle_id <> query_id
@@ -88,11 +85,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         accounts,
         oracles,
         block_height,
-        %OracleResponseTx{} = tx,
-        data_tx
+        %OracleResponseTx{query_id: query_id, response: response},
+        %DataTx{} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    tree_query_id = sender <> tx.query_id
+    tree_query_id = sender <> query_id
     interaction_objects = OracleStateTree.get_query(oracles, tree_query_id)
     query_fee = interaction_objects.fee
 
@@ -104,7 +101,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
     updated_interaction_objects = %{
       interaction_objects
-      | response: tx.response,
+      | response: response,
         expires: interaction_objects.response_ttl + block_height,
         has_response: true
     }
@@ -128,12 +125,11 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         accounts,
         oracles,
         _block_height,
-        tx,
-        data_tx
+        %OracleResponseTx{response: response, query_id: query_id},
+        %DataTx{fee: fee} = data_tx
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
-    tree_query_id = sender <> tx.query_id
+    tree_query_id = sender <> query_id
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -142,8 +138,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Sender: #{inspect(sender)} isn't a registered operator"}
 
-      !is_binary(tx.response) ->
-        {:error, "#{__MODULE__}: Invalid response data: #{inspect(tx.response)}"}
+      !is_binary(response) ->
+        {:error, "#{__MODULE__}: Invalid response data: #{inspect(response)}"}
 
       !OracleStateTree.exists_query?(oracles, tree_query_id) ->
         {:error, "#{__MODULE__}: No query with the ID: #{inspect(tree_query_id)}"}
@@ -169,15 +165,15 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(OracleResponseTx.t(), non_neg_integer()) :: boolean()
-  def is_minimum_fee_met?(data_tx, fee) do
+  @spec is_minimum_fee_met?(DataTx.t(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{payload: %OracleResponseTx{query_id: query_id}} = data_tx, fee) do
     oracles = Chain.chain_state().oracles
     sender = DataTx.main_sender(data_tx)
-    tree_query_id = sender <> data_tx.payload.query_id
+    tree_query_id = sender <> query_id
     referenced_query_response_ttl = OracleStateTree.get_query(oracles, tree_query_id).response_ttl
     fee >= calculate_minimum_fee(referenced_query_response_ttl)
   end
@@ -190,17 +186,20 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec encode_to_list(OracleResponseTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%OracleResponseTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(%OracleResponseTx{query_id: query_id, response: response}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.query_id,
-      tx.response,
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      query_id,
+      response,
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

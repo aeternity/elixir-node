@@ -11,7 +11,7 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.Oracle
-  alias Aecore.Pow.Cuckoo
+  alias Aecore.Pow.Pow
   alias Aecore.Tx.Pool.Worker, as: Pool
 
   require Logger
@@ -73,21 +73,24 @@ defmodule Aecore.Miner.Worker do
 
   # Mine single block without adding it to the chain - Sync
   @spec mine_sync_block(Block.t()) :: {:ok, Block.t()} | {:error, reason :: atom()}
-  def mine_sync_block(%Block{} = cblock) do
+  def mine_sync_block(%Block{header: %Header{} = header} = cblock) do
     if GenServer.call(__MODULE__, :get_state) == :idle do
-      mine_sync_block(Cuckoo.generate(cblock.header), cblock)
+      mine_sync_block(Pow.generate(header), cblock)
     else
       {:error, :miner_is_busy}
     end
   end
 
-  defp mine_sync_block({:error, :no_solution}, %Block{} = cblock) do
-    cheader = %{cblock.header | nonce: next_nonce(cblock.header.nonce)}
+  defp mine_sync_block(
+         {:error, :no_solution},
+         %Block{header: %Header{nonce: nonce} = header} = cblock
+       ) do
+    cheader = %{header | nonce: next_nonce(nonce)}
     cblock = %{cblock | header: cheader}
-    mine_sync_block(Cuckoo.generate(cheader), cblock)
+    mine_sync_block(Pow.generate(cheader), cblock)
   end
 
-  defp mine_sync_block(%Header{} = mined_header, cblock) do
+  defp mine_sync_block({:ok, %Header{} = mined_header}, cblock) do
     {:ok, %{cblock | header: mined_header}}
   end
 
@@ -162,7 +165,7 @@ defmodule Aecore.Miner.Worker do
 
     cheader = %{cblock.header | nonce: nonce}
     cblock_with_header = %{cblock | header: cheader}
-    work = fn -> Cuckoo.generate(cheader) end
+    work = fn -> Pow.generate(cheader) end
     start_worker(work, %{state | block_candidate: cblock_with_header})
   end
 
@@ -199,7 +202,7 @@ defmodule Aecore.Miner.Worker do
 
   defp worker_reply({:error, :no_solution}, state), do: mining(state)
 
-  defp worker_reply(%{} = miner_header, %{block_candidate: cblock} = state) do
+  defp worker_reply({:ok, %Header{} = miner_header}, %{block_candidate: cblock} = state) do
     Logger.info(fn -> "#{__MODULE__}: Mined block ##{cblock.header.height},
         difficulty target #{cblock.header.target},
         nonce #{cblock.header.nonce}" end)
@@ -212,7 +215,7 @@ defmodule Aecore.Miner.Worker do
   @spec candidate() :: Block.t()
   def candidate do
     top_block = Chain.top_block()
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
     {:ok, chain_state} = Chain.chain_state(top_block_hash)
 
     candidate_height = top_block.header.height + 1
@@ -279,7 +282,7 @@ defmodule Aecore.Miner.Worker do
       )
 
     root_hash = Chainstate.calculate_root_hash(new_chain_state)
-    top_block_hash = BlockValidation.block_header_hash(top_block.header)
+    top_block_hash = Header.hash(top_block.header)
 
     # start from nonce 0, will be incremented in mining
     unmined_header =
