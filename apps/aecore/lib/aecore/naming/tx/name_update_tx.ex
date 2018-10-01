@@ -94,10 +94,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           client_ttl: client_ttl,
           pointers: _pointers
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       client_ttl > GovernanceConstants.client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
@@ -167,9 +165,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         naming_state,
         block_height,
         %NameUpdateTx{hash: %Identifier{value: hash}, expire_by: expire_by},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, hash)
 

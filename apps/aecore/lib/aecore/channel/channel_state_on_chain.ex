@@ -97,8 +97,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Generates the channel id from a ChannelCreateTx.
   """
   @spec id(DataTx.t()) :: id()
-  def id(%DataTx{nonce: nonce} = data_tx) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
+  def id(%DataTx{
+        nonce: nonce,
+        senders: [
+          %Identifier{value: initiator_pubkey},
+          %Identifier{value: responder_pubkey}
+        ]
+      }) do
     id(initiator_pubkey, responder_pubkey, nonce)
   end
 

@@ -9,6 +9,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Chain.Identifier
 
   @typedoc """
   Data structures capable of mutating the offchain chainstate off an state channel
@@ -75,14 +76,22 @@ defmodule Aecore.Channel.ChannelTransaction do
   """
   @spec verify_half_signed_tx(signed_tx(), Keys.pubkey()) :: boolean()
   def verify_half_signed_tx(
-        %SignedTx{data: %DataTx{type: type} = data_tx, signatures: signatures} = tx,
+        %SignedTx{
+          data: %DataTx{
+            type: type,
+            senders: [%Identifier{value: initiator}, %Identifier{value: responder}]
+          },
+          signatures: signatures
+        } = tx,
         pubkey
       )
       when type in @allowed_onchain_tx do
-    senders = DataTx.senders(data_tx)
-
-    length(senders) == 2 and pubkey in senders and length(signatures) == 1 and
+    (pubkey == initiator or pubkey == responder) and length(signatures) == 1 and
       SignedTx.signature_valid_for?(tx, pubkey)
+  end
+
+  def verify_half_signed_tx(%SignedTx{}, _) do
+    false
   end
 
   def verify_half_signed_tx(%ChannelOffChainTx{signatures: {_, <<>>}} = tx, pubkey) do
@@ -98,14 +107,17 @@ defmodule Aecore.Channel.ChannelTransaction do
   """
   @spec verify_fully_signed_tx(signed_tx(), tuple()) :: boolean
   def verify_fully_signed_tx(
-        %SignedTx{data: %DataTx{type: type} = data_tx} = tx,
-        {pubkey1, pubkey2}
+        %SignedTx{
+          data: %DataTx{
+            type: type,
+            senders: [%Identifier{value: initiator}, %Identifier{value: responder}]
+          }
+        } = tx,
+        {correct_initiator, correct_responder}
       )
       when type in @allowed_onchain_tx do
-    senders = DataTx.senders(data_tx)
-
-    length(senders) == 2 and pubkey1 in senders and pubkey2 in senders and
-      SignedTx.signatures_valid?(tx, senders)
+    initiator == correct_initiator and responder == correct_responder and
+      SignedTx.signatures_valid?(tx, [initiator, responder])
   end
 
   def verify_fully_signed_tx(%ChannelOffChainTx{} = tx, pubkeys) do

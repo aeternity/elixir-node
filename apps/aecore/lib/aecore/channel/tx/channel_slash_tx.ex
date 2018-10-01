@@ -78,10 +78,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
           },
           poi: poi
         },
-        data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders size"}
@@ -144,10 +142,8 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         channels,
         _block_height,
         %ChannelSlashTx{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do

@@ -71,10 +71,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           response_format: response_format,
           ttl: ttl
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       !is_binary(query_format) && !is_binary(response_format) ->
         {:error, "#{__MODULE__}: Invalid query or response format definition"}
@@ -110,9 +108,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           query_fee: query_fee,
           ttl: ttl
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
     oracle = %Oracle{
@@ -145,10 +142,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         oracles,
         block_height,
         %OracleRegistrationTx{ttl: ttl} = tx,
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}

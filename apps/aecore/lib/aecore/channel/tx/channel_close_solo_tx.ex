@@ -65,9 +65,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
-  def validate(%ChannelCloseSoloTx{offchain_tx: :empty}, data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%ChannelCloseSoloTx{offchain_tx: :empty}, %DataTx{senders: senders}) do
     if length(senders) != 1 do
       {:error, "#{__MODULE__}: Invalid senders size"}
     else
@@ -84,10 +82,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
           },
           poi: poi
         },
-        data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders size"}
@@ -147,10 +143,8 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         channels,
         _block_height,
         %ChannelCloseSoloTx{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
@@ -188,9 +182,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{} = data_tx) do
-    [sender] = data_tx.senders
-
+  def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),

@@ -5,9 +5,8 @@ defmodule Aecore.Tx.SignedTx do
 
   alias Aecore.Tx.SignedTx
   alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
   alias Aeutil.Serialization
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Account.Account
   alias Aecore.Keys
   alias Aeutil.Bits
@@ -33,8 +32,10 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
-  def validate(%SignedTx{data: data} = tx) do
-    if DataTx.chainstate_senders?(data) || signatures_valid?(tx, DataTx.senders(data)) do
+  def validate(%SignedTx{data: %DataTx{senders: data_senders} = data} = tx) do
+    pubkeys = for %Identifier{value: pubkey} <- data_senders, do: pubkey
+
+    if DataTx.chainstate_senders?(data) || signatures_valid?(tx, pubkeys) do
       DataTx.validate(data)
     else
       {:error, "#{__MODULE__}: Signatures invalid"}
@@ -44,16 +45,15 @@ defmodule Aecore.Tx.SignedTx do
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data} = tx) do
-    if DataTx.chainstate_senders?(data) &&
-         !signatures_valid?(tx, DataTx.senders_from_chainstate(data, chainstate)) do
-      {:error, "#{__MODULE__}: Signatures invalid"}
+    with true <- signatures_valid?(tx, DataTx.senders(data, chainstate)),
+         :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
+      DataTx.process_chainstate(chainstate, block_height, data)
     else
-      with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
-        DataTx.process_chainstate(chainstate, block_height, data)
-      else
-        err ->
-          err
-      end
+      false ->
+        {:error, "#{__MODULE__}: Signatures invalid"}
+
+      {:error, _} = error ->
+        error
     end
   end
 
@@ -216,16 +216,12 @@ defmodule Aecore.Tx.SignedTx do
   def signature_valid_for?(%SignedTx{data: data, signatures: signatures}, pubkey) do
     data_binary = DataTx.rlp_encode(data)
 
-    if pubkey not in DataTx.senders(data) do
-      false
-    else
-      case single_signature_check(signatures, data_binary, pubkey) do
-        {:ok, _} ->
-          true
+    case single_signature_check(signatures, data_binary, pubkey) do
+      {:ok, _} ->
+        true
 
-        :error ->
-          false
-      end
+      :error ->
+        false
     end
   end
 

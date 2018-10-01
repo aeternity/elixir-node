@@ -43,9 +43,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   end
 
   @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%OracleExtendTx{ttl: ttl}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%OracleExtendTx{ttl: ttl}, %DataTx{senders: senders}) do
     cond do
       ttl <= 0 ->
         {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
@@ -73,9 +71,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         oracles,
         _block_height,
         %OracleExtendTx{ttl: %{ttl: ttl}},
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
     updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + ttl))
@@ -94,17 +91,10 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        oracles,
-        _block_height,
-        %OracleExtendTx{ttl: ttl},
-        %DataTx{
-          fee: fee
-        } = data_tx
-      ) do
-    sender = DataTx.main_sender(data_tx)
-
+  def preprocess_check(accounts, oracles, _block_height, %OracleExtendTx{ttl: ttl}, %DataTx{
+        fee: fee,
+        senders: [%Identifier{value: sender}]
+      }) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}

@@ -157,16 +157,20 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec senders(DataTx.t()) :: list(binary())
-  def senders(%DataTx{senders: senders}) do
-    for sender <- senders do
-      sender.value
+  @spec senders(DataTx.t(), Chainstate.t()) :: list(binary())
+  def senders(%DataTx{senders: senders, type: type, payload: payload} = tx, chainstate) do
+    if chainstate_senders?(tx) do
+      type.senders_from_chainstate(payload, chainstate)
+    else
+      for sender <- senders do
+        sender.value
+      end
     end
   end
 
-  @spec main_sender(DataTx.t()) :: binary() | nil
-  def main_sender(tx) do
-    List.first(senders(tx))
+  @spec main_sender(DataTx.t(), Chainstate.t()) :: binary() | nil
+  def main_sender(tx, chainstate) do
+    List.first(senders(tx, chainstate))
   end
 
   @spec ttl(DataTx.t()) :: non_neg_integer()
@@ -180,11 +184,6 @@ defmodule Aecore.Tx.DataTx do
   @spec chainstate_senders?(DataTx.t()) :: boolean()
   def chainstate_senders?(%DataTx{type: type}) do
     type.chainstate_senders?()
-  end
-
-  @spec senders_from_chainstate(DataTx.t(), Chainstate.t()) :: list(binary())
-  def senders_from_chainstate(%DataTx{payload: payload, type: type}, chainstate) do
-    type.senders_from_chainstate(payload, chainstate)
   end
 
   @doc """
@@ -223,7 +222,7 @@ defmodule Aecore.Tx.DataTx do
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     nonce_accounts_state =
-      AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
+      AccountStateTree.update(accounts_state, main_sender(tx, chainstate), fn acc ->
         Account.apply_nonce!(acc, tx.nonce)
       end)
 
@@ -276,7 +275,7 @@ defmodule Aecore.Tx.DataTx do
            block_height
          }"}
 
-      Account.nonce(chainstate.accounts, main_sender(tx)) >= tx.nonce ->
+      Account.nonce(chainstate.accounts, main_sender(tx, chainstate)) >= tx.nonce ->
         {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
 
       true ->
@@ -295,16 +294,15 @@ defmodule Aecore.Tx.DataTx do
     }
 
     if length(tx.senders) == 1 do
+      [%Identifier{value: sender}] = tx.senders
+
       Map.put(
         map_without_senders,
         "sender",
-        Serialization.serialize_value(main_sender(tx), :sender)
+        Serialization.serialize_value(sender, :sender)
       )
     else
-      new_senders =
-        for sender <- tx.senders do
-          sender.value
-        end
+      new_senders = for %Identifier{value: sender} <- tx.senders, do: sender
 
       Map.put(
         map_without_senders,
@@ -343,9 +341,12 @@ defmodule Aecore.Tx.DataTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def standard_deduct_fee(accounts, block_height, data_tx, fee) do
-    sender = DataTx.main_sender(data_tx)
-
+  def standard_deduct_fee(
+        accounts,
+        block_height,
+        %DataTx{senders: [%Identifier{value: sender} | _]},
+        fee
+      ) do
     AccountStateTree.update(accounts, sender, fn acc ->
       Account.apply_transfer!(acc, block_height, fee * -1)
     end)

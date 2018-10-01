@@ -49,9 +49,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%OracleResponseTx{query_id: query_id}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-    oracle_id = DataTx.main_sender(data_tx)
+  def validate(%OracleResponseTx{query_id: query_id}, %DataTx{
+        senders: [%Identifier{value: oracle_id} | _] = senders
+      }) do
     tree_query_id = oracle_id <> query_id
 
     cond do
@@ -86,9 +86,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         block_height,
         %OracleResponseTx{query_id: query_id, response: response},
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
     interaction_objects = OracleStateTree.get_query(oracles, tree_query_id)
     query_fee = interaction_objects.fee
@@ -126,9 +125,8 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         _block_height,
         %OracleResponseTx{response: response, query_id: query_id},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]} = data_tx
       ) do
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
 
     cond do
@@ -170,9 +168,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec is_minimum_fee_met?(DataTx.t(), non_neg_integer()) :: boolean()
-  def is_minimum_fee_met?(%DataTx{payload: %OracleResponseTx{query_id: query_id}} = data_tx, fee) do
+  def is_minimum_fee_met?(
+        %DataTx{
+          payload: %OracleResponseTx{query_id: query_id},
+          senders: [%Identifier{value: sender}]
+        },
+        fee
+      ) do
     oracles = Chain.chain_state().oracles
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
     referenced_query_response_ttl = OracleStateTree.get_query(oracles, tree_query_id).response_ttl
     fee >= calculate_minimum_fee(referenced_query_response_ttl)

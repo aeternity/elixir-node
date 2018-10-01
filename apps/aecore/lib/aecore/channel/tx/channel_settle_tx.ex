@@ -66,9 +66,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelSettleTx{}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%ChannelSettleTx{}, %DataTx{senders: senders}) do
     if length(senders) != 1 do
       {:error, "#{__MODULE__}: Invalid from_accs size"}
     else
@@ -132,10 +130,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
@@ -176,9 +172,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   end
 
   @spec encode_to_list(ChannelSettleTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{} = data_tx) do
-    [sender] = data_tx.senders
-
+  def encode_to_list(%ChannelSettleTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),

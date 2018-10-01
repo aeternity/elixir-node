@@ -24,7 +24,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
   alias Aecore.Keys
   alias Aecore.Tx.{SignedTx, DataTx}
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Account.Account
   alias Aecore.Poi.Poi
 
@@ -179,14 +179,13 @@ defmodule Aecore.Channel.ChannelStatePeer do
           type: ChannelCreateTx,
           payload: %ChannelCreateTx{
             channel_reserve: channel_reserve
-          }
+          },
+          senders: [
+            %Identifier{value: initiator_pubkey},
+            %Identifier{value: responder_pubkey}
+          ]
         } = data_tx
     } = create_tx
-
-    [
-      initiator_pubkey,
-      responder_pubkey
-    ] = DataTx.senders(data_tx)
 
     channel_id = ChannelStateOnChain.id(data_tx)
 
