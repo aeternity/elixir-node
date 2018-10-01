@@ -117,9 +117,6 @@ defmodule Aecore.Tx.Pool.Worker do
         block_height \\ nil
       ) do
     case payload do
-      %SpendTx{} ->
-        SpendTx.is_minimum_fee_met?(tx)
-
       %OracleRegistrationTx{} ->
         OracleRegistrationTx.is_minimum_fee_met?(payload, fee, block_height)
 

@@ -6,6 +6,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Pow.Pow
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
@@ -88,6 +89,9 @@ defmodule Aecore.Chain.BlockValidation do
       txs_hash != calculate_txs_hash(txs) ->
         {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
 
+      !check_is_minimum_fee_met?(txs) ->
+        {:error, "#{__MODULE__}: One or more transactions are with too low fee"}
+
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         {:error, "#{__MODULE__}: One or more transactions not valid"}
 
@@ -111,6 +115,11 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(%Block{txs: txs}) do
     Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
+  end
+
+  @spec check_is_minimum_fee_met?(list()) :: boolean()
+  def check_is_minimum_fee_met?(txs) do
+    Enum.all?(txs, fn tx -> Pool.is_minimum_fee_met?(tx, :pool) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
