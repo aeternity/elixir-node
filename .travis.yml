@@ -3,7 +3,7 @@ language: elixir
 elixir:
   - 1.6.4
 otp_release:
-  - 20.2.2
+  - 20.3.1
 
 env:
   - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
