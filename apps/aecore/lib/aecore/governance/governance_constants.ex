@@ -1,6 +1,6 @@
 defmodule Aecore.Governance.GovernanceConstants do
   @moduledoc """
-  Module containing governance constantss
+  Module containing governance constants
   """
 
   @number_of_blocks_for_target_recalculation 10
@@ -9,6 +9,15 @@ defmodule Aecore.Governance.GovernanceConstants do
   @expected_mine_rate_ms 300_000
 
   @coinbase_transaction_amount 10_000_000_000_000_000_000
+
+  @minimum_fee 1
+
+  @oracle_register_base_fee 4
+  @oracle_query_base_fee 2
+  @oracle_response_base_fee 2
+  @oracle_extend_base_fee 1
+
+  @oracle_ttl_fee_per_block 0.001
 
   # 30min
   @time_validation_future_limit_ms 1_800_000
@@ -41,6 +50,24 @@ defmodule Aecore.Governance.GovernanceConstants do
 
   @spec coinbase_transaction_amount :: non_neg_integer()
   def coinbase_transaction_amount, do: @coinbase_transaction_amount
+
+  @spec minimum_fee :: non_neg_integer()
+  def minimum_fee, do: @minimum_fee
+
+  @spec oracle_register_base_fee :: non_neg_integer()
+  def oracle_register_base_fee, do: @oracle_register_base_fee
+
+  @spec oracle_query_base_fee :: non_neg_integer()
+  def oracle_query_base_fee, do: @oracle_query_base_fee
+
+  @spec oracle_response_base_fee :: non_neg_integer()
+  def oracle_response_base_fee, do: @oracle_response_base_fee
+
+  @spec oracle_extend_base_fee :: non_neg_integer()
+  def oracle_extend_base_fee, do: @oracle_extend_base_fee
+
+  @spec oracle_ttl_fee_per_block :: non_neg_integer()
+  def oracle_ttl_fee_per_block, do: @oracle_ttl_fee_per_block
 
   @spec time_validation_future_limit_ms :: non_neg_integer()
   def time_validation_future_limit_ms, do: @time_validation_future_limit_ms

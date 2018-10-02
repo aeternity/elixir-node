@@ -11,8 +11,10 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.Oracle
+  alias Aecore.Oracle.Tx.{OracleQueryTx, OracleResponseTx}
   alias Aecore.Pow.Pow
   alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Tx.{DataTx, SignedTx}
 
   require Logger
 
@@ -237,7 +239,7 @@ defmodule Aecore.Miner.Worker do
       Chainstate.get_valid_txs(ordered_txs_list, chain_state, candidate_height)
 
     valid_txs_by_fee =
-      filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, candidate_height)
+      filter_transactions_by_fee_and_ttl(valid_txs_by_chainstate, chain_state, candidate_height)
 
     {miner_pubkey, _} = Keys.keypair(:sign)
 
@@ -263,9 +265,21 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  defp filter_transactions_by_fee_and_ttl(txs, block_height) do
-    Enum.filter(txs, fn tx ->
-      Pool.is_minimum_fee_met?(tx, :miner, block_height) &&
+  defp filter_transactions_by_fee_and_ttl(txs, %{oracles: oracles}, block_height) do
+    Enum.filter(txs, fn %SignedTx{data: %DataTx{type: type} = data_tx} = tx ->
+      transaction_state =
+        case type do
+          OracleQueryTx ->
+            oracles
+
+          OracleResponseTx ->
+            oracles
+
+          _ ->
+            :unused
+        end
+
+      type.is_minimum_fee_met?(data_tx, transaction_state, block_height) &&
         Oracle.tx_ttl_is_valid?(tx, block_height)
     end)
   end
