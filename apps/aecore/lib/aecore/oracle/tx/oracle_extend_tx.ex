@@ -48,6 +48,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     senders = DataTx.senders(data_tx)
 
     cond do
+      !Oracle.ttl_is_valid?(ttl) ->
+        {:error, "#{__MODULE__}: Invalid ttl: #{inspect(ttl)} in OracleExtendTx"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
