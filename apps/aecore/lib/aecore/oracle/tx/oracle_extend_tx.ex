@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -47,8 +48,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     senders = DataTx.senders(data_tx)
 
     cond do
-      ttl <= 0 ->
-        {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -98,7 +97,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         accounts,
         oracles,
         _block_height,
-        %OracleExtendTx{ttl: ttl},
+        %OracleExtendTx{ttl: %{ttl: ttl}},
         %DataTx{
           fee: fee
         } = data_tx
@@ -112,7 +111,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
-      fee < calculate_minimum_fee(ttl) ->
+      fee < Oracle.calculate_minimum_fee(ttl) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->

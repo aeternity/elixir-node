@@ -121,7 +121,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      expires: Oracle.calculate_ttl(ttl, block_height)
+      expires: Oracle.calculate_absolute_ttl(ttl, block_height)
     }
 
     {:ok,
