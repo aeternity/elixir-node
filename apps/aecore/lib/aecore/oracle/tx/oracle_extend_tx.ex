@@ -131,11 +131,13 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  def calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
-    round(Float.ceil(ttl.ttl / blocks_ttl_per_token) + base_fee)
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(
+        %DataTx{fee: fee, payload: %OracleExtendTx{ttl: %{ttl: ttl}}},
+        _chain_state,
+        _block_height
+      ) do
+    fee - GovernanceConstants.oracle_extend_base_fee() >= Oracle.calculate_minimum_fee(ttl)
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()
