@@ -127,6 +127,9 @@ defmodule Aecore.Tx.Pool.Worker do
           :pool ->
             true
 
+          :validation ->
+            OracleResponseTx.is_minimum_fee_met?(data_tx, fee)
+
           :miner ->
             OracleResponseTx.is_minimum_fee_met?(data_tx, fee)
         end

@@ -119,7 +119,7 @@ defmodule Aecore.Chain.BlockValidation do
 
   @spec check_is_minimum_fee_met?(list()) :: boolean()
   def check_is_minimum_fee_met?(txs) do
-    Enum.all?(txs, fn tx -> Pool.is_minimum_fee_met?(tx, :pool) end)
+    Enum.all?(txs, fn tx -> Pool.is_minimum_fee_met?(tx, :validation) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
