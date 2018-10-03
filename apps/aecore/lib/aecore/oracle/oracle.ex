@@ -174,6 +174,9 @@ defmodule Aecore.Oracle.Oracle do
 
   @spec calculate_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
   def calculate_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
+  def calculate_minimum_fee(relative_ttl) do
+    Float.ceil(relative_ttl * GovernanceConstants.oracle_ttl_fee_per_block())
+  end
     case type do
       :absolute ->
         ttl
