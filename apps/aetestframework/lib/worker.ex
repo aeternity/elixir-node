@@ -241,10 +241,8 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, tx} = Account.spend(pubkey, 20, 10, <<\"payload\">>)"
+      "Account.spend(pubkey, 20, 10, <<\"payload\">>)"
     )
-
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   # mining
@@ -286,30 +284,27 @@ defmodule Aetestframework.Worker do
   def naming_pre_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.pre_claim(\"test.aet\", 123, 10)"
+      "Account.pre_claim(\"test.aet\", 123, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_claim(String.t()) :: :ok | :unknown_node
   def naming_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.claim(\"test.aet\", 123, 10)"
+      "Account.claim(\"test.aet\", 123, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_update(String.t()) :: :ok | :unknown_node
   def naming_update(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50) "
+      "Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50) "
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_transfer(String.t()) :: :ok | :unknown_node
@@ -318,10 +313,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, transfer} = Account.name_transfer(\"test.aet\", transfer_to_pub, 10)"
+      "Account.name_transfer(\"test.aet\", transfer_to_pub, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(transfer)")
   end
 
   @spec naming_revoke(String.t()) :: :ok | :unknown_node
@@ -330,10 +324,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, spend} = Account.spend(transfer_to_pub, 15, 10, <<\"payload\">>)"
+      "Account.spend(transfer_to_pub, 15, 10, <<\"payload\">>)"
     )
 
-    send_command(node_name, "Pool.add_transaction(spend)")
     mine_sync_block(node_name)
 
     send_command(
@@ -343,10 +336,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, revoke} = Account.name_revoke(transfer_to_pub, transfer_to_priv, \"test.aet\", 10, next_nonce)"
+      "Account.name_revoke(transfer_to_pub, transfer_to_priv, \"test.aet\", 10, next_nonce)"
     )
 
-    send_command(node_name, "Pool.add_transaction(revoke)")
   end
 
   @spec chainstate_naming(String.t()) :: :ok | :unknown_node
@@ -464,8 +456,7 @@ defmodule Aetestframework.Worker do
     Port.command(port, "pubkey_receiver = \"#{receiver}\"\n")
     Port.command(port, "nonce = Account.nonce(Chain.chain_state().accounts, Account.base58c_decode(pubkey_sender)) + 1\n")
     Port.command(port, "ttl = Chain.top_height() + 1\n")
-    Port.command(port, "{:ok, tx} = Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\")\n")
-    Port.command(port, "Pool.add_transaction(tx)\n")
+    Port.command(port, "Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\")\n")
     {:reply, :ok, state}
   end
 

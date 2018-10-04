@@ -41,13 +41,13 @@ defmodule AehttpclientTest do
 
     init_nonce = Map.get(Chain.chain_state(), sender, %{nonce: 0}).nonce
 
-    {:ok, signed_tx1} =
-      Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 1, <<"payload">>)
+    signed_tx1 = Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 1, <<"payload">>)
 
-    {:ok, signed_tx2} =
-      Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 2, <<"payload">>)
+    signed_tx2 = Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 2, <<"payload">>)
 
-    assert :ok = Pool.add_transaction(signed_tx1)
-    assert :ok = Pool.add_transaction(signed_tx2)
+    txs_in_the_pool = Pool.get_pool() |> Map.values()
+
+    assert ^signed_tx1 = List.last(txs_in_the_pool)
+    assert ^signed_tx2 = List.first(txs_in_the_pool)
   end
 end
