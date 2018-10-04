@@ -13,10 +13,14 @@
    alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
    alias Aecore.Tx.Transaction
 
+   require Aecore.Contract.ContractConstants, as: Constants
+
    @version 1
 
-   @type id :: binary()
+   @typedoc "Reason of the error"
+   @type reason :: String.t()
 
+   @typedoc "Expected structure for the ContractCall Transaction"
    @type payload :: %{
            contract: Identifier.t(),
            vm_version: integer(),
@@ -27,6 +31,7 @@
            call_stack: [non_neg_integer()]
          }
 
+   @typedoc "Structure of the ContractCall Transaction type"
    @type t :: %ContractCallTx{
            contract: Identifier.t(),
            vm_version: integer(),
@@ -37,8 +42,21 @@
            call_stack: [non_neg_integer()]
          }
 
+   @typedoc "Structure that holds specific transaction info in the chainstate."
    @type tx_type_state() :: Chainstate.calls()
 
+   @doc """
+   Definition of the ContractCallTx structure
+
+   # Parameters
+   - contract: the address of the contract
+   - vm_version: the VM/ABI to use
+   - amount: optional amount to transfer to the account before execution (even if the execution fails)
+   - gas: the amount of gas to use
+   - gas_price: gas price for the call
+   - call_data: call data for the call (usually including a function name and args, interpreted by the contract)
+   - call_stack: nested calls stack
+   """
    defstruct [
      :contract,
      :vm_version,
@@ -66,15 +84,19 @@
          call_data: call_data,
          call_stack: call_stack
        }) do
-     %ContractCallTx{
-       contract: identified_contract,
-       vm_version: vm_version,
-       amount: amount,
-       gas: gas,
-       gas_price: gas_price,
-       call_data: call_data,
-       call_stack: call_stack
-     }
+     if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
+       %ContractCallTx{
+         contract: identified_contract,
+         vm_version: vm_version,
+         amount: amount,
+         gas: gas,
+         gas_price: gas_price,
+         call_data: call_data,
+         call_stack: call_stack
+       }
+     else
+       {:error, "#{__MODULE__}: Wrong VM version"}
+     end
    end
 
    def init(%{
@@ -88,15 +110,19 @@
        }) do
      identified_contract = Identifier.create_identity(contract, :contract)
 
-     %ContractCallTx{
-       contract: identified_contract,
-       vm_version: vm_version,
-       amount: amount,
-       gas: gas,
-       gas_price: gas_price,
-       call_data: call_data,
-       call_stack: call_stack
-     }
+     if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
+       %ContractCallTx{
+         contract: identified_contract,
+         vm_version: vm_version,
+         amount: amount,
+         gas: gas,
+         gas_price: gas_price,
+         call_data: call_data,
+         call_stack: call_stack
+       }
+     else
+       {:error, "#{__MODULE__}: Wrong VM version"}
+     end
    end
 
    @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
@@ -106,7 +132,7 @@
          },
          _data_tx
        ) do
-     if validate_identifier(contract, :contract) do
+     if Identifier.check_identity(contract, :contract) do
        :ok
      else
        {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
@@ -115,7 +141,7 @@
 
    @spec process_chainstate(
            Chainstate.accounts(),
-           tx_type_state(),
+           Chainstate.t(),
            non_neg_integer(),
            t(),
            DataTx.t(),
@@ -123,7 +149,7 @@
          ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
    def process_chainstate(
          accounts,
-         calls,
+         chain_state,
          block_height,
          %ContractCallTx{} = call_tx,
          data_tx,
@@ -133,11 +159,8 @@
      sender = DataTx.main_sender(data_tx)
      nonce = DataTx.nonce(data_tx)
 
-     chain_state = Chain.chain_state()
-
      updated_accounts_state =
-       accounts
-       |> AccountStateTree.update(sender, fn acc ->
+       AccountStateTree.update(accounts, sender, fn acc ->
          Account.apply_transfer!(acc, block_height, call_tx.amount)
        end)
 
@@ -160,8 +183,7 @@
            amount = DataTx.fee(data_tx) + gas_cost
            caller1 = AccountStateTree.get(accounts1, sender)
 
-           accounts1
-           |> AccountStateTree.update(caller1.id.value, fn acc ->
+           AccountStateTree.update(accounts1, caller1.id.value, fn acc ->
              Account.apply_transfer!(acc, block_height, amount)
            end)
        end
@@ -169,9 +191,9 @@
      # Insert the call into the state tree. This is mainly to remember what the
      # return value was so that the caller can access it easily.
      # Each block starts with an empty calls tree.
-     updated_calls_tree = CallStateTree.insert_call(calls, call)
+     updated_calls_tree = CallStateTree.insert_call(update_chain_state1.calls, call)
 
-     {:ok, %{update_chain_state1 | accounts: accounts2, calls: updated_calls_tree}}
+     {:ok, {:unused, %{update_chain_state1 | accounts: accounts2, calls: updated_calls_tree}}}
    end
 
    @spec preprocess_check(
@@ -214,10 +236,7 @@
            ]
        end
 
-     case validate_fns(checks) do
-       :ok -> :ok
-       {:error, message} -> {:error, message}
-     end
+     validate_fns(checks)
    end
 
    @spec deduct_fee(
@@ -231,6 +250,7 @@
      DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
    end
 
+   @spec encode_to_list(ContractCallTx.t(), DataTx.t()) :: list()
    def encode_to_list(%ContractCallTx{} = tx, %DataTx{} = datatx) do
      [sender] = datatx.senders
 
@@ -249,6 +269,7 @@
      ]
    end
 
+   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
    def decode_from_list(@version, [
          encoded_sender,
          nonce,
@@ -261,16 +282,27 @@
          gas_price,
          call_data
        ]) do
-     payload = %ContractCallTx{
-       contract: encoded_contract,
-       vm_version: vm_version,
-       amount: amount,
-       gas: gas,
-       gas_price: gas_price,
-       call_data: call_data
-     }
+     with {:ok, contract} <- Identifier.decode_from_binary(encoded_contract) do
+       payload = %ContractCallTx{
+         contract: contract,
+         vm_version: vm_version,
+         amount: amount,
+         gas: gas,
+         gas_price: gas_price,
+         call_data: call_data
+       }
 
-     DataTx.init_binary(ContractCallTx, payload, [encoded_sender], fee, nonce, ttl)
+       DataTx.init_binary(
+         ContractCallTx,
+         payload,
+         [encoded_sender],
+         :binary.decode_unsigned(fee),
+         :binary.decode_unsigned(nonce),
+         :binary.decode_unsigned(ttl)
+       )
+     else
+       {:error, _} = error -> error
+     end
    end
 
    @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
@@ -294,7 +326,6 @@
           chain_state
         ) do
      contracts_tree = chain_state.contracts
-     # check the get_contract
      contract = ContractStateTree.get_contract(contracts_tree, contract_address.value)
 
      call_definition = %{
@@ -314,9 +345,10 @@
    end
 
    defp check_account_balance(accounts, sender, required_amount) do
-     case AccountStateTree.get(accounts, sender).balance - required_amount > 0 do
-       true -> :ok
-       false -> {:error, "#{__MODULE__}: Negative balance"}
+     if Account.balance(accounts, sender) - required_amount > 0 do
+       :ok
+     else
+       {:error, "#{__MODULE__}: Negative balance"}
      end
    end
 
@@ -351,16 +383,6 @@
 
    defp check_validity(true, _), do: :ok
    defp check_validity(false, message), do: {:error, message}
-
-   defp validate_identifier(%Identifier{} = id, type) do
-     case type do
-       :account ->
-         Identifier.create_identity(id.value, :account) == id
-
-       :contract ->
-         Identifier.create_identity(id.value, :contract) == id
-     end
-   end
 
    defp validate_fns(checks), do: validate_fns(checks, [])
    defp validate_fns([], _args), do: :ok

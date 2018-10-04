@@ -13,12 +13,15 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   alias Aecore.Tx.Transaction
   alias Aecore.Tx.DataTx
   alias Aecore.Chain.Identifier
-  alias Aecore.Chain.Worker, as: Chain
 
   require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1
 
+  @typedoc "Reason of the error"
+  @type reason :: String.t()
+
+  @typedoc "Expected structure for the ContractCreate Transaction"
   @type payload :: %{
           code: binary(),
           vm_version: byte(),
@@ -29,6 +32,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           call_data: binary()
         }
 
+  @typedoc "Structure of the ContractCreate Transaction type"
   @type t :: %ContractCreateTx{
           code: binary(),
           vm_version: byte(),
@@ -39,8 +43,21 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           call_data: binary()
         }
 
+  @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: Chainstate.contracts()
 
+  @doc """
+  Definition of the ContractCreateTx structure
+
+  # Parameters
+  - code: the byte code of the contract
+  - vm_version: the VM/ABI to use
+  - deposit: held by the contract until it is deactivated (an even number, 0 is accepted)
+  - amount: to be added to the miner account
+  - gas: gas for the initial call
+  - gas_price: gas price for the call
+  - call_data: call data for the initial call (usually including a function name and args, interpreted by the contract)
+  """
   defstruct [
     :code,
     :vm_version,
@@ -51,10 +68,12 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     :call_data
   ]
 
+  use ExConstructor
+
   @spec get_chain_state_name() :: :contracts
   def get_chain_state_name, do: :contracts
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: t() | {:error, reason()}
   def init(%{
         code: code,
         vm_version: vm_version,
@@ -64,18 +83,22 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas_price: gas_price,
         call_data: call_data
       }) do
-    %ContractCreateTx{
-      code: code,
-      vm_version: vm_version,
-      deposit: deposit,
-      amount: amount,
-      gas: gas,
-      gas_price: gas_price,
-      call_data: call_data
-    }
+    if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
+      %ContractCreateTx{
+        code: code,
+        vm_version: vm_version,
+        deposit: deposit,
+        amount: amount,
+        gas: gas,
+        gas_price: gas_price,
+        call_data: call_data
+      }
+    else
+      {:error, "#{__MODULE__}: Wrong VM version"}
+    end
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %ContractCreateTx{},
         data_tx
@@ -85,13 +108,13 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     if length(senders) == 1 do
       :ok
     else
-      {:error, "#{__MODULE__}: Invalid senders number"}
+      {:error, "#{__MODULE__}: Wrong senders number"}
     end
   end
 
   @spec process_chainstate(
           Chainstate.accounts(),
-          tx_type_state(),
+          Chainstate.t(),
           non_neg_integer(),
           t(),
           DataTx.t(),
@@ -99,7 +122,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
-        contracts,
+        chain_state,
         block_height,
         %ContractCreateTx{
           code: code,
@@ -125,7 +148,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         Account.apply_transfer!(acc, block_height, amount)
       end)
 
-    updated_contracts_state = ContractStateTree.insert_contract(contracts, contract)
+    updated_contracts_state = ContractStateTree.insert_contract(chain_state.contracts, contract)
 
     call = Call.new(owner, data_tx.nonce, block_height, contract.id.value, gas_price)
 
@@ -142,14 +165,14 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       height: block_height
     }
 
-    chain_state = %{
-      Chain.chain_state()
+    pre_call_chain_state = %{
+      chain_state
       | contracts: updated_contracts_state,
         accounts: updated_accounts_state
     }
 
     {call_result, updated_state} =
-      Dispatch.run(Constants.aevm_solidity_01(), call_definition, chain_state)
+      Dispatch.run(Constants.aevm_solidity_01(), call_definition, pre_call_chain_state)
 
     final_state =
       case call_result.return_type do
@@ -196,7 +219,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           t(),
           DataTx.t(),
           Transaction.context()
-        ) :: :ok | {:error, String.t()}
+        ) :: :ok | {:error, reason()}
   def preprocess_check(accounts, _contracts, _block_height, tx, data_tx, _context) do
     sender = DataTx.main_sender(data_tx)
     total_deduction = data_tx.fee + tx.amount + tx.deposit + tx.gas * tx.gas_price
@@ -224,6 +247,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
+  @spec encode_to_list(ContractCreateTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ContractCreateTx{} = tx, %DataTx{} = datatx) do
     [sender] = datatx.senders
 
@@ -243,6 +267,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     ]
   end
 
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_sender,
         nonce,

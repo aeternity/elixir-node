@@ -27,7 +27,7 @@ defmodule Aecore.Contract.Dispatch do
     call
   end
 
-  def call_aevm_sophia_01(
+  defp call_aevm_sophia_01(
         %{contract: contract, height: height} = call_definition,
         chain_state
       ) do
@@ -42,7 +42,7 @@ defmodule Aecore.Contract.Dispatch do
     call_init(call_definition, spec)
   end
 
-  def call_aevm_solidity_01(
+  defp call_aevm_solidity_01(
         %{contract: contract, height: height} = call_definition,
         chain_state
       ) do
@@ -57,7 +57,7 @@ defmodule Aecore.Contract.Dispatch do
     call_init(call_definition, spec)
   end
 
-  def set_env(contract_pubkey, height, vm_version, chain_state) do
+  defp set_env(contract_pubkey, height, vm_version, chain_state) do
     state = VmChain.new_state(contract_pubkey, chain_state)
 
     %{
@@ -73,7 +73,7 @@ defmodule Aecore.Contract.Dispatch do
     }
   end
 
-  def call_init(
+  defp call_init(
         %{
           caller: caller,
           contract: contract_pubkey,

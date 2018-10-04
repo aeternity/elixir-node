@@ -32,14 +32,8 @@ defmodule Aecore.Contract.VmChain do
     contract_tree = chain_state.contracts
 
     case ContractStateTree.get_contract(contract_tree, pubkey) do
-      %Contract{} = contract ->
-        store = Contract.store(contract)
-
-        Enum.reduce(store, %{}, fn {key, value}, acc ->
-          <<key_integer::256>> = key
-          <<value_integer::256>> = value
-          Map.put(acc, key_integer, value_integer)
-        end)
+      %Contract{store: store} ->
+        store
 
       :none ->
         %{}
@@ -65,14 +59,10 @@ defmodule Aecore.Contract.VmChain do
           [non_neg_integer()],
           ChainApi.chain_state()
         ) :: {:ok, ChainApi.call_result(), ChainApi.chain_state()} | {:error, String.t()}
-  def call_contract(
-        target,
-        gas,
-        value,
-        call_data,
-        call_stack,
-        %{pubkey: contract_key, chain_state: chain_state}
-      ) do
+  def call_contract(target, gas, value, call_data, call_stack, %{
+        pubkey: contract_key,
+        chain_state: chain_state
+      }) do
     contract_tree = chain_state.contracts
 
     case ContractStateTree.get_contract(contract_tree, target) do
@@ -122,7 +112,7 @@ defmodule Aecore.Contract.VmChain do
             %{result: call.return_value, gas_spent: gas_used}
 
           :error ->
-            %{result: :out_of_gas, gas_spent: gas_used}
+            %{result: :error, gas_spent: gas_used}
         end
 
       {:ok, result, new_chain_state}

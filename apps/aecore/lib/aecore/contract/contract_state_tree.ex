@@ -6,6 +6,7 @@ defmodule Aecore.Contract.ContractStateTree do
   alias Aecore.Contract.Contract
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
+  alias Aevm.State
 
   @contract_key_size 32
 
@@ -57,7 +58,7 @@ defmodule Aecore.Contract.ContractStateTree do
         %Contract{
           deserialized
           | id: identified_id,
-            store: get_store(store_id, contract_tree)
+            store: store_id |> get_store(contract_tree) |> State.storage_to_int()
         }
 
       _ ->

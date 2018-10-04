@@ -51,8 +51,8 @@ defmodule AecoreContractTest do
     create_contract()
     Miner.mine_sync_block_to_chain()
     tree_keys1 = PatriciaMerkleTree.all_keys(Chain.chain_state().contracts)
-    assert tree_keys1 |> Enum.count() === 1
-    contract_address = tree_keys1 |> List.first()
+    assert Enum.count(tree_keys1) === 1
+    contract_address = List.first(tree_keys1)
     contract1 = ContractStateTree.get_contract(Chain.chain_state().contracts, contract_address)
     assert contract1.store === %{}
     assert contract1.log === <<>>
@@ -63,7 +63,7 @@ defmodule AecoreContractTest do
     call_contract(contract_address, "set", 33)
     Miner.mine_sync_block_to_chain()
     tree_keys2 = PatriciaMerkleTree.all_keys(Chain.chain_state().contracts)
-    assert tree_keys2 |> Enum.count() === 2
+    assert Enum.count(tree_keys2) === 2
     contract2 = ContractStateTree.get_contract(Chain.chain_state().contracts, contract_address)
     # contract storage is mapping of 32-byte keys to 32-byte values
     assert Map.get(contract2.store, <<0::256>>) === <<33::256>>
@@ -72,7 +72,7 @@ defmodule AecoreContractTest do
     call_contract(contract_address, "set", 45)
     Miner.mine_sync_block_to_chain()
     tree_keys3 = PatriciaMerkleTree.all_keys(Chain.chain_state().contracts)
-    assert tree_keys3 |> Enum.count() === 2
+    assert Enum.count(tree_keys3) === 2
     contract3 = ContractStateTree.get_contract(Chain.chain_state().contracts, contract_address)
     # contract storage is mapping of 32-byte keys to 32-byte values
     assert Map.get(contract3.store, <<0::256>>) === <<45::256>>

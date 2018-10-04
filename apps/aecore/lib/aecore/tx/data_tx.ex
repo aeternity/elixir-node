@@ -239,7 +239,12 @@ defmodule Aecore.Tx.DataTx do
   """
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{fee: fee} = tx, context \\ :transaction) do
+  def process_chainstate(
+        chainstate,
+        block_height,
+        %DataTx{fee: fee} = tx,
+        context \\ :transaction
+      ) do
     accounts_state = chainstate.accounts
     payload = payload(tx)
 
@@ -254,27 +259,36 @@ defmodule Aecore.Tx.DataTx do
         end)
       end
 
+    chain_state_name = tx.type.get_chain_state_name()
+
+    process_tx_type_state =
+      if Enum.member?([:contracts, :calls], chain_state_name) do
+        %{chainstate | accounts: nonce_accounts_state}
+      else
+        tx_type_state
+      end
+
     with {:ok, {new_accounts_state, new_tx_type_state}} <-
            nonce_accounts_state
            |> tx.type.deduct_fee(block_height, payload, tx, fee)
            |> tx.type.process_chainstate(
-             tx_type_state,
+             process_tx_type_state,
              block_height,
              payload,
              tx,
              context
            ) do
       new_chainstate =
-        case tx.type.get_chain_state_name do
+        case chain_state_name do
+          chain_state_name when chain_state_name in [:contracts, :calls] ->
+            new_tx_type_state
+
           :accounts ->
             %{chainstate | accounts: new_accounts_state}
 
-          :contracts ->
-            new_tx_type_state
-
           _ ->
             %{chainstate | accounts: new_accounts_state}
-            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+            |> Map.put(chain_state_name, new_tx_type_state)
         end
 
       {:ok, new_chainstate}
@@ -291,7 +305,15 @@ defmodule Aecore.Tx.DataTx do
     payload = payload(tx)
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
-    with :ok <- tx.type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context) do
+    with :ok <-
+           tx.type.preprocess_check(
+             accounts_state,
+             tx_type_state,
+             block_height,
+             payload,
+             tx,
+             context
+           ) do
       if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
         :ok
       else
