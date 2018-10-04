@@ -138,7 +138,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         _chain_state,
         _block_height
       ) do
-    fee - GovernanceConstants.oracle_extend_base_fee() >= Oracle.calculate_minimum_fee(ttl)
+    ttl_fee = fee - GovernanceConstants.oracle_extend_base_fee()
+    ttl_fee >= Oracle.calculate_minimum_fee(ttl)
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()

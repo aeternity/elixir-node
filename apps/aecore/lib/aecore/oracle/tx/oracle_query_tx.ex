@@ -258,13 +258,15 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         |> OracleStateTree.get_oracle(oracle_address)
         |> Map.get(:query_fee)
 
+    ttl_fee = fee - GovernanceConstants.oracle_query_base_fee()
+
     tx_fee_is_met =
       case query_ttl do
         %{ttl: ttl, type: :relative} ->
-          fee - GovernanceConstants.oracle_query_base_fee() >= Oracle.calculate_minimum_fee(ttl)
+          ttl_fee >= Oracle.calculate_minimum_fee(ttl)
 
         %{ttl: _ttl, type: :absolute} ->
-          fee - GovernanceConstants.oracle_query_base_fee() >=
+          ttl_fee() >=
             query_ttl
             |> Oracle.calculate_relative_ttl(block_height)
             |> Oracle.calculate_minimum_fee()

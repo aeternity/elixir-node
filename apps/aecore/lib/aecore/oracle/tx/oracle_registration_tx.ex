@@ -185,12 +185,14 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         _oracles_tree,
         block_height
       ) do
+    ttl_fee = fee - GovernanceConstants.oracle_register_base_fee()
+
     case ttl do
       %{ttl: ttl, type: :relative} ->
-        fee - GovernanceConstants.oracle_register_base_fee() >= Oracle.calculate_minimum_fee(ttl)
+        ttl_fee >= Oracle.calculate_minimum_fee(ttl)
 
       %{ttl: _ttl, type: :absolute} ->
-        fee - GovernanceConstants.oracle_register_base_fee() >=
+        ttl_fee >=
           ttl
           |> Oracle.calculate_relative_ttl(block_height)
           |> Oracle.calculate_minimum_fee()

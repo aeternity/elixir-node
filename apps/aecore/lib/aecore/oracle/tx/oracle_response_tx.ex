@@ -179,11 +179,12 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
 
+    ttl_fee = fee - GovernanceConstants.oracle_response_base_fee()
+
     referenced_query_response_ttl =
       OracleStateTree.get_query(oracles_tree, tree_query_id).response_ttl
 
-    fee - GovernanceConstants.oracle_response_base_fee() >=
-      Oracle.calculate_minimum_fee(referenced_query_response_ttl)
+    ttl_fee >= Oracle.calculate_minimum_fee(referenced_query_response_ttl)
   end
 
   @spec encode_to_list(OracleResponseTx.t(), DataTx.t()) :: list()
