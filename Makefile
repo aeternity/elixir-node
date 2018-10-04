@@ -95,6 +95,12 @@ clean-deps: clean
 clean-deps-compile: clean-deps
 	@mix compile
 
+all-test:
+	@mix compile --warnings-as-errors || true
+	@mix compile.xref --warnings-as-errors
+	@mix credo list
+	@mix coveralls -u --exclude disabled
+
 killall:
 	@echo "Kill all beam processes"
 	@pkill -9 beam || true
