@@ -1,12 +1,18 @@
 dist: xenial
-language: elixir
-elixir: 1.6.6
+language: erlang
+#elixir: 1.6.6
 otp_release: 20.3.8
 
 env:
-  - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
+  - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include:$HOME/.kiex LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
 
 before_install:
+  # Install elixir
+  - curl -sSL https://raw.githubusercontent.com/taylor/kiex/master/install | bash -s
+  - kiex install 1.6.6
+  - kiex default 1.6.6
+  - kiex use 1.6.6
+
   - wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
   - "[ -d libsodium-src ] || mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1"
   - cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && cd ..
@@ -22,6 +28,7 @@ script:
 
 cache:
   directories:
+    - $HOME/.kiex
     - $HOME/.cargo
     - deps
     - _build
