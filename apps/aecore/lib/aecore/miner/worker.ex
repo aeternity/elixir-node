@@ -266,11 +266,16 @@ defmodule Aecore.Miner.Worker do
 
   defp filter_transactions_by_fee_and_ttl(txs, chain_state, block_height) do
     Enum.filter(txs, fn %SignedTx{data: %DataTx{type: type} = data_tx} = tx ->
-      type.is_minimum_fee_met?(
-        data_tx,
-        Map.get(chain_state, type.get_chain_state_name(), %{}),
-        block_height
-      ) && Oracle.tx_ttl_is_valid?(tx, block_height)
+      ttl_valid = Oracle.tx_ttl_is_valid?(tx, block_height)
+
+      minimum_fee_met =
+        type.is_minimum_fee_met?(
+          data_tx,
+          Map.get(chain_state, type.get_chain_state_name()),
+          block_height
+        )
+
+      ttl_valid && minimum_fee_met
     end)
   end
 
