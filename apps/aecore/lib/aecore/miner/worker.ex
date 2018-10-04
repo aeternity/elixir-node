@@ -11,7 +11,6 @@ defmodule Aecore.Miner.Worker do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.Oracle
-  alias Aecore.Oracle.Tx.{OracleQueryTx, OracleResponseTx}
   alias Aecore.Pow.Pow
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.{DataTx, SignedTx}
@@ -265,22 +264,13 @@ defmodule Aecore.Miner.Worker do
     end
   end
 
-  defp filter_transactions_by_fee_and_ttl(txs, %{oracles: oracles}, block_height) do
+  defp filter_transactions_by_fee_and_ttl(txs, chain_state, block_height) do
     Enum.filter(txs, fn %SignedTx{data: %DataTx{type: type} = data_tx} = tx ->
-      transaction_state =
-        case type do
-          OracleQueryTx ->
-            oracles
-
-          OracleResponseTx ->
-            oracles
-
-          _ ->
-            :unused
-        end
-
-      type.is_minimum_fee_met?(data_tx, transaction_state, block_height) &&
-        Oracle.tx_ttl_is_valid?(tx, block_height)
+      type.is_minimum_fee_met?(
+        data_tx,
+        Map.get(chain_state, type.get_chain_state_name(), %{}),
+        block_height
+      ) && Oracle.tx_ttl_is_valid?(tx, block_height)
     end)
   end
 

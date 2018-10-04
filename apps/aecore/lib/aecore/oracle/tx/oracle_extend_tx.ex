@@ -98,8 +98,8 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def preprocess_check(
         accounts,
         oracles,
-        _block_height,
-        %OracleExtendTx{ttl: %{ttl: ttl}},
+        block_height,
+        _payload,
         %DataTx{
           fee: fee
         } = data_tx
@@ -113,7 +113,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
-      fee < Oracle.calculate_minimum_fee(ttl) ->
+      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
