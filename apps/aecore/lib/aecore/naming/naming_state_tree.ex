@@ -2,6 +2,8 @@ defmodule Aecore.Naming.NamingStateTree do
   @moduledoc """
   Top level naming state tree.
   """
+  use Aecore.Util.StateTrees
+
   alias Aecore.Naming.{Name, NameCommitment}
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
@@ -14,10 +16,8 @@ defmodule Aecore.Naming.NamingStateTree do
   @typedoc "Hash of the tree"
   @type hash :: binary()
 
-  @spec init_empty() :: namings_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:naming)
-  end
+  @spec name() :: atom()
+  def name(), do: :naming
 
   @spec put(namings_state(), binary(), Name.t() | NameCommitment.t()) :: namings_state()
   def put(tree, key, value) do

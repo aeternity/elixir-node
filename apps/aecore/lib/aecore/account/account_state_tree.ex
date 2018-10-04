@@ -2,6 +2,8 @@ defmodule Aecore.Account.AccountStateTree do
   @moduledoc """
   Top level account state tree.
   """
+  use Aecore.Util.StateTrees
+
   alias Aecore.Account.Account
   alias Aecore.Chain.Identifier
   alias Aecore.Keys
@@ -14,10 +16,8 @@ defmodule Aecore.Account.AccountStateTree do
   @typedoc "Hash of the tree"
   @type hash :: binary()
 
-  @spec init_empty() :: accounts_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:accounts)
-  end
+  @spec name() :: atom()
+  def name(), do: :accounts
 
   @spec put(accounts_state(), Keys.pubkey(), Account.t()) :: accounts_state()
   def put(tree, key, value) do

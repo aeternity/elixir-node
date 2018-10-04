@@ -2,6 +2,8 @@ defmodule Aecore.Contract.CallStateTree do
   @moduledoc """
   Top level call state tree.
   """
+  use Aecore.Util.StateTrees
+
   alias Aecore.Chain.Chainstate
   alias Aecore.Contract.Call
   alias Aeutil.PatriciaMerkleTree
@@ -14,10 +16,8 @@ defmodule Aecore.Contract.CallStateTree do
   @typedoc "Calls tree"
   @type calls_state() :: Trie.t()
 
-  @spec init_empty() :: calls_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:calls)
-  end
+  @spec name() :: atom()
+  def name(), do: :calls
 
   # A new block always starts with an empty calls tree.
   # Calls and return values are only kept for one block.

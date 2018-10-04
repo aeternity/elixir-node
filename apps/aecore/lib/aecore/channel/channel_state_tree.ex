@@ -2,6 +2,8 @@ defmodule Aecore.Channel.ChannelStateTree do
   @moduledoc """
   Top level channel state tree.
   """
+  use Aecore.Util.StateTrees
+
   alias Aecore.Channel.ChannelStateOnChain
   alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
@@ -12,10 +14,8 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @type hash :: binary()
 
-  @spec init_empty() :: Trie.t()
-  def init_empty do
-    PatriciaMerkleTree.new(:channels)
-  end
+  @spec name() :: atom()
+  def name(), do: :channels
 
   @spec put(channel_state(), ChannelSteteOnChain.id(), ChannelSteteOnChain.t()) :: channel_state()
   def put(tree, key, value) do

@@ -2,6 +2,8 @@ defmodule Aecore.Contract.ContractStateTree do
   @moduledoc """
   Top level contract state tree.
   """
+  use Aecore.Util.StateTrees
+
   alias Aecore.Chain.Identifier
   alias Aecore.Contract.Contract
   alias Aeutil.PatriciaMerkleTree
@@ -15,10 +17,8 @@ defmodule Aecore.Contract.ContractStateTree do
   @typedoc "Contracts tree"
   @type contracts_state() :: Trie.t()
 
-  @spec init_empty() :: contracts_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:contracts)
-  end
+  @spec name() :: atom()
+  def name(), do: :contracts
 
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
   def insert_contract(
