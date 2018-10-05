@@ -14,9 +14,6 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @type hash :: binary()
 
-  @spec name() :: atom()
-  def name(), do: :channels
-
   @spec get(channel_state(), ChannelSteteOnChain.id()) :: :none | ChannelSteteOnChain.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do

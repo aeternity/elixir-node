@@ -16,9 +16,6 @@ defmodule Aecore.Contract.CallStateTree do
   @typedoc "Calls tree"
   @type calls_state() :: Trie.t()
 
-  @spec name() :: atom()
-  def name(), do: :calls
-
   # A new block always starts with an empty calls tree.
   # Calls and return values are only kept for one block.
 

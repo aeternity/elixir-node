@@ -16,9 +16,6 @@ defmodule Aecore.Account.AccountStateTree do
   @typedoc "Hash of the tree"
   @type hash :: binary()
 
-  @spec name() :: atom()
-  def name(), do: :accounts
-
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do

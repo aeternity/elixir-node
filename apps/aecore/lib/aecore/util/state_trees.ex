@@ -1,4 +1,10 @@
 defmodule Aecore.Util.StateTrees do
+  alias Aecore.Contract.CallStateTree
+  alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Contract.ContractStateTree
+  alias Aecore.Naming.NamingStateTree
+  alias Aecore.Account.AccountStateTree
+
   @moduledoc """
   Module defining functions for all Trees
   """
@@ -9,10 +15,11 @@ defmodule Aecore.Util.StateTrees do
       alias MerklePatriciaTree.Trie
       alias Aeutil.PatriciaMerkleTree
       alias Aeutil.Serialization
+      alias Aecore.Util.StateTrees
 
       @spec init_empty() :: Trie.t()
       def init_empty() do
-        PatriciaMerkleTree.new(__MODULE__.name())
+        PatriciaMerkleTree.new(StateTrees.tree_type(__MODULE__))
       end
 
       @spec put(Trie.t(), binary(), map()) :: Trie.t()
@@ -39,4 +46,16 @@ defmodule Aecore.Util.StateTrees do
       # defoverridable rlp_encode: 1, rlp_decode: 1
     end
   end
+
+  # New tree definitions should be described and handled here
+  def tree_type(AccountStateTree), do: :accounts
+  def tree_type(NamingStateTree), do: :naming
+  def tree_type(ChannelStateTree), do: :channels
+  def tree_type(ContractStateTree), do: :contracts
+  def tree_type(CallStateTree), do: :calls
+  # def tree_type(), do: :txs
+  # def tree_type(), do: :proof
+  # def tree_type(), do: :oracles
+  # def tree_type(), do: :oracles_cache
+  def tree_type(unknown_type), do: {:error, "#{__MODULE__}: Invalid tree type: #{unknown_type}"}
 end

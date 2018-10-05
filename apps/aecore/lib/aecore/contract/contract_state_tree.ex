@@ -17,9 +17,6 @@ defmodule Aecore.Contract.ContractStateTree do
   @typedoc "Contracts tree"
   @type contracts_state() :: Trie.t()
 
-  @spec name() :: atom()
-  def name(), do: :contracts
-
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
   def insert_contract(
         contract_tree,

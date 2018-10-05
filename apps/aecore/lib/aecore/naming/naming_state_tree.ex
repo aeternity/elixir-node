@@ -13,9 +13,6 @@ defmodule Aecore.Naming.NamingStateTree do
   @typedoc "Namings tree"
   @type namings_state() :: Trie.t()
 
-  @spec name() :: atom()
-  def name(), do: :naming
-
   @spec get(namings_state(), binary()) :: Name.t() | NameCommitment.t() | :none
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
