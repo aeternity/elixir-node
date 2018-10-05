@@ -17,12 +17,6 @@ defmodule Aecore.Channel.ChannelStateTree do
   @spec name() :: atom()
   def name(), do: :channels
 
-  @spec put(channel_state(), ChannelSteteOnChain.id(), ChannelSteteOnChain.t()) :: channel_state()
-  def put(tree, key, value) do
-    serialized_account_state = ChannelStateOnChain.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
-  end
-
   @spec get(channel_state(), ChannelSteteOnChain.id()) :: :none | ChannelSteteOnChain.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
@@ -53,15 +47,5 @@ defmodule Aecore.Channel.ChannelStateTree do
       value ->
         put(tree, key, fun.(value))
     end
-  end
-
-  @spec has_key?(channel_state(), ChannelSteteOnChain.id()) :: boolean()
-  def has_key?(tree, key) do
-    PatriciaMerkleTree.lookup(tree, key) != :none
-  end
-
-  @spec root_hash(channel_state()) :: hash()
-  def root_hash(tree) do
-    PatriciaMerkleTree.root_hash(tree)
   end
 end

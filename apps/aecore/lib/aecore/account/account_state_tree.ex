@@ -19,12 +19,6 @@ defmodule Aecore.Account.AccountStateTree do
   @spec name() :: atom()
   def name(), do: :accounts
 
-  @spec put(accounts_state(), Keys.pubkey(), Account.t()) :: accounts_state()
-  def put(tree, key, value) do
-    serialized_account_state = Account.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
-  end
-
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
@@ -42,15 +36,5 @@ defmodule Aecore.Account.AccountStateTree do
   @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) :: accounts_state()
   def update(tree, key, fun) do
     put(tree, key, fun.(get(tree, key)))
-  end
-
-  @spec has_key?(accounts_state(), Keys.pubkey()) :: boolean()
-  def has_key?(tree, key) do
-    PatriciaMerkleTree.lookup(tree, key) != :none
-  end
-
-  @spec root_hash(accounts_state()) :: hash()
-  def root_hash(tree) do
-    PatriciaMerkleTree.root_hash(tree)
   end
 end

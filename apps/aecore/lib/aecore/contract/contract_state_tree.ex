@@ -71,11 +71,6 @@ defmodule Aecore.Contract.ContractStateTree do
     end
   end
 
-  @spec root_hash(contracts_state()) :: hash()
-  def root_hash(contract_tree) do
-    PatriciaMerkleTree.root_hash(contract_tree)
-  end
-
   defp update_store(store_id, old_store, new_store, tree) do
     merged_store = Map.merge(old_store, new_store)
 

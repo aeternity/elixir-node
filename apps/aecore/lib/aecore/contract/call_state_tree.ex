@@ -48,11 +48,6 @@ defmodule Aecore.Contract.CallStateTree do
     end
   end
 
-  @spec root_hash(calls_state()) :: hash()
-  def root_hash(calls_tree) do
-    PatriciaMerkleTree.root_hash(calls_tree)
-  end
-
   @spec construct_call_tree_id(binary(), binary()) :: binary()
   def construct_call_tree_id(contract_id, call_id) do
     <<contract_id.value::binary, call_id::binary>>

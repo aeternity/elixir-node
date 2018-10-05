@@ -13,17 +13,8 @@ defmodule Aecore.Naming.NamingStateTree do
   @typedoc "Namings tree"
   @type namings_state() :: Trie.t()
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
   @spec name() :: atom()
   def name(), do: :naming
-
-  @spec put(namings_state(), binary(), Name.t() | NameCommitment.t()) :: namings_state()
-  def put(tree, key, value) do
-    serialized = Serialization.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, key, serialized)
-  end
 
   @spec get(namings_state(), binary()) :: Name.t() | NameCommitment.t() | :none
   def get(tree, key) do
@@ -49,10 +40,5 @@ defmodule Aecore.Naming.NamingStateTree do
   @spec delete(namings_state(), binary()) :: namings_state()
   def delete(tree, key) do
     PatriciaMerkleTree.delete(tree, key)
-  end
-
-  @spec root_hash(namings_state()) :: hash()
-  def root_hash(tree) do
-    PatriciaMerkleTree.root_hash(tree)
   end
 end
