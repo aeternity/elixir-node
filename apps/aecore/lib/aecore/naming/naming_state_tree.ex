@@ -36,9 +36,4 @@ defmodule Aecore.Naming.NamingStateTree do
         :none
     end
   end
-
-  @spec delete(namings_state(), binary()) :: namings_state()
-  def delete(tree, key) do
-    PatriciaMerkleTree.delete(tree, key)
-  end
 end

@@ -29,11 +29,6 @@ defmodule Aecore.Channel.ChannelStateTree do
     end
   end
 
-  @spec delete(channel_state(), ChannelStateOnChain.id()) :: channel_state()
-  def delete(tree, key) do
-    PatriciaMerkleTree.delete(tree, key)
-  end
-
   @spec update!(
           channel_state(),
           ChannelSteteOnChain.id(),

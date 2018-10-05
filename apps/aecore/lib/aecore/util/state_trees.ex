@@ -31,6 +31,11 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.lookup(tree, key) != :none
       end
 
+      @spec delete(Trie.t(), binary()) :: Trie.t()
+      def delete(tree, key) do
+        PatriciaMerkleTree.delete(tree, key)
+      end
+
       # defoverridable rlp_encode: 1, rlp_decode: 1
     end
   end
