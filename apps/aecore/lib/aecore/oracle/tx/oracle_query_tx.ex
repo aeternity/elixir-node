@@ -266,7 +266,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           ttl_fee >= Oracle.calculate_minimum_fee(ttl)
 
         %{ttl: _ttl, type: :absolute} ->
-          ttl_fee() >=
+          ttl_fee >=
             query_ttl
             |> Oracle.calculate_relative_ttl(block_height)
             |> Oracle.calculate_minimum_fee()
