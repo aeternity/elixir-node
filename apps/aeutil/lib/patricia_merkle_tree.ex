@@ -80,7 +80,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @spec insert(Trie.t(), Trie.key(), Trie.value()) :: Trie.t() | {:error, term}
   def insert(trie, key, value) do
     case lookup(trie, key) do
-      {:ok, ^value} ->
+      {:ok, _value} ->
         {:error, :already_present}
 
       :none ->
@@ -105,21 +105,6 @@ defmodule Aeutil.PatriciaMerkleTree do
   """
   @spec delete(Trie.t(), Trie.key()) :: Trie.t()
   def delete(trie, key), do: Trie.delete(trie, key)
-
-  @doc """
-  This is a dirty workaround that fixes problems with MerklePatriciaTree till
-  https://github.com/aeternity/elixir-merkle-patricia-tree/issues/13 is resolved.
-  """
-  @spec fix_trie(Trie.t()) :: Trie.t()
-  def fix_trie(trie) do
-    Enum.reduce(
-      print_trie(trie, output: :as_pair, deserialize: false),
-      Trie.new(trie.db),
-      fn {key, value}, acc ->
-        Trie.update(acc, key, value)
-      end
-    )
-  end
 
   @doc """
   Providing debug print of a given trie in the shell

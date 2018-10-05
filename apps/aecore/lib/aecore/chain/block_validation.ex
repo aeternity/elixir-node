@@ -5,7 +5,8 @@ defmodule Aecore.Chain.BlockValidation do
 
   alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Pow.Cuckoo
+  alias Aecore.Pow.Pow
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Tx.SignedTx
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
@@ -83,11 +84,13 @@ defmodule Aecore.Chain.BlockValidation do
         } = block
       ) do
     block_txs_count = length(txs)
-    max_txs_for_block = Application.get_env(:aecore, :tx_data)[:max_txs_per_block]
 
     cond do
       txs_hash != calculate_txs_hash(txs) ->
         {:error, "#{__MODULE__}: Root hash of transactions does not match the one in header"}
+
+      !check_is_minimum_fee_met?(txs) ->
+        {:error, "#{__MODULE__}: One or more transactions are with too low fee"}
 
       !(block |> validate_block_transactions() |> Enum.all?()) ->
         {:error, "#{__MODULE__}: One or more transactions not valid"}
@@ -95,7 +98,7 @@ defmodule Aecore.Chain.BlockValidation do
       version != Block.current_block_version() ->
         {:error, "#{__MODULE__}: Invalid block version"}
 
-      block_txs_count > max_txs_for_block ->
+      block_txs_count > GovernanceConstants.max_txs_per_block() ->
         {:error, "#{__MODULE__}: Too many transactions"}
 
       !valid_header_time?(block) ->
@@ -112,6 +115,11 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(%Block{txs: txs}) do
     Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
+  end
+
+  @spec check_is_minimum_fee_met?(list()) :: boolean()
+  def check_is_minimum_fee_met?(txs) do
+    Enum.all?(txs, fn tx -> Pool.is_minimum_fee_met?(tx, :validation) end)
   end
 
   @spec calculate_txs_hash([]) :: binary()
@@ -153,7 +161,7 @@ defmodule Aecore.Chain.BlockValidation do
   @spec is_target_met?(Header.t()) :: true | false
   defp is_target_met?(%Header{} = header) do
     server_pid = self()
-    work = fn -> Cuckoo.verify(header) end
+    work = fn -> Pow.verify(header) end
 
     Task.start(fn ->
       send(server_pid, {:worker_reply, self(), work.()})

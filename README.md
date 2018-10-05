@@ -3,6 +3,9 @@
 # Aeternity Elixir Full Node
 This is an elixir full node implementation of the aeternity specification.
 
+Compatibility to the erlang aeternity implementation is documented in [docs/aeternity-erlang-compatibility.md](docs/aeternity-erlang-compatibility.md).
+
+
 ## Getting started
 
 ### Required packages

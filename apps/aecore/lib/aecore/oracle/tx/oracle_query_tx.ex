@@ -9,7 +9,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aecore.Tx.DataTx
@@ -220,7 +219,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         {:error, "#{__MODULE__}: The query fee: #{inspect(query_fee)} is
          lower than the one required by the oracle"}
 
-      !is_minimum_fee_met?(tx, fee, block_height) ->
+      !is_minimum_fee_met?(tx, oracles, fee, block_height) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
@@ -239,27 +238,25 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec get_oracle_query_fee(binary()) :: non_neg_integer()
-  def get_oracle_query_fee(oracle_address) do
-    Chain.chain_state().oracles
-    |> OracleStateTree.get_oracle(oracle_address)
-    |> Map.get(:query_fee)
-  end
-
-  @spec is_minimum_fee_met?(OracleQueryTx.t(), non_neg_integer(), non_neg_integer() | nil) ::
-          boolean()
+  @spec is_minimum_fee_met?(
+          OracleQueryTx.t(),
+          tx_type_state(),
+          non_neg_integer(),
+          non_neg_integer() | nil
+        ) :: boolean()
   def is_minimum_fee_met?(
         %OracleQueryTx{
           query_fee: query_fee,
           oracle_address: %Identifier{value: oracle_address},
           query_ttl: query_ttl
         },
+        oracles_tree,
         fee,
         block_height
       ) do
     tx_query_fee_is_met =
       query_fee >=
-        Chain.chain_state().oracles
+        oracles_tree
         |> OracleStateTree.get_oracle(oracle_address)
         |> Map.get(:query_fee)
 

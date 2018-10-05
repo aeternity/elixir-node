@@ -42,9 +42,10 @@ config :aecore, :peers,
 
 config :aecore, :miner, resumed_by_default: false
 
+config :aecore, :pow_module, Aecore.Pow.Cuckoo
+
 config :aecore, :tx_data,
   minimum_fee: 1,
-  max_txs_per_block: 100,
   blocks_ttl_per_token: 1000,
   oracle_registration_base_fee: 4,
   oracle_query_base_fee: 2,

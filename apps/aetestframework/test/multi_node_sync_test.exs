@@ -2,6 +2,7 @@ defmodule MultiNodeSyncTest do
   use ExUnit.Case
 
   alias Aetestframework.Worker, as: TestFramework
+
   alias Aetestframework.Utils
   alias Aetestframework.Worker.Supervisor, as: FrameworkSup
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
@@ -69,7 +70,7 @@ defmodule MultiNodeSyncTest do
                  Utils.get_tx_from_pool(:node2) == SpendTx &&
                  Utils.get_tx_from_pool(:node3) == SpendTx &&
                  Utils.get_tx_from_pool(:node4) == SpendTx
-             end,
+      end,
              5
            ) == true
 

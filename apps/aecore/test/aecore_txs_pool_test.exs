@@ -45,19 +45,19 @@ defmodule AecoreTxsPoolTest do
     Pool.get_and_empty_pool()
 
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), wallet.a_pub_key) + 1
+    :ok = Miner.mine_sync_block_to_chain()
 
-    {:ok, signed_tx1} =
-      Account.spend(
-        wallet.a_pub_key,
-        wallet.priv_key,
-        wallet.b_pub_key,
-        5,
-        10,
-        nonce1,
-        <<"payload">>
-      )
+    Account.spend(
+      wallet.a_pub_key,
+      wallet.priv_key,
+      wallet.b_pub_key,
+      5,
+      10,
+      nonce1,
+      <<"payload">>
+    )
 
-    {:ok, signed_tx2} =
+    signed_tx1 =
       Account.spend(
         wallet.a_pub_key,
         wallet.priv_key,
@@ -68,11 +68,8 @@ defmodule AecoreTxsPoolTest do
         <<"payload">>
       )
 
-    :ok = Miner.mine_sync_block_to_chain()
-
-    assert :ok = Pool.add_transaction(signed_tx1)
-    assert :ok = Pool.add_transaction(signed_tx2)
-    assert :ok = Pool.remove_transaction(signed_tx2)
+    assert Enum.count(Pool.get_pool()) == 2
+    assert :ok = Pool.remove_transaction(signed_tx1)
     assert Enum.count(Pool.get_pool()) == 1
 
     :ok = Miner.mine_sync_block_to_chain()

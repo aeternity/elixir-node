@@ -24,8 +24,12 @@ defmodule AecoreValidationTest do
       File.rm_rf(path)
     end
 
+    tests_pow = Application.get_env(:aecore, :pow_module)
+    Application.put_env(:aecore, :pow_module, Aecore.Pow.Cuckoo)
+
     on_exit(fn ->
       TestUtils.clean_blockchain()
+      Application.put_env(:aecore, :pow_module, tests_pow)
     end)
   end
 
@@ -121,10 +125,10 @@ defmodule AecoreValidationTest do
 
     nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 1
 
-    {:ok, signed_tx1} =
+    signed_tx1 =
       Account.spend(sender, priv_key, ctx.receiver, amount, fee, nonce + 1, <<"payload">>)
 
-    {:ok, signed_tx2} =
+    signed_tx2 =
       Account.spend(sender, priv_key, ctx.receiver, amount + 5, fee, nonce + 2, <<"payload">>)
 
     block = %{Genesis.block() | txs: [signed_tx1, signed_tx2]}
@@ -139,10 +143,7 @@ defmodule AecoreValidationTest do
     amount = 100
     fee = 10
 
-    {:ok, signed_tx} =
-      Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
-
-    Aecore.Tx.Pool.Worker.add_transaction(signed_tx)
+    Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
     {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
     new_block
   end

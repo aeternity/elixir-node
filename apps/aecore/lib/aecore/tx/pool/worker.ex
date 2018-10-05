@@ -8,7 +8,6 @@ defmodule Aecore.Tx.Pool.Worker do
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.{Header, Block}
-  alias Aecore.Account.Tx.SpendTx
   alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Tx.SignedTx
@@ -117,9 +116,6 @@ defmodule Aecore.Tx.Pool.Worker do
         block_height \\ nil
       ) do
     case payload do
-      %SpendTx{} ->
-        SpendTx.is_minimum_fee_met?(tx)
-
       %OracleRegistrationTx{} ->
         OracleRegistrationTx.is_minimum_fee_met?(payload, fee, block_height)
 
@@ -130,6 +126,9 @@ defmodule Aecore.Tx.Pool.Worker do
         case identifier do
           :pool ->
             true
+
+          :validation ->
+            OracleResponseTx.is_minimum_fee_met?(data_tx, fee)
 
           :miner ->
             OracleResponseTx.is_minimum_fee_met?(data_tx, fee)

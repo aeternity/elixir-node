@@ -9,8 +9,8 @@ defmodule Aetestframework.Worker do
   defstruct port_id: nil, node_port: nil, sync_port: nil
   use ExConstructor
 
-  @default_timeout 5_000
-  @new_node_timeout 10_000
+  @default_timeout 20_000
+  @new_node_timeout 20_000
 
   # Client API
 
