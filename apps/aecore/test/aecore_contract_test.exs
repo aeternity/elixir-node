@@ -34,7 +34,7 @@ defmodule AecoreContractTest do
 
     key = CallStateTree.construct_call_tree_id(call.contract_address, call_id)
 
-    get_call = CallStateTree.get_call(updated_tree, key)
+    get_call = CallStateTree.get(updated_tree, key)
 
     assert call == get_call
   end
@@ -44,7 +44,7 @@ defmodule AecoreContractTest do
     contract = create_contract()
 
     updated_tree = ContractStateTree.insert_contract(tree, contract)
-    saved_contract = ContractStateTree.get_contract(updated_tree, contract.id.value)
+    saved_contract = ContractStateTree.get(updated_tree, contract.id.value)
     assert contract === saved_contract
 
     new_contract_storage = %{
@@ -60,8 +60,7 @@ defmodule AecoreContractTest do
 
     updated_tree1 = ContractStateTree.enter_contract(tree, updated_storage_contract)
 
-    updated_contract =
-      ContractStateTree.get_contract(updated_tree1, updated_storage_contract.id.value)
+    updated_contract = ContractStateTree.get(updated_tree1, updated_storage_contract.id.value)
 
     assert updated_storage_contract.store === updated_contract.store
   end

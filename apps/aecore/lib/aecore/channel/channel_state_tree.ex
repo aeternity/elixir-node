@@ -5,26 +5,11 @@ defmodule Aecore.Channel.ChannelStateTree do
   use Aecore.Util.StateTrees
 
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aeutil.PatriciaMerkleTree
   alias MerklePatriciaTree.Trie
 
   @type channel_state :: Trie.t()
 
   @type t :: channel_state()
-
-  @type hash :: binary()
-
-  @spec get(channel_state(), ChannelSteteOnChain.id()) :: :none | ChannelSteteOnChain.t()
-  def get(tree, key) do
-    case PatriciaMerkleTree.lookup(tree, key) do
-      :none ->
-        :none
-
-      {:ok, channel_state_on_chain} ->
-        {:ok, channel} = ChannelStateOnChain.rlp_decode(channel_state_on_chain)
-        channel
-    end
-  end
 
   @spec update!(
           channel_state(),

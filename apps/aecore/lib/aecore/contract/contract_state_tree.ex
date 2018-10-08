@@ -11,9 +11,6 @@ defmodule Aecore.Contract.ContractStateTree do
 
   @contract_key_size 32
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
   @typedoc "Contracts tree"
   @type contracts_state() :: Trie.t()
 
@@ -47,25 +44,20 @@ defmodule Aecore.Contract.ContractStateTree do
     update_store(store_id, old_contract_store, store, updated_contract_tree)
   end
 
-  @spec get_contract(contracts_state(), binary()) :: Contract.t()
-  def get_contract(contract_tree, key) do
-    case PatriciaMerkleTree.lookup(contract_tree, key) do
-      {:ok, serialized} ->
-        {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
+  def get_store(store_id, tree) do
+    keys = PatriciaMerkleTree.all_keys(tree)
+    store_id_bit_size = (@contract_key_size + 1) * 8
 
-        identified_id = Identifier.create_identity(key, :contract)
-
-        store_id = Contract.store_id(%{deserialized | id: identified_id})
-
-        %Contract{
-          deserialized
-          | id: identified_id,
-            store: get_store(store_id, contract_tree)
-        }
-
-      _ ->
-        :none
-    end
+    Enum.reduce(keys, %{}, fn key, store_acc ->
+      with true <- byte_size(key) > @contract_key_size,
+           <<tree_store_id::size(store_id_bit_size), s_key::binary>> <- key,
+           true <- store_id == <<tree_store_id::size(store_id_bit_size)>> do
+        {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
+        Map.put(store_acc, s_key, s_value)
+      else
+        _ -> store_acc
+      end
+    end)
   end
 
   defp update_store(store_id, old_store, new_store, tree) do
@@ -83,22 +75,6 @@ defmodule Aecore.Contract.ContractStateTree do
 
       s_tree_key = <<store_id::binary, s_key::binary>>
       PatriciaMerkleTree.enter(tree_acc, s_tree_key, insert_value)
-    end)
-  end
-
-  defp get_store(store_id, tree) do
-    keys = PatriciaMerkleTree.all_keys(tree)
-    store_id_bit_size = (@contract_key_size + 1) * 8
-
-    Enum.reduce(keys, %{}, fn key, store_acc ->
-      with true <- byte_size(key) > @contract_key_size,
-           <<tree_store_id::size(store_id_bit_size), s_key::binary>> <- key,
-           true <- store_id == <<tree_store_id::size(store_id_bit_size)>> do
-        {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
-        Map.put(store_acc, s_key, s_value)
-      else
-        _ -> store_acc
-      end
     end)
   end
 end

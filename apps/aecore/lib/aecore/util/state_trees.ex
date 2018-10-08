@@ -12,10 +12,16 @@ defmodule Aecore.Util.StateTrees do
     quote location: :keep do
       # @behaviour Aecore.Util.StateTrees
 
+      alias Aecore.Naming.{Name, NameCommitment}
+      alias Aecore.Chain.Identifier
+      alias Aecore.Contract.Contract
       alias MerklePatriciaTree.Trie
       alias Aeutil.PatriciaMerkleTree
       alias Aeutil.Serialization
       alias Aecore.Util.StateTrees
+
+      @typedoc "Hash of the tree"
+      @type hash :: binary()
 
       @spec init_empty() :: Trie.t()
       def init_empty() do
@@ -28,7 +34,41 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.enter(tree, key, serialized_state)
       end
 
-      @spec root_hash(Trie.t()) :: binary()
+      @spec get(Trie.t(), binary()) :: :none | map()
+      def get(tree, key) do
+        case PatriciaMerkleTree.lookup(tree, key) do
+          {:ok, serialized_value} ->
+            {:ok, deserialized_value} = Serialization.rlp_decode_anything(serialized_value)
+
+            case deserialized_value do
+              %Name{} ->
+                hash = Identifier.create_identity(key, :name)
+                %Name{deserialized_value | hash: hash}
+
+              %NameCommitment{} ->
+                hash = Identifier.create_identity(key, :commitment)
+                %NameCommitment{deserialized_value | hash: hash}
+
+              %Contract{} ->
+                identified_id = Identifier.create_identity(key, :contract)
+                store_id = Contract.store_id(%{deserialized_value | id: identified_id})
+
+                %Contract{
+                  deserialized_value
+                  | id: identified_id,
+                    store: __MODULE__.get_store(store_id, tree)
+                }
+
+              _ ->
+                deserialized_value
+            end
+
+          :none ->
+            :none
+        end
+      end
+
+      @spec root_hash(Trie.t()) :: hash()
       def root_hash(tree) do
         PatriciaMerkleTree.root_hash(tree)
       end
@@ -43,7 +83,7 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.delete(tree, key)
       end
 
-      # defoverridable rlp_encode: 1, rlp_decode: 1
+      defoverridable get: 2
     end
   end
 

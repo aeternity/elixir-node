@@ -10,9 +10,6 @@ defmodule Aecore.Contract.CallStateTree do
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
   @typedoc "Calls tree"
   @type calls_state() :: Trie.t()
 
@@ -31,18 +28,6 @@ defmodule Aecore.Contract.CallStateTree do
 
     serialized = Serialization.rlp_encode(call)
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)
-  end
-
-  @spec get_call(calls_state(), binary()) :: calls_state()
-  def get_call(calls_tree, key) do
-    case PatriciaMerkleTree.lookup(calls_tree, key) do
-      {:ok, serialized} ->
-        {:ok, deserialized_call} = Serialization.rlp_decode_anything(serialized)
-        deserialized_call
-
-      _ ->
-        :none
-    end
   end
 
   @spec construct_call_tree_id(binary(), binary()) :: binary()
