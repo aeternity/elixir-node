@@ -18,12 +18,8 @@ defmodule AecoreChainTest do
     Code.require_file("test_utils.ex", "./test")
     TestUtils.clean_blockchain()
 
-    tests_pow = Application.get_env(:aecore, :pow_module)
-    Application.put_env(:aecore, :pow_module, Aecore.Pow.Cuckoo)
-
     on_exit(fn ->
       TestUtils.clean_blockchain()
-      Application.put_env(:aecore, :pow_module, tests_pow)
     end)
   end
 

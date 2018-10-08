@@ -143,8 +143,9 @@ defmodule AecoreValidationTest do
     amount = 100
     fee = 10
 
-    Account.spend(sender, priv_key, receiver, amount, fee, 13_213_223, <<"payload">>)
-    {:ok, new_block} = Aecore.Miner.Worker.mine_sync_block(Aecore.Miner.Worker.candidate())
+    Account.spend(sender, priv_key, receiver, amount, fee, 1000, <<"payload">>)
+    block_candidate = Miner.candidate()
+    {:ok, new_block} = Miner.mine_sync_block(block_candidate)
     new_block
   end
 
