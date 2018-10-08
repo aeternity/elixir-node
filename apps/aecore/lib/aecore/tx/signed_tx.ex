@@ -28,13 +28,6 @@ defmodule Aecore.Tx.SignedTx do
     %SignedTx{data: data, signatures: signatures}
   end
 
-  def data_tx(%SignedTx{data: data}) do
-    data
-  end
-
-  @doc """
-  Validates the transaction without considering state
-  """
   @spec validate(SignedTx.t()) :: :ok | {:error, String.t()}
   def validate(%SignedTx{data: data} = tx) do
     if signatures_valid?(tx) do
@@ -44,23 +37,15 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec validate(SignedTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def validate(%SignedTx{data: data} = tx, block_height) do
-    if signatures_valid?(tx) do
-      DataTx.validate(data, block_height)
-    else
-      {:error, "#{__MODULE__}: Signatures invalid"}
-    end
-  end
-
   @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
   def process_chainstate(chainstate, block_height, %SignedTx{data: data}) do
-    with :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
-      DataTx.process_chainstate(chainstate, block_height, data)
-    else
-      err ->
-        err
+    case DataTx.preprocess_check(chainstate, block_height, data) do
+      :ok ->
+        DataTx.process_chainstate(chainstate, block_height, data)
+
+      error ->
+        error
     end
   end
 

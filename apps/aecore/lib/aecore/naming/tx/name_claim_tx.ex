@@ -10,7 +10,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.{Name, NameUtil, NameCommitment, NamingStateTree}
   alias Aecore.Naming.Tx.NameClaimTx
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -54,7 +54,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Validates the transaction without considering state
   """
   @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameClaimTx{name: name, name_salt: name_salt}, data_tx) do
+  def validate(%NameClaimTx{name: name, name_salt: name_salt}, %DataTx{} = data_tx) do
     validate_name = NameUtil.normalize_and_validate_name(name)
     senders = DataTx.senders(data_tx)
 
@@ -92,14 +92,14 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         accounts,
         naming_state,
         block_height,
-        %NameClaimTx{} = tx,
-        data_tx,
+        %NameClaimTx{name: name, name_salt: name_salt},
+        %DataTx{} = data_tx,
         _context
       ) do
     sender = DataTx.main_sender(data_tx)
 
-    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
-    {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(name, name_salt)
+    {:ok, claim_hash} = NameUtil.normalized_namehash(name)
     claim = Name.create(claim_hash, sender, block_height)
 
     updated_naming_chainstate =
@@ -125,18 +125,17 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         accounts,
         naming_state,
         _block_height,
-        tx,
-        data_tx,
+        %NameClaimTx{name: name, name_salt: name_salt},
+        %DataTx{fee: fee} = data_tx,
         _context
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
-    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(tx.name, tx.name_salt)
+    {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(name, name_salt)
     pre_claim = NamingStateTree.get(naming_state, pre_claim_commitment)
 
-    {:ok, claim_hash} = NameUtil.normalized_namehash(tx.name)
+    {:ok, claim_hash} = NameUtil.normalized_namehash(name)
     claim = NamingStateTree.get(naming_state, claim_hash)
 
     cond do
@@ -167,28 +166,31 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     total_fee = fee + GovernanceConstants.name_claim_burned_fee()
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, total_fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(NameClaimTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%NameClaimTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(%NameClaimTx{name: name, name_salt: name_salt}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.name,
-      :binary.encode_unsigned(tx.name_salt),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      name,
+      :binary.encode_unsigned(name_salt),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

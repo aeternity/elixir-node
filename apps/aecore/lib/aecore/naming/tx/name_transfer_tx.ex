@@ -5,12 +5,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.DataTx
   alias Aeutil.Hash
 
   require Logger
@@ -61,11 +62,14 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Validates the transaction without considering state
   """
   @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameTransferTx{hash: hash, target: target}, data_tx) do
+  def validate(
+        %NameTransferTx{hash: %Identifier{value: hash}, target: target},
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      byte_size(hash.value) != Hash.get_hash_bytes_size() ->
+      byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
       !Keys.key_size_valid?(target) ->
@@ -97,13 +101,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         accounts,
         naming_state,
         _block_height,
-        %NameTransferTx{} = tx,
+        %NameTransferTx{target: %Identifier{value: target}, hash: %Identifier{value: hash}},
         _data_tx,
         _context
       ) do
-    claim_to_update = NamingStateTree.get(naming_state, tx.hash.value)
-    claim = %{claim_to_update | owner: tx.target.value}
-    updated_naming_chainstate = NamingStateTree.put(naming_state, tx.hash.value, claim)
+    claim_to_update = NamingStateTree.get(naming_state, hash)
+    claim = %{claim_to_update | owner: target}
+    updated_naming_chainstate = NamingStateTree.put(naming_state, hash, claim)
 
     {:ok, {accounts, updated_naming_chainstate}}
   end
@@ -123,14 +127,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         accounts,
         naming_state,
         _block_height,
-        tx,
-        data_tx,
+        %NameTransferTx{hash: %Identifier{value: hash}},
+        %DataTx{fee: fee} = data_tx,
         _context
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
-    claim = NamingStateTree.get(naming_state, tx.hash.value)
+    claim = NamingStateTree.get(naming_state, hash)
 
     cond do
       account_state.balance - fee < 0 ->
@@ -158,27 +161,30 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(NameTransferTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%NameTransferTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(%NameTransferTx{hash: hash, target: target}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      Identifier.encode_to_binary(tx.hash),
-      Identifier.encode_to_binary(tx.target),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      Identifier.encode_to_binary(hash),
+      Identifier.encode_to_binary(target),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

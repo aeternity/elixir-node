@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -42,16 +43,13 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     %OracleExtendTx{ttl: ttl}
   end
 
-  @doc """
-  Validates the transaction without considering state
-  """
   @spec validate(OracleExtendTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%OracleExtendTx{ttl: ttl}, data_tx) do
+  def validate(%OracleExtendTx{ttl: ttl}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      ttl <= 0 ->
-        {:error, "#{__MODULE__}: Negative ttl: #{inspect(ttl)} in OracleExtendTx"}
+      !Oracle.ttl_is_valid?(ttl) ->
+        {:error, "#{__MODULE__}: Invalid ttl: #{inspect(ttl)} in OracleExtendTx"}
 
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders number"}
@@ -76,14 +74,14 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
         accounts,
         oracles,
         _block_height,
-        %OracleExtendTx{} = tx,
-        data_tx,
+        %OracleExtendTx{ttl: %{ttl: ttl}},
+        %DataTx{} = data_tx,
         _context
       ) do
     sender = DataTx.main_sender(data_tx)
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
-    updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + tx.ttl.ttl))
+    updated_registered_oracle = Map.update!(registered_oracle, :expires, &(&1 + ttl))
     updated_oracle_state = OracleStateTree.enter_oracle(oracles, updated_registered_oracle)
 
     {:ok, {accounts, updated_oracle_state}}
@@ -103,13 +101,14 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def preprocess_check(
         accounts,
         oracles,
-        _block_height,
-        tx,
-        data_tx,
+        block_height,
+        _payload,
+        %DataTx{
+          fee: fee
+        } = data_tx,
         _context
       ) do
     sender = DataTx.main_sender(data_tx)
-    fee = DataTx.fee(data_tx)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -118,7 +117,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
 
-      fee < calculate_minimum_fee(tx.ttl) ->
+      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
@@ -133,29 +132,35 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  def calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
-    round(Float.ceil(ttl.ttl / blocks_ttl_per_token) + base_fee)
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(
+        %DataTx{fee: fee, payload: %OracleExtendTx{ttl: %{ttl: ttl}}},
+        _chain_state,
+        _block_height
+      ) do
+    ttl_fee = fee - GovernanceConstants.oracle_extend_base_fee()
+    ttl_fee >= Oracle.calculate_minimum_fee(ttl)
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%OracleExtendTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
-
+  def encode_to_list(%OracleExtendTx{ttl: %{ttl: extend_ttl_value} = extend_ttl}, %DataTx{
+        senders: [sender],
+        nonce: nonce,
+        fee: fee,
+        ttl: ttl
+      }) do
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      Serialization.encode_ttl_type(tx.ttl),
-      :binary.encode_unsigned(tx.ttl.ttl),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      :binary.encode_unsigned(nonce),
+      Serialization.encode_ttl_type(extend_ttl),
+      :binary.encode_unsigned(extend_ttl_value),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

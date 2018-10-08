@@ -3,7 +3,7 @@ defmodule Aecore.Chain.Target do
   Contains functions used to calculate the PoW difficulty.
   """
 
-  alias Aecore.Chain.Block
+  alias Aecore.Chain.{Block, Header}
   alias Aecore.Governance.GovernanceConstants
   alias Aeutil.Scientific
 
@@ -39,7 +39,7 @@ defmodule Aecore.Chain.Target do
   end
 
   @spec calculate_distance(Block.t(), integer()) :: float()
-  defp calculate_distance(last_block, timestamp) do
-    max(1, timestamp - last_block.header.time)
+  defp calculate_distance(%Block{header: %Header{time: time}}, timestamp) do
+    max(1, timestamp - time)
   end
 end

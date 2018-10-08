@@ -5,6 +5,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
@@ -49,13 +52,11 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCreateTx.t()
-  def init(
-        %{
-          initiator_amount: initiator_amount,
-          responder_amount: responder_amount,
-          locktime: locktime
-        } = _payload
-      ) do
+  def init(%{
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount,
+        locktime: locktime
+      }) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
@@ -67,14 +68,21 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCreateTx{} = tx, data_tx) do
+  def validate(
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
+      initiator_amount + responder_amount < 0 ->
         {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
 
-      tx.locktime < 0 ->
+      locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
@@ -100,29 +108,32 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         accounts,
         channels,
         block_height,
-        %ChannelCreateTx{} = tx,
-        data_tx,
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{nonce: nonce} = data_tx,
         _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
 
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.initiator_amount * -1)
+        Account.apply_transfer!(acc, block_height, initiator_amount * -1)
       end)
       |> AccountStateTree.update(responder_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.responder_amount * -1)
+        Account.apply_transfer!(acc, block_height, responder_amount * -1)
       end)
 
     channel =
       ChannelStateOnChain.create(
         initiator_pubkey,
         responder_pubkey,
-        tx.initiator_amount,
-        tx.responder_amount,
-        tx.locktime
+        initiator_amount,
+        responder_amount,
+        locktime
       )
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
@@ -147,19 +158,17 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         accounts,
         channels,
         _block_height,
-        %ChannelCreateTx{} = tx,
-        data_tx,
+        %ChannelCreateTx{initiator_amount: initiator_amount, responder_amount: responder_amount},
+        %DataTx{nonce: nonce, fee: fee} = data_tx,
         _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-    nonce = DataTx.nonce(data_tx)
-    fee = DataTx.fee(data_tx)
 
     cond do
-      AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + tx.initiator_amount) < 0 ->
+      AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->
         {:error, "#{__MODULE__}: Negative initiator balance"}
 
-      AccountStateTree.get(accounts, responder_pubkey).balance - tx.responder_amount < 0 ->
+      AccountStateTree.get(accounts, responder_pubkey).balance - responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
       ChannelStateTree.has_key?(
@@ -180,26 +189,33 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, data_tx, fee) do
+  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCreateTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelCreateTx{} = tx, %DataTx{} = datatx) do
+  def encode_to_list(
+        %ChannelCreateTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount,
+          locktime: locktime
+        },
+        %DataTx{senders: senders, nonce: nonce, fee: fee, ttl: ttl}
+      ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      :binary.encode_unsigned(tx.initiator_amount),
-      :binary.encode_unsigned(tx.responder_amount),
-      :binary.encode_unsigned(tx.locktime),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_list_to_binary(senders),
+      :binary.encode_unsigned(nonce),
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      :binary.encode_unsigned(locktime),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

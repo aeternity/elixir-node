@@ -5,11 +5,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   @behaviour Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Channel.ChannelStateTree
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
-  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -49,13 +50,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   def get_chain_state_name, do: :channels
 
   @spec init(payload()) :: ChannelCloseMutalTx.t()
-  def init(
-        %{
-          channel_id: channel_id,
-          initiator_amount: initiator_amount,
-          responder_amount: responder_amount
-        } = _payload
-      ) do
+  def init(%{
+        channel_id: channel_id,
+        initiator_amount: initiator_amount,
+        responder_amount: responder_amount
+      }) do
     %ChannelCloseMutalTx{
       channel_id: channel_id,
       initiator_amount: initiator_amount,
@@ -67,11 +66,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseMutalTx{} = tx, data_tx) do
+  def validate(
+        %ChannelCloseMutalTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{} = data_tx
+      ) do
     senders = DataTx.senders(data_tx)
 
     cond do
-      tx.initiator_amount + tx.responder_amount < 0 ->
+      initiator_amount + responder_amount < 0 ->
         {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
 
       length(senders) != 2 ->
@@ -97,8 +102,12 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         accounts,
         channels,
         block_height,
-        %ChannelCloseMutalTx{channel_id: channel_id} = tx,
-        data_tx,
+        %ChannelCloseMutalTx{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{} = data_tx,
         _context
       ) do
     [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
@@ -106,10 +115,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.initiator_amount)
+        Account.apply_transfer!(acc, block_height, initiator_amount)
       end)
       |> AccountStateTree.update(responder_pubkey, fn acc ->
-        Account.apply_transfer!(acc, block_height, tx.responder_amount)
+        Account.apply_transfer!(acc, block_height, responder_amount)
       end)
 
     new_channels = ChannelStateTree.delete(channels, channel_id)
@@ -132,25 +141,28 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
         _accounts,
         channels,
         _block_height,
-        %ChannelCloseMutalTx{} = tx,
-        data_tx,
+        %ChannelCloseMutalTx{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{fee: fee},
         _context
       ) do
-    fee = DataTx.fee(data_tx)
-    channel = ChannelStateTree.get(channels, tx.channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
-      tx.initiator_amount < 0 ->
+      initiator_amount < 0 ->
         {:error, "#{__MODULE__}: Negative initiator balance"}
 
-      tx.responder_amount < 0 ->
+      responder_amount < 0 ->
         {:error, "#{__MODULE__}: Negative responder balance"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
 
       channel.initiator_amount + channel.responder_amount !=
-          tx.initiator_amount + tx.responder_amount + fee ->
+          initiator_amount + responder_amount + fee ->
         {:error, "#{__MODULE__}: Wrong total balance"}
 
       true ->
@@ -170,22 +182,29 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     accounts
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCloseMutalTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelCloseMutalTx{} = tx, %DataTx{} = datatx) do
+  def encode_to_list(
+        %ChannelCloseMutalTx{
+          channel_id: channel_id,
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{senders: senders, nonce: nonce, fee: fee, ttl: ttl}
+      ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(datatx.senders),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.channel_id,
-      :binary.encode_unsigned(tx.initiator_amount),
-      :binary.encode_unsigned(tx.responder_amount),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl)
+      Identifier.encode_list_to_binary(senders),
+      :binary.encode_unsigned(nonce),
+      channel_id,
+      :binary.encode_unsigned(initiator_amount),
+      :binary.encode_unsigned(responder_amount),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl)
     ]
   end
 

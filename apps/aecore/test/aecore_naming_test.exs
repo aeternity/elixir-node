@@ -7,7 +7,6 @@ defmodule AecoreNamingTest do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Naming.{NameCommitment, NamingStateTree}
@@ -38,8 +37,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "test naming workflow", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -53,8 +51,7 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    {:ok, claim} = Account.claim("test.aet", 123, 5)
-    Pool.add_transaction(claim)
+    Account.claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -69,8 +66,7 @@ defmodule AecoreNamingTest do
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
-    Pool.add_transaction(update)
+    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
@@ -87,8 +83,7 @@ defmodule AecoreNamingTest do
 
     transfer_to_priv = setup.a_priv_key
     transfer_to_pub = setup.a_pub_key
-    {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 5)
-    Pool.add_transaction(transfer)
+    transfer = Account.name_transfer("test.aet", transfer_to_pub, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_4 = Chain.chain_state().naming
@@ -103,16 +98,13 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == "{\"test\": 2}"
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
-    Pool.add_transaction(spend)
+    Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Miner.mine_sync_block_to_chain()
 
     next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
-    {:ok, revoke} =
-      Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
+    revoke = Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 5, next_nonce)
 
-    Pool.add_transaction(revoke)
     Miner.mine_sync_block_to_chain()
 
     naming_state_5 = Chain.chain_state().naming
@@ -129,8 +121,7 @@ defmodule AecoreNamingTest do
 
   @tag :naming
   test "not pre-claimed name not claimable" do
-    {:ok, claim_1} = Account.claim("test.aet", 123, 5)
-    Pool.add_transaction(claim_1)
+    Account.claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state = Chain.chain_state().naming
@@ -142,8 +133,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not claimable with incorrect salt" do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -157,8 +147,7 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    {:ok, claim} = Account.claim("test.aet", 321, 5)
-    Pool.add_transaction(claim)
+    Account.claim("test.aet", 321, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -176,8 +165,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not claimable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -195,8 +183,7 @@ defmodule AecoreNamingTest do
     claim_pub = setup.a_pub_key
 
     next_nonce = Account.nonce(Chain.chain_state().accounts, claim_pub) + 1
-    {:ok, claim} = Account.claim(claim_pub, claim_priv, "test.aet", 123, 5, next_nonce)
-    Pool.add_transaction(claim)
+    Account.claim(claim_pub, claim_priv, "test.aet", 123, 5, next_nonce)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -217,8 +204,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not updatable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -232,8 +218,7 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    {:ok, claim} = Account.claim("test.aet", 123, 5)
-    Pool.add_transaction(claim)
+    Account.claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -252,19 +237,17 @@ defmodule AecoreNamingTest do
     update_pub = setup.a_pub_key
     next_nonce = Account.nonce(Chain.chain_state().accounts, update_pub) + 1
 
-    {:ok, update} =
-      Account.name_update(
-        update_pub,
-        update_priv,
-        "test.aet",
-        "{\"test\": 2}",
-        5,
-        next_nonce,
-        5000,
-        50
-      )
+    Account.name_update(
+      update_pub,
+      update_priv,
+      "test.aet",
+      "{\"test\": 2}",
+      5,
+      next_nonce,
+      5000,
+      50
+    )
 
-    Pool.add_transaction(update)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
@@ -283,8 +266,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not transferable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -298,8 +280,7 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    {:ok, claim} = Account.claim("test.aet", 123, 5)
-    Pool.add_transaction(claim)
+    Account.claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -314,8 +295,7 @@ defmodule AecoreNamingTest do
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
-    Pool.add_transaction(update)
+    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
@@ -336,7 +316,7 @@ defmodule AecoreNamingTest do
 
     transfer_to_pub = setup.a_pub_key
 
-    {:ok, transfer} =
+    transfer =
       Account.name_transfer(
         transfer_from_pub,
         transfer_from_priv,
@@ -346,7 +326,6 @@ defmodule AecoreNamingTest do
         next_nonce
       )
 
-    Pool.add_transaction(transfer)
     Miner.mine_sync_block_to_chain()
 
     naming_state_4 = Chain.chain_state().naming
@@ -365,8 +344,7 @@ defmodule AecoreNamingTest do
   @tag :naming
   test "name not revokable from different account", setup do
     Miner.mine_sync_block_to_chain()
-    {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 5)
-    Pool.add_transaction(pre_claim)
+    pre_claim = Account.pre_claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_1 = Chain.chain_state().naming
@@ -380,8 +358,7 @@ defmodule AecoreNamingTest do
 
     assert first_name_pre_claim.owner == elem(Keys.keypair(:sign), 0)
 
-    {:ok, claim} = Account.claim("test.aet", 123, 5)
-    Pool.add_transaction(claim)
+    Account.claim("test.aet", 123, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_2 = Chain.chain_state().naming
@@ -396,8 +373,7 @@ defmodule AecoreNamingTest do
     assert first_name_claim.status == :claimed
     assert first_name_claim.pointers == "[]"
 
-    {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
-    Pool.add_transaction(update)
+    Account.name_update("test.aet", "{\"test\": 2}", 5, 5000, 50)
     Miner.mine_sync_block_to_chain()
 
     naming_state_3 = Chain.chain_state().naming
@@ -412,8 +388,7 @@ defmodule AecoreNamingTest do
     assert first_name_update.pointers == "{\"test\": 2}"
 
     transfer_to_pub = setup.a_pub_key
-    {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 5)
-    Pool.add_transaction(transfer)
+    transfer = Account.name_transfer("test.aet", transfer_to_pub, 5)
     Miner.mine_sync_block_to_chain()
 
     naming_state_4 = Chain.chain_state().naming
@@ -428,18 +403,15 @@ defmodule AecoreNamingTest do
     assert first_name_transfer.pointers == "{\"test\": 2}"
 
     # fund transfered account
-    {:ok, spend} = Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
-    Pool.add_transaction(spend)
+    Account.spend(transfer_to_pub, 5, 5, <<"payload">>)
     Miner.mine_sync_block_to_chain()
 
     transfer_from_priv = setup.b_priv_key
     transfer_from_pub = setup.b_pub_key
     next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_from_pub) + 1
 
-    {:ok, revoke} =
-      Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.aet", 5, next_nonce)
+    revoke = Account.name_revoke(transfer_from_pub, transfer_from_priv, "test.aet", 5, next_nonce)
 
-    Pool.add_transaction(revoke)
     Miner.mine_sync_block_to_chain()
 
     naming_state_5 = Chain.chain_state().naming

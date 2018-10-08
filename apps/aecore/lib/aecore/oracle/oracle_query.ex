@@ -41,30 +41,41 @@ defmodule Aecore.Oracle.OracleQuery do
   use Aecore.Util.Serializable
 
   @spec encode_to_list(OracleQuery.t()) :: list()
-  def encode_to_list(%OracleQuery{} = oracle_query) do
-    has_response =
-      case oracle_query.has_response do
-        true -> <<1>>
-        false -> <<0>>
+  def encode_to_list(%OracleQuery{
+        sender_address: sender_address,
+        has_response: has_response,
+        sender_nonce: sender_nonce,
+        response: response,
+        oracle_address: oracle_address,
+        query: query,
+        expires: expires,
+        response_ttl: response_ttl,
+        fee: fee
+      }) do
+    serialized_has_response =
+      if has_response do
+        <<1>>
+      else
+        <<0>>
       end
 
-    response =
-      case oracle_query.response do
+    serialized_response =
+      case response do
         :undefined -> <<>>
-        _ -> oracle_query.response
+        _ -> response
       end
 
     [
       :binary.encode_unsigned(@version),
-      oracle_query.sender_address,
-      :binary.encode_unsigned(oracle_query.sender_nonce),
-      oracle_query.oracle_address,
-      oracle_query.query,
-      has_response,
-      response,
-      :binary.encode_unsigned(oracle_query.expires),
-      :binary.encode_unsigned(oracle_query.response_ttl),
-      :binary.encode_unsigned(oracle_query.fee)
+      sender_address,
+      :binary.encode_unsigned(sender_nonce),
+      oracle_address,
+      query,
+      serialized_has_response,
+      serialized_response,
+      :binary.encode_unsigned(expires),
+      :binary.encode_unsigned(response_ttl),
+      :binary.encode_unsigned(fee)
     ]
   end
 

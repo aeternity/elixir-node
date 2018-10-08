@@ -6,9 +6,9 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   @behaviour Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
@@ -153,7 +153,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         chain_state,
         block_height,
         %ContractCallTx{
-          contract: contract,
+          contract: %Identifier{value: address},
           amount: amount,
           gas_price: gas_price
         } = call_tx,
@@ -173,7 +173,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
 
     updated_chain_state = Map.put(chain_state, :accounts, updated_accounts_state)
 
-    init_call = Call.new(sender, nonce, block_height, contract.value, gas_price)
+    init_call = Call.new(sender, nonce, block_height, address, gas_price)
 
     {call, update_chain_state1} =
       run_contract(call_tx, init_call, block_height, nonce, updated_chain_state)
@@ -327,14 +327,14 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     end
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   defp run_contract(
          %ContractCallTx{
-           contract: contract_address,
+           contract: %Identifier{value: address} = contract_address,
            vm_version: vm_version,
            amount: amount,
            gas: gas,
@@ -348,7 +348,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
          chain_state
        ) do
     contracts_tree = chain_state.contracts
-    contract = ContractStateTree.get_contract(contracts_tree, contract_address.value)
+    contract = ContractStateTree.get_contract(contracts_tree, address)
 
     call_definition = %{
       caller: caller_address,
@@ -388,10 +388,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   end
 
   defp check_call(
-         %ContractCallTx{contract: contract, vm_version: vm_version},
+         %ContractCallTx{contract: %Identifier{value: address}, vm_version: vm_version},
          chain_state
        ) do
-    case ContractStateTree.get_contract(chain_state.contracts, contract.value) do
+    case ContractStateTree.get_contract(chain_state.contracts, address) do
       %Contract{} = contract ->
         case contract.vm_version == vm_version do
           true -> :ok

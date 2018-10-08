@@ -11,17 +11,22 @@ defmodule Aecore.Pow.Cuckoo do
 
   require Logger
 
-  alias Aecore.Chain.BlockValidation
+  alias Aecore.Chain.Header
   alias Aecore.Pow.Hashcash
   alias Aeutil.Hash
+
+  @behaviour Aecore.Pow.PowAlgorithm
+
+  @type error() :: {:error, String.t()}
 
   @doc """
   Proof of Work verification (with difficulty check)
   """
-  @spec verify(map()) :: boolean()
-  def verify(%{target: target, pow_evidence: soln} = header) do
+  @spec verify(Header.t()) :: boolean()
+  def verify(%Header{target: target, pow_evidence: soln} = header) do
     if test_target(soln, target) do
-      process(:verify, header)
+      {:ok, response} = process(:verify, header)
+      response
     else
       false
     end
@@ -30,8 +35,8 @@ defmodule Aecore.Pow.Cuckoo do
   @doc """
   Find a nonce
   """
-  @spec generate(map()) :: {:ok, map()} | error :: term()
-  def generate(%{} = header), do: process(:generate, header)
+  @spec generate(Header.t()) :: {:ok, Header.t()} | error()
+  def generate(%Header{} = header), do: process(:generate, header)
 
   defp process(process, header) do
     with {:ok, builder} <- hash_header(builder(process, header)),
@@ -39,16 +44,16 @@ defmodule Aecore.Pow.Cuckoo do
          {:ok, builder} <- exec_os_cmd(builder),
          {:ok, builder} <- build_response(builder) do
       {:ok, %{response: response} = builder}
-      response
+      {:ok, response}
     else
       {:error, %{error: reason}} ->
         {:error, reason}
     end
   end
 
-  defp hash_header(%{header: header} = builder) do
-    blake2b = BlockValidation.block_header_hash(%{header | nonce: 0, pow_evidence: :no_value})
-    {:ok, %{builder | hash: pack_header_and_nonce(blake2b, header.nonce)}}
+  defp hash_header(%{header: %Header{nonce: nonce} = header} = builder) do
+    blake2b = Header.hash(%{header | nonce: 0, pow_evidence: :no_value})
+    {:ok, %{builder | hash: pack_header_and_nonce(blake2b, nonce)}}
   end
 
   defp get_os_cmd(%{process: process, hash: hash} = builder) do
@@ -86,11 +91,18 @@ defmodule Aecore.Pow.Cuckoo do
     ]
   end
 
-  defp exec_os_cmd(%{process: process, header: header, cmd: command, cmd_opt: options} = builder) do
+  defp exec_os_cmd(
+         %{
+           process: process,
+           header: %Header{pow_evidence: pow_evidence},
+           cmd: command,
+           cmd_opt: options
+         } = builder
+       ) do
     {:ok, _erlpid, ospid} = Exexec.run(command, options)
 
     if process == :verify do
-      Exexec.send(ospid, solution_to_string(header.pow_evidence))
+      Exexec.send(ospid, solution_to_string(pow_evidence))
       Exexec.send(ospid, :eof)
     end
 
@@ -164,8 +176,10 @@ defmodule Aecore.Pow.Cuckoo do
     {:ok, %{builder | response: verified}}
   end
 
-  defp build_response(%{header: header, response: {:generated, soln}} = builder) do
-    if test_target(soln, header.target) do
+  defp build_response(
+         %{header: %Header{target: target} = header, response: {:generated, soln}} = builder
+       ) do
+    if test_target(soln, target) do
       {:ok, %{builder | response: %{header | pow_evidence: soln}}}
     else
       {:error, %{builder | error: :no_solution}}
@@ -213,7 +227,7 @@ defmodule Aecore.Pow.Cuckoo do
     hash_str ++ nonce_str
   end
 
-  defp builder(process, header) do
+  defp builder(process, %Header{} = header) do
     %{
       :header => header,
       :hash => nil,

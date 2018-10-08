@@ -4,7 +4,6 @@ defmodule Aecore.Tx.DataTx do
   """
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
   alias Aeutil.{Bits, Serialization, TypeToTag}
@@ -31,7 +30,7 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Channel.Tx.ChannelSlashTx
           | Aecore.Channel.Tx.ChannelSettleTx
 
-  @typedoc "Structure of a transaction that may be added to be blockchain"
+  @typedoc "Structure of a transaction that may be added to the blockchain"
   @type payload ::
           Aecore.Account.Tx.SpendTx.t()
           | Aecore.Oracle.Tx.OracleExtendTx.t()
@@ -160,11 +159,6 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec fee(DataTx.t()) :: non_neg_integer()
-  def fee(%DataTx{fee: fee}) do
-    fee
-  end
-
   @spec senders(DataTx.t()) :: list(binary())
   def senders(%DataTx{senders: senders}) do
     for sender <- senders do
@@ -177,11 +171,6 @@ defmodule Aecore.Tx.DataTx do
     List.first(senders(tx))
   end
 
-  @spec nonce(DataTx.t()) :: non_neg_integer()
-  def nonce(%DataTx{nonce: nonce}) do
-    nonce
-  end
-
   @spec ttl(DataTx.t()) :: non_neg_integer()
   def ttl(%DataTx{ttl: ttl}) do
     case ttl do
@@ -190,24 +179,11 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec payload(DataTx.t()) :: map()
-  def payload(%DataTx{payload: payload, type: type}) do
-    if Enum.member?(valid_types(), type) do
-      payload
-    else
-      Logger.error("Call to DataTx payload with invalid transaction type")
-      %{}
-    end
-  end
-
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(DataTx.t(), non_neg_integer()) :: :ok | {:error, String.t()}
-  def validate(
-        %DataTx{fee: fee, type: type, senders: senders} = tx,
-        block_height \\ Chain.top_height()
-      ) do
+  @spec validate(DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%DataTx{fee: fee, type: type, senders: senders} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
         {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
@@ -221,12 +197,6 @@ defmodule Aecore.Tx.DataTx do
       DataTx.ttl(tx) < 0 ->
         {:error,
          "#{__MODULE__}: Invalid TTL value: #{DataTx.ttl(tx)} can't be a negative integer."}
-
-      DataTx.ttl(tx) < block_height ->
-        {:error,
-         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
-           block_height
-         }"}
 
       true ->
         payload_validate(tx)
@@ -242,22 +212,17 @@ defmodule Aecore.Tx.DataTx do
   def process_chainstate(
         chainstate,
         block_height,
-        %DataTx{fee: fee} = tx,
+        %DataTx{payload: payload, fee: fee} = tx,
         context \\ :transaction
       ) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     nonce_accounts_state =
-      if Enum.empty?(tx.senders) do
-        accounts_state
-      else
-        AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
-          Account.apply_nonce!(acc, tx.nonce)
-        end)
-      end
+      AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
+        Account.apply_nonce!(acc, tx.nonce)
+      end)
 
     chain_state_name = tx.type.get_chain_state_name()
 
@@ -268,60 +233,68 @@ defmodule Aecore.Tx.DataTx do
         tx_type_state
       end
 
-    with {:ok, {new_accounts_state, new_tx_type_state}} <-
-           nonce_accounts_state
-           |> tx.type.deduct_fee(block_height, payload, tx, fee)
-           |> tx.type.process_chainstate(
-             process_tx_type_state,
-             block_height,
-             payload,
-             tx,
-             context
-           ) do
-      new_chainstate =
-        case chain_state_name do
-          chain_state_name when chain_state_name in [:contracts, :calls] ->
-            new_tx_type_state
+    processed_states =
+      nonce_accounts_state
+      |> tx.type.deduct_fee(block_height, payload, tx, fee)
+      |> tx.type.process_chainstate(
+        process_tx_type_state,
+        block_height,
+        payload,
+        tx,
+        context
+      )
 
-          :accounts ->
-            %{chainstate | accounts: new_accounts_state}
+    case processed_states do
+      {:ok, {new_accounts_state, new_tx_type_state}} ->
+        new_chainstate =
+          case chain_state_name do
+            chain_state_name when chain_state_name in [:contracts, :calls] ->
+              new_tx_type_state
 
-          _ ->
-            %{chainstate | accounts: new_accounts_state}
-            |> Map.put(chain_state_name, new_tx_type_state)
-        end
+            :accounts ->
+              %{chainstate | accounts: new_accounts_state}
 
-      {:ok, new_chainstate}
-    else
-      err ->
-        err
+            _ ->
+              %{chainstate | accounts: new_accounts_state}
+              |> Map.put(chain_state_name, new_tx_type_state)
+          end
+
+        {:ok, new_chainstate}
+
+      error ->
+        error
     end
   end
 
   @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, tx, context \\ :transaction) do
+  def preprocess_check(
+        chainstate,
+        block_height,
+        %DataTx{payload: payload, type: type} = tx,
+        context \\ :transaction
+      ) do
     accounts_state = chainstate.accounts
-    payload = payload(tx)
-    tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
+    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
 
-    with :ok <-
-           tx.type.preprocess_check(
-             accounts_state,
-             tx_type_state,
-             block_height,
-             payload,
-             tx,
-             context
-           ) do
-      if main_sender(tx) == nil || Account.nonce(chainstate.accounts, main_sender(tx)) < tx.nonce do
+    tx_type_preprocess_check =
+      type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context)
+
+    cond do
+      tx_type_preprocess_check != :ok ->
+        tx_type_preprocess_check
+
+      DataTx.ttl(tx) < block_height ->
+        {:error,
+         "#{__MODULE__}: Invalid or expired TTL value: #{DataTx.ttl(tx)}, with given block's height: #{
+           block_height
+         }"}
+
+      Account.nonce(chainstate.accounts, main_sender(tx)) >= tx.nonce ->
+        {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
+
+      true ->
         :ok
-      else
-        {:error, "#{__MODULE__}: Too small nonce"}
-      end
-    else
-      err ->
-        err
     end
   end
 

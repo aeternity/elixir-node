@@ -5,10 +5,10 @@ defmodule Aecore.Tx.Pool.Worker do
 
   use GenServer
 
-  alias Aecore.Account.Tx.SpendTx
-  alias Aecore.Chain.{Block, BlockValidation}
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Oracle.Tx.{OracleRegistrationTx, OracleQueryTx, OracleResponseTx, OracleExtendTx}
+  alias Aecore.Chain.{Header, Block}
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Tx.SignedTx
   alias Aeutil.Events
@@ -59,15 +59,15 @@ defmodule Aecore.Tx.Pool.Worker do
     {:reply, txs_list, state}
   end
 
-  def handle_call({:add_transaction, tx}, _from, tx_pool) do
+  def handle_call({:add_transaction, %SignedTx{data: %DataTx{fee: fee}} = tx}, _from, tx_pool) do
     cond do
       :ok != SignedTx.validate(tx) ->
         {:error, reason} = SignedTx.validate(tx)
         Logger.error("#{__MODULE__}: Transaction invalid - #{reason}: #{inspect(tx)}")
         {:reply, :error, tx_pool}
 
-      !is_minimum_fee_met?(tx, :pool) ->
-        Logger.error("#{__MODULE__}: Fee: #{tx.data.fee} is too low")
+      fee < GovernanceConstants.minimum_fee() ->
+        Logger.error("#{__MODULE__}: Fee: #{fee} is too low")
         {:reply, :error, tx_pool}
 
       true ->
@@ -108,36 +108,6 @@ defmodule Aecore.Tx.Pool.Worker do
     tx |> :erlang.term_to_binary() |> :erlang.byte_size()
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t(), :miner | :pool | :validation, non_neg_integer() | nil) ::
-          boolean()
-  def is_minimum_fee_met?(tx, identifier, block_height \\ nil) do
-    case tx.data.payload do
-      %SpendTx{} ->
-        SpendTx.is_minimum_fee_met?(tx)
-
-      %OracleRegistrationTx{} ->
-        OracleRegistrationTx.is_minimum_fee_met?(tx.data.payload, tx.data.fee, block_height)
-
-      %OracleQueryTx{} ->
-        true
-
-      %OracleResponseTx{} ->
-        case identifier do
-          :pool ->
-            true
-
-          :miner ->
-            OracleResponseTx.is_minimum_fee_met?(tx.data, tx.data.fee)
-        end
-
-      %OracleExtendTx{} ->
-        tx.data.fee >= OracleExtendTx.calculate_minimum_fee(tx.data.payload.ttl)
-
-      _ ->
-        tx.data.type.is_minimum_fee_met?(tx)
-    end
-  end
-
   # Private functions
 
   @spec split_blocks(list(Block.t()), String.t(), list()) :: list()
@@ -151,7 +121,7 @@ defmodule Aecore.Tx.Pool.Worker do
         for block_user_txs <- user_txs do
           block_user_txs
           |> Map.put_new(:txs_hash, block.header.txs_hash)
-          |> Map.put_new(:block_hash, BlockValidation.block_header_hash(block.header))
+          |> Map.put_new(:block_hash, Header.hash(block.header))
           |> Map.put_new(:block_height, block.header.height)
         end
 

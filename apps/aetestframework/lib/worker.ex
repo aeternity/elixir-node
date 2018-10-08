@@ -142,7 +142,6 @@ defmodule Aetestframework.Worker do
   def update_balance(node_name) do
     send_command(node_name, "{pubkey, _} = Keys.keypair :sign")
     send_command(node_name, "{:acc_balance, Account.balance(Chain.chain_state().accounts, pubkey)}")
-    send_command(node_name, "")
   end
 
   # oracles
@@ -170,8 +169,6 @@ defmodule Aetestframework.Worker do
       node_name,
       "{:respond_oracle_int_obj, Base.encode32(encoded_int_object)}"
     )
-
-    send_command(node_name, " ")
   end
 
   @doc """
@@ -244,10 +241,8 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, tx} = Account.spend(pubkey, 20, 10, <<\"payload\">>)"
+      "Account.spend(pubkey, 20, 10, <<\"payload\">>)"
     )
-
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   # mining
@@ -271,15 +266,12 @@ defmodule Aetestframework.Worker do
       node_name,
       "{:respond_top_block, Base.encode32(encoded_block)}"
     )
-
-    send_command(node_name, " ")
   end
 
   @spec update_node_top_block_hash(String.t()) :: :ok | :unknown_node
   def update_node_top_block_hash(node_name) do
     send_command(node_name, "block_hash = Chain.top_block_hash() |> :erlang.term_to_binary()")
     send_command(node_name, "{:respond_hash, Base.encode32(block_hash)}")
-    send_command(node_name, " ")
   end
 
   # naming txs
@@ -292,30 +284,27 @@ defmodule Aetestframework.Worker do
   def naming_pre_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.pre_claim(\"test.aet\", 123, 10)"
+      "Account.pre_claim(\"test.aet\", 123, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_claim(String.t()) :: :ok | :unknown_node
   def naming_claim(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.claim(\"test.aet\", 123, 10)"
+      "Account.claim(\"test.aet\", 123, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_update(String.t()) :: :ok | :unknown_node
   def naming_update(node_name) do
     send_command(
       node_name,
-      "{:ok, tx} = Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50) "
+      "Account.name_update(\"test.aet\", \"{\\\"test\\\":2}\", 10, 5000, 50) "
     )
 
-    send_command(node_name, "Pool.add_transaction(tx)")
   end
 
   @spec naming_transfer(String.t()) :: :ok | :unknown_node
@@ -324,10 +313,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, transfer} = Account.name_transfer(\"test.aet\", transfer_to_pub, 10)"
+      "Account.name_transfer(\"test.aet\", transfer_to_pub, 10)"
     )
 
-    send_command(node_name, "Pool.add_transaction(transfer)")
   end
 
   @spec naming_revoke(String.t()) :: :ok | :unknown_node
@@ -336,10 +324,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, spend} = Account.spend(transfer_to_pub, 15, 10, <<\"payload\">>)"
+      "Account.spend(transfer_to_pub, 15, 10, <<\"payload\">>)"
     )
 
-    send_command(node_name, "Pool.add_transaction(spend)")
     mine_sync_block(node_name)
 
     send_command(
@@ -349,10 +336,9 @@ defmodule Aetestframework.Worker do
 
     send_command(
       node_name,
-      "{:ok, revoke} = Account.name_revoke(transfer_to_pub, transfer_to_priv, \"test.aet\", 10, next_nonce)"
+      "Account.name_revoke(transfer_to_pub, transfer_to_priv, \"test.aet\", 10, next_nonce)"
     )
 
-    send_command(node_name, "Pool.add_transaction(revoke)")
   end
 
   @spec chainstate_naming(String.t()) :: :ok | :unknown_node
@@ -443,7 +429,10 @@ defmodule Aetestframework.Worker do
             balance_str = Regex.run(~r/\d+/, result)
             {balance, _} = balance_str |> List.first() |> Integer.parse()
             new_state = put_in(state[node].miner_balance, balance)
-            {:reply, result, new_state}
+            {:reply, :ok, new_state}
+
+          result =~ "Interactive Elixir" ->
+            {:reply, :node_started, state}
 
           result =~ "error" ->
             Logger.error(fn -> result end)
@@ -467,8 +456,7 @@ defmodule Aetestframework.Worker do
     Port.command(port, "pubkey_receiver = \"#{receiver}\"\n")
     Port.command(port, "nonce = Account.nonce(Chain.chain_state().accounts, Account.base58c_decode(pubkey_sender)) + 1\n")
     Port.command(port, "ttl = Chain.top_height() + 1\n")
-    Port.command(port, "{:ok, tx} = Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\")\n")
-    Port.command(port, "Pool.add_transaction(tx)\n")
+    Port.command(port, "Account.spend(Account.base58c_decode(pubkey_sender), sender_priv_key, Account.base58c_decode(pubkey_receiver), #{amount}, 10, nonce, \"test1\")\n")
     {:reply, :ok, state}
   end
 
@@ -576,7 +564,7 @@ defmodule Aetestframework.Worker do
         # Running the new elixir-node using Port
         path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "")
         process_port = Port.open({:spawn, "make iex-node NODE_NUMBER=#{iex_num}"}, [:binary, cd: path])
-        receive_result(state)
+        {:reply, :node_started, state} = receive_result(state)
         port = String.to_integer("400#{iex_num}")
         sync_port = String.to_integer("300#{iex_num}")
 
