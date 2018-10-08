@@ -10,7 +10,7 @@ defmodule Aecore.Util.StateTrees do
   """
   defmacro __using__(_) do
     quote location: :keep do
-      alias Aecore.Contract.Contract
+      alias Aecore.Contract.{Contract, ContractStateTree}
       alias Aecore.Chain.Identifier
       alias Aecore.Naming.{Name, NameCommitment}
       alias Aecore.Util.StateTrees
@@ -21,8 +21,8 @@ defmodule Aecore.Util.StateTrees do
       @typedoc "Hash of the tree"
       @type hash :: binary()
 
-      @spec init_empty() :: Trie.t()
-      def init_empty() do
+      @spec init_empty :: Trie.t()
+      def init_empty do
         PatriciaMerkleTree.new(StateTrees.tree_type(__MODULE__))
       end
 
@@ -54,7 +54,7 @@ defmodule Aecore.Util.StateTrees do
                 %Contract{
                   deserialized_value
                   | id: identified_id,
-                    store: __MODULE__.get_store(store_id, tree)
+                    store: ContractStateTree.get_store(store_id, tree)
                 }
 
               _ ->
