@@ -7,7 +7,6 @@ defmodule AecoreNamingTest do
 
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Miner.Worker, as: Miner
-  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Keys
   alias Aecore.Account.Account
   alias Aecore.Naming.{NameCommitment, NamingStateTree}

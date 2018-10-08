@@ -19,7 +19,7 @@ defmodule AecoreChainTest do
     TestUtils.clean_blockchain()
 
     tests_pow = Application.get_env(:aecore, :pow_module)
-    Application.put_env(:aecore, :pow_module, Aecore.Pow.Cuckoo)
+    Application.put_env(:aecore, :pow_module, Aecore.Pow.Mock)
 
     on_exit(fn ->
       TestUtils.clean_blockchain()
