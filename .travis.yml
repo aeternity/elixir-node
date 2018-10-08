@@ -38,8 +38,8 @@ install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
   - source $HOME/.cargo/env
 
-  # Fetch aevm tests
-  - make aevm-test-deps
+  # Fetch aevm tests if they are missing from the cache
+  - "[ -d aevm_external/ethereum_tests/VMTests/vmArithmeticTest ] || (make aevm-test-deps)"
 
 script:
   - mix compile --warnings-as-errors
@@ -54,6 +54,6 @@ cache:
     - $HOME/.libsodium
     - deps
     - _build
-    - aevm_external
+    - aevm_external/ethereum_tests/VMTests
     - apps/aecore/src/cuckoo/c_src
     - apps/aecore/priv/cuckoo
