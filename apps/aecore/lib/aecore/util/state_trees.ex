@@ -1,22 +1,22 @@
 defmodule Aecore.Util.StateTrees do
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Contract.ContractStateTree
-  alias Aecore.Naming.NamingStateTree
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Contract.CallStateTree
+  alias Aecore.Contract.ContractStateTree
+  alias Aecore.Channel.ChannelStateTree
+  alias Aecore.Naming.NamingStateTree
 
   @moduledoc """
-  Module defining functions for all Trees
+  Abstract module defining functions for known Tree types
   """
   defmacro __using__(_) do
     quote location: :keep do
-      alias Aecore.Naming.{Name, NameCommitment}
-      alias Aecore.Chain.Identifier
       alias Aecore.Contract.Contract
-      alias MerklePatriciaTree.Trie
+      alias Aecore.Chain.Identifier
+      alias Aecore.Naming.{Name, NameCommitment}
+      alias Aecore.Util.StateTrees
       alias Aeutil.PatriciaMerkleTree
       alias Aeutil.Serialization
-      alias Aecore.Util.StateTrees
+      alias MerklePatriciaTree.Trie
 
       @typedoc "Hash of the tree"
       @type hash :: binary()
