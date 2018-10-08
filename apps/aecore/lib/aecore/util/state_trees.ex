@@ -10,8 +10,6 @@ defmodule Aecore.Util.StateTrees do
   """
   defmacro __using__(_) do
     quote location: :keep do
-      # @behaviour Aecore.Util.StateTrees
-
       alias Aecore.Naming.{Name, NameCommitment}
       alias Aecore.Chain.Identifier
       alias Aecore.Contract.Contract
@@ -93,9 +91,5 @@ defmodule Aecore.Util.StateTrees do
   def tree_type(ChannelStateTree), do: :channels
   def tree_type(ContractStateTree), do: :contracts
   def tree_type(CallStateTree), do: :calls
-  # def tree_type(), do: :txs
-  # def tree_type(), do: :proof
-  # def tree_type(), do: :oracles
-  # def tree_type(), do: :oracles_cache
   def tree_type(unknown_type), do: {:error, "#{__MODULE__}: Invalid tree type: #{unknown_type}"}
 end
