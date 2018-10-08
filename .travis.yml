@@ -32,7 +32,7 @@ install:
   - cd ..
 
   # Recompile enacl if necessary
-  - "[ -z '${LIBSODIUM_NEW}' ] || (mix deps.compile enacl)"
+  - "[ -z $LIBSODIUM_NEW ] || (mix deps.compile enacl)"
 
   # Install rust
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
