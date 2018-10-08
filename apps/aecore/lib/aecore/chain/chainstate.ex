@@ -6,7 +6,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Genesis}
   alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Contract.{CallStateTree, ContractStateTree}
+  alias Aecore.Contract.{Call, CallStateTree, ContractStateTree}
   alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
   alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
@@ -72,8 +72,10 @@ defmodule Aecore.Chain.Chainstate do
     chainstate_with_coinbase =
       calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
 
+    chainstate_with_pruned_calls = Call.reset_calls(chainstate_with_coinbase, block_height)
+
     updated_chainstate =
-      Enum.reduce_while(txs, chainstate_with_coinbase, fn tx, chainstate_acc ->
+      Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->
         case apply_transaction_on_state(chainstate_acc, block_height, tx) do
           {:ok, updated_chainstate} ->
             {:cont, updated_chainstate}

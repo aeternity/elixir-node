@@ -38,7 +38,10 @@ defmodule Aecore.Contract.VmChain do
   end
 
   @spec set_store(ChainApi.chain_state(), ChainApi.store()) :: ChainApi.chain_state()
-  def set_store(store, %{pubkey: pubkey, chain_state: %{contracts: contract_tree} = chain_state} = state) do
+  def set_store(
+        store,
+        %{pubkey: pubkey, chain_state: %{contracts: contract_tree} = chain_state} = state
+      ) do
     contract = ContractStateTree.get_contract(contract_tree, pubkey)
 
     new_contract = %Contract{contract | store: store}

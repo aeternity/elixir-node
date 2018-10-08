@@ -28,9 +28,9 @@ defmodule Aecore.Contract.Dispatch do
   end
 
   defp call_aevm_sophia_01(
-        %{contract: contract, height: height} = call_definition,
-        chain_state
-      ) do
+         %{contract: contract, height: height} = call_definition,
+         chain_state
+       ) do
     env = set_env(contract.value, height, Constants.aevm_sophia_01(), chain_state)
 
     spec = %{
@@ -43,9 +43,9 @@ defmodule Aecore.Contract.Dispatch do
   end
 
   defp call_aevm_solidity_01(
-        %{contract: contract, height: height} = call_definition,
-        chain_state
-      ) do
+         %{contract: contract, height: height} = call_definition,
+         chain_state
+       ) do
     env = set_env(contract.value, height, Constants.aevm_solidity_01(), chain_state)
 
     spec = %{
@@ -74,20 +74,20 @@ defmodule Aecore.Contract.Dispatch do
   end
 
   defp call_init(
-        %{
-          caller: caller,
-          contract: contract_pubkey,
-          gas: gas,
-          gas_price: gas_price,
-          call_data: call_data,
-          amount: value,
-          call_stack: call_stack,
-          code: code,
-          call: call,
-          height: _height
-        },
-        spec
-      ) do
+         %{
+           caller: caller,
+           contract: contract_pubkey,
+           gas: gas,
+           gas_price: gas_price,
+           call_data: call_data,
+           amount: value,
+           call_stack: call_stack,
+           code: code,
+           call: call,
+           height: _height
+         },
+         spec
+       ) do
     <<address::size(@pubkey_size_bits)>> = contract_pubkey.value
     <<caller_address::size(@pubkey_size_bits)>> = caller.value
 
