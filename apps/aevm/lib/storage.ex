@@ -6,15 +6,13 @@ defmodule Aevm.Storage do
   alias Aevm.State
 
   @spec sstore(integer(), integer(), map()) :: map()
-  def sstore(key, value, state) do
-    storage = State.storage(state)
+  def sstore(key, value, %{storage: storage} = state) do
     new_storage = store(key, value, storage)
     State.set_storage(new_storage, state)
   end
 
   @spec sload(integer(), map()) :: map()
-  def sload(key, state) do
-    storage = State.storage(state)
+  def sload(key, %{storage: storage}) do
     Map.get(storage, key, 0)
   end
 

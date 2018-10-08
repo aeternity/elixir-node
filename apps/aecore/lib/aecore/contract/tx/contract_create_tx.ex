@@ -12,6 +12,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree, Dispatch}
   alias Aecore.Tx.Transaction
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
   alias Aecore.Chain.Identifier
 
   require Aecore.Contract.ContractConstants, as: Constants
@@ -133,11 +134,13 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           gas_price: gas_price,
           call_data: call_data
         },
-        data_tx,
+        %DataTx{
+          nonce: nonce
+        } = data_tx,
         _context
       ) do
     owner = DataTx.main_sender(data_tx)
-    contract = Contract.new(owner, data_tx.nonce, vm_version, code, deposit)
+    contract = Contract.new(owner, nonce, vm_version, code, deposit)
 
     updated_accounts_state =
       accounts
@@ -150,7 +153,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
 
     updated_contracts_state = ContractStateTree.insert_contract(chain_state.contracts, contract)
 
-    call = Call.new(owner, data_tx.nonce, block_height, contract.id.value, gas_price)
+    call = Call.new(owner, nonce, block_height, contract.id.value, gas_price)
 
     call_definition = %{
       caller: call.caller_address,
@@ -220,9 +223,21 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, _contracts, _block_height, tx, data_tx, _context) do
+  def preprocess_check(
+        accounts,
+        _contracts,
+        _block_height,
+        %ContractCreateTx{
+          amount: amount,
+          deposit: deposit,
+          gas: gas,
+          gas_price: gas_price
+        },
+        %DataTx{fee: fee} = data_tx,
+        _context
+      ) do
     sender = DataTx.main_sender(data_tx)
-    total_deduction = data_tx.fee + tx.amount + tx.deposit + tx.gas * tx.gas_price
+    total_deduction = fee + amount + deposit + gas * gas_price
 
     if AccountStateTree.get(accounts, sender).balance - total_deduction < 0 do
       {:error, "#{__MODULE__}: Negative balance"}
@@ -243,27 +258,38 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   end
 
   @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(tx) do
-    tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
   end
 
   @spec encode_to_list(ContractCreateTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ContractCreateTx{} = tx, %DataTx{} = datatx) do
-    [sender] = datatx.senders
+  def encode_to_list(
+        %ContractCreateTx{
+          code: code,
+          vm_version: vm_version,
+          deposit: deposit,
+          amount: amount,
+          gas: gas,
+          gas_price: gas_price,
+          call_data: call_data
+        },
+        %DataTx{senders: senders, fee: fee, nonce: nonce, ttl: ttl}
+      ) do
+    [sender] = senders
 
     [
       :binary.encode_unsigned(@version),
       Identifier.encode_to_binary(sender),
-      :binary.encode_unsigned(datatx.nonce),
-      tx.code,
-      :binary.encode_unsigned(tx.vm_version),
-      :binary.encode_unsigned(datatx.fee),
-      :binary.encode_unsigned(datatx.ttl),
-      :binary.encode_unsigned(tx.deposit),
-      :binary.encode_unsigned(tx.amount),
-      :binary.encode_unsigned(tx.gas),
-      :binary.encode_unsigned(tx.gas_price),
-      tx.call_data
+      :binary.encode_unsigned(nonce),
+      code,
+      :binary.encode_unsigned(vm_version),
+      :binary.encode_unsigned(fee),
+      :binary.encode_unsigned(ttl),
+      :binary.encode_unsigned(deposit),
+      :binary.encode_unsigned(amount),
+      :binary.encode_unsigned(gas),
+      :binary.encode_unsigned(gas_price),
+      call_data
     ]
   end
 

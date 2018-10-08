@@ -66,7 +66,7 @@ defmodule AecoreContractTest do
     assert Enum.count(tree_keys2) === 2
     contract2 = ContractStateTree.get_contract(Chain.chain_state().contracts, contract_address)
     # contract storage is mapping of 32-byte keys to 32-byte values
-    assert Map.get(contract2.store, <<0::256>>) === <<33::256>>
+    assert Map.get(contract2.store, 0) === 33
 
     # update contract storage
     call_contract(contract_address, "set", 45)
@@ -75,7 +75,7 @@ defmodule AecoreContractTest do
     assert Enum.count(tree_keys3) === 2
     contract3 = ContractStateTree.get_contract(Chain.chain_state().contracts, contract_address)
     # contract storage is mapping of 32-byte keys to 32-byte values
-    assert Map.get(contract3.store, <<0::256>>) === <<45::256>>
+    assert Map.get(contract3.store, 0) === 45
 
     call_contract(contract_address, "get")
     call_tree_key = compute_call_tree_key(contract_address)

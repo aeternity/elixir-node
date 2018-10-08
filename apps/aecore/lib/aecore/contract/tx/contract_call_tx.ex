@@ -8,6 +8,7 @@
    alias __MODULE__
    alias Aecore.Account.{Account, AccountStateTree}
    alias Aecore.Tx.DataTx
+   alias Aecore.Tx.SignedTx
    alias Aecore.Chain.Worker, as: Chain
    alias Aecore.Chain.{Identifier, Chainstate}
    alias Aecore.Contract.{Contract, Call, CallStateTree, Dispatch, ContractStateTree}
@@ -151,22 +152,28 @@
          accounts,
          chain_state,
          block_height,
-         %ContractCallTx{} = call_tx,
-         data_tx,
+         %ContractCallTx{
+           contract: contract,
+           amount: amount,
+           gas_price: gas_price
+         } = call_tx,
+         %DataTx{
+           nonce: nonce,
+           fee: fee
+         } = data_tx,
          context
        ) do
      # Transfer the attached funds to the callee, before the calling of the contract
      sender = DataTx.main_sender(data_tx)
-     nonce = DataTx.nonce(data_tx)
 
      updated_accounts_state =
        AccountStateTree.update(accounts, sender, fn acc ->
-         Account.apply_transfer!(acc, block_height, call_tx.amount)
+         Account.apply_transfer!(acc, block_height, amount)
        end)
 
      updated_chain_state = Map.put(chain_state, :accounts, updated_accounts_state)
 
-     init_call = Call.new(sender, nonce, block_height, call_tx.contract.value, call_tx.gas_price)
+     init_call = Call.new(sender, nonce, block_height, contract.value, gas_price)
 
      {call, update_chain_state1} =
        run_contract(call_tx, init_call, block_height, nonce, updated_chain_state)
@@ -179,8 +186,8 @@
            accounts1
 
          :transaction ->
-           gas_cost = call.gas_used * call_tx.gas_price
-           amount = DataTx.fee(data_tx) + gas_cost
+           gas_cost = call.gas_used * gas_price
+           amount = fee + gas_cost
            caller1 = AccountStateTree.get(accounts1, sender)
 
            AccountStateTree.update(accounts1, caller1.id.value, fn acc ->
@@ -208,13 +215,13 @@
          accounts,
          _calls,
          _block_height,
-         %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price} = call_tx,
-         data_tx,
+         %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price, call_stack: call_stack} =
+           call_tx,
+         %DataTx{fee: fee} = data_tx,
          context
        )
        when is_non_neg_integer(gas_price) do
      sender = DataTx.main_sender(data_tx)
-     fee = DataTx.fee(data_tx)
 
      chain_state = Chain.chain_state()
 
@@ -224,7 +231,7 @@
        case context do
          :transaction ->
            [
-             fn -> check_validity(call_tx.call_stack == [], "Non empty call stack") end,
+             fn -> check_validity(call_stack == [], "Non empty call stack") end,
              fn -> check_account_balance(accounts, sender, required_amount) end,
              fn -> check_call(call_tx, chain_state) end
            ]
@@ -251,21 +258,36 @@
    end
 
    @spec encode_to_list(ContractCallTx.t(), DataTx.t()) :: list()
-   def encode_to_list(%ContractCallTx{} = tx, %DataTx{} = datatx) do
-     [sender] = datatx.senders
+   def encode_to_list(
+         %ContractCallTx{
+           contract: contract,
+           vm_version: vm_version,
+           amount: amount,
+           gas: gas,
+           gas_price: gas_price,
+           call_data: call_data
+         },
+         %DataTx{
+           senders: senders,
+           nonce: nonce,
+           fee: fee,
+           ttl: ttl
+         }
+       ) do
+     [sender] = senders
 
      [
        :binary.encode_unsigned(@version),
        Identifier.encode_to_binary(sender),
-       :binary.encode_unsigned(datatx.nonce),
-       Identifier.encode_to_binary(tx.contract),
-       :binary.encode_unsigned(tx.vm_version),
-       :binary.encode_unsigned(datatx.fee),
-       :binary.encode_unsigned(datatx.ttl),
-       :binary.encode_unsigned(tx.amount),
-       :binary.encode_unsigned(tx.gas),
-       :binary.encode_unsigned(tx.gas_price),
-       tx.call_data
+       :binary.encode_unsigned(nonce),
+       Identifier.encode_to_binary(contract),
+       :binary.encode_unsigned(vm_version),
+       :binary.encode_unsigned(fee),
+       :binary.encode_unsigned(ttl),
+       :binary.encode_unsigned(amount),
+       :binary.encode_unsigned(gas),
+       :binary.encode_unsigned(gas_price),
+       call_data
      ]
    end
 
@@ -306,8 +328,8 @@
    end
 
    @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-   def is_minimum_fee_met?(tx) do
-     tx.data.fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+   def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
+     fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
    end
 
    defp run_contract(

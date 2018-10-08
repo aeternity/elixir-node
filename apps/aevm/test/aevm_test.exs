@@ -6,6 +6,7 @@ defmodule AevmTest do
   alias Aevm.Aevm
 
   require Logger
+  require Aecore.Contract.ContractConstants, as: Constants
 
   doctest Aevm
 
@@ -53,7 +54,7 @@ defmodule AevmTest do
 
   defp extract_and_validate(json_test, config_name) do
     spec = Map.get(json_test, config_name)
-    env = Map.get(spec, :env)
+    env = spec.env
 
     spec_state = %{
       spec
@@ -61,15 +62,16 @@ defmodule AevmTest do
           env
           |> Map.put(:chain_api, EthereumTestChain)
           |> Map.put(:chain_state, spec)
+          |> Map.put(:vm_version, Constants.aevm_solidity_01())
     }
 
     try do
       out_state = Aevm.loop(State.init_vm(spec_state, test_opts()))
 
-      validate_storage(spec, State.storage_to_int(State.chain_state(out_state).storage))
-      validate_gas(spec.gas, State.gas(out_state))
-      validate_out(spec.out, State.out(out_state))
-      validate_callcreates(spec, State.callcreates(out_state))
+      validate_storage(spec, State.storage_to_int(out_state.chain_state.storage))
+      validate_gas(spec.gas, out_state.gas)
+      validate_out(spec.out, out_state.out)
+      validate_callcreates(spec, out_state.callcreates)
 
       {:ok, out_state}
     catch

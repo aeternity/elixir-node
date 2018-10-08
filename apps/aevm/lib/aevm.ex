@@ -22,10 +22,7 @@ defmodule Aevm.Aevm do
     loop1(state1)
   end
 
-  defp loop1(state) do
-    pc = State.pc(state)
-    code = State.code(state)
-
+  defp loop1(%{code: code, pc: pc} = state) do
     if pc >= byte_size(code) do
       State.save_storage(state)
     else
@@ -414,8 +411,7 @@ defmodule Aevm.Aevm do
 
   # 0x30 ADDRESS
   # Get address of currently executing account.
-  defp exec(OpCodes._ADDRESS(), state) do
-    address = State.address(state)
+  defp exec(OpCodes._ADDRESS(), %{address: address} = state) do
     Stack.push(address, state)
   end
 
@@ -433,8 +429,7 @@ defmodule Aevm.Aevm do
   # Get execution origination address.
   # This is the sender of original transaction;
   # it is never an account with non-empty associated code.
-  defp exec(OpCodes._ORIGIN(), state) do
-    origin = State.origin(state)
+  defp exec(OpCodes._ORIGIN(), %{origin: origin} = state) do
     Stack.push(origin, state)
   end
 
@@ -442,16 +437,14 @@ defmodule Aevm.Aevm do
   # Get caller address.
   # This is the address of the account that is directly responsible
   # for this execution.
-  defp exec(OpCodes._CALLER(), state) do
-    caller = State.caller(state)
+  defp exec(OpCodes._CALLER(), %{caller: caller} = state) do
     Stack.push(caller, state)
   end
 
   # 0x34 CALLVALUE
   # Get deposited value by the instruction/transaction
   # responsible for this execution.
-  defp exec(OpCodes._CALLVALUE(), state) do
-    value = State.value(state)
+  defp exec(OpCodes._CALLVALUE(), %{value: value} = state) do
     Stack.push(value, state)
   end
 
@@ -469,40 +462,36 @@ defmodule Aevm.Aevm do
   # Get size of input data in current environment.
   # This pertains to the input data passed with the message call
   # instruction or transaction.
-  defp exec(OpCodes._CALLDATASIZE(), state) do
-    data = State.data(state)
+  defp exec(OpCodes._CALLDATASIZE(), %{data: data} = state) do
     value = byte_size(data)
     Stack.push(value, state)
   end
 
   # 0x37 CALLDATACOPY
   # Copy input data in current environment to memory.
-  defp exec(OpCodes._CALLDATACOPY(), state) do
+  defp exec(OpCodes._CALLDATACOPY(), %{data: data} = state) do
     {nbytes, state1} = Stack.pop(state)
     {from_data_pos, state2} = Stack.pop(state1)
     {to_data_pos, state3} = Stack.pop(state2)
 
-    data = State.data(state)
     data_bytes = AevmUtil.copy_bytes(from_data_pos, to_data_pos, data)
     Memory.write_area(nbytes, data_bytes, state3)
   end
 
   # 0x38 CODESIZE
   # Get size of code running in current environment.
-  defp exec(OpCodes._CODESIZE(), state) do
-    code = State.code(state)
+  defp exec(OpCodes._CODESIZE(), %{code: code} = state) do
     value = byte_size(code)
     Stack.push(value, state)
   end
 
   # 0x39 CODECOPY
   # Copy code running in current environment to memory.
-  defp exec(OpCodes._CODECOPY(), state) do
+  defp exec(OpCodes._CODECOPY(), %{code: code} = state) do
     {nbytes, state1} = Stack.pop(state)
     {from_code_pos, state2} = Stack.pop(state1)
     {to_code_pos, state3} = Stack.pop(state2)
 
-    code = State.code(state)
     code_bytes = AevmUtil.copy_bytes(from_code_pos, to_code_pos, code)
     Memory.write_area(nbytes, code_bytes, state3)
   end
@@ -510,8 +499,7 @@ defmodule Aevm.Aevm do
   # 0x3a GASPRICE
   # Get price of gas in current environment.
   # This is gas price specified by the originating transaction.
-  defp exec(OpCodes._GASPRICE(), state) do
-    gas_price = State.gas_price(state)
+  defp exec(OpCodes._GASPRICE(), %{gasPrice: gas_price} = state) do
     Stack.push(gas_price, state)
   end
 
@@ -540,20 +528,18 @@ defmodule Aevm.Aevm do
 
   # 0x3d RETURNDATASIZE
   # Get size of output data from the previous call from the current environment.
-  defp exec(OpCodes._RETURNDATASIZE(), state) do
-    return_data = State.return_data(state)
+  defp exec(OpCodes._RETURNDATASIZE(), %{return_data: return_data} = state) do
     value = byte_size(return_data)
     Stack.push(value, state)
   end
 
   # 0x3e RETURNDATACOPY
   # Copy output data from the previous call to memory.
-  defp exec(OpCodes._RETURNDATACOPY(), state) do
+  defp exec(OpCodes._RETURNDATACOPY(), %{data: return_data} = state) do
     {nbytes, state1} = Stack.pop(state)
     {from_rdata_pos, state2} = Stack.pop(state1)
     {to_rdata_pos, state3} = Stack.pop(state2)
 
-    return_data = State.data(state)
     return_data_bytes = AevmUtil.copy_bytes(from_rdata_pos, to_rdata_pos, return_data)
     Memory.write_area(nbytes, return_data_bytes, state3)
   end
@@ -584,36 +570,31 @@ defmodule Aevm.Aevm do
 
   # 0x41 COINBASE
   # Get the block’s beneficiary address.
-  defp exec(OpCodes._COINBASE(), state) do
-    current_coinbase = State.current_coinbase(state)
+  defp exec(OpCodes._COINBASE(), %{currentCoinbase: current_coinbase} = state) do
     Stack.push(current_coinbase, state)
   end
 
   # 0x42 TIMESTAMP
   # Get the block’s timestamp.
-  defp exec(OpCodes._TIMESTAMP(), state) do
-    current_timestamp = State.current_timestamp(state)
+  defp exec(OpCodes._TIMESTAMP(), %{currentTimestamp: current_timestamp} = state) do
     Stack.push(current_timestamp, state)
   end
 
   # 0x43 NUMBER
   # Get the block’s number.
-  defp exec(OpCodes._NUMBER(), state) do
-    current_number = State.current_number(state)
+  defp exec(OpCodes._NUMBER(), %{currentNumber: current_number} = state) do
     Stack.push(current_number, state)
   end
 
   # 0x44 DIFFICULTY
   # Get the block’s difficulty.
-  defp exec(OpCodes._DIFFICULTY(), state) do
-    current_difficulty = State.current_difficulty(state)
+  defp exec(OpCodes._DIFFICULTY(), %{currentDifficulty: current_difficulty} = state) do
     Stack.push(current_difficulty, state)
   end
 
   # 0x45 GASLIMIT
   # Get the block’s gas limit.
-  defp exec(OpCodes._GASLIMIT(), state) do
-    current_gas_limit = State.current_gas_limit(state)
+  defp exec(OpCodes._GASLIMIT(), %{currentGasLimit: current_gas_limit} = state) do
     Stack.push(current_gas_limit, state)
   end
 
@@ -675,9 +656,8 @@ defmodule Aevm.Aevm do
 
   # 0x56 JUMP
   # Alter the program counter.
-  defp exec(OpCodes._JUMP(), state) do
+  defp exec(OpCodes._JUMP(), %{jumpdests: jumpdests} = state) do
     {position, state} = Stack.pop(state)
-    jumpdests = State.jumpdests(state)
 
     if Enum.member?(jumpdests, position) do
       jumpdest_cost = Gas.op_gas_cost(OpCodes._JUMPDEST())
@@ -690,11 +670,9 @@ defmodule Aevm.Aevm do
 
   # 0x57 JUMPI
   # Conditionally alter the program counter.
-  defp exec(OpCodes._JUMPI(), state) do
+  defp exec(OpCodes._JUMPI(), %{jumpdests: jumpdests} = state) do
     {position, state_1} = Stack.pop(state)
     {condition, state_2} = Stack.pop(state_1)
-
-    jumpdests = State.jumpdests(state_2)
 
     if condition !== 0 do
       if Enum.member?(jumpdests, position) do
@@ -712,8 +690,7 @@ defmodule Aevm.Aevm do
   # 0x58 PC
   # Get the value of the program counter prior
   # to the increment corresponding to this instruction.
-  defp exec(OpCodes._PC(), state) do
-    pc = State.pc(state)
+  defp exec(OpCodes._PC(), %{pc: pc} = state) do
     Stack.push(pc, state)
   end
 
@@ -728,10 +705,11 @@ defmodule Aevm.Aevm do
   # 0x5a GAS
   # Get the amount of available gas, including the corresponding reduction
   # for the cost of this instruction.
-  defp exec(OpCodes._GAS(), state) do
+  defp exec(OpCodes._GAS(), %{gas: gas} = state) do
     gas_cost = Gas.op_gas_cost(OpCodes._GAS())
-    gas = State.gas(state) - gas_cost
-    Stack.push(gas, state)
+    available_gas = gas - gas_cost
+
+    Stack.push(available_gas, state)
   end
 
   # 0x5b JUMPDEST

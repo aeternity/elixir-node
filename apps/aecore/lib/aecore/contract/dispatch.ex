@@ -95,9 +95,10 @@ defmodule Aecore.Contract.Dispatch do
       Map.put(spec, :exec, %{
         code: code,
         address: address,
+        caller: caller_address,
         data: call_data,
         gas: gas,
-        gas_price: gas_price,
+        gasPrice: gas_price,
         origin: caller_address,
         value: value,
         call_stack: call_stack

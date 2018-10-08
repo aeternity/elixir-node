@@ -25,11 +25,11 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
-  @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
+  @spec check_identity(Identifier.t(), value()) :: boolean() | {:error, String.t()}
   def check_identity(%Identifier{} = id, type) do
     case create_identity(id.value, type) do
-      {:ok, check_id} -> check_id == id
       {:error, msg} -> {:error, msg}
+      check_id -> check_id == id
     end
   end
 

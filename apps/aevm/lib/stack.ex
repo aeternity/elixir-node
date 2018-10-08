@@ -8,9 +8,7 @@ defmodule Aevm.Stack do
   @maximum_stack_length 1024
 
   @spec push(any(), map()) :: :ok | {:error, String.t(), list()}
-  def push(arg, state) do
-    stack = State.stack(state)
-
+  def push(arg, %{stack: stack} = state) do
     if length(stack) < @maximum_stack_length do
       State.set_stack([arg | stack], state)
     else
@@ -19,9 +17,7 @@ defmodule Aevm.Stack do
   end
 
   @spec pop(map()) :: {any(), list()} | {:error, String.t(), list()}
-  def pop(state) do
-    stack = State.stack(state)
-
+  def pop(%{stack: stack} = state) do
     case stack do
       [arg | stack] -> {arg, State.set_stack(stack, state)}
       [] -> throw({:error, "emtpy_stack", stack})
@@ -29,9 +25,7 @@ defmodule Aevm.Stack do
   end
 
   @spec peek(integer(), map()) :: any() | {:error, String.t(), list()}
-  def peek(index, state) when index >= 0 do
-    stack = State.stack(state)
-
+  def peek(index, %{stack: stack}) when index >= 0 do
     if Enum.empty?(stack) do
       throw({:error, "empty stack", stack})
     else
@@ -43,9 +37,7 @@ defmodule Aevm.Stack do
   end
 
   @spec dup(integer(), map()) :: any() | {:error, String.t(), list()}
-  def dup(index, state) do
-    stack = State.stack(state)
-
+  def dup(index, %{stack: stack} = state) do
     if Enum.empty?(stack) do
       throw({:error, "empty stack", stack})
     else
@@ -61,9 +53,7 @@ defmodule Aevm.Stack do
   end
 
   @spec swap(integer(), map()) :: map() | {:error, String.t(), list()}
-  def swap(index, state) do
-    stack = State.stack(state)
-
+  def swap(index, %{stack: stack} = state) do
     if Enum.empty?(stack) do
       throw({:error, "empty stack", stack})
     else

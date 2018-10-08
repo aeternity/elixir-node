@@ -6,7 +6,7 @@ defmodule Aecore.Chain.Chainstate do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Genesis}
   alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Contract.{Call, CallStateTree, ContractStateTree}
+  alias Aecore.Contract.{CallStateTree, ContractStateTree}
   alias Aecore.Governance.{GenesisConstants, GovernanceConstants}
   alias Aecore.Keys
   alias Aecore.Miner.Worker, as: Miner
@@ -86,7 +86,7 @@ defmodule Aecore.Chain.Chainstate do
     updated_chainstate2 =
       case updated_chainstate do
         %Chainstate{} = new_chainstate ->
-          new_chainstate |> Oracle.remove_expired(block_height) |> Call.reset_calls(block_height)
+          Oracle.remove_expired(new_chainstate, block_height)
 
         error ->
           {:error, error}

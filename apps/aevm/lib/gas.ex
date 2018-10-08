@@ -18,9 +18,7 @@ defmodule Aevm.Gas do
   Subtract a given `gas_cost` from the current gas in the state
   """
   @spec update_gas(integer(), map()) :: map() | {:error, String.t(), map()}
-  def update_gas(gas_cost, state) do
-    curr_gas = State.gas(state)
-
+  def update_gas(gas_cost, %{gas: curr_gas} = state) do
     if curr_gas >= gas_cost do
       gas_after = curr_gas - gas_cost
       State.set_gas(gas_after, state)
@@ -130,10 +128,9 @@ defmodule Aevm.Gas do
 
   # Determine the gas cost for a CALL instruction
 
-  defp dynamic_call_cost(state) do
+  defp dynamic_call_cost(%{gas: gas_state} = state) do
     gas_cost_0 = GasCodes._GCALL()
 
-    gas_state = State.gas(state)
     gas = Stack.peek(0, state)
     value = Stack.peek(2, state)
 
