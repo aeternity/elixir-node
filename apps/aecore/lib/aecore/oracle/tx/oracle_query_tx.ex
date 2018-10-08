@@ -216,13 +216,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !is_binary(query_data) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(query_data)}"}
 
-      query_fee < OracleStateTree.get_oracle(oracles, oracle_address).query_fee ->
-        {:error, "#{__MODULE__}: The query fee: #{inspect(query_fee)} is
-         lower than the one required by the oracle"}
-
-      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
-
       true ->
         :ok
     end
