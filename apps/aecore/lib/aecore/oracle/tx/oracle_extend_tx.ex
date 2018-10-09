@@ -98,7 +98,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   def preprocess_check(
         accounts,
         oracles,
-        block_height,
+        _block_height,
         _payload,
         %DataTx{
           fee: fee

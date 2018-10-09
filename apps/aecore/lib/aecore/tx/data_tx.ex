@@ -249,16 +249,10 @@ defmodule Aecore.Tx.DataTx do
     accounts_state = chainstate.accounts
     tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
 
-    ty_type_is_fee_met = type.is_minimum_fee_met?(tx, tx_type_state, block_height)
-
     tx_type_preprocess_check =
       type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx)
 
     cond do
-      !ty_type_is_fee_met ->
-        {:error,
-         "#{__MODULE__}: Minimum fee is not met: #{type} #{tx.fee} at height: #{block_height}"}
-
       tx_type_preprocess_check != :ok ->
         tx_type_preprocess_check
 
@@ -270,6 +264,10 @@ defmodule Aecore.Tx.DataTx do
 
       Account.nonce(chainstate.accounts, main_sender(tx)) >= tx.nonce ->
         {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
+
+      !type.is_minimum_fee_met?(tx, tx_type_state, block_height) ->
+        {:error,
+         "#{__MODULE__}: Minimum fee is not met: #{type} #{tx.fee} at height: #{block_height}"}
 
       true ->
         :ok
