@@ -21,7 +21,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
           channel_id: binary(),
-          offchain_tx: map() | atom(),
+          offchain_tx: map() | :empty,
           poi: map()
         }
 
@@ -183,11 +183,18 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
+    offchain_tx_encoded =
+      if tx.offchain_tx != :empty do
+        ChannelOffChainTx.rlp_encode(tx.offchain_tx)
+      else
+        <<>>
+      end
+
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
+      offchain_tx_encoded,
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
@@ -206,7 +213,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       ]) do
     with {:ok, channel_id} <-
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
-         {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
+         {:ok, offchain_tx} <- decode_payload(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelCloseSoloTx,
@@ -232,5 +239,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  defp decode_payload(<<>>) do
+    {:ok, :empty}
+  end
+
+  defp decode_payload(payload) do
+    ChannelOffChainTx.rlp_decode_signed(payload)
   end
 end

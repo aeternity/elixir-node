@@ -60,14 +60,6 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec channel_id(ChannelSlashTx.t()) :: binary()
   def channel_id(%ChannelSlashTx{channel_id: channel_id}), do: channel_id
 
-  @doc """
-  Checks transactions internal contents validity
-  """
-  @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelSlashTx{offchain_tx: :empty}) do
-    {:error, "#{__MODULE__}: Can't slash without an offchain tx"}
-  end
-
   def validate(
         %ChannelSlashTx{
           channel_id: internal_channel_id,
@@ -185,7 +177,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
+      ChannelOffChainTx.rlp_encode(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
@@ -204,7 +196,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       ]) do
     with {:ok, channel_id} <-
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
-         {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
+         {:ok, offchain_tx} <- ChannelOffChainTx.rlp_decode_signed(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelSlashTx,

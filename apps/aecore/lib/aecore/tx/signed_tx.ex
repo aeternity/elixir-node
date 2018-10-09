@@ -277,11 +277,11 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec encode_to_list(SignedTx.t()) :: list()
-  def encode_to_list(%SignedTx{} = tx) do
+  def encode_to_list(%SignedTx{data: %DataTx{} = data} = tx) do
     [
       :binary.encode_unsigned(@version),
       Enum.sort(tx.signatures),
-      DataTx.rlp_encode(tx.data)
+      DataTx.rlp_encode(data)
     ]
   end
 
