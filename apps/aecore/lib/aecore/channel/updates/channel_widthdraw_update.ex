@@ -35,6 +35,23 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   defstruct [:to, :amount]
 
   @doc """
+  Creates a ChannelWithdrawUpdate from a ChannelWithdrawTx
+  """
+  @spec new(ChannelWithdrawTx.t(), Keys.pubkey()) :: ChannelWithdrawUpdate.t()
+  def new(
+        %ChannelCreateTx{
+          amount: amount
+        },
+        to
+      )
+      when is_binary(to) do
+    %ChannelCreateUpdate{
+      to: to,
+      amount: amount
+    }
+  end
+
+  @doc """
   Deserializes ChannelWithdrawUpdate. The serialization was changed in later versions of epoch.
   """
   @spec decode_from_list(list(binary())) :: ChannelWithdrawUpdate.t()

@@ -100,8 +100,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def id(%DataTx{
         nonce: nonce,
         senders: [
-          %Identifier{value: initiator_pubkey},
-          %Identifier{value: responder_pubkey}
+          %Identifier{value: initiator_pubkey, type: account},
+          %Identifier{value: responder_pubkey, type: account}
         ]
       }) do
     id(initiator_pubkey, responder_pubkey, nonce)
@@ -280,6 +280,146 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         initiator_amount: initiator_amount,
         responder_amount: responder_amount
     }
+  end
+
+  @spec validate_withdraw(
+          ChannelStateOnChain.t(),
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: :ok | {:error, binary()}
+  def validate_withdraw(
+        %ChannelStateOnChain{slash_sequence: slash_sequence, channel_reserve: channel_reserve} =
+          channel,
+        tx_account,
+        tx_amount,
+        tx_sequence
+      ) do
+    amount_atom = amount_atom_for_account(tx_account)
+
+    cond do
+      slash_sequence >= tx_sequence ->
+        {:error, "Too old state"}
+
+      amount_atom == :error ->
+        {:error, "Withdraw destination must be a party of this channel"}
+
+      Map.get(channel, amount_atom) - tx_amount < channel_reserve ->
+        {:error, "The withdrawn account does not met channel reserve"}
+
+      true ->
+        :ok
+    end
+  end
+
+  @spec apply_withdraw(
+          ChannelStateOnChain.t(),
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary()
+        ) :: ChannelStateOnChain.t()
+  def apply_withdraw(
+        %ChannelStateOnChain{} = channel,
+        tx_account,
+        tx_amount,
+        tx_sequence,
+        tx_state_hash
+      )
+      when is_binary(tx_account) and is_binary(tx_state_hash) do
+    case amount_atom_for_account(channel, tx_account) do
+      amount_atom ->
+        updated_channel =
+          Map.update(channel, amount_atom, fn cur_amount -> cur_amount - tx_amount end)
+
+        %ChannelStateOnChain{
+          updated_channel
+          | slash_sequence: tx_sequence,
+            state_hash: tx_state_hash
+        }
+
+      :error ->
+        raise {:error,
+               "This should never happen. Make sure &validate_withdraw/1 was called before."}
+    end
+  end
+
+  @spec validate_deposit(
+          ChannelStateOnChain.t(),
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: :ok | {:error, binary()}
+  def validate_deposit(
+        %ChannelStateOnChain{slash_sequence: slash_sequence} = channel,
+        tx_account,
+        tx_amount,
+        tx_sequence
+      )
+      when is_binary(tx_account) do
+    amount_atom = amount_atom_for_account(tx_account)
+
+    cond do
+      slash_sequence >= tx_sequence ->
+        {:error, "Too old state"}
+
+      amount_atom == :error ->
+        {:error, "Deposit destination must be a party of this channel"}
+
+      true ->
+        :ok
+    end
+  end
+
+  @spec apply_deposit(
+          ChannelStateOnChain.t(),
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary()
+        ) :: ChannelStateOnChain.t()
+  def apply_deposit(
+        %ChannelStateOnChain{} = channel,
+        tx_account,
+        tx_amount,
+        tx_sequence,
+        tx_state_hash
+      )
+      when is_binary(tx_account) and is_binary(tx_state_hash) do
+    case amount_atom_for_account(channel, tx_account) do
+      amount_atom ->
+        updated_channel =
+          Map.update(channel, amount_atom, fn cur_amount -> cur_amount + tx_amount end)
+
+        %ChannelStateOnChain{
+          updated_channel
+          | slash_sequence: tx_sequence,
+            state_hash: tx_state_hash
+        }
+
+      :error ->
+        raise {:error,
+               "This should never happen. Make sure &validate_deposit/1 was called before."}
+    end
+  end
+
+  @spec amount_atom_for_account(ChannelStateOnChain.t(), Keys.pubkey()) ::
+          :initiator_amount | :responder_amount | :error
+  defp amount_atom_for_account(
+         %ChannelStateOnChain{initiator: initiator, responder: responder},
+         account
+       )
+       when is_binary(account) do
+    cond do
+      initiator == account ->
+        :initiator_amount
+
+      responder == account ->
+        :responder_amount
+
+      true ->
+        :error
+    end
   end
 
   @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
