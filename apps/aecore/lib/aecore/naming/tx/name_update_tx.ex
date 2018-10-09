@@ -10,7 +10,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Naming.Tx.NameUpdateTx
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.DataTx
   alias Aeutil.Hash
 
   require Logger
@@ -206,9 +206,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(NameUpdateTx.t(), DataTx.t()) :: list()

@@ -143,9 +143,7 @@ defmodule AecoreSerializationTest do
         )
 
       SignedTx ->
-        {:ok, signed_tx} = Account.spend(acc2_pub, 100, 20, <<"payload">>)
-
-        signed_tx
+        Account.spend(acc2_pub, 100, 20, <<"payload">>)
 
       Oracle ->
         %Oracle{
@@ -183,32 +181,25 @@ defmodule AecoreSerializationTest do
         block
 
       NamePreClaimTx ->
-        {:ok, pre_claim} = Account.pre_claim("test.aet", 123, 50)
-        pre_claim.data
+        Account.pre_claim("test.aet", 123, 50).data
 
       NameClaimTx ->
-        {:ok, claim} = Account.claim("test.aet", 123, 50)
-        claim.data
+        Account.claim("test.aet", 123, 50).data
 
       NameUpdateTx ->
-        {:ok, update} = Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50)
-        update.data
+        Account.name_update("test.aet", "{\"test\": 2}", 50, 5000, 50).data
 
       NameTransferTx ->
         transfer_to_pub = acc2_pub
 
-        {:ok, transfer} = Account.name_transfer("test.aet", transfer_to_pub, 50)
-        transfer.data
+        Account.name_transfer("test.aet", transfer_to_pub, 50).data
 
       NameRevokeTx ->
         transfer_to_priv = acc2_priv
         transfer_to_pub = acc2_pub
         next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 
-        {:ok, revoke} =
-          Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce)
-
-        revoke.data
+        Account.name_revoke(transfer_to_pub, transfer_to_priv, "test.aet", 50, next_nonce).data
 
       Name ->
         %Name{

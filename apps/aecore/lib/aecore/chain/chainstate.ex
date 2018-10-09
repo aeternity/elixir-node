@@ -142,7 +142,7 @@ defmodule Aecore.Chain.Chainstate do
     [
       AccountStateTree.root_hash(chainstate.accounts),
       CallStateTree.root_hash(chainstate.calls),
-      @canonical_root_hash,
+      ChannelStateTree.root_hash(chainstate.channels),
       ContractStateTree.root_hash(chainstate.contracts),
       NamingStateTree.root_hash(chainstate.naming),
       OracleStateTree.root_hash(chainstate.oracles)

@@ -7,6 +7,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   alias __MODULE__
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
@@ -163,7 +164,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       query: query_data,
       has_response: false,
       response: :undefined,
-      expires: Oracle.calculate_ttl(query_ttl, block_height),
+      expires: Oracle.calculate_absolute_ttl(query_ttl, block_height),
       response_ttl: response_ttl,
       fee: query_fee
     }
@@ -193,7 +194,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: query_data,
           query_fee: query_fee
         } = tx,
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}], fee: fee} = data_tx
       ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - query_fee < 0 ->
@@ -213,8 +214,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         {:error, "#{__MODULE__}: The query fee: #{inspect(query_fee)} is
          lower than the one required by the oracle"}
 
-      !is_minimum_fee_met?(tx, oracles, fee, block_height) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
+      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
+        {:error, "#{__MODULE__}: Fee: #{fee} is too low"}
 
       true ->
         :ok
@@ -232,20 +233,17 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(
-          OracleQueryTx.t(),
-          tx_type_state(),
-          non_neg_integer(),
-          non_neg_integer() | nil
-        ) :: boolean()
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(
-        %OracleQueryTx{
-          query_fee: query_fee,
-          oracle_address: %Identifier{value: oracle_address},
-          query_ttl: query_ttl
+        %DataTx{
+          payload: %OracleQueryTx{
+            query_fee: query_fee,
+            oracle_address: %Identifier{value: oracle_address},
+            query_ttl: query_ttl
+          },
+          fee: fee
         },
         oracles_tree,
-        fee,
         block_height
       ) do
     tx_query_fee_is_met =
@@ -254,20 +252,18 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         |> OracleStateTree.get_oracle(oracle_address)
         |> Map.get(:query_fee)
 
+    ttl_fee = fee - GovernanceConstants.oracle_query_base_fee()
+
     tx_fee_is_met =
       case query_ttl do
         %{ttl: ttl, type: :relative} ->
-          fee >= calculate_minimum_fee(ttl)
+          ttl_fee >= Oracle.calculate_minimum_fee(ttl)
 
         %{ttl: _ttl, type: :absolute} ->
-          if block_height != nil do
-            fee >=
-              query_ttl
-              |> Oracle.calculate_ttl(block_height)
-              |> calculate_minimum_fee()
-          else
-            true
-          end
+          ttl_fee >=
+            query_ttl
+            |> Oracle.calculate_relative_ttl(block_height)
+            |> Oracle.calculate_minimum_fee()
       end
 
     tx_fee_is_met && tx_query_fee_is_met
@@ -296,14 +292,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec validate_identifier(Identifier.t()) :: boolean()
   defp validate_identifier(%Identifier{value: value} = id) do
     Identifier.create_identity(value, :oracle) == id
-  end
-
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  defp calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_query_base_fee]
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec encode_to_list(OracleQueryTx.t(), DataTx.t()) :: list() | {:error, reason()}

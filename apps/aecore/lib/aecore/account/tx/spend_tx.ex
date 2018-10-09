@@ -5,11 +5,12 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Keys
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.DataTx
 
   require Logger
 
@@ -166,9 +167,9 @@ defmodule Aecore.Account.Tx.SpendTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec get_tx_version() :: version()

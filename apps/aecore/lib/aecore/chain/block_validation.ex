@@ -6,7 +6,7 @@ defmodule Aecore.Chain.BlockValidation do
   alias Aecore.Chain.{Block, Chainstate, Genesis, Header, Target}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Pow.Pow
-  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
@@ -34,41 +34,43 @@ defmodule Aecore.Chain.BlockValidation do
       ) do
     is_genesis = new_block == Genesis.block() && previous_block == nil
 
-    case single_validate_block(new_block) do
-      :ok ->
-        {:ok, new_chain_state} =
-          Chainstate.calculate_and_validate_chain_state(
-            txs,
-            old_chain_state,
-            height,
-            miner
-          )
+    with true <- txs_meet_minimum_fee?(txs, old_chain_state, height),
+         :ok <- single_validate_block(new_block),
+         {:ok, new_chain_state} <-
+           Chainstate.calculate_and_validate_chain_state(
+             txs,
+             old_chain_state,
+             height,
+             miner
+           ) do
+      expected_root_hash = Chainstate.calculate_root_hash(new_chain_state)
 
-        expected_root_hash = Chainstate.calculate_root_hash(new_chain_state)
+      expected_target =
+        Target.calculate_next_target(
+          time,
+          blocks_for_target_calculation
+        )
 
-        expected_target =
-          Target.calculate_next_target(
-            time,
-            blocks_for_target_calculation
-          )
+      cond do
+        # do not check previous block height for genesis block, there is none
+        !(is_genesis || check_correct_height?(new_block, previous_block)) ->
+          {:error, "#{__MODULE__}: Incorrect height"}
 
-        cond do
-          # do not check previous block height for genesis block, there is none
-          !(is_genesis || check_correct_height?(new_block, previous_block)) ->
-            {:error, "#{__MODULE__}: Incorrect height"}
+        !valid_header_time?(new_block) ->
+          {:error, "#{__MODULE__}: Invalid header time"}
 
-          !valid_header_time?(new_block) ->
-            {:error, "#{__MODULE__}: Invalid header time"}
+        root_hash != expected_root_hash ->
+          {:error, "#{__MODULE__}: Root hash not matching"}
 
-          root_hash != expected_root_hash ->
-            {:error, "#{__MODULE__}: Root hash not matching"}
+        target != expected_target ->
+          {:error, "#{__MODULE__}: Invalid block target"}
 
-          target != expected_target ->
-            {:error, "#{__MODULE__}: Invalid block target"}
-
-          true ->
-            {:ok, new_chain_state}
-        end
+        true ->
+          {:ok, new_chain_state}
+      end
+    else
+      false ->
+        {:error, "#{__MODULE__}: One or more transactions don't meet their minimum fee"}
 
       {:error, _} = error ->
         error
@@ -111,6 +113,17 @@ defmodule Aecore.Chain.BlockValidation do
   @spec validate_block_transactions(Block.t()) :: list(boolean())
   def validate_block_transactions(%Block{txs: txs}) do
     Enum.map(txs, fn tx -> :ok == SignedTx.validate(tx) end)
+  end
+
+  @spec txs_meet_minimum_fee?(list(SignedTx.t()), Chainstate.t(), non_neg_integer()) :: boolean()
+  def txs_meet_minimum_fee?(txs, chain_state, block_height) do
+    Enum.all?(txs, fn %SignedTx{data: %DataTx{type: type} = data_tx} ->
+      type.is_minimum_fee_met?(
+        data_tx,
+        Map.get(chain_state, type.get_chain_state_name()),
+        block_height
+      )
+    end)
   end
 
   @spec calculate_txs_hash([]) :: binary()

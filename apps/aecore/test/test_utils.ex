@@ -26,18 +26,15 @@ defmodule TestUtils do
   end
 
   def spend(pk, sk, receiver, amount) do
-    {:ok, tx} =
-      Account.spend(
-        pk,
-        sk,
-        receiver,
-        amount,
-        10,
-        Account.nonce(Chain.chain_state().accounts, pk) + 1,
-        ""
-      )
-
-    :ok = Pool.add_transaction(tx)
+    Account.spend(
+      pk,
+      sk,
+      receiver,
+      amount,
+      10,
+      Account.nonce(Chain.chain_state().accounts, pk) + 1,
+      ""
+    )
   end
 
   def spend_list(pk, sk, list) do
@@ -49,8 +46,7 @@ defmodule TestUtils do
   end
 
   defp spend_list(pk, sk, [{receiver, amount} | rest], nonce) do
-    {:ok, tx} = Account.spend(pk, sk, receiver, amount, 10, nonce, <<>>)
-    Pool.add_transaction(tx)
+    Account.spend(pk, sk, receiver, amount, 10, nonce, <<>>)
     spend_list(pk, sk, rest, nonce + 1)
   end
 

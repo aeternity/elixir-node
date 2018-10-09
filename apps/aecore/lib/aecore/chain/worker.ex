@@ -220,7 +220,7 @@ defmodule Aecore.Chain.Worker do
         chain_state
 
       _ ->
-        {:error, "#{__MODULE__}: Chainstate was delated"}
+        {:error, "#{__MODULE__}: Chainstate was deleted"}
     end
   end
 

@@ -11,6 +11,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
   alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.{Bits, Serialization}
 
   require Logger
@@ -323,7 +324,9 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()} | error()
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
-    SignedTx.sign_tx(tx, sender_prv)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx, sender_prv)
+    Pool.add_transaction(signed_tx)
+    signed_tx
   end
 
   @doc """

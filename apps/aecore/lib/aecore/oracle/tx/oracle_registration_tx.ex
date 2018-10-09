@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -117,7 +118,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       query_format: query_format,
       response_format: response_format,
       query_fee: query_fee,
-      expires: Oracle.calculate_ttl(ttl, block_height)
+      expires: Oracle.calculate_absolute_ttl(ttl, block_height)
     }
 
     {:ok,
@@ -142,7 +143,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
         oracles,
         block_height,
         %OracleRegistrationTx{ttl: ttl} = tx,
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]} = data_tx
       ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -154,7 +155,7 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
-      !is_minimum_fee_met?(tx, fee, block_height) ->
+      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
         {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
@@ -173,32 +174,24 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(OracleRegistrationTx.t(), non_neg_integer(), non_neg_integer()) ::
-          boolean()
-  def is_minimum_fee_met?(%OracleRegistrationTx{ttl: ttl}, fee, block_height) do
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(
+        %DataTx{payload: %OracleRegistrationTx{ttl: ttl}, fee: fee},
+        _oracles_tree,
+        block_height
+      ) do
+    ttl_fee = fee - GovernanceConstants.oracle_register_base_fee()
+
     case ttl do
       %{ttl: ttl, type: :relative} ->
-        fee >= calculate_minimum_fee(ttl)
+        ttl_fee >= Oracle.calculate_minimum_fee(ttl)
 
       %{ttl: _ttl, type: :absolute} ->
-        if block_height != nil do
-          fee >=
-            ttl
-            |> Oracle.calculate_ttl(block_height)
-            |> calculate_minimum_fee()
-        else
-          true
-        end
+        ttl_fee >=
+          ttl
+          |> Oracle.calculate_relative_ttl(block_height)
+          |> Oracle.calculate_minimum_fee()
     end
-  end
-
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  defp calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_registration_base_fee]
-
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
   end
 
   @spec encode_to_list(OracleRegistrationTx.t(), DataTx.t()) :: list()

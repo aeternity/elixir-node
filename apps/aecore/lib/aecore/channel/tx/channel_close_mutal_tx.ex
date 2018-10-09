@@ -5,8 +5,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
-  alias Aecore.Tx.{SignedTx, DataTx}
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
@@ -186,9 +187,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     accounts
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCloseMutalTx.t(), DataTx.t()) :: list()

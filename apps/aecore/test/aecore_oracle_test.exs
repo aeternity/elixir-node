@@ -101,8 +101,10 @@ defmodule AecoreOracleTest do
 
     Chain.clear_state()
     register_oracle(:valid)
+
     Miner.mine_sync_block_to_chain()
     Miner.mine_sync_block_to_chain()
+
     Oracle.extend(%{ttl: 3, type: :relative}, 10)
     Miner.mine_sync_block_to_chain()
 
