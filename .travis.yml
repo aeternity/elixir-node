@@ -1,20 +1,45 @@
-dist: xenial
-language: elixir
-elixir:
-  - 1.6.4
-otp_release:
-  - 20.2.2
+dist: trusty
+sudo: false
+language: erlang
+otp_release: 20.2.2
 
 env:
-  - MIX_ENV=test LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include LIBRARY_PATH=$LIBRARY_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include C_INCLUDE_PATH=$C_INCLUDE_PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include
+  global:
+    - LD_LIBRARY_PATH=$HOME/.libsodium/lib:$LD_LIBRARY_PATH
+    - LD_RUN_PATH=$HOME/.libsodium/lib:$LD_RUN_PATH
+    - PATH=$PATH:$HOME/.libsodium/lib:$HOME/.libsodium/include:$HOME/.kiex
+    - LIBRARY_PATH=$HOME/.libsodium/lib:$LIBRARY_PATH
+    - C_INCLUDE_PATH=$HOME/.libsodium/include:$C_INCLUDE_PATH
+  matrix:
+    - MIX_ENV=test ELIXIR_VER=1.6.4 LIBSODIUM_VER=1.0.16
 
 before_install:
-  - wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz
-  - "[ -d libsodium-src ] || mkdir libsodium-src && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1"
-  - cd libsodium-src && ./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && cd ..
+  # Install elixir
+  - curl -sSL https://raw.githubusercontent.com/taylor/kiex/master/install | bash -s
+  - "[ -d $HOME/.kiex/builds/elixir-git ] || (eval kiex install $ELIXIR_VER)"
+  - kiex default $ELIXIR_VER
+  - kiex use $ELIXIR_VER
+  - mix local.hex --force
+  - mix local.rebar --force
+  - mix deps.get
+
+install:
+  # Install libsodium
+  - mkdir -p libsodium-src
+  - "[ -d $HOME/.libsodium/lib ] || (wget -O libsodium-src.tar.gz https://github.com/jedisct1/libsodium/releases/download/$LIBSODIUM_VER/libsodium-$LIBSODIUM_VER.tar.gz && tar -zxf libsodium-src.tar.gz -C libsodium-src --strip-components=1)"
+  - cd libsodium-src
+  - "[ -d $HOME/.libsodium/lib ] || (./configure --prefix=$HOME/.libsodium && make -j$(nproc) && make install && export LIBSODIUM_NEW=yes)"
+  - cd ..
+
+  # Recompile enacl if necessary
+  - "[ -z $LIBSODIUM_NEW ] || (mix deps.compile enacl)"
+
+  # Install rust
   - curl https://sh.rustup.rs -sSf | sh -s -- -y
   - source $HOME/.cargo/env
-  - make aevm-test-deps
+
+  # Fetch aevm tests if they are missing from the cache
+  - "[ -d aevm_external/ethereum_tests/VMTests/vmArithmeticTest ] || (make aevm-test-deps)"
 
 script:
   - mix compile --warnings-as-errors
@@ -24,10 +49,11 @@ script:
 
 cache:
   directories:
+    - $HOME/.kiex
     - $HOME/.cargo
+    - $HOME/.libsodium
     - deps
     - _build
-    - aevm_external
+    - aevm_external/ethereum_tests/VMTests
     - apps/aecore/src/cuckoo/c_src
     - apps/aecore/priv/cuckoo
-    - libsodium-src
