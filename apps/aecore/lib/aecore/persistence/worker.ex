@@ -10,6 +10,11 @@ defmodule Aecore.Persistence.Worker do
   alias Aeutil.Scientific
   alias Rox.Batch
 
+  # possible improvement - moving these definitions to a config.
+  @db_refs_name :ref_db
+  # possible improvement - moving these definitions to a config.
+  @db_refs_key :refs
+
   @typedoc """
   To operate with a patricia merkle tree
   we do need db reference
@@ -179,55 +184,73 @@ defmodule Aecore.Persistence.Worker do
     ]
   end
 
+  # possible improvement - moving to a config.
+  defp database_params do
+    [create_if_missing: true, auto_create_column_families: true]
+  end
+
   def init(_) do
     # We are ensuring that families for the blocks and chain state
     # are created. More about them -
     # https://github.com/facebook/rocksdb/wiki/Column-Families
-    {:ok, db,
-     %{
-       "blocks_family" => blocks_family,
-       "latest_block_info_family" => latest_block_info_family,
-       "chain_state_family" => chain_state_family,
-       "blocks_info_family" => blocks_info_family,
-       "patricia_proof_family" => patricia_proof_family,
-       "patricia_oracles_family" => patricia_oracles_family,
-       "patricia_oracles_cache_family" => patricia_oracles_cache_family,
-       "patricia_txs_family" => patricia_txs_family,
-       "patricia_account_family" => patricia_accounts_family,
-       "patricia_naming_family" => patricia_naming_family,
-       "total_difficulty_family" => total_difficulty_family,
-       "patricia_channels_family" => patricia_channels_family,
-       "patricia_contracts_family" => patricia_contracts_family,
-       "patricia_calls_family" => patricia_calls_family
-     } = families_map} =
-      Rox.open(
-        persistence_path(),
-        [create_if_missing: true, auto_create_column_families: true],
-        all_families()
-      )
 
-    {:ok,
-     %{
-       db: db,
-       families_map: families_map,
-       blocks_family: blocks_family,
-       latest_block_info_family: latest_block_info_family,
-       chain_state_family: chain_state_family,
-       blocks_info_family: blocks_info_family,
-       total_difficulty_family: total_difficulty_family,
-       patricia_families: %{
-         proof: patricia_proof_family,
-         accounts: patricia_accounts_family,
-         oracles: patricia_oracles_family,
-         oracles_cache: patricia_oracles_cache_family,
-         txs: patricia_txs_family,
-         test_trie: db,
-         naming: patricia_naming_family,
-         channels: patricia_channels_family,
-         contracts: patricia_contracts_family,
-         calls: patricia_calls_family
-       }
-     }}
+    case Rox.open(persistence_path, database_params, all_families()) do
+      # this should be adjusted with patternmatching to have values defined in 202 line
+      {:ok, db, families_map} when is_map(families_map) ->
+        case :ets.info(@db_refs_name) do
+          info when is_list(info) ->
+            :ets.lookup(@db_refs_name, :refs)
+
+          :undefined ->
+            :ets.new(@db_refs_name, [:named_table, :set])
+            :ets.insert(@db_refs_name, {@db_refs_key, {db, families_map}})
+
+            {
+              :ok,
+              # unexisting values should be pattern-matched in a successful case.
+              %{
+                db: db,
+                families_map: families_map,
+                blocks_family: blocks_family,
+                latest_block_info_family: latest_block_info_family,
+                chain_state_family: chain_state_family,
+                blocks_info_family: blocks_info_family,
+                total_difficulty_family: total_difficulty_family,
+                patricia_families: %{
+                  proof: patricia_proof_family,
+                  accounts: patricia_accounts_family,
+                  oracles: patricia_oracles_family,
+                  oracles_cache: patricia_oracles_cache_family,
+                  txs: patricia_txs_family,
+                  test_trie: db,
+                  naming: patricia_naming_family,
+                  channels: patricia_channels_family,
+                  contracts: patricia_contracts_family,
+                  calls: patricia_calls_family
+                }
+              }
+            }
+
+          {:error, _reason} ->
+            case :ets.lookup(@db_refs_name, @db_refs_key) do
+              # to be implemented
+              data when is_tuple(data) ->
+                {db, families_map} = data
+
+              error ->
+                {:error,
+                 "#{__MODULE__}: Error, attempted to read from db, got: #{inspect(error)} "}
+            end
+        end
+    end
+
+    # {:ok, db,
+    # } =
+    #   Rox.open(
+    #     persistence_path(),
+    #     database_params,
+    #     all_families()
+    #   )
   end
 
   def handle_call(
