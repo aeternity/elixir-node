@@ -92,9 +92,16 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, oracles, block_height, %OracleExtendTx{}, %DataTx{
-        senders: [%Identifier{value: sender}], fee: fee
-      } = data_tx) do
+  def preprocess_check(
+        accounts,
+        oracles,
+        block_height,
+        %OracleExtendTx{},
+        %DataTx{
+          senders: [%Identifier{value: sender}],
+          fee: fee
+        } = data_tx
+      ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
