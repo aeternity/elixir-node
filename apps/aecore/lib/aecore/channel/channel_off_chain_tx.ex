@@ -87,11 +87,11 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   end
 
   def verify_signature_for_key(
-        %ChannelOffChainTx{signatures: {sig1, sig2}} = state,
+        %ChannelOffChainTx{signatures: {signature1, signature2}} = state,
         pubkey
       ) do
-    Keys.verify(signing_form(state), sig1, pubkey) or
-      verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
+    Keys.verify(signing_form(state), signature1, pubkey) or
+      verify_signature_for_key(%ChannelOffChainTx{state | signatures: {signature2, <<>>}}, pubkey)
   end
 
   @spec signature_for_offchain_tx(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: binary()
@@ -111,18 +111,18 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: ChannelOffChainTx.t()
   def sign(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
-    sig = signature_for_offchain_tx(offchain_tx, priv_key)
+    signature = signature_for_offchain_tx(offchain_tx, priv_key)
 
-    {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig, <<>>}}}
+    {:ok, %ChannelOffChainTx{offchain_tx | signatures: {signature, <<>>}}}
   end
 
-  def sign(%ChannelOffChainTx{signatures: {sig1, <<>>}} = offchain_tx, priv_key) do
-    sig2 = signature_for_offchain_tx(offchain_tx, priv_key)
+  def sign(%ChannelOffChainTx{signatures: {existing_signature, <<>>}} = offchain_tx, priv_key) do
+    new_signature = signature_for_offchain_tx(offchain_tx, priv_key)
 
-    if sig2 > sig1 do
-      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig1, sig2}}}
+    if new_signature > existing_signature do
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {existing_signature, new_signature}}}
     else
-      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig2, sig1}}}
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {new_signature, existing_signature}}}
     end
   end
 
@@ -176,13 +176,13 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     Serialization.rlp_encode(tx)
   end
 
-  def rlp_encode(%ChannelOffChainTx{signatures: {sig1, sig2}} = tx) do
+  def rlp_encode(%ChannelOffChainTx{signatures: {signature1, signature2}} = tx) do
     {:ok, signedtx_tag} = TypeToTag.type_to_tag(SignedTx)
 
     ExRLP.encode([
       signedtx_tag,
       @signedtx_version,
-      [sig1, sig2],
+      [signature1, signature2],
       ChannelOffChainTx.rlp_encode(%ChannelOffChainTx{tx | signatures: {<<>>, <<>>}})
     ])
   end
@@ -238,10 +238,11 @@ defmodule Aecore.Channel.ChannelOffChainTx do
     signedtx_ver_bin = :binary.encode_unsigned(@signedtx_version)
 
     case result do
-      [^signedtx_tag_bin, ^signedtx_ver_bin, [sig1, sig2], data] when sig1 < sig2 ->
+      [^signedtx_tag_bin, ^signedtx_ver_bin, [signature1, signature2], data]
+      when signature1 < signature2 ->
         case rlp_decode(data) do
           {:ok, %ChannelOffChainTx{} = tx} ->
-            {:ok, %ChannelOffChainTx{tx | signatures: {sig1, sig2}}}
+            {:ok, %ChannelOffChainTx{tx | signatures: {signature1, signature2}}}
 
           {:error, _} = error ->
             error
