@@ -14,6 +14,7 @@ defmodule Aecore.Persistence.Worker do
   @db_refs_name :ref_db
   # possible improvement - moving these definitions to a config.
   @db_refs_key :refs
+  @db_params [:named_table, :set]
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -193,64 +194,29 @@ defmodule Aecore.Persistence.Worker do
     # We are ensuring that families for the blocks and chain state
     # are created. More about them -
     # https://github.com/facebook/rocksdb/wiki/Column-Families
+    # 1 Rox attempt 
+    with {:ok, db, families_map} <- Rox.open(persistence_path, database_params, all_families),
+         # 2 Attempting to create an ets_table
+         @db_refs_name <- :ets.new(@db_refs_name, @db_params),
+         # 3 If insert attempt is successful we should try to write the refs to ets table, assuming that it was created
+         true <- :ets.insert(@db_refs_name, {@db_refs_key, db, families_map}) do
+      build_state(db, families_map)
+    else
+      # 1 
+      {:error, _reason} ->
+        case :ets.lookup(@db_refs_name, @db_refs_key) do
+          [{@db_refs_key, {db, families_map}}] ->
+            build_state(db, families_map)
 
-    case Rox.open(persistence_path, database_params, all_families()) do
-      # this should be adjusted with patternmatching to have values defined in 202 line
-      {:ok, db, families_map} when is_map(families_map) ->
-        case :ets.info(@db_refs_name) do
-          info when is_list(info) ->
-            :ets.lookup(@db_refs_name, :refs)
-
-          :undefined ->
-            :ets.new(@db_refs_name, [:named_table, :set])
-            :ets.insert(@db_refs_name, {@db_refs_key, {db, families_map}})
-
-            {
-              :ok,
-              # unexisting values should be pattern-matched in a successful case.
-              %{
-                db: db,
-                families_map: families_map,
-                blocks_family: blocks_family,
-                latest_block_info_family: latest_block_info_family,
-                chain_state_family: chain_state_family,
-                blocks_info_family: blocks_info_family,
-                total_difficulty_family: total_difficulty_family,
-                patricia_families: %{
-                  proof: patricia_proof_family,
-                  accounts: patricia_accounts_family,
-                  oracles: patricia_oracles_family,
-                  oracles_cache: patricia_oracles_cache_family,
-                  txs: patricia_txs_family,
-                  test_trie: db,
-                  naming: patricia_naming_family,
-                  channels: patricia_channels_family,
-                  contracts: patricia_contracts_family,
-                  calls: patricia_calls_family
-                }
-              }
-            }
-
-          {:error, _reason} ->
-            case :ets.lookup(@db_refs_name, @db_refs_key) do
-              # to be implemented
-              data when is_tuple(data) ->
-                {db, families_map} = data
-
-              error ->
-                {:error,
-                 "#{__MODULE__}: Error, attempted to read from db, got: #{inspect(error)} "}
-            end
+          error ->
+            {:error,
+             "#{__MODULE__}: Error, attempted to read from ETS database, got: #{inspect(error)}"}
         end
-    end
 
-    # {:ok, db,
-    # } =
-    #   Rox.open(
-    #     persistence_path(),
-    #     database_params,
-    #     all_families()
-    #   )
+      _ ->
+        # 3 
+        {:error, "#{__MODULE__}: Error, failed to push references to an ETS table"}
+    end
   end
 
   def handle_call(
@@ -467,6 +433,49 @@ defmodule Aecore.Persistence.Worker do
   end
 
   defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
+
+  defp build_state(
+         db_refs,
+         %{
+           "blocks_family" => blocks_family,
+           "latest_block_info_family" => latest_block_info_family,
+           "chain_state_family" => chain_state_family,
+           "blocks_info_family" => blocks_info_family,
+           "patricia_proof_family" => patricia_proof_family,
+           "patricia_oracles_family" => patricia_oracles_family,
+           "patricia_oracles_cache_family" => patricia_oracles_cache_family,
+           "patricia_txs_family" => patricia_txs_family,
+           "patricia_account_family" => patricia_accounts_family,
+           "patricia_naming_family" => patricia_naming_family,
+           "total_difficulty_family" => total_difficulty_family,
+           "patricia_channels_family" => patricia_channels_family,
+           "patricia_contracts_family" => patricia_contracts_family,
+           "patricia_calls_family" => patricia_calls_family
+         } = families_map
+       ) do
+    {:ok,
+     %{
+       db: db_refs,
+       families_map: families_map,
+       blocks_family: blocks_family,
+       latest_block_info_family: latest_block_info_family,
+       chain_state_family: chain_state_family,
+       blocks_info_family: blocks_info_family,
+       total_difficulty_family: total_difficulty_family,
+       patricia_families: %{
+         proof: patricia_proof_family,
+         accounts: patricia_accounts_family,
+         oracles: patricia_oracles_family,
+         oracles_cache: patricia_oracles_cache_family,
+         txs: patricia_txs_family,
+         test_trie: db_refs,
+         naming: patricia_naming_family,
+         channels: patricia_channels_family,
+         contracts: patricia_contracts_family,
+         calls: patricia_calls_family
+       }
+     }}
+  end
 
   defp write_options, do: Application.get_env(:aecore, :persistence)[:write_options]
 end
