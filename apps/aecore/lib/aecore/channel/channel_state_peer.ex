@@ -45,7 +45,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         }
 
   @typedoc "Reason for the error"
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   defstruct [
     :fsm_state,

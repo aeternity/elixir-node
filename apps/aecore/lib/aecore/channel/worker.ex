@@ -30,7 +30,7 @@ defmodule Aecore.Channel.Worker do
   """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)

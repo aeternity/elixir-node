@@ -161,7 +161,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Validates SlashTx and SoloCloseTx payload and poi.
   """
   @spec validate_slashing(ChannelStateOnChain.t(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
-          :ok | {:error, binary()}
+          :ok | {:error, String.t()}
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         :empty,
@@ -230,7 +230,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @spec balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
-          {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
+          {:ok, non_neg_integer(), non_neg_integer()} | {:error, String.t()}
   defp balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
     with {:ok, poi_initiator_amount} <- Poi.account_balance(poi, channel.initiator_pubkey),
          {:ok, poi_responder_amount} <- Poi.account_balance(poi, channel.responder_pubkey) do

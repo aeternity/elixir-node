@@ -19,7 +19,7 @@ defmodule Aecore.Account.Account do
   @version 1
 
   @typedoc "Error with reason"
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   @typedoc "Structure of the Account Transaction type"
   @type t :: %Account{

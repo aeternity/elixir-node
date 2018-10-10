@@ -14,7 +14,7 @@ defmodule Aecore.Account.AccountStateTree do
   @typedoc "Hash of the tree"
   @type hash :: binary()
 
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   @spec init_empty() :: accounts_state()
   def init_empty do

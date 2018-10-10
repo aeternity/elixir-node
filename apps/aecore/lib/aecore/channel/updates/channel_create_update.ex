@@ -28,7 +28,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @typedoc """
   The type of errors returned by this module
   """
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   @doc """
   Definition of ChannelCreateUpdate structure
