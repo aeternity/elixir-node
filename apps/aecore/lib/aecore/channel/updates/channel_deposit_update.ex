@@ -95,7 +95,10 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
         {:error, "#{__MODULE__}: Can't deposit zero or negative amount of tokens"}
 
       from != correct_from ->
-        {:error, "#{__MODULE__}: Funds can only be deposited to the update initiator's account"}
+        {:error,
+         "#{__MODULE__}: Funds can only be deposited to the update initiator's account (#{
+           inspect(correct_from)
+         }), got #{inspect(from)}"}
 
       true ->
         :ok

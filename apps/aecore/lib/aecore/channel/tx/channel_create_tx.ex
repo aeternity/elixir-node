@@ -100,16 +100,22 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
       initiator_amount < channel_reserve ->
-        {:error, "#{__MODULE__}: Initiator amount does not meet channel reserve"}
+        {:error,
+         "#{__MODULE__}: Initiator amount (#{initiator_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
 
       responder_amount < channel_reserve ->
-        {:error, "#{__MODULE__}: Responder amount does not meet channel reserve"}
+        {:error,
+         "#{__MODULE__}: Responder amount (#{responder_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
 
       byte_size(state_hash) != 32 ->
-        {:error, "#{__MODULE__}: Invalid state hash"}
+        {:error, "#{__MODULE__}: Invalid state hash size byte_size(state_hash)"}
 
       true ->
         :ok
@@ -196,10 +202,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       ) do
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->
-        {:error, "#{__MODULE__}: Negative initiator balance"}
+        {:error,
+         "#{__MODULE__}: Initiator balance too low, required #{fee + initiator_amount}, has #{
+           AccountStateTree.get(accounts, initiator_pubkey).balance
+         }"}
 
       AccountStateTree.get(accounts, responder_pubkey).balance - responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Negative responder balance"}
+        {:error,
+         "#{__MODULE__}: Responder balance too low, required #{responder_amount}, has #{
+           AccountStateTree.get(accounts, responder_pubkey).balance
+         }"}
 
       ChannelStateTree.has_key?(
         channels,

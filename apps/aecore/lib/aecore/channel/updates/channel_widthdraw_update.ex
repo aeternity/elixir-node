@@ -111,7 +111,10 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
         {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
 
       to != correct_to ->
-        {:error, "#{__MODULE__}: Funds can be only withdrawn from the update initiator's account"}
+        {:error,
+         "#{__MODULE__}: Funds can be only withdrawn from the update initiator's account (#{
+           inspect(correct_to)
+         }), got #{inspect(to)}"}
 
       true ->
         :ok

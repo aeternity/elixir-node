@@ -136,10 +136,16 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
         {:error, "#{__MODULE__}: Can't transfer zero or negative amount of tokens"}
 
       from != correct_from ->
-        {:error, "#{__MODULE__}: Transfer must originate from the initiator of the update"}
+        {:error,
+         "#{__MODULE__}: Transfer must originate from the initiator of the update (#{
+           inspect(correct_from)
+         }), got #{inspect(from)}"}
 
       to != correct_to ->
-        {:error, "#{__MODULE__}: Transfer must be to the peer responding to the update"}
+        {:error,
+         "#{__MODULE__}: Transfer must be to the peer responding to the update (#{
+           inspect(correct_to)
+         }), got #{inspect(to)}"}
 
       true ->
         :ok

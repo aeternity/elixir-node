@@ -75,16 +75,22 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       ) do
     cond do
       length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
-      sequence == 0 ->
-        {:error, "#{__MODULE__}: Can't slash with zero state"}
+      sequence <= 0 ->
+        {:error, "#{__MODULE__}: Sequence has to be positive"}
 
       internal_channel_id !== offchain_tx_channel_id ->
-        {:error, "#{__MODULE__}: Channel id mismatch"}
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
 
       Poi.calculate_root_hash(poi) !== state_hash ->
-        {:error, "#{__MODULE__}: Invalid state_hash"}
+        {:error,
+         "#{__MODULE__}: Invalid Poi root_hash, expcted #{inspect(state_hash)}, got #{
+           inspect(Poi.calculate_root_hash(poi))
+         }"}
 
       true ->
         :ok
@@ -141,7 +147,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative sender balance"}
+        {:error, "#{__MODULE__}: Sender balance has to cover fee"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}

@@ -171,22 +171,37 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       cond do
         # No payload is only allowed for SoloCloseTx
         channel.slash_sequence != 0 ->
-          {:error, "#{__MODULE__}: Channel already slashed"}
+          {:error, "#{__MODULE__}: Channel already slashed, sequence=#{channel.slash_sequence}"}
 
         channel.state_hash !== Poi.calculate_root_hash(poi) ->
-          {:error, "#{__MODULE__}: Invalid state hash"}
+          {:error,
+           "#{__MODULE__}: Invalid state hash, expected #{inspect(channel.state_hash)}, got #{
+             inspect(Poi.calculate_root_hash(poi))
+           }"}
 
         channel.channel_reserve > poi_initiator_amount ->
-          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         channel.channel_reserve > poi_responder_amount ->
-          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         poi_initiator_amount !== channel.initiator_amount ->
-          {:error, "#{__MODULE__}: Invalid initiator amount"}
+          {:error,
+           "#{__MODULE__}: Invalid initiator amount, expected #{channel.initiator_amount}, got #{
+             poi_initiator_amount
+           }"}
 
         poi_responder_amount !== channel.responder_amount ->
-          {:error, "#{__MODULE__}: Invalid responder amount"}
+          {:error,
+           "#{__MODULE__}: Invalid responder amount, expected #{channel.responder_amount}, got #{
+             poi_responder_amount
+           }"}
 
         true ->
           :ok
@@ -205,20 +220,35 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     with {:ok, poi_initiator_amount, poi_responder_amount} <- balances_from_poi(channel, poi) do
       cond do
         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
-          {:error, "#{__MODULE__}: Invalid state hash"}
+          {:error,
+           "#{__MODULE__}: Invalid state hash, expected #{inspect(offchain_tx.state_hash)}, got #{
+             inspect(Poi.calculate_root_hash(poi))
+           }"}
 
         channel.slash_sequence >= offchain_tx.sequence ->
-          {:error, "#{__MODULE__}: OffChain state is too old"}
+          {:error,
+           "#{__MODULE__}: OffChain state is too old, expected newer then #{
+             channel.slash_sequence
+           }, got #{offchain_tx.sequence}"}
 
         channel.channel_reserve > poi_initiator_amount ->
-          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         channel.channel_reserve > poi_responder_amount ->
-          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         poi_initiator_amount + poi_responder_amount !==
             channel.initiator_amount + channel.responder_amount ->
-          {:error, "#{__MODULE__}: Invalid total amount"}
+          {:error,
+           "#{__MODULE__}: Invalid total amount, expected #{
+             channel.initiator_amount + channel.responder_amount
+           }, got #{poi_initiator_amount + poi_responder_amount}"}
 
         true ->
           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
@@ -237,8 +267,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       # Later we will need to factor in contracts
       {:ok, poi_initiator_amount, poi_responder_amount}
     else
-      {:error, _} ->
-        {:error, "#{__MODULE__}: Poi is missing an OffChain account."}
+      {:error, reason} ->
+        {:error, "#{__MODULE__}: Poi is missing an OffChain account, #{reason}"}
     end
   end
 

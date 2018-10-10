@@ -188,22 +188,37 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
         {:error, "#{__MODULE__}: Initiator and responder cannot be the same"}
 
       initiator != correct_initiator ->
-        {:error, "#{__MODULE__}: Wrong initiator"}
+        {:error,
+         "#{__MODULE__}: Wrong initiator, expected #{inspect(correct_initiator)}, got #{
+           inspect(initiator)
+         }"}
 
       initiator_amount != correct_initiator_amount ->
-        {:error, "#{__MODULE__}: Wrong initiator amount"}
+        {:error,
+         "#{__MODULE__}: Wrong initiator amount, expected #{correct_initiator_amount}, got #{
+           initiator_amount
+         }"}
 
       responder != correct_responder ->
-        {:error, "#{__MODULE__}: Wrong responder"}
+        {:error,
+         "#{__MODULE__}: Wrong responder, expected #{inspect(correct_responder)}, got #{
+           inspect(responder)
+         }"}
 
       responder_amount != correct_responder_amount ->
-        {:error, "#{__MODULE__}: Wrong responder amount"}
+        {:error,
+         "#{__MODULE__}: Wrong responder amount, expected #{correct_responder_amount}, got #{
+           responder_amount
+         }"}
 
       channel_reserve != correct_channel_reserve ->
-        {:error, "#{__MODULE__}: Wrong channel reserve"}
+        {:error,
+         "#{__MODULE__}: Wrong channel reserve, expected #{correct_channel_reserve}, got #{
+           channel_reserve
+         }"}
 
       locktime != correct_locktime ->
-        {:error, "#{__MODULE__}: Wrong locktime}"}
+        {:error, "#{__MODULE__}: Wrong locktime, expected #{correct_locktime}, got #{locktime}"}
 
       true ->
         :ok
