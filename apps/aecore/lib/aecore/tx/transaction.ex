@@ -69,6 +69,15 @@ defmodule Aecore.Tx.Transaction do
             ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
 
   @doc """
+  Default function for checking if the minimum fee is met for all transaction types.
+  """
+  @callback is_minimum_fee_met?(
+              DataTx.t(),
+              tx_type_state(),
+              block_height :: non_neg_integer()
+            ) :: boolean()
+
+  @doc """
   Default preprocess_check implementation for deduction of the fee.
   You may add as many as you need additional checks
   depending on your transaction specifications.

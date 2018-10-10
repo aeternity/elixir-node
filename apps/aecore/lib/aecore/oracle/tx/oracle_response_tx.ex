@@ -126,7 +126,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         _block_height,
         %OracleResponseTx{response: response, query_id: query_id},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
     tree_query_id = sender <> query_id
 
@@ -148,9 +148,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
       OracleStateTree.get_query(oracles, tree_query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
-
-      !is_minimum_fee_met?(data_tx, oracles, fee) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
 
       true ->
         :ok

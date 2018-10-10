@@ -278,6 +278,10 @@ defmodule Aecore.Tx.DataTx do
       Account.nonce(chainstate.accounts, main_sender(tx, chainstate)) >= tx.nonce ->
         {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
 
+      !type.is_minimum_fee_met?(tx, tx_type_state, block_height) ->
+        {:error,
+         "#{__MODULE__}: Minimum fee is not met: #{type} #{tx.fee} at height: #{block_height}"}
+
       true ->
         :ok
     end

@@ -92,25 +92,16 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        oracles,
-        block_height,
-        %OracleExtendTx{},
-        %DataTx{
-          senders: [%Identifier{value: sender}],
-          fee: fee
-        } = data_tx
-      ) do
+  def preprocess_check(accounts, oracles, _block_height, %OracleExtendTx{}, %DataTx{
+        senders: [%Identifier{value: sender}],
+        fee: fee
+      }) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
 
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
-
-      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
-        {:error, "#{__MODULE__}: Fee: #{fee} is too low"}
 
       true ->
         :ok

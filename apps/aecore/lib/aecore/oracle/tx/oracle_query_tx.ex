@@ -194,7 +194,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: query_data,
           query_fee: query_fee
         } = tx,
-        %DataTx{senders: [%Identifier{value: sender}], fee: fee} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}], fee: fee}
       ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - query_fee < 0 ->
@@ -209,13 +209,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
       !is_binary(query_data) ->
         {:error, "#{__MODULE__}: Invalid query data: #{inspect(query_data)}"}
-
-      query_fee < OracleStateTree.get_oracle(oracles, oracle_address).query_fee ->
-        {:error, "#{__MODULE__}: The query fee: #{inspect(query_fee)} is
-         lower than the one required by the oracle"}
-
-      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
-        {:error, "#{__MODULE__}: Fee: #{fee} is too low"}
 
       true ->
         :ok
@@ -246,11 +239,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
         oracles_tree,
         block_height
       ) do
-    tx_query_fee_is_met =
-      query_fee >=
-        oracles_tree
-        |> OracleStateTree.get_oracle(oracle_address)
-        |> Map.get(:query_fee)
+    registered_oracle = OracleStateTree.get_oracle(oracles_tree, oracle_address)
+    tx_query_fee_is_met = registered_oracle != :none && query_fee >= registered_oracle.query_fee
 
     ttl_fee = fee - GovernanceConstants.oracle_query_base_fee()
 
