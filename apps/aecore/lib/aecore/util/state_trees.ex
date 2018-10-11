@@ -20,7 +20,7 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.new(unquote(tree_type))
       end
 
-      @spec put(Trie.t(), binary(), map()) :: Trie.t()
+      @spec put(Trie.t(), binary(), map()) :: Trie.t() | {:error, String.t()}
       def put(tree, key, value) do
         if StateTrees.valide_store_type?(value, unquote(stored_type)) do
           serialized_state = Serialization.rlp_encode(value)
@@ -33,7 +33,7 @@ defmodule Aecore.Util.StateTrees do
         end
       end
 
-      @spec get(Trie.t(), binary()) :: :none | map()
+      @spec get(Trie.t(), binary()) :: map() | :none | {:error, String.t()}
       def get(tree, key) do
         case PatriciaMerkleTree.lookup(tree, key) do
           {:ok, serialized_value} ->
@@ -77,6 +77,7 @@ defmodule Aecore.Util.StateTrees do
     end
   end
 
+  @spec valide_store_type?(map(), atom() | list()) :: boolean()
   def valide_store_type?(deserialized_value, store_type) when is_atom(store_type) do
     deserialized_value.__struct__ == store_type
   end
