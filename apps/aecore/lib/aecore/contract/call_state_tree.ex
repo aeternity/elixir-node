@@ -16,6 +16,9 @@ defmodule Aecore.Contract.CallStateTree do
   # A new block always starts with an empty calls tree.
   # Calls and return values are only kept for one block.
 
+  @spec tree_type :: atom()
+  def tree_type, do: :calls
+
   @spec prune(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
   def prune(chainstate, _block_height) do
     %{chainstate | calls: init_empty()}
@@ -33,5 +36,10 @@ defmodule Aecore.Contract.CallStateTree do
   @spec construct_call_tree_id(binary(), binary()) :: binary()
   def construct_call_tree_id(contract_id, call_id) do
     <<contract_id.value::binary, call_id::binary>>
+  end
+
+  @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t()
+  def process_struct(deserialized_value, _key, _tree) do
+    deserialized_value
   end
 end

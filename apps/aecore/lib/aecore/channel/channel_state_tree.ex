@@ -12,6 +12,9 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @type t :: channel_state()
 
+  @spec tree_type :: atom()
+  def tree_type, do: :channels
+
   @spec update!(
           channel_state(),
           ChannelStateOnChain.id(),
@@ -25,5 +28,11 @@ defmodule Aecore.Channel.ChannelStateTree do
       value ->
         put(tree, key, fun.(value))
     end
+  end
+
+  @spec process_struct(ChannelSteteOnChain.t(), ChannelSteteOnChain.id(), channel_state()) ::
+          ChannelSteteOnChain.t()
+  def process_struct(deserialized_value, _key, _tree) do
+    deserialized_value
   end
 end

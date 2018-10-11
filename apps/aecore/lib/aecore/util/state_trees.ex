@@ -1,10 +1,4 @@
 defmodule Aecore.Util.StateTrees do
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Contract.ContractStateTree
-  alias Aecore.Channel.ChannelStateTree
-  alias Aecore.Naming.NamingStateTree
-
   @moduledoc """
   Abstract module defining functions for known Tree types
   """
@@ -23,7 +17,7 @@ defmodule Aecore.Util.StateTrees do
 
       @spec init_empty :: Trie.t()
       def init_empty do
-        PatriciaMerkleTree.new(StateTrees.tree_type(__MODULE__))
+        PatriciaMerkleTree.new(__MODULE__.tree_type())
       end
 
       @spec put(Trie.t(), binary(), map()) :: Trie.t()
@@ -37,29 +31,7 @@ defmodule Aecore.Util.StateTrees do
         case PatriciaMerkleTree.lookup(tree, key) do
           {:ok, serialized_value} ->
             {:ok, deserialized_value} = Serialization.rlp_decode_anything(serialized_value)
-
-            case deserialized_value do
-              %Name{} ->
-                hash = Identifier.create_identity(key, :name)
-                %Name{deserialized_value | hash: hash}
-
-              %NameCommitment{} ->
-                hash = Identifier.create_identity(key, :commitment)
-                %NameCommitment{deserialized_value | hash: hash}
-
-              %Contract{} ->
-                identified_id = Identifier.create_identity(key, :contract)
-                store_id = Contract.store_id(%{deserialized_value | id: identified_id})
-
-                %Contract{
-                  deserialized_value
-                  | id: identified_id,
-                    store: ContractStateTree.get_store(store_id, tree)
-                }
-
-              _ ->
-                deserialized_value
-            end
+            __MODULE__.process_struct(deserialized_value, key, tree)
 
           :none ->
             :none
@@ -84,12 +56,4 @@ defmodule Aecore.Util.StateTrees do
       defoverridable get: 2
     end
   end
-
-  # New tree definitions should be described and handled here
-  def tree_type(AccountStateTree), do: :accounts
-  def tree_type(NamingStateTree), do: :naming
-  def tree_type(ChannelStateTree), do: :channels
-  def tree_type(ContractStateTree), do: :contracts
-  def tree_type(CallStateTree), do: :calls
-  def tree_type(unknown_type), do: {:error, "#{__MODULE__}: Invalid tree type: #{unknown_type}"}
 end
