@@ -2,7 +2,7 @@ defmodule Aecore.Account.AccountStateTree do
   @moduledoc """
   Top level account state tree.
   """
-  use Aecore.Util.StateTrees
+  use Aecore.Util.StateTrees, [:accounts, Aecore.Account.Account]
 
   alias Aecore.Account.Account
   alias Aecore.Chain.Identifier
@@ -12,9 +12,6 @@ defmodule Aecore.Account.AccountStateTree do
 
   @typedoc "Accounts tree"
   @type accounts_state :: Trie.t()
-
-  @spec tree_type :: atom()
-  def tree_type, do: :accounts
 
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
@@ -28,10 +25,5 @@ defmodule Aecore.Account.AccountStateTree do
         id = Identifier.create_identity(key, :account)
         %Account{acc | id: id}
     end
-  end
-
-  @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) :: accounts_state()
-  def update(tree, key, fun) do
-    put(tree, key, fun.(get(tree, key)))
   end
 end

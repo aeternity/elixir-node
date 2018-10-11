@@ -2,15 +2,12 @@ defmodule Aecore.Naming.NamingStateTree do
   @moduledoc """
   Top level naming state tree.
   """
-  use Aecore.Util.StateTrees
+  use Aecore.Util.StateTrees, [:naming, [Aecore.Naming.Name, Aecore.Naming.NameCommitment]]
 
   alias Aecore.Naming.{Name, NameCommitment}
 
   @typedoc "Namings tree"
   @type namings_state() :: Trie.t()
-
-  @spec tree_type :: atom()
-  def tree_type, do: :naming
 
   @spec process_struct(Name.t() | NameCommitment.t(), binary(), namings_state()) ::
           Name.t() | NameCommitment.t()

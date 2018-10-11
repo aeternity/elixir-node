@@ -2,7 +2,7 @@ defmodule Aecore.Contract.CallStateTree do
   @moduledoc """
   Top level call state tree.
   """
-  use Aecore.Util.StateTrees
+  use Aecore.Util.StateTrees, [:calls, Aecore.Contract.Call]
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Contract.Call
@@ -15,9 +15,6 @@ defmodule Aecore.Contract.CallStateTree do
 
   # A new block always starts with an empty calls tree.
   # Calls and return values are only kept for one block.
-
-  @spec tree_type :: atom()
-  def tree_type, do: :calls
 
   @spec prune(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
   def prune(chainstate, _block_height) do

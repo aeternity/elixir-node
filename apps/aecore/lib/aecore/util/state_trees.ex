@@ -2,7 +2,7 @@ defmodule Aecore.Util.StateTrees do
   @moduledoc """
   Abstract module defining functions for known Tree types
   """
-  defmacro __using__(_) do
+  defmacro __using__([tree_type, stored_type]) when is_atom(tree_type) do
     quote location: :keep do
       alias Aecore.Contract.{Contract, ContractStateTree}
       alias Aecore.Chain.Identifier
@@ -17,13 +17,20 @@ defmodule Aecore.Util.StateTrees do
 
       @spec init_empty :: Trie.t()
       def init_empty do
-        PatriciaMerkleTree.new(__MODULE__.tree_type())
+        PatriciaMerkleTree.new(unquote(tree_type))
       end
 
       @spec put(Trie.t(), binary(), map()) :: Trie.t()
       def put(tree, key, value) do
-        serialized_state = Serialization.rlp_encode(value)
-        PatriciaMerkleTree.enter(tree, key, serialized_state)
+        if StateTrees.valide_store_type?(value, unquote(stored_type)) do
+          serialized_state = Serialization.rlp_encode(value)
+          PatriciaMerkleTree.enter(tree, key, serialized_state)
+        else
+          {:error,
+           "#{__MODULE__}: Invalid value type: #{value.__struct__} but expected value type #{
+             unquote(stored_type)
+           }"}
+        end
       end
 
       @spec get(Trie.t(), binary()) :: :none | map()
@@ -31,7 +38,15 @@ defmodule Aecore.Util.StateTrees do
         case PatriciaMerkleTree.lookup(tree, key) do
           {:ok, serialized_value} ->
             {:ok, deserialized_value} = Serialization.rlp_decode_anything(serialized_value)
-            __MODULE__.process_struct(deserialized_value, key, tree)
+
+            if StateTrees.valide_store_type?(deserialized_value, unquote(stored_type)) do
+              __MODULE__.process_struct(deserialized_value, key, tree)
+            else
+              {:error,
+               "#{__MODULE__}: Invalid type: #{deserialized_value.__struct__} but expected #{
+                 unquote(stored_type)
+               }"}
+            end
 
           :none ->
             :none
@@ -48,12 +63,25 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.lookup(tree, key) != :none
       end
 
+      @spec update(Trie.t(), binary(), (any() -> any())) :: Trie.t()
+      def update(tree, key, fun) do
+        put(tree, key, fun.(get(tree, key)))
+      end
+
       @spec delete(Trie.t(), binary()) :: Trie.t()
       def delete(tree, key) do
         PatriciaMerkleTree.delete(tree, key)
       end
 
-      defoverridable get: 2
+      defoverridable get: 2, update: 3
     end
+  end
+
+  def valide_store_type?(deserialized_value, store_type) when is_atom(store_type) do
+    deserialized_value.__struct__ == store_type
+  end
+
+  def valide_store_type?(deserialized_value, store_type) when is_list(store_type) do
+    Enum.any?(store_type, fn type -> deserialized_value.__struct__ == type end)
   end
 end
