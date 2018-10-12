@@ -12,7 +12,7 @@ persistence_path =
 
 sign_keys_pass =
   case System.get_env("SIGN_KEYS_PASS") do
-    nil -> <<"Secret">>
+    nil -> <<"secret">>
     env -> env
   end
 
@@ -24,7 +24,7 @@ sign_keys_path =
 
 peer_keys_pass =
   case System.get_env("PEER_KEYS_PASS") do
-    nil -> <<"Secret">>
+    nil -> <<"secret">>
     env -> env
   end
 
