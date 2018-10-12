@@ -2,8 +2,12 @@ defmodule Aecore.Util.StateTrees do
   @moduledoc """
   Abstract module defining functions for known Tree types
   """
+  alias MerklePatriciaTree.Trie
+
   defmacro __using__([tree_type, stored_type]) when is_atom(tree_type) do
     quote location: :keep do
+      @behaviour Aecore.Util.StateTrees
+
       alias Aecore.Contract.{Contract, ContractStateTree}
       alias Aecore.Chain.Identifier
       alias Aecore.Naming.{Name, NameCommitment}
@@ -22,7 +26,7 @@ defmodule Aecore.Util.StateTrees do
 
       @spec put(Trie.t(), binary(), map()) :: Trie.t() | {:error, String.t()}
       def put(tree, key, value) do
-        if StateTrees.valide_store_type?(value, unquote(stored_type)) do
+        if StateTrees.valid_store_type?(value, unquote(stored_type)) do
           serialized_state = Serialization.rlp_encode(value)
           PatriciaMerkleTree.enter(tree, key, serialized_state)
         else
@@ -39,7 +43,7 @@ defmodule Aecore.Util.StateTrees do
           {:ok, serialized_value} ->
             {:ok, deserialized_value} = Serialization.rlp_decode_anything(serialized_value)
 
-            if StateTrees.valide_store_type?(deserialized_value, unquote(stored_type)) do
+            if StateTrees.valid_store_type?(deserialized_value, unquote(stored_type)) do
               __MODULE__.process_struct(deserialized_value, key, tree)
             else
               {:error,
@@ -78,12 +82,16 @@ defmodule Aecore.Util.StateTrees do
     end
   end
 
-  @spec valide_store_type?(map(), atom() | list()) :: boolean()
-  def valide_store_type?(deserialized_value, store_type) when is_atom(store_type) do
+  # Callbacks
+  @doc "Takes structure, key and tree. Returns structure or error"
+  @callback process_struct(map(), binary(), Trie.t()) :: map() | {:error, String.t()}
+
+  @spec valid_store_type?(map(), atom() | list()) :: boolean()
+  def valid_store_type?(deserialized_value, store_type) when is_atom(store_type) do
     deserialized_value.__struct__ == store_type
   end
 
-  def valide_store_type?(deserialized_value, store_type) when is_list(store_type) do
+  def valid_store_type?(deserialized_value, store_type) when is_list(store_type) do
     Enum.any?(store_type, fn type -> deserialized_value.__struct__ == type end)
   end
 end

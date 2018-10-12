@@ -16,14 +16,23 @@ defmodule Aecore.Account.AccountStateTree do
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
-      :none ->
-        Account.empty()
-
       {:ok, account_state} ->
         {:ok, acc} = Account.rlp_decode(account_state)
+        process_struct(acc, key, tree)
 
-        id = Identifier.create_identity(key, :account)
-        %Account{acc | id: id}
+      :none ->
+        Account.empty()
     end
+  end
+
+  @spec process_struct(Account.t(), binary(), accounts_state()) :: Account.t()
+  def process_struct(%Account{} = deserialized_value, key, _tree) do
+    id = Identifier.create_identity(key, :account)
+    %Account{deserialized_value | id: id}
+  end
+
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Account{}"}
   end
 end

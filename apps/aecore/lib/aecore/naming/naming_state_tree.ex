@@ -20,4 +20,9 @@ defmodule Aecore.Naming.NamingStateTree do
     hash = Identifier.create_identity(key, :commitment)
     %NameCommitment{deserialized_value | hash: hash}
   end
+
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %NameCommitment{} or %Name{}"}
+  end
 end

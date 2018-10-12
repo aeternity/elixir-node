@@ -45,7 +45,7 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec process_struct(Contract.t(), binary(), contracts_state()) :: Contract.t()
-  def process_struct(deserialized_value, key, tree) do
+  def process_struct(%Contract{} = deserialized_value, key, tree) do
     identified_id = Identifier.create_identity(key, :contract)
     store_id = Contract.store_id(%{deserialized_value | id: identified_id})
 
@@ -54,6 +54,11 @@ defmodule Aecore.Contract.ContractStateTree do
       | id: identified_id,
         store: get_store(store_id, tree)
     }
+  end
+
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Contract{}"}
   end
 
   defp get_store(store_id, tree) do

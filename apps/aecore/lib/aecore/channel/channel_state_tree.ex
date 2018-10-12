@@ -27,9 +27,14 @@ defmodule Aecore.Channel.ChannelStateTree do
     end
   end
 
-  @spec process_struct(ChannelSteteOnChain.t(), ChannelSteteOnChain.id(), channel_state()) ::
-          ChannelSteteOnChain.t()
-  def process_struct(deserialized_value, _key, _tree) do
+  @spec process_struct(ChannelStateOnChain.t(), ChannelStateOnChain.id(), channel_state()) ::
+          ChannelStateOnChain.t()
+  def process_struct(%ChannelStateOnChain{} = deserialized_value, _key, _tree) do
     deserialized_value
+  end
+
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %ChannelStateOnChain{}"}
   end
 end

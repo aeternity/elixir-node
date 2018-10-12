@@ -36,7 +36,12 @@ defmodule Aecore.Contract.CallStateTree do
   end
 
   @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t()
-  def process_struct(deserialized_value, _key, _tree) do
+  def process_struct(%Call{} = deserialized_value, _key, _tree) do
     deserialized_value
+  end
+
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Call{}"}
   end
 end
