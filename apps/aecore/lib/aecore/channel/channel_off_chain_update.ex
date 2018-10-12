@@ -142,15 +142,6 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def update_offchain_chainstate(chainstate, object) do
     module = object.__struct__
     {:ok, module.update_offchain_chainstate!(chainstate, object)}
-  catch
-    {:error, reason} ->
-      # Under normal conditions the &fully_signed_preprocess_check/3 should make sure that there wont be exceptions here
-      throw(
-        {:error,
-         "#{__MODULE__}: The preprocess check is broken -> application of update #{
-           inspect(object)
-         } raised: #{reason}"}
-      )
   end
 
   @doc """
