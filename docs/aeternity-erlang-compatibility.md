@@ -209,14 +209,15 @@ iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
 iex> responder_amount = 100
 iex> locktime = 2
 iex> channel_reserve = 5
+iex> fee = 1
 iex> {_, priv_key} = Keys.keypair(:sign)
 ```
 
-2. (initiator) `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :initiator, channel_reserve)`
-3. (responder) `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :responder, channel_reserve)`
-4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, locktime, fee, nonce, priv_key)`
-5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: 9999999)`
-6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, half_signed_open_tx, priv_key)`
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
 7. (responder) `Miner.mine_sync_block_to_chain()`
 8. Check all nodes recognize new block **with** the ChannelOpenTx
 9. Make a transfer as follows:
@@ -225,11 +226,11 @@ iex> {_, priv_key} = Keys.keypair(:sign)
     
     b. Copy `half_signed_state` to responder.
     
-    c. (responder) `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
     
     c. Copy `signed_state` to initiator.
     
-    d. (initiator) `{:ok, nil} = Channel.recv_state(signed_state, priv_key)`
+    d. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
     
 10. (initiator) `{:ok, half_signed_close_tx} = Channel.close(channel_id, {5, 5}, nonce, priv_key)`
 11. Copy `half_signed_close_tx` to responder
@@ -249,13 +250,15 @@ iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
 iex> responder_amount = 100
 iex> locktime = 2
 iex> channel_reserve = 5
+iex> fee = 1
 iex> {_, priv_key} = Keys.keypair(:sign)
 ```
-2. (initiator) `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :initiator, channel_reserve)`
-3. (responder) `Channel.initialize(temporary_id, {{initiator_pubkey, initiator_amount}, {responder_pubkey, responder_amount}}, :responder, channel_reserve)`
-4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, locktime, fee, nonce, priv_key)`
-5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: 9999999)`
-6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, half_signed_open_tx, priv_key)`
+
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
 7. (responder) `Miner.mine_sync_block_to_chain()`
 8. Check all nodes recognize new block **with** the ChannelOpenTx
 9. Make a transfer as follows:
@@ -264,11 +267,11 @@ iex> {_, priv_key} = Keys.keypair(:sign)
     
     b. Copy `half_signed_state` to responder.
     
-    c. (responder) `{:ok, signed_state} = Channel.recv_state(half_signed_state, priv_key)`
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
     
     d. Copy `signed_state` to initiator.
     
-    e. (initiator) `{:ok, nil} = Channel.recv_state(signed_state, priv_key)`
+    e. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
     
 10. Make another partial transfer:
 
@@ -276,7 +279,7 @@ iex> {_, priv_key} = Keys.keypair(:sign)
     
     b. Copy `half_signed_state2` to initiator.
     
-    c. (initiator) `{:ok, signed_state2} = Channel.recv_state(half_signed_state2, priv_key)`
+    c. (initiator) `{:ok, signed_state2} = Channel.receive_half_signed_tx(half_signed_state2, priv_key)`
     
     c. Do NOT copy `signed_state` to responder.
     
