@@ -75,9 +75,9 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   @doc """
   Performs the transfer on the offchain chainstate. Returns an error if the transfer failed.
   """
-  @spec update_offchain_chainstate(Chainstate.t(), ChannelDepositUpdate.t(), non_neg_integer()) ::
-          {:ok, Chainstate.t()} | error()
-  def update_offchain_chainstate(
+  @spec update_offchain_chainstate!(Chainstate.t(), ChannelTransferUpdate.t()) ::
+          Chainstate.t() | no_return()
+  def update_offchain_chainstate!(
         %Chainstate{
           accounts: accounts
         } = chainstate,
@@ -85,38 +85,27 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
           from: from,
           to: to,
           amount: amount
-        },
-        channel_reserve
+        }
       ) do
-    with {:ok, updated_accounts1} <-
-           AccountStateTree.safe_update(
-             accounts,
-             from,
-             &update_initiator_account(&1, amount, channel_reserve)
-           ),
-         {:ok, updated_accounts2} <-
-           AccountStateTree.safe_update(
-             updated_accounts1,
-             to,
-             &Account.apply_transfer(&1, nil, amount)
-           ) do
-      {:ok, %Chainstate{chainstate | accounts: updated_accounts2}}
-    else
-      {:error, _} = err ->
-        err
-    end
+    updated_accounts =
+      accounts
+      |> AccountStateTree.update(
+        from,
+        &update_initiator_account!(&1, amount)
+      )
+      |> AccountStateTree.update(
+        to,
+        &Account.apply_transfer!(&1, nil, amount)
+      )
+
+    %Chainstate{chainstate | accounts: updated_accounts}
   end
 
-  @spec update_initiator_account(Account.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, Account.t()} | error()
-  defp update_initiator_account(account, amount, channel_reserve) do
-    with {:ok, account1} <- Account.apply_transfer(account, nil, -amount),
-         :ok <- ChannelOffChainUpdate.ensure_channel_reserve_is_met(account1, channel_reserve) do
-      Account.apply_nonce(account1, account.nonce + 1)
-    else
-      {:error, _} = err ->
-        err
-    end
+  @spec update_initiator_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  defp update_initiator_account!(account, amount) do
+    account
+    |> Account.apply_transfer!(nil, -amount)
+    |> Account.apply_nonce!(account.nonce + 1)
   end
 
   @spec half_signed_preprocess_check(ChannelTransferUpdate.t(), map()) :: :ok | error()
@@ -155,5 +144,43 @@ defmodule Aecore.Channel.Updates.ChannelTransferUpdate do
   def half_signed_preprocess_check(%ChannelTransferUpdate{}, _) do
     {:error,
      "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
+
+  @doc """
+  Validates an update considering state before applying it to the provided chainstate.
+  """
+  @spec fully_signed_preprocess_check(
+          Chainstate.t() | nil,
+          ChannelTransferUpdate.t(),
+          non_neg_integer()
+        ) :: :ok | error()
+
+  def fully_signed_preprocess_check(
+        %Chainstate{accounts: accounts},
+        %ChannelTransferUpdate{from: from, to: to, amount: amount},
+        channel_reserve
+      ) do
+    %Account{balance: from_balance} = AccountStateTree.get(accounts, from)
+
+    cond do
+      !AccountStateTree.has_key?(accounts, from) ->
+        {:error, "#{__MODULE__}: Transfer initiator is not a party of this channel"}
+
+      !AccountStateTree.has_key?(accounts, to) ->
+        {:error, "#{__MODULE__}: Transfer responder is not a party of this channel"}
+
+      from_balance - amount < channel_reserve ->
+        {:error,
+         "#{__MODULE__}: Transfer initiator tried to transfer #{amount} tokens but can transfer at most #{
+           from_balance - channel_reserve
+         } tokens"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def fully_signed_preprocess_check(nil, %ChannelTransferUpdate{}, _channel_reserve) do
+    {:error, "#{__MODULE__}: OffChain Chainstate must exist"}
   end
 end

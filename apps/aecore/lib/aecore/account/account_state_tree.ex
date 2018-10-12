@@ -46,23 +46,6 @@ defmodule Aecore.Account.AccountStateTree do
     put(tree, key, fun.(get(tree, key)))
   end
 
-  @spec safe_update(
-          accounts_state(),
-          Keys.pubkey(),
-          (Account.t() -> {:ok, Account.t()} | error())
-        ) :: {:ok, accounts_state()} | error()
-  def safe_update(tree, key, fun) do
-    account = get(tree, key)
-
-    case fun.(account) do
-      {:ok, updated_account} ->
-        {:ok, put(tree, key, updated_account)}
-
-      {:error, _} = err ->
-        err
-    end
-  end
-
   @spec has_key?(accounts_state(), Keys.pubkey()) :: boolean()
   def has_key?(tree, key) do
     PatriciaMerkleTree.lookup(tree, key) != :none

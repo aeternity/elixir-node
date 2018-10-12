@@ -59,41 +59,30 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   @doc """
   Performs the widthdraw on the offchain chainstate. Returns an error if the operation failed.
   """
-  @spec update_offchain_chainstate(Chainstate.t(), ChannelDepositUpdate.t(), non_neg_integer()) ::
-          {:ok, Chainstate.t()} | error()
-  def update_offchain_chainstate(
+  @spec update_offchain_chainstate!(Chainstate.t(), ChannelDepositUpdate.t()) ::
+          Chainstate.t() | no_return()
+  def update_offchain_chainstate!(
         %Chainstate{
           accounts: accounts
         } = chainstate,
         %ChannelWithdrawUpdate{
           to: to,
           amount: amount
-        },
-        channel_reserve
+        }
       ) do
-    case AccountStateTree.safe_update(
-           accounts,
-           to,
-           &widthdraw_from_account(&1, amount, channel_reserve)
-         ) do
-      {:ok, updated_accounts} ->
-        {:ok, %Chainstate{chainstate | accounts: updated_accounts}}
+    updated_accounts =
+      AccountStateTree.update(
+        accounts,
+        to,
+        &widthdraw_from_account!(&1, amount)
+      )
 
-      {:error, _} = err ->
-        err
-    end
+    %Chainstate{chainstate | accounts: updated_accounts}
   end
 
-  @spec widthdraw_from_account(Account.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, Account.t()} | error()
-  defp widthdraw_from_account(account, amount, channel_reserve) do
-    with {:ok, account1} <- Account.apply_transfer(account, nil, -amount),
-         :ok <- ChannelOffChainUpdate.ensure_channel_reserve_is_met(account1, channel_reserve) do
-      {:ok, account1}
-    else
-      {:error, _} = err ->
-        err
-    end
+  @spec widthdraw_from_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  defp widthdraw_from_account!(account, amount) do
+    Account.apply_transfer!(account, nil, -amount)
   end
 
   @spec half_signed_preprocess_check(ChannelWithdrawUpdate.t(), map()) :: :ok | error()
@@ -124,5 +113,40 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   def half_signed_preprocess_check(%ChannelWithdrawUpdate{}, _) do
     {:error,
      "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
+
+  @doc """
+  Validates an update considering state before applying it to the provided chainstate.
+  """
+  @spec fully_signed_preprocess_check(
+          Chainstate.t() | nil,
+          ChannelWithdrawUpdate.t(),
+          non_neg_integer()
+        ) :: :ok | error()
+
+  def fully_signed_preprocess_check(
+        %Chainstate{accounts: accounts},
+        %ChannelWithdrawUpdate{to: to, amount: amount},
+        channel_reserve
+      ) do
+    %Account{balance: to_balance} = AccountStateTree.get(accounts, to)
+
+    cond do
+      !AccountStateTree.has_key?(accounts, to) ->
+        {:error, "#{__MODULE__}: Withdrawing account is not a party of this channel"}
+
+      to_balance - amount < channel_reserve ->
+        {:error,
+         "#{__MODULE__}: Withdrawing party tried to withdraw #{amount} tokens but can withdraw at most #{
+           to_balance - channel_reserve
+         } tokens"}
+
+      true ->
+        :ok
+    end
+  end
+
+  def fully_signed_preprocess_check(nil, %ChannelWithdrawUpdate{}, _channel_reserve) do
+    {:error, "#{__MODULE__}: OffChain Chainstate must exist"}
   end
 end
