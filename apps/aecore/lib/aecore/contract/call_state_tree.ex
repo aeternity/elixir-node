@@ -35,7 +35,7 @@ defmodule Aecore.Contract.CallStateTree do
     <<contract_id.value::binary, call_id::binary>>
   end
 
-  @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t()
+  @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t() | {:error, String.t()}
   def process_struct(%Call{} = deserialized_value, _key, _tree) do
     deserialized_value
   end

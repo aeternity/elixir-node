@@ -8,9 +8,11 @@ defmodule Aecore.Util.StateTrees do
     quote location: :keep do
       @behaviour Aecore.Util.StateTrees
 
-      alias Aecore.Contract.{Contract, ContractStateTree}
+      alias Aecore.Account.Account
+      alias Aecore.Contract.{Call, Contract, ContractStateTree}
       alias Aecore.Chain.Identifier
       alias Aecore.Naming.{Name, NameCommitment}
+      alias Aecore.Channel.ChannelStateOnChain
       alias Aecore.Util.StateTrees
       alias Aeutil.PatriciaMerkleTree
       alias Aeutil.Serialization
@@ -24,7 +26,16 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.new(unquote(tree_type))
       end
 
-      @spec put(Trie.t(), binary(), map()) :: Trie.t() | {:error, String.t()}
+      @spec put(
+              Trie.t(),
+              binary(),
+              ChannelStateOnChain.t()
+              | Contract.t()
+              | Call.t()
+              | Name.t()
+              | NameCommitment.t()
+              | Account.t()
+            ) :: Trie.t() | {:error, String.t()}
       def put(tree, key, value) do
         if StateTrees.valid_store_type?(value, unquote(stored_type)) do
           serialized_state = Serialization.rlp_encode(value)
@@ -37,23 +48,28 @@ defmodule Aecore.Util.StateTrees do
         end
       end
 
-      @spec get(Trie.t(), binary()) :: map() | :none | {:error, String.t()}
+      @spec get(Trie.t(), binary()) ::
+              ChannelStateOnChain.t()
+              | Contract.t()
+              | Call.t()
+              | Name.t()
+              | NameCommitment.t()
+              | :none
+              | {:error, String.t()}
       def get(tree, key) do
-        case PatriciaMerkleTree.lookup(tree, key) do
-          {:ok, serialized_value} ->
-            {:ok, deserialized_value} = Serialization.rlp_decode_anything(serialized_value)
-
-            if StateTrees.valid_store_type?(deserialized_value, unquote(stored_type)) do
-              __MODULE__.process_struct(deserialized_value, key, tree)
-            else
-              {:error,
-               "#{__MODULE__}: Invalid type: #{deserialized_value.__struct__} but expected #{
-                 unquote(stored_type)
-               }"}
-            end
-
+        with {:ok, serialized_value} <- PatriciaMerkleTree.lookup(tree, key),
+             {:ok, deserialized_value} <- Serialization.rlp_decode_anything(serialized_value),
+             true <- StateTrees.valid_store_type?(deserialized_value, unquote(stored_type)) do
+          __MODULE__.process_struct(deserialized_value, key, tree)
+        else
           :none ->
             :none
+
+          false ->
+            {:error, "#{__MODULE__}: Invalid struct type, expected #{unquote(stored_type)}"}
+
+          _ ->
+            {:error, "#{__MODULE__}: Illegal function call"}
         end
       end
 
@@ -67,7 +83,7 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.lookup(tree, key) != :none
       end
 
-      @spec update(Trie.t(), binary(), (any() -> any())) :: Trie.t()
+      @spec update(Trie.t(), binary(), fun()) :: Trie.t()
       def update(tree, key, fun) do
         put(tree, key, fun.(get(tree, key)))
       end
@@ -92,6 +108,6 @@ defmodule Aecore.Util.StateTrees do
   end
 
   def valid_store_type?(deserialized_value, store_type) when is_list(store_type) do
-    Enum.any?(store_type, fn type -> deserialized_value.__struct__ == type end)
+    deserialized_value.__struct__ in store_type
   end
 end

@@ -25,7 +25,8 @@ defmodule Aecore.Account.AccountStateTree do
     end
   end
 
-  @spec process_struct(Account.t(), binary(), accounts_state()) :: Account.t()
+  @spec process_struct(Account.t(), binary(), accounts_state()) ::
+          Account.t() | {:error, String.t()}
   def process_struct(%Account{} = deserialized_value, key, _tree) do
     id = Identifier.create_identity(key, :account)
     %Account{deserialized_value | id: id}

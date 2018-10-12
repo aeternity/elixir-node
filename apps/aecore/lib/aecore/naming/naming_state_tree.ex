@@ -10,7 +10,7 @@ defmodule Aecore.Naming.NamingStateTree do
   @type namings_state() :: Trie.t()
 
   @spec process_struct(Name.t() | NameCommitment.t(), binary(), namings_state()) ::
-          Name.t() | NameCommitment.t()
+          Name.t() | NameCommitment.t() | {:error, String.t()}
   def process_struct(%Name{} = deserialized_value, key, _tree) do
     hash = Identifier.create_identity(key, :name)
     %Name{deserialized_value | hash: hash}

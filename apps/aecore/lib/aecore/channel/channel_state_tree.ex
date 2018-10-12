@@ -28,7 +28,7 @@ defmodule Aecore.Channel.ChannelStateTree do
   end
 
   @spec process_struct(ChannelStateOnChain.t(), ChannelStateOnChain.id(), channel_state()) ::
-          ChannelStateOnChain.t()
+          ChannelStateOnChain.t() | {:error, String.t()}
   def process_struct(%ChannelStateOnChain{} = deserialized_value, _key, _tree) do
     deserialized_value
   end
