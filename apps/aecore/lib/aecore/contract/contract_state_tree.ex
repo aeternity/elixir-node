@@ -44,7 +44,19 @@ defmodule Aecore.Contract.ContractStateTree do
     update_store(store_id, old_contract_store, store, updated_contract_tree)
   end
 
-  def get_store(store_id, tree) do
+  @spec process_struct(Contract.t(), binary(), contracts_state()) :: Contract.t()
+  def process_struct(deserialized_value, key, tree) do
+    identified_id = Identifier.create_identity(key, :contract)
+    store_id = Contract.store_id(%{deserialized_value | id: identified_id})
+
+    %Contract{
+      deserialized_value
+      | id: identified_id,
+        store: get_store(store_id, tree)
+    }
+  end
+
+  defp get_store(store_id, tree) do
     keys = PatriciaMerkleTree.all_keys(tree)
     store_id_bit_size = (@contract_key_size + 1) * 8
 
@@ -58,18 +70,6 @@ defmodule Aecore.Contract.ContractStateTree do
         _ -> store_acc
       end
     end)
-  end
-
-  @spec process_struct(Contract.t(), binary(), contracts_state()) :: Contract.t()
-  def process_struct(deserialized_value, key, tree) do
-    identified_id = Identifier.create_identity(key, :contract)
-    store_id = Contract.store_id(%{deserialized_value | id: identified_id})
-
-    %Contract{
-      deserialized_value
-      | id: identified_id,
-        store: get_store(store_id, tree)
-    }
   end
 
   defp update_store(store_id, old_store, new_store, tree) do

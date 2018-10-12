@@ -73,6 +73,7 @@ defmodule Aecore.Util.StateTrees do
         PatriciaMerkleTree.delete(tree, key)
       end
 
+      # If the functions are implemented in a module they will be overwritten
       defoverridable get: 2, update: 3
     end
   end
