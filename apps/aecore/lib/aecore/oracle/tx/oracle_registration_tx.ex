@@ -164,9 +164,6 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
       OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account: #{inspect(sender)} is already an oracle"}
 
-      !is_minimum_fee_met?(data_tx, oracles, block_height) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
-
       true ->
         :ok
     end

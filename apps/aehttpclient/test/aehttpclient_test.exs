@@ -45,9 +45,8 @@ defmodule AehttpclientTest do
 
     signed_tx2 = Account.spend(sender, priv_key, receiver, 5, 10, init_nonce + 2, <<"payload">>)
 
-    txs_in_the_pool = Pool.get_pool() |> Map.values()
+    txs_in_the_pool = Pool.get_pool() |> Map.values() |> Enum.sort()
 
-    assert ^signed_tx1 = List.last(txs_in_the_pool)
-    assert ^signed_tx2 = List.first(txs_in_the_pool)
+    assert Enum.sort([signed_tx1, signed_tx2]) == txs_in_the_pool
   end
 end
