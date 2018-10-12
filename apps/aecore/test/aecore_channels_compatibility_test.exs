@@ -18,7 +18,7 @@ defmodule AecoreChannelCompatibilityTest do
 
   alias Aecore.Chain.Worker, as: Chain
 
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Chainstate, Block}
 
   alias Aeutil.Bits
 
@@ -244,7 +244,7 @@ defmodule AecoreChannelCompatibilityTest do
         126, 105, 194, 1, 235, 15, 248, 31, 86, 174, 29, 186, 242, 64, 110, 152, 19, 149, 123,
         111, 63, 231, 79, 148, 218, 78, 165, 165, 37, 21, 0, 6, 0>>
 
-    {:ok, %Chainstate{channels: channels} = open_chainstate} =
+    {:ok, %Chainstate{channels: channels}} =
       Chainstate.calculate_and_validate_chain_state(
         [open_tx],
         ctx.chainstate,
@@ -332,7 +332,7 @@ defmodule AecoreChannelCompatibilityTest do
       ])
 
     for block <- blocks do
-      {:ok, deserialized_block} = Aecore.Chain.Block.rlp_decode(Aeutil.Bits.decode58(block))
+      {:ok, deserialized_block} = Block.rlp_decode(Bits.decode58(block))
 
       assert :ok == Chain.add_block(deserialized_block),
              "block #{deserialized_block.header.height} #{
@@ -363,7 +363,7 @@ defmodule AecoreChannelCompatibilityTest do
       ])
 
     for block <- blocks do
-      {:ok, deserialized_block} = Aecore.Chain.Block.rlp_decode(Aeutil.Bits.decode58(block))
+      {:ok, deserialized_block} = Block.rlp_decode(Bits.decode58(block))
 
       assert :ok == Chain.add_block(deserialized_block),
              "block #{deserialized_block.header.height} #{
@@ -377,11 +377,6 @@ defmodule AecoreChannelCompatibilityTest do
       Chainstate.calculate_and_validate_chain_state(txs, chainstate, block_height, miner)
 
     state
-  end
-
-  defp chainable_sign_tx(tx, priv_key) do
-    {:ok, signed_tx} = SignedTx.sign_tx(tx, priv_key)
-    signed_tx
   end
 
   defp assert_txs_equal(our, epoch_rlp) do
@@ -416,13 +411,5 @@ defmodule AecoreChannelCompatibilityTest do
 
   defp call_s2(call) do
     GenServer.call(@s2_name, call)
-  end
-
-  defp get_fsm_state_s1(id) do
-    get_fsm_state(id, &call_s1/1)
-  end
-
-  defp get_fsm_state_s2(id) do
-    get_fsm_state(id, &call_s2/1)
   end
 end
