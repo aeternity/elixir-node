@@ -32,7 +32,7 @@ defmodule Aecore.Contract.Contract do
         }
 
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
-  
+
   use Aecore.Util.Serializable
 
   @spec create(
