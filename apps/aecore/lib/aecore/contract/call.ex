@@ -204,8 +204,8 @@ defmodule Aecore.Contract.Call do
     Hash.hash(binary)
   end
 
-  @spec reset_calls(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
-  def reset_calls(chainstate, block_height) do
+  @spec prune_calls(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def prune_calls(chainstate, block_height) do
     CallStateTree.prune(chainstate, block_height)
   end
 end

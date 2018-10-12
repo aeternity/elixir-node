@@ -22,8 +22,8 @@ defmodule Aeutil.TypeToTag do
   def tag_to_type(36), do: {:ok, Aecore.Naming.Tx.NameTransferTx}
   def tag_to_type(40), do: {:ok, Aecore.Contract.Contract}
   def tag_to_type(41), do: {:ok, Aecore.Contract.Call}
-  def tag_to_type(42), do: {:ok, Aecore.Contract.ContractCreateTx}
-  def tag_to_type(43), do: {:ok, Aecore.Contract.ContractCallTx}
+  def tag_to_type(42), do: {:ok, Aecore.Contract.Tx.ContractCreateTx}
+  def tag_to_type(43), do: {:ok, Aecore.Contract.Tx.ContractCallTx}
   def tag_to_type(50), do: {:ok, Aecore.Channel.Tx.ChannelCreateTx}
   # Channel deposit transaction - 51
   # Channel withdraw transaction - 52

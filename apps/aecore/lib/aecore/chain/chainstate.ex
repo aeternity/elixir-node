@@ -71,7 +71,7 @@ defmodule Aecore.Chain.Chainstate do
     chainstate_with_coinbase =
       calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
 
-    chainstate_with_pruned_calls = Call.reset_calls(chainstate_with_coinbase, block_height)
+    chainstate_with_pruned_calls = Call.prune_calls(chainstate_with_coinbase, block_height)
 
     updated_chainstate =
       Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->

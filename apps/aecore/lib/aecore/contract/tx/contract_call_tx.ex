@@ -75,7 +75,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   @spec get_chain_state_name() :: :calls
   def get_chain_state_name, do: :calls
 
-  @spec init(payload()) :: t()
+  @spec init(payload()) :: ContractCallTx.t()
   def init(%{
         contract: %Identifier{} = identified_contract,
         vm_version: vm_version,
@@ -126,7 +126,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     end
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, String.t()}
+  @spec validate(ContractCallTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %ContractCallTx{
           contract: contract
@@ -144,7 +144,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
           Chainstate.accounts(),
           Chainstate.t(),
           non_neg_integer(),
-          t(),
+          ContractCallTx.t(),
           DataTx.t(),
           Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}

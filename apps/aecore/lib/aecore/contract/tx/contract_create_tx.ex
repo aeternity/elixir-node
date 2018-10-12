@@ -69,8 +69,6 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     :call_data
   ]
 
-  use ExConstructor
-
   @spec get_chain_state_name() :: :contracts
   def get_chain_state_name, do: :contracts
 
