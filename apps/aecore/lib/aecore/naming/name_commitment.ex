@@ -16,7 +16,7 @@ defmodule Aecore.Naming.NameCommitment do
 
   @typedoc "Structure of the NameCommitment Transaction type"
   @type t :: %NameCommitment{
-          hash: binary(),
+          hash: Identifier.t(),
           owner: Keys.pubkey(),
           created: non_neg_integer(),
           expires: non_neg_integer()
