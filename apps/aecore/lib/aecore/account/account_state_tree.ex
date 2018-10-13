@@ -2,6 +2,8 @@ defmodule Aecore.Account.AccountStateTree do
   @moduledoc """
   Top level account state tree.
   """
+  use Aecore.Util.StateTrees, [:accounts, Aecore.Account.Account]
+
   alias Aecore.Account.Account
   alias Aecore.Chain.Identifier
   alias Aecore.Keys
@@ -11,46 +13,27 @@ defmodule Aecore.Account.AccountStateTree do
   @typedoc "Accounts tree"
   @type accounts_state :: Trie.t()
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
-  @spec init_empty() :: accounts_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:accounts)
-  end
-
-  @spec put(accounts_state(), Keys.pubkey(), Account.t()) :: accounts_state()
-  def put(tree, key, value) do
-    serialized_account_state = Account.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, key, serialized_account_state)
-  end
-
   @spec get(accounts_state(), Keys.pubkey()) :: Account.t()
   def get(tree, key) do
     case PatriciaMerkleTree.lookup(tree, key) do
-      :none ->
-        Account.empty()
-
       {:ok, account_state} ->
         {:ok, acc} = Account.rlp_decode(account_state)
+        process_struct(acc, key, tree)
 
-        id = Identifier.create_identity(key, :account)
-        %Account{acc | id: id}
+      :none ->
+        Account.empty()
     end
   end
 
-  @spec update(accounts_state(), Keys.pubkey(), (Account.t() -> Account.t())) :: accounts_state()
-  def update(tree, key, fun) do
-    put(tree, key, fun.(get(tree, key)))
+  @spec process_struct(Account.t(), binary(), accounts_state()) ::
+          Account.t() | {:error, String.t()}
+  def process_struct(%Account{} = deserialized_value, key, _tree) do
+    id = Identifier.create_identity(key, :account)
+    %Account{deserialized_value | id: id}
   end
 
-  @spec has_key?(accounts_state(), Keys.pubkey()) :: boolean()
-  def has_key?(tree, key) do
-    PatriciaMerkleTree.lookup(tree, key) != :none
-  end
-
-  @spec root_hash(accounts_state()) :: hash()
-  def root_hash(tree) do
-    PatriciaMerkleTree.root_hash(tree)
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Account{}"}
   end
 end

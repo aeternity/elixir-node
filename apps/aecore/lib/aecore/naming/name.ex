@@ -22,7 +22,7 @@ defmodule Aecore.Naming.Name do
 
   @typedoc "Structure of the Name Transaction type"
   @type t :: %Name{
-          hash: binary(),
+          hash: Identifier.t(),
           owner: Keys.pubkey(),
           expires: non_neg_integer(),
           status: name_status(),
