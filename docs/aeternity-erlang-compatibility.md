@@ -215,7 +215,7 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 
 2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
 3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
-4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with appropriate nonce
 5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
 6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
 7. (responder) `Miner.mine_sync_block_to_chain()`
@@ -256,7 +256,7 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 
 2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
 3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
-4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with appropriate nonce
 5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
 6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
 7. (responder) `Miner.mine_sync_block_to_chain()`
@@ -283,9 +283,9 @@ iex> {_, priv_key} = Keys.keypair(:sign)
     
     c. Do NOT copy `signed_state` to responder.
     
-11. (responder) `Channel.solo_close(channel_id, 5, nonce, priv_key)` with apropriate nonce
+11. (responder) `Channel.solo_close(channel_id, 5, nonce, priv_key)` with appropriate nonce
 12. (responder) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSoloCloseTx.
-13. (initiator) `Channel.slash(channel_id, 5, nonce, initiator_pubkey, priv_key)` with apropriate nonce
+13. (initiator) `Channel.slash(channel_id, 5, nonce, initiator_pubkey, priv_key)` with appropriate nonce
 14. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSlashTx.
 15. Mine 2 blocks.
 16. (initiator) `Channel.settle(channel_id, 5, nonce + 1, priv_key)`
