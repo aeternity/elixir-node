@@ -2,57 +2,27 @@ defmodule Aecore.Naming.NamingStateTree do
   @moduledoc """
   Top level naming state tree.
   """
+  use Aecore.Util.StateTrees, [:naming, [Aecore.Naming.Name, Aecore.Naming.NameCommitment]]
+
   alias Aecore.Naming.{Name, NameCommitment}
-  alias Aeutil.PatriciaMerkleTree
-  alias Aeutil.Serialization
-  alias Aecore.Chain.Identifier
-  alias MerklePatriciaTree.Trie
 
   @typedoc "Namings tree"
   @type namings_state() :: Trie.t()
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
-  @spec init_empty() :: namings_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:naming)
+  @spec process_struct(Name.t() | NameCommitment.t(), binary(), namings_state()) ::
+          Name.t() | NameCommitment.t() | {:error, String.t()}
+  def process_struct(%Name{} = deserialized_value, key, _tree) do
+    hash = Identifier.create_identity(key, :name)
+    %Name{deserialized_value | hash: hash}
   end
 
-  @spec put(namings_state(), binary(), Name.t() | NameCommitment.t()) :: namings_state()
-  def put(tree, key, value) do
-    serialized = Serialization.rlp_encode(value)
-    PatriciaMerkleTree.enter(tree, key, serialized)
+  def process_struct(%NameCommitment{} = deserialized_value, key, _tree) do
+    hash = Identifier.create_identity(key, :commitment)
+    %NameCommitment{deserialized_value | hash: hash}
   end
 
-  @spec get(namings_state(), binary()) :: Name.t() | NameCommitment.t() | :none
-  def get(tree, key) do
-    case PatriciaMerkleTree.lookup(tree, key) do
-      {:ok, value} ->
-        {:ok, naming} = Serialization.rlp_decode_anything(value)
-
-        case naming do
-          %Name{} ->
-            hash = Identifier.create_identity(key, :name)
-            %Name{naming | hash: hash}
-
-          %NameCommitment{} ->
-            hash = Identifier.create_identity(key, :commitment)
-            %NameCommitment{naming | hash: hash}
-        end
-
-      _ ->
-        :none
-    end
-  end
-
-  @spec delete(namings_state(), binary()) :: namings_state()
-  def delete(tree, key) do
-    PatriciaMerkleTree.delete(tree, key)
-  end
-
-  @spec root_hash(namings_state()) :: hash()
-  def root_hash(tree) do
-    PatriciaMerkleTree.root_hash(tree)
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %NameCommitment{} or %Name{}"}
   end
 end
