@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Module defining the NamePreClaim transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -59,9 +59,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Validates the transaction without considering state
   """
   @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NamePreClaimTx{commitment: commitment}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%NamePreClaimTx{commitment: commitment}, %DataTx{senders: senders}) do
     cond do
       byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
@@ -93,10 +91,8 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         naming_state,
         block_height,
         %NamePreClaimTx{commitment: %Identifier{value: value}},
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
     commitment = NameCommitment.create(value, sender, block_height, commitment_expires)
@@ -116,14 +112,10 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           NamePreClaimTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        _naming_state,
-        _block_height,
-        _tx,
-        %DataTx{fee: fee} = data_tx
-      ) do
-    sender = DataTx.main_sender(data_tx)
+  def preprocess_check(accounts, _naming_state, _block_height, _tx, %DataTx{
+        fee: fee,
+        senders: [%Identifier{value: sender}]
+      }) do
     account_state = AccountStateTree.get(accounts, sender)
 
     if account_state.balance - fee >= 0 do
