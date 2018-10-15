@@ -195,7 +195,101 @@ iex> Miner.mine_sync_block_to_chain()
 ```
 
 #### Channel Transactions
-TBA..
+
+##### Standard scenario
+
+0. Start 2 Elixir nodes. Both syncing with each other and epoch. 
+1. (both) Set basic parameters: 
+
+```elixir
+iex> temporary_id = <<1,2,3>>
+iex> initiator_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> initiator_amount = 100
+iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> responder_amount = 100
+iex> locktime = 2
+iex> channel_reserve = 5
+iex> fee = 1
+iex> {_, priv_key} = Keys.keypair(:sign)
+```
+
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
+7. (responder) `Miner.mine_sync_block_to_chain()`
+8. Check all nodes recognize new block **with** the ChannelOpenTx
+9. Make a transfer as follows:
+
+    a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+    
+    b. Copy `half_signed_state` to responder.
+    
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
+    
+    c. Copy `signed_state` to initiator.
+    
+    d. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
+    
+10. (initiator) `{:ok, half_signed_close_tx} = Channel.close(channel_id, {5, 5}, nonce, priv_key)`
+11. Copy `half_signed_close_tx` to responder
+12. (responder) `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {5, 5}, priv_key)`
+13. (responder) `Miner.mine_sync_block_to_chain()`
+14. Check all nodes recognize new block **with** the ChannelMutalCloseTx
+
+##### Communication lost / party misbehaving scenario
+
+0. Start 2 Elixir nodes. Both syncing with each other and epoch. 
+1. (both) Set basic parameters: 
+```elixir
+iex> temporary_id = <<4,5,6>>
+iex> initiator_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> initiator_amount = 100
+iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> responder_amount = 100
+iex> locktime = 2
+iex> channel_reserve = 5
+iex> fee = 1
+iex> {_, priv_key} = Keys.keypair(:sign)
+```
+
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with apropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
+7. (responder) `Miner.mine_sync_block_to_chain()`
+8. Check all nodes recognize new block **with** the ChannelOpenTx
+9. Make a transfer as follows:
+
+    a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+    
+    b. Copy `half_signed_state` to responder.
+    
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
+    
+    d. Copy `signed_state` to initiator.
+    
+    e. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
+    
+10. Make another partial transfer:
+
+    a. (responder) `{:ok, half_signed_state2} = Channel.transfer(channel_id, 25, priv_key)`
+    
+    b. Copy `half_signed_state2` to initiator.
+    
+    c. (initiator) `{:ok, signed_state2} = Channel.receive_half_signed_tx(half_signed_state2, priv_key)`
+    
+    c. Do NOT copy `signed_state` to responder.
+    
+11. (responder) `Channel.solo_close(channel_id, 5, nonce, priv_key)` with apropriate nonce
+12. (responder) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSoloCloseTx.
+13. (initiator) `Channel.slash(channel_id, 5, nonce, initiator_pubkey, priv_key)` with apropriate nonce
+14. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSlashTx.
+15. Mine 2 blocks.
+16. (initiator) `Channel.settle(channel_id, 5, nonce + 1, priv_key)`
+17. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSettleTx.
 
 #### Contract Transactions
 TBA..

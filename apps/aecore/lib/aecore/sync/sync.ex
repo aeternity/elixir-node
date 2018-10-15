@@ -275,7 +275,7 @@ defmodule Aecore.Sync.Sync do
 
   def handle_last_result(task, :none), do: task
 
-  def handle_last_result(%Task{agreed: nil} = task, {:agreed_height, agreed}),
+  def handle_last_result(%Task{} = task, {:agreed_height, agreed}),
     do: %Task{task | agreed: agreed}
 
   def handle_last_result(%Task{pool: []} = task, {:hash_pool, hash_pool}) do
@@ -487,7 +487,9 @@ defmodule Aecore.Sync.Sync do
   """
   @spec terminate_worker(pid(), Sync.t()) :: Sync.t()
   def terminate_worker(worker_pid, %Sync{sync_tasks: tasks} = state) do
-    case Enum.filter(tasks, fn %{workers: {_, pid}} -> pid == worker_pid end) do
+    case Enum.filter(tasks, fn %{workers: workers} ->
+           Enum.any?(workers, fn {_, pid} -> pid == worker_pid end)
+         end) do
       [task] ->
         worker_pid
         |> terminate_worker(task)
@@ -500,7 +502,11 @@ defmodule Aecore.Sync.Sync do
 
   def terminate_worker(worker_pid, %Task{workers: workers} = task) do
     [{peer, _}] = Enum.filter(workers, fn {_, pid} -> pid == worker_pid end)
-    Logger.info("#{__MODULE__}: Terminating worker: #{worker_pid} for worker: #{peer}")
+
+    Logger.info(
+      "#{__MODULE__}: Terminating worker: #{inspect(worker_pid)} for worker: #{inspect(peer)}"
+    )
+
     %Task{task | workers: Enum.filter(workers, fn {_, pid} -> pid != worker_pid end)}
   end
 
