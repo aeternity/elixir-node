@@ -14,8 +14,8 @@ defmodule Aecore.Channel.ChannelStateTree do
 
   @spec update!(
           channel_state(),
-          ChannelStateOnChain.id(),
-          (ChannelStateOnChain.t() -> ChannelStateOnChain.t())
+          binary(),
+          (ChannelSteteOnChain.t() -> ChannelSteteOnChain.t())
         ) :: channel_state()
   def update!(tree, key, fun) do
     case get(tree, key) do
