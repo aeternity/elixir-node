@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Module defining the NameClaim transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -54,9 +54,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   Validates the transaction without considering state
   """
   @spec validate(NameClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameClaimTx{name: name, name_salt: name_salt}, %DataTx{} = data_tx) do
+  def validate(%NameClaimTx{name: name, name_salt: name_salt}, %DataTx{senders: senders}) do
     validate_name = NameUtil.normalize_and_validate_name(name)
-    senders = DataTx.senders(data_tx)
 
     cond do
       validate_name |> elem(0) == :error ->
@@ -92,10 +91,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         naming_state,
         block_height,
         %NameClaimTx{name: name, name_salt: name_salt},
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(name, name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(name)
     claim = Name.create(claim_hash, sender, block_height)
@@ -123,9 +120,8 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
         naming_state,
         _block_height,
         %NameClaimTx{name: name, name_salt: name_salt},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
 
     {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(name, name_salt)

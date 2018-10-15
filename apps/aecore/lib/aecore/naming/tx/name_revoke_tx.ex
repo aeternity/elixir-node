@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Module defining the NameRevoke transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -68,9 +68,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Validates the transaction without considering state
   """
   @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameRevokeTx{hash: %Identifier{value: hash}}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%NameRevokeTx{hash: %Identifier{value: hash}}, %DataTx{senders: senders}) do
     cond do
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
@@ -131,9 +129,8 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
         naming_state,
         _block_height,
         %NameRevokeTx{hash: %Identifier{value: value}},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, value)
 

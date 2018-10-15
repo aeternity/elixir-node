@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Module defining the NameTransfer transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
@@ -62,12 +62,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Validates the transaction without considering state
   """
   @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(
-        %NameTransferTx{hash: %Identifier{value: hash}, target: target},
-        %DataTx{} = data_tx
-      ) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%NameTransferTx{hash: %Identifier{value: hash}, target: target}, %DataTx{
+        senders: senders
+      }) do
     cond do
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
@@ -125,9 +122,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
         naming_state,
         _block_height,
         %NameTransferTx{hash: %Identifier{value: hash}},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, hash)
 
