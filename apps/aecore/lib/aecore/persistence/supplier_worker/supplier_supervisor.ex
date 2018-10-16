@@ -1,4 +1,4 @@
-defmodule Aecore.Persistence.SupplierWorker.SupplierSupervisor do
+defmodule Aecore.Persistence.Supplier.Supervisor do
   @moduledoc """
   Supervisor responsible for Supplier process of the worker modules.
   """

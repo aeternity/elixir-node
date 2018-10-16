@@ -14,8 +14,8 @@ defmodule Aecore.Persistence.Supplier do
     GenServer.call(__MODULE__, {:store_references, references})
   end
 
-  def store_references(_) do
-    {:error, "#{__MODULE__}: Error, invalid database/references information given"}
+  def store_references(data) do
+    {:error, "#{__MODULE__}: Error, invalid database/references information: #{inspect(data)}"}
   end
 
   @spec get_references() :: map()
