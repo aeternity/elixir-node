@@ -7,14 +7,9 @@ defmodule Aecore.Persistence.Worker do
   use GenServer
 
   alias Aecore.Chain.{Block, Header, Target}
+  alias Aecore.Persistence.Supplier
   alias Aeutil.Scientific
   alias Rox.Batch
-
-  # possible improvement - moving these definitions to a config.
-  @db_refs_name :ref_db
-  # possible improvement - moving these definitions to a config.
-  @db_refs_key :refs
-  @db_params [:named_table, :set]
 
   @typedoc """
   To operate with a patricia merkle tree
@@ -185,7 +180,6 @@ defmodule Aecore.Persistence.Worker do
     ]
   end
 
-  # possible improvement - moving to a config.
   defp database_params do
     [create_if_missing: true, auto_create_column_families: true]
   end
@@ -194,28 +188,15 @@ defmodule Aecore.Persistence.Worker do
     # We are ensuring that families for the blocks and chain state
     # are created. More about them -
     # https://github.com/facebook/rocksdb/wiki/Column-Families
-    # 1 Rox attempt 
-    with {:ok, db, families_map} <- Rox.open(persistence_path, database_params, all_families),
-         # 2 Attempting to create an ets_table
-         @db_refs_name <- :ets.new(@db_refs_name, @db_params),
-         # 3 If insert attempt is successful we should try to write the refs to ets table, assuming that it was created
-         true <- :ets.insert(@db_refs_name, {@db_refs_key, db, families_map}) do
+
+    with {:ok, db, families_map} <-
+           Rox.open(persistence_path(), database_params(), all_families()) do
+      Supplier.store_references(%{db: db, families_map: families_map})
       build_state(db, families_map)
     else
-      # 1 
       {:error, _reason} ->
-        case :ets.lookup(@db_refs_name, @db_refs_key) do
-          [{@db_refs_key, {db, families_map}}] ->
-            build_state(db, families_map)
-
-          error ->
-            {:error,
-             "#{__MODULE__}: Error, attempted to read from ETS database, got: #{inspect(error)}"}
-        end
-
-      _ ->
-        # 3 
-        {:error, "#{__MODULE__}: Error, failed to push references to an ETS table"}
+        %{db: db, families_map: families_map} = Supplier.get_references()
+        build_state(db, families_map)
     end
   end
 
