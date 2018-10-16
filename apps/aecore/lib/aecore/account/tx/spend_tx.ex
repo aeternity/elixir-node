@@ -85,6 +85,9 @@ defmodule Aecore.Account.Tx.SpendTx do
     senders = DataTx.senders(data_tx)
 
     cond do
+      !Identifier.valid?(receiver, :account) ->
+        {:error, "#{__MODULE__}: Invalid receiver identifier"}
+
       amount < 0 ->
         {:error, "#{__MODULE__}: The amount cannot be a negative number"}
 

@@ -20,7 +20,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @typedoc "Reason of the error"
   @type reason :: String.t()
 
-  @type commitment_hash :: binary()
+  @type commitment_hash :: Identifier.t()
 
   @typedoc "Expected structure for the Pre Claim Transaction"
   @type payload :: %{
@@ -63,6 +63,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
     senders = DataTx.senders(data_tx)
 
     cond do
+      !Identifier.valid?(commitment, :commitment) ->
+        {:error, "#{__MODULE__}: Invalid commitment identifier: #{inspect(commitment)}"}
+
       byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
          "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}

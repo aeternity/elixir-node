@@ -31,7 +31,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @typedoc "Structure of the NameRevokeTx Transaction type"
   @type t :: %NameRevokeTx{
-          hash: binary()
+          hash: Identifier.t()
         }
 
   @doc """
@@ -68,10 +68,13 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Validates the transaction without considering state
   """
   @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameRevokeTx{hash: %Identifier{value: hash}}, %DataTx{} = data_tx) do
+  def validate(%NameRevokeTx{hash: %Identifier{value: hash} = hash_id}, %DataTx{} = data_tx) do
     senders = DataTx.senders(data_tx)
 
     cond do
+      !Identifier.valid?(hash_id, :name) ->
+        {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
+
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 

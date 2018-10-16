@@ -25,16 +25,13 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
-  @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
-  def check_identity(%Identifier{value: value} = id, type) do
-    case create_identity(value, type) do
-      {:ok, check_id} -> check_id == id
-      {:error, msg} -> {:error, msg}
-    end
+  @spec valid?(Identifier.t(), value()) :: boolean()
+  def valid?(%Identifier{value: value} = id, type) do
+    create_identity(value, type) == id
   end
 
-  def check_identity(_, _) do
-    {:error, "#{__MODULE__}: Invalid ID"}
+  def valid?(_, _) do
+    false
   end
 
   # API needed for RLP
