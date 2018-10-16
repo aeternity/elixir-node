@@ -49,6 +49,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{

@@ -50,6 +50,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   def chainstate_senders?(), do: true
 
   @doc """

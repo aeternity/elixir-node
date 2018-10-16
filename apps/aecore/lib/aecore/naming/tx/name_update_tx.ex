@@ -117,6 +117,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @doc """
   Changes the account state (balance) of the sender and receiver.
   """

@@ -58,6 +58,9 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :accounts
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{
         receiver: %Identifier{} = identified_receiver,

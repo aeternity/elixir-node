@@ -47,6 +47,9 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: OracleRegistrationTx.t()
   def init(%{
         query_format: query_format,

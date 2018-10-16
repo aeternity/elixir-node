@@ -48,6 +48,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(
         %{

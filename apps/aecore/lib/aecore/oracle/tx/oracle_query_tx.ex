@@ -56,6 +56,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
         oracle_address: %Identifier{} = identified_oracle_address,
