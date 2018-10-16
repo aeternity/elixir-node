@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   Module defining the OracleQuery transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
 
@@ -101,10 +101,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: response_ttl,
           oracle_address: %Identifier{value: address} = oracle_address
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
         {:error, "#{__MODULE__}: Invalid query ttl"}
@@ -151,10 +149,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: %{ttl: response_ttl},
           query_fee: query_fee
         },
-        %DataTx{nonce: nonce} = data_tx
+        %DataTx{nonce: nonce, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -198,10 +194,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: query_data,
           query_fee: query_fee
         } = tx,
-        %DataTx{fee: fee} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}], fee: fee}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - query_fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}

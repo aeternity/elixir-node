@@ -3,7 +3,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Module defining the Spend transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
@@ -80,10 +80,8 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %SpendTx{receiver: receiver, amount: amount, version: version, payload: payload},
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       !Identifier.valid?(receiver, :account) ->
         {:error, "#{__MODULE__}: Invalid receiver identifier"}
@@ -124,10 +122,8 @@ defmodule Aecore.Account.Tx.SpendTx do
         %{},
         block_height,
         %SpendTx{amount: amount, receiver: %Identifier{value: receiver}},
-        %DataTx{} = data_tx
+        %DataTx{senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -150,14 +146,11 @@ defmodule Aecore.Account.Tx.SpendTx do
           SpendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        %{},
-        _block_height,
-        %SpendTx{amount: amount},
-        %DataTx{fee: fee} = data_tx
-      ) do
-    %Account{balance: balance} = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
+  def preprocess_check(accounts, %{}, _block_height, %SpendTx{amount: amount}, %DataTx{
+        fee: fee,
+        senders: [%Identifier{value: sender}]
+      }) do
+    %Account{balance: balance} = AccountStateTree.get(accounts, sender)
 
     if balance - (fee + amount) < 0 do
       {:error, "#{__MODULE__}: Negative balance"}

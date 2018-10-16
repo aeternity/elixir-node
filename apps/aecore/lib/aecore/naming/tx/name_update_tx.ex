@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   Module defining the NameUpdate transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -94,10 +94,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           client_ttl: client_ttl,
           pointers: _pointers
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       !Identifier.valid?(hash_id, :name) ->
         {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
@@ -170,9 +168,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         naming_state,
         block_height,
         %NameUpdateTx{hash: %Identifier{value: hash}, expire_by: expire_by},
-        %DataTx{fee: fee} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
-    sender = DataTx.main_sender(data_tx)
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, hash)
 
