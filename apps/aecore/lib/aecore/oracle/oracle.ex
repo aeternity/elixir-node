@@ -142,7 +142,7 @@ defmodule Aecore.Oracle.Oracle do
       fee: fee,
       nonce: Chain.lowest_valid_nonce(),
       payload: payload,
-      senders: [%Identifier{type: :account, value: pubkey}],
+      senders: [%Identifier{type: :oracle, value: pubkey}],
       ttl: tx_ttl,
       type: OracleResponseTx
     }
@@ -163,7 +163,7 @@ defmodule Aecore.Oracle.Oracle do
       fee: fee,
       nonce: Chain.lowest_valid_nonce(),
       payload: payload,
-      senders: [%Identifier{type: :account, value: pubkey}],
+      senders: [%Identifier{type: :oracle, value: pubkey}],
       ttl: tx_ttl,
       type: OracleExtendTx
     }
