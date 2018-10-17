@@ -68,7 +68,7 @@ defmodule Aetestframework.Worker do
     if valid?.() do
       true
     else
-      :timer.sleep(1000)
+      :timer.sleep(500)
       verify_with_delay(valid?, execute_times - 1)
     end
   end
