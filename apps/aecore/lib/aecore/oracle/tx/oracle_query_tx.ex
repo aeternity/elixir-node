@@ -56,6 +56,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
         oracle_address: %Identifier{} = identified_oracle_address,
@@ -113,7 +116,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !match?(%{type: :relative}, response_ttl) ->
         {:error, "#{__MODULE__}: Invalid ttl type"}
 
-      !validate_identifier(oracle_address) ->
+      !Identifier.valid?(oracle_address, :oracle) ->
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
       !Keys.key_size_valid?(address) ->
@@ -277,11 +280,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   def base58c_decode(_) do
     {:error, "#{__MODULE__}: Wrong data"}
-  end
-
-  @spec validate_identifier(Identifier.t()) :: boolean()
-  defp validate_identifier(%Identifier{value: value} = id) do
-    Identifier.create_identity(value, :oracle) == id
   end
 
   @spec encode_to_list(OracleQueryTx.t(), DataTx.t()) :: list() | {:error, reason()}

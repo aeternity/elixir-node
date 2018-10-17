@@ -33,8 +33,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @typedoc "Structure of the NameTransferTx Transaction type"
   @type t :: %NameTransferTx{
-          hash: binary(),
-          target: Keys.pubkey()
+          hash: Identifier.t(),
+          target: Identifier.t()
         }
 
   @doc """
@@ -62,10 +62,16 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Validates the transaction without considering state
   """
   @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameTransferTx{hash: %Identifier{value: hash}, target: target}, %DataTx{
+  def validate(%NameTransferTx{hash: %Identifier{value: hash} = hash_id, target: target}, %DataTx{
         senders: senders
       }) do
     cond do
+      !Identifier.valid?(hash_id, :name) ->
+        {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
+
+      !Identifier.valid?(target, :account) ->
+        {:error, "#{__MODULE__}: Invalid target identifier: #{inspect(target)}"}
+
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
@@ -82,6 +88,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Changes the naming state for claim transfers.

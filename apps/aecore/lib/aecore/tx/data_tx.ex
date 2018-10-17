@@ -193,13 +193,13 @@ defmodule Aecore.Tx.DataTx do
   def validate(%DataTx{fee: fee, type: type, senders: senders} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
-        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
+        {:error, "#{__MODULE__}: Invalid tx type: #{type}"}
 
       fee < 0 ->
         {:error, "#{__MODULE__}: Negative fee"}
 
-      !senders_pubkeys_size_valid?(senders) ->
-        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
+      !senders_valid?(senders, type.sender_type()) ->
+        {:error, "#{__MODULE__}: One or more sender identifiers invalid"}
 
       DataTx.ttl(tx) < 0 ->
         {:error,
@@ -360,15 +360,15 @@ defmodule Aecore.Tx.DataTx do
     type.validate(payload, data_tx)
   end
 
-  defp senders_pubkeys_size_valid?([sender | rest]) do
-    if Keys.key_size_valid?(sender) do
-      senders_pubkeys_size_valid?(rest)
+  defp senders_valid?([sender | rest], sender_type) do
+    if Keys.key_size_valid?(sender) && Identifier.valid?(sender, sender_type) do
+      senders_valid?(rest, sender_type)
     else
       false
     end
   end
 
-  defp senders_pubkeys_size_valid?([]) do
+  defp senders_valid?([], _sender_type) do
     true
   end
 

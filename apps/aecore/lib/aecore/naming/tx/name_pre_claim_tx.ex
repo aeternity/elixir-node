@@ -20,7 +20,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @typedoc "Reason of the error"
   @type reason :: String.t()
 
-  @type commitment_hash :: binary()
+  @type commitment_hash :: Identifier.t()
 
   @typedoc "Expected structure for the Pre Claim Transaction"
   @type payload :: %{
@@ -61,6 +61,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%NamePreClaimTx{commitment: commitment}, %DataTx{senders: senders}) do
     cond do
+      !Identifier.valid?(commitment, :commitment) ->
+        {:error, "#{__MODULE__}: Invalid commitment identifier: #{inspect(commitment)}"}
+
       byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
          "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}
@@ -75,6 +78,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Pre claims a name for one account.

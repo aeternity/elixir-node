@@ -76,6 +76,9 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @doc """
   Claims a name for one account after it was pre-claimed.
   """
