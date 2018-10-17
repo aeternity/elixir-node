@@ -177,7 +177,7 @@ defmodule Aecore.Peers.Worker do
           {:noreply, state}
       end
     else
-      Logger.error(fn -> "Can't add ourself" end)
+      Logger.info(fn -> "Can't add ourself" end)
       {:noreply, state}
     end
   end
