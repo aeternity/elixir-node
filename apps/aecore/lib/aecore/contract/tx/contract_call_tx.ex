@@ -225,7 +225,6 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         context
       )
       when is_non_neg_integer(gas_price) do
-
     chain_state = Chain.chain_state()
 
     required_amount = fee + gas * gas_price + amount

@@ -46,25 +46,25 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec get_contract(contracts_state(), binary()) :: Contract.t()
-def get_contract(contract_tree, key) do
-  case PatriciaMerkleTree.lookup(contract_tree, key) do
-    {:ok, serialized} ->
-      {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
+  def get_contract(contract_tree, key) do
+    case PatriciaMerkleTree.lookup(contract_tree, key) do
+      {:ok, serialized} ->
+        {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
 
-      identified_id = Identifier.create_identity(key, :contract)
+        identified_id = Identifier.create_identity(key, :contract)
 
-      store_id = Contract.store_id(%{deserialized | id: identified_id})
+        store_id = Contract.store_id(%{deserialized | id: identified_id})
 
-      %Contract{
-        deserialized
-        | id: identified_id,
-          store: store_id |> get_store(contract_tree) |> State.storage_to_int()
-      }
+        %Contract{
+          deserialized
+          | id: identified_id,
+            store: store_id |> get_store(contract_tree) |> State.storage_to_int()
+        }
 
-    _ ->
-      :none
+      _ ->
+        :none
+    end
   end
-end
 
   @spec process_struct(Contract.t(), binary(), contracts_state()) ::
           Contract.t() | {:error, String.t()}

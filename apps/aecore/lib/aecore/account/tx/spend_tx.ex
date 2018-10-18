@@ -152,11 +152,17 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, %{}, _block_height, %SpendTx{amount: amount}, %DataTx{
-        fee: fee,
-        senders: [%Identifier{value: sender}]
-      },
-      _context) do
+  def preprocess_check(
+        accounts,
+        %{},
+        _block_height,
+        %SpendTx{amount: amount},
+        %DataTx{
+          fee: fee,
+          senders: [%Identifier{value: sender}]
+        },
+        _context
+      ) do
     %Account{balance: balance} = AccountStateTree.get(accounts, sender)
 
     if balance - (fee + amount) < 0 do

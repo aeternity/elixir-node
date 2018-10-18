@@ -101,10 +101,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   end
 
   @spec validate(ContractCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(
-        %ContractCreateTx{},
-        %DataTx{senders: senders}
-      ) do
+  def validate(%ContractCreateTx{}, %DataTx{senders: senders}) do
     if length(senders) == 1 do
       :ok
     else
@@ -160,7 +157,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       gas: gas,
       gas_price: gas_price,
       call_data: call_data,
-      amount: 0, # Initial call takes no amount
+      # Initial call takes no amount
+      amount: 0,
       call_stack: [],
       code: contract.code,
       call: call,

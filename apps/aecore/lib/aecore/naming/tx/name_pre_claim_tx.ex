@@ -121,11 +121,17 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, _naming_state, _block_height, _tx, %DataTx{
-        fee: fee,
-        senders: [%Identifier{value: sender}]
-      },
-      _context) do
+  def preprocess_check(
+        accounts,
+        _naming_state,
+        _block_height,
+        _tx,
+        %DataTx{
+          fee: fee,
+          senders: [%Identifier{value: sender}]
+        },
+        _context
+      ) do
     account_state = AccountStateTree.get(accounts, sender)
 
     if account_state.balance - fee >= 0 do
