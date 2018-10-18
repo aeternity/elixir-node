@@ -167,7 +167,11 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     sender = DataTx.main_sender(data_tx)
 
     updated_accounts_state =
-      AccountStateTree.update(accounts, sender, fn acc ->
+      accounts
+      |> AccountStateTree.update(sender, fn acc ->
+        Account.apply_transfer!(acc, block_height, amount * -1)
+      end)
+      |> AccountStateTree.update(address, fn acc ->
         Account.apply_transfer!(acc, block_height, amount)
       end)
 
@@ -187,11 +191,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
 
         :transaction ->
           gas_cost = call.gas_used * gas_price
-          amount = fee + gas_cost
           caller1 = AccountStateTree.get(accounts1, sender)
 
           AccountStateTree.update(accounts1, caller1.id.value, fn acc ->
-            Account.apply_transfer!(acc, block_height, amount)
+            Account.apply_transfer!(acc, block_height, gas_cost * -1)
           end)
       end
 
