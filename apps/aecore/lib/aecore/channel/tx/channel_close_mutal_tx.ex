@@ -86,12 +86,21 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
+  def validate(
+        %ChannelCloseMutalTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{senders: senders}
+      ) do
     cond do
-      tx.initiator_amount < 0 ->
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
+      initiator_amount < 0 ->
         {:error, "#{__MODULE__}: initiator_amount can't be negative"}
 
-      tx.responder_amount < 0 ->
+      responder_amount < 0 ->
         {:error, "#{__MODULE__}: responder_amount can't be negative"}
 
       true ->
