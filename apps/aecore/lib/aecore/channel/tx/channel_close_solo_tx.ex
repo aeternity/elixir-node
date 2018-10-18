@@ -3,14 +3,17 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   Module defining the ChannelCloseSolo transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
+  alias Aecore.Chain.Identifier
+  alias Aecore.Poi.Poi
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -18,7 +21,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
-          state: map()
+          channel_id: binary(),
+          offchain_tx: map() | :empty,
+          poi: map()
         }
 
   @typedoc "Reason for the error"
@@ -29,7 +34,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @typedoc "Structure of the ChannelCloseSoloTx Transaction type"
   @type t :: %ChannelCloseSoloTx{
-          state: ChannelStateOffChain.t()
+          channel_id: binary(),
+          offchain_tx: ChannelOffChainTx.t() | :empty,
+          poi: Poi.t()
         }
 
   @doc """
@@ -38,39 +45,67 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   # Parameters
   - state - the (final) state with which the channel is going to be closed
   """
-  defstruct [:state]
+  defstruct [:channel_id, :offchain_tx, :poi]
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCloseSoloTx.t()
-  def init(%{state: state}) do
-    %ChannelCloseSoloTx{state: ChannelStateOffChain.init(state)}
+  def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: %Poi{} = poi} = _payload) do
+    %ChannelCloseSoloTx{
+      channel_id: channel_id,
+      offchain_tx: offchain_tx,
+      poi: poi
+    }
   end
-
-  @spec create(ChannelStateOffChain.t()) :: ChannelCloseSoloTx.t()
-  def create(state) do
-    %ChannelCloseSoloTx{state: state}
-  end
-
-  @spec sequence(ChannelCloseSoloTx.t()) :: non_neg_integer()
-  def sequence(%ChannelCloseSoloTx{state: %ChannelStateOffChain{sequence: sequence}}),
-    do: sequence
 
   @spec channel_id(ChannelCloseSoloTx.t()) :: binary()
-  def channel_id(%ChannelCloseSoloTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
+  def channel_id(%ChannelCloseSoloTx{channel_id: channel_id}), do: channel_id
 
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseSoloTx{}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  @spec validate(ChannelCloseSoloTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
+  def validate(%ChannelCloseSoloTx{offchain_tx: :empty}, %DataTx{senders: senders}) do
     if length(senders) != 1 do
       {:error, "#{__MODULE__}: Invalid senders size"}
     else
       :ok
+    end
+  end
+
+  def validate(
+        %ChannelCloseSoloTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            state_hash: state_hash
+          },
+          poi: poi
+        },
+        %DataTx{senders: senders}
+      ) do
+    cond do
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      internal_channel_id !== offchain_tx_channel_id ->
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
+
+      Poi.calculate_root_hash(poi) !== state_hash ->
+        {:error,
+         "#{__MODULE__}: Invalid Poi root_hash, expcted #{inspect(state_hash)}, got #{
+           inspect(Poi.calculate_root_hash(poi))
+         }"}
+
+      true ->
+        :ok
     end
   end
 
@@ -90,17 +125,16 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         channels,
         block_height,
         %ChannelCloseSoloTx{
-          state:
-            %ChannelStateOffChain{
-              channel_id: channel_id
-            } = state
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
         },
         _data_tx,
         _context
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
-        ChannelStateOnChain.apply_slashing(channel, block_height, state)
+        ChannelStateOnChain.apply_slashing(channel, block_height, offchain_tx, poi)
       end)
 
     {:ok, {accounts, new_channels}}
@@ -121,13 +155,11 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         accounts,
         channels,
         _block_height,
-        %ChannelCloseSoloTx{state: state},
-        %DataTx{fee: fee} = data_tx,
+        %ChannelCloseSoloTx{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi},
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
-    channel = ChannelStateTree.get(channels, state.channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -143,7 +175,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         {:error, "#{__MODULE__}: Sender must be a party of the channel"}
 
       true ->
-        ChannelStateOnChain.validate_slashing(channel, state)
+        ChannelStateOnChain.validate_slashing(channel, offchain_tx, poi)
     end
   end
 
@@ -164,39 +196,52 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   end
 
   @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelCloseSoloTx{state: state}, %DataTx{
-        senders: senders,
-        nonce: nonce,
-        fee: fee,
-        ttl: ttl
-      }) do
+  def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
+    offchain_tx_encoded =
+      if tx.offchain_tx != :empty do
+        ChannelOffChainTx.rlp_encode(tx.offchain_tx)
+      else
+        <<>>
+      end
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(senders),
-      :binary.encode_unsigned(nonce),
-      ChannelStateOffChain.encode_to_list(state),
-      :binary.encode_unsigned(fee),
-      :binary.encode_unsigned(ttl)
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.encode_to_binary(sender),
+      offchain_tx_encoded,
+      Serialization.rlp_encode(tx.poi),
+      :binary.encode_unsigned(data_tx.ttl),
+      :binary.encode_unsigned(data_tx.fee),
+      :binary.encode_unsigned(data_tx.nonce)
     ]
   end
 
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
-  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
-    state_ver = :binary.decode_unsigned(state_ver_bin)
-
-    case ChannelStateOffChain.decode_from_list(state_ver, state) do
-      {:ok, state} ->
-        payload = %ChannelCloseSoloTx{state: state}
-
-        DataTx.init_binary(
-          ChannelCloseSoloTx,
-          payload,
-          encoded_senders,
-          :binary.encode_unsigned(fee),
-          :binary.encode_unsigned(nonce),
-          :binary.encode_unsigned(ttl)
-        )
-
+  def decode_from_list(@version, [
+        encoded_channel_id,
+        encoded_sender,
+        payload,
+        rlp_encoded_poi,
+        ttl,
+        fee,
+        nonce
+      ]) do
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         {:ok, offchain_tx} <- decode_payload(payload),
+         {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
+      DataTx.init_binary(
+        ChannelCloseSoloTx,
+        %ChannelCloseSoloTx{
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
+        },
+        [encoded_sender],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
       {:error, _} = error ->
         error
     end
@@ -208,5 +253,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  defp decode_payload(<<>>) do
+    {:ok, :empty}
+  end
+
+  defp decode_payload(payload) do
+    ChannelOffChainTx.rlp_decode_signed(payload)
   end
 end

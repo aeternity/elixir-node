@@ -3,7 +3,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   Aecore structure for Contract Call
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Governance.GovernanceConstants
@@ -75,6 +75,9 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   @spec get_chain_state_name() :: :calls
   def get_chain_state_name, do: :calls
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ContractCallTx.t()
   def init(%{
         contract: %Identifier{} = identified_contract,
@@ -133,7 +136,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         },
         _data_tx
       ) do
-    if Identifier.check_identity(contract, :contract) do
+    if Identifier.valid?(contract, :contract) do
       :ok
     else
       {:error, "#{__MODULE__}: Invalid contract address: #{inspect(contract)}"}
@@ -159,13 +162,11 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         } = call_tx,
         %DataTx{
           nonce: nonce,
-          fee: fee
-        } = data_tx,
+          senders: [%Identifier{value: sender}]
+        },
         context
       ) do
     # Transfer the attached funds to the callee, before the calling of the contract
-    sender = DataTx.main_sender(data_tx)
-
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -220,11 +221,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
         _block_height,
         %ContractCallTx{amount: amount, gas: gas, gas_price: gas_price, call_stack: call_stack} =
           call_tx,
-        %DataTx{fee: fee} = data_tx,
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         context
       )
       when is_non_neg_integer(gas_price) do
-    sender = DataTx.main_sender(data_tx)
 
     chain_state = Chain.chain_state()
 

@@ -2,6 +2,8 @@ defmodule Aecore.Contract.ContractStateTree do
   @moduledoc """
   Top level contract state tree.
   """
+  use Aecore.Util.StateTrees, [:contracts, Aecore.Contract.Contract]
+
   alias Aecore.Chain.Identifier
   alias Aecore.Contract.Contract
   alias Aeutil.PatriciaMerkleTree
@@ -10,16 +12,8 @@ defmodule Aecore.Contract.ContractStateTree do
 
   @contract_key_size 32
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
   @typedoc "Contracts tree"
   @type contracts_state() :: Trie.t()
-
-  @spec init_empty() :: contracts_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:contracts)
-  end
 
   @spec insert_contract(contracts_state(), Contract.t()) :: contracts_state()
   def insert_contract(
@@ -52,29 +46,60 @@ defmodule Aecore.Contract.ContractStateTree do
   end
 
   @spec get_contract(contracts_state(), binary()) :: Contract.t()
-  def get_contract(contract_tree, key) do
-    case PatriciaMerkleTree.lookup(contract_tree, key) do
-      {:ok, serialized} ->
-        {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
+def get_contract(contract_tree, key) do
+  case PatriciaMerkleTree.lookup(contract_tree, key) do
+    {:ok, serialized} ->
+      {:ok, deserialized} = Serialization.rlp_decode_anything(serialized)
 
-        identified_id = Identifier.create_identity(key, :contract)
+      identified_id = Identifier.create_identity(key, :contract)
 
-        store_id = Contract.store_id(%{deserialized | id: identified_id})
+      store_id = Contract.store_id(%{deserialized | id: identified_id})
 
-        %Contract{
-          deserialized
-          | id: identified_id,
-            store: store_id |> get_store(contract_tree) |> State.storage_to_int()
-        }
+      %Contract{
+        deserialized
+        | id: identified_id,
+          store: store_id |> get_store(contract_tree) |> State.storage_to_int()
+      }
 
-      _ ->
-        :none
-    end
+    _ ->
+      :none
+  end
+end
+
+  @spec process_struct(Contract.t(), binary(), contracts_state()) ::
+          Contract.t() | {:error, String.t()}
+  def process_struct(%Contract{} = deserialized_value, key, tree) do
+    identified_id = Identifier.create_identity(key, :contract)
+    store_id = Contract.store_id(%{deserialized_value | id: identified_id})
+
+    %Contract{
+      deserialized_value
+      | id: identified_id,
+        store: get_store(store_id, tree)
+    }
   end
 
-  @spec root_hash(contracts_state()) :: hash()
-  def root_hash(contract_tree) do
-    PatriciaMerkleTree.root_hash(contract_tree)
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Contract{}"}
+  end
+
+  defp get_store(store_id, tree) do
+    keys = PatriciaMerkleTree.all_keys(tree)
+    store_id_bit_size = (@contract_key_size + 1) * 8
+
+    # This code has a time complexity of O(N) which means that this code will be unusable in production ->
+    # Each O(log(N)) lookup will degrade to O(N)
+    Enum.reduce(keys, %{}, fn key, store_acc ->
+      with true <- byte_size(key) > @contract_key_size,
+           <<tree_store_id::size(store_id_bit_size), s_key::binary>> <- key,
+           true <- store_id == <<tree_store_id::size(store_id_bit_size)>> do
+        {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
+        Map.put(store_acc, s_key, s_value)
+      else
+        _ -> store_acc
+      end
+    end)
   end
 
   defp update_store(store_id, old_store, new_store, tree) do
@@ -93,22 +118,6 @@ defmodule Aecore.Contract.ContractStateTree do
       s_tree_key = <<store_id::binary, s_key::binary>>
 
       PatriciaMerkleTree.enter(tree_acc, s_tree_key, insert_value)
-    end)
-  end
-
-  defp get_store(store_id, tree) do
-    keys = PatriciaMerkleTree.all_keys(tree)
-    store_id_bit_size = (@contract_key_size + 1) * 8
-
-    Enum.reduce(keys, %{}, fn key, store_acc ->
-      with true <- byte_size(key) > @contract_key_size,
-           <<tree_store_id::size(store_id_bit_size), s_key::binary>> <- key,
-           true <- store_id == <<tree_store_id::size(store_id_bit_size)>> do
-        {:ok, s_value} = PatriciaMerkleTree.lookup(tree, key)
-        Map.put(store_acc, s_key, s_value)
-      else
-        _ -> store_acc
-      end
     end)
   end
 end

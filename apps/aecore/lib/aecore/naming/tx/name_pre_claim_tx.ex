@@ -3,7 +3,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Module defining the NamePreClaim transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -20,7 +20,7 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   @typedoc "Reason of the error"
   @type reason :: String.t()
 
-  @type commitment_hash :: binary()
+  @type commitment_hash :: Identifier.t()
 
   @typedoc "Expected structure for the Pre Claim Transaction"
   @type payload :: %{
@@ -59,10 +59,11 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
   Validates the transaction without considering state
   """
   @spec validate(NamePreClaimTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NamePreClaimTx{commitment: commitment}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-
+  def validate(%NamePreClaimTx{commitment: commitment}, %DataTx{senders: senders}) do
     cond do
+      !Identifier.valid?(commitment, :commitment) ->
+        {:error, "#{__MODULE__}: Invalid commitment identifier: #{inspect(commitment)}"}
+
       byte_size(commitment.value) != Hash.get_hash_bytes_size() ->
         {:error,
          "#{__MODULE__}: Commitment bytes size not correct: #{inspect(byte_size(commitment))}"}
@@ -77,6 +78,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Pre claims a name for one account.
@@ -94,11 +98,9 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
         naming_state,
         block_height,
         %NamePreClaimTx{commitment: %Identifier{value: value}},
-        %DataTx{} = data_tx,
+        %DataTx{senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
     commitment = NameCommitment.create(value, sender, block_height, commitment_expires)
@@ -119,15 +121,11 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        _naming_state,
-        _block_height,
-        _tx,
-        %DataTx{fee: fee} = data_tx,
-        _context
-      ) do
-    sender = DataTx.main_sender(data_tx)
+  def preprocess_check(accounts, _naming_state, _block_height, _tx, %DataTx{
+        fee: fee,
+        senders: [%Identifier{value: sender}]
+      },
+      _context) do
     account_state = AccountStateTree.get(accounts, sender)
 
     if account_state.balance - fee >= 0 do

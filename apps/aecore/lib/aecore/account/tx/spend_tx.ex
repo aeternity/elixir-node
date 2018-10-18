@@ -3,7 +3,7 @@ defmodule Aecore.Account.Tx.SpendTx do
   Module defining the Spend transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
@@ -58,6 +58,9 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :accounts
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{
         receiver: %Identifier{} = identified_receiver,
@@ -80,11 +83,12 @@ defmodule Aecore.Account.Tx.SpendTx do
   @spec validate(SpendTx.t(), DataTx.t()) :: :ok | {:error, String.t()}
   def validate(
         %SpendTx{receiver: receiver, amount: amount, version: version, payload: payload},
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
+      !Identifier.valid?(receiver, :account) ->
+        {:error, "#{__MODULE__}: Invalid receiver identifier"}
+
       amount < 0 ->
         {:error, "#{__MODULE__}: The amount cannot be a negative number"}
 
@@ -122,11 +126,9 @@ defmodule Aecore.Account.Tx.SpendTx do
         %{},
         block_height,
         %SpendTx{amount: amount, receiver: %Identifier{value: receiver}},
-        %DataTx{} = data_tx,
+        %DataTx{senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     new_accounts =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -150,15 +152,12 @@ defmodule Aecore.Account.Tx.SpendTx do
           DataTx.t(),
           Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(
-        accounts,
-        %{},
-        _block_height,
-        %SpendTx{amount: amount},
-        %DataTx{fee: fee} = data_tx,
-        _context
-      ) do
-    %Account{balance: balance} = AccountStateTree.get(accounts, DataTx.main_sender(data_tx))
+  def preprocess_check(accounts, %{}, _block_height, %SpendTx{amount: amount}, %DataTx{
+        fee: fee,
+        senders: [%Identifier{value: sender}]
+      },
+      _context) do
+    %Account{balance: balance} = AccountStateTree.get(accounts, sender)
 
     if balance - (fee + amount) < 0 do
       {:error, "#{__MODULE__}: Negative balance"}

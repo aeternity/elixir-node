@@ -27,6 +27,7 @@ defmodule AecoreContractTest do
   alias Aecore.Contract.ContractStateTree
   alias Aecore.Keys
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Chain.Identifier
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.PatriciaMerkleTree
@@ -131,6 +132,6 @@ defmodule AecoreContractTest do
     nonce = Chain.lowest_valid_nonce()
     call_id = Call.id(pubkey, nonce, contract_address)
 
-    CallStateTree.construct_call_tree_id(contract_address, call_id)
+    CallStateTree.construct_call_tree_id(Identifier.create_identity(contract_address, :contract), call_id)
   end
 end

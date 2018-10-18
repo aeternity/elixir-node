@@ -95,9 +95,32 @@ defmodule Aeutil.PatriciaMerkleTree do
   Verify if value is present in the proof trie for the provided key.
   The key represents the path in the proof trie.
   """
-  @spec verify_proof(Trie.t(), Trie.key(), Trie.value(), Trie.t()) :: boolean
-  def verify_proof(trie, key, value, proof) do
-    Proof.verify_proof(key, value, trie.root_hash, proof)
+  @spec verify_proof?(Trie.key(), Trie.value(), binary(), Trie.t()) :: boolean
+  def verify_proof?(key, value, root_hash, proof) do
+    case Proof.verify_proof(key, value, root_hash, proof) do
+      :ok ->
+        true
+
+      {:error, _} ->
+        false
+    end
+  end
+
+  @doc """
+  Lookups the value associated with the given key in the proof trie.
+  """
+  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: {:ok, Trie.value()} | :error
+  def lookup_proof(key, root_hash, proof) do
+    case Proof.lookup_proof(key, root_hash, proof) do
+      nil ->
+        :error
+
+      {:error, _} ->
+        :error
+
+      val ->
+        {:ok, val}
+    end
   end
 
   @doc """

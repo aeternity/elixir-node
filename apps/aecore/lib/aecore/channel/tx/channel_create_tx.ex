@@ -1,18 +1,19 @@
 defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @moduledoc """
-  Module defining the ChannelCreate transaction
+  Aecore structure of ChannelCreateTx transaction data.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
+  @behaviour Aecore.Channel.ChannelTransaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aecore.Channel.Tx.ChannelCreateTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Chainstate
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
+  alias Aecore.Chain.Identifier
+  alias Aecore.Channel.Updates.ChannelCreateUpdate
 
   require Logger
 
@@ -21,8 +22,10 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @typedoc "Expected structure for the ChannelCreateTx Transaction"
   @type payload :: %{
           initiator_amount: non_neg_integer(),
-          responser_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          responder_amount: non_neg_integer(),
+          locktime: non_neg_integer(),
+          state_hash: binary(),
+          channel_reserve: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -35,7 +38,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @type t :: %ChannelCreateTx{
           initiator_amount: non_neg_integer(),
           responder_amount: non_neg_integer(),
-          locktime: non_neg_integer()
+          locktime: non_neg_integer(),
+          state_hash: binary(),
+          channel_reserve: non_neg_integer()
         }
 
   @doc """
@@ -45,22 +50,37 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   - initiator_amount: the amount that the first sender commits
   - responder_amount: the amount that the second sender commits
   - locktime: number of blocks for dispute settling
+  - state_hash: root hash of the initial offchain chainstate
+  - channel_reserve: minimal ammount of tokens held by the initiator or responder
   """
-  defstruct [:initiator_amount, :responder_amount, :locktime]
+  defstruct [
+    :initiator_amount,
+    :responder_amount,
+    :locktime,
+    :state_hash,
+    :channel_reserve
+  ]
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(%{
         initiator_amount: initiator_amount,
         responder_amount: responder_amount,
-        locktime: locktime
+        locktime: locktime,
+        state_hash: state_hash,
+        channel_reserve: channel_reserve
       }) do
     %ChannelCreateTx{
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
-      locktime: locktime
+      locktime: locktime,
+      state_hash: state_hash,
+      channel_reserve: channel_reserve
     }
   end
 
@@ -72,21 +92,33 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %ChannelCreateTx{
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
-          locktime: locktime
+          locktime: locktime,
+          state_hash: state_hash,
+          channel_reserve: channel_reserve
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
-      initiator_amount + responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Channel cannot have negative total balance"}
-
       locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      initiator_amount < channel_reserve ->
+        {:error,
+         "#{__MODULE__}: Initiator amount (#{initiator_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
+
+      responder_amount < channel_reserve ->
+        {:error,
+         "#{__MODULE__}: Responder amount (#{responder_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
+
+      byte_size(state_hash) != 32 ->
+        {:error, "#{__MODULE__}: Invalid state hash size byte_size(state_hash)"}
 
       true ->
         :ok
@@ -112,12 +144,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           initiator_amount: initiator_amount,
           responder_amount: responder_amount,
           locktime: locktime
+        } = tx,
+        %DataTx{
+          nonce: nonce,
+          senders: [
+            %Identifier{value: initiator_pubkey},
+            %Identifier{value: responder_pubkey}
+          ]
         },
-        %DataTx{nonce: nonce} = data_tx,
         _context
       ) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-
     new_accounts =
       accounts
       |> AccountStateTree.update(initiator_pubkey, fn acc ->
@@ -133,7 +169,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         responder_pubkey,
         initiator_amount,
         responder_amount,
-        locktime
+        locktime,
+        tx.channel_reserve,
+        tx.state_hash
       )
 
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
@@ -159,17 +197,28 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         channels,
         _block_height,
         %ChannelCreateTx{initiator_amount: initiator_amount, responder_amount: responder_amount},
-        %DataTx{nonce: nonce, fee: fee} = data_tx,
+        %DataTx{
+          nonce: nonce,
+          fee: fee,
+          senders: [
+            %Identifier{value: initiator_pubkey},
+            %Identifier{value: responder_pubkey}
+          ]
+        },
         _context
       ) do
-    [initiator_pubkey, responder_pubkey] = DataTx.senders(data_tx)
-
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->
-        {:error, "#{__MODULE__}: Negative initiator balance"}
+        {:error,
+         "#{__MODULE__}: Initiator balance too low, required #{fee + initiator_amount}, has #{
+           AccountStateTree.get(accounts, initiator_pubkey).balance
+         }"}
 
       AccountStateTree.get(accounts, responder_pubkey).balance - responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Negative responder balance"}
+        {:error,
+         "#{__MODULE__}: Responder balance too low, required #{responder_amount}, has #{
+           AccountStateTree.get(accounts, responder_pubkey).balance
+         }"}
 
       ChannelStateTree.has_key?(
         channels,
@@ -200,49 +249,61 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   @spec encode_to_list(ChannelCreateTx.t(), DataTx.t()) :: list()
   def encode_to_list(
-        %ChannelCreateTx{
-          initiator_amount: initiator_amount,
-          responder_amount: responder_amount,
-          locktime: locktime
-        },
-        %DataTx{senders: senders, nonce: nonce, fee: fee, ttl: ttl}
+        %ChannelCreateTx{} = tx,
+        %DataTx{senders: [initiator, responder]} = data_tx
       ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(senders),
-      :binary.encode_unsigned(nonce),
-      :binary.encode_unsigned(initiator_amount),
-      :binary.encode_unsigned(responder_amount),
-      :binary.encode_unsigned(locktime),
-      :binary.encode_unsigned(fee),
-      :binary.encode_unsigned(ttl)
+      Identifier.encode_to_binary(initiator),
+      :binary.encode_unsigned(tx.initiator_amount),
+      Identifier.encode_to_binary(responder),
+      :binary.encode_unsigned(tx.responder_amount),
+      :binary.encode_unsigned(tx.channel_reserve),
+      :binary.encode_unsigned(tx.locktime),
+      :binary.encode_unsigned(data_tx.ttl),
+      :binary.encode_unsigned(data_tx.fee),
+      tx.state_hash,
+      :binary.encode_unsigned(data_tx.nonce)
     ]
   end
 
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
-        encoded_senders,
-        nonce,
+        encoded_initiator,
         initiator_amount,
+        encoded_responder,
         responder_amount,
+        channel_reserve,
         locktime,
+        ttl,
         fee,
-        ttl
+        state_hash,
+        encoded_nonce
       ]) do
-    payload = %ChannelCreateTx{
-      initiator_amount: :binary.decode_unsigned(initiator_amount),
-      responder_amount: :binary.decode_unsigned(responder_amount),
-      locktime: :binary.decode_unsigned(locktime)
-    }
+    nonce = :binary.decode_unsigned(encoded_nonce)
 
-    DataTx.init_binary(
-      ChannelCreateTx,
-      payload,
-      encoded_senders,
-      :binary.decode_unsigned(fee),
-      :binary.decode_unsigned(nonce),
-      :binary.decode_unsigned(ttl)
-    )
+    with {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
+         {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
+      payload = %ChannelCreateTx{
+        initiator_amount: :binary.decode_unsigned(initiator_amount),
+        responder_amount: :binary.decode_unsigned(responder_amount),
+        channel_reserve: :binary.decode_unsigned(channel_reserve),
+        locktime: :binary.decode_unsigned(locktime),
+        state_hash: state_hash
+      }
+
+      DataTx.init_binary(
+        ChannelCreateTx,
+        payload,
+        [encoded_initiator, encoded_responder],
+        :binary.decode_unsigned(fee),
+        nonce,
+        :binary.decode_unsigned(ttl)
+      )
+    else
+      {:error, _} = error ->
+        error
+    end
   end
 
   def decode_from_list(@version, data) do
@@ -251,5 +312,21 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  @doc """
+    Get a list of offchain updates to the offchain chainstate
+  """
+  @spec offchain_updates(SignedTx.t() | DataTx.t()) :: list(ChannelOffChainUpdate.update_types())
+  def offchain_updates(%SignedTx{data: data}) do
+    offchain_updates(data)
+  end
+
+  def offchain_updates(%DataTx{
+        type: ChannelCreateTx,
+        payload: tx,
+        senders: [%Identifier{value: initiator}, %Identifier{value: responder}]
+      }) do
+    [ChannelCreateUpdate.new(tx, initiator, responder)]
   end
 end

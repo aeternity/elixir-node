@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   Module defining the OracleResponse transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Governance.GovernanceConstants
@@ -38,6 +38,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :oracle
+
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,
@@ -50,9 +53,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   end
 
   @spec validate(OracleResponseTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%OracleResponseTx{query_id: query_id}, %DataTx{} = data_tx) do
-    senders = DataTx.senders(data_tx)
-    oracle_id = DataTx.main_sender(data_tx)
+  def validate(%OracleResponseTx{query_id: query_id}, %DataTx{
+        senders: [%Identifier{value: oracle_id} | _] = senders
+      }) do
     tree_query_id = oracle_id <> query_id
 
     cond do
@@ -88,10 +91,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         block_height,
         %OracleResponseTx{query_id: query_id, response: response},
-        %DataTx{} = data_tx,
+        %DataTx{senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
     interaction_objects = OracleStateTree.get_query(oracles, tree_query_id)
     query_fee = interaction_objects.fee
@@ -130,10 +132,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         _block_height,
         %OracleResponseTx{response: response, query_id: query_id},
-        %DataTx{fee: fee} = data_tx,
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
 
     cond do
@@ -173,11 +174,14 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(
-        %DataTx{payload: %OracleResponseTx{query_id: query_id}, fee: fee} = data_tx,
+        %DataTx{
+          payload: %OracleResponseTx{query_id: query_id},
+          senders: [%Identifier{value: sender}],
+          fee: fee
+        },
         oracles_tree,
         _block_height
       ) do
-    sender = DataTx.main_sender(data_tx)
     tree_query_id = sender <> query_id
 
     ttl_fee = fee - GovernanceConstants.oracle_response_base_fee()

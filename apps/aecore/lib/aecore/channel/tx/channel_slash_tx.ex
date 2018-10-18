@@ -3,14 +3,16 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   Module defining the ChannelSlash transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelSlashTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
+  alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Channel.{ChannelStateOnChain, ChannelStateOffChain, ChannelStateTree}
+  alias Aecore.Poi.Poi
+  alias Aeutil.Serialization
 
   require Logger
 
@@ -18,7 +20,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Expected structure for the ChannelSlash Transaction"
   @type payload :: %{
-          state: map()
+          channel_id: binary(),
+          offchain_tx: map(),
+          poi: map()
         }
 
   @typedoc "Reason for the error"
@@ -29,7 +33,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @typedoc "Structure of the ChannelSlash Transaction type"
   @type t :: %ChannelSlashTx{
-          state: ChannelStateOffChain.t()
+          channel_id: binary(),
+          offchain_tx: ChannelOffChainTx.t(),
+          poi: Poi.t()
         }
 
   @doc """
@@ -38,43 +44,56 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   # Parameters
   - state - the state with which the channel is going to be slashed
   """
-  defstruct [:state]
+  defstruct [:channel_id, :offchain_tx, :poi]
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: SpendTx.t()
-  def init(%{state: state}) do
-    %ChannelSlashTx{state: ChannelStateOffChain.init(state)}
+  def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
+    %ChannelSlashTx{
+      channel_id: channel_id,
+      offchain_tx: offchain_tx,
+      poi: poi
+    }
   end
-
-  @spec create(ChannelStateOffChain.t()) :: ChannelSlashTx.t()
-  def create(state) do
-    %ChannelSlashTx{state: state}
-  end
-
-  @spec sequence(ChannelSlashTx.t()) :: non_neg_integer()
-  def sequence(%ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}}), do: sequence
 
   @spec channel_id(ChannelSlashTx.t()) :: binary()
-  def channel_id(%ChannelSlashTx{state: %ChannelStateOffChain{channel_id: id}}), do: id
+  def channel_id(%ChannelSlashTx{channel_id: channel_id}), do: channel_id
 
-  @doc """
-  Validates the transaction without considering state
-  """
-  @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
-        %ChannelSlashTx{state: %ChannelStateOffChain{sequence: sequence}},
-        %DataTx{} = data_tx
+        %ChannelSlashTx{
+          channel_id: internal_channel_id,
+          offchain_tx: %ChannelOffChainTx{
+            channel_id: offchain_tx_channel_id,
+            sequence: sequence,
+            state_hash: state_hash
+          },
+          poi: poi
+        },
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
-      sequence == 0 ->
-        {:error, "#{__MODULE__}: Can't slash with zero state"}
+      sequence <= 0 ->
+        {:error, "#{__MODULE__}: Sequence has to be positive"}
+
+      internal_channel_id !== offchain_tx_channel_id ->
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
+
+      Poi.calculate_root_hash(poi) !== state_hash ->
+        {:error,
+         "#{__MODULE__}: Invalid Poi root_hash, expcted #{inspect(state_hash)}, got #{
+           inspect(Poi.calculate_root_hash(poi))
+         }"}
 
       true ->
         :ok
@@ -97,17 +116,16 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         channels,
         block_height,
         %ChannelSlashTx{
-          state:
-            %ChannelStateOffChain{
-              channel_id: channel_id
-            } = state
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
         },
         _data_tx,
         _context
       ) do
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
-        ChannelStateOnChain.apply_slashing(channel, block_height, state)
+        ChannelStateOnChain.apply_slashing(channel, block_height, offchain_tx, poi)
       end)
 
     {:ok, {accounts, new_channels}}
@@ -128,17 +146,15 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         accounts,
         channels,
         _block_height,
-        %ChannelSlashTx{state: state},
-        %DataTx{fee: fee} = data_tx,
+        %ChannelSlashTx{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi},
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
-    channel = ChannelStateTree.get(channels, state.channel_id)
+    channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative sender balance"}
+        {:error, "#{__MODULE__}: Sender balance has to cover fee"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
@@ -147,7 +163,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         {:error, "#{__MODULE__}: Can't slash active channel"}
 
       true ->
-        ChannelStateOnChain.validate_slashing(channel, state)
+        ChannelStateOnChain.validate_slashing(channel, offchain_tx, poi)
     end
   end
 
@@ -168,39 +184,47 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   end
 
   @spec encode_to_list(ChannelSlashTx.t(), DataTx.t()) :: list()
-  def encode_to_list(%ChannelSlashTx{state: state}, %DataTx{
-        senders: senders,
-        nonce: nonce,
-        fee: fee,
-        ttl: ttl
-      }) do
+  def encode_to_list(%ChannelSlashTx{} = tx, %DataTx{} = datatx) do
+    [sender] = datatx.senders
+
     [
       :binary.encode_unsigned(@version),
-      Identifier.encode_list_to_binary(senders),
-      :binary.encode_unsigned(nonce),
-      ChannelStateOffChain.encode_to_list(state),
-      :binary.encode_unsigned(fee),
-      :binary.encode_unsigned(ttl)
+      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+      Identifier.encode_to_binary(sender),
+      ChannelOffChainTx.rlp_encode(tx.offchain_tx),
+      Serialization.rlp_encode(tx.poi),
+      :binary.encode_unsigned(datatx.ttl),
+      :binary.encode_unsigned(datatx.fee),
+      :binary.encode_unsigned(datatx.nonce)
     ]
   end
 
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
-  def decode_from_list(@version, [encoded_senders, nonce, [state_ver_bin | state], fee, ttl]) do
-    state_ver = :binary.decode_unsigned(state_ver_bin)
-
-    case ChannelStateOffChain.decode_from_list(state_ver, state) do
-      {:ok, state} ->
-        payload = %ChannelSlashTx{state: state}
-
-        DataTx.init_binary(
-          ChannelSlashTx,
-          payload,
-          encoded_senders,
-          :binary.decode_unsigned(fee),
-          :binary.decode_unsigned(nonce),
-          :binary.decode_unsigned(ttl)
-        )
-
+  def decode_from_list(@version, [
+        encoded_channel_id,
+        encoded_sender,
+        payload,
+        rlp_encoded_poi,
+        ttl,
+        fee,
+        nonce
+      ]) do
+    with {:ok, channel_id} <-
+           Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
+         {:ok, offchain_tx} <- ChannelOffChainTx.rlp_decode_signed(payload),
+         {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
+      DataTx.init_binary(
+        ChannelSlashTx,
+        %ChannelSlashTx{
+          channel_id: channel_id,
+          offchain_tx: offchain_tx,
+          poi: poi
+        },
+        [encoded_sender],
+        :binary.decode_unsigned(fee),
+        :binary.decode_unsigned(nonce),
+        :binary.decode_unsigned(ttl)
+      )
+    else
       {:error, _} = error ->
         error
     end

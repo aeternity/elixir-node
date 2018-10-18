@@ -91,7 +91,7 @@ defmodule Aecore.Contract.Call do
         ttl
       )
 
-    {:ok, tx} = SignedTx.sign_tx(tx_data, pubkey, privkey)
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
 
     Pool.add_transaction(tx)
   end

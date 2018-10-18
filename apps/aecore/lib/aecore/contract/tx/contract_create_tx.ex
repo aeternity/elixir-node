@@ -4,7 +4,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   and functions associated with those transactions.
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
   alias Aecore.Governance.GovernanceConstants
@@ -72,6 +72,9 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @spec get_chain_state_name() :: :contracts
   def get_chain_state_name, do: :contracts
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: t() | {:error, reason()}
   def init(%{
         code: code,
@@ -97,13 +100,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
     end
   end
 
-  @spec validate(t(), DataTx.t()) :: :ok | {:error, reason()}
+  @spec validate(ContractCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %ContractCreateTx{},
-        data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     if length(senders) == 1 do
       :ok
     else
@@ -133,11 +134,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           call_data: call_data
         },
         %DataTx{
-          nonce: nonce
-        } = data_tx,
+          nonce: nonce,
+          senders: [%Identifier{value: owner}]
+        },
         _context
       ) do
-    owner = DataTx.main_sender(data_tx)
     contract = Contract.new(owner, nonce, vm_version, code, deposit)
 
     updated_accounts_state =
@@ -231,10 +232,9 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           gas: gas,
           gas_price: gas_price
         },
-        %DataTx{fee: fee} = data_tx,
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
     total_deduction = fee + amount + deposit + gas * gas_price
 
     if AccountStateTree.get(accounts, sender).balance - total_deduction < 0 do

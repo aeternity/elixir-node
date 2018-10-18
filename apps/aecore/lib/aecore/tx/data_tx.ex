@@ -63,6 +63,8 @@ defmodule Aecore.Tx.DataTx do
           ttl: non_neg_integer()
         }
 
+  @nonce_size 256
+
   @doc """
   Definition of the DataTx structure
 
@@ -97,6 +99,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Channel.Tx.ChannelSettleTx
     ]
   end
+
+  def nonce_size, do: @nonce_size
 
   @spec init(
           tx_types(),
@@ -159,16 +163,20 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec senders(DataTx.t()) :: list(binary())
-  def senders(%DataTx{senders: senders}) do
-    for sender <- senders do
-      sender.value
+  @spec senders(DataTx.t(), Chainstate.t()) :: list(binary())
+  def senders(%DataTx{senders: senders, type: type, payload: payload} = tx, chainstate) do
+    if chainstate_senders?(tx) do
+      type.senders_from_chainstate(payload, chainstate)
+    else
+      for sender <- senders do
+        sender.value
+      end
     end
   end
 
-  @spec main_sender(DataTx.t()) :: binary() | nil
-  def main_sender(tx) do
-    List.first(senders(tx))
+  @spec main_sender(DataTx.t(), Chainstate.t()) :: binary() | nil
+  def main_sender(tx, chainstate) do
+    List.first(senders(tx, chainstate))
   end
 
   @spec ttl(DataTx.t()) :: non_neg_integer()
@@ -179,6 +187,11 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
+  @spec chainstate_senders?(DataTx.t()) :: boolean()
+  def chainstate_senders?(%DataTx{type: type}) do
+    type.chainstate_senders?()
+  end
+
   @doc """
   Validates the transaction without considering state
   """
@@ -186,13 +199,13 @@ defmodule Aecore.Tx.DataTx do
   def validate(%DataTx{fee: fee, type: type, senders: senders} = tx) do
     cond do
       !Enum.member?(valid_types(), type) ->
-        {:error, "#{__MODULE__}: Invalid tx type=#{type}"}
+        {:error, "#{__MODULE__}: Invalid tx type: #{type}"}
 
       fee < 0 ->
         {:error, "#{__MODULE__}: Negative fee"}
 
-      !senders_pubkeys_size_valid?(senders) ->
-        {:error, "#{__MODULE__}: Invalid senders pubkey size"}
+      !senders_valid?(senders, type.sender_type()) ->
+        {:error, "#{__MODULE__}: One or more sender identifiers invalid"}
 
       DataTx.ttl(tx) < 0 ->
         {:error,
@@ -220,7 +233,7 @@ defmodule Aecore.Tx.DataTx do
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
 
     nonce_accounts_state =
-      AccountStateTree.update(accounts_state, main_sender(tx), fn acc ->
+      AccountStateTree.update(accounts_state, main_sender(tx, chainstate), fn acc ->
         Account.apply_nonce!(acc, tx.nonce)
       end)
 
@@ -290,7 +303,7 @@ defmodule Aecore.Tx.DataTx do
            block_height
          }"}
 
-      Account.nonce(chainstate.accounts, main_sender(tx)) >= tx.nonce ->
+      Account.nonce(chainstate.accounts, main_sender(tx, chainstate)) >= tx.nonce ->
         {:error, "#{__MODULE__}: Transaction nonce too small #{tx.nonce}"}
 
       !type.is_minimum_fee_met?(tx, tx_type_state, block_height) ->
@@ -313,16 +326,15 @@ defmodule Aecore.Tx.DataTx do
     }
 
     if length(tx.senders) == 1 do
+      [%Identifier{value: sender}] = tx.senders
+
       Map.put(
         map_without_senders,
         "sender",
-        Serialization.serialize_value(main_sender(tx), :sender)
+        Serialization.serialize_value(sender, :sender)
       )
     else
-      new_senders =
-        for sender <- tx.senders do
-          sender.value
-        end
+      new_senders = for %Identifier{value: sender} <- tx.senders, do: sender
 
       Map.put(
         map_without_senders,
@@ -361,9 +373,12 @@ defmodule Aecore.Tx.DataTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def standard_deduct_fee(accounts, block_height, data_tx, fee) do
-    sender = DataTx.main_sender(data_tx)
-
+  def standard_deduct_fee(
+        accounts,
+        block_height,
+        %DataTx{senders: [%Identifier{value: sender} | _]},
+        fee
+      ) do
     AccountStateTree.update(accounts, sender, fn acc ->
       Account.apply_transfer!(acc, block_height, fee * -1)
     end)
@@ -373,15 +388,15 @@ defmodule Aecore.Tx.DataTx do
     type.validate(payload, data_tx)
   end
 
-  defp senders_pubkeys_size_valid?([sender | rest]) do
-    if Keys.key_size_valid?(sender) do
-      senders_pubkeys_size_valid?(rest)
+  defp senders_valid?([sender | rest], sender_type) do
+    if Keys.key_size_valid?(sender) && Identifier.valid?(sender, sender_type) do
+      senders_valid?(rest, sender_type)
     else
       false
     end
   end
 
-  defp senders_pubkeys_size_valid?([]) do
+  defp senders_valid?([], _sender_type) do
     true
   end
 

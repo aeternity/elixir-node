@@ -2,22 +2,16 @@ defmodule Aecore.Contract.CallStateTree do
   @moduledoc """
   Top level call state tree.
   """
+  use Aecore.Util.StateTrees, [:calls, Aecore.Contract.Call]
+
   alias Aecore.Chain.Chainstate
   alias Aecore.Contract.Call
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie
 
-  @typedoc "Hash of the tree"
-  @type hash :: binary()
-
   @typedoc "Calls tree"
   @type calls_state() :: Trie.t()
-
-  @spec init_empty() :: calls_state()
-  def init_empty do
-    PatriciaMerkleTree.new(:calls)
-  end
 
   # A new block always starts with an empty calls tree.
   # Calls and return values are only kept for one block.
@@ -30,31 +24,36 @@ defmodule Aecore.Contract.CallStateTree do
   @spec insert_call(calls_state(), Call.t()) :: calls_state()
   def insert_call(call_tree, %Call{contract_address: contract_address} = call) do
     call_id = Call.id(call)
-    call_tree_id = construct_call_tree_id(contract_address.value, call_id)
+    call_tree_id = construct_call_tree_id(contract_address, call_id)
 
     serialized = Serialization.rlp_encode(call)
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)
   end
 
   @spec get_call(calls_state(), binary()) :: calls_state()
-  def get_call(calls_tree, key) do
-    case PatriciaMerkleTree.lookup(calls_tree, key) do
-      {:ok, serialized} ->
-        {:ok, deserialized_call} = Serialization.rlp_decode_anything(serialized)
-        deserialized_call
+def get_call(calls_tree, key) do
+  case PatriciaMerkleTree.lookup(calls_tree, key) do
+    {:ok, serialized} ->
+      {:ok, deserialized_call} = Serialization.rlp_decode_anything(serialized)
+      deserialized_call
 
-      _ ->
-        :none
-    end
+    _ ->
+      :none
+  end
+end
+
+  @spec construct_call_tree_id(Identifier.t(), binary()) :: binary()
+  def construct_call_tree_id(contract_id, call_id) do
+    <<contract_id.value::binary, call_id::binary>>
   end
 
-  @spec root_hash(calls_state()) :: hash()
-  def root_hash(calls_tree) do
-    PatriciaMerkleTree.root_hash(calls_tree)
+  @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t() | {:error, String.t()}
+  def process_struct(%Call{} = deserialized_value, _key, _tree) do
+    deserialized_value
   end
 
-  @spec construct_call_tree_id(binary(), binary()) :: binary()
-  def construct_call_tree_id(contract_address, call_id) do
-    <<contract_address::binary, call_id::binary>>
+  def process_struct(deserialized_value, _key, _tree) do
+    {:error,
+     "#{__MODULE__}: Invalid data type: #{deserialized_value.__struct__} but expected %Call{}"}
   end
 end

@@ -3,7 +3,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   Module defining the OracleQuery transaction
   """
 
-  @behaviour Aecore.Tx.Transaction
+  use Aecore.Tx.Transaction
 
   alias __MODULE__
 
@@ -56,6 +56,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: OracleQueryTx.t()
   def init(%{
         oracle_address: %Identifier{} = identified_oracle_address,
@@ -101,10 +104,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: response_ttl,
           oracle_address: %Identifier{value: address} = oracle_address
         },
-        %DataTx{} = data_tx
+        %DataTx{senders: senders}
       ) do
-    senders = DataTx.senders(data_tx)
-
     cond do
       !Oracle.ttl_is_valid?(query_ttl) ->
         {:error, "#{__MODULE__}: Invalid query ttl"}
@@ -115,7 +116,7 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
       !match?(%{type: :relative}, response_ttl) ->
         {:error, "#{__MODULE__}: Invalid ttl type"}
 
-      !validate_identifier(oracle_address) ->
+      !Identifier.valid?(oracle_address, :oracle) ->
         {:error, "#{__MODULE__}: Invalid oracle identifier: #{inspect(oracle_address)}"}
 
       !Keys.key_size_valid?(address) ->
@@ -152,11 +153,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: %{ttl: response_ttl},
           query_fee: query_fee
         },
-        %DataTx{nonce: nonce} = data_tx,
+        %DataTx{nonce: nonce, senders: [%Identifier{value: sender}]},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     updated_accounts_state =
       accounts
       |> AccountStateTree.update(sender, fn acc ->
@@ -201,11 +200,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: query_data,
           query_fee: query_fee
         } = tx,
-        %DataTx{fee: fee} = data_tx,
+        %DataTx{senders: [%Identifier{value: sender}], fee: fee},
         _context
       ) do
-    sender = DataTx.main_sender(data_tx)
-
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - query_fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}
@@ -287,11 +284,6 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   def base58c_decode(_) do
     {:error, "#{__MODULE__}: Wrong data"}
-  end
-
-  @spec validate_identifier(Identifier.t()) :: boolean()
-  defp validate_identifier(%Identifier{value: value} = id) do
-    Identifier.create_identity(value, :oracle) == id
   end
 
   @spec encode_to_list(OracleQueryTx.t(), DataTx.t()) :: list() | {:error, reason()}

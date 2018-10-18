@@ -3,7 +3,22 @@ defmodule Aecore.Tx.Transaction do
   Behaviour that states all the necessary functions that every custom transaction,
   child tx of DataTx should implement to work correctly on the blockchain
   """
+
+  defmacro __using__(_) do
+    quote location: :keep do
+      @behaviour Aecore.Tx.Transaction
+
+      @spec chainstate_senders?() :: boolean()
+      def chainstate_senders?() do
+        false
+      end
+
+      defoverridable chainstate_senders?: 0
+    end
+  end
+
   alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Identifier
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -40,6 +55,8 @@ defmodule Aecore.Tx.Transaction do
 
   @doc "The name for state chain entry to be passed for processing"
   @callback get_chain_state_name() :: Chainstate.chain_state_types()
+
+  @callback sender_type() :: Identifier.type()
 
   @callback init(payload()) :: tx_types()
 

@@ -18,8 +18,8 @@ defmodule Aecore.Account.Account do
 
   @version 1
 
-  @typedoc "Reason of the error"
-  @type reason :: String.t()
+  @typedoc "Error with reason"
+  @type error :: {:error, String.t()}
 
   @typedoc "Structure of the Account Transaction type"
   @type t :: %Account{
@@ -86,7 +86,7 @@ defmodule Aecore.Account.Account do
   Builds a SpendTx where the miners public key is used as a sender
   """
   @spec spend(Keys.pubkey(), non_neg_integer(), non_neg_integer(), binary(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, reason()}
+          {:ok, SignedTx.t()} | error()
   def spend(receiver, amount, fee, payload, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
     nonce = Account.nonce(Chain.chain_state().accounts, sender) + 1
@@ -105,7 +105,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           binary(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def spend(sender, sender_priv_key, receiver, amount, fee, nonce, binary_payload, ttl \\ 0) do
     payload = %{
       receiver: receiver,
@@ -121,7 +121,7 @@ defmodule Aecore.Account.Account do
   Builds a NamePreClaimTx where the miners public key is used as a sender
   """
   @spec pre_claim(String.t(), integer(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, reason()}
+          {:ok, SignedTx.t()} | error()
   def pre_claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
 
@@ -140,7 +140,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def pre_claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
     case NameCommitment.commitment_hash(name, name_salt) do
       {:ok, commitment} ->
@@ -156,7 +156,7 @@ defmodule Aecore.Account.Account do
   Builds a NameClaimTx where the miners public key is used as a sender
   """
   @spec claim(String.t(), integer(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, reason()}
+          {:ok, SignedTx.t()} | error()
   def claim(name, name_salt, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
 
@@ -175,7 +175,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def claim(sender, sender_priv_key, name, name_salt, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, _} ->
@@ -196,7 +196,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def name_update(name, pointers, fee, expire_by, client_ttl, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
 
@@ -216,7 +216,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def name_update(
         sender,
         sender_priv_key,
@@ -248,7 +248,7 @@ defmodule Aecore.Account.Account do
   Builds a NameTransferTx where the miners public key is used as a sender
   """
   @spec name_transfer(String.t(), binary(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, reason()}
+          {:ok, SignedTx.t()} | error()
   def name_transfer(name, target, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
 
@@ -267,7 +267,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def name_transfer(sender, sender_priv_key, name, target, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
@@ -283,7 +283,7 @@ defmodule Aecore.Account.Account do
   Builds a NameTransferTx where the miners public key is used as a sender
   """
   @spec name_revoke(String.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, SignedTx.t()} | {:error, reason()}
+          {:ok, SignedTx.t()} | error()
   def name_revoke(name, fee, ttl \\ 0) do
     {sender, sender_priv_key} = Keys.keypair(:sign)
 
@@ -301,7 +301,7 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def name_revoke(sender, sender_priv_key, name, fee, nonce, ttl \\ 0) do
     case NameUtil.normalized_namehash(name) do
       {:ok, namehash} ->
@@ -321,10 +321,10 @@ defmodule Aecore.Account.Account do
           non_neg_integer(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: {:ok, SignedTx.t()} | {:error, reason()}
+        ) :: {:ok, SignedTx.t()} | error()
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
-    {:ok, signed_tx} = SignedTx.sign_tx(tx, sender, sender_prv)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx, sender_prv)
     Pool.add_transaction(signed_tx)
     signed_tx
   end
@@ -337,7 +337,12 @@ defmodule Aecore.Account.Account do
     new_balance = balance + amount
 
     if new_balance < 0 do
-      throw({:error, "#{__MODULE__}: Negative balance"})
+      throw(
+        {:error,
+         "#{__MODULE__}: Insufficient funds. We have #{account_state.balance} and we tried to transfer #{
+           amount
+         }"}
+      )
     end
 
     %Account{account_state | balance: new_balance}
@@ -346,7 +351,12 @@ defmodule Aecore.Account.Account do
   @spec apply_nonce!(Account.t(), integer()) :: Account.t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
-      throw({:error, "#{__MODULE__}: Invalid nonce"})
+      throw(
+        {:error,
+         "#{__MODULE__}: Nonce is too small - currently we have #{current_nonce} and we got #{
+           new_nonce
+         }"}
+      )
     end
 
     %Account{account_state | nonce: new_nonce}
@@ -361,7 +371,7 @@ defmodule Aecore.Account.Account do
     end
   end
 
-  @spec base58c_decode(String.t()) :: Keys.pubkey() | {:error, reason()}
+  @spec base58c_decode(String.t()) :: Keys.pubkey() | error()
   def base58c_decode(<<"ak$", payload::binary>>) do
     Bits.decode58(payload)
   end
@@ -379,7 +389,7 @@ defmodule Aecore.Account.Account do
     ]
   end
 
-  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, Account.t()} | {:error, reason()}
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, Account.t()} | error()
   def decode_from_list(@version, [nonce, balance]) do
     {:ok,
      %Account{
