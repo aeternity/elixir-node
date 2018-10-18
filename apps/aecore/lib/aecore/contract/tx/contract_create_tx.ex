@@ -159,7 +159,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       gas: gas,
       gas_price: gas_price,
       call_data: call_data,
-      amount: amount,
+      amount: 0, # Initial call takes no amount
       call_stack: [],
       code: contract.code,
       call: call,
