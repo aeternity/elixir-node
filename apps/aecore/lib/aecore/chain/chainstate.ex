@@ -68,10 +68,7 @@ defmodule Aecore.Chain.Chainstate do
           Keys.pubkey()
         ) :: {:ok, Chainstate.t()} | {:error, String.t()}
   def calculate_and_validate_chain_state(txs, chainstate, block_height, miner) do
-    chainstate_with_coinbase =
-      calculate_chain_state_coinbase(txs, chainstate, block_height, miner)
-
-    chainstate_with_pruned_calls = Call.prune_calls(chainstate_with_coinbase, block_height)
+    chainstate_with_pruned_calls = Call.prune_calls(chainstate, block_height)
 
     updated_chainstate =
       Enum.reduce_while(txs, chainstate_with_pruned_calls, fn tx, chainstate_acc ->
@@ -84,7 +81,10 @@ defmodule Aecore.Chain.Chainstate do
         end
       end)
 
-    case updated_chainstate do
+    final_chainstate =
+      calculate_miner_reward_chain_state(txs, updated_chainstate, block_height, miner)
+
+    case final_chainstate do
       %Chainstate{} = new_chainstate ->
         {:ok, Oracle.remove_expired(new_chainstate, block_height)}
 
@@ -105,7 +105,7 @@ defmodule Aecore.Chain.Chainstate do
     }
   end
 
-  defp calculate_chain_state_coinbase(txs, chainstate, block_height, miner) do
+  defp calculate_miner_reward_chain_state(txs, chainstate, block_height, miner) do
     case miner do
       @genesis_miner ->
         chainstate
@@ -116,7 +116,8 @@ defmodule Aecore.Chain.Chainstate do
             Account.apply_transfer!(
               acc,
               block_height,
-              GovernanceConstants.coinbase_transaction_amount() + Miner.calculate_total_fees(txs)
+              GovernanceConstants.coinbase_transaction_amount() +
+                Miner.calculate_miner_reward(txs, chainstate)
             )
           end)
 

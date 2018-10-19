@@ -42,9 +42,23 @@ defmodule Aecore.Contract.CallStateTree do
     end
   end
 
+  @spec get_call_gas_used(calls_state(), Keys.pubkey(), Keys.pubkey(), non_neg_integer()) ::
+          non_neg_integer
+  def get_call_gas_used(call_state_tree, contract_id, sender_address, sender_nonce) do
+    call_id = Call.id(sender_address, sender_nonce, contract_id)
+    call_tree_id = construct_call_tree_id(contract_id, call_id)
+
+    call = get_call(call_state_tree, call_tree_id)
+    call.gas_used
+  end
+
   @spec construct_call_tree_id(Identifier.t(), binary()) :: binary()
+  def construct_call_tree_id(%Identifier{value: contract_id}, call_id) do
+    construct_call_tree_id(contract_id, call_id)
+  end
+
   def construct_call_tree_id(contract_id, call_id) do
-    <<contract_id.value::binary, call_id::binary>>
+    <<contract_id::binary, call_id::binary>>
   end
 
   @spec process_struct(Call.t(), binary(), calls_state()) :: Call.t() | {:error, String.t()}
