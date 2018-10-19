@@ -9,20 +9,13 @@ defmodule MultiNodeSyncTest do
   alias Aecore.Oracle.Tx.{OracleExtendTx, OracleRegistrationTx, OracleResponseTx, OracleQueryTx}
   alias Aecore.Account.Tx.SpendTx
 
-  setup do
+  setup_all do
     FrameworkSup.start_link()
-    TestFramework.delete_all_nodes()
-    port1 = Utils.find_port(1)
-    TestFramework.new_node(:node1, port1)
+    :ok
+  end
 
-    port2 = Utils.find_port(port1 + 1)
-    TestFramework.new_node(:node2, port2)
-
-    port3 = Utils.find_port(port2 + 1)
-    TestFramework.new_node(:node3, port3)
-
-    port4 = Utils.find_port(port3 + 1)
-    TestFramework.new_node(:node4, port4)
+  setup do
+    :ok = TestFramework.new_nodes([{:node1, 5}, {:node2, 6}, {:node3, 7}, {:node4, 8}])
 
     Utils.sync_nodes(:node1, :node2)
     Utils.sync_nodes(:node2, :node3)
@@ -52,6 +45,7 @@ defmodule MultiNodeSyncTest do
            ) == true
 
     on_exit(fn ->
+      TestFramework.delete_all_nodes()
       :ok
     end)
   end
@@ -78,8 +72,6 @@ defmodule MultiNodeSyncTest do
 
     # Check if the top Header hash is equal among the nodes
     assert same_top_header_hash() == true
-
-    TestFramework.delete_all_nodes()
   end
 
   @tag :sync_test_oracles
@@ -143,8 +135,6 @@ defmodule MultiNodeSyncTest do
 
     # Check if the top Header hash is equal among the nodes
     assert same_top_header_hash() == true
-
-    TestFramework.delete_all_nodes()
   end
 
   @tag :sync_test_naming
@@ -153,7 +143,7 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check that top block is equal among the nodes
-    assert same_top_block() == true
+    assert same_top_header_hash() == true
 
     # Create a Naming PreClaim transaction and add it to the pool
     TestFramework.post(Utils.name_preclaim_cmd(), :name_preclaim_cmd, :node2)
@@ -164,7 +154,7 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check that top block is equal among the nodes
-    assert same_top_block() == true
+    assert same_top_header_hash() == true
 
     # Check that NameClaim transaction is added to the pool
     TestFramework.post(Utils.name_claim_cmd(), :name_claim_cmd, :node2)
@@ -174,7 +164,7 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check that top block is equal among the nodes
-    assert same_top_block() == true
+    assert same_top_header_hash() == true
 
     # Create a Naming Update transaction and add it to the pool
     TestFramework.post(Utils.name_update_cmd(), :name_update_cmd, :node2)
@@ -185,7 +175,7 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check that top block is equal among the nodes
-    assert same_top_block() == true
+    assert same_top_header_hash() == true
 
     {node2_pub, node2_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node2)
 
@@ -198,7 +188,7 @@ defmodule MultiNodeSyncTest do
     Utils.mine_blocks(1, :node2)
 
     # Check that top block is equal among the nodes
-    assert same_top_block() == true
+    assert same_top_header_hash() == true
 
     # Create a Naming Revoke transaction and add it to the pool
     TestFramework.post(Utils.name_revoke_cmd(node2_pub, node2_priv), :name_revoke_cmd, :node2)
@@ -210,8 +200,6 @@ defmodule MultiNodeSyncTest do
 
     # Check if the top Header hash is equal among the nodes
     assert same_top_header_hash() == true
-
-    TestFramework.delete_all_nodes()
   end
 
   @tag :sync_test_accounts
@@ -339,37 +327,16 @@ defmodule MultiNodeSyncTest do
              end,
              5
            ) == true
-
-    TestFramework.delete_all_nodes()
-  end
-
-  defp same_top_block do
-    TestFramework.verify_with_delay(
-      fn ->
-        [
-          TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node1),
-          TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
-        ] ==
-          [
-            TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node3),
-            TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node4)
-          ]
-      end,
-      5
-    )
   end
 
   defp same_top_header_hash do
     TestFramework.verify_with_delay(
       fn ->
-        [
-          TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1),
-          TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2)
-        ] ==
-          [
-            TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3),
-            TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
-          ]
+        hash1 = TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node1)
+
+        hash1 == TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node2) &&
+          hash1 == TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node3) &&
+          hash1 == TestFramework.get(Utils.top_header_hash_cmd(), :top_header_hash_cmd, :node4)
       end,
       5
     )
@@ -378,8 +345,7 @@ defmodule MultiNodeSyncTest do
   defp transaction_added_to_pool(tx_type) do
     TestFramework.verify_with_delay(
       fn ->
-        Utils.get_tx_from_pool(:node1) == tx_type && Utils.get_tx_from_pool(:node2) == tx_type &&
-          Utils.get_tx_from_pool(:node3) == tx_type && Utils.get_tx_from_pool(:node4) == tx_type
+        Utils.get_tx_from_pool(:node2) == tx_type
       end,
       5
     )

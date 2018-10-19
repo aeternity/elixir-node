@@ -63,7 +63,7 @@ iex-node:
 	@PERSISTENCE_PATH=apps/aecore/priv/rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/peerkeys_400$(NODE_NUMBER)/ SIGN_KEYS_PATH=apps/aecore/priv/signkeys_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
 
 iex-test-node:
-	@PERSISTENCE_PATH=apps/aecore/priv/test_rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/test_peerkeys_400$(NODE_NUMBER)/ SIGN_KEYS_PATH=apps/aecore/priv/test_signkeys_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
+	@MIX_ENV=test PERSISTENCE_PATH=apps/aecore/priv/test_rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/test_peerkeys_400$(NODE_NUMBER)/ SIGN_KEYS_PATH=apps/aecore/priv/test_signkeys_400$(NODE_NUMBER)/ PORT=400$(NODE_NUMBER) SYNC_PORT=300$(NODE_NUMBER) iex -S mix phx.server
 
 #
 # utility
