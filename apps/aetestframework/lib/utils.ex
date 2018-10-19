@@ -18,7 +18,8 @@ defmodule Aetestframework.Utils do
   end
 
   def has_type_in_pool?(node, tx_type) do
-    TestFramework.get(pool_cmd(), :txs_pool_cmd, node)
+    pool_cmd()
+    |> TestFramework.get(:txs_pool_cmd, node)
     |> Map.values()
     |> Enum.any?(fn tx -> tx.data.type == tx_type end)
   end

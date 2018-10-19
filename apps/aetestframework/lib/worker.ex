@@ -123,12 +123,13 @@ defmodule Aetestframework.Worker do
         {:reply, return, new_state}
 
       new_state ->
-        Enum.reduce(nodes, :ok, fn {node_name, _iex_num}, :ok ->
-          expected_result = fn _ -> :node_started end
-          %{port_id: port_id} = Map.get(new_state, node_name)
-          :node_started = receive_result(port_id, "Interactive Elixir", expected_result)
-          :ok
-        end)
+        :ok =
+          Enum.reduce(nodes, :ok, fn {node_name, _iex_num}, :ok ->
+            expected_result = fn _ -> :node_started end
+            %{port_id: port_id} = Map.get(new_state, node_name)
+            :node_started = receive_result(port_id, "Interactive Elixir", expected_result)
+            :ok
+          end)
 
         {:reply, :ok, new_state}
     end
