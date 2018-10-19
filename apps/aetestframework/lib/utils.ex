@@ -17,11 +17,10 @@ defmodule Aetestframework.Utils do
     end)
   end
 
-  def get_tx_from_pool(node) do
-    case TestFramework.get(pool_cmd(), :txs_pool_cmd, node) do
-      txs when txs == %{} -> false
-      txs -> hd(Map.values(txs)).data.type
-    end
+  def has_type_in_pool?(node, tx_type) do
+    TestFramework.get(pool_cmd(), :txs_pool_cmd, node)
+    |> Map.values()
+    |> Enum.any?(fn tx -> tx.data.type == tx_type end)
   end
 
   def connect_to_peer_cmd(sync_port, pubkey) do

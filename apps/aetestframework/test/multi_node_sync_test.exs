@@ -58,15 +58,7 @@ defmodule MultiNodeSyncTest do
     TestFramework.post(Utils.simulate_spend_tx_cmd(), :spend_tx_cmd, :node1)
 
     # Check that Spend transaction is added to the pool
-    assert TestFramework.verify_with_delay(
-             fn ->
-               Utils.get_tx_from_pool(:node1) == SpendTx &&
-                 Utils.get_tx_from_pool(:node2) == SpendTx &&
-                 Utils.get_tx_from_pool(:node3) == SpendTx &&
-                 Utils.get_tx_from_pool(:node4) == SpendTx
-             end,
-             5
-           ) == true
+    assert transaction_added_to_pool(SpendTx)
 
     Utils.mine_blocks(1, :node1)
 
@@ -78,6 +70,7 @@ defmodule MultiNodeSyncTest do
   @tag timeout: 100_000
   test "oracles test" do
     Utils.mine_blocks(1, :node2)
+    assert same_top_header_hash() == true
 
     # Create an Oracle Register transaction and add it to the pool
     TestFramework.post(Utils.oracle_register_cmd(), :oracle_register_cmd, :node2)
@@ -86,6 +79,7 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(OracleRegistrationTx) == true
 
     Utils.mine_blocks(1, :node2)
+    assert same_top_header_hash() == true
 
     # Create an Oracle Query transaction and add it to the pool
     query_ttl = "%{ttl: 10, type: :relative}"
@@ -96,6 +90,7 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(OracleQueryTx) == true
 
     Utils.mine_blocks(1, :node2)
+    assert same_top_header_hash() == true
 
     %Aecore.Chain.Block{txs: txs} =
       TestFramework.get(Utils.top_block_cmd(), :top_block_cmd, :node2)
@@ -124,6 +119,7 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(OracleResponseTx) == true
 
     Utils.mine_blocks(1, :node2)
+    assert same_top_header_hash() == true
 
     # Create OracleExtend transaction and add it to the pool
     TestFramework.post(Utils.oracle_extend_cmd(), :oracle_extend_cmd, :node2)
@@ -132,8 +128,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(OracleExtendTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check if the top Header hash is equal among the nodes
     assert same_top_header_hash() == true
   end
 
@@ -141,8 +135,6 @@ defmodule MultiNodeSyncTest do
   @tag timeout: 100_000
   test "namings test" do
     Utils.mine_blocks(1, :node2)
-
-    # Check that top block is equal among the nodes
     assert same_top_header_hash() == true
 
     # Create a Naming PreClaim transaction and add it to the pool
@@ -152,8 +144,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(NamePreClaimTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check that top block is equal among the nodes
     assert same_top_header_hash() == true
 
     # Check that NameClaim transaction is added to the pool
@@ -162,8 +152,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(NameClaimTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check that top block is equal among the nodes
     assert same_top_header_hash() == true
 
     # Create a Naming Update transaction and add it to the pool
@@ -173,8 +161,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(NameUpdateTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check that top block is equal among the nodes
     assert same_top_header_hash() == true
 
     {node2_pub, node2_priv} = TestFramework.get(Utils.sign_keys_cmd(), :keypair_cmd, :node2)
@@ -186,8 +172,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(NameTransferTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check that top block is equal among the nodes
     assert same_top_header_hash() == true
 
     # Create a Naming Revoke transaction and add it to the pool
@@ -197,8 +181,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(NameRevokeTx) == true
 
     Utils.mine_blocks(1, :node2)
-
-    # Check if the top Header hash is equal among the nodes
     assert same_top_header_hash() == true
   end
 
@@ -212,7 +194,6 @@ defmodule MultiNodeSyncTest do
 
     # Mine 2 blocks, so that node1 has enough tokens to spend
     Utils.mine_blocks(2, :node1)
-
     assert same_top_header_hash() == true
 
     assert TestFramework.verify_with_delay(
@@ -247,7 +228,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(SpendTx) == true
 
     Utils.mine_blocks(1, :node1)
-
     assert same_top_header_hash() == true
 
     assert TestFramework.verify_with_delay(
@@ -279,7 +259,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(SpendTx) == true
 
     Utils.mine_blocks(1, :node3)
-
     assert same_top_header_hash() == true
 
     assert TestFramework.verify_with_delay(
@@ -311,7 +290,6 @@ defmodule MultiNodeSyncTest do
     assert transaction_added_to_pool(SpendTx) == true
 
     Utils.mine_blocks(1, :node2)
-
     assert same_top_header_hash() == true
 
     # Check that all nodes have correct amount
@@ -345,7 +323,7 @@ defmodule MultiNodeSyncTest do
   defp transaction_added_to_pool(tx_type) do
     TestFramework.verify_with_delay(
       fn ->
-        Utils.get_tx_from_pool(:node2) == tx_type
+        Utils.has_type_in_pool?(:node2, tx_type)
       end,
       5
     )
