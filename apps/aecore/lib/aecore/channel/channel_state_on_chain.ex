@@ -297,7 +297,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def apply_slashing(
         %ChannelStateOnChain{} = channel,
         block_height,
-        %ChannelOffChainTx{state_hash: state_hash} = offchain_tx,
+        %ChannelOffChainTx{state_hash: state_hash, sequence: sequence},
         %Poi{} = poi
       ) do
     {:ok, initiator_amount} = Poi.account_balance(poi, channel.initiator_pubkey)
@@ -306,7 +306,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,
-        slash_sequence: offchain_tx.sequence,
+        slash_sequence: sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount,
         state_hash: state_hash
