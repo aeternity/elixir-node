@@ -15,7 +15,7 @@ defmodule MultiNodeSyncTest do
   end
 
   setup do
-    :ok = TestFramework.new_nodes([{:node1, 5}, {:node2, 6}, {:node3, 7}, {:node4, 8}])
+    :ok = TestFramework.new_nodes([{:node1, 2}, {:node2, 3}, {:node3, 4}, {:node4, 5}])
 
     Utils.sync_nodes(:node1, :node2)
     Utils.sync_nodes(:node2, :node3)
