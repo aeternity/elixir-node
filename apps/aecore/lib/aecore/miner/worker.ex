@@ -257,7 +257,7 @@ defmodule Aecore.Miner.Worker do
                               senders: senders
                             }
                           },
-                          acc ->
+                          accumulated_miner_reward ->
       main_sender = List.first(senders)
 
       gas_used =
@@ -265,26 +265,32 @@ defmodule Aecore.Miner.Worker do
           %ContractCreateTx{gas_price: gas_price} ->
             contract_id = Contract.create_contract_id(main_sender.value, nonce)
 
-            CallStateTree.get_call_gas_used(
-              chainstate.calls,
-              contract_id,
-              main_sender.value,
-              nonce
-            ) * gas_price
+            call_gas_used =
+              CallStateTree.get_call_gas_used(
+                chainstate.calls,
+                contract_id,
+                main_sender.value,
+                nonce
+              )
+
+            call_gas_used * gas_price
 
           %ContractCallTx{contract: %Identifier{value: contract_id}, gas_price: gas_price} ->
-            CallStateTree.get_call_gas_used(
-              chainstate.calls,
-              contract_id,
-              main_sender.value,
-              nonce
-            ) * gas_price
+            call_gas_used =
+              CallStateTree.get_call_gas_used(
+                chainstate.calls,
+                contract_id,
+                main_sender.value,
+                nonce
+              )
+
+            call_gas_used * gas_price
 
           _ ->
             0
         end
 
-      acc + fee + gas_used
+      accumulated_miner_reward + fee + gas_used
     end)
   end
 
