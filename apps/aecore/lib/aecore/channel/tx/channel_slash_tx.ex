@@ -77,6 +77,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
