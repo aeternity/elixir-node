@@ -10,7 +10,7 @@ defmodule Aetestframework.Worker do
   use ExConstructor
 
   @default_timeout 20_000
-  @new_node_timeout 20_000
+  @new_node_timeout 40_000
 
   # Client API
 
@@ -25,12 +25,16 @@ defmodule Aetestframework.Worker do
   """
   @spec new_node(atom(), non_neg_integer()) :: :ok
   def new_node(node_name, iex_num) do
-    GenServer.call(__MODULE__, {:new_node, node_name, iex_num}, @new_node_timeout)
+    GenServer.call(__MODULE__, {:new_nodes, [{node_name, iex_num}]}, @new_node_timeout)
+  end
+
+  def new_nodes(nodes) do
+    GenServer.call(__MODULE__, {:new_nodes, nodes}, @new_node_timeout)
   end
 
   @doc """
   Post a command to a specific node.
-  Used to send command that will return some response and we need to
+  Used to send command that will return some response and we n(eed to
   handle it. Like getting the top header hash
   """
   @spec get(String.t(), atom(), atom(), non_neg_integer()) :: any()
@@ -60,16 +64,20 @@ defmodule Aetestframework.Worker do
   Call a GenServer API function with specific delay
   """
   @spec verify_with_delay(reference(), non_neg_integer()) :: any
-  def verify_with_delay(valid?, 0) do
+  def verify_with_delay(valid?, execute_times) do
+    verify_with_delay_int(valid?, execute_times * 100)
+  end
+
+  def verify_with_delay_int(valid?, 0) do
     valid?.()
   end
 
-  def verify_with_delay(valid?, execute_times) do
+  def verify_with_delay_int(valid?, execute_times) do
     if valid?.() do
       true
     else
-      :timer.sleep(500)
-      verify_with_delay(valid?, execute_times - 1)
+      :timer.sleep(10)
+      verify_with_delay_int(valid?, execute_times - 1)
     end
   end
 
@@ -83,30 +91,45 @@ defmodule Aetestframework.Worker do
     {:reply, state, state}
   end
 
-  def handle_call({:new_node, node_name, iex_num}, _from, state) do
-    cond do
-      Map.has_key?(state, node_name) ->
-        {:reply, :already_exists, state}
+  def handle_call({:new_nodes, nodes}, _from, state) do
+    case Enum.reduce_while(nodes, state, fn {node_name, iex_num}, state ->
+           cond do
+             Map.has_key?(state, node_name) ->
+               {:halt, {:error, :already_exists, state}}
 
-      busy_port?("300#{iex_num}") || busy_port?("400#{iex_num}") ->
-        {:reply, :busy_port, state}
+             busy_port?("#{3000 + iex_num}") || busy_port?("#{4000 + iex_num}") ->
+               {:halt, {:error, :busy_port, state}}
 
-      true ->
-        # Running the new elixir-node using Port
-        port_id =
-          Port.open({:spawn, "make iex-test-node NODE_NUMBER=#{iex_num}"}, [
-            :binary,
-            cd: project_dir()
-          ])
+             true ->
+               # Running the new elixir-node using Port
+               port_id =
+                 Port.open({:spawn, "make iex-test-node NODE_NUMBER=#{iex_num}"}, [
+                   :binary,
+                   cd: project_dir()
+                 ])
 
-        port = String.to_integer("400#{iex_num}")
-        sync_port = String.to_integer("300#{iex_num}")
+               port = 4000 + iex_num
+               sync_port = 3000 + iex_num
 
-        expected_result = fn _ -> :node_started end
-        :node_started = receive_result("Interactive Elixir", expected_result)
+               new_node =
+                 __MODULE__.new(%{port_id: port_id, node_port: port, sync_port: sync_port})
 
-        new_node = __MODULE__.new(%{port_id: port_id, node_port: port, sync_port: sync_port})
-        new_state = Map.put(state, node_name, new_node)
+               new_state = Map.put(state, node_name, new_node)
+
+               {:cont, new_state}
+           end
+         end) do
+      {:error, return, new_state} ->
+        {:reply, return, new_state}
+
+      new_state ->
+        :ok =
+          Enum.reduce(nodes, :ok, fn {node_name, _iex_num}, :ok ->
+            expected_result = fn _ -> :node_started end
+            %{port_id: port_id} = Map.get(new_state, node_name)
+            :node_started = receive_result(port_id, "Interactive Elixir", expected_result)
+            :ok
+          end)
 
         {:reply, :ok, new_state}
     end
@@ -130,10 +153,12 @@ defmodule Aetestframework.Worker do
   end
 
   def handle_call(:delete_nodes, _from, state) do
+    Enum.each(state, fn {_node, %{port_id: port_id}} ->
+      {:os_pid, pid} = Port.info(port_id, :os_pid)
+      System.cmd("kill", ["#{pid}"])
+    end)
+
     Enum.each(state, fn {_node, %{port_id: port_id, node_port: port}} ->
-      Port.command(port_id, "{:stop, System.stop()}\n")
-      expected_result = fn _ -> :ok end
-      :ok = receive_result(":stop", expected_result)
       Port.close(port_id)
       path_to_priv_dir = project_dir() <> "/apps/aecore/priv/"
       File.rm_rf(path_to_priv_dir <> "test_signkeys_#{port}")
@@ -170,12 +195,23 @@ defmodule Aetestframework.Worker do
     end
   end
 
+  defp receive_result(port, key, fun) do
+    receive do
+      {^port, {:data, result}} ->
+        if result =~ key do
+          fun.(result)
+        else
+          receive_result(port, key, fun)
+        end
+    end
+  end
+
   @doc """
   Checking if the port is busy
   """
   @spec busy_port?(non_neg_integer()) :: true | false
   def busy_port?(port) do
-    :os.cmd('lsof -i -P -n | grep -w #{port}') != []
+    :os.cmd('lsof -Pi :#{port} -sTCP:LISTEN -t') != []
   end
 
   @doc """
