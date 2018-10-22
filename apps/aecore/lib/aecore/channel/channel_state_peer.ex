@@ -660,6 +660,106 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   @doc """
+  Creates a withdraw from the channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transactions. Returns altered ChannelStatePeer and the half signed tx.
+  """
+  @spec withdraw(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
+  def withdraw(
+        %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
+        amount,
+        fee,
+        nonce,
+        priv_key
+      ) do
+    channel_withdraw_tx_spec = %{
+      channel_id: channel_id,
+      withdrawing_account: our_pubkey(peer_state),
+      amount: amount,
+      state_hash: <<>>,
+      sequence: 0
+    }
+
+    case half_signed_mutual_onchain_tx_from_spec(
+           peer_state,
+           fee,
+           nonce,
+           ChannelWithdrawTx,
+           channel_withdraw_tx_spec,
+           priv_key
+         ) do
+      {:ok, half_signed_withdraw_tx} ->
+        {:ok,
+         channel_fsm_transition_on_validated_signed_tx(
+           peer_state,
+           half_signed_withdraw_tx,
+           :half_signed
+         ), half_signed_withdraw_tx}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  def withdraw(%ChannelStatePeer{fsm_state: fsm_state}, _amount, _fee, _nonce, _priv_key) do
+    {:error, "#{__MODULE__}: Can't withdraw from the channel now; channel state is #{fsm_state}"}
+  end
+
+  @doc """
+  Creates a withdraw from the channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transactions. Returns altered ChannelStatePeer and the half signed tx.
+  """
+  @spec deposit(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
+  def deposit(
+        %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
+        amount,
+        fee,
+        nonce,
+        priv_key
+      ) do
+    channel_deposit_tx_spec = %{
+      channel_id: channel_id,
+      withdrawing_account: our_pubkey(peer_state),
+      amount: amount,
+      state_hash: <<>>,
+      sequence: 0
+    }
+
+    case half_signed_mutual_onchain_tx_from_spec(
+           peer_state,
+           fee,
+           nonce,
+           ChannelDepositTx,
+           channel_deposit_tx_spec,
+           priv_key
+         ) do
+      {:ok, half_signed_deposit_tx} ->
+        {:ok,
+         channel_fsm_transition_on_validated_signed_tx(
+           peer_state,
+           half_signed_deposit_tx,
+           :half_signed
+         ), half_signed_deposit_tx}
+
+      {:error, _} = err ->
+        err
+    end
+  end
+
+  def deposit(%ChannelStatePeer{fsm_state: fsm_state}, _amount, _fee, _nonce, _priv_key) do
+    {:error, "#{__MODULE__}: Can't deposit from the channel now; channel state is #{fsm_state}"}
+  end
+
+  @doc """
   Retrieves our offchain account balance from the latest offchain chainstate
   """
   @spec our_offchain_account_balance(ChannelStatePeer.t()) :: non_neg_integer()
