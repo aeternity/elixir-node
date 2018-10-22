@@ -21,6 +21,7 @@ end
 release :elixir_node do
   set version: System.get_env("VERSION")
   set applications: [
+        :runtime_tools,
         :aecore,
         :aehttpclient,
         :aehttpserver,

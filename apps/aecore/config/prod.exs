@@ -8,4 +8,6 @@ config :aecore, :pow,
 
 config :aecore, :miner, resumed_by_default: true
 
+config :logger, :console, level: :debug
+
 config :aecore, :pow_module, Aecore.Pow.Cuckoo

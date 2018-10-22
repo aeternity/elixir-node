@@ -71,6 +71,7 @@ defmodule Aecore.Pow.Cuckoo do
       end
 
     command = Enum.join(export_ld_lib_path() ++ cmd)
+    IO.inspect(command)
     options = command_options(process)
     {:ok, command, options}
   end
@@ -80,12 +81,15 @@ defmodule Aecore.Pow.Cuckoo do
   defp command_options(:generate), do: default_command_options()
 
   defp default_command_options do
+    full_bin_dir =
+      Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :pow)[:bin_dir]
+
     [
       {:stdout, self()},
       {:stderr, self()},
       {:kill_timeout, 0},
       {:sync, false},
-      {:cd, Application.get_env(:aecore, :pow)[:bin_dir]},
+      {:cd, full_bin_dir},
       {:env, [{"SHELL", "/bin/sh"}]},
       {:monitor, true}
     ]
@@ -146,6 +150,7 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
 
       any ->
+        IO.inspect(any)
         Logger.error("#{__MODULE__}: Unexpected error : #{inspect(any)}")
         exit(:kill)
     end
