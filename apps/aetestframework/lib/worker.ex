@@ -201,7 +201,7 @@ defmodule Aetestframework.Worker do
         if result =~ key do
           fun.(result)
         else
-          receive_result(key, fun)
+          receive_result(port, key, fun)
         end
     end
   end
