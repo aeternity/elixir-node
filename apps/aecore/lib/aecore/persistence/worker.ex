@@ -189,14 +189,18 @@ defmodule Aecore.Persistence.Worker do
     # are created. More about them -
     # https://github.com/facebook/rocksdb/wiki/Column-Families
 
-    with {:ok, db, families_map} <-
-           Rox.open(persistence_path(), database_params(), all_families()) do
-      Supplier.store_references(%{db: db, families_map: families_map})
+    with {:ok, %{db: db, families_map: families_map}} <- Supplier.get_references() do
       build_state(db, families_map)
     else
       {:error, _reason} ->
-        %{db: db, families_map: families_map} = Supplier.get_references()
-        build_state(db, families_map)
+        case Rox.open(persistence_path(), database_params(), all_families()) do
+          {:ok, db, families_map} ->
+            Supplier.store_references(%{db: db, families_map: families_map})
+            build_state(db, families_map)
+
+          {:error, reason} ->
+            {:error, "#{__MODULE__}: Failed to start Persistence module, reason: #{reason}"}
+        end
     end
   end
 

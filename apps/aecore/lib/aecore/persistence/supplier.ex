@@ -1,6 +1,6 @@
 defmodule Aecore.Persistence.Supplier do
   @moduledoc """
-  Simple module responsible for storing and getting references needed for RoxDB 
+  Simple module responsible for storing and getting references needed for RoxDB
   """
   use GenServer
 
@@ -18,7 +18,7 @@ defmodule Aecore.Persistence.Supplier do
     {:error, "#{__MODULE__}: Error, invalid database/references information: #{inspect(data)}"}
   end
 
-  @spec get_references() :: map()
+  @spec get_references() :: {:ok, map()} | {:error, String.t()}
   def get_references do
     GenServer.call(__MODULE__, :get_references)
   end
@@ -31,7 +31,11 @@ defmodule Aecore.Persistence.Supplier do
     {:reply, :ok, %{state | db: db, families_map: families_map}}
   end
 
-  def handle_call(:get_references, _from, state) do
-    {:reply, state, state}
+  def handle_call(:get_references, _from, %{db: nil, families_map: nil} = state) do
+    {:reply, {:error, "#{__MODULE__}: Error, no stored references"}, state}
+  end
+
+  def handle_call(:get_references, _from, %{db: _, families_map: _} = state) do
+    {:reply, {:ok, state}, state}
   end
 end
