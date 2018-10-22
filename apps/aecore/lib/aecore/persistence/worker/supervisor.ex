@@ -11,6 +11,7 @@ defmodule Aecore.Persistence.Worker.Supervisor do
 
   def init(:ok) do
     children = [
+      Aecore.Persistence.Supplier,
       Aecore.Persistence.Worker
     ]
 
