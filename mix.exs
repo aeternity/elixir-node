@@ -51,6 +51,7 @@ defmodule EpochElixir.Mixfile do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:distillery, "~> 2.0"},
       {:excoveralls, "~> 0.8.1", only: :test},
 
       # aecore deps, they are needed here, as we can only override umbrella-apps dependencies here (https://github.com/elixir-lang/elixir/issues/5232)

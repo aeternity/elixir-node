@@ -19,17 +19,12 @@ environment :prod do
 end
 
 release :elixir_node do
-  set version: "0.1.0"
+  set version: System.get_env("VERSION")
   set applications: [
-        :runtime_tools,
-        :parse_trans,
-        :enacl,
-        :erl_base58,
-        aewallet: :permanent,
-        merkle_patricia_tree: :permanent,
-        aecore: :permanent,
-        aehttpclient: :permanent,
-        aehttpserver: :permanent,
-        aeutil: :permanent
+        :aecore,
+        :aehttpclient,
+        :aehttpserver,
+        :aeutil,
+        :aevm
       ]
 end

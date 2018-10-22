@@ -102,6 +102,10 @@ all-test:
 	@mix credo list
 	@mix coveralls -u --exclude disabled
 
+prod-release:
+	@MIX_ENV=prod mix release
+
+
 killall:
 	@echo "Kill all beam processes"
 	@pkill -9 beam || true

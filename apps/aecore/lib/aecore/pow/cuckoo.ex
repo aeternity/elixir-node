@@ -146,7 +146,7 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
 
       any ->
-        Logger.error("#{__MODULE__}: Unexpeted error : #{inspect(any)}")
+        Logger.error("#{__MODULE__}: Unexpected error : #{inspect(any)}")
         exit(:kill)
     end
   end
