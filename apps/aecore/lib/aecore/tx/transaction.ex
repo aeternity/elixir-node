@@ -18,6 +18,7 @@ defmodule Aecore.Tx.Transaction do
   end
 
   alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Identifier
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -50,6 +51,8 @@ defmodule Aecore.Tx.Transaction do
 
   @doc "The name for state chain entry to be passed for processing"
   @callback get_chain_state_name() :: Chainstate.chain_state_types()
+
+  @callback sender_type() :: Identifier.type()
 
   @callback init(payload()) :: tx_types()
 

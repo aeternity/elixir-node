@@ -64,6 +64,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(%{
         initiator_amount: initiator_amount,
@@ -96,6 +99,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 

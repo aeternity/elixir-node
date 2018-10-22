@@ -38,6 +38,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :oracle
+
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
         query_id: query_id,

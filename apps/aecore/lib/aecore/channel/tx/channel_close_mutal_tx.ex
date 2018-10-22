@@ -50,6 +50,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   def chainstate_senders?(), do: true
 
   @doc """
@@ -83,12 +86,21 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
+  def validate(
+        %ChannelCloseMutalTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{senders: senders}
+      ) do
     cond do
-      tx.initiator_amount < 0 ->
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
+      initiator_amount < 0 ->
         {:error, "#{__MODULE__}: initiator_amount can't be negative"}
 
-      tx.responder_amount < 0 ->
+      responder_amount < 0 ->
         {:error, "#{__MODULE__}: responder_amount can't be negative"}
 
       true ->

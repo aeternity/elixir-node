@@ -31,7 +31,7 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @typedoc "Structure of the NameRevokeTx Transaction type"
   @type t :: %NameRevokeTx{
-          hash: binary()
+          hash: Identifier.t()
         }
 
   @doc """
@@ -68,8 +68,11 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
   Validates the transaction without considering state
   """
   @spec validate(NameRevokeTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameRevokeTx{hash: %Identifier{value: hash}}, %DataTx{senders: senders}) do
+  def validate(%NameRevokeTx{hash: %Identifier{value: hash} = hash_id}, %DataTx{senders: senders}) do
     cond do
+      !Identifier.valid?(hash_id, :name) ->
+        {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
+
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
@@ -83,6 +86,9 @@ defmodule Aecore.Naming.Tx.NameRevokeTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Revokes a previously claimed name for one account

@@ -48,6 +48,9 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(
         %{
@@ -68,10 +71,15 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelSettleTx{}, %DataTx{senders: senders}) do
-    if length(senders) != 1 do
-      {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
-    else
-      :ok
+    cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      true ->
+        :ok
     end
   end
 

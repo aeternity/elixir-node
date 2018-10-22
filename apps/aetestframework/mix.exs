@@ -19,7 +19,8 @@ defmodule Aetestframework.MixProject do
 
   defp deps do
     [
-      {:exconstructor, "~> 1.1"}
+      {:exconstructor, "~> 1.1"},
+      {:aehttpclient, in_umbrella: true}
     ]
   end
 end

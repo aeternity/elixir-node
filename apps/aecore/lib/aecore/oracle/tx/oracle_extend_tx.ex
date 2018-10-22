@@ -38,6 +38,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :oracle
+
   @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
     %OracleExtendTx{ttl: ttl}

@@ -50,6 +50,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCloseSoloTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: %Poi{} = poi} = _payload) do
     %ChannelCloseSoloTx{
@@ -86,6 +89,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       length(senders) != 1 ->
         {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 

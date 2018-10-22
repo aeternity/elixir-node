@@ -22,7 +22,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @typedoc "Expected structure for the Update Transaction"
   @type payload :: %{
-          hash: binary(),
+          hash: Identifier.t(),
           expire_by: non_neg_integer(),
           client_ttl: non_neg_integer(),
           pointers: String.t()
@@ -89,7 +89,7 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
   @spec validate(NameUpdateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
         %NameUpdateTx{
-          hash: %Identifier{value: hash},
+          hash: %Identifier{value: hash} = hash_id,
           expire_by: _expire_by,
           client_ttl: client_ttl,
           pointers: _pointers
@@ -97,6 +97,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(hash_id, :name) ->
+        {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
+
       client_ttl > GovernanceConstants.client_ttl_limit() ->
         {:error, "#{__MODULE__}: Client ttl is to high: #{inspect(client_ttl)}"}
 
@@ -113,6 +116,9 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Changes the account state (balance) of the sender and receiver.
