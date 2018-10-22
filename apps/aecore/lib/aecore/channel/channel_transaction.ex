@@ -25,6 +25,18 @@ defmodule Aecore.Channel.ChannelTransaction do
   """
   @type signed_tx :: SignedTx.t() | ChannelOffChainTx.t()
 
+  @typedoc """
+  Types of allowed OnChain transactions
+  """
+  # | ChannelWidhdrawTx | ChannelDepositTx
+  @type onchain_tx :: ChannelCreateTx
+
+  @typedoc """
+  Payloads of allowed OnChain transactions
+  """
+  # | ChannelWidhdrawTx.payload() | ChannelDepositTx.payload()
+  @type onchain_tx_payload :: ChannelCreateTx.payload()
+
   @allowed_onchain_tx [
     ChannelCreateTx
     # Aecore.Channel.Tx.ChannelWidhdrawTx,

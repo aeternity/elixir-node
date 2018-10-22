@@ -9,7 +9,7 @@ docker-compose.yml
 /_build
 
 # If you run "mix test --cover", coverage assets end up here.
-/cover
+**/cover
 
 # The directory Mix downloads your dependencies sources to.
 /deps

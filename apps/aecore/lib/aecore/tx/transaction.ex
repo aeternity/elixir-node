@@ -18,6 +18,7 @@ defmodule Aecore.Tx.Transaction do
   end
 
   alias Aecore.Tx.DataTx
+  alias Aecore.Chain.Identifier
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()
@@ -51,6 +52,8 @@ defmodule Aecore.Tx.Transaction do
   @doc "The name for state chain entry to be passed for processing"
   @callback get_chain_state_name() :: Chainstate.chain_state_types()
 
+  @callback sender_type() :: Identifier.type()
+
   @callback init(payload()) :: tx_types()
 
   @callback validate(tx_types(), DataTx.t()) :: :ok | {:error, reason()}
@@ -67,6 +70,15 @@ defmodule Aecore.Tx.Transaction do
               tx_types(),
               DataTx.t()
             ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
+
+  @doc """
+  Default function for checking if the minimum fee is met for all transaction types.
+  """
+  @callback is_minimum_fee_met?(
+              DataTx.t(),
+              tx_type_state(),
+              block_height :: non_neg_integer()
+            ) :: boolean()
 
   @doc """
   Default preprocess_check implementation for deduction of the fee.

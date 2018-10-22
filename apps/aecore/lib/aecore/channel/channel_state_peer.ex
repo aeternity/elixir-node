@@ -45,7 +45,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
         }
 
   @typedoc "Reason for the error"
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   defstruct [
     :fsm_state,
@@ -125,7 +125,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
       # check sequence
       tx_sequence <= cur_sequence ->
-        {:error, "#{__MODULE__}: Invalid sequence in tx"}
+        {:error,
+         "#{__MODULE__}: Old sequence. Expected bigger then #{cur_sequence}, got #{tx_sequence}"}
 
       true ->
         :ok
@@ -284,13 +285,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
     }
   end
 
-  # @spec initialize_new_mutual_onchain_tx(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), module(), ChannelCreateTx.payload() | ChannelWidhdrawTx.payload() | ChannelDepositTx.payload()) :: DataTx.t()
   @spec initialize_new_mutual_onchain_tx(
           ChannelStatePeer.t(),
           non_neg_integer(),
           non_neg_integer(),
-          module(),
-          ChannelCreateTx.payload()
+          ChannelTransaction.onchain_tx(),
+          ChannelTransaction.onchain_tx_payload()
         ) :: DataTx.t()
   defp initialize_new_mutual_onchain_tx(
          %ChannelStatePeer{
@@ -338,8 +338,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelStatePeer.t(),
           non_neg_integer(),
           non_neg_integer(),
-          module(),
-          map(),
+          ChannelTransaction.onchain_tx(),
+          ChannelTransaction.onchain_tx_payload(),
           Keys.sign_priv_key()
         ) :: ChannelTransaction.signed_tx()
   defp half_signed_mutual_onchain_tx_from_spec(peer_state, fee, nonce, type, spec, priv_key) do

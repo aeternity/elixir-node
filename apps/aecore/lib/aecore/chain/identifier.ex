@@ -25,23 +25,24 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
+  @spec valid?(Identifier.t() | list(Identifier.t()), value()) :: boolean()
+  def valid?(%Identifier{value: value} = id, type) do
+    create_identity(value, type) == id
+  end
+
+  def valid?(ids_list, type) when is_list(ids_list) do
+    Enum.all?(ids_list, fn id -> valid?(id, type) end)
+  end
+
+  def valid?(_, _) do
+    false
+  end
+
   @spec create_encoded_to_binary(type(), value()) :: binary()
   def create_encoded_to_binary(value, type) do
     value
     |> create_identity(type)
     |> encode_to_binary()
-  end
-
-  @spec check_identity(Identifier.t(), value()) :: {:ok, value} | {:error, String.t()}
-  def check_identity(%Identifier{value: value} = id, type) do
-    case create_identity(value, type) do
-      {:ok, check_id} -> check_id == id
-      {:error, msg} -> {:error, msg}
-    end
-  end
-
-  def check_identity(_, _) do
-    {:error, "#{__MODULE__}: Invalid ID"}
   end
 
   # API needed for RLP

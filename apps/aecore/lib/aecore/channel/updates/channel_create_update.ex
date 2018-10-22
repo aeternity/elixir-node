@@ -28,7 +28,7 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @typedoc """
   The type of errors returned by this module
   """
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   @doc """
   Definition of ChannelCreateUpdate structure
@@ -94,74 +94,50 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   @doc """
   Creates the initial chainstate. Assumes no chainstate is present. Returns an error in the creation failed or a chainstate is already present.
   """
-  @spec update_offchain_chainstate(Chainstate.t() | nil, ChannelCreateUpdate.t()) ::
-          {:ok, Chainstate.t()} | error()
-  def update_offchain_chainstate(
-        nil,
-        %ChannelCreateUpdate{
-          initiator: initiator,
-          initiator_amount: initiator_amount,
-          responder: responder,
-          responder_amount: responder_amount
-        },
-        channel_reserve
-      ) do
-    Enum.reduce_while(
+  @spec update_offchain_chainstate!(Chainstate.t() | nil, ChannelCreateUpdate.t()) ::
+          Chainstate.t() | no_return()
+  def update_offchain_chainstate!(nil, %ChannelCreateUpdate{
+        initiator: initiator,
+        initiator_amount: initiator_amount,
+        responder: responder,
+        responder_amount: responder_amount
+      }) do
+    Enum.reduce(
       [
         {initiator, initiator_amount},
         {responder, responder_amount}
       ],
-      {:ok, Chainstate.create_chainstate_trees()},
-      fn account_specification, {:ok, chainstate} ->
-        case create_account_in_chainstate(account_specification, chainstate, channel_reserve) do
-          {:ok, _} = new_acc ->
-            {:cont, new_acc}
-
-          {:error, _} = err ->
-            {:halt, err}
-        end
-      end
+      Chainstate.create_chainstate_trees(),
+      &create_account_in_chainstate!/2
     )
   end
 
-  @spec create_account_in_chainstate(tuple(), Chainstate.t() | nil, non_neg_integer()) ::
-          {:ok, Chainstate.t()} | error()
-  defp create_account_in_chainstate(
+  def update_offchain_chainstate!(%Chainstate{}, _) do
+    raise {:error, "#{__MODULE__}: The create update may only be applied once"}
+  end
+
+  @spec create_account_in_chainstate!(tuple(), Chainstate.t() | nil) ::
+          Chainstate.t() | no_return()
+  defp create_account_in_chainstate!(
          {pubkey, amount},
-         %Chainstate{accounts: accounts} = chainstate,
-         channel_reserve
+         %Chainstate{accounts: accounts} = chainstate
        ) do
-    case AccountStateTree.safe_update(
-           accounts,
-           pubkey,
-           &setup_initial_account(&1, amount, channel_reserve)
-         ) do
-      {:ok, updated_accounts} ->
-        {:ok,
-         %Chainstate{
-           chainstate
-           | accounts: updated_accounts
-         }}
+    updated_accounts =
+      AccountStateTree.update(
+        accounts,
+        pubkey,
+        &setup_initial_account!(&1, amount)
+      )
 
-      {:error, _} = err ->
-        err
-    end
+    %Chainstate{
+      chainstate
+      | accounts: updated_accounts
+    }
   end
 
-  @spec setup_initial_account(Account.t(), non_neg_integer(), non_neg_integer()) ::
-          {:ok, Account.t()} | error()
-  defp setup_initial_account(account, amount, channel_reserve) do
-    with {:ok, account1} <- Account.apply_transfer(account, nil, amount),
-         :ok <- ChannelOffChainUpdate.ensure_channel_reserve_is_met(account1, channel_reserve) do
-      {:ok, account1}
-    else
-      {:error, _} = err ->
-        err
-    end
-  end
-
-  def update_offchain_chainstate(%Chainstate{}, _) do
-    {:error, "#{__MODULE__}: The create update may only be aplied once"}
+  @spec setup_initial_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  defp setup_initial_account!(account, amount) do
+    Account.apply_transfer!(account, nil, amount)
   end
 
   @spec half_signed_preprocess_check(ChannelCreateUpdate.t(), map()) :: :ok | error()
@@ -188,22 +164,55 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
         {:error, "#{__MODULE__}: Initiator and responder cannot be the same"}
 
       initiator != correct_initiator ->
-        {:error, "#{__MODULE__}: Wrong initiator"}
+        {:error,
+         "#{__MODULE__}: Wrong initiator, expected #{inspect(correct_initiator)}, got #{
+           inspect(initiator)
+         }"}
 
       initiator_amount != correct_initiator_amount ->
-        {:error, "#{__MODULE__}: Wrong initiator amount"}
+        {:error,
+         "#{__MODULE__}: Wrong initiator amount, expected #{correct_initiator_amount}, got #{
+           initiator_amount
+         }"}
 
       responder != correct_responder ->
-        {:error, "#{__MODULE__}: Wrong responder"}
+        {:error,
+         "#{__MODULE__}: Wrong responder, expected #{inspect(correct_responder)}, got #{
+           inspect(responder)
+         }"}
 
       responder_amount != correct_responder_amount ->
-        {:error, "#{__MODULE__}: Wrong responder amount"}
+        {:error,
+         "#{__MODULE__}: Wrong responder amount, expected #{correct_responder_amount}, got #{
+           responder_amount
+         }"}
 
       channel_reserve != correct_channel_reserve ->
-        {:error, "#{__MODULE__}: Wrong channel reserve"}
+        {:error,
+         "#{__MODULE__}: Wrong channel reserve, expected #{correct_channel_reserve}, got #{
+           channel_reserve
+         }"}
 
       locktime != correct_locktime ->
-        {:error, "#{__MODULE__}: Wrong locktime}"}
+        {:error, "#{__MODULE__}: Wrong locktime, expected #{correct_locktime}, got #{locktime}"}
+
+      initiator_amount < 0 ->
+        {:error, "#{__MODULE__}: Initiator balance cannot be negative"}
+
+      responder_amount < 0 ->
+        {:error, "#{__MODULE__}: Responder balance cannot be negative"}
+
+      channel_reserve < 0 ->
+        {:error, "#{__MODULE__}: Channel reserve cannot be negative"}
+
+      locktime < 0 ->
+        {:error, "#{__MODULE__}: Channel locktime cannot be negative"}
+
+      initiator_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+
+      responder_amount < channel_reserve ->
+        {:error, "#{__MODULE__}: Responder does not met channel reserve"}
 
       true ->
         :ok
@@ -213,5 +222,22 @@ defmodule Aecore.Channel.Updates.ChannelCreateUpdate do
   def half_signed_preprocess_check(%ChannelCreateUpdate{}, _) do
     {:error,
      "#{__MODULE__}: Missing keys in the opts dictionary. This probably means that the update was unexpected."}
+  end
+
+  @doc """
+  Validates an update considering state before applying it to the provided chainstate.
+  """
+  @spec fully_signed_preprocess_check(
+          Chainstate.t() | nil,
+          ChannelCreateUpdate.t(),
+          non_neg_integer()
+        ) :: :ok | error()
+
+  def fully_signed_preprocess_check(nil, %ChannelCreateUpdate{}, _channel_reserve) do
+    :ok
+  end
+
+  def fully_signed_preprocess_check(%Chainstate{}, %ChannelCreateUpdate{}, _channel_reserve) do
+    {:error, "#{__MODULE__}: The create update may only be applied once"}
   end
 end

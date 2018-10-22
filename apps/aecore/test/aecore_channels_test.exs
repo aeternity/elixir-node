@@ -237,6 +237,7 @@ defmodule AecoreChannelTest do
     id = create_channel(ctx)
 
     {:ok, initiator_state} = call_s1({:get_channel, id})
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
     [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)

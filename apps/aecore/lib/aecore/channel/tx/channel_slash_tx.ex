@@ -5,8 +5,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelSlashTx
-  alias Aecore.Tx.{SignedTx, DataTx}
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -48,6 +49,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: SpendTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{
@@ -59,14 +63,6 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
   @spec channel_id(ChannelSlashTx.t()) :: binary()
   def channel_id(%ChannelSlashTx{channel_id: channel_id}), do: channel_id
-
-  @doc """
-  Checks transactions internal contents validity
-  """
-  @spec validate(ChannelSlashTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelSlashTx{offchain_tx: :empty}) do
-    {:error, "#{__MODULE__}: Can't slash without an offchain tx"}
-  end
 
   def validate(
         %ChannelSlashTx{
@@ -81,17 +77,26 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
         %DataTx{senders: senders}
       ) do
     cond do
-      length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
 
-      sequence == 0 ->
-        {:error, "#{__MODULE__}: Can't slash with zero state"}
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      sequence <= 0 ->
+        {:error, "#{__MODULE__}: Sequence has to be positive"}
 
       internal_channel_id !== offchain_tx_channel_id ->
-        {:error, "#{__MODULE__}: Channel id mismatch"}
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
 
       Poi.calculate_root_hash(poi) !== state_hash ->
-        {:error, "#{__MODULE__}: Invalid state_hash"}
+        {:error,
+         "#{__MODULE__}: Invalid Poi root_hash, expcted #{inspect(state_hash)}, got #{
+           inspect(Poi.calculate_root_hash(poi))
+         }"}
 
       true ->
         :ok
@@ -148,7 +153,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
 
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
-        {:error, "#{__MODULE__}: Negative sender balance"}
+        {:error, "#{__MODULE__}: Sender balance has to cover fee"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel doesn't exist (already closed?)"}
@@ -172,9 +177,9 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelSlashTx.t(), DataTx.t()) :: list()
@@ -185,7 +190,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
+      ChannelOffChainTx.rlp_encode(tx.offchain_tx),
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(datatx.ttl),
       :binary.encode_unsigned(datatx.fee),
@@ -204,7 +209,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
       ]) do
     with {:ok, channel_id} <-
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
-         {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
+         {:ok, offchain_tx} <- ChannelOffChainTx.rlp_decode_signed(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelSlashTx,

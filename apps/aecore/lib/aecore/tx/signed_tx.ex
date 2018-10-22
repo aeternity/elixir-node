@@ -42,9 +42,9 @@ defmodule Aecore.Tx.SignedTx do
     end
   end
 
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
+  @spec check_apply_transaction(Chainstate.t(), non_neg_integer(), SignedTx.t()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %SignedTx{data: data} = tx) do
+  def check_apply_transaction(chainstate, block_height, %SignedTx{data: data} = tx) do
     with true <- signatures_valid?(tx, DataTx.senders(data, chainstate)),
          :ok <- DataTx.preprocess_check(chainstate, block_height, data) do
       DataTx.process_chainstate(chainstate, block_height, data)
@@ -277,11 +277,11 @@ defmodule Aecore.Tx.SignedTx do
   end
 
   @spec encode_to_list(SignedTx.t()) :: list()
-  def encode_to_list(%SignedTx{} = tx) do
+  def encode_to_list(%SignedTx{data: %DataTx{} = data} = tx) do
     [
       :binary.encode_unsigned(@version),
       Enum.sort(tx.signatures),
-      DataTx.rlp_encode(tx.data)
+      DataTx.rlp_encode(data)
     ]
   end
 

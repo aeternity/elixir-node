@@ -5,7 +5,6 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   """
 
   alias Aecore.Chain.Chainstate
-  alias Aecore.Account.Account
 
   alias Aecore.Channel.Updates.ChannelTransferUpdate
   alias Aecore.Channel.Updates.ChannelDepositUpdate
@@ -25,10 +24,11 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @type error :: {:error, String.t()}
 
   @doc """
-  Callback for aplying the update to the offchain chainstate.
+  Callback for applying the update to the offchain chainstate.
+  While updating the chainstate the partially updated
   """
-  @callback update_offchain_chainstate(Chainstate.t(), update_types(), non_neg_integer()) ::
-              {:ok, Chainstate.t()} | error()
+  @callback update_offchain_chainstate!(Chainstate.t() | nil, update_types()) ::
+              Chainstate.t() | no_return()
 
   @doc """
   Encodes the update to list of binaries. This callback is compatible with the Serializable behaviour.
@@ -40,7 +40,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   Decodes the update from a list of binaries. This callback is compatible with the Serializable behaviour.
   Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
   """
-  @callback decode_from_list(list(binary())) :: update_types()
+  @callback decode_from_list(list(binary())) :: update_types() | error()
 
   @doc """
   Preprocess checks for an incoming half signed update.
@@ -48,6 +48,12 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   The provided map contains values to check against.
   """
   @callback half_signed_preprocess_check(update_types(), map()) :: :ok | error()
+
+  @doc """
+  Validates an update considering state before applying it to the provided chainstate.
+  """
+  @callback fully_signed_preprocess_check(Chainstate.t() | nil, update_types(), non_neg_integer()) ::
+              :ok | error()
 
   @doc """
   Epoch 0.16 does not treat updates as standard serializable objects but this changed in the later versions.
@@ -100,32 +106,6 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   end
 
   @doc """
-  Updates the offchain chainstate acording to the specified update.
-  """
-  @spec update_offchain_chainstate(Chainstate.t() | nil, update_types(), non_neg_integer()) ::
-          {:ok, Chainstate.t()} | error()
-  def update_offchain_chainstate(chainstate, object, channel_reserve) do
-    module = object.__struct__
-    module.update_offchain_chainstate(chainstate, object, channel_reserve)
-  end
-
-  # Function passed to Enum.reduce. Aplies the given update to the chainstate.
-  @spec apply_single_update_to_chainstate(
-          update_types(),
-          {:ok, Chainstate.t() | nil},
-          non_neg_integer()
-        ) :: {:ok, Chainstate.t()} | {:halt, error()}
-  defp apply_single_update_to_chainstate(update, {:ok, chainstate}, channel_reserve) do
-    case update_offchain_chainstate(chainstate, update, channel_reserve) do
-      {:ok, _} = updated_chainstate ->
-        {:cont, updated_chainstate}
-
-      {:error, _} = err ->
-        {:halt, err}
-    end
-  end
-
-  @doc """
   Applies each update in a list of updates to the offchain chainstate. Breaks on the first encountered error.
   """
   @spec apply_updates(Chainstate.t() | nil, list(update_types()), non_neg_integer()) ::
@@ -138,19 +118,40 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
     )
   end
 
-  @doc """
-  Makes sure that for the given account the channel reserve was meet
-  """
-  @spec ensure_channel_reserve_is_met(Account.t(), non_neg_integer()) :: :ok | error()
-  def ensure_channel_reserve_is_met(%Account{balance: balance}, channel_reserve) do
-    if balance < channel_reserve do
-      {:error,
-       "#{__MODULE__} Account does not met channel reserve (We have #{balance} tokens vs channel reserve of #{
-         channel_reserve
-       } tokens)"}
+  # Function passed to Enum.reduce. Aplies the given update to the chainstate.
+  @spec apply_single_update_to_chainstate(
+          update_types(),
+          {:ok, Chainstate.t() | nil},
+          non_neg_integer()
+        ) :: {:ok, Chainstate.t()} | {:halt, error()}
+  defp apply_single_update_to_chainstate(update, {:ok, chainstate}, channel_reserve) do
+    with :ok <- fully_signed_preprocess_check(chainstate, update, channel_reserve),
+         {:ok, _} = updated_chainstate <- update_offchain_chainstate(chainstate, update) do
+      {:cont, updated_chainstate}
     else
-      :ok
+      {:error, _} = err ->
+        {:halt, err}
     end
+  end
+
+  @doc """
+  Updates the offchain chainstate acording to the specified update.
+  """
+  @spec update_offchain_chainstate(Chainstate.t() | nil, update_types()) ::
+          {:ok, Chainstate.t()} | error()
+  def update_offchain_chainstate(chainstate, object) do
+    module = object.__struct__
+    {:ok, module.update_offchain_chainstate!(chainstate, object)}
+  end
+
+  @doc """
+  Validates an update considering state before applying it to the provided chainstate.
+  """
+  @spec fully_signed_preprocess_check(Chainstate.t() | nil, update_types(), non_neg_integer()) ::
+          :ok | error()
+  def fully_signed_preprocess_check(chainstate, object, channel_reserve) do
+    module = object.__struct__
+    module.fully_signed_preprocess_check(chainstate, object, channel_reserve)
   end
 
   @doc """

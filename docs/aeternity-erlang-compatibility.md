@@ -26,8 +26,7 @@ iex> amount = 100
 iex> fee = 10
 iex> pubkey = <<0::256>>
 iex> payload = <<>>
-iex> {:ok, tx} = Account.spend(pubkey, amount, fee, payload)
-iex> Pool.add_transaction(tx)
+iex> Account.spend(pubkey, amount, fee, payload)
 ```
 - Check if epoch has this transaction: `(epoch)> aec_tx_pool:size().` Should return 1, size is used, as there is no functionality to fetch the contents of the pool.
 
@@ -73,8 +72,7 @@ iex> amount = 100
 iex> fee = 10
 iex> pubkey = <<0::256>>
 iex> payload = <<>>
-iex> {:ok, tx} = Account.spend(pubkey, amount, fee, payload)
-iex> Pool.add_transaction(tx)
+iex> Account.spend(pubkey, amount, fee, payload)
 iex> Miner.mine_sync_block_to_chain()
 ```
 
@@ -85,8 +83,7 @@ iex> name = "foobar.aet"
 iex> name_salt = 100
 iex> fee = 10
 iex> ttl = 1000
-iex> {:ok, pre_claim} = Account.pre_claim(name, name_salt, fee, ttl)
-iex> Pool.add_transaction(pre_claim)
+iex> Account.pre_claim(name, name_salt, fee, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
  
@@ -96,8 +93,7 @@ iex> name = "foobar.aet"
 iex> name_salt = 100
 iex> fee = 10
 iex> ttl = 1000
-iex> {:ok, claim} = Account.claim(name, name_salt, fee, ttl)
-iex> Pool.add_transaction(claim)
+iex> Account.claim(name, name_salt, fee, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
 
@@ -109,8 +105,7 @@ iex> fee = 10
 iex> expire_by = 10000
 iex> client_ttl = 1000
 iex> ttl = 1000
-iex> {:ok, update} = Account.name_update(name, pointers, fee, expire_by, client_ttl, ttl)
-iex> Pool.add_transaction(update)
+iex> Account.name_update(name, pointers, fee, expire_by, client_ttl, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
 
@@ -120,8 +115,7 @@ iex> name = "foobar.aet"
 iex> transfer_to_pub = <<92, 207, 73, 104, 187, 223, 191, 242, 179, 82, 37, 218, 72, 109, 92, 93, 40, 253, 163, 220, 208, 134, 169, 81, 69, 56, 212, 89, 81, 100, 132, 194>>
 iex> fee = 10
 iex> ttl = 1000
-iex> {:ok, transfer} = Account.name_transfer(name, transfer_to_pub, fee, ttl)
-iex> Pool.add_transaction(transfer)
+iex> Account.name_transfer(name, transfer_to_pub, fee, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
 
@@ -131,16 +125,14 @@ iex> transfer_to_pub = <<92, 207, 73, 104, 187, 223, 191, 242, 179, 82, 37, 218,
 iex> amount = 100
 iex> fee = 10
 iex> payload = <<>>
-iex> {:ok, spend} = Account.spend(transfer_to_pub, amount, fee, payload)
-iex> Pool.add_transaction(spend)
+iex> Account.spend(transfer_to_pub, amount, fee, payload)
 iex> Miner.mine_sync_block_to_chain()
 iex> next_nonce = Account.nonce(Chain.chain_state().accounts, transfer_to_pub) + 1
 iex> transfer_to_priv = <<205, 8, 195, 216, 100, 12, 253, 66, 144, 133, 18, 213, 67, 217, 4, 115, 143, 179, 32, 99, 119, 167, 63, 6, 234, 219, 85, 28, 23, 211, 153, 165, 92, 207, 73, 104, 187, 223, 191, 242, 179, 82, 37, 218, 72, 109, 92, 93, 40, 253, 163, 220, 208, 134, 169, 81, 69, 56, 212, 89, 81, 123, 132, 194>>
 iex> name = "foobar.aet"
 iex> fee = 10
 iex> ttl = 1000
-iex> {:ok, revoke} = Account.name_revoke(transfer_to_pub, transfer_to_priv, name, fee, next_nonce, ttl)
-iex> Pool.add_transaction(revoke)
+iex> Account.name_revoke(transfer_to_pub, transfer_to_priv, name, fee, next_nonce, ttl)
 iex> Miner.mine_sync_block_to_chain()
 ```
 
@@ -195,7 +187,101 @@ iex> Miner.mine_sync_block_to_chain()
 ```
 
 #### Channel Transactions
-TBA..
+
+##### Standard scenario
+
+0. Start 2 Elixir nodes. Both syncing with each other and epoch. 
+1. (both) Set basic parameters: 
+
+```elixir
+iex> temporary_id = <<1,2,3>>
+iex> initiator_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> initiator_amount = 100
+iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> responder_amount = 100
+iex> locktime = 2
+iex> channel_reserve = 5
+iex> fee = 1
+iex> {_, priv_key} = Keys.keypair(:sign)
+```
+
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with appropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
+7. (responder) `Miner.mine_sync_block_to_chain()`
+8. Check all nodes recognize new block **with** the ChannelOpenTx
+9. Make a transfer as follows:
+
+    a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+    
+    b. Copy `half_signed_state` to responder.
+    
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
+    
+    c. Copy `signed_state` to initiator.
+    
+    d. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
+    
+10. (initiator) `{:ok, half_signed_close_tx} = Channel.close(channel_id, {5, 5}, nonce, priv_key)`
+11. Copy `half_signed_close_tx` to responder
+12. (responder) `{:ok, fully_signed_close_tx} = Channel.recv_close_tx(channel_id, half_signed_close_tx, {5, 5}, priv_key)`
+13. (responder) `Miner.mine_sync_block_to_chain()`
+14. Check all nodes recognize new block **with** the ChannelMutalCloseTx
+
+##### Communication lost / party misbehaving scenario
+
+0. Start 2 Elixir nodes. Both syncing with each other and epoch. 
+1. (both) Set basic parameters: 
+```elixir
+iex> temporary_id = <<4,5,6>>
+iex> initiator_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> initiator_amount = 100
+iex> responder_pubkey = #Get from Keys.keypair(:sign) of corresponding node
+iex> responder_amount = 100
+iex> locktime = 2
+iex> channel_reserve = 5
+iex> fee = 1
+iex> {_, priv_key} = Keys.keypair(:sign)
+```
+
+2. (initiator) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :initiator, channel_reserve)`
+3. (responder) `Channel.initialize(temporary_id, initiator_pubkey, responder_pubkey, :responder, channel_reserve)`
+4. (initiator) `{:ok, channel_id, half_signed_open_tx} = Channel.open(temporary_id, initiator_amount, responder_amount, locktime, fee, nonce, priv_key)` with appropriate nonce
+5. Copy `half_signed_open_tx` to responder. You can do that by copy-pasting result of `IO.inspect(half_signed_open_tx, limit: :infinity)`
+6. (responder) `{:ok, channel_id, fully_signed_open_tx} = Channel.sign_open(temporary_id, initiator_amount, responder_amount, locktime, half_signed_open_tx, priv_key)`
+7. (responder) `Miner.mine_sync_block_to_chain()`
+8. Check all nodes recognize new block **with** the ChannelOpenTx
+9. Make a transfer as follows:
+
+    a. (initiator) `{:ok, half_signed_state} = Channel.transfer(channel_id, 50, priv_key)`
+    
+    b. Copy `half_signed_state` to responder.
+    
+    c. (responder) `{:ok, signed_state} = Channel.receive_half_signed_tx(half_signed_state, priv_key)`
+    
+    d. Copy `signed_state` to initiator.
+    
+    e. (initiator) `:ok = Channel.receive_fully_signed_tx(signed_state)`
+    
+10. Make another partial transfer:
+
+    a. (responder) `{:ok, half_signed_state2} = Channel.transfer(channel_id, 25, priv_key)`
+    
+    b. Copy `half_signed_state2` to initiator.
+    
+    c. (initiator) `{:ok, signed_state2} = Channel.receive_half_signed_tx(half_signed_state2, priv_key)`
+    
+    c. Do NOT copy `signed_state` to responder.
+    
+11. (responder) `Channel.solo_close(channel_id, 5, nonce, priv_key)` with appropriate nonce
+12. (responder) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSoloCloseTx.
+13. (initiator) `Channel.slash(channel_id, 5, nonce, initiator_pubkey, priv_key)` with appropriate nonce
+14. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSlashTx.
+15. Mine 2 blocks.
+16. (initiator) `Channel.settle(channel_id, 5, nonce + 1, priv_key)`
+17. (initiator) `Miner.mine_sync_block_to_chain()` and check all nodes recognize ChannelSettleTx.
 
 #### Contract Transactions
 TBA..

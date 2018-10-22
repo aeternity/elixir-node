@@ -58,18 +58,14 @@ defmodule MultipleTransactionsTest do
 
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
 
-    signed_tx1 = create_signed_tx(account, account2, 100, nonce1, 10)
-
-    assert :ok = Pool.add_transaction(signed_tx1)
+    create_signed_tx(account, account2, 100, nonce1, 10)
 
     :ok = Miner.mine_sync_block_to_chain()
     assert %{} == Pool.get_and_empty_pool()
     assert 100 == Account.balance(TestUtils.get_accounts_chainstate(), account2_pub_key)
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
-    signed_tx2 = create_signed_tx(account2, account3, 90, nonce2, 10)
-
-    assert :ok = Pool.add_transaction(signed_tx2)
+    create_signed_tx(account2, account3, 90, nonce2, 10)
     :ok = Miner.mine_sync_block_to_chain()
 
     assert %{} == Pool.get_and_empty_pool()
@@ -80,8 +76,7 @@ defmodule MultipleTransactionsTest do
 
     # account3 has 90 tokens, spends 90 (+10 fee) to account2 should be invalid
     nonce3 = Account.nonce(TestUtils.get_accounts_chainstate(), account3_pub_key) + 1
-    signed_tx3 = create_signed_tx(account3, account2, 90, nonce3, 10)
-    assert :ok = Pool.add_transaction(signed_tx3)
+    create_signed_tx(account3, account2, 90, nonce3, 10)
     :ok = Miner.mine_sync_block_to_chain()
 
     # The state of the accounts should be the as same before the invalid tx
@@ -89,9 +84,8 @@ defmodule MultipleTransactionsTest do
     assert 90 == Account.balance(TestUtils.get_accounts_chainstate(), account3_pub_key)
 
     Pool.get_and_empty_pool()
-    signed_tx4 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
+    create_signed_tx(account, account2, 100, nonce1 + 1, 10)
 
-    assert :ok = Pool.add_transaction(signed_tx4)
     :ok = Miner.mine_sync_block_to_chain()
 
     Pool.get_and_empty_pool()
@@ -102,14 +96,9 @@ defmodule MultipleTransactionsTest do
     # account2 has 100 tokens, spends 30 (+10 fee) to account3,
     # and two times 20 (+10 fee) to account4 should succeed
 
-    signed_tx5 = create_signed_tx(account2, account3, 30, nonce2 + 1, 10)
-    assert :ok = Pool.add_transaction(signed_tx5)
-
-    signed_tx6 = create_signed_tx(account2, account4, 20, nonce2 + 2, 10)
-    assert :ok = Pool.add_transaction(signed_tx6)
-
-    signed_tx7 = create_signed_tx(account2, account4, 20, nonce2 + 3, 10)
-    assert :ok = Pool.add_transaction(signed_tx7)
+    create_signed_tx(account2, account3, 30, nonce2 + 1, 10)
+    create_signed_tx(account2, account4, 20, nonce2 + 2, 10)
+    create_signed_tx(account2, account4, 20, nonce2 + 3, 10)
 
     :ok = Miner.mine_sync_block_to_chain()
 
@@ -145,21 +134,15 @@ defmodule MultipleTransactionsTest do
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
-    signed_tx1 = create_signed_tx(account, account2, 100, nonce1 + 1, 10)
-    assert :ok = Pool.add_transaction(signed_tx1)
-
-    signed_tx2 = create_signed_tx(account, account2, 100, nonce1 + 2, 10)
-    assert :ok = Pool.add_transaction(signed_tx2)
+    create_signed_tx(account, account2, 100, nonce1 + 1, 10)
+    create_signed_tx(account, account2, 100, nonce1 + 2, 10)
 
     :ok = Miner.mine_sync_block_to_chain()
 
     assert %{} == Pool.get_and_empty_pool()
 
-    signed_tx3 = create_signed_tx(account2, account3, 50, nonce2 + 1, 10)
-    assert :ok = Pool.add_transaction(signed_tx3)
-
-    signed_tx4 = create_signed_tx(account2, account4, 50, nonce2 + 2, 10)
-    assert :ok = Pool.add_transaction(signed_tx4)
+    create_signed_tx(account2, account3, 50, nonce2 + 1, 10)
+    create_signed_tx(account2, account4, 50, nonce2 + 2, 10)
 
     miner_balance_before_mining =
       Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
@@ -179,17 +162,14 @@ defmodule MultipleTransactionsTest do
     {sender_pub_key, sender_priv_key} = sender
     {receiver_pub_key, _receiver_priv_key} = receiver
 
-    {:ok, signed_tx} =
-      Account.spend(
-        sender_pub_key,
-        sender_priv_key,
-        receiver_pub_key,
-        amount,
-        fee,
-        nonce,
-        <<"payload">>
-      )
-
-    signed_tx
+    Account.spend(
+      sender_pub_key,
+      sender_priv_key,
+      receiver_pub_key,
+      amount,
+      fee,
+      nonce,
+      <<"payload">>
+    )
   end
 end

@@ -10,10 +10,11 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Keys
   alias Aecore.Chain.Identifier
+  alias Aecore.Tx.SignedTx
+  alias Aeutil.TypeToTag
 
   @version 1
-  # TypeToTag.type_to_tag(Aecore.Tx.SignedTx)
-  @signed_tx_tag 11
+  @signedtx_version 1
 
   @typedoc """
   Structure of the ChannelOffChainTx type
@@ -86,21 +87,23 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   end
 
   def verify_signature_for_key(
-        %ChannelOffChainTx{signatures: {sig1, sig2}} = state,
+        %ChannelOffChainTx{signatures: {signature1, signature2}} = state,
         pubkey
       ) do
-    binary_form = rlp_encode(state)
-
-    Keys.verify(binary_form, sig1, pubkey) or
-      verify_signature_for_key(%ChannelOffChainTx{state | signatures: {sig2, <<>>}}, pubkey)
+    Keys.verify(signing_form(state), signature1, pubkey) or
+      verify_signature_for_key(%ChannelOffChainTx{state | signatures: {signature2, <<>>}}, pubkey)
   end
 
   @spec signature_for_offchain_tx(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: binary()
   defp signature_for_offchain_tx(%ChannelOffChainTx{} = offchain_tx, priv_key)
        when is_binary(priv_key) do
     offchain_tx
-    |> rlp_encode()
+    |> signing_form()
     |> Keys.sign(priv_key)
+  end
+
+  defp signing_form(%ChannelOffChainTx{} = tx) do
+    rlp_encode(%ChannelOffChainTx{tx | signatures: {<<>>, <<>>}})
   end
 
   @doc """
@@ -108,18 +111,18 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   """
   @spec sign(ChannelOffChainTx.t(), Keys.sign_priv_key()) :: ChannelOffChainTx.t()
   def sign(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = offchain_tx, priv_key) do
-    sig = signature_for_offchain_tx(offchain_tx, priv_key)
+    signature = signature_for_offchain_tx(offchain_tx, priv_key)
 
-    {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig, <<>>}}}
+    {:ok, %ChannelOffChainTx{offchain_tx | signatures: {signature, <<>>}}}
   end
 
-  def sign(%ChannelOffChainTx{signatures: {sig1, <<>>}} = offchain_tx, priv_key) do
-    sig2 = signature_for_offchain_tx(offchain_tx, priv_key)
+  def sign(%ChannelOffChainTx{signatures: {existing_signature, <<>>}} = offchain_tx, priv_key) do
+    new_signature = signature_for_offchain_tx(offchain_tx, priv_key)
 
-    if sig2 > sig1 do
-      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig1, sig2}}}
+    if new_signature > existing_signature do
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {existing_signature, new_signature}}}
     else
-      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {sig2, sig1}}}
+      {:ok, %ChannelOffChainTx{offchain_tx | signatures: {new_signature, existing_signature}}}
     end
   end
 
@@ -142,59 +145,11 @@ defmodule Aecore.Channel.ChannelOffChainTx do
   end
 
   @doc """
-  Encodes the offchain transaction to a form embeddable in ChannelSoloCloseTx, ChannelSlashTx, ChannelSnapshotTx
-  """
-  @spec encode_to_payload(ChannelOffChainTx.t() | :empty) :: binary()
-  def encode_to_payload(%ChannelOffChainTx{signatures: {sig1, sig2}} = state) do
-    [
-      :binary.encode_unsigned(@signed_tx_tag),
-      :binary.encode_unsigned(@version),
-      [sig1, sig2],
-      rlp_encode(state)
-    ]
-    |> ExRLP.encode()
-  end
-
-  def encode_to_payload(:empty) do
-    <<>>
-  end
-
-  @doc """
-  Decodes the embedded payload of ChannelSoloCloseTx, ChannelSlashTx, ChannelSnapshotTx
-  """
-  @spec decode_from_payload(binary()) :: {:ok, ChannelOffChainTx.t()} | :empty | error()
-  def decode_from_payload(<<>>) do
-    {:ok, :empty}
-  end
-
-  def decode_from_payload([@signed_tx_tag, @version, [sig1, sig2], encoded_tx]) do
-    case rlp_decode(encoded_tx) do
-      {:ok, %ChannelOffChainTx{} = decoded_tx} ->
-        {:ok, %ChannelOffChainTx{decoded_tx | signatures: {sig1, sig2}}}
-
-      {:error, _} = err ->
-        err
-    end
-  end
-
-  def decode_from_payload([@signed_tx_tag, @version | invalid_data]) do
-    {:error,
-     "#{__MODULE__}: decode_from_payload: Invalid serialization - #{inspect(invalid_data)}"}
-  end
-
-  def decode_from_payload([@signed_tx_tag, version | _]) do
-    {:error, "#{__MODULE__}: decode_from_payload: Unknown version #{version}"}
-  end
-
-  def decode_from_payload([tag | _]) do
-    {:error, "#{__MODULE__}: decode_from_payload: Invalid payload tag #{tag}"}
-  end
-
-  @doc """
   Serializes the offchain transaction - signatures are not being included
   """
   @spec encode_to_list(ChannelOffChainTx.t()) :: list(binary())
   def encode_to_list(%ChannelOffChainTx{
+        signatures: {<<>>, <<>>},
         channel_id: channel_id,
         sequence: sequence,
         updates: updates,
@@ -209,6 +164,27 @@ defmodule Aecore.Channel.ChannelOffChainTx do
       encoded_updates,
       state_hash
     ]
+  end
+
+  def encode_to_list(%ChannelOffChainTx{
+        signatures: {_, _}
+      }) do
+    throw("#{__MODULE__}: Serialization.rlp_encode is not supported for offchaintx")
+  end
+
+  def rlp_encode(%ChannelOffChainTx{signatures: {<<>>, <<>>}} = tx) do
+    Serialization.rlp_encode(tx)
+  end
+
+  def rlp_encode(%ChannelOffChainTx{signatures: {signature1, signature2}} = tx) do
+    {:ok, signedtx_tag} = TypeToTag.type_to_tag(SignedTx)
+
+    ExRLP.encode([
+      signedtx_tag,
+      @signedtx_version,
+      [signature1, signature2],
+      ChannelOffChainTx.rlp_encode(%ChannelOffChainTx{tx | signatures: {<<>>, <<>>}})
+    ])
   end
 
   @doc """
@@ -227,12 +203,13 @@ defmodule Aecore.Channel.ChannelOffChainTx do
          # Look for errors
          errors <- for({:error, _} = err <- decoded_updates, do: err),
          nil <- List.first(errors) do
-      %ChannelOffChainTx{
-        channel_id: channel_id,
-        sequence: :binary.decode_unsigned(sequence),
-        updates: decoded_updates,
-        state_hash: state_hash
-      }
+      {:ok,
+       %ChannelOffChainTx{
+         channel_id: channel_id,
+         sequence: :binary.decode_unsigned(sequence),
+         updates: decoded_updates,
+         state_hash: state_hash
+       }}
     else
       {:error, _} = error ->
         error
@@ -245,5 +222,43 @@ defmodule Aecore.Channel.ChannelOffChainTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  def rlp_decode_signed(binary) do
+    result =
+      try do
+        ExRLP.decode(binary)
+      rescue
+        e ->
+          {:error, "#{__MODULE__}: rlp_decode: IIllegal serialization: #{Exception.message(e)}"}
+      end
+
+    {:ok, signedtx_tag} = TypeToTag.type_to_tag(SignedTx)
+    signedtx_tag_bin = :binary.encode_unsigned(signedtx_tag)
+    signedtx_ver_bin = :binary.encode_unsigned(@signedtx_version)
+
+    case result do
+      [^signedtx_tag_bin, ^signedtx_ver_bin, [signature1, signature2], data]
+      when signature1 < signature2 ->
+        case rlp_decode(data) do
+          {:ok, %ChannelOffChainTx{} = tx} ->
+            {:ok, %ChannelOffChainTx{tx | signatures: {signature1, signature2}}}
+
+          {:error, _} = error ->
+            error
+        end
+
+      [^signedtx_tag_bin, ^signedtx_ver_bin | _] ->
+        {:error, "#{__MODULE__}: Invalid signedtx serialization"}
+
+      [^signedtx_tag_bin | _] ->
+        {:error, "#{__MODULE__}: Unknown signedtx version"}
+
+      list when is_list(list) ->
+        {:error, "#{__MODULE__}: Invalid tag"}
+
+      {:error, _} = error ->
+        error
+    end
   end
 end

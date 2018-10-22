@@ -6,6 +6,7 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Oracle.{Oracle, OracleStateTree}
@@ -36,6 +37,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :oracle
 
   @spec init(payload()) :: OracleExtendTx.t()
   def init(%{ttl: ttl}) do
@@ -91,9 +95,9 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           OracleExtendTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, oracles, _block_height, %OracleExtendTx{ttl: ttl}, %DataTx{
-        fee: fee,
-        senders: [%Identifier{value: sender}]
+  def preprocess_check(accounts, oracles, _block_height, %OracleExtendTx{}, %DataTx{
+        senders: [%Identifier{value: sender}],
+        fee: fee
       }) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
@@ -101,9 +105,6 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
 
       !OracleStateTree.exists_oracle?(oracles, sender) ->
         {:error, "#{__MODULE__}: Account - #{inspect(sender)}, isn't a registered operator"}
-
-      fee < calculate_minimum_fee(ttl) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} is too low"}
 
       true ->
         :ok
@@ -121,11 +122,14 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  def calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_extend_base_fee]
-    round(Float.ceil(ttl.ttl / blocks_ttl_per_token) + base_fee)
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(
+        %DataTx{fee: fee, payload: %OracleExtendTx{ttl: %{ttl: ttl}}},
+        _chain_state,
+        _block_height
+      ) do
+    ttl_fee = fee - GovernanceConstants.oracle_extend_base_fee()
+    ttl_fee >= Oracle.calculate_minimum_fee(ttl)
   end
 
   @spec encode_to_list(OracleExtendTx.t(), DataTx.t()) :: list()

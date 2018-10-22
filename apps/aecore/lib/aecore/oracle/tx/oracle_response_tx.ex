@@ -6,9 +6,10 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Oracle.Oracle
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
-  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Tx.DataTx
 
@@ -36,6 +37,9 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
 
   @spec get_chain_state_name() :: atom()
   def get_chain_state_name, do: :oracles
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :oracle
 
   @spec init(payload()) :: OracleResponseTx.t()
   def init(%{
@@ -125,7 +129,7 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
         oracles,
         _block_height,
         %OracleResponseTx{response: response, query_id: query_id},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]} = data_tx
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
       ) do
     tree_query_id = sender <> query_id
 
@@ -148,9 +152,6 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
       OracleStateTree.get_query(oracles, tree_query_id).oracle_address != sender ->
         {:error, "#{__MODULE__}: Query references a different oracle"}
 
-      !is_minimum_fee_met?(data_tx, fee) ->
-        {:error, "#{__MODULE__}: Fee: #{inspect(fee)} too low"}
-
       true ->
         :ok
     end
@@ -167,25 +168,24 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(DataTx.t(), non_neg_integer()) :: boolean()
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
   def is_minimum_fee_met?(
         %DataTx{
           payload: %OracleResponseTx{query_id: query_id},
-          senders: [%Identifier{value: sender}]
+          senders: [%Identifier{value: sender}],
+          fee: fee
         },
-        fee
+        oracles_tree,
+        _block_height
       ) do
-    oracles = Chain.chain_state().oracles
     tree_query_id = sender <> query_id
-    referenced_query_response_ttl = OracleStateTree.get_query(oracles, tree_query_id).response_ttl
-    fee >= calculate_minimum_fee(referenced_query_response_ttl)
-  end
 
-  @spec calculate_minimum_fee(non_neg_integer()) :: non_neg_integer()
-  defp calculate_minimum_fee(ttl) do
-    blocks_ttl_per_token = Application.get_env(:aecore, :tx_data)[:blocks_ttl_per_token]
-    base_fee = Application.get_env(:aecore, :tx_data)[:oracle_response_base_fee]
-    round(Float.ceil(ttl / blocks_ttl_per_token) + base_fee)
+    ttl_fee = fee - GovernanceConstants.oracle_response_base_fee()
+
+    referenced_query_response_ttl =
+      OracleStateTree.get_query(oracles_tree, tree_query_id).response_ttl
+
+    ttl_fee >= Oracle.calculate_minimum_fee(referenced_query_response_ttl)
   end
 
   @spec encode_to_list(OracleResponseTx.t(), DataTx.t()) :: list()

@@ -5,12 +5,13 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
   alias Aecore.Naming.NamingStateTree
   alias Aecore.Naming.Tx.NameTransferTx
-  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.DataTx
   alias Aeutil.Hash
 
   require Logger
@@ -32,8 +33,8 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @typedoc "Structure of the NameTransferTx Transaction type"
   @type t :: %NameTransferTx{
-          hash: binary(),
-          target: Keys.pubkey()
+          hash: Identifier.t(),
+          target: Identifier.t()
         }
 
   @doc """
@@ -61,10 +62,16 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
   Validates the transaction without considering state
   """
   @spec validate(NameTransferTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%NameTransferTx{hash: %Identifier{value: hash}, target: target}, %DataTx{
+  def validate(%NameTransferTx{hash: %Identifier{value: hash} = hash_id, target: target}, %DataTx{
         senders: senders
       }) do
     cond do
+      !Identifier.valid?(hash_id, :name) ->
+        {:error, "#{__MODULE__}: Invalid hash identifier: #{inspect(hash_id)}"}
+
+      !Identifier.valid?(target, :account) ->
+        {:error, "#{__MODULE__}: Invalid target identifier: #{inspect(target)}"}
+
       byte_size(hash) != Hash.get_hash_bytes_size() ->
         {:error, "#{__MODULE__}: hash bytes size not correct: #{inspect(byte_size(hash))}"}
 
@@ -81,6 +88,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :naming
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @doc """
   Changes the naming state for claim transfers.
@@ -156,9 +166,9 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(NameTransferTx.t(), DataTx.t()) :: list()

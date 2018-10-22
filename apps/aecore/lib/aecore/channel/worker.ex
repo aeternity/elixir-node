@@ -30,7 +30,7 @@ defmodule Aecore.Channel.Worker do
   """
   @type state :: %{binary() => ChannelStatePeer.t()}
 
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   def start_link(_args) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
@@ -84,7 +84,7 @@ defmodule Aecore.Channel.Worker do
   Imports a channel from an open tx. Assumes no transactions were made
   """
   @spec import_from_open(SignedTx.t(), role()) :: :ok | error()
-  def import_from_open(%SignedTx{data: %DataTx{type: ChannelOpenTx}} = open_tx, role)
+  def import_from_open(%SignedTx{data: %DataTx{type: ChannelCreateTx}} = open_tx, role)
       when is_atom(role) do
     case ChannelStatePeer.from_open(open_tx, role) do
       {:ok, peer_state} ->

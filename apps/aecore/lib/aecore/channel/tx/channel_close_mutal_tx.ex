@@ -5,8 +5,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCloseMutalTx
-  alias Aecore.Tx.{SignedTx, DataTx}
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Identifier
@@ -49,6 +50,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   def chainstate_senders?(), do: true
 
   @doc """
@@ -82,12 +86,21 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   Validates the transaction without considering state
   """
   @spec validate(ChannelCloseMutalTx.t(), DataTx.t()) :: :ok | {:error, reason()}
-  def validate(%ChannelCloseMutalTx{} = tx, _data_tx) do
+  def validate(
+        %ChannelCloseMutalTx{
+          initiator_amount: initiator_amount,
+          responder_amount: responder_amount
+        },
+        %DataTx{senders: senders}
+      ) do
     cond do
-      tx.initiator_amount < 0 ->
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
+      initiator_amount < 0 ->
         {:error, "#{__MODULE__}: initiator_amount can't be negative"}
 
-      tx.responder_amount < 0 ->
+      responder_amount < 0 ->
         {:error, "#{__MODULE__}: responder_amount can't be negative"}
 
       true ->
@@ -167,7 +180,10 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
 
       channel.initiator_amount + channel.responder_amount !=
           initiator_amount + responder_amount + fee ->
-        {:error, "#{__MODULE__}: Wrong total balance"}
+        {:error,
+         "#{__MODULE__}: Wrong total balance, expected #{
+           channel.initiator_amount + channel.responder_amount
+         }, got #{initiator_amount + responder_amount + fee}"}
 
       true ->
         :ok
@@ -186,9 +202,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
     accounts
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCloseMutalTx.t(), DataTx.t()) :: list()

@@ -127,7 +127,7 @@ defmodule Aecore.Chain.Chainstate do
   def apply_transaction_on_state(chainstate, block_height, tx) do
     case SignedTx.validate(tx) do
       :ok ->
-        SignedTx.process_chainstate(chainstate, block_height, tx)
+        SignedTx.check_apply_transaction(chainstate, block_height, tx)
 
       err ->
         err
@@ -142,7 +142,7 @@ defmodule Aecore.Chain.Chainstate do
     [
       AccountStateTree.root_hash(chainstate.accounts),
       CallStateTree.root_hash(chainstate.calls),
-      @canonical_root_hash,
+      ChannelStateTree.root_hash(chainstate.channels),
       ContractStateTree.root_hash(chainstate.contracts),
       NamingStateTree.root_hash(chainstate.naming),
       OracleStateTree.root_hash(chainstate.oracles)

@@ -3,6 +3,7 @@ defmodule Aecore.Oracle.Oracle do
   Contains wrapping functions for working with oracles, data validation and TTL calculations.
   """
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Oracle.OracleStateTree
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.{Chainstate, Identifier}
@@ -171,14 +172,29 @@ defmodule Aecore.Oracle.Oracle do
     Pool.add_transaction(tx)
   end
 
-  @spec calculate_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
-  def calculate_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
+  def calculate_minimum_fee(relative_ttl) do
+    Float.ceil(relative_ttl * GovernanceConstants.oracle_ttl_fee_per_block())
+  end
+
+  @spec calculate_absolute_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
+  def calculate_absolute_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
     case type do
       :absolute ->
         ttl
 
       :relative ->
         ttl + block_height_tx_included
+    end
+  end
+
+  @spec calculate_relative_ttl(ttl(), non_neg_integer()) :: non_neg_integer()
+  def calculate_relative_ttl(%{ttl: ttl, type: type}, block_height_tx_included) do
+    case type do
+      :absolute ->
+        ttl - block_height_tx_included
+
+      :relative ->
+        ttl
     end
   end
 
@@ -196,7 +212,7 @@ defmodule Aecore.Oracle.Oracle do
               false
 
             %{type: :relative} ->
-              ttl_is_valid?(response_ttl, block_height)
+              ttl_is_valid?(response_ttl)
           end
 
         query_ttl_is_valid = ttl_is_valid?(query_ttl, block_height)
@@ -204,7 +220,14 @@ defmodule Aecore.Oracle.Oracle do
         response_ttl_is_valid && query_ttl_is_valid
 
       %OracleExtendTx{ttl: ttl} ->
-        ttl > 0
+        case ttl do
+          %{type: :absolute} ->
+            Logger.error("#{__MODULE__}: Extend TTL has to be relative")
+            false
+
+          %{type: :relative} ->
+            ttl_is_valid?(ttl)
+        end
 
       _ ->
         true

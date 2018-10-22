@@ -5,8 +5,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   use Aecore.Tx.Transaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCloseSoloTx
-  alias Aecore.Tx.{SignedTx, DataTx}
+  alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
@@ -21,7 +22,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
   @typedoc "Expected structure for the ChannelCloseSolo Transaction"
   @type payload :: %{
           channel_id: binary(),
-          offchain_tx: map() | atom(),
+          offchain_tx: map() | :empty,
           poi: map()
         }
 
@@ -48,6 +49,9 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
+
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
 
   @spec init(payload()) :: ChannelCloseSoloTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: %Poi{} = poi} = _payload) do
@@ -85,14 +89,23 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       length(senders) != 1 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
       internal_channel_id !== offchain_tx_channel_id ->
-        {:error, "#{__MODULE__}: Channel id mismatch"}
+        {:error,
+         "#{__MODULE__}: OffChainTx channel id mismatch, expected #{inspect(internal_channel_id)}, got #{
+           inspect(offchain_tx_channel_id)
+         }"}
 
       Poi.calculate_root_hash(poi) !== state_hash ->
-        {:error, "#{__MODULE__}: Invalid state_hash"}
+        {:error,
+         "#{__MODULE__}: Invalid Poi root_hash, expcted #{inspect(state_hash)}, got #{
+           inspect(Poi.calculate_root_hash(poi))
+         }"}
 
       true ->
         :ok
@@ -176,18 +189,25 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
+    offchain_tx_encoded =
+      if tx.offchain_tx != :empty do
+        ChannelOffChainTx.rlp_encode(tx.offchain_tx)
+      else
+        <<>>
+      end
+
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
       Identifier.encode_to_binary(sender),
-      ChannelOffChainTx.encode_to_payload(tx.offchain_tx),
+      offchain_tx_encoded,
       Serialization.rlp_encode(tx.poi),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
@@ -206,7 +226,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
       ]) do
     with {:ok, channel_id} <-
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
-         {:ok, offchain_tx} <- ChannelOffChainTx.decode_from_payload(payload),
+         {:ok, offchain_tx} <- decode_payload(payload),
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelCloseSoloTx,
@@ -232,5 +252,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   def decode_from_list(version, _) do
     {:error, "#{__MODULE__}: decode_from_list: Unknown version #{version}"}
+  end
+
+  defp decode_payload(<<>>) do
+    {:ok, :empty}
+  end
+
+  defp decode_payload(payload) do
+    ChannelOffChainTx.rlp_decode_signed(payload)
   end
 end

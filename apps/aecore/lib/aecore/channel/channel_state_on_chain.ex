@@ -161,7 +161,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Validates SlashTx and SoloCloseTx payload and poi.
   """
   @spec validate_slashing(ChannelStateOnChain.t(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
-          :ok | {:error, binary()}
+          :ok | {:error, String.t()}
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         :empty,
@@ -171,22 +171,37 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       cond do
         # No payload is only allowed for SoloCloseTx
         channel.slash_sequence != 0 ->
-          {:error, "#{__MODULE__}: Channel already slashed"}
+          {:error, "#{__MODULE__}: Channel already slashed, sequence=#{channel.slash_sequence}"}
 
         channel.state_hash !== Poi.calculate_root_hash(poi) ->
-          {:error, "#{__MODULE__}: Invalid state hash"}
+          {:error,
+           "#{__MODULE__}: Invalid state hash, expected #{inspect(channel.state_hash)}, got #{
+             inspect(Poi.calculate_root_hash(poi))
+           }"}
 
         channel.channel_reserve > poi_initiator_amount ->
-          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         channel.channel_reserve > poi_responder_amount ->
-          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         poi_initiator_amount !== channel.initiator_amount ->
-          {:error, "#{__MODULE__}: Invalid initiator amount"}
+          {:error,
+           "#{__MODULE__}: Invalid initiator amount, expected #{channel.initiator_amount}, got #{
+             poi_initiator_amount
+           }"}
 
         poi_responder_amount !== channel.responder_amount ->
-          {:error, "#{__MODULE__}: Invalid responder amount"}
+          {:error,
+           "#{__MODULE__}: Invalid responder amount, expected #{channel.responder_amount}, got #{
+             poi_responder_amount
+           }"}
 
         true ->
           :ok
@@ -205,20 +220,35 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     with {:ok, poi_initiator_amount, poi_responder_amount} <- balances_from_poi(channel, poi) do
       cond do
         offchain_tx.state_hash !== Poi.calculate_root_hash(poi) ->
-          {:error, "#{__MODULE__}: Invalid state hash"}
+          {:error,
+           "#{__MODULE__}: Invalid state hash, expected #{inspect(offchain_tx.state_hash)}, got #{
+             inspect(Poi.calculate_root_hash(poi))
+           }"}
 
         channel.slash_sequence >= offchain_tx.sequence ->
-          {:error, "#{__MODULE__}: OffChain state is too old"}
+          {:error,
+           "#{__MODULE__}: OffChain state is too old, expected newer then #{
+             channel.slash_sequence
+           }, got #{offchain_tx.sequence}"}
 
         channel.channel_reserve > poi_initiator_amount ->
-          {:error, "#{__MODULE__}: Initiator does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         channel.channel_reserve > poi_responder_amount ->
-          {:error, "#{__MODULE__}: Responder does not met channel reserve"}
+          {:error,
+           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+             channel.channel_reserve
+           })"}
 
         poi_initiator_amount + poi_responder_amount !==
             channel.initiator_amount + channel.responder_amount ->
-          {:error, "#{__MODULE__}: Invalid total amount"}
+          {:error,
+           "#{__MODULE__}: Invalid total amount, expected #{
+             channel.initiator_amount + channel.responder_amount
+           }, got #{poi_initiator_amount + poi_responder_amount}"}
 
         true ->
           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
@@ -230,15 +260,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @spec balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
-          {:ok, non_neg_integer(), non_neg_integer()} | {:error, binary()}
+          {:ok, non_neg_integer(), non_neg_integer()} | {:error, String.t()}
   defp balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
     with {:ok, poi_initiator_amount} <- Poi.account_balance(poi, channel.initiator_pubkey),
          {:ok, poi_responder_amount} <- Poi.account_balance(poi, channel.responder_pubkey) do
       # Later we will need to factor in contracts
       {:ok, poi_initiator_amount, poi_responder_amount}
     else
-      {:error, _} ->
-        {:error, "#{__MODULE__}: Poi is missing an OffChain account."}
+      {:error, reason} ->
+        {:error, "#{__MODULE__}: Poi is missing an OffChain account, #{reason}"}
     end
   end
 
@@ -267,7 +297,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   def apply_slashing(
         %ChannelStateOnChain{} = channel,
         block_height,
-        %ChannelOffChainTx{} = offchain_tx,
+        %ChannelOffChainTx{state_hash: state_hash, sequence: sequence},
         %Poi{} = poi
       ) do
     {:ok, initiator_amount} = Poi.account_balance(poi, channel.initiator_pubkey)
@@ -276,9 +306,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       channel
       | slash_close: block_height + channel.lock_period,
-        slash_sequence: offchain_tx.sequence,
+        slash_sequence: sequence,
         initiator_amount: initiator_amount,
-        responder_amount: responder_amount
+        responder_amount: responder_amount,
+        state_hash: state_hash
     }
   end
 

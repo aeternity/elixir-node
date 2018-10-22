@@ -183,7 +183,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          {:ok, Block.t()} | {:error, binary()}
+          {:ok, Block.t()} | {:error, String.t()}
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash, :block) do
       {:error, _} = error -> error
@@ -220,7 +220,7 @@ defmodule Aecore.Chain.Worker do
         chain_state
 
       _ ->
-        {:error, "#{__MODULE__}: Chainstate was delated"}
+        {:error, "#{__MODULE__}: Chainstate was deleted"}
     end
   end
 

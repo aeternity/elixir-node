@@ -11,6 +11,7 @@ defmodule Aecore.Account.Account do
   alias Aecore.Naming.{NameCommitment, NameUtil}
   alias Aecore.Naming.Tx.{NamePreClaimTx, NameClaimTx, NameUpdateTx, NameTransferTx, NameRevokeTx}
   alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.{Bits, Serialization}
 
   require Logger
@@ -18,7 +19,7 @@ defmodule Aecore.Account.Account do
   @version 1
 
   @typedoc "Error with reason"
-  @type error :: {:error, binary()}
+  @type error :: {:error, String.t()}
 
   @typedoc "Structure of the Account Transaction type"
   @type t :: %Account{
@@ -323,7 +324,9 @@ defmodule Aecore.Account.Account do
         ) :: {:ok, SignedTx.t()} | error()
   def build_tx(payload, tx_type, sender, sender_prv, fee, nonce, ttl \\ 0) do
     tx = DataTx.init(tx_type, payload, sender, fee, nonce, ttl)
-    SignedTx.sign_tx(tx, sender_prv)
+    {:ok, signed_tx} = SignedTx.sign_tx(tx, sender_prv)
+    Pool.add_transaction(signed_tx)
+    signed_tx
   end
 
   @doc """
@@ -334,42 +337,29 @@ defmodule Aecore.Account.Account do
     new_balance = balance + amount
 
     if new_balance < 0 do
-      throw({:error, "#{__MODULE__}: Negative balance"})
+      throw(
+        {:error,
+         "#{__MODULE__}: Insufficient funds. We have #{account_state.balance} and we tried to transfer #{
+           amount
+         }"}
+      )
     end
 
     %Account{account_state | balance: new_balance}
   end
 
-  @doc """
-  Adds balance to the given Account state. No exception version.
-  """
-  @spec apply_transfer(Account.t(), non_neg_integer(), integer()) :: {:ok, Account.t()} | error()
-  def apply_transfer(account_state, _block_height, amount) do
-    new_balance = account_state.balance + amount
-
-    if new_balance >= 0 do
-      {:ok, %Account{account_state | balance: new_balance}}
-    else
-      {:error, "#{__MODULE__}: Negative balance"}
-    end
-  end
-
   @spec apply_nonce!(Account.t(), integer()) :: Account.t()
   def apply_nonce!(%Account{nonce: current_nonce} = account_state, new_nonce) do
     if current_nonce >= new_nonce do
-      throw({:error, "#{__MODULE__}: Invalid nonce"})
+      throw(
+        {:error,
+         "#{__MODULE__}: Nonce is too small - currently we have #{current_nonce} and we got #{
+           new_nonce
+         }"}
+      )
     end
 
     %Account{account_state | nonce: new_nonce}
-  end
-
-  @spec apply_nonce(Account.t(), integer()) :: {:ok, Account.t()} | error()
-  def apply_nonce(%Account{nonce: current_nonce} = account_state, new_nonce) do
-    if current_nonce < new_nonce do
-      {:ok, %Account{account_state | nonce: new_nonce}}
-    else
-      {:error, "#{__MODULE__}: Invalid nonce"}
-    end
   end
 
   @spec base58c_encode(Keys.pubkey()) :: nil | String.t()

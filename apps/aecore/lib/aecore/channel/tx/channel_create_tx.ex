@@ -6,6 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   use Aecore.Tx.Transaction
   @behaviour Aecore.Channel.ChannelTransaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelCreateTx
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
@@ -63,6 +64,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelCreateTx.t()
   def init(%{
         initiator_amount: initiator_amount,
@@ -95,20 +99,29 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 
       length(senders) != 2 ->
-        {:error, "#{__MODULE__}: Invalid senders size"}
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
 
       initiator_amount < channel_reserve ->
-        {:error, "#{__MODULE__}: Initiator amount does not meet channel reserve"}
+        {:error,
+         "#{__MODULE__}: Initiator amount (#{initiator_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
 
       responder_amount < channel_reserve ->
-        {:error, "#{__MODULE__}: Responder amount does not meet channel reserve"}
+        {:error,
+         "#{__MODULE__}: Responder amount (#{responder_amount}) does not met channel reserve (#{
+           channel_reserve
+         })"}
 
       byte_size(state_hash) != 32 ->
-        {:error, "#{__MODULE__}: Invalid state hash"}
+        {:error, "#{__MODULE__}: Invalid state hash size byte_size(state_hash)"}
 
       true ->
         :ok
@@ -195,10 +208,16 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
       ) do
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->
-        {:error, "#{__MODULE__}: Negative initiator balance"}
+        {:error,
+         "#{__MODULE__}: Initiator balance too low, required #{fee + initiator_amount}, has #{
+           AccountStateTree.get(accounts, initiator_pubkey).balance
+         }"}
 
       AccountStateTree.get(accounts, responder_pubkey).balance - responder_amount < 0 ->
-        {:error, "#{__MODULE__}: Negative responder balance"}
+        {:error,
+         "#{__MODULE__}: Responder balance too low, required #{responder_amount}, has #{
+           AccountStateTree.get(accounts, responder_pubkey).balance
+         }"}
 
       ChannelStateTree.has_key?(
         channels,
@@ -222,9 +241,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelCreateTx.t(), DataTx.t()) :: list()

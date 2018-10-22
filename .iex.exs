@@ -20,8 +20,9 @@ alias Aecore.Account.Tx.SpendTx
 alias Aecore.Tx.{DataTx, SignedTx}
 alias Aecore.Tx.Pool.Worker, as: Pool
 alias Aecore.Keys
-alias Aecore.Channel.{ChannelStatePeer, ChannelStateOffChain, ChannelStateOnChain}
-alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseSoloTx, ChannelCloseMutalTx}
+alias Aecore.Channel.{ChannelStatePeer, ChannelStateOnChain, ChannelStateTree, ChannelTransaction, ChannelOffChainTx, ChannelOffChainUpdate}
+alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseSoloTx, ChannelCloseMutalTx, ChannelSlashTx, ChannelSettleTx}
+alias Aecore.Channel.Updates.{ChannelCreateUpdate, ChannelDepositUpdate, ChannelWithdrawUpdate, ChannelTransferUpdate}
 alias Aecore.Channel.Worker, as: Channel
 
 alias Aehttpclient.Client

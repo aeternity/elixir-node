@@ -37,10 +37,10 @@ defmodule AecoreChainstateTest do
   test "chain state", wallet do
     init_accounts_state = Chain.chain_state().accounts
 
-    {:ok, signed_tx1} =
+    signed_tx1 =
       Account.spend(wallet.b_pub_key, wallet.b_priv_key, wallet.a_pub_key, 1, 1, 2, <<"payload">>)
 
-    {:ok, signed_tx2} =
+    signed_tx2 =
       Account.spend(wallet.c_pub_key, wallet.c_priv_key, wallet.a_pub_key, 2, 1, 2, <<"payload">>)
 
     init_accounts = %{
