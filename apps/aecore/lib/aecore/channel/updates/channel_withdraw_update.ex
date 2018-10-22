@@ -38,16 +38,14 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   @doc """
   Creates a ChannelWithdrawUpdate from a ChannelWithdrawTx
   """
-  @spec new(ChannelWithdrawTx.t(), Keys.pubkey()) :: ChannelWithdrawUpdate.t()
-  def new(
-        %ChannelWithdrawTx{
-          amount: amount
-        },
-        to
-      )
-      when is_binary(to) do
+  @spec new(ChannelWithdrawTx.t()) :: ChannelWithdrawUpdate.t()
+  def new(%ChannelWithdrawTx{
+        amount: amount,
+        withdrawing_account: withdrawing_account
+      })
+      when is_binary(withdrawing_account) do
     %ChannelWithdrawUpdate{
-      to: to,
+      to: withdrawing_account,
       amount: amount
     }
   end

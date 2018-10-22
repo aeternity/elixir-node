@@ -1,27 +1,27 @@
-defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
+defmodule Aecore.Channel.Tx.ChannelDepositTx do
   @moduledoc """
-  Aecore structure of ChannelWithdrawTx transaction data.
+  Aecore structure of ChannelDepositTx transaction data.
   """
 
   use Aecore.Tx.Transaction
   @behaviour Aecore.Channel.ChannelTransaction
 
-  alias Aecore.Channel.Tx.ChannelWithdrawTx
+  alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
   alias Aecore.Chain.Identifier
-  alias Aecore.Channel.Updates.ChannelWithdrawUpdate
+  alias Aecore.Channel.Updates.ChannelDepositUpdate
 
   require Logger
 
   @version 1
 
-  @typedoc "Expected structure for the ChannelWithdrawTx Transaction"
+  @typedoc "Expected structure for the ChannelDepositTx Transaction"
   @type payload :: %{
           channel_id: binary(),
-          withdrawing_account: binary(),
+          depositing_account: binary(),
           amount: non_neg_integer(),
           state_hash: binary(),
           sequence: non_neg_integer()
@@ -33,28 +33,28 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   @typedoc "Structure that holds specific transaction info in the chainstate."
   @type tx_type_state() :: ChannelStateTree.t()
 
-  @typedoc "Structure of the ChannelWithdraw Transaction type"
-  @type t :: %ChannelWithdrawTx{
+  @typedoc "Structure of the ChannelDeposit Transaction type"
+  @type t :: %ChannelDepositTx{
           channel_id: binary(),
-          withdrawing_account: binary(),
+          depositing_account: binary(),
           amount: non_neg_integer(),
           state_hash: binary(),
           sequence: non_neg_integer()
         }
 
   @doc """
-  Definition of the ChannelWithdrawTx structure
+  Definition of the ChannelDepositTx structure
 
   # Parameters
   - channel_id: id of the channel for which the transaction is meant
-  - withdrawing_account: the withdrawing account
-  - amount: the amount of tokens withdrawn from the channel
+  - depositing_account: the depositing account
+  - amount: the amount of tokens deposited into the channel
   - state_hash: root hash of the offchain chainstate after applying this transaction to it
   - sequence: sequence of the channel after applying this transaction to the channel
   """
   defstruct [
     :channel_id,
-    :withdrawing_account,
+    :depositing_account,
     :amount,
     :state_hash,
     :sequence
@@ -69,11 +69,11 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   def chainstate_senders?(), do: true
 
   @doc """
-  One of the senders in ChannelWithdrawTx is not passed with tx, but is supposed to be retrieved from Chainstate. The senders have to be channel initiator and responder.
+  One of the senders in ChannelDepositTx is not passed with tx, but is supposed to be retrieved from Chainstate. The senders have to be channel initiator and responder.
   """
-  @spec senders_from_chainstate(ChannelWithdrawTx.t(), Chainstate.t()) :: list(binary())
+  @spec senders_from_chainstate(ChannelDepositTx.t(), Chainstate.t()) :: list(binary())
   def senders_from_chainstate(
-        %ChannelWithdrawTx{channel_id: channel_id, withdrawing_account: withdrawing_account},
+        %ChannelDepositTx{channel_id: channel_id, depositing_account: depositing_account},
         chainstate
       ) do
     with %ChannelStateOnChain{
@@ -81,7 +81,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
            responder_pubkey: responder_pubkey
          } <- ChannelStateTree.get(chainstate.channels, channel_id),
          true <-
-           initiator_pubkey == withdrawing_account or responder_pubkey == withdrawing_account or
+           initiator_pubkey == depositing_account or responder_pubkey == depositing_account or
              :none do
       [initiator_pubkey, responder_pubkey]
     else
@@ -90,17 +90,17 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     end
   end
 
-  @spec init(payload()) :: ChannelWithdrawTx.t()
+  @spec init(payload()) :: ChannelDepositTx.t()
   def init(%{
         channel_id: channel_id,
-        withdrawing_account: withdrawing_account,
+        depositing_account: depositing_account,
         amount: amount,
         state_hash: state_hash,
         sequence: sequence
       }) do
-    %ChannelWithdrawTx{
+    %ChannelDepositTx{
       channel_id: channel_id,
-      withdrawing_account: withdrawing_account,
+      depositing_account: depositing_account,
       amount: amount,
       state_hash: state_hash,
       sequence: sequence
@@ -110,9 +110,9 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   @doc """
   Validates the transaction without considering state
   """
-  @spec validate(ChannelWithdrawTx.t(), DataTx.t()) :: :ok | {:error, reason()}
+  @spec validate(ChannelDepositTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(
-        %ChannelWithdrawTx{
+        %ChannelDepositTx{
           channel_id: channel_id,
           amount: amount,
           state_hash: state_hash,
@@ -125,7 +125,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
         {:error, "#{__MODULE__}: Invalid channel id"}
 
       amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
+        {:error, "#{__MODULE__}: Can't deposit zero or negative amount of tokens"}
 
       byte_size(state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
@@ -139,22 +139,22 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   end
 
   @doc """
-  Withdraws tokens from the channel
+  Deposits tokens from the channel
   """
   @spec process_chainstate(
           Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
-          ChannelWithdrawTx.t(),
+          ChannelDepositTx.t(),
           DataTx.t()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}} | no_return()
   def process_chainstate(
         accounts,
         channels,
         block_height,
-        %ChannelWithdrawTx{
+        %ChannelDepositTx{
           channel_id: channel_id,
-          withdrawing_account: withdrawing_account,
+          depositing_account: depositing_account,
           amount: amount,
           state_hash: state_hash,
           sequence: sequence
@@ -164,17 +164,17 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
         }
       ) do
     new_accounts =
-      AccountStateTree.update(accounts, withdrawing_account, fn account ->
+      AccountStateTree.update(accounts, depositing_account, fn account ->
         account
-        |> Account.apply_transfer!(block_height, amount)
+        |> Account.apply_transfer!(block_height, -amount)
         |> Account.apply_nonce!(nonce)
       end)
 
     new_channels =
       ChannelStateTree.update!(channels, channel_id, fn channel ->
-        ChannelStateOnChain.apply_withdraw(
+        ChannelStateOnChain.apply_deposit(
           channel,
-          withdrawing_account,
+          depositing_account,
           amount,
           sequence,
           state_hash
@@ -191,16 +191,16 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           Chainstate.accounts(),
           ChannelStateTree.t(),
           non_neg_integer(),
-          ChannelWithdrawTx.t(),
+          ChannelDepositTx.t(),
           DataTx.t()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         channels,
         _block_height,
-        %ChannelWithdrawTx{
+        %ChannelDepositTx{
           channel_id: channel_id,
-          withdrawing_account: withdrawing_account,
+          depositing_account: depositing_account,
           amount: amount,
           sequence: sequence
         },
@@ -211,24 +211,24 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     channel = ChannelStateTree.get(channels, channel_id)
 
     cond do
-      AccountStateTree.get(accounts, withdrawing_account).balance - fee + amount < 0 ->
-        {:error, "#{__MODULE__}: Negative balance of the withdrawing account"}
+      AccountStateTree.get(accounts, depositing_account).balance - fee - amount < 0 ->
+        {:error, "#{__MODULE__}: Negative balance of the depositing account"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel does not exists"}
 
       !ChannelStateOnChain.active?(channel) ->
-        {:error, "#{__MODULE__}: Can't withdraw from inactive channel."}
+        {:error, "#{__MODULE__}: Can't deposit from inactive channel."}
 
       true ->
-        ChannelStateOnChain.validate_withdraw(channel, withdrawing_account, amount, sequence)
+        ChannelStateOnChain.validate_deposit(channel, depositing_account, amount, sequence)
     end
   end
 
   @spec deduct_fee(
           Chainstate.accounts(),
           non_neg_integer(),
-          ChannelWithdrawTx.t(),
+          ChannelDepositTx.t(),
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
@@ -241,15 +241,15 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     fee >= GovernanceConstants.minimum_fee()
   end
 
-  @spec encode_to_list(ChannelWithdrawTx.t(), DataTx.t()) :: list()
+  @spec encode_to_list(ChannelDepositTx.t(), DataTx.t()) :: list()
   def encode_to_list(
-        %ChannelWithdrawTx{} = tx,
+        %ChannelDepositTx{} = tx,
         data_tx
       ) do
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(tx.channel_id, :channel),
-      Identifier.create_encoded_to_binary(tx.withdrawing_account, :account),
+      Identifier.create_encoded_to_binary(tx.depositing_account, :account),
       :binary.encode_unsigned(tx.amount),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
@@ -262,7 +262,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   @spec decode_from_list(non_neg_integer(), list()) :: {:ok, DataTx.t()} | {:error, reason()}
   def decode_from_list(@version, [
         encoded_channel_id,
-        encoded_withdrawing_account,
+        encoded_depositing_account,
         amount,
         ttl,
         fee,
@@ -273,18 +273,18 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       when is_binary(state_hash) do
     with {:ok, channel_id} <-
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
-         {:ok, withdrawing_account} <-
-           Identifier.decode_from_binary_to_value(encoded_withdrawing_account, :account) do
-      payload = %ChannelWithdrawTx{
+         {:ok, depositing_account} <-
+           Identifier.decode_from_binary_to_value(encoded_depositing_account, :account) do
+      payload = %ChannelDepositTx{
         channel_id: channel_id,
-        withdrawing_account: withdrawing_account,
+        depositing_account: depositing_account,
         amount: :binary.decode_unsigned(amount),
         state_hash: state_hash,
         sequence: sequence
       }
 
       DataTx.init_binary(
-        ChannelWithdrawTx,
+        ChannelDepositTx,
         payload,
         [],
         :binary.decode_unsigned(fee),
@@ -314,9 +314,9 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   end
 
   def offchain_updates(%DataTx{
-        type: ChannelWithdrawTx,
+        type: ChannelDepositTx,
         payload: tx
       }) do
-    [ChannelWithdrawUpdate.new(tx)]
+    [ChannelDepositUpdate.new(tx)]
   end
 end

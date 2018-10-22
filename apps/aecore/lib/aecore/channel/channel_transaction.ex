@@ -8,7 +8,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   alias Aecore.Tx.DataTx
   alias Aecore.Channel.ChannelOffChainTx
   alias Aecore.Channel.ChannelStateOnChain
-  alias Aecore.Channel.Tx.ChannelCreateTx
+  alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx}
   alias Aecore.Chain.Identifier
 
   @typedoc """
@@ -17,8 +17,8 @@ defmodule Aecore.Channel.ChannelTransaction do
   @type channel_tx ::
           ChannelOffChainTx
           | ChannelCreateTx
-  # | Aecore.Channel.Tx.ChannelWidhdrawTx
-  # | Aecore.Channel.Tx.ChannelDepositTx
+          | ChannelWithdrawTx
+          | ChannelDepositTx
 
   @typedoc """
   Type of a signed channel transaction
@@ -28,19 +28,18 @@ defmodule Aecore.Channel.ChannelTransaction do
   @typedoc """
   Types of allowed OnChain transactions
   """
-  # | ChannelWidhdrawTx | ChannelDepositTx
-  @type onchain_tx :: ChannelCreateTx
+  @type onchain_tx :: ChannelCreateTx | ChannelWidhdrawTx | ChannelDepositTx
 
   @typedoc """
   Payloads of allowed OnChain transactions
   """
-  # | ChannelWidhdrawTx.payload() | ChannelDepositTx.payload()
-  @type onchain_tx_payload :: ChannelCreateTx.payload()
+  @type onchain_tx_payload ::
+          ChannelCreateTx.payload() | ChannelWidhdrawTx.payload() | ChannelDepositTx.payload()
 
   @allowed_onchain_tx [
-    ChannelCreateTx
-    # Aecore.Channel.Tx.ChannelWidhdrawTx,
-    # Aecore.Channel.Tx.ChannelDepositTx
+    ChannelCreateTx,
+    ChannelWidhdrawTx,
+    ChannelDepositTx
   ]
 
   @typedoc """
@@ -102,6 +101,21 @@ defmodule Aecore.Channel.ChannelTransaction do
       SignedTx.signature_valid_for?(tx, pubkey)
   end
 
+  def verify_half_signed_tx(
+        %SignedTx{
+          data: %DataTx{
+            type: type,
+            senders: []
+          },
+          signatures: signatures
+        } = tx,
+        pubkey
+      )
+      when type in @allowed_onchain_tx do
+    type.chainstate_senders?() and length(signatures) == 1 and
+      SignedTx.signature_valid_for?(tx, pubkey)
+  end
+
   def verify_half_signed_tx(%SignedTx{}, _) do
     false
   end
@@ -130,6 +144,20 @@ defmodule Aecore.Channel.ChannelTransaction do
       when type in @allowed_onchain_tx do
     initiator == correct_initiator and responder == correct_responder and
       SignedTx.signatures_valid?(tx, [initiator, responder])
+  end
+
+  def verify_fully_signed_tx(
+        %SignedTx{
+          data: %DataTx{
+            type: type,
+            senders: []
+          }
+        } = tx,
+        {correct_initiator, correct_responder}
+      )
+      when type in @allowed_onchain_tx do
+    type.chainstate_senders?() and
+      SignedTx.signatures_valid?(tx, [correct_initiator, correct_responder])
   end
 
   def verify_fully_signed_tx(%ChannelOffChainTx{} = tx, pubkeys) do

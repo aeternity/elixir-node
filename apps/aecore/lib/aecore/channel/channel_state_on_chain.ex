@@ -397,7 +397,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       slash_sequence >= tx_sequence ->
         {:error, "Too old state"}
 
-       tx_amount < 0 ->
+      tx_amount < 0 ->
         {:error, "Deposit of negative amount is forbidden"}
 
       amount_atom == :error ->
@@ -443,7 +443,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec amount_atom_for_account(ChannelStateOnChain.t(), Keys.pubkey()) ::
           :initiator_amount | :responder_amount | :error
   defp amount_atom_for_account(
-         %ChannelStateOnChain{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey},
+         %ChannelStateOnChain{
+           initiator_pubkey: initiator_pubkey,
+           responder_pubkey: responder_pubkey
+         },
          account_pubkey
        )
        when is_binary(account_pubkey) do
