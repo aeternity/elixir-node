@@ -66,7 +66,7 @@ PORT = $$(( 4000 + $(NODE_NUMBER) ))
 SYNC_PORT = $$(( 3000 + $(NODE_NUMBER) ))
 
 iex-test-node:
-	@PERSISTENCE_PATH=apps/aecore/priv/test_rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/test_peerkeys_$(PORT)/ SIGN_KEYS_PATH=apps/aecore/priv/test_signkeys_$(PORT)/ PORT=$(PORT) SYNC_PORT=$(SYNC_PORT) iex -S mix phx.server
+	@MIX_ENV=test PERSISTENCE_PATH=apps/aecore/priv/test_rox_db_400$(NODE_NUMBER)/ PEER_KEYS_PATH=apps/aecore/priv/test_peerkeys_$(PORT)/ SIGN_KEYS_PATH=apps/aecore/priv/test_signkeys_$(PORT)/ PORT=$(PORT) SYNC_PORT=$(SYNC_PORT) iex -S mix phx.server
 
 #
 # utility
