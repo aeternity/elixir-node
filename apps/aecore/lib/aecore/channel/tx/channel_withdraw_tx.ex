@@ -59,6 +59,9 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   @spec get_chain_state_name :: atom()
   def get_chain_state_name, do: :channels
 
+  @spec sender_type() :: Identifier.type()
+  def sender_type, do: :account
+
   @spec init(payload()) :: ChannelWithdrawTx.t()
   def init(%{
         channel_id: channel_id,
@@ -100,8 +103,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       sequence < 0 ->
         {:error, "#{__MODULE__}: Invalid sequence"}
 
-      lenght(senders) != 1 ->
-        {:error, "#{__MODULE}: Multi party withdrawal is (currently) disallowed"}
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Multi party withdrawal is (currently) disallowed"}
 
       true ->
         :ok
@@ -127,7 +130,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           amount: amount,
           state_hash: state_hash,
           sequence: sequence
-        } = tx,
+        },
         %DataTx{
           nonce: nonce,
           senders: [
@@ -203,9 +206,9 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
   end
 
-  @spec is_minimum_fee_met?(SignedTx.t()) :: boolean()
-  def is_minimum_fee_met?(%SignedTx{data: %DataTx{fee: fee}}) do
-    fee >= Application.get_env(:aecore, :tx_data)[:minimum_fee]
+  @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
+  def is_minimum_fee_met?(%DataTx{fee: fee}, _chain_state, _block_height) do
+    fee >= GovernanceConstants.minimum_fee()
   end
 
   @spec encode_to_list(ChannelWithdrawTx.t(), DataTx.t()) :: list()
@@ -282,6 +285,6 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
         payload: tx,
         senders: [%Identifier{value: to}]
       }) do
-    [ChannelWidthdrawUpdate.new(tx, to)]
+    [ChannelWithdrawUpdate.new(tx, to)]
   end
 end

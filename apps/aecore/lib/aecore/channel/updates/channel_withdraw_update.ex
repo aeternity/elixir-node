@@ -5,6 +5,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelWithdrawUpdate
+  alias Aecore.Channel.Tx.ChannelWithdrawTx
   alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
@@ -39,13 +40,13 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   """
   @spec new(ChannelWithdrawTx.t(), Keys.pubkey()) :: ChannelWithdrawUpdate.t()
   def new(
-        %ChannelCreateTx{
+        %ChannelWithdrawTx{
           amount: amount
         },
         to
       )
       when is_binary(to) do
-    %ChannelCreateUpdate{
+    %ChannelWithdrawUpdate{
       to: to,
       amount: amount
     }
@@ -74,7 +75,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   end
 
   @doc """
-  Performs the widthdraw on the offchain chainstate. Returns an error if the operation failed.
+  Performs the withdraw on the offchain chainstate. Returns an error if the operation failed.
   """
   @spec update_offchain_chainstate!(Chainstate.t(), ChannelDepositUpdate.t()) ::
           Chainstate.t() | no_return()
@@ -91,14 +92,14 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
       AccountStateTree.update(
         accounts,
         to,
-        &widthdraw_from_account!(&1, amount)
+        &withdraw_from_account!(&1, amount)
       )
 
     %Chainstate{chainstate | accounts: updated_accounts}
   end
 
-  @spec widthdraw_from_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
-  defp widthdraw_from_account!(account, amount) do
+  @spec withdraw_from_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  defp withdraw_from_account!(account, amount) do
     Account.apply_transfer!(account, nil, -amount)
   end
 

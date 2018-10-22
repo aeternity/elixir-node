@@ -8,7 +8,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
 
   alias Aecore.Channel.Updates.ChannelTransferUpdate
   alias Aecore.Channel.Updates.ChannelDepositUpdate
-  alias Aecore.Channel.Updates.ChannelWidthdrawUpdate
+  alias Aecore.Channel.Updates.ChannelWithdrawUpdate
 
   @typedoc """
   Possible types of an update
@@ -16,7 +16,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @type update_types ::
           ChannelTransferUpdate.t()
           | ChannelDepositUpdate.t()
-          | ChannelWidthdrawUpdate.t()
+          | ChannelWithdrawUpdate.t()
 
   @typedoc """
   The type of errors returned by the functions in this module
@@ -64,7 +64,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @spec tag_to_module(non_neg_integer()) :: module()
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
-  def tag_to_module(2), do: {:ok, ChannelWidthdrawUpdate}
+  def tag_to_module(2), do: {:ok, ChannelWithdrawUpdate}
 
   def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
 
@@ -74,7 +74,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @spec module_to_tag(module()) :: non_neg_integer()
   def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
-  def module_to_tag(ChannelWidthdrawUpdate), do: {:ok, 2}
+  def module_to_tag(ChannelWithdrawUpdate), do: {:ok, 2}
 
   def module_to_tag(module),
     do: {:error, "#{__MODULE__} Error: Unserializable module: #{inspect(module)}"}

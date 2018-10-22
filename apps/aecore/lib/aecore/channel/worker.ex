@@ -209,7 +209,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Handles mined and confirmed ChannelCreateTx, ChannelWidthdrawTx, ChannelDepositTx
+  Handles mined and confirmed ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx
   """
   def receive_confirmed_tx(confirmed_onchain_tx) do
     GenServer.call(__MODULE__, {:receive_confirmed_tx, confirmed_onchain_tx})

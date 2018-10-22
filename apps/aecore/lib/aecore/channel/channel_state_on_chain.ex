@@ -326,7 +326,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         tx_amount,
         tx_sequence
       ) do
-    amount_atom = amount_atom_for_account(tx_account)
+    amount_atom = amount_atom_for_account(channel, tx_account)
 
     cond do
       slash_sequence >= tx_sequence ->
@@ -334,6 +334,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
       amount_atom == :error ->
         {:error, "Withdraw destination must be a party of this channel"}
+
+      tx_amount < 0 ->
+        {:error, "Withdraw of negative amount is forbidden"}
 
       Map.get(channel, amount_atom) - tx_amount < channel_reserve ->
         {:error, "The withdrawn account does not met channel reserve"}
@@ -359,7 +362,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       )
       when is_binary(tx_account) and is_binary(tx_state_hash) do
     case amount_atom_for_account(channel, tx_account) do
-      amount_atom ->
+      amount_atom when is_atom(amount_atom) ->
         updated_channel =
           Map.update(channel, amount_atom, fn cur_amount -> cur_amount - tx_amount end)
 
@@ -388,11 +391,14 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         tx_sequence
       )
       when is_binary(tx_account) do
-    amount_atom = amount_atom_for_account(tx_account)
+    amount_atom = amount_atom_for_account(channel, tx_account)
 
     cond do
       slash_sequence >= tx_sequence ->
         {:error, "Too old state"}
+
+       tx_amount < 0 ->
+        {:error, "Deposit of negative amount is forbidden"}
 
       amount_atom == :error ->
         {:error, "Deposit destination must be a party of this channel"}
@@ -418,7 +424,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       )
       when is_binary(tx_account) and is_binary(tx_state_hash) do
     case amount_atom_for_account(channel, tx_account) do
-      amount_atom ->
+      amount_atom when is_atom(amount_atom) ->
         updated_channel =
           Map.update(channel, amount_atom, fn cur_amount -> cur_amount + tx_amount end)
 
@@ -437,15 +443,15 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @spec amount_atom_for_account(ChannelStateOnChain.t(), Keys.pubkey()) ::
           :initiator_amount | :responder_amount | :error
   defp amount_atom_for_account(
-         %ChannelStateOnChain{initiator: initiator, responder: responder},
-         account
+         %ChannelStateOnChain{initiator_pubkey: initiator_pubkey, responder_pubkey: responder_pubkey},
+         account_pubkey
        )
-       when is_binary(account) do
+       when is_binary(account_pubkey) do
     cond do
-      initiator == account ->
+      initiator_pubkey == account_pubkey ->
         :initiator_amount
 
-      responder == account ->
+      responder_pubkey == account_pubkey ->
         :responder_amount
 
       true ->
