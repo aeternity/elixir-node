@@ -15,7 +15,13 @@ defmodule MultiNodeSyncTest do
   end
 
   setup do
-    :ok = TestFramework.new_nodes([{:node1, 2}, {:node2, 3}, {:node3, 4}, {:node4, 5}])
+    port1 = Utils.find_port(2)
+    port2 = Utils.find_port(port1 + 1)
+    port3 = Utils.find_port(port2 + 1)
+    port4 = Utils.find_port(port3 + 1)
+
+    :ok =
+      TestFramework.new_nodes([{:node1, port1}, {:node2, port2}, {:node3, port3}, {:node4, port4}])
 
     Utils.sync_nodes(:node1, :node2)
     Utils.sync_nodes(:node2, :node3)

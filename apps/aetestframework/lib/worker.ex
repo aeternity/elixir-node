@@ -10,7 +10,7 @@ defmodule Aetestframework.Worker do
   use ExConstructor
 
   @default_timeout 20_000
-  @new_node_timeout 20_000
+  @new_node_timeout 40_000
 
   # Client API
 
@@ -34,7 +34,7 @@ defmodule Aetestframework.Worker do
 
   @doc """
   Post a command to a specific node.
-  Used to send command that will return some response and we need to
+  Used to send command that will return some response and we n(eed to
   handle it. Like getting the top header hash
   """
   @spec get(String.t(), atom(), atom(), non_neg_integer()) :: any()
@@ -97,7 +97,7 @@ defmodule Aetestframework.Worker do
              Map.has_key?(state, node_name) ->
                {:halt, {:error, :already_exists, state}}
 
-             busy_port?("300#{iex_num}") || busy_port?("400#{iex_num}") ->
+             busy_port?("#{3000 + iex_num}") || busy_port?("#{4000 + iex_num}") ->
                {:halt, {:error, :busy_port, state}}
 
              true ->
@@ -108,8 +108,8 @@ defmodule Aetestframework.Worker do
                    cd: project_dir()
                  ])
 
-               port = String.to_integer("400#{iex_num}")
-               sync_port = String.to_integer("300#{iex_num}")
+               port = 4000 + iex_num
+               sync_port = 3000 + iex_num
 
                new_node =
                  __MODULE__.new(%{port_id: port_id, node_port: port, sync_port: sync_port})
@@ -156,12 +156,9 @@ defmodule Aetestframework.Worker do
     Enum.each(state, fn {_node, %{port_id: port_id}} ->
       {:os_pid, pid} = Port.info(port_id, :os_pid)
       System.cmd("kill", ["#{pid}"])
-      # Port.command(port_id, "{:stop, System.stop()}\n")
     end)
 
     Enum.each(state, fn {_node, %{port_id: port_id, node_port: port}} ->
-      #  expected_result = fn _ -> :ok end
-      #  :ok = receive_result(port_id, ":stop", expected_result)
       Port.close(port_id)
       path_to_priv_dir = project_dir() <> "/apps/aecore/priv/"
       File.rm_rf(path_to_priv_dir <> "test_signkeys_#{port}")
