@@ -295,16 +295,17 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelTransaction.onchain_tx_payload()
         ) :: DataTx.t()
   defp initialize_new_mutual_onchain_tx(
-         %ChannelStatePeer{
-           initiator_pubkey: initiator_pubkey,
-           responder_pubkey: responder_pubkey
-         },
+         %ChannelStatePeer{} = peer_state,
          fee,
          nonce,
          type,
          spec
        ) do
-    DataTx.init(type, spec, [initiator_pubkey, responder_pubkey], fee, nonce)
+    if type.chainstate_senders? do
+      DataTx.init(type, spec, [], fee, nonce)
+    else
+      DataTx.init(type, spec, [our_pubkey(peer_state), foreign_pubkey(peer_state)], fee, nonce)
+    end
   end
 
   # Verifies that the contents of the raw unsigned transaction are valid by simulating a potential update.
@@ -730,7 +731,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
       ) do
     channel_deposit_tx_spec = %{
       channel_id: channel_id,
-      withdrawing_account: our_pubkey(peer_state),
+      depositing_account: our_pubkey(peer_state),
       amount: amount,
       state_hash: <<>>,
       sequence: 0

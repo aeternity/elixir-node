@@ -107,7 +107,7 @@ defmodule AecoreChannelTest do
     perform_withdraw(id, 50, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
     assert_offchain_state(id, 100, 150, 2)
 
-    perform_withdraw(id, 50, 5, 3, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
+    perform_withdraw(id, 50, 5, 2, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
     assert_offchain_state(id, 100, 100, 3)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
@@ -127,6 +127,103 @@ defmodule AecoreChannelTest do
     assert :closed == get_fsm_state_s2(id)
 
     assert %{} == Pool.get_and_empty_pool()
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, deposit funds, mutal close channel", ctx do
+    id = create_channel(ctx)
+
+    perform_deposit(id, 20, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 170, 150, 2)
+
+    perform_deposit(id, 20, 5, 2, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
+    assert_offchain_state(id, 170, 170, 3)
+
+    {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    assert :closing == get_fsm_state_s1(id)
+    assert :closing == get_fsm_state_s2(id)
+
+    TestUtils.assert_transactions_mined()
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    TestUtils.assert_balance(ctx.pk1, 15 + 170 - 5)
+    TestUtils.assert_balance(ctx.pk2, 25 + 170 - 5)
+
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
+    assert :closed == get_fsm_state_s1(id)
+    assert :closed == get_fsm_state_s2(id)
+
+    assert %{} == Pool.get_and_empty_pool()
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, solo close with older state fails", ctx do
+    id = create_channel(ctx)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 125, 175, 2)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 3)
+
+    # prepare solo close but do not submit to pool
+    solo_close_tx1 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    # deposit zero funds -> this will snapshot the state
+    perform_deposit(id, 0, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 4)
+
+    # slashing with old state fails
+    assert_custom_tx_fails(solo_close_tx1)
+
+    # try the same trick with withdraw
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 75, 225, 5)
+
+    # prepare solo close but do not submit to pool
+    solo_close_tx2 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 50, 250, 6)
+
+    # withdraw zero funds -> this will snapshot the state
+    perform_withdraw(id, 0, 5, 3, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 50, 250, 7)
+
+    # slashing with old state fails
+    assert_custom_tx_fails(solo_close_tx2)
+
+    # check if solo close with correct state will work
+    :ok = call_s1({:solo_close, id, 10, 4, ctx.sk1})
+
+    TestUtils.assert_transactions_mined()
+
+    close_height = Chain.top_height() + 2
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).slash_close == close_height
+
+    {:ok, s1_state} = call_s1({:get_channel, id})
+    {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 5, ctx.sk1)
+    assert 50 == settle_tx.data.payload.initiator_amount
+    assert 250 == settle_tx.data.payload.responder_amount
+    assert :ok == Pool.add_transaction(settle_tx)
+
+    :ok = Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Pool.get_pool()) == false
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10*3)
+    TestUtils.assert_balance(ctx.pk2, 50)
+
+    TestUtils.assert_transactions_mined()
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10*3 + 50)
+    TestUtils.assert_balance(ctx.pk2, 50 + 250)
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+
   end
 
   @tag :channels
@@ -272,6 +369,7 @@ defmodule AecoreChannelTest do
 
     {:ok, initiator_state} = call_s1({:get_channel, id})
     perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
     [channel_create_tx] = ChannelStatePeer.get_signed_tx_list(initiator_state)
     solo_close_tx = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
     slash_tx = prepare_slash_tx(id, &call_s2/1, 15, 1, ctx.sk2)
@@ -367,10 +465,20 @@ defmodule AecoreChannelTest do
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})
   end
 
-  defp perform_withdraw(id, amount, fee, nonce, initiator_fun, initiator_pk, initiator_sk, responder_fun, responder_pk, responder_sk)
+  defp perform_withdraw(
+         id,
+         amount,
+         fee,
+         nonce,
+         initiator_fun,
+         initiator_pk,
+         initiator_sk,
+         responder_fun,
+         responder_pk,
+         responder_sk
+       )
        when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and
               initiator_fun != responder_fun do
-
     initiator_onchain_balance = TestUtils.get_account_balance(initiator_pk)
     responder_onchain_balance = TestUtils.get_account_balance(responder_pk)
 
@@ -381,11 +489,14 @@ defmodule AecoreChannelTest do
     assert :open === get_fsm_state(id, initiator_fun)
     assert :open === get_fsm_state(id, responder_fun)
 
-    {:ok, %SignedTx{} = half_signed_withdraw_tx} = initiator_fun.({:withdraw, id, amount, fee, nonce, initiator_sk})
+    {:ok, %SignedTx{} = half_signed_withdraw_tx} =
+      initiator_fun.({:withdraw, id, amount, fee, nonce, initiator_sk})
+
     assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
 
     {:ok, %SignedTx{} = fully_signed_withdraw_tx} =
       responder_fun.({:receive_half_signed_tx, half_signed_withdraw_tx, responder_sk})
+
     assert :awaiting_tx_confirmed === get_fsm_state(id, responder_fun)
 
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_withdraw_tx})
@@ -401,8 +512,12 @@ defmodule AecoreChannelTest do
 
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
     assert channel != :none
-    assert channel.slash_sequence == ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).sequence
-    assert channel.state_hash == ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).state_hash
+
+    assert channel.slash_sequence ==
+             ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).sequence
+
+    assert channel.state_hash ==
+             ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).state_hash
 
     if channel.initiator_pubkey == initiator_pk do
       assert channel.initiator_amount == initiator_channel_balance - amount
@@ -412,11 +527,80 @@ defmodule AecoreChannelTest do
       assert channel.responder_amount == initiator_channel_balance - amount
     end
 
-    TestUtils.assert_balance(initiator_pk, initiator_onchain_balance-fee+amount)
+    TestUtils.assert_balance(initiator_pk, initiator_onchain_balance - fee + amount)
     TestUtils.assert_balance(responder_pk, responder_onchain_balance)
 
-    #assert initiator_channel_balance == get_our_balance(id, initiator_fun) - amount
-    #assert responder_channel_balance == get_our_balance(id, responder_fun)
+    assert initiator_channel_balance - amount == get_our_balance(id, initiator_fun)
+    assert responder_channel_balance == get_our_balance(id, responder_fun)
+  end
+
+  defp perform_deposit(
+         id,
+         amount,
+         fee,
+         nonce,
+         initiator_fun,
+         initiator_pk,
+         initiator_sk,
+         responder_fun,
+         responder_pk,
+         responder_sk
+       )
+       when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and
+              initiator_fun != responder_fun do
+    initiator_onchain_balance = TestUtils.get_account_balance(initiator_pk)
+    responder_onchain_balance = TestUtils.get_account_balance(responder_pk)
+
+    initiator_channel_balance = get_our_balance(id, initiator_fun)
+    responder_channel_balance = get_our_balance(id, responder_fun)
+
+    assert Enum.empty?(Pool.get_pool()) == true
+    assert :open === get_fsm_state(id, initiator_fun)
+    assert :open === get_fsm_state(id, responder_fun)
+
+    {:ok, %SignedTx{} = half_signed_deposit_tx} =
+      initiator_fun.({:deposit, id, amount, fee, nonce, initiator_sk})
+
+    assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
+
+    {:ok, %SignedTx{} = fully_signed_deposit_tx} =
+      responder_fun.({:receive_half_signed_tx, half_signed_deposit_tx, responder_sk})
+
+    assert :awaiting_tx_confirmed === get_fsm_state(id, responder_fun)
+
+    :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_deposit_tx})
+    assert :awaiting_tx_confirmed === get_fsm_state(id, initiator_fun)
+
+    assert Enum.empty?(Pool.get_pool()) == false
+    TestUtils.assert_transactions_mined()
+
+    assert :ok == initiator_fun.({:receive_confirmed_tx, fully_signed_deposit_tx})
+    assert :ok == responder_fun.({:receive_confirmed_tx, fully_signed_deposit_tx})
+    assert :open === get_fsm_state(id, initiator_fun)
+    assert :open === get_fsm_state(id, responder_fun)
+
+    channel = ChannelStateTree.get(Chain.chain_state().channels, id)
+    assert channel != :none
+
+    assert channel.slash_sequence ==
+             ChannelTransaction.unsigned_payload(fully_signed_deposit_tx).sequence
+
+    assert channel.state_hash ==
+             ChannelTransaction.unsigned_payload(fully_signed_deposit_tx).state_hash
+
+    if channel.initiator_pubkey == initiator_pk do
+      assert channel.initiator_amount == initiator_channel_balance + amount
+      assert channel.responder_amount == responder_channel_balance
+    else
+      assert channel.initiator_amount == responder_channel_balance
+      assert channel.responder_amount == initiator_channel_balance + amount
+    end
+
+    TestUtils.assert_balance(initiator_pk, initiator_onchain_balance - fee - amount)
+    TestUtils.assert_balance(responder_pk, responder_onchain_balance)
+
+    assert initiator_channel_balance + amount == get_our_balance(id, initiator_fun)
+    assert responder_channel_balance == get_our_balance(id, responder_fun)
   end
 
   defp prepare_slash_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do

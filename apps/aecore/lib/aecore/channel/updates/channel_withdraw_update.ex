@@ -112,8 +112,8 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
         }
       ) do
     cond do
-      amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
+      amount < 0 ->
+        {:error, "#{__MODULE__}: Can't withdraw negative amount of tokens"}
 
       to != correct_to ->
         {:error,

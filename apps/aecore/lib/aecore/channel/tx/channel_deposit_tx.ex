@@ -80,11 +80,16 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
     with %ChannelStateOnChain{
            initiator_pubkey: initiator_pubkey,
            responder_pubkey: responder_pubkey
-         } <- ChannelStateTree.get(chainstate.channels, channel_id),
-         true <-
-           initiator_pubkey == depositing_account or responder_pubkey == depositing_account or
-             :none do
-      [initiator_pubkey, responder_pubkey]
+         } <- ChannelStateTree.get(chainstate.channels, channel_id) do
+      if initiator_pubkey == depositing_account do
+        [initiator_pubkey, responder_pubkey]
+      else
+        if responder_pubkey == depositing_account do
+          [responder_pubkey, initiator_pubkey]
+        else
+          []
+        end
+      end
     else
       :none ->
         []
@@ -125,8 +130,8 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       byte_size(channel_id) != 32 ->
         {:error, "#{__MODULE__}: Invalid channel id"}
 
-      amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't deposit zero or negative amount of tokens"}
+      amount < 0 ->
+        {:error, "#{__MODULE__}: Can't deposit negative amount of tokens"}
 
       byte_size(state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
@@ -160,9 +165,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
           state_hash: state_hash,
           sequence: sequence
         },
-        %DataTx{
-          nonce: nonce
-        }
+        _data_tx
       ) do
     new_accounts =
       AccountStateTree.update(accounts, depositing_account, fn account ->
@@ -231,8 +234,16 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  def deduct_fee(
+        accounts,
+        block_height,
+        %ChannelDepositTx{depositing_account: depositing_account},
+        _data_tx,
+        fee
+      ) do
+    AccountStateTree.update(accounts, depositing_account, fn acc ->
+      Account.apply_transfer!(acc, block_height, fee * -1)
+    end)
   end
 
   @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()

@@ -70,7 +70,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
   def chainstate_senders?(), do: true
 
   @doc """
-  One of the senders in ChannelWithdrawTx is not passed with tx, but is supposed to be retrieved from Chainstate. The senders have to be channel initiator and responder.
+  One of the senders in ChannelWithdrawTx is not passed with tx, but is supposed to be retrieved from Chainstate. The senders have to be the withdrawing and acknowledging party.
   """
   @spec senders_from_chainstate(ChannelWithdrawTx.t(), Chainstate.t()) :: list(binary())
   def senders_from_chainstate(
@@ -80,11 +80,16 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     with %ChannelStateOnChain{
            initiator_pubkey: initiator_pubkey,
            responder_pubkey: responder_pubkey
-         } <- ChannelStateTree.get(chainstate.channels, channel_id),
-         true <-
-           initiator_pubkey == withdrawing_account or responder_pubkey == withdrawing_account or
-             :none do
-      [initiator_pubkey, responder_pubkey]
+         } <- ChannelStateTree.get(chainstate.channels, channel_id) do
+      if initiator_pubkey == withdrawing_account do
+        [initiator_pubkey, responder_pubkey]
+      else
+        if responder_pubkey == withdrawing_account do
+          [responder_pubkey, initiator_pubkey]
+        else
+          []
+        end
+      end
     else
       :none ->
         []
@@ -160,12 +165,11 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           state_hash: state_hash,
           sequence: sequence
         },
-        %DataTx{
-          nonce: nonce
-        }
+        _data_tx
       ) do
     new_accounts =
-      AccountStateTree.update(accounts, withdrawing_account, fn account -> Account.apply_transfer!(account, block_height, amount)
+      AccountStateTree.update(accounts, withdrawing_account, fn account ->
+        Account.apply_transfer!(account, block_height, amount)
       end)
 
     new_channels =
@@ -230,8 +234,16 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           DataTx.t(),
           non_neg_integer()
         ) :: Chainstate.accounts()
-  def deduct_fee(accounts, block_height, _tx, %DataTx{} = data_tx, fee) do
-    DataTx.standard_deduct_fee(accounts, block_height, data_tx, fee)
+  def deduct_fee(
+        accounts,
+        block_height,
+        %ChannelWithdrawTx{withdrawing_account: withdrawing_account},
+        _data_tx,
+        fee
+      ) do
+    AccountStateTree.update(accounts, withdrawing_account, fn acc ->
+      Account.apply_transfer!(acc, block_height, fee * -1)
+    end)
   end
 
   @spec is_minimum_fee_met?(DataTx.t(), tx_type_state(), non_neg_integer()) :: boolean()
