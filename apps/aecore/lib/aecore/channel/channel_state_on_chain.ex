@@ -364,7 +364,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     case amount_atom_for_account(channel, tx_account) do
       amount_atom when is_atom(amount_atom) ->
         updated_channel =
-          Map.update(channel, amount_atom, fn cur_amount -> cur_amount - tx_amount end)
+          Map.update!(channel, amount_atom, fn cur_amount -> cur_amount - tx_amount end)
 
         %ChannelStateOnChain{
           updated_channel
@@ -426,7 +426,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     case amount_atom_for_account(channel, tx_account) do
       amount_atom when is_atom(amount_atom) ->
         updated_channel =
-          Map.update(channel, amount_atom, fn cur_amount -> cur_amount + tx_amount end)
+          Map.update!(channel, amount_atom, fn cur_amount -> cur_amount + tx_amount end)
 
         %ChannelStateOnChain{
           updated_channel

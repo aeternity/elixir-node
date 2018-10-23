@@ -38,7 +38,7 @@ defmodule Aecore.Channel.ChannelTransaction do
 
   @allowed_onchain_tx [
     ChannelCreateTx,
-    ChannelWidhdrawTx,
+    ChannelWithdrawTx,
     ChannelDepositTx
   ]
 

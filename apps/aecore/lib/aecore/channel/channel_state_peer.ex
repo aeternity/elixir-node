@@ -19,7 +19,9 @@ defmodule Aecore.Channel.ChannelStatePeer do
     ChannelCloseMutalTx,
     ChannelCloseSoloTx,
     ChannelSlashTx,
-    ChannelSettleTx
+    ChannelSettleTx,
+    ChannelWithdrawTx,
+    ChannelDepositTx
   }
 
   alias Aecore.Keys

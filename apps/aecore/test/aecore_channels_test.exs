@@ -14,7 +14,8 @@ defmodule AecoreChannelTest do
     ChannelStateOnChain,
     ChannelStatePeer,
     ChannelStateTree,
-    ChannelOffChainTx
+    ChannelOffChainTx,
+    ChannelTransaction
   }
 
   alias Aeutil.PatriciaMerkleTree
@@ -86,6 +87,39 @@ defmodule AecoreChannelTest do
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
     TestUtils.assert_balance(ctx.pk1, 40 + 270 - 5)
     TestUtils.assert_balance(ctx.pk2, 50 + 30 - 5)
+
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
+    assert :closed == get_fsm_state_s1(id)
+    assert :closed == get_fsm_state_s2(id)
+
+    assert %{} == Pool.get_and_empty_pool()
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, withdraw funds, mutal close channel", ctx do
+    id = create_channel(ctx)
+
+    # Can't withdraw more than reserve allows
+    {:error, _} = call_s2({:withdraw, id, 151, 5, 2, ctx.sk2})
+
+    perform_withdraw(id, 50, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 100, 150, 2)
+
+    perform_withdraw(id, 50, 5, 3, &call_s2/1, ctx.pk2, ctx.sk2, &call_s1/1, ctx.pk1, ctx.sk1)
+    assert_offchain_state(id, 100, 100, 3)
+
+    {:ok, close_tx} = call_s1({:close, id, {5, 5}, 3, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    assert :closing == get_fsm_state_s1(id)
+    assert :closing == get_fsm_state_s2(id)
+
+    TestUtils.assert_transactions_mined()
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    TestUtils.assert_balance(ctx.pk1, 40 + 100 + 50 - 5 - 5)
+    TestUtils.assert_balance(ctx.pk2, 50 + 100 + 50 - 5 - 5)
 
     call_s1({:closed, signed_close_tx})
     call_s2({:closed, signed_close_tx})
@@ -310,6 +344,11 @@ defmodule AecoreChannelTest do
     fsm_state
   end
 
+  defp get_our_balance(id, peer_fun) when is_function(peer_fun, 1) do
+    {:ok, peer_amount} = peer_fun.({:our_offchain_account_balance, id})
+    peer_amount
+  end
+
   defp perform_transfer(id, amount, initiator_fun, initiator_sk, responder_fun, responder_sk)
        when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and
               initiator_fun != responder_fun do
@@ -326,6 +365,58 @@ defmodule AecoreChannelTest do
     %ChannelOffChainTx{} = fully_signed_transfer_tx
     assert :open === get_fsm_state(id, responder_fun)
     :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_transfer_tx})
+  end
+
+  defp perform_withdraw(id, amount, fee, nonce, initiator_fun, initiator_pk, initiator_sk, responder_fun, responder_pk, responder_sk)
+       when is_function(initiator_fun, 1) and is_function(responder_fun, 1) and
+              initiator_fun != responder_fun do
+
+    initiator_onchain_balance = TestUtils.get_account_balance(initiator_pk)
+    responder_onchain_balance = TestUtils.get_account_balance(responder_pk)
+
+    initiator_channel_balance = get_our_balance(id, initiator_fun)
+    responder_channel_balance = get_our_balance(id, responder_fun)
+
+    assert Enum.empty?(Pool.get_pool()) == true
+    assert :open === get_fsm_state(id, initiator_fun)
+    assert :open === get_fsm_state(id, responder_fun)
+
+    {:ok, %SignedTx{} = half_signed_withdraw_tx} = initiator_fun.({:withdraw, id, amount, fee, nonce, initiator_sk})
+    assert :awaiting_full_tx === get_fsm_state(id, initiator_fun)
+
+    {:ok, %SignedTx{} = fully_signed_withdraw_tx} =
+      responder_fun.({:receive_half_signed_tx, half_signed_withdraw_tx, responder_sk})
+    assert :awaiting_tx_confirmed === get_fsm_state(id, responder_fun)
+
+    :ok = initiator_fun.({:receive_fully_signed_tx, fully_signed_withdraw_tx})
+    assert :awaiting_tx_confirmed === get_fsm_state(id, initiator_fun)
+
+    assert Enum.empty?(Pool.get_pool()) == false
+    TestUtils.assert_transactions_mined()
+
+    assert :ok == initiator_fun.({:receive_confirmed_tx, fully_signed_withdraw_tx})
+    assert :ok == responder_fun.({:receive_confirmed_tx, fully_signed_withdraw_tx})
+    assert :open === get_fsm_state(id, initiator_fun)
+    assert :open === get_fsm_state(id, responder_fun)
+
+    channel = ChannelStateTree.get(Chain.chain_state().channels, id)
+    assert channel != :none
+    assert channel.slash_sequence == ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).sequence
+    assert channel.state_hash == ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).state_hash
+
+    if channel.initiator_pubkey == initiator_pk do
+      assert channel.initiator_amount == initiator_channel_balance - amount
+      assert channel.responder_amount == responder_channel_balance
+    else
+      assert channel.initiator_amount == responder_channel_balance
+      assert channel.responder_amount == initiator_channel_balance - amount
+    end
+
+    TestUtils.assert_balance(initiator_pk, initiator_onchain_balance-fee+amount)
+    TestUtils.assert_balance(responder_pk, responder_onchain_balance)
+
+    #assert initiator_channel_balance == get_our_balance(id, initiator_fun) - amount
+    #assert responder_channel_balance == get_our_balance(id, responder_fun)
   end
 
   defp prepare_slash_tx(id, peer_fun, fee, nonce, priv_key) when is_function(peer_fun, 1) do

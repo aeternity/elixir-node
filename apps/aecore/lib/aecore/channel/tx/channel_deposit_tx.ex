@@ -6,6 +6,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
   use Aecore.Tx.Transaction
   @behaviour Aecore.Channel.ChannelTransaction
 
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
@@ -165,9 +166,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       ) do
     new_accounts =
       AccountStateTree.update(accounts, depositing_account, fn account ->
-        account
-        |> Account.apply_transfer!(block_height, -amount)
-        |> Account.apply_nonce!(nonce)
+        Account.apply_transfer!(account, block_height, -amount)
       end)
 
     new_channels =
