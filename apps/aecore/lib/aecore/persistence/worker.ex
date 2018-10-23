@@ -443,7 +443,7 @@ defmodule Aecore.Persistence.Worker do
     {:reply, handler, state}
   end
 
-  defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
+  defp persistence_path, do: Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :persistence)[:path]
 
   defp write_options, do: Application.get_env(:aecore, :persistence)[:write_options]
 end

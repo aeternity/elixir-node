@@ -2,7 +2,7 @@ use Mix.Config
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db/"
+    nil -> "/rox_db/"
     env -> env
   end
 
@@ -12,7 +12,7 @@ config :aecore, :persistence,
 
 accounts_path =
   case System.get_env("ACCOUNTS_PATH") do
-    nil -> "apps/aecore/config/genesis/"
+    nil -> "/genesis/"
     env -> env
   end
 

@@ -10,7 +10,7 @@ defmodule Aecore.Chain.Genesis do
 
   require Logger
 
-  @dir Application.get_env(:aecore, :account_path)[:path]
+  @dir Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :account_path)[:path]
 
   @spec hash() :: binary()
   def hash do

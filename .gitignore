@@ -24,7 +24,8 @@ erl_crash.dump
 *.iml
 
 # Ignore priv dir
-apps/aecore/priv/
+apps/aecore/priv/*
+!apps/aecore/priv/genesis/
 
 # Ignore Cuckoo c_src
 apps/aecore/src/cuckoo/c_src/

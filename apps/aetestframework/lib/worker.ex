@@ -511,7 +511,7 @@ defmodule Aetestframework.Worker do
     Enum.each(state, fn {_, val} ->
       Port.command(val.process_port, ":erlang.halt()\n")
       Port.close(val.process_port)
-      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> "/apps/aecore/priv/"
+      path = String.replace(System.cwd(), ~r/(?<=elixir-node).*$/, "") <> Application.app_dir(:aecore, "priv")
       File.rm_rf(path <> "aewallet_#{val.port}")
       File.rm_rf(path <> "peerkeys_#{val.port}")
       File.rm_rf(path <> "rox_db_#{val.port}")
