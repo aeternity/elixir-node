@@ -19,7 +19,7 @@ defmodule Aetestframework.MixProject do
 
   defp deps do
     [
-      {:aehttpclient, in_umbrella: true},
+      {:aehttpclient, in_umbrella: true}
     ]
   end
 end
