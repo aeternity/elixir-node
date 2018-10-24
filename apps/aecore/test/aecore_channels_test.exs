@@ -161,7 +161,8 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, solo close with older state fails", ctx do
+  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, solo close with older state fails",
+       ctx do
     id = create_channel(ctx)
 
     perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
@@ -215,15 +216,14 @@ defmodule AecoreChannelTest do
     assert Enum.empty?(Pool.get_pool()) == false
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
 
-    TestUtils.assert_balance(ctx.pk1, 40 - 10*3)
+    TestUtils.assert_balance(ctx.pk1, 40 - 10 * 2)
     TestUtils.assert_balance(ctx.pk2, 50)
 
     TestUtils.assert_transactions_mined()
 
-    TestUtils.assert_balance(ctx.pk1, 40 - 10*3 + 50)
+    TestUtils.assert_balance(ctx.pk1, 40 - 10 * 3 + 50)
     TestUtils.assert_balance(ctx.pk2, 50 + 250)
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
-
   end
 
   @tag :channels
@@ -382,9 +382,13 @@ defmodule AecoreChannelTest do
         ctx.sk1
       )
 
+    {:ok, %ChannelStatePeer{} = peer2} = call_s2({:get_channel, id})
+    {:ok, _, %SignedTx{} = half_signed_deposit_tx} = ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
+    {:ok, _, %SignedTx{} = half_signed_withdraw_tx} = ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
+
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
 
-    to_test = [channel_create_tx, solo_close_tx, slash_tx, settle_tx, close_tx]
+    to_test = [channel_create_tx, solo_close_tx, slash_tx, settle_tx, close_tx, half_signed_deposit_tx, half_signed_withdraw_tx]
 
     for tx <- to_test do
       serialized = Serialization.rlp_encode(tx)
@@ -482,6 +486,9 @@ defmodule AecoreChannelTest do
     initiator_onchain_balance = TestUtils.get_account_balance(initiator_pk)
     responder_onchain_balance = TestUtils.get_account_balance(responder_pk)
 
+    channel_onchain_state_initiator_balance =
+      ChannelStateTree.get(Chain.chain_state().channels, id).initiator_amount
+
     initiator_channel_balance = get_our_balance(id, initiator_fun)
     responder_channel_balance = get_our_balance(id, responder_fun)
 
@@ -519,12 +526,10 @@ defmodule AecoreChannelTest do
     assert channel.state_hash ==
              ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).state_hash
 
-    if channel.initiator_pubkey == initiator_pk do
-      assert channel.initiator_amount == initiator_channel_balance - amount
-      assert channel.responder_amount == responder_channel_balance
-    else
-      assert channel.initiator_amount == responder_channel_balance
-      assert channel.responder_amount == initiator_channel_balance - amount
+    assert channel.total_amount == initiator_channel_balance + responder_channel_balance - amount
+
+    if amount > 0 do
+      assert channel.initiator_amount == channel_onchain_state_initiator_balance
     end
 
     TestUtils.assert_balance(initiator_pk, initiator_onchain_balance - fee + amount)
@@ -550,6 +555,9 @@ defmodule AecoreChannelTest do
               initiator_fun != responder_fun do
     initiator_onchain_balance = TestUtils.get_account_balance(initiator_pk)
     responder_onchain_balance = TestUtils.get_account_balance(responder_pk)
+
+    channel_onchain_state_initiator_balance =
+      ChannelStateTree.get(Chain.chain_state().channels, id).initiator_amount
 
     initiator_channel_balance = get_our_balance(id, initiator_fun)
     responder_channel_balance = get_our_balance(id, responder_fun)
@@ -588,12 +596,10 @@ defmodule AecoreChannelTest do
     assert channel.state_hash ==
              ChannelTransaction.unsigned_payload(fully_signed_deposit_tx).state_hash
 
-    if channel.initiator_pubkey == initiator_pk do
-      assert channel.initiator_amount == initiator_channel_balance + amount
-      assert channel.responder_amount == responder_channel_balance
-    else
-      assert channel.initiator_amount == responder_channel_balance
-      assert channel.responder_amount == initiator_channel_balance + amount
+    assert channel.total_amount == initiator_channel_balance + responder_channel_balance + amount
+
+    if amount > 0 do
+      assert channel.initiator_amount == channel_onchain_state_initiator_balance
     end
 
     TestUtils.assert_balance(initiator_pk, initiator_onchain_balance - fee - amount)

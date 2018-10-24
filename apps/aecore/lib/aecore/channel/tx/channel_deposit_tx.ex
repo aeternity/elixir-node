@@ -176,7 +176,6 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       ChannelStateTree.update!(channels, channel_id, fn channel ->
         ChannelStateOnChain.apply_deposit(
           channel,
-          depositing_account,
           amount,
           sequence,
           state_hash
@@ -290,7 +289,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
         depositing_account: depositing_account,
         amount: :binary.decode_unsigned(amount),
         state_hash: state_hash,
-        sequence: sequence
+        sequence: :binary.decode_unsigned(sequence)
       }
 
       DataTx.init_binary(

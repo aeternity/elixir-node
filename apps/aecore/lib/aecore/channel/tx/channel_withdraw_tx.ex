@@ -130,8 +130,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       byte_size(channel_id) != 32 ->
         {:error, "#{__MODULE__}: Invalid channel id"}
 
-      amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
+      amount < 0 ->
+        {:error, "#{__MODULE__}: Can't withdraw negative amount of tokens"}
 
       byte_size(state_hash) != 32 ->
         {:error, "#{__MODULE__}: Invalid state hash"}
@@ -176,7 +176,6 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       ChannelStateTree.update!(channels, channel_id, fn channel ->
         ChannelStateOnChain.apply_withdraw(
           channel,
-          withdrawing_account,
           amount,
           sequence,
           state_hash
@@ -290,7 +289,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
         withdrawing_account: withdrawing_account,
         amount: :binary.decode_unsigned(amount),
         state_hash: state_hash,
-        sequence: sequence
+        sequence: :binary.decode_unsigned(sequence)
       }
 
       DataTx.init_binary(
