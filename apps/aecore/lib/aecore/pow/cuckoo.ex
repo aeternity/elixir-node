@@ -71,7 +71,6 @@ defmodule Aecore.Pow.Cuckoo do
       end
 
     command = Enum.join(export_ld_lib_path() ++ cmd)
-    IO.inspect(command)
     options = command_options(process)
     {:ok, command, options}
   end
@@ -150,7 +149,6 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
 
       any ->
-        IO.inspect(any)
         Logger.error("#{__MODULE__}: Unexpected error : #{inspect(any)}")
         exit(:kill)
     end
