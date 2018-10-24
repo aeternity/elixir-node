@@ -21,7 +21,8 @@ defmodule Aecore.Miner.Worker do
 
   @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
-    {:ok, _pid} = Exexec.start()
+    :ok = Application.ensure_started(:erlexec)
+
     GenServer.start_link(
       __MODULE__,
       %{miner_state: :idle, nonce: 0, job: {}, block_candidate: nil},
