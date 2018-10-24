@@ -161,7 +161,7 @@ defmodule AecoreChannelTest do
 
   @tag :channels
   @tag timeout: 120_000
-  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, solo close with older state fails",
+  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, solo close with older state fails, solo close with latest succeeds",
        ctx do
     id = create_channel(ctx)
 
@@ -224,6 +224,117 @@ defmodule AecoreChannelTest do
     TestUtils.assert_balance(ctx.pk1, 40 - 10 * 3 + 50)
     TestUtils.assert_balance(ctx.pk2, 50 + 250)
     assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, make a snapshot by depositing/withdrawing zero tokens, transfer, solo close with latest succeeds",
+       ctx do
+    id = create_channel(ctx)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 125, 175, 2)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 3)
+
+    # prepare solo close but do not submit to pool
+    solo_close_tx1 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    # deposit zero funds -> this will snapshot the state
+    perform_deposit(id, 0, 5, 2, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 4)
+
+    # slashing with old state fails
+    assert_custom_tx_fails(solo_close_tx1)
+
+    # try the same trick with withdraw
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 75, 225, 5)
+
+    # prepare solo close but do not submit to pool
+    solo_close_tx2 = prepare_solo_close_tx(id, &call_s2/1, 15, 1, ctx.sk2)
+
+    perform_transfer(id, 25, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 50, 250, 6)
+
+    # withdraw zero funds -> this will snapshot the state
+    perform_withdraw(id, 0, 5, 3, &call_s1/1, ctx.pk1, ctx.sk1, &call_s2/1, ctx.pk2, ctx.sk2)
+    assert_offchain_state(id, 50, 250, 7)
+
+    # slashing with old state fails
+    assert_custom_tx_fails(solo_close_tx2)
+
+    # make some transfers so the solo_close tx will include a OffchainTx
+    perform_transfer(id, 25, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 75, 225, 8)
+
+    perform_transfer(id, 25, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 100, 200, 9)
+
+    # check if solo close with correct state will work
+    :ok = call_s1({:solo_close, id, 10, 4, ctx.sk1})
+
+    TestUtils.assert_transactions_mined()
+
+    close_height = Chain.top_height() + 2
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).slash_close == close_height
+
+    {:ok, s1_state} = call_s1({:get_channel, id})
+    {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 5, ctx.sk1)
+    assert 100 == settle_tx.data.payload.initiator_amount
+    assert 200 == settle_tx.data.payload.responder_amount
+    assert :ok == Pool.add_transaction(settle_tx)
+
+    :ok = Miner.mine_sync_block_to_chain()
+    assert Enum.empty?(Pool.get_pool()) == false
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 1
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10 * 2)
+    TestUtils.assert_balance(ctx.pk2, 50)
+
+    TestUtils.assert_transactions_mined()
+
+    TestUtils.assert_balance(ctx.pk1, 40 - 10 * 3 + 100)
+    TestUtils.assert_balance(ctx.pk2, 50 + 200)
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+  end
+
+  @tag :channels
+  @tag timeout: 120_000
+  test "Create channel, transfer funds, transfer back, assert that nonce was bumped, mutal close channel",
+       ctx do
+    id = create_channel(ctx)
+    assert_offchain_state(id, 150, 150, 1)
+
+    orig_state_hash = assert call_s1({:most_recent_chainstate, id})
+
+    perform_transfer(id, 50, &call_s1/1, ctx.sk1, &call_s2/1, ctx.sk2)
+    assert_offchain_state(id, 100, 200, 2)
+
+    perform_transfer(id, 50, &call_s2/1, ctx.sk2, &call_s1/1, ctx.sk1)
+    assert_offchain_state(id, 150, 150, 3)
+
+    # ensure the offchain nonce was bumped
+    assert orig_state_hash != call_s1({:most_recent_chainstate, id})
+
+    {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
+    {:ok, signed_close_tx} = call_s2({:receive_close_tx, id, close_tx, {5, 5}, ctx.sk2})
+    assert :closing == get_fsm_state_s1(id)
+    assert :closing == get_fsm_state_s2(id)
+
+    TestUtils.assert_transactions_mined()
+
+    assert PatriciaMerkleTree.trie_size(Chain.chain_state().channels) == 0
+    TestUtils.assert_balance(ctx.pk1, 40 + 150 - 5)
+    TestUtils.assert_balance(ctx.pk2, 50 + 150 - 5)
+
+    call_s1({:closed, signed_close_tx})
+    call_s2({:closed, signed_close_tx})
+    assert :closed == get_fsm_state_s1(id)
+    assert :closed == get_fsm_state_s2(id)
+
+    assert %{} == Pool.get_and_empty_pool()
   end
 
   @tag :channels
@@ -383,12 +494,24 @@ defmodule AecoreChannelTest do
       )
 
     {:ok, %ChannelStatePeer{} = peer2} = call_s2({:get_channel, id})
-    {:ok, _, %SignedTx{} = half_signed_deposit_tx} = ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
-    {:ok, _, %SignedTx{} = half_signed_withdraw_tx} = ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
+
+    {:ok, _, %SignedTx{} = half_signed_deposit_tx} =
+      ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
+
+    {:ok, _, %SignedTx{} = half_signed_withdraw_tx} =
+      ChannelStatePeer.deposit(peer2, 10, 5, 4, ctx.sk2)
 
     {:ok, close_tx} = call_s1({:close, id, {5, 5}, 2, ctx.sk1})
 
-    to_test = [channel_create_tx, solo_close_tx, slash_tx, settle_tx, close_tx, half_signed_deposit_tx, half_signed_withdraw_tx]
+    to_test = [
+      channel_create_tx,
+      solo_close_tx,
+      slash_tx,
+      settle_tx,
+      close_tx,
+      half_signed_deposit_tx,
+      half_signed_withdraw_tx
+    ]
 
     for tx <- to_test do
       serialized = Serialization.rlp_encode(tx)
