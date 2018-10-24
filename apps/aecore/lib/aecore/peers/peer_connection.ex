@@ -721,7 +721,7 @@ defmodule Aecore.Peers.PeerConnection do
       end
 
       Enum.each(peers, fn peer ->
-        if !Peers.have_peer?(peer.pubkey) do
+        if not Peers.have_peer?(peer.pubkey) do
           Peers.try_connect(peer)
         end
       end)
