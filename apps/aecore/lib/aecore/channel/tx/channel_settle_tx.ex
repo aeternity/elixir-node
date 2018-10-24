@@ -91,7 +91,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
@@ -102,7 +103,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
-        _data_tx
+        _data_tx,
+        _context
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
 
@@ -128,7 +130,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelSettleTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
@@ -139,7 +142,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
           initiator_amount: initiator_amount,
           responder_amount: responder_amount
         },
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
 

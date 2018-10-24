@@ -136,7 +136,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}}
   def process_chainstate(
         accounts,
@@ -153,7 +154,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
             %Identifier{value: initiator_pubkey},
             %Identifier{value: responder_pubkey}
           ]
-        }
+        },
+        _context
       ) do
     new_accounts =
       accounts
@@ -190,7 +192,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelCreateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
@@ -204,7 +207,8 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
             %Identifier{value: initiator_pubkey},
             %Identifier{value: responder_pubkey}
           ]
-        }
+        },
+        _context
       ) do
     cond do
       AccountStateTree.get(accounts, initiator_pubkey).balance - (fee + initiator_amount) < 0 ->

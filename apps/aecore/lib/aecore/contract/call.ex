@@ -2,10 +2,19 @@ defmodule Aecore.Contract.Call do
   @moduledoc """
   Module defining the structure of a contract call
   """
-  alias Aecore.Chain.Identifier
   alias Aecore.Contract.Call
+  alias Aecore.Contract.CallStateTree
+  alias Aecore.Contract.Tx.ContractCallTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
+  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aeutil.Parser
   alias Aeutil.Hash
+
+  require Logger
 
   @version 1
 
@@ -37,6 +46,55 @@ defmodule Aecore.Contract.Call do
   use Aecore.Util.Serializable
 
   @nonce_size 256
+
+  @spec call_contract(
+          Keys.pubkey(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          binary(),
+          list(binary()),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: :ok | :error
+  def call_contract(
+        contract,
+        vm_version,
+        amount,
+        gas,
+        gas_price,
+        call_data,
+        call_stack,
+        fee,
+        ttl \\ 0
+      ) do
+    payload = %{
+      contract: contract,
+      vm_version: vm_version,
+      amount: amount,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data,
+      call_stack: call_stack
+    }
+
+    {pubkey, privkey} = Keys.keypair(:sign)
+
+    tx_data =
+      DataTx.init(
+        ContractCallTx,
+        payload,
+        pubkey,
+        fee,
+        Chain.lowest_valid_nonce(),
+        ttl
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
+
+    Pool.add_transaction(tx)
+  end
 
   @spec new(Keys.pubkey(), non_neg_integer(), non_neg_integer(), Keys.pubkey(), non_neg_integer()) ::
           Call.t()
@@ -136,10 +194,18 @@ defmodule Aecore.Contract.Call do
         caller_nonce: caller_nonce,
         contract_address: contract_address
       }) do
-    binary =
-      <<caller_address.value::binary, caller_nonce::size(@nonce_size),
-        contract_address.value::binary>>
+    id(caller_address.value, caller_nonce, contract_address.value)
+  end
+
+  @spec id(Keys.pubkey(), non_neg_integer(), Keys.pubkey()) :: binary()
+  def id(caller_address, caller_nonce, contract_address) do
+    binary = <<caller_address::binary, caller_nonce::size(@nonce_size), contract_address::binary>>
 
     Hash.hash(binary)
+  end
+
+  @spec prune_calls(Chainstate.t(), non_neg_integer()) :: Chainstate.t()
+  def prune_calls(chainstate, block_height) do
+    CallStateTree.prune(chainstate, block_height)
   end
 end

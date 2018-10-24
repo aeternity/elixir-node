@@ -100,7 +100,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           tx_type_state(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
@@ -112,7 +113,8 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           query_fee: query_fee,
           ttl: ttl
         },
-        %DataTx{senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}]},
+        _context
       ) do
     identified_oracle_owner = Identifier.create_identity(sender, :oracle)
 
@@ -139,14 +141,16 @@ defmodule Aecore.Oracle.Tx.OracleRegistrationTx do
           tx_type_state(),
           non_neg_integer(),
           OracleRegistrationTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
         block_height,
         %OracleRegistrationTx{ttl: ttl} = tx,
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->

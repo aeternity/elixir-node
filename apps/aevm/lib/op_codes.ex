@@ -1,4 +1,4 @@
-defmodule OpCodes do
+defmodule Aevm.OpCodes do
   @moduledoc """
   Module containing OpCode macro definitions
   """
