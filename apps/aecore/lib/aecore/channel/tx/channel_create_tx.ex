@@ -99,6 +99,9 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
         %DataTx{senders: senders}
       ) do
     cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
       locktime < 0 ->
         {:error, "#{__MODULE__}: Locktime cannot be negative"}
 

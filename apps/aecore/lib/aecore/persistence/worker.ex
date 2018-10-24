@@ -7,6 +7,7 @@ defmodule Aecore.Persistence.Worker do
   use GenServer
 
   alias Aecore.Chain.{Block, Header, Target}
+  alias Aecore.Persistence.Supplier
   alias Aeutil.Scientific
   alias Rox.Batch
 
@@ -179,55 +180,28 @@ defmodule Aecore.Persistence.Worker do
     ]
   end
 
+  defp database_params do
+    [create_if_missing: true, auto_create_column_families: true]
+  end
+
   def init(_) do
     # We are ensuring that families for the blocks and chain state
     # are created. More about them -
     # https://github.com/facebook/rocksdb/wiki/Column-Families
-    {:ok, db,
-     %{
-       "blocks_family" => blocks_family,
-       "latest_block_info_family" => latest_block_info_family,
-       "chain_state_family" => chain_state_family,
-       "blocks_info_family" => blocks_info_family,
-       "patricia_proof_family" => patricia_proof_family,
-       "patricia_oracles_family" => patricia_oracles_family,
-       "patricia_oracles_cache_family" => patricia_oracles_cache_family,
-       "patricia_txs_family" => patricia_txs_family,
-       "patricia_account_family" => patricia_accounts_family,
-       "patricia_naming_family" => patricia_naming_family,
-       "total_difficulty_family" => total_difficulty_family,
-       "patricia_channels_family" => patricia_channels_family,
-       "patricia_contracts_family" => patricia_contracts_family,
-       "patricia_calls_family" => patricia_calls_family
-     } = families_map} =
-      Rox.open(
-        persistence_path(),
-        [create_if_missing: true, auto_create_column_families: true],
-        all_families()
-      )
 
-    {:ok,
-     %{
-       db: db,
-       families_map: families_map,
-       blocks_family: blocks_family,
-       latest_block_info_family: latest_block_info_family,
-       chain_state_family: chain_state_family,
-       blocks_info_family: blocks_info_family,
-       total_difficulty_family: total_difficulty_family,
-       patricia_families: %{
-         proof: patricia_proof_family,
-         accounts: patricia_accounts_family,
-         oracles: patricia_oracles_family,
-         oracles_cache: patricia_oracles_cache_family,
-         txs: patricia_txs_family,
-         test_trie: db,
-         naming: patricia_naming_family,
-         channels: patricia_channels_family,
-         contracts: patricia_contracts_family,
-         calls: patricia_calls_family
-       }
-     }}
+    with {:ok, %{db: db, families_map: families_map}} <- Supplier.get_references() do
+      build_state(db, families_map)
+    else
+      {:error, _reason} ->
+        case Rox.open(persistence_path(), database_params(), all_families()) do
+          {:ok, db, families_map} ->
+            Supplier.store_references(%{db: db, families_map: families_map})
+            build_state(db, families_map)
+
+          {:error, reason} ->
+            {:error, "#{__MODULE__}: Failed to start Persistence module, reason: #{reason}"}
+        end
+    end
   end
 
   def handle_call(
@@ -444,6 +418,49 @@ defmodule Aecore.Persistence.Worker do
   end
 
   defp persistence_path, do: Application.get_env(:aecore, :persistence)[:path]
+
+  defp build_state(
+         db_refs,
+         %{
+           "blocks_family" => blocks_family,
+           "latest_block_info_family" => latest_block_info_family,
+           "chain_state_family" => chain_state_family,
+           "blocks_info_family" => blocks_info_family,
+           "patricia_proof_family" => patricia_proof_family,
+           "patricia_oracles_family" => patricia_oracles_family,
+           "patricia_oracles_cache_family" => patricia_oracles_cache_family,
+           "patricia_txs_family" => patricia_txs_family,
+           "patricia_account_family" => patricia_accounts_family,
+           "patricia_naming_family" => patricia_naming_family,
+           "total_difficulty_family" => total_difficulty_family,
+           "patricia_channels_family" => patricia_channels_family,
+           "patricia_contracts_family" => patricia_contracts_family,
+           "patricia_calls_family" => patricia_calls_family
+         } = families_map
+       ) do
+    {:ok,
+     %{
+       db: db_refs,
+       families_map: families_map,
+       blocks_family: blocks_family,
+       latest_block_info_family: latest_block_info_family,
+       chain_state_family: chain_state_family,
+       blocks_info_family: blocks_info_family,
+       total_difficulty_family: total_difficulty_family,
+       patricia_families: %{
+         proof: patricia_proof_family,
+         accounts: patricia_accounts_family,
+         oracles: patricia_oracles_family,
+         oracles_cache: patricia_oracles_cache_family,
+         txs: patricia_txs_family,
+         test_trie: db_refs,
+         naming: patricia_naming_family,
+         channels: patricia_channels_family,
+         contracts: patricia_contracts_family,
+         calls: patricia_calls_family
+       }
+     }}
+  end
 
   defp write_options, do: Application.get_env(:aecore, :persistence)[:write_options]
 end

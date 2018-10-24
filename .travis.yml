@@ -43,6 +43,7 @@ install:
   - "[ -d aevm_external/ethereum_tests ] || (make aevm-test-deps)"
 
 script:
+  - mix format --check-formatted
   - mix compile --warnings-as-errors
   - mix compile.xref --warnings-as-errors
   - mix credo list

@@ -71,10 +71,15 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
   @spec validate(ChannelSettleTx.t(), DataTx.t()) :: :ok | {:error, reason()}
   def validate(%ChannelSettleTx{}, %DataTx{senders: senders}) do
-    if length(senders) != 1 do
-      {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
-    else
-      :ok
+    cond do
+      !Identifier.valid?(senders, :account) ->
+        {:error, "#{__MODULE__}: Invalid senders identifier: #{inspect(senders)}"}
+
+      length(senders) != 1 ->
+        {:error, "#{__MODULE__}: Invalid senders size #{length(senders)}"}
+
+      true ->
+        :ok
     end
   end
 

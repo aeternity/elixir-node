@@ -25,9 +25,13 @@ defmodule Aecore.Chain.Identifier do
     %Identifier{type: type, value: value}
   end
 
-  @spec valid?(Identifier.t(), value()) :: boolean()
+  @spec valid?(Identifier.t() | list(Identifier.t()), value()) :: boolean()
   def valid?(%Identifier{value: value} = id, type) do
     create_identity(value, type) == id
+  end
+
+  def valid?(ids_list, type) when is_list(ids_list) do
+    Enum.all?(ids_list, fn id -> valid?(id, type) end)
   end
 
   def valid?(_, _) do
