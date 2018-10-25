@@ -71,10 +71,11 @@ defmodule Aecore.Mixfile do
       {:erl_base58, "~> 0.0.1"},
       {:exexec, "~> 0.1"},
       {:jobs, "~> 0.7.1"},
-      {:ex_rlp, "~> 0.2.1"},
+      {:ex_rlp, "0.3.0"},
       {:gproc, "~> 0.6.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b7"},
-      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", ref: "0a763cc"}
+      {:aevm, in_umbrella: true},
+      {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", tag: "v0.1.0"}
     ]
   end
 end

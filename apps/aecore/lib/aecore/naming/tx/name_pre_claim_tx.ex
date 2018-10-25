@@ -90,14 +90,16 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NamePreClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         block_height,
         %NamePreClaimTx{commitment: %Identifier{value: value}},
-        %DataTx{senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}]},
+        _context
       ) do
     commitment_expires = block_height + GovernanceConstants.pre_claim_ttl()
 
@@ -116,12 +118,20 @@ defmodule Aecore.Naming.Tx.NamePreClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NamePreClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, _naming_state, _block_height, _tx, %DataTx{
-        fee: fee,
-        senders: [%Identifier{value: sender}]
-      }) do
+  def preprocess_check(
+        accounts,
+        _naming_state,
+        _block_height,
+        _tx,
+        %DataTx{
+          fee: fee,
+          senders: [%Identifier{value: sender}]
+        },
+        _context
+      ) do
     account_state = AccountStateTree.get(accounts, sender)
 
     if account_state.balance - fee >= 0 do

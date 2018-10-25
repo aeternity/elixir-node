@@ -1,4 +1,4 @@
-defmodule GasCodes do
+defmodule Aevm.GasCodes do
   @moduledoc """
   Module containing macro definitions for gas cost
   From https://github.com/ethereum/go-ethereum/blob/master/params/gas_table.go

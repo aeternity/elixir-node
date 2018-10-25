@@ -83,14 +83,16 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           tx_type_state(),
           non_neg_integer(),
           OracleResponseTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         oracles,
         block_height,
         %OracleResponseTx{query_id: query_id, response: response},
-        %DataTx{senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}]},
+        _context
       ) do
     tree_query_id = sender <> query_id
     interaction_objects = OracleStateTree.get_query(oracles, tree_query_id)
@@ -122,14 +124,16 @@ defmodule Aecore.Oracle.Tx.OracleResponseTx do
           tx_type_state(),
           non_neg_integer(),
           OracleResponseTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         oracles,
         _block_height,
         %OracleResponseTx{response: response, query_id: query_id},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     tree_query_id = sender <> query_id
 

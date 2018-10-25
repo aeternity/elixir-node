@@ -3,7 +3,13 @@ defmodule Aecore.Contract.Contract do
   Module containing Contract interaction functionality
   """
   alias Aecore.Contract.Contract
+  alias Aecore.Contract.Tx.ContractCreateTx
+  alias Aecore.Tx.DataTx
+  alias Aecore.Tx.SignedTx
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Chain.Identifier
+  alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Keys
   alias Aeutil.Hash
 
   @version 1
@@ -28,6 +34,45 @@ defmodule Aecore.Contract.Contract do
   defstruct [:id, :owner, :vm_version, :code, :store, :log, :active, :referers, :deposit]
 
   use Aecore.Util.Serializable
+
+  @spec create(
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer,
+          non_neg_integer(),
+          non_neg_integer(),
+          binary(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: :ok | :error
+  def create(code, vm_version, deposit, amount, gas, gas_price, call_data, fee, ttl \\ 0) do
+    payload = %{
+      code: code,
+      vm_version: vm_version,
+      deposit: deposit,
+      amount: amount,
+      gas: gas,
+      gas_price: gas_price,
+      call_data: call_data
+    }
+
+    {pubkey, privkey} = Keys.keypair(:sign)
+
+    tx_data =
+      DataTx.init(
+        ContractCreateTx,
+        payload,
+        pubkey,
+        fee,
+        Chain.lowest_valid_nonce(),
+        ttl
+      )
+
+    {:ok, tx} = SignedTx.sign_tx(tx_data, privkey)
+
+    Pool.add_transaction(tx)
+  end
 
   @spec new(Keys.pubkey(), non_neg_integer(), byte(), binary(), non_neg_integer()) :: Contract.t()
   def new(owner, nonce, vm_version, code, deposit) do
@@ -149,7 +194,8 @@ defmodule Aecore.Contract.Contract do
   @spec store_id(Contract.t()) :: binary()
   def store_id(%Contract{id: %Identifier{value: value}}), do: <<value::binary, @store_prefix>>
 
-  defp create_contract_id(owner, nonce) do
+  @spec create_contract_id(Keys.pubkey(), non_neg_integer()) :: binary()
+  def create_contract_id(owner, nonce) do
     nonce_binary = :binary.encode_unsigned(nonce)
 
     Hash.hash(<<owner::binary, nonce_binary::binary>>)

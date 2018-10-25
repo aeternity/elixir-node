@@ -68,14 +68,16 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           tx_type_state(),
           non_neg_integer(),
           OracleExtendTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         oracles,
         _block_height,
         %OracleExtendTx{ttl: %{ttl: ttl}},
-        %DataTx{senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}]},
+        _context
       ) do
     registered_oracle = OracleStateTree.get_oracle(oracles, sender)
 
@@ -93,12 +95,20 @@ defmodule Aecore.Oracle.Tx.OracleExtendTx do
           tx_type_state(),
           non_neg_integer(),
           OracleExtendTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
-  def preprocess_check(accounts, oracles, _block_height, %OracleExtendTx{}, %DataTx{
-        senders: [%Identifier{value: sender}],
-        fee: fee
-      }) do
+  def preprocess_check(
+        accounts,
+        oracles,
+        _block_height,
+        %OracleExtendTx{},
+        %DataTx{
+          senders: [%Identifier{value: sender}],
+          fee: fee
+        },
+        _context
+      ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee < 0 ->
         {:error, "#{__MODULE__}: Negative balance"}

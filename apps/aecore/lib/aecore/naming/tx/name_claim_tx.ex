@@ -87,14 +87,16 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         block_height,
         %NameClaimTx{name: name, name_salt: name_salt},
-        %DataTx{senders: [%Identifier{value: sender}]}
+        %DataTx{senders: [%Identifier{value: sender}]},
+        _context
       ) do
     {:ok, pre_claim_commitment} = NameCommitment.commitment_hash(name, name_salt)
     {:ok, claim_hash} = NameUtil.normalized_namehash(name)
@@ -116,14 +118,16 @@ defmodule Aecore.Naming.Tx.NameClaimTx do
           tx_type_state(),
           non_neg_integer(),
           NameClaimTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
         _block_height,
         %NameClaimTx{name: name, name_salt: name_salt},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     account_state = AccountStateTree.get(accounts, sender)
 
