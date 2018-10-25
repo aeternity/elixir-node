@@ -89,7 +89,7 @@ defmodule Aecore.Contract.Dispatch do
          spec
        ) do
     <<address::size(@pubkey_size_bits)>> = contract_pubkey.value
-    <<caller_address::size(@pubkey_size_bits)>> = caller.value
+    <<caller_address::size(@pubkey_size_bits)>> = caller
 
     spec =
       Map.put(spec, :exec, %{
