@@ -188,7 +188,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
 
           chain_state_with_call = %{
             updated_state
-            | calls: CallStateTree.insert_call(updated_state.calls, call),
+            | calls: CallStateTree.insert_call(updated_state.calls, call_result),
               accounts: accounts_after_gas_spent,
               contracts:
                 ContractStateTree.enter_contract(updated_state.contracts, updated_contract)
