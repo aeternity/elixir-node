@@ -1,4 +1,4 @@
-defmodule EpochElixir.Mixfile do
+defmodule ElixirNode.Mixfile do
   use Mix.Project
 
   def project do
