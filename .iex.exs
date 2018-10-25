@@ -24,6 +24,7 @@ alias Aecore.Channel.{ChannelStatePeer, ChannelStateOnChain, ChannelStateTree, C
 alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelCloseSoloTx, ChannelCloseMutalTx, ChannelSlashTx, ChannelSettleTx}
 alias Aecore.Channel.Updates.{ChannelCreateUpdate, ChannelDepositUpdate, ChannelWithdrawUpdate, ChannelTransferUpdate}
 alias Aecore.Channel.Worker, as: Channel
+alias Aecore.Contract.{Call, Contract, CallStateTree, ContractStateTree}
 
 alias Aehttpclient.Client
 
@@ -33,3 +34,7 @@ alias Aeutil.Scientific
 alias Aeutil.Serialization
 alias Aeutil.PatriciaMerkleTree
 alias Aecore.Chain.Identifier
+
+alias Aevm.State
+
+require Aecore.Contract.ContractConstants, as: Constants
