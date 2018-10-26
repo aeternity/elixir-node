@@ -285,7 +285,9 @@ iex> {_, priv_key} = Keys.keypair(:sign)
 
 #### Contract Transactions
 
-##### Scenario with a smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract)
+##### Scenario with a Solidity smart contract, containing getter and setter methods, (used calldata parameters are only applicable to this smart contract)
+
+###### Note: Sophia ABI and primitive operations are yet to be added
 
 - Create and mine a `ConcractCreateTx`:
 ```elixir
