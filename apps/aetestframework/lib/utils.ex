@@ -139,6 +139,56 @@ defmodule Aetestframework.Utils do
     "
   end
 
+  def channel_init_cmd(foreign_key, role) do
+    "Channel.initialize(
+    <<1,2,3>>,
+    Keys.keypair(:sign),
+    #{foreign_key},
+    #{role},
+    5)
+    "
+  end
+
+  def open_channel_cmd(pkey) do
+    "Channel.open(
+    <<1,2,3>>,
+    100,
+    100,
+    2,
+    1,
+    10,
+    #{pkey})
+    "
+  end
+
+  def sign_open_channel_cmd(half_signed_open, pkey) do
+    "Channel.sign_open(
+    <<1,2,3>>,
+    100,
+    100,
+    2,
+    #{half_signed_open},
+    #{pkey}
+    "
+  end
+
+  def channel_transfer_cmd(channel_id, pkey) do
+    "Channel.transfer(
+    #{channel_id},
+    50,
+    #{priv_key})
+    "
+  end
+
+  def channel_close_cmd(channel_id, pkey) do
+    "Channel.close(
+    #{channel_id},
+    {5, 5},
+    10,
+    #{priv_key})
+    "
+  end
+
   def find_port(start_port) do
     if TestFramework.busy_port?("#{3000 + start_port}") ||
          TestFramework.busy_port?("#{4000 + start_port}") do
