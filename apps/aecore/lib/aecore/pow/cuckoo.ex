@@ -62,11 +62,11 @@ defmodule Aecore.Pow.Cuckoo do
   end
 
   defp build_command(process, hash) do
-    {exe, _extra, size} = Application.get_env(:aecore, :pow)[:params]
+    {exe, extra, size} = Application.get_env(:aecore, :pow)[:params]
 
     cmd =
       case process do
-        :generate -> [exe, " -h ", hash]
+        :generate -> [exe, " " <> extra, " -h ", hash]
         :verify -> ["./verify", size, " -h ", hash]
       end
 
@@ -80,12 +80,15 @@ defmodule Aecore.Pow.Cuckoo do
   defp command_options(:generate), do: default_command_options()
 
   defp default_command_options do
+    full_bin_dir =
+      Application.app_dir(:aecore, "priv") <> Application.get_env(:aecore, :pow)[:bin_dir]
+
     [
       {:stdout, self()},
       {:stderr, self()},
       {:kill_timeout, 0},
       {:sync, false},
-      {:cd, Application.get_env(:aecore, :pow)[:bin_dir]},
+      {:cd, full_bin_dir},
       {:env, [{"SHELL", "/bin/sh"}]},
       {:monitor, true}
     ]
@@ -146,7 +149,7 @@ defmodule Aecore.Pow.Cuckoo do
         handle_raw_data(process, buff)
 
       any ->
-        Logger.error("#{__MODULE__}: Unexpeted error : #{inspect(any)}")
+        Logger.error("#{__MODULE__}: Unexpected error : #{inspect(any)}")
         exit(:kill)
     end
   end

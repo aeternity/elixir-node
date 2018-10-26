@@ -1,12 +1,11 @@
 use Mix.Config
 
-path = Path.absname("apps/aecore")
 %{year: year, month: month, day: day} = DateTime.utc_now()
 time = "#{year}-#{month}-#{day}_"
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db/"
+    nil -> "/rox_db/"
     env -> env
   end
 
@@ -18,7 +17,7 @@ sign_keys_pass =
 
 sign_keys_path =
   case System.get_env("SIGN_KEYS_PATH") do
-    nil -> "apps/aecore/priv/signkeys"
+    nil -> "/signkeys"
     env -> env
   end
 
@@ -30,13 +29,13 @@ peer_keys_pass =
 
 peerkeys_path =
   case System.get_env("PEER_KEYS_PATH") do
-    nil -> "apps/aecore/priv/peerkeys"
+    nil -> "/peerkeys"
     env -> env
   end
 
 accounts_path =
   case System.get_env("ACCOUNTS_PATH") do
-    nil -> "apps/aecore/config/genesis/"
+    nil -> "/genesis/"
     env -> env
   end
 
@@ -76,11 +75,11 @@ config :logger,
 config :logger, :console, level: :error
 
 config :logger, :info,
-  path: path <> "/logs/#{time}info.log",
+  path: "/logs/#{time}info.log",
   level: :info
 
 config :logger, :error,
-  path: path <> "/logs/#{time}error.log",
+  path: "/logs/#{time}error.log",
   level: :error
 
 import_config "#{Mix.env()}.exs"

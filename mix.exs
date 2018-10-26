@@ -1,4 +1,4 @@
-defmodule EpochElixir.Mixfile do
+defmodule ElixirNode.Mixfile do
   use Mix.Project
 
   def project do
@@ -51,6 +51,7 @@ defmodule EpochElixir.Mixfile do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:distillery, "~> 2.0"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:plug_cowboy, "~> 1.0"},
 

@@ -217,12 +217,12 @@ defmodule Aecore.Keys do
 
   defp dir(:sign) do
     {:ok, opts} = sign_keys_opts()
-    opts[:path]
+    Application.app_dir(:aecore, "priv") <> opts[:path]
   end
 
   defp dir(:peer) do
     {:ok, opts} = peer_keys_opts()
-    opts[:path]
+    Application.app_dir(:aecore, "priv") <> opts[:path]
   end
 
   defp sign_keys_opts, do: Application.fetch_env(:aecore, :sign_keys)
