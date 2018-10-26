@@ -222,7 +222,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
-        _contracts,
+        _chainstate,
         _block_height,
         %ContractCreateTx{
           amount: amount,

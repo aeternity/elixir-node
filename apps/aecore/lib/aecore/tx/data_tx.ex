@@ -288,7 +288,14 @@ defmodule Aecore.Tx.DataTx do
         context \\ :transaction
       ) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
+    chain_state_name = type.get_chain_state_name()
+
+    tx_type_state =
+      if Enum.member?([:contracts, :calls], chain_state_name) do
+        chainstate
+      else
+        Map.get(chainstate, chain_state_name)
+      end
 
     tx_type_preprocess_check =
       type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context)
