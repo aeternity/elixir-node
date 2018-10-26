@@ -208,7 +208,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
 
   @spec preprocess_check(
           Chainstate.accounts(),
-          tx_type_state(),
+          Chainstate.t(),
           non_neg_integer(),
           ContractCallTx.t(),
           DataTx.t(),
