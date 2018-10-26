@@ -109,7 +109,7 @@ After calling a contract, a call object is being saved in the state tree, contai
   `Contract.create(code, vm_version, deposit, amount, gas, gas_price, call_data, fee, ttl)`
   Creates a contract with a given code. The initialization is done differently, depending on the vm_version. Owner of the contract will be the caller of the transaction.
 
-**Creating a contract:**
+**Calling a contract:**
   `Call.call_contract(contract, vm_version, amount, gas, gas_price, call_data, call_stack, fee, ttl)`
   Calls a contract under a given address. A call object will be saved in the state, containing gas used, return result and return type from this call.
 
