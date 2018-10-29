@@ -69,7 +69,7 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback process_chainstate(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t(),
@@ -113,7 +113,7 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback preprocess_check(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
               DataTx.t(),
