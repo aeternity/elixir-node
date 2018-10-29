@@ -1259,7 +1259,8 @@ defmodule Aevm.Aevm do
     mem_gas_cost = Gas.memory_gas_cost(state_4, state)
     state_5 = Gas.update_gas(mem_gas_cost, state_4)
 
-    State.set_return_type(:revert, state_5)
+    state_6 = State.set_return_type(:revert, state_5)
+    AevmUtil.stop_exec(state_6)
   end
 
   # 0xfe INVALID

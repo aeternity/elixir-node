@@ -64,7 +64,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     :gas,
     :gas_price,
     :call_data,
-    :call_stack
+    call_stack: []
   ]
 
   use ExConstructor
@@ -306,10 +306,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
     with {:ok, contract} <- Identifier.decode_from_binary(encoded_contract) do
       payload = %ContractCallTx{
         contract: contract,
-        vm_version: vm_version,
-        amount: amount,
-        gas: gas,
-        gas_price: gas_price,
+        vm_version: :binary.decode_unsigned(vm_version),
+        amount: :binary.decode_unsigned(amount),
+        gas: :binary.decode_unsigned(gas),
+        gas_price: :binary.decode_unsigned(gas_price),
         call_data: call_data
       }
 
