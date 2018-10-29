@@ -341,10 +341,8 @@ iex> call_tree_id = CallStateTree.construct_call_tree_id(contract_id, call_id)
 iex> CallStateTree.get_call(Chain.chain_state.calls, call_tree_id)
 ```
 
-- ```call_data``` (for Solidity ABI) is the first (left, high-order in big-endian) four bytes of the Keccak-256 (SHA-3) hash of the signature of the function
+- the first four bytes of the ```call_data``` specify which function is to be called, followed by its arguments (if there are any). Should be encoded, according to the Solidity ABI
 
-- in order to call a contract function (for Solidity ABI), the hash of the function must be provided, followed by its arguments, encoded as specified in the [spec]( https://solidity.readthedocs.io/en/develop/abi-spec.html#argument-encoding)
+- ```code``` is the byte code that the contract is compiled to
 
-- ```code``` is the byte code of the contract. Contracts can be compiled and have their byte code and function signature hashes reviewed, using [Remix IDE](https://remix.ethereum.org/)
-
-- ```call_stack``` is used internally and should be empty when executing from top level
+- ```call_stack``` is used internally and should be empty when executing from top level (populated when there are nested calls)
