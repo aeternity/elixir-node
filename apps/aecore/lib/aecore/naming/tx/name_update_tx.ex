@@ -128,7 +128,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           tx_type_state(),
           non_neg_integer(),
           NameUpdateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
@@ -140,7 +141,8 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           expire_by: expire_by,
           client_ttl: client_ttl
         },
-        _data_tx
+        _data_tx,
+        _context
       ) do
     claim_to_update = NamingStateTree.get(naming_state, hash)
 
@@ -164,14 +166,16 @@ defmodule Aecore.Naming.Tx.NameUpdateTx do
           tx_type_state(),
           non_neg_integer(),
           NameUpdateTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
         block_height,
         %NameUpdateTx{hash: %Identifier{value: hash}, expire_by: expire_by},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, hash)

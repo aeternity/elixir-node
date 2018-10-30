@@ -23,6 +23,8 @@ defmodule Aecore.Tx.Transaction do
   by the specified transaction type"
   @type payload :: map()
 
+  @type context :: :transaction | :contract
+
   @typedoc "Structure of a custom transaction"
   @type tx_types ::
           Aecore.Account.Tx.SpendTx.t()
@@ -35,6 +37,8 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Naming.Tx.NameUpdateTx.t()
           | Aecore.Naming.Tx.NameTransferTx.t()
           | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Contract.Tx.ContractCreateTx.t()
+          | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
           | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
@@ -65,10 +69,11 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback process_chainstate(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
-              DataTx.t()
+              DataTx.t(),
+              context()
             ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
 
   @doc """
@@ -108,10 +113,11 @@ defmodule Aecore.Tx.Transaction do
   """
   @callback preprocess_check(
               Chainstate.accounts(),
-              tx_type_state(),
+              tx_type_state() | Chainstate.t(),
               block_height :: non_neg_integer(),
               tx_types(),
-              DataTx.t()
+              DataTx.t(),
+              context()
             ) :: :ok | {:error, reason}
 
   @callback deduct_fee(

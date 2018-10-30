@@ -22,6 +22,8 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx
           | Aecore.Naming.Tx.NameTransferTx
           | Aecore.Naming.Tx.NameRevokeTx
+          | Aecore.Contract.Tx.ContractCreateTx
+          | Aecore.Contract.Tx.ContractCallTx
           | Aecore.Channel.Tx.ChannelCreateTx
           | Aecore.Channel.Tx.ChannelCloseMutalTx
           | Aecore.Channel.Tx.ChannelCloseSoloTx
@@ -42,6 +44,8 @@ defmodule Aecore.Tx.DataTx do
           | Aecore.Naming.Tx.NameUpdateTx.t()
           | Aecore.Naming.Tx.NameTransferTx.t()
           | Aecore.Naming.Tx.NameRevokeTx.t()
+          | Aecore.Contract.Tx.ContractCreateTx.t()
+          | Aecore.Contract.Tx.ContractCallTx.t()
           | Aecore.Channel.Tx.ChannelCreateTx.t()
           | Aecore.Channel.Tx.ChannelCloseMutalTx.t()
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
@@ -90,6 +94,8 @@ defmodule Aecore.Tx.DataTx do
       Aecore.Naming.Tx.NameRevokeTx,
       Aecore.Naming.Tx.NameTransferTx,
       Aecore.Naming.Tx.NameUpdateTx,
+      Aecore.Contract.Tx.ContractCreateTx,
+      Aecore.Contract.Tx.ContractCallTx,
       Aecore.Channel.Tx.ChannelCreateTx,
       Aecore.Channel.Tx.ChannelCloseSoloTx,
       Aecore.Channel.Tx.ChannelCloseMutalTx,
@@ -220,9 +226,14 @@ defmodule Aecore.Tx.DataTx do
   Changes the chainstate (account state and tx_type_state) according
   to the given transaction requirements
   """
-  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
+  @spec process_chainstate(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           {:ok, Chainstate.t()} | {:error, String.t()}
-  def process_chainstate(chainstate, block_height, %DataTx{payload: payload, fee: fee} = tx) do
+  def process_chainstate(
+        chainstate,
+        block_height,
+        %DataTx{payload: payload, fee: fee} = tx,
+        context \\ :transaction
+      ) do
     accounts_state = chainstate.accounts
 
     tx_type_state = Map.get(chainstate, tx.type.get_chain_state_name(), %{})
@@ -232,24 +243,39 @@ defmodule Aecore.Tx.DataTx do
         Account.apply_nonce!(acc, tx.nonce)
       end)
 
+    chain_state_name = tx.type.get_chain_state_name()
+
+    process_tx_type_state =
+      if Enum.member?([:contracts, :calls], chain_state_name) do
+        %{chainstate | accounts: nonce_accounts_state}
+      else
+        tx_type_state
+      end
+
     processed_states =
       nonce_accounts_state
       |> tx.type.deduct_fee(block_height, payload, tx, fee)
       |> tx.type.process_chainstate(
-        tx_type_state,
+        process_tx_type_state,
         block_height,
         payload,
-        tx
+        tx,
+        context
       )
 
     case processed_states do
       {:ok, {new_accounts_state, new_tx_type_state}} ->
         new_chainstate =
-          if tx.type.get_chain_state_name() == :accounts do
-            %{chainstate | accounts: new_accounts_state}
-          else
-            %{chainstate | accounts: new_accounts_state}
-            |> Map.put(tx.type.get_chain_state_name(), new_tx_type_state)
+          case chain_state_name do
+            chain_state_name when chain_state_name in [:contracts, :calls] ->
+              new_tx_type_state
+
+            :accounts ->
+              %{chainstate | accounts: new_accounts_state}
+
+            _ ->
+              %{chainstate | accounts: new_accounts_state}
+              |> Map.put(chain_state_name, new_tx_type_state)
           end
 
         {:ok, new_chainstate}
@@ -259,17 +285,26 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @doc """
-  Validates the transaction with state considered
-  """
-  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t()) ::
+  @spec preprocess_check(Chainstate.t(), non_neg_integer(), DataTx.t(), Transaction.context()) ::
           :ok | {:error, String.t()}
-  def preprocess_check(chainstate, block_height, %DataTx{payload: payload, type: type} = tx) do
+  def preprocess_check(
+        chainstate,
+        block_height,
+        %DataTx{payload: payload, type: type} = tx,
+        context \\ :transaction
+      ) do
     accounts_state = chainstate.accounts
-    tx_type_state = Map.get(chainstate, type.get_chain_state_name(), %{})
+    chain_state_name = type.get_chain_state_name()
+
+    tx_type_state =
+      if Enum.member?([:contracts, :calls], chain_state_name) do
+        chainstate
+      else
+        Map.get(chainstate, chain_state_name)
+      end
 
     tx_type_preprocess_check =
-      type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx)
+      type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context)
 
     cond do
       tx_type_preprocess_check != :ok ->

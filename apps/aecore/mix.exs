@@ -36,7 +36,16 @@ defmodule Aecore.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [
-      extra_applications: [:erlexec, :gproc, :logger, :rox, :exconstructor, :ranch, :jobs],
+      extra_applications: [
+        :erlexec,
+        :exexec,
+        :gproc,
+        :logger,
+        :rox,
+        :exconstructor,
+        :ranch,
+        :jobs
+      ],
       mod: {Aecore, []}
     ]
   end
@@ -65,6 +74,7 @@ defmodule Aecore.Mixfile do
       {:ex_rlp, "0.3.0"},
       {:gproc, "~> 0.6.1"},
       {:enoise, github: "aeternity/enoise", ref: "6d793b7"},
+      {:aevm, in_umbrella: true},
       {:merkle_patricia_tree, github: "aeternity/elixir-merkle-patricia-tree", tag: "v0.1.0"}
     ]
   end

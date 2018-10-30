@@ -1,13 +1,19 @@
-defmodule AevmUtil do
+defmodule Aevm.AevmUtil do
   @moduledoc """
   Module containing VM utility functions
   """
 
+  alias Aevm.State
+  alias Aevm.Stack
+  alias Aevm.Memory
+  alias Aevm.Gas
+
   use Bitwise
 
-  require AevmConst
-  require OpCodes
-  require GasCodes
+  require Aevm.AevmConst, as: AevmConst
+  require Aevm.OpCodes, as: OpCodes
+  require Aevm.GasCodes, as: GasCodes
+  require Aevm.OpCodesUtil, as: OpCodesUtil
 
   @call_depth_limit 1024
 
@@ -24,8 +30,7 @@ defmodule AevmUtil do
   Stop execution by setting the program counter past the last instruction
   """
   @spec stop_exec(map()) :: map()
-  def stop_exec(state) do
-    code = State.code(state)
+  def stop_exec(%{code: code} = state) do
     State.set_pc(byte_size(code), state)
   end
 
@@ -86,9 +91,7 @@ defmodule AevmUtil do
   Get the opcode, corresponding to the value of the program counter
   """
   @spec get_op_code(map()) :: integer()
-  def get_op_code(state) do
-    pc = State.pc(state)
-    code = State.code(state)
+  def get_op_code(%{code: code, pc: pc}) do
     prev_bits = pc * 8
 
     <<_::size(prev_bits), op_code::size(8), _::binary>> = code
@@ -100,10 +103,7 @@ defmodule AevmUtil do
   Increase program counter with n `bytes` (instructions)
   """
   @spec move_pc_n_bytes(integer(), map()) :: {integer(), map()}
-  def move_pc_n_bytes(bytes, state) do
-    old_pc = State.pc(state)
-    code = State.code(state)
-
+  def move_pc_n_bytes(bytes, %{code: code, pc: old_pc} = state) do
     curr_pc = old_pc + 1
     prev_bits = curr_pc * 8
     value_size_bits = bytes * 8
@@ -165,8 +165,7 @@ defmodule AevmUtil do
   Extract 32-byte integer from the input data, starting at a given `address`
   """
   @spec value_from_data(integer(), map()) :: integer()
-  def value_from_data(address, state) do
-    data = State.data(state)
+  def value_from_data(address, %{data: data}) do
     data_copy = copy_bytes(address, 32, data)
     <<value::size(256)>> = data_copy
     value
@@ -188,15 +187,12 @@ defmodule AevmUtil do
     State.set_pc(0, state)
   end
 
-  def load_jumpdests(state) do
-    pc = State.pc(state)
-
+  def load_jumpdests(%{pc: pc, jumpdests: jumpdests} = state) do
     op_code = get_op_code(state)
 
     loaded_jumpdests_state =
       cond do
         op_code == OpCodes._JUMPDEST() ->
-          jumpdests = State.jumpdests(state)
           %{state | jumpdests: [pc | jumpdests]}
 
         op_code >= OpCodes._PUSH1() && op_code <= OpCodes._PUSH32() ->
@@ -218,17 +214,15 @@ defmodule AevmUtil do
   and add it to the state
   """
   @spec log(list(), integer(), integer(), map()) :: map()
-  def log(topics, from_pos, nbytes, state) do
-    account = State.address(state)
+  def log(topics, from_pos, nbytes, %{address: address, logs: logs} = state) do
     {memory_area, state1} = Memory.get_area(from_pos, nbytes, state)
-    logs = State.logs(state)
 
     topics_joined =
       Enum.reduce(topics, <<>>, fn topic, acc ->
         acc <> <<topic::256>>
       end)
 
-    log = <<account::256>> <> topics_joined <> memory_area
+    log = <<address::256>> <> topics_joined <> memory_area
 
     State.set_logs([log | logs], state1)
   end
@@ -317,24 +311,34 @@ defmodule AevmUtil do
       )
 
     if State.execute_calls(call_state) do
-      {ret, out_gas} =
-        try do
-          {:ok, out_state} = Aevm.loop(call_state)
-          {1, State.gas(out_state)}
-        catch
-          {:error, _, _} ->
-            {0, 0}
+      {out_gas, return_state, result} =
+        case State.call_contract(
+               caller,
+               dest,
+               call_gas,
+               value,
+               input_area,
+               updated_memory_size_state
+             ) do
+          {:ok, %{result: call_result, gas_spent: gas_spent}, state_after_call} ->
+            {call_gas - gas_spent, state_after_call, call_result}
+
+          {:error, message} ->
+            {0, updated_memory_size_state, {:error, message}}
         end
 
-      remaining_gas = State.gas(updated_memory_size_state) + out_gas
-      updated_gas_state = State.set_gas(remaining_gas, updated_memory_size_state)
+      remaining_gas = return_state.gas + out_gas
+      updated_gas_state = State.set_gas(remaining_gas, return_state)
 
       added_callcreate_state =
         State.add_callcreate(input_area, dest, call_gas, value, updated_gas_state)
 
       final_state =
-        case ret do
-          1 ->
+        case result do
+          {:error, _} ->
+            added_callcreate_state
+
+          _ ->
             {message, _} = Memory.get_area(0, output_size, added_callcreate_state)
 
             updated_memory_size_state =
@@ -342,14 +346,11 @@ defmodule AevmUtil do
 
             mem_gas_cost = Gas.memory_gas_cost(updated_memory_size_state, added_callcreate_state)
             State.set_gas(remaining_gas - mem_gas_cost, updated_memory_size_state)
-
-          0 ->
-            added_callcreate_state
         end
 
-      {ret, final_state}
+      {1, final_state}
     else
-      remaining_gas = State.gas(updated_memory_size_state) + call_gas
+      remaining_gas = updated_memory_size_state.gas + call_gas
       updated_memory_size_state = State.set_gas(remaining_gas, updated_memory_size_state)
 
       added_callcreate_state =
@@ -387,42 +388,33 @@ defmodule AevmUtil do
     Gas.update_gas(gas_cost, current_state)
   end
 
-  defp determine_call_value(op_code, state) do
+  defp determine_call_value(op_code, %{value: value} = state) do
     case op_code do
-      OpCodes._CALL() ->
-        Stack.pop(state)
-
-      OpCodes._CALLCODE() ->
+      op_code when op_code in [OpCodes._CALL(), OpCodes._CALLCODE()] ->
         Stack.pop(state)
 
       OpCodes._DELEGATECALL() ->
-        {State.value(state), state}
+        {value, state}
     end
   end
 
-  defp determine_call_caller(op_code, state) do
+  defp determine_call_caller(op_code, %{address: address, caller: caller}) do
     case op_code do
-      OpCodes._CALL() ->
-        State.address(state)
-
-      OpCodes._CALLCODE() ->
-        State.address(state)
+      op_code when op_code in [OpCodes._CALL(), OpCodes._CALLCODE()] ->
+        address
 
       OpCodes._DELEGATECALL() ->
-        State.caller(state)
+        caller
     end
   end
 
-  defp determine_call_dest(op_code, state) do
+  defp determine_call_dest(op_code, %{address: address} = state) do
     case op_code do
+      op_code when op_code in [OpCodes._CALLCODE(), OpCodes._DELEGATECALL()] ->
+        address
+
       OpCodes._CALL() ->
         Stack.peek(1, state)
-
-      OpCodes._CALLCODE() ->
-        State.address(state)
-
-      OpCodes._DELEGATECALL() ->
-        State.address(state)
     end
   end
 

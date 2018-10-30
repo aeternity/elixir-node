@@ -1,4 +1,4 @@
-defmodule EpochElixir.Mixfile do
+defmodule ElixirNode.Mixfile do
   use Mix.Project
 
   def project do
@@ -51,12 +51,14 @@ defmodule EpochElixir.Mixfile do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 0.5", only: [:dev, :test], runtime: false},
+      {:distillery, "~> 2.0"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:plug_cowboy, "~> 1.0"},
 
       # aecore deps, they are needed here, as we can only override umbrella-apps dependencies here (https://github.com/elixir-lang/elixir/issues/5232)
       {:idna, github: "aeternity/erlang-idna", tag: "5.1.1", manager: :rebar, override: true},
-      {:ranch, github: "ninenines/ranch", tag: "1.4.0", override: true}
+      {:ranch, github: "ninenines/ranch", tag: "1.4.0", override: true},
+      {:ex_parameterized, "~> 1.3.2"}
     ]
   end
 end

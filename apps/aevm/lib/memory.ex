@@ -1,4 +1,4 @@
-defmodule Memory do
+defmodule Aevm.Memory do
   @moduledoc """
   Module for working with the VM's internal memory.
 
@@ -7,6 +7,8 @@ defmodule Memory do
 
   Data from the memory can be accessed at byte level.
   """
+
+  alias Aevm.State
 
   use Bitwise
 
@@ -17,8 +19,7 @@ defmodule Memory do
   Read a word from the memory, starting at a given `address`.
   """
   @spec load(integer(), map()) :: {integer(), map()}
-  def load(address, state) do
-    memory = State.memory(state)
+  def load(address, %{memory: memory} = state) do
     {memory_index, bit_position} = get_index_in_memory(address)
 
     prev_saved_value = Map.get(memory, memory_index, 0)
@@ -37,8 +38,7 @@ defmodule Memory do
   Write a word (32 bytes) to the memory, starting at a given `address`
   """
   @spec store(integer(), integer(), map()) :: map()
-  def store(address, value, state) do
-    memory = State.memory(state)
+  def store(address, value, %{memory: memory} = state) do
     {memory_index, bit_position} = get_index_in_memory(address)
     remaining_bits = @word_size - bit_position
 
@@ -73,8 +73,7 @@ defmodule Memory do
   Write 1 byte to the memory, at a given `address`
   """
   @spec store8(integer(), integer(), map()) :: map()
-  def store8(address, value, state) do
-    memory = State.memory(state)
+  def store8(address, value, %{memory: memory} = state) do
     {memory_index, bit_position} = get_index_in_memory(address)
 
     saved_value = Map.get(memory, memory_index, 0)
@@ -91,8 +90,7 @@ defmodule Memory do
   Get the current size of the memory, in chunks
   """
   @spec memory_size_words(map()) :: non_neg_integer()
-  def memory_size_words(state) do
-    memory = State.memory(state)
+  def memory_size_words(%{memory: memory}) do
     Map.get(memory, :size)
   end
 
@@ -109,9 +107,7 @@ defmodule Memory do
   Get n bytes (area) from the memory, starting at a given address
   """
   @spec get_area(integer(), integer(), map()) :: {binary(), map()}
-  def get_area(from, bytes, state) do
-    memory = State.memory(state)
-
+  def get_area(from, bytes, %{memory: memory} = state) do
     {memory_index, bit_position} = get_index_in_memory(from)
     area = read(<<>>, bytes, bit_position, memory_index, memory)
 
@@ -123,9 +119,7 @@ defmodule Memory do
   Write n bytes (area) to the memory, starting at a given address
   """
   @spec write_area(integer(), integer(), map()) :: map()
-  def write_area(from, bytes, state) do
-    memory = State.memory(state)
-
+  def write_area(from, bytes, %{memory: memory} = state) do
     {memory_index, bit_position} = get_index_in_memory(from)
     memory1 = write(bytes, bit_position, memory_index, memory)
 

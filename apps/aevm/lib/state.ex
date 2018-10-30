@@ -1,7 +1,9 @@
-defmodule State do
+defmodule Aevm.State do
   @moduledoc """
   Module for handling and accessing values from the VM's internal state.
   """
+
+  alias Aevm.AevmUtil
 
   @doc """
   Initialize the VM's internal state.
@@ -9,43 +11,70 @@ defmodule State do
   `exec`      - transaction information
   `env`       - environmental Information
   `pre`       - previous world state (mapping between addresses and accounts)
-  `calldepth` - the current call's depth
   `opts`      - VM options
   """
-  @spec init_vm(map(), map(), map(), integer(), map()) :: map()
-  def init_vm(exec, env, pre, calldepth, opts) do
-    bytecode = Map.get(exec, :code)
-
+  @spec init_vm(map(), map()) :: map()
+  def init_vm(
+        %{
+          exec:
+            %{
+              code: code,
+              address: address,
+              origin: origin,
+              caller: caller,
+              data: data,
+              gasPrice: gas_price,
+              gas: gas,
+              value: value
+            } = exec,
+          env: %{
+            chain_api: chain_api,
+            chain_state: chain_state,
+            currentCoinbase: current_coinbase,
+            currentDifficulty: current_difficulty,
+            currentGasLimit: current_gas_limit,
+            currentNumber: current_number,
+            currentTimestamp: current_timestamp,
+            vm_version: vm_version
+          },
+          pre: pre
+        },
+        opts
+      ) do
     %{
       :stack => [],
       :memory => %{size: 0},
-      :storage => init_storage(Map.get(exec, :address), pre),
+      :storage => chain_api.get_store(chain_state),
       :pc => 0,
       :jumpdests => [],
       :out => <<>>,
       :logs => [],
       :callcreates => [],
-
-      :address => Map.get(exec, :address),
-      :origin => Map.get(exec, :origin),
-      :caller => Map.get(exec, :caller),
-      :data => Map.get(exec, :data),
-      :code => bytecode,
-      :gasPrice => Map.get(exec, :gasPrice),
-      :gas => Map.get(exec, :gas),
-      :value => Map.get(exec, :value),
+      # exec
+      :address => address,
+      :origin => origin,
+      :caller => caller,
+      :data => data,
+      :code => code,
+      :gasPrice => gas_price,
+      :gas => gas,
+      :value => value,
       :return_data => Map.get(exec, :return_data, <<>>),
-
-      :currentCoinbase => Map.get(env, :currentCoinbase),
-      :currentDifficulty => Map.get(env, :currentDifficulty),
-      :currentGasLimit => Map.get(env, :currentGasLimit),
-      :currentNumber => Map.get(env, :currentNumber),
-      :currentTimestamp => Map.get(env, :currentTimestamp),
-
+      :call_stack => Map.get(exec, :call_stack, []),
+      # env
+      :currentCoinbase => current_coinbase,
+      :currentDifficulty => current_difficulty,
+      :currentGasLimit => current_gas_limit,
+      :currentNumber => current_number,
+      :currentTimestamp => current_timestamp,
+      # pre
       :pre => pre,
-
-      :calldepth => calldepth,
-
+      # chain
+      :vm_version => vm_version,
+      :chain_api => chain_api,
+      :chain_state => chain_state,
+      :return_type => :ok,
+      # opts
       :execute_calls => Map.get(opts, :execute_calls, false)
     }
   end
@@ -67,13 +96,53 @@ defmodule State do
     exec = export_exec(gas, to, value, data, caller, dest, caller_state)
     env = export_env(caller_state)
     pre = Map.get(caller_state, :pre, %{})
-    calldepth = State.calldepth(caller_state) + 1
 
-    init_vm(exec, env, pre, calldepth, opts)
+    init_vm(%{exec: exec, env: env, pre: pre}, opts)
   end
 
-  def calldepth(state) do
-    Map.get(state, :calldepth)
+  def call_contract(
+        caller,
+        target,
+        gas,
+        value,
+        data,
+        %{call_stack: call_stack, chain_api: chain_api, chain_state: chain_state} = state
+      ) do
+    new_call_stack = [caller | call_stack]
+    target_key = <<target::size(256)>>
+
+    case chain_api.call_contract(target_key, gas, value, data, new_call_stack, chain_state) do
+      {:ok, %{gas_spent: gas_spent, result: result}, chain_state_after_call} ->
+        {:ok, result, gas_spent, set_chain_state(state, chain_state_after_call)}
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  def save_storage(%{chain_api: chain_api, chain_state: chain_state, storage: storage} = state) do
+    binary_storage = storage_to_bin(storage)
+
+    %{state | chain_state: chain_api.set_store(binary_storage, chain_state)}
+  end
+
+  def storage_to_bin(storage) do
+    Enum.reduce(storage, %{}, fn {key, value}, acc ->
+      Map.put(acc, <<key::256>>, <<value::256>>)
+    end)
+  end
+
+  def storage_to_int(storage) do
+    Enum.reduce(storage, %{}, fn {key, value}, acc ->
+      <<key_int::256>> = key
+      <<value_int::256>> = value
+
+      Map.put(acc, key_int, value_int)
+    end)
+  end
+
+  def calldepth(%{call_stack: call_stack}) do
+    call_stack |> Enum.count()
   end
 
   def execute_calls(state) do
@@ -126,90 +195,20 @@ defmodule State do
     Map.put_new(state, :selfdestruct, value)
   end
 
-  def stack(state) do
-    Map.get(state, :stack)
+  def set_chain_state(chain_state, state) do
+    Map.put(state, :chain_state, chain_state)
   end
 
-  def memory(state) do
-    Map.get(state, :memory)
+  def set_return_type(return_type, state) do
+    Map.put(state, :return_type, return_type)
   end
 
-  def storage(state) do
-    Map.get(state, :storage)
+  def get_balance(address, %{chain_api: chain_api, chain_state: chain_state}) do
+    pubkey = <<address::size(256)>>
+    chain_api.get_balance(pubkey, chain_state)
   end
 
-  def code(state) do
-    Map.get(state, :code)
-  end
-
-  def pc(state) do
-    Map.get(state, :pc)
-  end
-
-  def jumpdests(state) do
-    Map.get(state, :jumpdests)
-  end
-
-  def logs(state) do
-    Map.get(state, :logs)
-  end
-
-  def address(state) do
-    Map.get(state, :address)
-  end
-
-  def caller(state) do
-    Map.get(state, :caller)
-  end
-
-  def data(state) do
-    Map.get(state, :data)
-  end
-
-  def gas(state) do
-    Map.get(state, :gas)
-  end
-
-  def gas_price(state) do
-    Map.get(state, :gasPrice)
-  end
-
-  def origin(state) do
-    Map.get(state, :origin)
-  end
-
-  def value(state) do
-    Map.get(state, :value)
-  end
-
-  def current_coinbase(state) do
-    Map.get(state, :currentCoinbase)
-  end
-
-  def current_difficulty(state) do
-    Map.get(state, :currentDifficulty)
-  end
-
-  def current_gas_limit(state) do
-    Map.get(state, :currentGasLimit)
-  end
-
-  def current_number(state) do
-    Map.get(state, :currentNumber)
-  end
-
-  def current_timestamp(state) do
-    Map.get(state, :currentTimestamp)
-  end
-
-  def get_balance(address, state) do
-    pre = Map.get(state, :pre)
-    account = Map.get(pre, address, %{})
-    Map.get(account, :balance, 0)
-  end
-
-  def get_ext_code_size(address, state) do
-    pre = Map.get(state, :pre)
+  def get_ext_code_size(address, %{pre: pre}) do
     account = Map.get(pre, address, %{})
     code = Map.get(account, :code, <<>>)
 
@@ -223,23 +222,17 @@ defmodule State do
     Map.get(account, :code, <<>>)
   end
 
-  def return_data(state) do
-    Map.get(state, :return_data)
-  end
-
   def inc_pc(state) do
     pc = Map.get(state, :pc)
     Map.put(state, :pc, pc + 1)
   end
 
-  def calculate_blockhash(nth_block, a, state) do
+  def calculate_blockhash(nth_block, a, %{currentNumber: current_number}) do
     # Because the data of the blockchain is not
     # given, the opcode BLOCKHASH could not
     # return the hashes of the corresponding
     # blocks. Therefore we define the hash of
     # block number n to be SHA3-256("n").
-    current_number = current_number(state)
-
     cond do
       nth_block >= current_number ->
         0
@@ -279,33 +272,47 @@ defmodule State do
     end)
   end
 
-  def init_storage(address, pre) do
-    case Map.get(pre, address, nil) do
-      nil -> %{}
-      %{:storage => storage} -> storage
-    end
-  end
-
-  defp export_exec(gas, to, value, data, caller, dest, state) do
+  defp export_exec(
+         gas,
+         to,
+         value,
+         data,
+         caller,
+         dest,
+         %{origin: origin, gasPrice: gas_price, call_stack: call_stack} = state
+       ) do
     %{
       :address => dest,
-      :origin => State.origin(state),
+      :origin => origin,
       :caller => caller,
       :data => data,
       :code => state |> Map.get(:pre, %{to => %{:code => <<>>}}) |> Map.get(to) |> Map.get(:code),
-      :gasPrice => State.gas_price(state),
+      :gasPrice => gas_price,
       :gas => gas,
-      :value => value
+      :value => value,
+      :call_stack => [caller | call_stack]
     }
   end
 
-  defp export_env(state) do
+  defp export_env(%{
+         currentCoinbase: current_coinbase,
+         currentDifficulty: current_difficulty,
+         currentGasLimit: current_gas_limit,
+         currentNumber: current_number,
+         currentTimestamp: current_timestamp,
+         chain_api: chain_api,
+         chain_state: chain_state,
+         vm_version: vm_version
+       }) do
     %{
-      :currentCoinbase => State.current_coinbase(state),
-      :currentDifficulty => State.current_difficulty(state),
-      :currentGasLimit => State.current_gas_limit(state),
-      :currentNumber => State.current_number(state),
-      :currentTimestamp => State.current_timestamp(state)
+      :currentCoinbase => current_coinbase,
+      :currentDifficulty => current_difficulty,
+      :currentGasLimit => current_gas_limit,
+      :currentNumber => current_number,
+      :currentTimestamp => current_timestamp,
+      :chain_api => chain_api,
+      :chain_state => chain_state,
+      :vm_version => vm_version
     }
   end
 end

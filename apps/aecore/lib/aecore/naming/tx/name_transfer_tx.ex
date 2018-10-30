@@ -100,14 +100,16 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           tx_type_state(),
           non_neg_integer(),
           NameTransferTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
         naming_state,
         _block_height,
         %NameTransferTx{target: %Identifier{value: target}, hash: %Identifier{value: hash}},
-        _data_tx
+        _data_tx,
+        _context
       ) do
     claim_to_update = NamingStateTree.get(naming_state, hash)
     claim = %{claim_to_update | owner: target}
@@ -124,14 +126,16 @@ defmodule Aecore.Naming.Tx.NameTransferTx do
           tx_type_state(),
           non_neg_integer(),
           NameTransferTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
         naming_state,
         _block_height,
         %NameTransferTx{hash: %Identifier{value: hash}},
-        %DataTx{fee: fee, senders: [%Identifier{value: sender}]}
+        %DataTx{fee: fee, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     account_state = AccountStateTree.get(accounts, sender)
     claim = NamingStateTree.get(naming_state, hash)

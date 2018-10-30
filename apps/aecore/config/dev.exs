@@ -2,7 +2,7 @@ use Mix.Config
 
 persistence_path =
   case System.get_env("PERSISTENCE_PATH") do
-    nil -> "apps/aecore/priv/rox_db/"
+    nil -> "/rox_db/"
     env -> env
   end
 
@@ -12,7 +12,7 @@ config :aecore, :persistence,
 
 accounts_path =
   case System.get_env("ACCOUNTS_PATH") do
-    nil -> "apps/aecore/config/genesis/"
+    nil -> "/genesis/"
     env -> env
   end
 
@@ -26,7 +26,7 @@ new_candidate_nonce_count =
 
 config :aecore, :pow,
   new_candidate_nonce_count: new_candidate_nonce_count,
-  bin_dir: Path.absname("apps/aecore/priv/cuckoo/bin"),
+  bin_dir: "/cuckoo/bin",
   params: {"./lean16", "-t 5", 16},
   max_target_change: 1
 

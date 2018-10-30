@@ -138,7 +138,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           tx_type_state(),
           non_neg_integer(),
           OracleQueryTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
   def process_chainstate(
         accounts,
@@ -152,7 +153,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           response_ttl: %{ttl: response_ttl},
           query_fee: query_fee
         },
-        %DataTx{nonce: nonce, senders: [%Identifier{value: sender}]}
+        %DataTx{nonce: nonce, senders: [%Identifier{value: sender}]},
+        _context
       ) do
     updated_accounts_state =
       accounts
@@ -185,7 +187,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           tx_type_state(),
           non_neg_integer(),
           OracleQueryTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
@@ -197,7 +200,8 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
           query_data: query_data,
           query_fee: query_fee
         } = tx,
-        %DataTx{senders: [%Identifier{value: sender}], fee: fee}
+        %DataTx{senders: [%Identifier{value: sender}], fee: fee},
+        _context
       ) do
     cond do
       AccountStateTree.get(accounts, sender).balance - fee - query_fee < 0 ->

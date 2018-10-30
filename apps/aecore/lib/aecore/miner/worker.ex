@@ -6,8 +6,10 @@ defmodule Aecore.Miner.Worker do
 
   use GenServer
 
+  alias Aecore.Contract.{CallStateTree, Contract}
+  alias Aecore.Contract.Tx.{ContractCreateTx, ContractCallTx}
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target}
+  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target, Identifier}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.Oracle
@@ -21,6 +23,8 @@ defmodule Aecore.Miner.Worker do
 
   @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_args) do
+    :ok = Application.ensure_started(:erlexec)
+
     GenServer.start_link(
       __MODULE__,
       %{miner_state: :idle, nonce: 0, job: {}, block_candidate: nil},
@@ -245,9 +249,50 @@ defmodule Aecore.Miner.Worker do
     create_block(top_block, chain_state, target, valid_txs_by_fee, timestamp, miner_pubkey)
   end
 
-  def calculate_total_fees(txs) do
-    List.foldl(txs, 0, fn tx, acc ->
-      acc + tx.data.fee
+  @spec calculate_miner_reward(list(SignedTx.t()), Chainstate.t()) :: non_neg_integer()
+  def calculate_miner_reward(txs, chainstate) do
+    List.foldl(txs, 0, fn %SignedTx{
+                            data: %DataTx{
+                              payload: payload,
+                              fee: fee,
+                              nonce: nonce,
+                              senders: senders
+                            }
+                          },
+                          accumulated_miner_reward ->
+      main_sender = List.first(senders)
+
+      gas_used =
+        case payload do
+          %ContractCreateTx{gas_price: gas_price} ->
+            contract_id = Contract.create_contract_id(main_sender.value, nonce)
+
+            call_gas_used =
+              CallStateTree.get_call_gas_used(
+                chainstate.calls,
+                contract_id,
+                main_sender.value,
+                nonce
+              )
+
+            call_gas_used * gas_price
+
+          %ContractCallTx{contract: %Identifier{value: contract_id}, gas_price: gas_price} ->
+            call_gas_used =
+              CallStateTree.get_call_gas_used(
+                chainstate.calls,
+                contract_id,
+                main_sender.value,
+                nonce
+              )
+
+            call_gas_used * gas_price
+
+          _ ->
+            0
+        end
+
+      accumulated_miner_reward + fee + gas_used
     end)
   end
 
