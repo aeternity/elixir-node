@@ -101,7 +101,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Generates the channel id from a ChannelCreateTx.
   """
-  @spec id(DataTx.t()) :: id()
+  @spec id(DataTx.t()) :: ChannelStateOnChain.id()
   def id(%DataTx{
         nonce: nonce,
         senders: [
@@ -115,7 +115,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @doc """
   Generates the channel id from details of a ChannelCreateTx.
   """
-  @spec id(Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: id()
+  @spec id(Keys.pubkey(), Keys.pubkey(), non_neg_integer()) :: ChannelStateOnChain.id()
   def id(initiator_pubkey, responder_pubkey, nonce) do
     binary_data = <<
       initiator_pubkey::binary-size(@pubkey_size),
@@ -444,7 +444,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     }
   end
 
-  @spec encode_to_list(ChannelStateOnChain.t()) :: list() | {:error, String.t()}
+  @spec encode_to_list(ChannelStateOnChain.t()) :: list(binary())
   def encode_to_list(%ChannelStateOnChain{} = channel) do
     total_amount = channel.total_amount
 
@@ -462,7 +462,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     ]
   end
 
-  @spec decode_from_list(integer(), list()) ::
+  @spec decode_from_list(integer(), list(binary())) ::
           {:ok, ChannelStateOnChain.t()} | {:error, String.t()}
   def decode_from_list(@version, [
         encoded_initiator_pubkey,

@@ -215,7 +215,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates channel from open transaction assuming no transactions in channel.
   """
-  @spec from_open(SignedTx.t(), Channel.role()) :: ChannelStatePeer.t()
+  @spec from_open(SignedTx.t(), Channel.role()) :: {:ok, ChannelStatePeer.t()} | error()
   def from_open(open_tx, role) do
     from_signed_tx_list([open_tx], role)
   end
@@ -314,7 +314,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelStatePeer.t(),
           ChannelTransaction.channel_tx(),
           Keys.sign_priv_key()
-        ) :: ChannelTransaction.signed_tx()
+        ) :: {:ok, ChannelTransaction.signed_tx()} | error()
   defp validate_prepare_and_sign_new_channel_tx(
          %ChannelStatePeer{} = peer_state,
          raw_unsigned_tx,
@@ -344,7 +344,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           ChannelTransaction.onchain_tx(),
           ChannelTransaction.onchain_tx_payload(),
           Keys.sign_priv_key()
-        ) :: ChannelTransaction.signed_tx()
+        ) :: {:ok, ChannelTransaction.signed_tx()} | error()
   defp half_signed_mutual_onchain_tx_from_spec(peer_state, fee, nonce, type, spec, priv_key) do
     data_tx = initialize_new_mutual_onchain_tx(peer_state, fee, nonce, type, spec)
     validate_prepare_and_sign_new_channel_tx(peer_state, data_tx, priv_key)
@@ -429,17 +429,14 @@ defmodule Aecore.Channel.ChannelStatePeer do
         fee,
         nonce,
         priv_key
-      ) do
+      ) when is_binary(priv_key) do
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     channel_create_tx_spec = %{
-      initiator: initiator_pubkey,
       initiator_amount: initiator_amount,
-      responder: responder_pubkey,
       responder_amount: responder_amount,
       locktime: locktime,
       channel_reserve: channel_reserve,
-      channel_id: channel_id,
       state_hash: <<>>
     }
 
@@ -630,7 +627,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   Creates a transfer on channel. Can be called by both parties on open channel when there are no unconfirmed (half-signed) transfer. Returns altered ChannelStatePeer and the half signed tx.
   """
   @spec transfer(ChannelStatePeer.t(), non_neg_integer(), Keys.sign_priv_key()) ::
-          {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
+          {:ok, ChannelStatePeer.t(), ChannelOffChainTx.t()} | error()
   def transfer(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -671,7 +668,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           non_neg_integer(),
           Keys.sign_priv_key()
-        ) :: {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def withdraw(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -721,7 +718,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           non_neg_integer(),
           non_neg_integer(),
           Keys.sign_priv_key()
-        ) :: {:ok, ChannelStatePeer.t(), ChannelStateOffChain.t()} | error()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def deposit(
         %ChannelStatePeer{fsm_state: :open, channel_id: channel_id} = peer_state,
         amount,
@@ -894,7 +891,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
     end
   end
 
-  def close(%ChannelStatePeer{fsm_state: fsm_state}) do
+  def close(%ChannelStatePeer{fsm_state: fsm_state}, _, _, _) do
     {:error, "#{__MODULE__}: Can't close now; channel state is #{fsm_state}"}
   end
 

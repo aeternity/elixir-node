@@ -288,7 +288,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
            Identifier.decode_from_binary_to_value(encoded_channel_id, :channel),
          {:ok, depositing_account} <-
            Identifier.decode_from_binary_to_value(encoded_depositing_account, :account) do
-      payload = %ChannelDepositTx{
+      payload = %{
         channel_id: channel_id,
         depositing_account: depositing_account,
         amount: :binary.decode_unsigned(amount),

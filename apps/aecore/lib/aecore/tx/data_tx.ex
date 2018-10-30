@@ -6,6 +6,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
+  alias Aecore.Tx.Transaction
   alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger
@@ -61,7 +62,7 @@ defmodule Aecore.Tx.DataTx do
   @type t :: %DataTx{
           type: tx_types(),
           payload: payload(),
-          senders: list(binary()),
+          senders: Identifier.t() | list(Identifier.t()),
           fee: non_neg_integer(),
           nonce: non_neg_integer(),
           ttl: non_neg_integer()
@@ -151,8 +152,14 @@ defmodule Aecore.Tx.DataTx do
     end
   end
 
-  @spec init_binary(tx_types(), map(), list(binary()), binary(), binary(), binary()) ::
-          {:ok, DataTx.t()} | {:error, String.t()}
+  @spec init_binary(
+          tx_types(),
+          map(),
+          list(binary()),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer()
+        ) :: {:ok, DataTx.t()} | {:error, String.t()}
   def init_binary(type, payload, encoded_senders, fee, nonce, ttl) do
     with {:ok, senders} <- Identifier.decode_list_from_binary(encoded_senders) do
       {:ok,

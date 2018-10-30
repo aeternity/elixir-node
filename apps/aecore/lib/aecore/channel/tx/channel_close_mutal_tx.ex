@@ -21,7 +21,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @type payload :: %{
           channel_id: binary(),
           initiator_amount: non_neg_integer(),
-          responser_amount: non_neg_integer()
+          responder_amount: non_neg_integer()
         }
 
   @typedoc "Reason for the error"
@@ -58,7 +58,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
   @doc """
   ChannelCloseMutalTx senders are not passed with tx, but are supposed to be retrived from Chainstate. The senders have to be channel initiator and responder.
   """
-  @spec senders_from_chainstate(ChannelMutalCloseTx.t(), Chainstate.t()) :: list(binary())
+  @spec senders_from_chainstate(ChannelCloseMutalTx.t(), Chainstate.t()) :: list(binary())
   def senders_from_chainstate(%ChannelCloseMutalTx{channel_id: channel_id}, chainstate) do
     case ChannelStateTree.get(chainstate.channels, channel_id) do
       %ChannelStateOnChain{} = channel ->
@@ -235,7 +235,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseMutalTx do
       ]) do
     case Identifier.decode_from_binary_to_value(encoded_channel_id, :channel) do
       {:ok, channel_id} ->
-        payload = %ChannelCloseMutalTx{
+        payload = %{
           channel_id: channel_id,
           initiator_amount: :binary.decode_unsigned(initiator_amount),
           responder_amount: :binary.decode_unsigned(responder_amount)

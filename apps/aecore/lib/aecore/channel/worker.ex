@@ -6,6 +6,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Channel.ChannelStatePeer
   alias Aecore.Channel.ChannelTransaction
+  alias Aecore.Channel.ChannelOffChainTx
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
@@ -97,7 +98,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channel from open tx and ChannelStateOffChain.
+  Imports channel from signed tx list and role.
   """
   @spec import_from_signed_tx_list(
           list(SignedTx.t() | ChannelOffChainTx.t()),
@@ -186,7 +187,7 @@ defmodule Aecore.Channel.Worker do
   Transfers amount to other peer in channel. Returns half-signed channel transaction. Can only be called on open channel.
   """
   @spec transfer(binary(), non_neg_integer(), Keys.sign_priv_key()) ::
-          {:ok, ChannelOffchainTx.t()} | error()
+          {:ok, ChannelOffChainTx.t()} | error()
   def transfer(channel_id, amount, priv_key)
       when is_binary(channel_id) and is_integer(amount) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:transfer, channel_id, amount, priv_key})
@@ -386,23 +387,26 @@ defmodule Aecore.Channel.Worker do
       ) do
     peer_state = Map.get(state, temporary_id)
 
-    {:ok, new_peer_state, new_id, open_tx} =
-      ChannelStatePeer.open(
-        peer_state,
-        initiator_amount,
-        responder_amount,
-        locktime,
-        fee,
-        nonce,
-        priv_key
-      )
+    case ChannelStatePeer.open(
+           peer_state,
+           initiator_amount,
+           responder_amount,
+           locktime,
+           fee,
+           nonce,
+           priv_key
+         ) do
+      {:ok, new_peer_state, new_id, open_tx} ->
+        new_state =
+          state
+          |> Map.drop([temporary_id])
+          |> Map.put(new_id, new_peer_state)
 
-    new_state =
-      state
-      |> Map.drop([temporary_id])
-      |> Map.put(new_id, new_peer_state)
+        {:reply, {:ok, new_id, open_tx}, new_state}
 
-    {:reply, {:ok, new_id, open_tx}, new_state}
+      {:error, _} = err ->
+        {:reply, err, state}
+    end
   end
 
   def handle_call(

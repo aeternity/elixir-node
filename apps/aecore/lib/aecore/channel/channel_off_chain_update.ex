@@ -6,15 +6,19 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
 
   alias Aecore.Chain.Chainstate
 
-  alias Aecore.Channel.Updates.ChannelTransferUpdate
-  alias Aecore.Channel.Updates.ChannelDepositUpdate
-  alias Aecore.Channel.Updates.ChannelWithdrawUpdate
+  alias Aecore.Channel.Updates.{
+    ChannelCreateUpdate,
+    ChannelTransferUpdate,
+    ChannelDepositUpdate,
+    ChannelWithdrawUpdate
+  }
 
   @typedoc """
   Possible types of an update
   """
   @type update_types ::
-          ChannelTransferUpdate.t()
+          ChannelCreateUpdate.t()
+          | ChannelTransferUpdate.t()
           | ChannelDepositUpdate.t()
           | ChannelWithdrawUpdate.t()
 
@@ -61,7 +65,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   to a recent version of epoch offchain updates will just need to be added as serializable objects to the serializer
   and this temporary tag will need to be removed.
   """
-  @spec tag_to_module(non_neg_integer()) :: module()
+  @spec tag_to_module(non_neg_integer()) :: {:ok, module()} | error()
   def tag_to_module(0), do: {:ok, ChannelTransferUpdate}
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
   def tag_to_module(2), do: {:ok, ChannelWithdrawUpdate}
@@ -71,7 +75,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   @doc """
   Converts the specified module to the associated tag.
   """
-  @spec module_to_tag(module()) :: non_neg_integer()
+  @spec module_to_tag(module()) :: {:ok, non_neg_integer()} | error()
   def module_to_tag(ChannelTransferUpdate), do: {:ok, 0}
   def module_to_tag(ChannelDepositUpdate), do: {:ok, 1}
   def module_to_tag(ChannelWithdrawUpdate), do: {:ok, 2}

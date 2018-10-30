@@ -75,7 +75,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   @doc """
   Performs the withdraw on the offchain chainstate. Returns an error if the operation failed.
   """
-  @spec update_offchain_chainstate!(Chainstate.t(), ChannelDepositUpdate.t()) ::
+  @spec update_offchain_chainstate!(Chainstate.t(), ChannelWithdrawUpdate.t()) ::
           Chainstate.t() | no_return()
   def update_offchain_chainstate!(
         %Chainstate{

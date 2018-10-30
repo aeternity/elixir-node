@@ -287,7 +287,7 @@ defmodule Aecore.Channel.Tx.ChannelCreateTx do
 
     with {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_initiator, :account),
          {:ok, _} <- Identifier.decode_from_binary_to_value(encoded_responder, :account) do
-      payload = %ChannelCreateTx{
+      payload = %{
         initiator_amount: :binary.decode_unsigned(initiator_amount),
         responder_amount: :binary.decode_unsigned(responder_amount),
         channel_reserve: :binary.decode_unsigned(channel_reserve),

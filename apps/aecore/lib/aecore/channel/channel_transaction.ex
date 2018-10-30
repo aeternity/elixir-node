@@ -10,15 +10,17 @@ defmodule Aecore.Channel.ChannelTransaction do
   alias Aecore.Channel.ChannelStateOnChain
   alias Aecore.Channel.Tx.{ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx}
   alias Aecore.Chain.Identifier
+  alias Aecore.Keys
 
   @typedoc """
   Data structures capable of mutating the offchain chainstate off an state channel
   """
   @type channel_tx ::
-          ChannelOffChainTx
-          | ChannelCreateTx
-          | ChannelWithdrawTx
-          | ChannelDepositTx
+          DataTx.t()
+          | ChannelOffChainTx.t()
+          | ChannelCreateTx.t()
+          | ChannelWithdrawTx.t()
+          | ChannelDepositTx.t()
 
   @typedoc """
   Type of a signed channel transaction
@@ -28,13 +30,13 @@ defmodule Aecore.Channel.ChannelTransaction do
   @typedoc """
   Types of allowed OnChain transactions
   """
-  @type onchain_tx :: ChannelCreateTx | ChannelWidhdrawTx | ChannelDepositTx
+  @type onchain_tx :: ChannelCreateTx | ChannelWithdrawTx | ChannelDepositTx
 
   @typedoc """
   Payloads of allowed OnChain transactions
   """
   @type onchain_tx_payload ::
-          ChannelCreateTx.payload() | ChannelWidhdrawTx.payload() | ChannelDepositTx.payload()
+          ChannelCreateTx.payload() | ChannelWithdrawTx.payload() | ChannelDepositTx.payload()
 
   @allowed_onchain_tx [
     ChannelCreateTx,
@@ -131,7 +133,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Verifies if the transaction was signed by both of the provided parties.
   """
-  @spec verify_fully_signed_tx(signed_tx(), tuple()) :: boolean
+  @spec verify_fully_signed_tx(signed_tx(), tuple()) :: boolean()
   def verify_fully_signed_tx(
         %SignedTx{
           data: %DataTx{
@@ -167,8 +169,8 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Helper function for signing a channel transaction
   """
-  @spec add_signature(signed_tx(), Keys.sign_priv_key()) ::
-          {:ok, SignedTx.t() | ChannelOffChainTx.t()} | error()
+  @spec add_signature(signed_tx() | DataTx.t(), Keys.sign_priv_key()) ::
+          {:ok, signed_tx()} | error()
   def add_signature(%SignedTx{data: %DataTx{type: type}} = tx, privkey)
       when type in @allowed_onchain_tx do
     SignedTx.sign_tx(tx, privkey)
@@ -292,7 +294,7 @@ defmodule Aecore.Channel.ChannelTransaction do
   @doc """
   Get a list of updates to the offchain chainstate
   """
-  @spec offchain_updates(signed_tx() | DataTx.t()) :: list(ChannelOffchainUpdate.update_types())
+  @spec offchain_updates(signed_tx() | DataTx.t()) :: list(ChannelOffChainUpdate.update_types())
   def offchain_updates(tx) do
     structure = unsigned_payload(tx)
     structure.__struct__.offchain_updates(tx)

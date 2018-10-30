@@ -332,7 +332,7 @@ defmodule Aecore.Account.Account do
   @doc """
   Adds balance to the given Account state
   """
-  @spec apply_transfer!(Account.t(), non_neg_integer(), integer()) :: Account.t()
+  @spec apply_transfer!(Account.t(), non_neg_integer() | nil, integer()) :: Account.t()
   def apply_transfer!(%Account{balance: balance} = account_state, _block_height, amount) do
     new_balance = balance + amount
 
