@@ -181,13 +181,13 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         channel.channel_reserve > poi_initiator_amount ->
           {:error,
-           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+           "#{__MODULE__}: Initiator balance in poi (#{poi_initiator_amount}) does not met channel reserve (#{
              channel.channel_reserve
            })"}
 
         channel.channel_reserve > poi_responder_amount ->
           {:error,
-           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+           "#{__MODULE__}: Responder balance in poi (#{poi_responder_amount}) does not met channel reserve (#{
              channel.channel_reserve
            })"}
 
@@ -206,11 +206,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         # otherwise make sure that the total amount is as expected
         channel.slash_sequence != 0 and
-            poi_initiator_amount + poi_responder_amount !== channel.total_amount ->
+            poi_initiator_amount + poi_responder_amount != channel.total_amount ->
           {:error,
-           "#{__MODULE__}: Invalid total amount, expected #{
-             channel.initiator_amount + channel.responder_amount
-           }, got #{poi_initiator_amount + poi_responder_amount}"}
+           "#{__MODULE__}: Invalid total amount, expected #{channel.total_amount}, got #{
+             poi_initiator_amount + poi_responder_amount
+           }"}
 
         true ->
           :ok
@@ -236,27 +236,27 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
         channel.slash_sequence >= offchain_tx.sequence ->
           {:error,
-           "#{__MODULE__}: OffChain state is too old, expected newer then #{
+           "#{__MODULE__}: OffChain state is too old, expected newer than #{
              channel.slash_sequence
            }, got #{offchain_tx.sequence}"}
 
         channel.channel_reserve > poi_initiator_amount ->
           {:error,
-           "#{__MODULE__}: Initiator balance (#{poi_initiator_amount}) does not met channel reserve (#{
+           "#{__MODULE__}: Initiator poi balance (#{poi_initiator_amount}) does not met channel reserve (#{
              channel.channel_reserve
            })"}
 
         channel.channel_reserve > poi_responder_amount ->
           {:error,
-           "#{__MODULE__}: Responder balance (#{poi_responder_amount}) does not met channel reserve (#{
+           "#{__MODULE__}: Responder poi balance (#{poi_responder_amount}) does not met channel reserve (#{
              channel.channel_reserve
            })"}
 
-        poi_initiator_amount + poi_responder_amount !== channel.total_amount ->
+        poi_initiator_amount + poi_responder_amount != channel.total_amount ->
           {:error,
-           "#{__MODULE__}: Invalid total amount, expected #{
-             channel.initiator_amount + channel.responder_amount
-           }, got #{poi_initiator_amount + poi_responder_amount}"}
+           "#{__MODULE__}: Invalid total amount, expected #{channel.total_amount}, got #{
+             poi_initiator_amount + poi_responder_amount
+           }"}
 
         true ->
           ChannelOffChainTx.verify_signatures(offchain_tx, pubkeys(channel))
@@ -343,16 +343,23 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       ) do
     cond do
       slash_sequence >= tx_sequence ->
-        {:error, "Too old state"}
+        {:error,
+         "Too old state - latest known sequence is #{slash_sequence} but we got #{tx_sequence}"}
 
       tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error, "Withdraw destination must be a party of this channel"}
+        {:error,
+         "Withdraw destination must be a party of this channel. Tried to withdraw from #{
+           tx_account
+         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       tx_amount < 0 ->
-        {:error, "Withdraw of negative amount is forbidden"}
+        {:error, "Withdraw of negative amount(#{tx_amount}) is forbidden"}
 
       total_amount - tx_amount < 2 * channel_reserve ->
-        {:error, "The withdrawn account does not met channel reserve"}
+        {:error,
+         "New total amount of #{total_amount - tx_amount} is less than the minimum total amount of #{
+           channel_reserve * 2
+         }"}
 
       true ->
         :ok
@@ -399,13 +406,17 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       when is_binary(tx_account) do
     cond do
       slash_sequence >= tx_sequence ->
-        {:error, "Too old state"}
+        {:error,
+         "Too old state - latest known sequence is #{slash_sequence} but we got #{tx_sequence}"}
 
       tx_amount < 0 ->
-        {:error, "Deposit of negative amount is forbidden"}
+        {:error, "Deposit of negative amount(#{tx_amount}) is forbidden"}
 
       tx_account != initiator_pubkey and tx_account != responder_pubkey ->
-        {:error, "Deposit destination must be a party of this channel"}
+        {:error,
+         "Deposit destination must be a party of this channel. Tried to deposit tokens to #{
+           tx_account
+         } but the parties are #{initiator_pubkey} and #{responder_pubkey}"}
 
       true ->
         :ok

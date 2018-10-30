@@ -66,7 +66,7 @@ defmodule Aecore.Channel.ChannelOffChainUpdate do
   def tag_to_module(1), do: {:ok, ChannelDepositUpdate}
   def tag_to_module(2), do: {:ok, ChannelWithdrawUpdate}
 
-  def tag_to_module(_), do: {:error, "#{__MODULE__} Error: Invalid update tag"}
+  def tag_to_module(tag), do: {:error, "#{__MODULE__} Error: Invalid update tag: #{inspect(tag)}"}
 
   @doc """
   Converts the specified module to the associated tag.
