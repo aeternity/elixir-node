@@ -54,7 +54,7 @@ class ElixirNode(Node):
     def get_signing_pubkey(self):
         self.process.sendline("{pub, _} = Keys.keypair(:sign)")
         self.process.clean()
-        self.process.sendline("IO.inspect(Peers.state.local_peer.pubkey, limit: :infinity)")
+        self.process.sendline("IO.inspect(pub, limit: :infinity)")
         return self.read_binary()
 
     def connect_to(self, conn, pubkey):
