@@ -429,7 +429,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
         fee,
         nonce,
         priv_key
-      ) when is_binary(priv_key) do
+      )
+      when is_binary(priv_key) do
     channel_id = ChannelStateOnChain.id(initiator_pubkey, responder_pubkey, nonce)
 
     channel_create_tx_spec = %{
