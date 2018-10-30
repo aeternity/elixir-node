@@ -134,15 +134,15 @@ defmodule MultipleTransactionsTest do
     nonce1 = Account.nonce(TestUtils.get_accounts_chainstate(), account_pub_key) + 1
     nonce2 = Account.nonce(TestUtils.get_accounts_chainstate(), account2_pub_key) + 1
 
+    create_signed_tx(account, account2, 100, nonce1, 10)
     create_signed_tx(account, account2, 100, nonce1 + 1, 10)
-    create_signed_tx(account, account2, 100, nonce1 + 2, 10)
 
     :ok = Miner.mine_sync_block_to_chain()
 
     assert %{} == Pool.get_and_empty_pool()
 
-    create_signed_tx(account2, account3, 50, nonce2 + 1, 10)
-    create_signed_tx(account2, account4, 50, nonce2 + 2, 10)
+    create_signed_tx(account2, account3, 50, nonce2, 10)
+    create_signed_tx(account2, account4, 50, nonce2 + 1, 10)
 
     miner_balance_before_mining =
       Account.balance(TestUtils.get_accounts_chainstate(), account_pub_key)
