@@ -152,7 +152,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelWithdrawTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: {:ok, {Chainstate.accounts(), ChannelStateTree.t()}} | no_return()
   def process_chainstate(
         accounts,
@@ -165,7 +166,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           state_hash: state_hash,
           sequence: sequence
         },
-        _data_tx
+        _data_tx,
+        _context
       ) do
     new_accounts =
       AccountStateTree.update(accounts, withdrawing_account, fn account ->
@@ -193,7 +195,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
           ChannelStateTree.t(),
           non_neg_integer(),
           ChannelWithdrawTx.t(),
-          DataTx.t()
+          DataTx.t(),
+          Transaction.context()
         ) :: :ok | {:error, reason()}
   def preprocess_check(
         accounts,
@@ -207,7 +210,8 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
         },
         %DataTx{
           fee: fee
-        }
+        },
+        _context
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
 
