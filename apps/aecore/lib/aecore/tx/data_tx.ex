@@ -300,7 +300,7 @@ defmodule Aecore.Tx.DataTx do
     tx_type_preprocess_check =
       type.preprocess_check(accounts_state, tx_type_state, block_height, payload, tx, context)
 
-    expected_tx_nonce = Account.nonce(chainstate.accounts, main_sender(tx, chainstate)) + 1
+    current_nonce = Account.nonce(chainstate.accounts, main_sender(tx, chainstate))
 
     cond do
       tx_type_preprocess_check != :ok ->
@@ -312,10 +312,10 @@ defmodule Aecore.Tx.DataTx do
            block_height
          }"}
 
-      expected_tx_nonce != tx.nonce ->
+      current_nonce + 1 != tx.nonce ->
         {:error,
          "#{__MODULE__}: Invalid transaction nonce. Received #{tx.nonce}, expected #{
-           expected_tx_nonce
+           current_nonce + 1
          }"}
 
       !type.is_minimum_fee_met?(tx, tx_type_state, block_height) ->

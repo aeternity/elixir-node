@@ -119,7 +119,8 @@ defmodule AecoreTxTest do
     fee = 50
 
     payload = %{receiver: tx.receiver, amount: amount, version: 1, payload: <<"payload">>}
-    tx_data = DataTx.init(SpendTx, payload, sender, fee, 1000)
+    invalid_nonce = Account.nonce(TestUtils.get_accounts_chainstate(), sender) + 2
+    tx_data = DataTx.init(SpendTx, payload, sender, fee, invalid_nonce)
     {:ok, signed_tx} = SignedTx.sign_tx(tx_data, priv_key)
 
     :ok = Pool.add_transaction(signed_tx)
