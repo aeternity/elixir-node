@@ -36,6 +36,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   @pubkey_size Keys.pubkey_size()
   @nonce_size DataTx.nonce_size()
 
+  @typedoc "Type of the errors returned by functions in this module"
+  @type error :: {:error, String.t()}
+
   @doc """
   Definition of State Channel OnChain structure
 
@@ -158,7 +161,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Validates SlashTx and SoloCloseTx payload and poi.
   """
   @spec validate_slashing(ChannelStateOnChain.t(), ChannelOffChainTx.t() | :empty, Poi.t()) ::
-          :ok | {:error, String.t()}
+          :ok | error()
   def validate_slashing(
         %ChannelStateOnChain{} = channel,
         :empty,
@@ -268,7 +271,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   end
 
   @spec balances_from_poi(ChannelStateOnChain.t(), Poi.t()) ::
-          {:ok, non_neg_integer(), non_neg_integer()} | {:error, String.t()}
+          {:ok, non_neg_integer(), non_neg_integer()} | error()
   defp balances_from_poi(%ChannelStateOnChain{} = channel, %Poi{} = poi) do
     with {:ok, poi_initiator_amount} <- Poi.account_balance(poi, channel.initiator_pubkey),
          {:ok, poi_responder_amount} <- Poi.account_balance(poi, channel.responder_pubkey) do
@@ -328,7 +331,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: :ok | {:error, binary()}
+        ) :: :ok | error()
   def validate_withdraw(
         %ChannelStateOnChain{
           initiator_pubkey: initiator_pubkey,
@@ -392,7 +395,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           Keys.pubkey(),
           non_neg_integer(),
           non_neg_integer()
-        ) :: :ok | {:error, binary()}
+        ) :: :ok | error()
   def validate_deposit(
         %ChannelStateOnChain{
           initiator_pubkey: initiator_pubkey,
@@ -462,8 +465,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     ]
   end
 
-  @spec decode_from_list(integer(), list(binary())) ::
-          {:ok, ChannelStateOnChain.t()} | {:error, String.t()}
+  @spec decode_from_list(integer(), list(binary())) :: {:ok, ChannelStateOnChain.t()} | error()
   def decode_from_list(@version, [
         encoded_initiator_pubkey,
         encoded_responder_pubkey,

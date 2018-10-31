@@ -215,9 +215,13 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
 
+    depositing_account_balance =
+      AccountStateTree.get(accounts, depositing_account).balance - fee - amount
+
     cond do
       AccountStateTree.get(accounts, depositing_account).balance - fee - amount < 0 ->
-        {:error, "#{__MODULE__}: Negative balance of the depositing account"}
+        {:error,
+         "#{__MODULE__}: Negative balance of the depositing account(#{depositing_account_balance})"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel does not exists"}

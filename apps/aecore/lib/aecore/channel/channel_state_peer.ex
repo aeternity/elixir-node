@@ -46,7 +46,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
           offchain_chainstate: Chainstate.t() | nil
         }
 
-  @typedoc "Reason for the error"
+  @typedoc "Type of the errors returned by functions in this module"
   @type error :: {:error, String.t()}
 
   defstruct [
@@ -244,7 +244,10 @@ defmodule Aecore.Channel.ChannelStatePeer do
         } = peer_state
       ) do
     if ChannelTransaction.sequence(tx) <= ChannelStatePeer.sequence(peer_state) do
-      {:error, "#{__MODULE__}: Invalid sequence in tx"}
+      {:error,
+       "#{__MODULE__}: Too small sequence in tx. Received sequence(#{
+         ChannelTransaction.sequence(tx)
+       }) MUST be bigger than: #{ChannelStatePeer.sequence(peer_state)}"}
     else
       case ChannelOffChainUpdate.apply_updates(
              offchain_chainstate,
@@ -464,7 +467,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def open(%ChannelStatePeer{}, _, _, _, _, _, _) do
-    {:error, "#{__MODULE__}: Invalid call"}
+    {:error, "#{__MODULE__}: Invalid call to &open/7. Channel cannot be opened twice."}
   end
 
   @doc """
@@ -516,7 +519,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   end
 
   def sign_open(%ChannelStatePeer{}, _, _, _, _, _) do
-    {:error, "#{__MODULE__}: Invalid call"}
+    {:error, "#{__MODULE__}: Invalid call to &sign_open/6. Was channel opened before?"}
   end
 
   @doc """
@@ -866,10 +869,16 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     cond do
       fee_initiator > initiator_amount ->
-        {:error, "#{__MODULE__}: Initiator fee bigger then initiator balance"}
+        {:error,
+         "#{__MODULE__}: Initiator fee(#{fee_initiator}) bigger than initiator balance(#{
+           initiator_amount
+         })"}
 
       fee_responder > responder_amount ->
-        {:error, "#{__MODULE__}: Responder fee bigger then responder balance"}
+        {:error,
+         "#{__MODULE__}: Responder fee(#{fee_responder}) bigger than responder balance(#{
+           responder_amount
+         })"}
 
       true ->
         close_tx =
@@ -929,13 +938,19 @@ defmodule Aecore.Channel.ChannelStatePeer do
 
     cond do
       tx_id != channel_id ->
-        {:error, "#{__MODULE__}: Invalid id"}
+        {:error, "#{__MODULE__}: Invalid id. Received tx for #{tx_id} but this is #{channel_id}"}
 
       tx_initiator_amount != initiator_amount - fee_initiator ->
-        {:error, "#{__MODULE__}: Invalid initiator_amount (check fee)"}
+        {:error,
+         "#{__MODULE__}: Invalid initiator_amount (check fee). Got #{tx_initiator_amount} but expected #{
+           initiator_amount - fee_initiator
+         }."}
 
       tx_responder_amount != responder_amount - fee_responder ->
-        {:error, "#{__MODULE__}: Invalid responder_amount (check fee)"}
+        {:error,
+         "#{__MODULE__}: Invalid responder_amount (check fee). Got #{tx_responder_amount} but expected #{
+           responder_amount - fee_responder
+         }"}
 
       true ->
         new_peer_state = %ChannelStatePeer{peer_state | fsm_state: :closing}

@@ -215,9 +215,15 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
       ) do
     channel = ChannelStateTree.get(channels, channel_id)
 
+    withdrawing_account_balance =
+      AccountStateTree.get(accounts, withdrawing_account).balance - fee + amount
+
     cond do
-      AccountStateTree.get(accounts, withdrawing_account).balance - fee + amount < 0 ->
-        {:error, "#{__MODULE__}: Negative balance of the withdrawing account"}
+      withdrawing_account_balance < 0 ->
+        {:error,
+         "#{__MODULE__}: Negative balance of the withdrawing account(#{
+           withdrawing_account_balance
+         })"}
 
       channel == :none ->
         {:error, "#{__MODULE__}: Channel does not exists"}
