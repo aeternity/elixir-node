@@ -24,7 +24,7 @@ ENV LC_ALL en_US.UTF-8
 RUN curl https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb -o erlang-solutions_1.0_all.deb
 RUN dpkg -i erlang-solutions_1.0_all.deb
 RUN apt-get update
-RUN apt-get install -y esl-erlang=1:20.3 elixir=1.6.6-1
+RUN apt-get install -y esl-erlang=1:20.3 elixir=1.6.5-1
 
 # install rust dependency for rocksdb persistence
 USER elixir
@@ -45,9 +45,13 @@ ENV SHELL=/bin/sh
 # install hex dependencies
 RUN mix local.hex --force
 RUN mix local.rebar --force
-RUN make clean-deps-compile
+RUN MIX_ENV=prod make clean-deps-compile
+RUN MIX_ENV=prod VERSION=0.2.0 MIX_ENV=prod mix release --env=prod
 
 # set entrypoint
 EXPOSE 4000
 EXPOSE 3015
+
+# docker run --rm --entrypoint cat elixir-node  /elixir_node/_build/prod/rel/elixir_node/releases/0.2.0/elixir_node.tar.gz > elixir-node-0.2.0-ubuntu-x86_64.tar.gz
+
 ENTRYPOINT ["iex", "-S", "mix", "phx.server"]
