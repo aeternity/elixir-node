@@ -1,11 +1,11 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 # DISCLAIMER: this is not optimized and configured well, use carefully
 
 RUN adduser --disabled-password --gecos "" elixir
 
 RUN apt-get -qq update
-RUN apt-get install -y curl locales git build-essential autoconf autogen libtool libgmp3-dev openssl
+RUN apt-get install -y curl locales git build-essential autoconf autogen libtool libgmp3-dev libssl1.0.0
 
 RUN LIBSODIUM_VERSION=1.0.16 \
     && LIBSODIUM_DOWNLOAD_URL="https://github.com/jedisct1/libsodium/releases/download/${LIBSODIUM_VERSION}/libsodium-${LIBSODIUM_VERSION}.tar.gz" \
@@ -24,7 +24,7 @@ ENV LC_ALL en_US.UTF-8
 RUN curl https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb -o erlang-solutions_1.0_all.deb
 RUN dpkg -i erlang-solutions_1.0_all.deb
 RUN apt-get update
-RUN apt-get install -y esl-erlang=1:20.3 elixir=1.6.4-1
+RUN apt-get install -y esl-erlang=1:20.3 elixir=1.6.6-1
 
 # install rust dependency for rocksdb persistence
 USER elixir
