@@ -25,8 +25,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           initiator_amount: integer(),
           responder_amount: integer(),
           lock_period: non_neg_integer(),
-          slash_close: integer(),
-          slash_sequence: integer(),
+          closing_at: integer(),
+          sequence: integer(),
           state_hash: binary(),
           channel_reserve: non_neg_integer()
         }
@@ -49,10 +49,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   - initiator_amount - amount deposited by initiator in create_tx or from poi
   - responder_amount - amount deposited by responder in create_tx or from poi
   - lock_period - time before slashing is settled
-  - slash_close - when != 0: block height when slashing is settled
-  - slash_sequence - when != 0: sequence or slashing
+  - closing_at - when != 0: block height when channel will be irrevocably closed
+  - sequence - sequence of highest known fully signed offchain chainstate
   - state_hash - root hash of last known offchain chainstate
-  - channel_reserve - minimal ammount of tokens held by the initiator or responder
+  - channel_reserve - minimal amount of tokens held by the initiator or responder
   """
   defstruct [
     :initiator_pubkey,
@@ -61,8 +61,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     :initiator_amount,
     :responder_amount,
     :lock_period,
-    :slash_close,
-    :slash_sequence,
+    :closing_at,
+    :sequence,
     :state_hash,
     :channel_reserve
   ]
@@ -94,8 +94,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       initiator_amount: initiator_amount,
       responder_amount: responder_amount,
       lock_period: lock_period,
-      slash_close: 0,
-      slash_sequence: 0,
+      closing_at: 0,
+      sequence: 0,
       state_hash: state_hash,
       channel_reserve: channel_reserve
     }
@@ -141,7 +141,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Returns true if the channel wasn't slashed. (Closed channels should be removed from the Channels state tree)
   """
   @spec active?(ChannelStateOnChain.t()) :: boolean()
-  def active?(%ChannelStateOnChain{slash_close: 0}) do
+  def active?(%ChannelStateOnChain{closing_at: 0}) do
     true
   end
 
@@ -153,8 +153,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
   Returns true if the Channel can be settled. (If the Channel has been slashed and the current block height exceeds the locktime)
   """
   @spec settled?(ChannelStateOnChain.t(), non_neg_integer()) :: boolean()
-  def settled?(%ChannelStateOnChain{slash_close: slash_close} = channel, block_height) do
-    block_height >= slash_close && !active?(channel)
+  def settled?(%ChannelStateOnChain{closing_at: closing_at} = channel, block_height) do
+    block_height >= closing_at && !active?(channel)
   end
 
   @doc """
@@ -170,10 +170,10 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     with {:ok, poi_initiator_amount, poi_responder_amount} <- balances_from_poi(channel, poi) do
       cond do
         # No payload is only allowed for SoloCloseTx
-        channel.slash_close != 0 ->
+        channel.closing_at != 0 ->
           {:error,
-           "#{__MODULE__}: Channel already slashed, sequence=#{channel.slash_sequence}, closing at=#{
-             channel.slash_close
+           "#{__MODULE__}: Channel already slashed, sequence=#{channel.sequence}, closing at=#{
+             channel.closing_at
            }"}
 
         channel.state_hash !== Poi.calculate_root_hash(poi) ->
@@ -195,21 +195,20 @@ defmodule Aecore.Channel.ChannelStateOnChain do
            })"}
 
         # initiator/responder amounts can only be trusted when sequence == 0
-        channel.slash_sequence == 0 and poi_initiator_amount !== channel.initiator_amount ->
+        channel.sequence == 0 and poi_initiator_amount != channel.initiator_amount ->
           {:error,
            "#{__MODULE__}: Invalid initiator amount, expected #{channel.initiator_amount}, got #{
              poi_initiator_amount
            }"}
 
-        channel.slash_sequence == 0 and poi_responder_amount !== channel.responder_amount ->
+        channel.sequence == 0 and poi_responder_amount != channel.responder_amount ->
           {:error,
            "#{__MODULE__}: Invalid responder amount, expected #{channel.responder_amount}, got #{
              poi_responder_amount
            }"}
 
-        # otherwise make sure that the total amount is as expected
-        channel.slash_sequence != 0 and
-            poi_initiator_amount + poi_responder_amount != channel.total_amount ->
+        # if sequence != 0 and no ChannelOffChainTx was provided then deposits or withdraws modified the total amount
+        poi_initiator_amount + poi_responder_amount != channel.total_amount ->
           {:error,
            "#{__MODULE__}: Invalid total amount, expected #{channel.total_amount}, got #{
              poi_initiator_amount + poi_responder_amount
@@ -237,11 +236,11 @@ defmodule Aecore.Channel.ChannelStateOnChain do
              inspect(Poi.calculate_root_hash(poi))
            }"}
 
-        channel.slash_sequence >= offchain_tx.sequence ->
+        channel.sequence >= offchain_tx.sequence ->
           {:error,
-           "#{__MODULE__}: OffChain state is too old, expected newer than #{
-             channel.slash_sequence
-           }, got #{offchain_tx.sequence}"}
+           "#{__MODULE__}: OffChain state is too old, expected newer than #{channel.sequence}, got #{
+             offchain_tx.sequence
+           }"}
 
         channel.channel_reserve > poi_initiator_amount ->
           {:error,
@@ -298,11 +297,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
     %ChannelStateOnChain{
       channel
-      | total_amount: initiator_amount + responder_amount,
-        initiator_amount: initiator_amount,
+      | initiator_amount: initiator_amount,
         responder_amount: responder_amount,
-        slash_close: block_height + channel.lock_period,
-        slash_sequence: 0
+        closing_at: block_height + channel.lock_period
     }
   end
 
@@ -317,9 +314,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
 
     %ChannelStateOnChain{
       channel
-      | slash_close: block_height + channel.lock_period,
-        slash_sequence: sequence,
-        total_amount: initiator_amount + responder_amount,
+      | closing_at: block_height + channel.lock_period,
+        sequence: sequence,
         initiator_amount: initiator_amount,
         responder_amount: responder_amount,
         state_hash: state_hash
@@ -337,7 +333,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
           total_amount: total_amount,
-          slash_sequence: slash_sequence,
+          sequence: sequence,
           channel_reserve: channel_reserve
         },
         tx_account,
@@ -345,9 +341,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         tx_sequence
       ) do
     cond do
-      slash_sequence >= tx_sequence ->
-        {:error,
-         "Too old state - latest known sequence is #{slash_sequence} but we got #{tx_sequence}"}
+      sequence >= tx_sequence ->
+        {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
 
       tx_account != initiator_pubkey and tx_account != responder_pubkey ->
         {:error,
@@ -385,7 +380,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       channel
       | total_amount: total_amount - tx_amount,
-        slash_sequence: tx_sequence,
+        sequence: tx_sequence,
         state_hash: tx_state_hash
     }
   end
@@ -400,7 +395,7 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         %ChannelStateOnChain{
           initiator_pubkey: initiator_pubkey,
           responder_pubkey: responder_pubkey,
-          slash_sequence: slash_sequence
+          sequence: sequence
         },
         tx_account,
         tx_amount,
@@ -408,9 +403,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
       )
       when is_binary(tx_account) do
     cond do
-      slash_sequence >= tx_sequence ->
-        {:error,
-         "Too old state - latest known sequence is #{slash_sequence} but we got #{tx_sequence}"}
+      sequence >= tx_sequence ->
+        {:error, "Too old state - latest known sequence is #{sequence} but we got #{tx_sequence}"}
 
       tx_amount < 0 ->
         {:error, "Deposit of negative amount(#{tx_amount}) is forbidden"}
@@ -442,26 +436,24 @@ defmodule Aecore.Channel.ChannelStateOnChain do
     %ChannelStateOnChain{
       channel
       | total_amount: total_amount + tx_amount,
-        slash_sequence: tx_sequence,
+        sequence: tx_sequence,
         state_hash: tx_state_hash
     }
   end
 
   @spec encode_to_list(ChannelStateOnChain.t()) :: list(binary())
   def encode_to_list(%ChannelStateOnChain{} = channel) do
-    total_amount = channel.total_amount
-
     [
       :binary.encode_unsigned(@version),
       Identifier.create_encoded_to_binary(channel.initiator_pubkey, :account),
       Identifier.create_encoded_to_binary(channel.responder_pubkey, :account),
-      :binary.encode_unsigned(total_amount),
+      :binary.encode_unsigned(channel.total_amount),
       :binary.encode_unsigned(channel.initiator_amount),
       :binary.encode_unsigned(channel.channel_reserve),
       channel.state_hash,
-      :binary.encode_unsigned(channel.slash_sequence),
+      :binary.encode_unsigned(channel.sequence),
       :binary.encode_unsigned(channel.lock_period),
-      :binary.encode_unsigned(channel.slash_close)
+      :binary.encode_unsigned(channel.closing_at)
     ]
   end
 
@@ -473,9 +465,9 @@ defmodule Aecore.Channel.ChannelStateOnChain do
         encoded_initiator_amount,
         channel_reserve,
         state_hash,
-        slash_sequence,
+        sequence,
         lock_period,
-        slash_close
+        closing_at
       ]) do
     total_amount = :binary.decode_unsigned(encoded_total_amount)
     initiator_amount = :binary.decode_unsigned(encoded_initiator_amount)
@@ -492,8 +484,8 @@ defmodule Aecore.Channel.ChannelStateOnChain do
          initiator_amount: initiator_amount,
          responder_amount: total_amount - initiator_amount,
          lock_period: :binary.decode_unsigned(lock_period),
-         slash_close: :binary.decode_unsigned(slash_close),
-         slash_sequence: :binary.decode_unsigned(slash_sequence),
+         closing_at: :binary.decode_unsigned(closing_at),
+         sequence: :binary.decode_unsigned(sequence),
          state_hash: state_hash,
          channel_reserve: :binary.decode_unsigned(channel_reserve)
        }}

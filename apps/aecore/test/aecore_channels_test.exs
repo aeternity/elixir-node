@@ -204,7 +204,7 @@ defmodule AecoreChannelTest do
     TestUtils.assert_transactions_mined()
 
     close_height = Chain.top_height() + 2
-    assert ChannelStateTree.get(Chain.chain_state().channels, id).slash_close == close_height
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).closing_at == close_height
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 5, ctx.sk1)
@@ -278,7 +278,7 @@ defmodule AecoreChannelTest do
     TestUtils.assert_transactions_mined()
 
     close_height = Chain.top_height() + 2
-    assert ChannelStateTree.get(Chain.chain_state().channels, id).slash_close == close_height
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).closing_at == close_height
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 5, ctx.sk1)
@@ -392,7 +392,7 @@ defmodule AecoreChannelTest do
     TestUtils.assert_transactions_mined()
 
     close_height = Chain.top_height() + 2
-    assert ChannelStateTree.get(Chain.chain_state().channels, id).slash_close == close_height
+    assert ChannelStateTree.get(Chain.chain_state().channels, id).closing_at == close_height
 
     {:ok, s1_state} = call_s1({:get_channel, id})
     {:ok, settle_tx} = ChannelStatePeer.settle(s1_state, 10, 3, ctx.sk1)
@@ -643,7 +643,7 @@ defmodule AecoreChannelTest do
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
     assert channel != :none
 
-    assert channel.slash_sequence ==
+    assert channel.sequence ==
              ChannelTransaction.unsigned_payload(fully_signed_withdraw_tx).sequence
 
     assert channel.state_hash ==
@@ -713,7 +713,7 @@ defmodule AecoreChannelTest do
     channel = ChannelStateTree.get(Chain.chain_state().channels, id)
     assert channel != :none
 
-    assert channel.slash_sequence ==
+    assert channel.sequence ==
              ChannelTransaction.unsigned_payload(fully_signed_deposit_tx).sequence
 
     assert channel.state_hash ==

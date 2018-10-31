@@ -80,18 +80,11 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     with %ChannelStateOnChain{
            initiator_pubkey: initiator_pubkey,
            responder_pubkey: responder_pubkey
-         } <- ChannelStateTree.get(chainstate.channels, channel_id) do
-      if initiator_pubkey == withdrawing_account do
-        [initiator_pubkey, responder_pubkey]
-      else
-        if responder_pubkey == withdrawing_account do
-          [responder_pubkey, initiator_pubkey]
-        else
-          []
-        end
-      end
+         } <- ChannelStateTree.get(chainstate.channels, channel_id),
+         [second_party] <- [initiator_pubkey, responder_pubkey] -- [withdrawing_account] do
+      [withdrawing_account, second_party]
     else
-      :none ->
+      v when v === :none or is_list(v) ->
         []
     end
   end
@@ -262,18 +255,24 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
 
   @spec encode_to_list(ChannelWithdrawTx.t(), DataTx.t()) :: list()
   def encode_to_list(
-        %ChannelWithdrawTx{} = tx,
+        %ChannelWithdrawTx{
+          channel_id: channel_id,
+          withdrawing_account: withdrawing_account,
+          amount: amount,
+          state_hash: state_hash,
+          sequence: sequence
+        },
         data_tx
       ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
-      Identifier.create_encoded_to_binary(tx.withdrawing_account, :account),
-      :binary.encode_unsigned(tx.amount),
+      Identifier.create_encoded_to_binary(channel_id, :channel),
+      Identifier.create_encoded_to_binary(withdrawing_account, :account),
+      :binary.encode_unsigned(amount),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
-      tx.state_hash,
-      :binary.encode_unsigned(tx.sequence),
+      state_hash,
+      :binary.encode_unsigned(sequence),
       :binary.encode_unsigned(data_tx.nonce)
     ]
   end

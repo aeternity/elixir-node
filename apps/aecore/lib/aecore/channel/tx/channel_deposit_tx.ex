@@ -80,18 +80,11 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
     with %ChannelStateOnChain{
            initiator_pubkey: initiator_pubkey,
            responder_pubkey: responder_pubkey
-         } <- ChannelStateTree.get(chainstate.channels, channel_id) do
-      if initiator_pubkey == depositing_account do
-        [initiator_pubkey, responder_pubkey]
-      else
-        if responder_pubkey == depositing_account do
-          [responder_pubkey, initiator_pubkey]
-        else
-          []
-        end
-      end
+         } <- ChannelStateTree.get(chainstate.channels, channel_id),
+         [second_party] <- [initiator_pubkey, responder_pubkey] -- [depositing_account] do
+      [depositing_account, second_party]
     else
-      :none ->
+      v when v === :none or is_list(v) ->
         []
     end
   end
@@ -171,7 +164,7 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
       ) do
     new_accounts =
       AccountStateTree.update(accounts, depositing_account, fn account ->
-        Account.apply_transfer!(account, block_height, -amount)
+        Account.apply_transfer!(account, block_height, amount * -1)
       end)
 
     new_channels =
@@ -260,18 +253,24 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
 
   @spec encode_to_list(ChannelDepositTx.t(), DataTx.t()) :: list()
   def encode_to_list(
-        %ChannelDepositTx{} = tx,
+        %ChannelDepositTx{
+          channel_id: channel_id,
+          depositing_account: depositing_account,
+          amount: amount,
+          state_hash: state_hash,
+          sequence: sequence
+        },
         data_tx
       ) do
     [
       :binary.encode_unsigned(@version),
-      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
-      Identifier.create_encoded_to_binary(tx.depositing_account, :account),
-      :binary.encode_unsigned(tx.amount),
+      Identifier.create_encoded_to_binary(channel_id, :channel),
+      Identifier.create_encoded_to_binary(depositing_account, :account),
+      :binary.encode_unsigned(amount),
       :binary.encode_unsigned(data_tx.ttl),
       :binary.encode_unsigned(data_tx.fee),
-      tx.state_hash,
-      :binary.encode_unsigned(tx.sequence),
+      state_hash,
+      :binary.encode_unsigned(sequence),
       :binary.encode_unsigned(data_tx.nonce)
     ]
   end
