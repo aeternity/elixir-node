@@ -198,7 +198,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
     fee >= GovernanceConstants.minimum_fee()
   end
 
-  @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list()
+  @spec encode_to_list(ChannelCloseSoloTx.t(), DataTx.t()) :: list() | {:error, String.t()}
   def encode_to_list(%ChannelCloseSoloTx{} = tx, %DataTx{senders: [sender]} = data_tx) do
     offchain_tx_encoded =
       if tx.offchain_tx != :empty do
@@ -207,16 +207,22 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
         <<>>
       end
 
-    [
-      :binary.encode_unsigned(@version),
-      Identifier.create_encoded_to_binary(tx.channel_id, :channel),
-      Identifier.encode_to_binary(sender),
-      offchain_tx_encoded,
-      Serialization.rlp_encode(tx.poi),
-      :binary.encode_unsigned(data_tx.ttl),
-      :binary.encode_unsigned(data_tx.fee),
-      :binary.encode_unsigned(data_tx.nonce)
-    ]
+    case Serialization.rlp_encode(tx.poi) do
+      serialized_poi when is_binary(serialized_poi) ->
+        [
+          :binary.encode_unsigned(@version),
+          Identifier.create_encoded_to_binary(tx.channel_id, :channel),
+          Identifier.encode_to_binary(sender),
+          offchain_tx_encoded,
+          serialized_poi,
+          :binary.encode_unsigned(data_tx.ttl),
+          :binary.encode_unsigned(data_tx.fee),
+          :binary.encode_unsigned(data_tx.nonce)
+        ]
+
+      {:error, _} = err ->
+        err
+    end
   end
 
   def decode_from_list(@version, [
@@ -234,7 +240,7 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelCloseSoloTx,
-        %ChannelCloseSoloTx{
+        %{
           channel_id: channel_id,
           offchain_tx: offchain_tx,
           poi: poi

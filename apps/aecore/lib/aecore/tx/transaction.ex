@@ -6,7 +6,8 @@ defmodule Aecore.Tx.Transaction do
 
   defmacro __using__(_) do
     quote location: :keep do
-      @behaviour Aecore.Tx.Transaction
+      alias Aecore.Tx.Transaction
+      @behaviour Transaction
 
       @spec chainstate_senders?() :: boolean()
       def chainstate_senders?() do
@@ -44,6 +45,8 @@ defmodule Aecore.Tx.Transaction do
           | Aecore.Channel.Tx.ChannelCloseSoloTx.t()
           | Aecore.Channel.Tx.ChannelSlashTx.t()
           | Aecore.Channel.Tx.ChannelSettleTx.t()
+          | Aecore.Channel.Tx.ChannelWithdrawTx.t()
+          | Aecore.Channel.Tx.ChannelDepositTx.t()
 
   @typedoc "Reason for the error"
   @type reason :: String.t()

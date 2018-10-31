@@ -5,6 +5,7 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelDepositUpdate
+  alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
@@ -33,6 +34,21 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
   - amount: number of the tokens deposited into the state channel
   """
   defstruct [:from, :amount]
+
+  @doc """
+  Creates a ChannelDepositUpdate from a ChannelDepositTx
+  """
+  @spec new(ChannelDepositTx.t()) :: ChannelDepositUpdate.t()
+  def new(%ChannelDepositTx{
+        amount: amount,
+        depositing_account: depositing_account
+      })
+      when is_binary(depositing_account) do
+    %ChannelDepositUpdate{
+      from: depositing_account,
+      amount: amount
+    }
+  end
 
   @doc """
   Deserializes ChannelDepositUpdate. The serialization was changed in later versions of epoch.
@@ -87,8 +103,8 @@ defmodule Aecore.Channel.Updates.ChannelDepositUpdate do
         }
       ) do
     cond do
-      amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't deposit zero or negative amount of tokens"}
+      amount < 0 ->
+        {:error, "#{__MODULE__}: Can't deposit negative amount of tokens"}
 
       from != correct_from ->
         {:error,

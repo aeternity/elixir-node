@@ -29,5 +29,5 @@ defmodule Aecore.Util.Serializable do
   @callback decode_from_list(integer(), list()) :: {:ok, map()} | error()
 
   @doc "Encodes structure to list for RLP encoding with version prepended but not tag"
-  @callback encode_to_list(map()) :: list()
+  @callback encode_to_list(map()) :: list() | error()
 end

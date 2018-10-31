@@ -5,6 +5,7 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   """
 
   alias Aecore.Channel.Updates.ChannelWithdrawUpdate
+  alias Aecore.Channel.Tx.ChannelWithdrawTx
   alias Aecore.Channel.ChannelOffChainUpdate
   alias Aecore.Chain.Chainstate
   alias Aecore.Account.AccountStateTree
@@ -35,6 +36,21 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   defstruct [:to, :amount]
 
   @doc """
+  Creates a ChannelWithdrawUpdate from a ChannelWithdrawTx
+  """
+  @spec new(ChannelWithdrawTx.t()) :: ChannelWithdrawUpdate.t()
+  def new(%ChannelWithdrawTx{
+        amount: amount,
+        withdrawing_account: withdrawing_account
+      })
+      when is_binary(withdrawing_account) do
+    %ChannelWithdrawUpdate{
+      to: withdrawing_account,
+      amount: amount
+    }
+  end
+
+  @doc """
   Deserializes ChannelWithdrawUpdate. The serialization was changed in later versions of epoch.
   """
   @spec decode_from_list(list(binary())) :: ChannelWithdrawUpdate.t()
@@ -57,9 +73,9 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
   end
 
   @doc """
-  Performs the widthdraw on the offchain chainstate. Returns an error if the operation failed.
+  Performs the withdraw on the offchain chainstate. Returns an error if the operation failed.
   """
-  @spec update_offchain_chainstate!(Chainstate.t(), ChannelDepositUpdate.t()) ::
+  @spec update_offchain_chainstate!(Chainstate.t(), ChannelWithdrawUpdate.t()) ::
           Chainstate.t() | no_return()
   def update_offchain_chainstate!(
         %Chainstate{
@@ -74,14 +90,14 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
       AccountStateTree.update(
         accounts,
         to,
-        &widthdraw_from_account!(&1, amount)
+        &withdraw_from_account!(&1, amount)
       )
 
     %Chainstate{chainstate | accounts: updated_accounts}
   end
 
-  @spec widthdraw_from_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
-  defp widthdraw_from_account!(account, amount) do
+  @spec withdraw_from_account!(Account.t(), non_neg_integer()) :: Account.t() | no_return()
+  defp withdraw_from_account!(account, amount) do
     Account.apply_transfer!(account, nil, -amount)
   end
 
@@ -96,8 +112,8 @@ defmodule Aecore.Channel.Updates.ChannelWithdrawUpdate do
         }
       ) do
     cond do
-      amount <= 0 ->
-        {:error, "#{__MODULE__}: Can't withdraw zero or negative amount of tokens"}
+      amount < 0 ->
+        {:error, "#{__MODULE__}: Can't withdraw negative amount of tokens"}
 
       to != correct_to ->
         {:error,

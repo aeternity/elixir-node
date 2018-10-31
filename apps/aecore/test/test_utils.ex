@@ -20,6 +20,10 @@ defmodule TestUtils do
     assert Account.balance(Chain.chain_state().accounts, pk) == balance
   end
 
+  def get_account_balance(pk) do
+    Account.balance(Chain.chain_state().accounts, pk)
+  end
+
   def miner_spend(receiver, amount) do
     {pubkey, privkey} = Keys.keypair(:sign)
     spend(pubkey, privkey, receiver, amount)

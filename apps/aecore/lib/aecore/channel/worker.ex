@@ -6,6 +6,7 @@ defmodule Aecore.Channel.Worker do
   alias Aecore.Chain.Block
   alias Aecore.Channel.ChannelStatePeer
   alias Aecore.Channel.ChannelTransaction
+  alias Aecore.Channel.ChannelOffChainTx
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
@@ -45,7 +46,8 @@ defmodule Aecore.Channel.Worker do
   Notifies the channel manager about a new mined tx
   """
   # , ChannelWidhdrawTx, ChannelDepositTx]  do
-  def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx) when type in [ChannelCreateTx] do
+  def new_tx_mined(%SignedTx{data: %DataTx{type: type}} = tx)
+      when type in [ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx] do
     receive_confirmed_tx(tx)
   end
 
@@ -96,7 +98,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Imports channel from open tx and ChannelStateOffChain.
+  Imports channel from signed tx list and role.
   """
   @spec import_from_signed_tx_list(
           list(SignedTx.t() | ChannelOffChainTx.t()),
@@ -182,13 +184,45 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Transfers amount to other peer in channel. Returns half-signed channel off-chain state. Can only be called on open channel.
+  Transfers amount to other peer in channel. Returns half-signed channel transaction. Can only be called on open channel.
   """
   @spec transfer(binary(), non_neg_integer(), Keys.sign_priv_key()) ::
-          {:ok, ChannelStateOffChain.t()} | error()
+          {:ok, ChannelOffChainTx.t()} | error()
   def transfer(channel_id, amount, priv_key)
       when is_binary(channel_id) and is_integer(amount) and is_binary(priv_key) do
     GenServer.call(__MODULE__, {:transfer, channel_id, amount, priv_key})
+  end
+
+  @doc """
+  Withdraws amount from the channel. Returns half-signed channel transaction. Can only be called on open channel.
+  """
+  @spec withdraw(
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, SignedTx.t()} | error()
+  def withdraw(channel_id, amount, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(amount) and is_integer(fee) and is_integer(nonce) and
+             is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:withdraw, channel_id, amount, fee, nonce, priv_key})
+  end
+
+  @doc """
+  Deposits amount into the channel. Returns half-signed channel transaction. Can only be called on open channel.
+  """
+  @spec deposit(
+          binary(),
+          non_neg_integer(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, SignedTx.t()} | error()
+  def deposit(channel_id, amount, fee, nonce, priv_key)
+      when is_binary(channel_id) and is_integer(amount) and is_integer(fee) and is_integer(nonce) and
+             is_binary(priv_key) do
+    GenServer.call(__MODULE__, {:deposit, channel_id, amount, fee, nonce, priv_key})
   end
 
   @doc """
@@ -209,7 +243,7 @@ defmodule Aecore.Channel.Worker do
   end
 
   @doc """
-  Handles mined and confirmed ChannelCreateTx, ChannelWidthdrawTx, ChannelDepositTx
+  Handles mined and confirmed ChannelCreateTx, ChannelWithdrawTx, ChannelDepositTx
   """
   def receive_confirmed_tx(confirmed_onchain_tx) do
     GenServer.call(__MODULE__, {:receive_confirmed_tx, confirmed_onchain_tx})
@@ -353,23 +387,26 @@ defmodule Aecore.Channel.Worker do
       ) do
     peer_state = Map.get(state, temporary_id)
 
-    {:ok, new_peer_state, new_id, open_tx} =
-      ChannelStatePeer.open(
-        peer_state,
-        initiator_amount,
-        responder_amount,
-        locktime,
-        fee,
-        nonce,
-        priv_key
-      )
+    case ChannelStatePeer.open(
+           peer_state,
+           initiator_amount,
+           responder_amount,
+           locktime,
+           fee,
+           nonce,
+           priv_key
+         ) do
+      {:ok, new_peer_state, new_id, open_tx} ->
+        new_state =
+          state
+          |> Map.drop([temporary_id])
+          |> Map.put(new_id, new_peer_state)
 
-    new_state =
-      state
-      |> Map.drop([temporary_id])
-      |> Map.put(new_id, new_peer_state)
+        {:reply, {:ok, new_id, open_tx}, new_state}
 
-    {:reply, {:ok, new_id, open_tx}, new_state}
+      {:error, _} = err ->
+        {:reply, err, state}
+    end
   end
 
   def handle_call(
@@ -409,8 +446,32 @@ defmodule Aecore.Channel.Worker do
     peer_state = Map.get(state, id)
 
     case ChannelStatePeer.transfer(peer_state, amount, priv_key) do
-      {:ok, new_peer_state, offchain_state} ->
-        {:reply, {:ok, offchain_state}, Map.put(state, id, new_peer_state)}
+      {:ok, new_peer_state, half_signed_tx} ->
+        {:reply, {:ok, half_signed_tx}, Map.put(state, id, new_peer_state)}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:withdraw, id, amount, fee, nonce, priv_key}, _from, state) do
+    peer_state = Map.get(state, id)
+
+    case ChannelStatePeer.withdraw(peer_state, amount, fee, nonce, priv_key) do
+      {:ok, new_peer_state, half_signed_tx} ->
+        {:reply, {:ok, half_signed_tx}, Map.put(state, id, new_peer_state)}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call({:deposit, id, amount, fee, nonce, priv_key}, _from, state) do
+    peer_state = Map.get(state, id)
+
+    case ChannelStatePeer.deposit(peer_state, amount, fee, nonce, priv_key) do
+      {:ok, new_peer_state, half_signed_tx} ->
+        {:reply, {:ok, half_signed_tx}, Map.put(state, id, new_peer_state)}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
