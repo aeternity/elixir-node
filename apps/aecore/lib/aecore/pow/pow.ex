@@ -1,6 +1,6 @@
 defmodule Aecore.Pow.Pow do
   @moduledoc """
-  A meta Proof of work alorithm that invokes proper allgorithm for current environment
+  A meta Proof of work alorithm that invokes proper allgorithm for current environment.ex
   """
 
   alias Aecore.Chain.Header

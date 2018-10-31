@@ -7,6 +7,7 @@ defmodule AecoreTxsPoolTest do
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aecore.Miner.Worker, as: Miner
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Persistence.Worker, as: Persistence
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Tx.DataTx
   alias Aecore.Keys
@@ -14,7 +15,7 @@ defmodule AecoreTxsPoolTest do
 
   setup do
     Code.require_file("test_utils.ex", "./test")
-    path = Application.get_env(:aecore, :persistence)[:path]
+    path = Persistence.persistence_path()
 
     if File.exists?(path) do
       File.rm_rf(path)
