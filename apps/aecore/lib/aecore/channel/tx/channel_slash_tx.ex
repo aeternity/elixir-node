@@ -52,7 +52,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
   @spec sender_type() :: Identifier.type()
   def sender_type, do: :account
 
-  @spec init(payload()) :: SpendTx.t()
+  @spec init(payload()) :: ChannelSlashTx.t()
   def init(%{channel_id: channel_id, offchain_tx: offchain_tx, poi: poi} = _payload) do
     %ChannelSlashTx{
       channel_id: channel_id,
@@ -217,7 +217,7 @@ defmodule Aecore.Channel.Tx.ChannelSlashTx do
          {:ok, poi} <- Poi.rlp_decode(rlp_encoded_poi) do
       DataTx.init_binary(
         ChannelSlashTx,
-        %ChannelSlashTx{
+        %{
           channel_id: channel_id,
           offchain_tx: offchain_tx,
           poi: poi

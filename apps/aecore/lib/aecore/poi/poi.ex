@@ -215,7 +215,7 @@ defmodule Aecore.Poi.Poi do
   @doc """
   Deserializes the Poi from a list
   """
-  @spec decode_from_list(non_neg_integer(), list()) :: Poi.t() | {:error, String.t()}
+  @spec decode_from_list(non_neg_integer(), list()) :: {:ok, Poi.t()} | {:error, String.t()}
   def decode_from_list(@version, [accounts, calls, channels, contracts, naming, oracles]) do
     decoded_components =
       Enum.map(
