@@ -294,7 +294,7 @@ defmodule AecoreChannelCompatibilityTest do
 
     assert_offchain_txs_equal(fully_signed_transfer_tx2, epoch_transfer2)
 
-    # close mutal
+    # close mutual
 
     epoch_mutal_close_tx =
       Bits.decode58(
