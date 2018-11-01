@@ -6,10 +6,10 @@ defmodule Aecore.Miner.Worker do
 
   use GenServer
 
+  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target, Identifier}
+  alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Contract.{CallStateTree, Contract}
   alias Aecore.Contract.Tx.{ContractCreateTx, ContractCallTx}
-  alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Chain.{Block, BlockValidation, Chainstate, Header, Target, Identifier}
   alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.Oracle

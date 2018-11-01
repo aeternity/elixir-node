@@ -7,9 +7,9 @@ defmodule Aecore.Oracle.Tx.OracleQueryTx do
 
   alias __MODULE__
 
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Oracle.{Oracle, OracleQuery, OracleStateTree}
   alias Aecore.Tx.DataTx

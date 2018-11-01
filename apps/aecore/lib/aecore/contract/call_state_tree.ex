@@ -6,6 +6,7 @@ defmodule Aecore.Contract.CallStateTree do
 
   alias Aecore.Chain.Chainstate
   alias Aecore.Contract.Call
+  alias Aecore.Keys
   alias Aeutil.PatriciaMerkleTree
   alias Aeutil.Serialization
   alias MerklePatriciaTree.Trie

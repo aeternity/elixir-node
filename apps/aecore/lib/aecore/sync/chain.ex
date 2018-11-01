@@ -4,7 +4,7 @@ defmodule Aecore.Sync.Chain do
   """
   alias __MODULE__
   alias Aecore.Chain.Header
-  alias Aecore.Sync.Task
+  alias Aecore.Sync.{Task, Sync}
 
   @type peer_id :: pid()
   @type chain_id :: reference()

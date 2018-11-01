@@ -3,16 +3,13 @@ defmodule Aeutil.Serialization do
   Utility module for serialization
   """
 
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Naming.NameCommitment
-  alias Aecore.Naming.Name
-  alias Aecore.Chain.Chainstate
-  alias Aeutil.Parser
   alias Aecore.Account.Account
-  alias Aecore.Tx.DataTx
+  alias Aecore.Account.Tx.SpendTx
+  alias Aecore.Chain.{Header, Chainstate}
+  alias Aecore.Naming.{Name, NameCommitment}
   alias Aecore.Oracle.Tx.OracleQueryTx
-  alias Aeutil.TypeToTag
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.{Parser, TypeToTag}
 
   require Logger
 

@@ -7,14 +7,11 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   use Aecore.Tx.Transaction
 
   alias __MODULE__
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Account.Account
+  alias Aecore.Account.{Account, AccountStateTree}
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Contract.{Contract, Call, CallStateTree, ContractStateTree, Dispatch}
-  alias Aecore.Tx.Transaction
-  alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Identifier
-
+  alias Aecore.Governance.GovernanceConstants
+  alias Aecore.Tx.{DataTx, Transaction}
   require Aecore.Contract.ContractConstants, as: Constants
 
   @version 1

@@ -8,8 +8,7 @@ defmodule Aecore.Poi.Poi do
   alias Aecore.Account.Account
   alias Aecore.Chain.Chainstate
   alias Aecore.Keys
-  alias Aecore.Poi.Poi
-  alias Aecore.Poi.PoiProof
+  alias Aecore.Poi.{Poi, PoiProof}
   alias Aeutil.Hash
 
   @version 1

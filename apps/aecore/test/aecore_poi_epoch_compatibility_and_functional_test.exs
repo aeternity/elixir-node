@@ -5,10 +5,10 @@ defmodule PoiEpochCompabilityTest do
 
   use ExUnit.Case
 
-  alias Aecore.Account.Account
-  alias Aecore.Account.AccountStateTree
-  alias Aecore.Poi.Poi
+  alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.Chainstate
+  alias Aecore.Keys
+  alias Aecore.Poi.Poi
   alias Aeutil.Serialization
 
   @typedoc """

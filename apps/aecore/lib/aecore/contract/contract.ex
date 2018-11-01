@@ -2,14 +2,14 @@ defmodule Aecore.Contract.Contract do
   @moduledoc """
   Module containing Contract interaction functionality
   """
-  alias Aecore.Contract.Contract
-  alias Aecore.Contract.Tx.ContractCreateTx
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.Pool.Worker, as: Pool
+
   alias Aecore.Chain.Identifier
   alias Aecore.Chain.Worker, as: Chain
+  alias Aecore.Contract.Contract
+  alias Aecore.Contract.Tx.ContractCreateTx
   alias Aecore.Keys
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.Hash
 
   @version 1

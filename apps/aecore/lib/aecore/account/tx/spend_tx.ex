@@ -5,10 +5,10 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Account.Tx.SpendTx
   alias Aecore.Chain.{Identifier, Chainstate}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Keys
   alias Aecore.Tx.DataTx
 

@@ -9,9 +9,8 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   alias Aecore.Channel.Tx.ChannelSettleTx
   alias Aecore.Tx.DataTx
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Identifier, Chainstate}
 
   require Logger
 

@@ -10,9 +10,8 @@ defmodule Aecore.Channel.Tx.ChannelDepositTx do
   alias Aecore.Channel.Tx.ChannelDepositTx
   alias Aecore.Tx.{SignedTx, DataTx}
   alias Aecore.Account.{Account, AccountStateTree}
-  alias Aecore.Chain.Chainstate
   alias Aecore.Channel.{ChannelStateOnChain, ChannelStateTree, ChannelOffChainUpdate}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Channel.Updates.ChannelDepositUpdate
 
   require Logger

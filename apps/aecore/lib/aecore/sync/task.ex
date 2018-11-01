@@ -1,15 +1,14 @@
 defmodule Aecore.Sync.Task do
   @moduledoc """
-  Each sync task holds information about a syncing process with multiple peers 
+  Each sync task holds information about a syncing process with multiple peers
   where each peer is recognized as a worker with peer_id and pid of a seperate process doing the work.
   A sync task works on a specific chain, meaning there is one sync task per chain.
   If a worker is on different chain (on a fork, meaning different chain than what we already syncing against)
-  a new sync task will be started. In the normal case where all is good 
+  a new sync task will be started. In the normal case where all is good
   all peers work on the same task, we work only on one sync task.
   """
 
-  alias Aecore.Sync.Chain
-  alias Aecore.Sync.Sync
+  alias Aecore.Sync.{Chain, Sync}
   alias Aecore.Chain.Block
   alias __MODULE__
 

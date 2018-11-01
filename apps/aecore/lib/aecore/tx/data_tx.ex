@@ -5,8 +5,7 @@ defmodule Aecore.Tx.DataTx do
   alias Aecore.Account.{Account, AccountStateTree}
   alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
-  alias Aecore.Tx.DataTx
-  alias Aecore.Tx.Transaction
+  alias Aecore.Tx.{DataTx, Transaction}
   alias Aeutil.{Bits, Serialization, TypeToTag}
 
   require Logger

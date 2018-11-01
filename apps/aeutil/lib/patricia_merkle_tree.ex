@@ -15,6 +15,11 @@ defmodule Aeutil.PatriciaMerkleTree do
   alias Aecore.Persistence.Worker, as: Persistence
 
   @typedoc """
+  The type of the value in PMT.
+  """
+  @type trie_value :: binary()
+
+  @typedoc """
   Depending on the name, different data base ref will
   be used for the trie creaton.
   """
@@ -54,7 +59,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Retrieve value from trie.
   """
-  @spec lookup(Trie.t(), Trie.key()) :: {:ok, Trie.value()} | :none
+  @spec lookup(Trie.t(), Trie.key()) :: {:ok, trie_value()} | :none
   def lookup(trie, key) do
     case Trie.get(trie, key) do
       nil -> :none
@@ -65,7 +70,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Retrieve value from trie and construct proof.
   """
-  @spec lookup_with_proof(Trie.trie(), Trie.key()) :: :none | {:ok, Trie.value(), Trie.t()}
+  @spec lookup_with_proof(Trie.t(), Trie.key()) :: :none | {:ok, trie_value(), Trie.t()}
   def lookup_with_proof(trie, key) do
     case Proof.construct_proof({trie, key, new(:proof)}) do
       {nil, _proof} -> :none
@@ -77,7 +82,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   Check if the value already exists for this key before add it.
   If so return error message.
   """
-  @spec insert(Trie.t(), Trie.key(), Trie.value()) :: Trie.t() | {:error, term}
+  @spec insert(Trie.t(), Trie.key(), trie_value()) :: Trie.t() | {:error, term}
   def insert(trie, key, value) do
     case lookup(trie, key) do
       {:ok, _value} ->
@@ -88,14 +93,14 @@ defmodule Aeutil.PatriciaMerkleTree do
     end
   end
 
-  @spec enter(Trie.t(), Trie.key(), Trie.value()) :: Trie.t()
+  @spec enter(Trie.t(), Trie.key(), trie_value()) :: Trie.t()
   def enter(trie, key, value), do: Trie.update(trie, key, value)
 
   @doc """
   Verify if value is present in the proof trie for the provided key.
   The key represents the path in the proof trie.
   """
-  @spec verify_proof?(Trie.key(), Trie.value(), binary(), Trie.t()) :: boolean
+  @spec verify_proof?(Trie.key(), trie_value(), binary(), Trie.t()) :: boolean
   def verify_proof?(key, value, root_hash, proof) do
     case Proof.verify_proof(key, value, root_hash, proof) do
       :ok ->
@@ -109,7 +114,7 @@ defmodule Aeutil.PatriciaMerkleTree do
   @doc """
   Lookups the value associated with the given key in the proof trie.
   """
-  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: {:ok, Trie.value()} | :error
+  @spec lookup_proof(Trie.key(), binary(), Trie.t()) :: {:ok, trie_value()} | :error
   def lookup_proof(key, root_hash, proof) do
     case Proof.lookup_proof(key, root_hash, proof) do
       nil ->

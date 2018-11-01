@@ -3,14 +3,11 @@ defmodule Aecore.Tx.SignedTx do
   Module defining the Signed transaction
   """
 
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
-  alias Aeutil.Serialization
-  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Account.Account
+  alias Aecore.Chain.{Chainstate, Identifier}
   alias Aecore.Keys
-  alias Aeutil.Bits
-  alias Aeutil.Hash
+  alias Aecore.Tx.{DataTx, SignedTx}
+  alias Aeutil.{Bits, Hash, Serialization}
 
   require Logger
 

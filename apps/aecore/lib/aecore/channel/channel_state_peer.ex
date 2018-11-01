@@ -268,8 +268,8 @@ defmodule Aecore.Channel.ChannelStatePeer do
   """
   @spec initialize(
           binary(),
-          Wallet.pubkey(),
-          Wallet.pubkey(),
+          Keys.pubkey(),
+          Keys.pubkey(),
           non_neg_integer(),
           Channel.role()
         ) :: ChannelStatePeer.t()
@@ -976,8 +976,12 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates solo close tx for channel. Should only be called when no solo close tx-s were mined for this channel. Returns altered ChannelStatePeer and ChannelCloseSoloTx
   """
-  @spec solo_close(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
-          {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
+  @spec solo_close(
+          ChannelStatePeer.t(),
+          non_neg_integer(),
+          non_neg_integer(),
+          Keys.sign_priv_key()
+        ) :: {:ok, ChannelStatePeer.t(), SignedTx.t()} | error()
   def solo_close(
         %ChannelStatePeer{channel_id: channel_id, mutually_signed_tx: [most_recent_tx | _]} =
           peer_state,
@@ -1081,7 +1085,7 @@ defmodule Aecore.Channel.ChannelStatePeer do
   @doc """
   Creates channel settle tx.
   """
-  @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Wallet.privkey()) ::
+  @spec settle(ChannelStatePeer.t(), non_neg_integer(), non_neg_integer(), Keys.sign_priv_key()) ::
           {:ok, SignedTx.t()} | error()
   def settle(
         %ChannelStatePeer{

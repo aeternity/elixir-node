@@ -3,15 +3,12 @@ defmodule Aecore.Contract.VmChain do
   VM chain api implementation for interaction with our chain
   """
 
-  alias Aecore.Contract.ContractStateTree
-  alias Aecore.Contract.CallStateTree
-  alias Aecore.Contract.Contract
-  alias Aecore.Contract.Call
+  alias Aecore.Account.Account
   alias Aecore.Chain.Chainstate
   alias Aecore.Chain.Worker, as: Chain
-  alias Aecore.Account.Account
-  alias Aecore.Tx.DataTx
+  alias Aecore.Contract.{ContractStateTree, CallStateTree, Contract, Call}
   alias Aecore.Keys
+  alias Aecore.Tx.DataTx
   alias Aevm.ChainApi
 
   @behaviour Aevm.ChainApi

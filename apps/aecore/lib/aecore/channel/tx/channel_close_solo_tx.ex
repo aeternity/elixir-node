@@ -5,14 +5,13 @@ defmodule Aecore.Channel.Tx.ChannelCloseSoloTx do
 
   use Aecore.Tx.Transaction
 
-  alias Aecore.Governance.GovernanceConstants
-  alias Aecore.Channel.Tx.ChannelCloseSoloTx
-  alias Aecore.Tx.DataTx
   alias Aecore.Account.AccountStateTree
-  alias Aecore.Chain.Chainstate
+  alias Aecore.Chain.{Identifier, Chainstate}
   alias Aecore.Channel.{ChannelStateOnChain, ChannelOffChainTx, ChannelStateTree}
-  alias Aecore.Chain.Identifier
+  alias Aecore.Channel.Tx.{ChannelCloseSoloTx, ChannelCreateTx}
+  alias Aecore.Governance.GovernanceConstants
   alias Aecore.Poi.Poi
+  alias Aecore.Tx.DataTx
   alias Aeutil.Serialization
 
   require Logger

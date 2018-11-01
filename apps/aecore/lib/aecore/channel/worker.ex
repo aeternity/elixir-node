@@ -4,9 +4,7 @@ defmodule Aecore.Channel.Worker do
   """
 
   alias Aecore.Chain.Block
-  alias Aecore.Channel.ChannelStatePeer
-  alias Aecore.Channel.ChannelTransaction
-  alias Aecore.Channel.ChannelOffChainTx
+  alias Aecore.Channel.{ChannelStatePeer, ChannelTransaction, ChannelOffChainTx}
 
   alias Aecore.Channel.Tx.{
     ChannelCloseMutalTx,
@@ -16,6 +14,7 @@ defmodule Aecore.Channel.Worker do
     ChannelCreateTx
   }
 
+  alias Aecore.Keys
   alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Tx.Pool.Worker, as: Pool
   alias Aeutil.Events

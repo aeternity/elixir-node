@@ -19,7 +19,7 @@ defmodule Aecore.Tx.Transaction do
   end
 
   alias Aecore.Tx.DataTx
-  alias Aecore.Chain.Identifier
+  alias Aecore.Chain.{Chainstate, Identifier}
   @typedoc "Arbitrary map holding all the specific elements required
   by the specified transaction type"
   @type payload :: map()

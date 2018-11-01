@@ -5,9 +5,7 @@ defmodule Aecore.Peers.PeerConnection do
 
   use GenServer
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Genesis
-  alias Aecore.Chain.Header
+  alias Aecore.Chain.{Block, Genesis, Header}
   alias Aecore.Chain.Worker, as: Chain
   alias Aecore.Peers.Worker, as: Peers
   alias Aecore.Peers.Worker.Supervisor

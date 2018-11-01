@@ -8,8 +8,8 @@ defmodule Aecore.Sync.Sync do
 
   use GenServer
 
-  alias Aecore.Sync.{Jobs, Chain, Task}
-  alias Aecore.Chain.Header
+  alias Aecore.Sync.{Jobs, Chain, Task, Sync}
+  alias Aecore.Chain.{Header, Block}
   alias Aecore.Chain.Worker, as: Chainstate
   alias Aecore.Peers.PeerConnection
   alias Aecore.Peers.Worker, as: Peers

@@ -3,10 +3,8 @@ defmodule Aehttpclient.Client do
   Client used for making requests to a node.
   """
 
-  alias Aecore.Chain.Block
-  alias Aecore.Chain.Header
-  alias Aecore.Tx.SignedTx
-  alias Aecore.Tx.DataTx
+  alias Aecore.Chain.{Block, Header}
+  alias Aecore.Tx.{DataTx, SignedTx}
   alias Aecore.Keys
 
   require Logger
