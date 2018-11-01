@@ -50,11 +50,7 @@ defmodule ElixirNode.Mixfile do
   defp deps do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
-<<<<<<< Updated upstream
       {:dialyxir, "1.0.0-rc.3", only: [:dev, :test], runtime: false},
-=======
-      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev, :test], runtime: false},
->>>>>>> Stashed changes
       {:distillery, "~> 2.0"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:plug_cowboy, "~> 1.0"},
