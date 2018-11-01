@@ -184,7 +184,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
               Account.apply_transfer!(acc, block_height, (gas_cost + deposit) * -1)
             end)
 
-          updated_contract = %{contract | code: call_result.return_value}
+          updated_store = ContractStateTree.get(updated_state.contracts, contract.id.value).store
+          updated_contract = %{contract | code: call_result.return_value, store: updated_store}
 
           chain_state_with_call = %{
             updated_state
