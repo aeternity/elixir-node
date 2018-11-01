@@ -12,7 +12,7 @@ defmodule AecoreChannelCompatibilityTest do
   alias Aecore.Channel.Worker, as: Channels
 
   alias Aecore.Channel.Tx.{
-    ChannelCloseMutalTx,
+    ChannelCloseMutualTx,
     ChannelSettleTx
   }
 
@@ -155,7 +155,7 @@ defmodule AecoreChannelCompatibilityTest do
 
     tx =
       DataTx.init(
-        ChannelCloseMutalTx,
+        ChannelCloseMutualTx,
         %{
           channel_id: id,
           initiator_amount: initiator_amount,
