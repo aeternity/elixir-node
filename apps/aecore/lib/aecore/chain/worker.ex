@@ -606,7 +606,8 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  def transform_chainstate(_, {:error, _}), do: %{}
+  @spec transform_chainstate(atom() | any(), {:error, String.t()} | {:ok, map()}) :: map() 
+  def transform_chainstate(_, {:error, _string}), do: %{}
 
   def transform_chainstate(strategy, {:ok, chainstate}) do
     Enum.reduce(chainstate, %{}, get_persist_strategy(strategy))

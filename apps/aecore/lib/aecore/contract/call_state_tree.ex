@@ -31,7 +31,7 @@ defmodule Aecore.Contract.CallStateTree do
     PatriciaMerkleTree.insert(call_tree, call_tree_id, serialized)
   end
 
-  @spec get_call(calls_state(), binary()) :: calls_state()
+  @spec get_call(calls_state(), binary()) :: Call.t() | :none
   def get_call(calls_tree, key) do
     case PatriciaMerkleTree.lookup(calls_tree, key) do
       {:ok, serialized} ->
@@ -53,7 +53,7 @@ defmodule Aecore.Contract.CallStateTree do
     call.gas_used
   end
 
-  @spec construct_call_tree_id(Identifier.t(), binary()) :: binary()
+  @spec construct_call_tree_id(binary(), binary()) :: binary()
   def construct_call_tree_id(%Identifier{value: contract_id}, call_id) do
     construct_call_tree_id(contract_id, call_id)
   end

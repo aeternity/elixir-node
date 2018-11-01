@@ -12,7 +12,7 @@ defmodule Aecore.Contract.Dispatch do
 
   @pubkey_size_bits 256
 
-  @spec run(integer(), map(), Chainstate.t()) :: Call.t()
+  @spec run(integer(), map(), Chainstate.t()) :: tuple()
   def run(Constants.aevm_sophia_01(), call_definition, chain_state) do
     call_aevm_sophia_01(call_definition, chain_state)
   end

@@ -16,10 +16,10 @@ defmodule ElixirNode.Mixfile do
       deps: deps(),
       dialyzer: [
         paths: [
-          "_build/test/lib/aecore/ebin",
-          "_build/test/lib/aehttpclient/ebin",
-          "_build/test/lib/aehttpserver/ebin",
-          "_build/test/lib/aeutil/ebin"
+          "_build/dev/lib/aecore/ebin",
+          "_build/dev/lib/aehttpclient/ebin",
+          "_build/dev/lib/aehttpserver/ebin",
+          "_build/dev/lib/aeutil/ebin"
         ],
         ignore_warnings: "dialyzer.ignore-warnings"
       ],
@@ -50,7 +50,11 @@ defmodule ElixirNode.Mixfile do
   defp deps do
     [
       {:credo, "~> 0.9.3", only: [:dev, :test], runtime: false},
+<<<<<<< Updated upstream
       {:dialyxir, "1.0.0-rc.3", only: [:dev, :test], runtime: false},
+=======
+      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev, :test], runtime: false},
+>>>>>>> Stashed changes
       {:distillery, "~> 2.0"},
       {:excoveralls, "~> 0.8.1", only: :test},
       {:plug_cowboy, "~> 1.0"},

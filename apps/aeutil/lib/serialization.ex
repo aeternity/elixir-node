@@ -40,7 +40,7 @@ defmodule Aeutil.Serialization do
   @doc """
   Loops through a structure are simplifies it. Removes all the strucutured maps
   """
-  @spec remove_struct(list()) :: list()
+  @spec remove_struct(list(map())) :: list()
   def remove_struct(term) when is_list(term) do
     for elem <- term, do: remove_struct(elem)
   end

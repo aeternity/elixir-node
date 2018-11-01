@@ -72,7 +72,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @spec sender_type() :: Identifier.type()
   def sender_type, do: :account
 
-  @spec init(payload()) :: t() | {:error, reason()}
+  @spec init(payload()) :: t() 
   def init(%{
         code: code,
         vm_version: vm_version,
@@ -81,8 +81,8 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas: gas,
         gas_price: gas_price,
         call_data: call_data
-      }) do
-    if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
+      }) when vm_version in [[Constants.aevm_sophia_01(), Constants.aevm_solidity_01()]] do
+    # if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
       %ContractCreateTx{
         code: code,
         vm_version: vm_version,
@@ -92,9 +92,9 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas_price: gas_price,
         call_data: call_data
       }
-    else
-      {:error, "#{__MODULE__}: Wrong VM version"}
-    end
+    # else
+    #   {:error, "#{__MODULE__}: Wrong VM version"}
+    # end
   end
 
   @spec validate(ContractCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
