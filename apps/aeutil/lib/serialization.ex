@@ -24,6 +24,7 @@ defmodule Aeutil.Serialization do
           sender: binary() | nil,
           signature: binary() | nil,
           txs_hash: binary(),
+          ttl: non_neg_integer(),
           type: atom()
         }
 
@@ -271,7 +272,7 @@ defmodule Aeutil.Serialization do
 
   def deserialize_value(value, _), do: value
 
-  @spec serialize_txs_info_to_json(list(raw_data())) :: list(map())
+  @spec serialize_txs_info_to_json([raw_data() | atom()]) :: [map()]
   def serialize_txs_info_to_json(txs_info) when is_list(txs_info) do
     serialize_txs_info_to_json(txs_info, [])
   end

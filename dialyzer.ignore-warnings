@@ -1,14 +1,21 @@
 #Function-related ignored errors.
-apps/aecore/lib/aecore/account/account_state_tree.ex:5: Overloaded contract for 'Elixir.Aecore.Account.AccountStateTree':get/2 has overlapping domains; such contracts are currently unsupported and are simply ignored
-apps/aecore/lib/aecore/chain/block.ex:28: Function encode_to_map/1 has no local return
-apps/aecore/lib/aecore/chain/block.ex:31: The call maps:put(#{#<116>(8, 1, 'integer', ['unsigned', 'big']), #<114>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<99>(8, 1, 'integer', ['unsigned', 'big']), #<116>(8, 1, 'integer', ['unsigned', 'big']), #<105>(8, 1, 'integer', ['unsigned', 'big']), #<111>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big'])}#,Vserialized_txs@1::[any()],Vserialized_header@1::binary()) will never return since it differs in the 3rd argument from the success typing arguments: (any(),any(),map())
-apps/aecore/lib/aecore/chain/worker.ex:429: Function handle_info/2 has no local return
-apps/aecore/lib/aecore/chain/worker.ex:452: The call 'Elixir.Aeutil.Serialization':remove_struct(Vblocks_info@1::'not_found' | {'error',_} | {'ok',map()}) breaks the contract ([map()]) -> [any()]
-    ; (map()) -> map() in the 1st argument
 apps/aecore/lib/aecore/chain/worker.ex:459: The created fun has no local return
-apps/aecore/lib/aecore/chain/worker.ex:562: The call 'Elixir.Aecore.Chain.Worker':transform_chainstate('to_chainstate',Vchainstate@1::map()) will never return since the success typing is (any(),{'error',_} | {'ok',map()}) -> any() and the contract is (any(),{'error',any()} | {'ok',map()}) -> any()
+apps/aecore/lib/aecore/chain/block.ex:28: Function encode_to_map/1 has no local return
 apps/aecore/lib/aecore/contract/call_state_tree.ex:25: Function insert_call/2 has no local return
 apps/aecore/lib/aecore/contract/call_state_tree.ex:47: Function get_call_gas_used/4 has no local return
+apps/aecore/lib/aecore/contract/tx/contract_call_tx.ex:153: Function process_chainstate/6 has no local return
+apps/aecore/lib/aecore/chain/worker.ex:429: Function handle_info/2 has no local return
+apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:62: The created fun has no local return
+apps/aehttpserver/lib/aehttpserver/web/controllers/block_controller.ex:107: The created fun has no local return
+apps/aehttpserver/lib/aehttpserver/web/controllers/oracle_controller.ex:54: Function oracle_query/2 has no local return
+apps/aehttpserver/lib/aehttpserver/web/channels/notify.ex:26: Function broadcast_new_block_added_to_chain_and_new_mined_tx/1 has no local return
+
+apps/aecore/lib/aecore/account/account_state_tree.ex:5: Overloaded contract for 'Elixir.Aecore.Account.AccountStateTree':get/2 has overlapping domains; such contracts are currently unsupported and are simply ignored
+apps/aecore/lib/aecore/chain/block.ex:31: The call maps:put(#{#<116>(8, 1, 'integer', ['unsigned', 'big']), #<114>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big']), #<97>(8, 1, 'integer', ['unsigned', 'big']), #<99>(8, 1, 'integer', ['unsigned', 'big']), #<116>(8, 1, 'integer', ['unsigned', 'big']), #<105>(8, 1, 'integer', ['unsigned', 'big']), #<111>(8, 1, 'integer', ['unsigned', 'big']), #<110>(8, 1, 'integer', ['unsigned', 'big']), #<115>(8, 1, 'integer', ['unsigned', 'big'])}#,Vserialized_txs@1::[any()],Vserialized_header@1::binary()) will never return since it differs in the 3rd argument from the success typing arguments: (any(),any(),map())
+apps/aecore/lib/aecore/chain/worker.ex:452: The call 'Elixir.Aeutil.Serialization':remove_struct(Vblocks_info@1::'not_found' | {'error',_} | {'ok',map()}) breaks the contract ([map()]) -> [any()]
+    ; (map()) -> map() in the 1st argument
+
+apps/aecore/lib/aecore/chain/worker.ex:562: The call 'Elixir.Aecore.Chain.Worker':transform_chainstate('to_chainstate',Vchainstate@1::map()) will never return since the success typing is (any(),{'error',_} | {'ok',map()}) -> any() and the contract is (any(),{'error',any()} | {'ok',map()}) -> any()
 apps/aecore/lib/aecore/chain/worker.ex:562: The call 'Elixir.Aecore.Chain.Worker':transform_chainstate('to_chainstate',Vchainstate@1::map()) will never return since the success typing is (any(),{'error',_} | {'ok',_}) -> any() and the contract is (atom() | any(),{'error','Elixir.String':t()} | {'ok',map()}) -> map()
 apps/aecore/lib/aecore/contract/contract.ex:154: The pattern Verror@1 = {'error', _} can never match the type 'false'
-apps/aecore/lib/aecore/contract/tx/contract_call_tx.ex:153: Function process_chainstate/6 has no local return
+apps/aeutil/lib/patricia_merkle_tree.ex:43: Overloaded contract for 'Elixir.Aeutil.PatriciaMerkleTree':new/1 has overlapping domains; such contracts are currently unsupported and are simply ignored

@@ -62,7 +62,7 @@ defmodule Aehttpserver.Web.OracleController do
           query_data: query_data,
           query_fee: query_fee,
           query_ttl: query_ttl,
-          response_ttle: response_ttl
+          response_ttl: response_ttl
         }
       }
     } = SignedTx.deserialize(conn.body_params)

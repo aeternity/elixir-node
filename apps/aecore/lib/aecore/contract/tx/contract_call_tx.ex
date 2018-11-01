@@ -372,10 +372,10 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
   end
 
   defp check_contract_balance(accounts, sender, amount) do
-        check_validity(
-          Account.balance(accounts, sender) >= amount,
-          "#{__MODULE__}: Insufficient funds or Contranct is not found"
-        )
+    check_validity(
+      Account.balance(accounts, sender) >= amount,
+      "#{__MODULE__}: Insufficient funds or Contranct is not found"
+    )
   end
 
   defp check_call(

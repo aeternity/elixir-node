@@ -182,9 +182,14 @@ defmodule Aecore.Contract.Contract do
   @spec decode_active(binary()) :: {:ok, boolean()} | {:error, String.t()}
   def decode_active(active) when active == <<0>> or active == <<1>> do
     case :binary.decode_unsigned(active) do
-      0 -> {:ok, false}
-      1 -> {:ok, true}
-      _ -> {:error, "#{__MODULE__}: decode_from_list: Invalid contract active: #{inspect(active)}"}
+      0 ->
+        {:ok, false}
+
+      1 ->
+        {:ok, true}
+
+      _ ->
+        {:error, "#{__MODULE__}: decode_from_list: Invalid contract active: #{inspect(active)}"}
     end
   end
 

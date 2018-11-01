@@ -44,12 +44,12 @@ defmodule Aehttpclient.Client do
     end
   end
 
-  @spec get_peers(term()) :: {:ok, list()}
+  @spec get_peers(binary()) :: {:ok, map()} | {:error, binary}
   def get_peers(uri) do
     get(uri <> "/peers")
   end
 
-  @spec get_account_txs({term(), term()}) :: {:ok, list()} | :error
+  @spec get_account_txs({binary(), binary()}) :: {:ok, map()} | {:error, binary()}
   def get_account_txs({uri, acc}) do
     get(uri <> "/tx_pool/#{acc}", :acc_txs)
   end

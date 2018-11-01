@@ -183,7 +183,7 @@ defmodule Aecore.Chain.Worker do
   end
 
   @spec get_block_by_height(non_neg_integer(), binary() | nil) ::
-          {:ok, Block.t()} | {:error, String.t()}
+          {:ok, Block.t()} | {:error, String.t() | atom()}
   def get_block_by_height(height, chain_hash \\ nil) do
     case get_block_info_by_height(height, chain_hash, :block) do
       {:error, _} = error -> error
@@ -606,7 +606,7 @@ defmodule Aecore.Chain.Worker do
     end
   end
 
-  @spec transform_chainstate(atom() | any(), {:error, String.t()} | {:ok, map()}) :: map() 
+  @spec transform_chainstate(atom() | any(), {:error, String.t()} | {:ok, map()}) :: map()
   def transform_chainstate(_, {:error, _string}), do: %{}
 
   def transform_chainstate(strategy, {:ok, chainstate}) do
