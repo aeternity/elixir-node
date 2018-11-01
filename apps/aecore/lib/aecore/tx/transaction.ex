@@ -77,7 +77,10 @@ defmodule Aecore.Tx.Transaction do
               tx_types(),
               DataTx.t(),
               context()
-            ) :: {:ok, {Chainstate.accounts(), tx_type_state()}} | {:error, reason()}
+            ) ::
+              {:ok, {Chainstate.accounts(), tx_type_state()}}
+              | {:error, reason()}
+              | {:ok, {atom(), Chainstate.accounts()}}
 
   @doc """
   Default function for checking if the minimum fee is met for all transaction types.

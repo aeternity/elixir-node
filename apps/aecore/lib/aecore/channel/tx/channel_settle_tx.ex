@@ -44,7 +44,7 @@ defmodule Aecore.Channel.Tx.ChannelSettleTx do
   """
   defstruct [:channel_id, :initiator_amount, :responder_amount]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

@@ -7,7 +7,7 @@ defmodule Aevm.ChainApi do
 
   @type chain_state :: any()
 
-  @type store :: %{binary() => binary()}
+  @type store :: map()
 
   @type exception :: :out_of_gas
 

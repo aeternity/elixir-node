@@ -60,7 +60,7 @@ defmodule Aecore.Channel.Tx.ChannelWithdrawTx do
     :sequence
   ]
 
-  @spec get_chain_state_name :: atom()
+  @spec get_chain_state_name :: :channels
   def get_chain_state_name, do: :channels
 
   @spec sender_type() :: Identifier.type()

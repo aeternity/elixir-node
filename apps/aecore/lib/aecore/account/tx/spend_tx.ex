@@ -55,7 +55,7 @@ defmodule Aecore.Account.Tx.SpendTx do
 
   # Callbacks
 
-  @spec get_chain_state_name() :: atom()
+  @spec get_chain_state_name() :: :accounts
   def get_chain_state_name, do: :accounts
 
   @spec sender_type() :: Identifier.type()

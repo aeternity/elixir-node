@@ -147,7 +147,7 @@ defmodule Aecore.Contract.Tx.ContractCallTx do
           ContractCallTx.t(),
           DataTx.t(),
           Transaction.context()
-        ) :: {:ok, {atom(), map()}}
+        ) :: {:ok, {atom(), Chainstate.accounts()}}
   def process_chainstate(
         accounts,
         chain_state,

@@ -22,7 +22,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
   @typedoc "Expected structure for the ContractCreate Transaction"
   @type payload :: %{
           code: binary(),
-          vm_version: byte(),
+          vm_version: 1 | 2,
           deposit: non_neg_integer(),
           amount: non_neg_integer(),
           gas: non_neg_integer(),
@@ -82,8 +82,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
         gas_price: gas_price,
         call_data: call_data
       })
-      when vm_version in [[Constants.aevm_sophia_01(), Constants.aevm_solidity_01()]] do
-    # if Enum.member?([Constants.aevm_sophia_01(), Constants.aevm_solidity_01()], vm_version) do
+      when vm_version in [Constants.aevm_sophia_01(), Constants.aevm_solidity_01()] do
     %ContractCreateTx{
       code: code,
       vm_version: vm_version,
@@ -93,10 +92,6 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
       gas_price: gas_price,
       call_data: call_data
     }
-
-    # else
-    #   {:error, "#{__MODULE__}: Wrong VM version"}
-    # end
   end
 
   @spec validate(ContractCreateTx.t(), DataTx.t()) :: :ok | {:error, reason()}
@@ -115,7 +110,7 @@ defmodule Aecore.Contract.Tx.ContractCreateTx do
           t(),
           DataTx.t(),
           Transaction.context()
-        ) :: {:ok, {Chainstate.accounts(), tx_type_state()}}
+        ) :: {:ok, {:unused, Chainstate.t()}}
   def process_chainstate(
         accounts,
         chain_state,
